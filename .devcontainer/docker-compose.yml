@@ -30,9 +30,10 @@ services:
       timeout: 5s
       interval: 5s
       retries: 3
-    depends_on:
-      supabase-analytics:
-        condition: service_healthy
+    # Temporarily disabled analytics dependency
+    # depends_on:
+    #   supabase-analytics:
+    #     condition: service_healthy
     environment:
       STUDIO_PG_META_URL: http://supabase-meta:8080
       POSTGRES_PASSWORD: your-super-secret-and-long-postgres-password
@@ -54,10 +55,11 @@ services:
     restart: unless-stopped
     ports:
       - "54321:8000/tcp"
-      - "54322:8443/tcp"
-    depends_on:
-      supabase-analytics:
-        condition: service_healthy
+      - "54325:8443/tcp"
+    # Temporarily disabled analytics dependency
+    # depends_on:
+    #   supabase-analytics:
+    #     condition: service_healthy
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
@@ -73,8 +75,9 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
-      supabase-analytics:
-        condition: service_healthy
+      # Analytics dependency temporarily disabled
+      # supabase-analytics:
+      #   condition: service_healthy
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health" ]
       timeout: 5s
@@ -110,8 +113,9 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
-      supabase-analytics:
-        condition: service_healthy
+      # Analytics dependency temporarily disabled
+      # supabase-analytics:
+      #   condition: service_healthy
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:your-super-secret-and-long-postgres-password@supabase-db:5432/postgres
@@ -128,8 +132,9 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
-      supabase-analytics:
-        condition: service_healthy
+      # Analytics dependency temporarily disabled
+      # supabase-analytics:
+      #   condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:4000/" ]
       timeout: 5s
@@ -207,8 +212,9 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
-      supabase-analytics:
-        condition: service_healthy
+      # Analytics dependency temporarily disabled
+      # supabase-analytics:
+      #   condition: service_healthy
     restart: unless-stopped
     environment:
       PG_META_PORT: 8080
@@ -221,9 +227,10 @@ services:
   supabase-functions:
     image: supabase/edge-runtime:v1.67.4
     restart: unless-stopped
-    depends_on:
-      supabase-analytics:
-        condition: service_healthy
+    # Temporarily disabled analytics dependency
+    # depends_on:
+    #   supabase-analytics:
+    #     condition: service_healthy
     environment:
       JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
       SUPABASE_URL: http://supabase-kong:8000
@@ -236,7 +243,7 @@ services:
     command: [ "start", "--main-service", "/home/deno/functions/main" ]
 
   supabase-analytics:
-    image: supabase/logflare:1.14.2
+    image: supabase/logflare:1.4.2
     healthcheck:
       test: [ "CMD", "curl", "http://localhost:4000/health" ]
       timeout: 5s
@@ -263,8 +270,7 @@ services:
       LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
     ports:
       - "54324:4000"
-    command: >
-      sh -c "/app/bin/migrate && /app/bin/logflare eval 'Logflare.Release.CreateOrUpdateSingleTenant.run()' && /app/bin/logflare start"
+    command: [ "/opt/app/rel/logflare/bin/logflare", "start" ]
 
   supabase-db:
     image: supabase/postgres:15.8.1.060
@@ -307,9 +313,10 @@ services:
       - ./vector.yml:/etc/vector/vector.yml:ro
       - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
     command: [ "--config-dir", "/etc/vector/" ]
-    depends_on:
-      supabase-analytics:
-        condition: service_healthy
+    # Temporarily disabled analytics dependency
+    # depends_on:
+    #   supabase-analytics:
+    #     condition: service_healthy
 
   # QStash local development server
   qstash:

@@ -55,7 +55,7 @@
     }
   },
 
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "pnpm install",
   "postStartCommand": ".devcontainer/startup.sh",
 
   "remoteEnv": {
