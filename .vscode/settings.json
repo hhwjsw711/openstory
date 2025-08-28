@@ -1,0 +1,40 @@
+{
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": ["-l"],
+      "icon": "terminal"
+    }
+  },
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "/bin/bash",
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": ["-l"],
+      "icon": "terminal"
+    }
+  },
+  "terminal.integrated.shell.linux": "/bin/zsh",
+  "terminal.integrated.shell.osx": "/bin/zsh",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "biomejs.biome",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.suggest.includeCompletionsForModuleExports": true,
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll.biome": "explicit"
+  },
+  "files.associations": {
+    "*.mdx": "mdx"
+  }
+}

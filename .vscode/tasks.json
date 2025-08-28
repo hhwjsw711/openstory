@@ -1,0 +1,58 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Supabase",
+      "type": "shell",
+      "command": "pnpm supabase:start",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "velro"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Supabase",
+      "type": "shell",
+      "command": "pnpm supabase:stop",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start QStash Tunnel",
+      "type": "shell",
+      "command": "pnpm qstash:dev",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "velro"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Next.js Dev",
+      "type": "shell",
+      "command": "pnpm dev",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "velro"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Start Supabase",
+        "Start QStash Tunnel",
+        "Start Next.js Dev"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

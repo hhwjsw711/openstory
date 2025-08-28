@@ -14,6 +14,12 @@ importers:
       next:
         specifier: 15.5.2
         version: 15.5.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      react:
+        specifier: ^19
+        version: 19.1.1
+      react-dom:
+        specifier: ^19
+        version: 19.1.1(react@19.1.1)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.2.0
@@ -27,6 +33,9 @@ importers:
       '@types/react':
         specifier: ^19
         version: 19.1.12
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.1.8(@types/react@19.1.12)
       supabase:
         specifier: ^2.39.2
         version: 2.39.2
@@ -385,6 +394,11 @@ packages:
 
   '@types/node@20.19.11':
     resolution: {integrity: sha512-uug3FEEGv0r+jrecvUUpbY8lLisvIjg6AAic6a2bSP5OEOLeJsDSnvhCDov7ipFFMXS3orMpzlmi0ZcuGkBbow==}
+
+  '@types/react-dom@19.1.8':
+    resolution: {integrity: sha512-xG7xaBMJCpcK0RpN8jDbAACQo54ycO6h4dSSmgv8+fu6ZIAdANkx/WsawASUjVXYfy+J9AbUpRMNNEsXCDfDBQ==}
+    peerDependencies:
+      '@types/react': ^19.0.0
 
   '@types/react@19.1.12':
     resolution: {integrity: sha512-cMoR+FoAf/Jyq6+Df2/Z41jISvGZZ2eTlnsaJRptmZ76Caldwy1odD4xTr/gNV9VLj0AWgg/nmkevIyUfIIq5w==}
@@ -971,6 +985,10 @@ snapshots:
   '@types/node@20.19.11':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/react-dom@19.1.8(@types/react@19.1.12)':
+    dependencies:
+      '@types/react': 19.1.12
 
   '@types/react@19.1.12':
     dependencies:
