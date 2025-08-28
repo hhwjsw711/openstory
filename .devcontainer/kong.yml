@@ -1,0 +1,87 @@
+_format_version: "1.1"
+
+services:
+  - name: auth-v1-open
+    url: http://supabase-auth:9999/
+    plugins:
+      - name: cors
+    routes:
+      - name: auth-v1-open
+        strip_path: true
+        paths:
+          - /auth/v1/
+  - name: auth-v1-open-callback
+    url: http://supabase-auth:9999/callback
+    plugins:
+      - name: cors
+    routes:
+      - name: auth-v1-open-callback
+        strip_path: true
+        paths:
+          - /auth/v1/callback
+  - name: auth-v1-open-authorize
+    url: http://supabase-auth:9999/authorize
+    plugins:
+      - name: cors
+    routes:
+      - name: auth-v1-open-authorize
+        strip_path: true
+        paths:
+          - /auth/v1/authorize
+  - name: postgrest
+    url: http://supabase-rest:3000/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+    routes:
+      - name: rest-v1
+        strip_path: true
+        paths:
+          - /rest/v1/
+  - name: realtime-v1
+    url: http://supabase-realtime:4000/socket
+    routes:
+      - name: realtime-v1
+        strip_path: true
+        paths:
+          - /realtime/v1/
+  - name: storage-v1
+    url: http://supabase-storage:5000/
+    plugins:
+      - name: cors
+    routes:
+      - name: storage-v1
+        strip_path: true
+        paths:
+          - /storage/v1/
+  - name: functions-v1
+    url: http://supabase-functions:9000/
+    plugins:
+      - name: cors
+    routes:
+      - name: functions-v1
+        strip_path: true
+        paths:
+          - /functions/v1/
+  - name: analytics-v1
+    url: http://supabase-analytics:4000/api/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+    routes:
+      - name: analytics-v1
+        strip_path: true
+        paths:
+          - /analytics/v1/
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+  - username: service_role
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
