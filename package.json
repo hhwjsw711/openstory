@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@upstash/qstash": "^2.8.2",
     "next": "15.5.2"
   },
   "devDependencies": {
