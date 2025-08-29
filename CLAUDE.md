@@ -13,9 +13,9 @@ pnpm start            # Start production server
 
 ### Code Quality
 ```bash
-pnpx @biomejs/biome check .          # Run linter
-pnpx @biomejs/biome format .         # Format code
-pnpx @biomejs/biome check --write .  # Fix linting and formatting
+pnpm biome check .          # Run linter
+pnpm biome format .         # Format code
+pnpm biome check --write .  # Fix linting and formatting
 ```
 
 ### Supabase
@@ -24,7 +24,15 @@ pnpx supabase start     # Start local Supabase
 pnpx supabase stop      # Stop local Supabase
 pnpx supabase db reset  # Reset database
 pnpx supabase status    # Check local services status
+pnpm supabase:types     # Generate TypeScript types from database
 ```
+
+**Note**: Database types (`src/lib/gen.types.ts`) are auto-generated:
+- Generated automatically on `pnpm install` via postinstall hook
+- Can be manually regenerated with `pnpm supabase:types`
+- File is gitignored to ensure types always match local database schema
+- Types are generated from your local Supabase instance (must be running)
+- Use the convenience exports from `@/types/database` for cleaner imports
 
 ### TypeScript
 ```bash
