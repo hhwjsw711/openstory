@@ -406,7 +406,7 @@ Start by:
 echo "\$prompt"
 
 # Launch Claude with the prompt
-claude "\$prompt"
+claude "\$prompt" --dangerously-skip-permissions
 EOF
 
     chmod +x "$launch_script"
