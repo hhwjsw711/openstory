@@ -102,25 +102,75 @@ launch_claude_for_issue() {
     # Change to worktree directory
     cd "$worktree"
     
-    # Create prompt
-    local prompt="You are working as a $agent agent on issue #$issue_num.
+    # Create prompt with agent references
+    local prompt=""
+    
+    if [[ "$agent" == *"tech-lead"* ]] || [[ "$agent" == *"architect"* ]]; then
+        # Tech lead/architect prompt
+        prompt="Can you get the @agent-$agent to validate the plan for issue #$issue_num.
 
-Please read the instructions at $instructions and implement the issue.
+First, read the instructions at: cat $instructions
 
-Start by:
-1. Reading the instructions file: cat $instructions
-2. Understanding the codebase structure: ls -la
-3. Reviewing the CLAUDE.md file for project guidelines
-4. Implementing the required changes
-5. Testing your implementation
-6. Creating commits with descriptive messages
-7. Creating a PR when complete
+Then:
+1. Analyze the technical approach and architecture
+2. Create a detailed implementation plan using TodoWrite
+3. Delegate work to the appropriate @agent-backend-engineer or @agent-frontend-react-engineer
+4. Involve @agent-qa-lead-tester to create test suites and mock data
+5. Validate the work through PR review
 
-Remember to:
-- Make descriptive commits frequently
-- Run tests before creating PR
-- Follow the project's coding standards
-- Use the TodoWrite tool to track your progress"
+Ensure:
+- Clear task delegation with regular commits
+- Comprehensive test coverage
+- Following CLAUDE.md guidelines"
+    elif [[ "$agent" == *"engineer"* ]]; then
+        # Implementation engineer prompt
+        prompt="Can you get the @agent-$agent to implement issue #$issue_num.
+
+Start by reading: cat $instructions
+
+Work with:
+- @agent-qa-lead-tester for test coverage and validation
+- Tech lead for architectural guidance
+
+Steps:
+1. Review triage notes and technical plans
+2. Understand codebase: ls -la && cat CLAUDE.md
+3. Implement changes with regular commits
+4. Write tests with @agent-qa-lead-tester
+5. Create PR with detailed description
+
+Use TodoWrite to track progress and make frequent commits."
+    elif [[ "$agent" == *"qa"* ]] || [[ "$agent" == *"test"* ]]; then
+        # QA/Tester prompt
+        prompt="Can you get the @agent-$agent to validate issue #$issue_num.
+
+Start by reading: cat $instructions
+
+Responsibilities:
+1. Review implementation quality
+2. Create comprehensive test suites
+3. Generate mock data for APIs
+4. Validate error handling
+5. Ensure coverage standards (>80% backend, >75% frontend)
+6. Coordinate with engineers on issues
+7. Approve PR when ready
+
+Use TodoWrite to track testing tasks."
+    else
+        # Default prompt
+        prompt="You are working as @agent-$agent on issue #$issue_num.
+
+Read instructions: cat $instructions
+
+Steps:
+1. Understand codebase: ls -la && cat CLAUDE.md
+2. Implement required changes
+3. Test implementation
+4. Create descriptive commits
+5. Create PR when complete
+
+Use TodoWrite to track your progress."
+    fi
     
     echo ""
     echo -e "${MAGENTA}=== Launching Claude ===${NC}"
@@ -134,7 +184,7 @@ Remember to:
         echo ""
         
         # Launch Claude
-        claude "$prompt" --dangerously-skip-permissions
+        claude "$prompt"
     else
         error "Claude CLI not found!"
         echo ""

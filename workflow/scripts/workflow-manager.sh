@@ -417,8 +417,60 @@ echo ""
 echo "Initial prompt for Claude:"
 echo ""
 
-# Create initial prompt
-prompt="You are working as a $agent_type agent on issue #$issue_num.
+# Create initial prompt with agent references
+if [ "$agent_type" = "backend-tech-lead" ] || [ "$agent_type" = "frontend-architect" ]; then
+    # Tech lead/architect prompt with delegation
+    prompt="Can you get the @agent-$agent_type to validate the plan for issue #$issue_num.
+
+First, read the instructions at $instructions_file to understand the requirements.
+
+Then:
+1. Analyze the technical approach and architecture
+2. Create a detailed implementation plan
+3. Delegate the work to @agent-${agent_type/tech-lead/engineer} or @agent-${agent_type/architect/react-engineer} who should make regular commits
+4. Involve the @agent-qa-lead-tester to create a test suite and validate the implementation
+5. Validate the work at the end through a PR review
+
+The implementation engineer should:
+- Make frequent, descriptive commits
+- Follow the coding standards in CLAUDE.md
+- Write comprehensive tests
+- Create a PR when complete"
+elif [ "$agent_type" = "backend-engineer" ] || [ "$agent_type" = "frontend-react-engineer" ]; then
+    # Implementation engineer prompt
+    prompt="Can you get the @agent-$agent_type to implement issue #$issue_num.
+
+Please read the instructions at $instructions_file and implement the issue.
+
+Work closely with:
+- @agent-qa-lead-tester for test coverage and validation
+- The tech lead/architect who assigned this task for guidance
+
+Remember to:
+1. Read the instructions file and any triage notes
+2. Understand the codebase structure
+3. Implement the required changes incrementally
+4. Make regular, descriptive commits
+5. Write comprehensive tests
+6. Coordinate with @agent-qa-lead-tester for test validation
+7. Create a PR when implementation is complete"
+elif [ "$agent_type" = "qa-lead-tester" ]; then
+    # QA lead prompt
+    prompt="Can you get the @agent-qa-lead-tester to validate issue #$issue_num implementation.
+
+Please read the instructions at $instructions_file.
+
+Your responsibilities:
+1. Review the implementation for quality and completeness
+2. Create comprehensive test suites for all new functionality
+3. Generate mock data for API endpoints if applicable
+4. Validate error handling and edge cases
+5. Ensure test coverage meets standards (>80% backend, >75% frontend)
+6. Coordinate with @agent-backend-engineer or @agent-frontend-react-engineer on any issues found
+7. Approve the PR when quality standards are met"
+else
+    # Default prompt for other agents
+    prompt="You are working as a @agent-$agent_type on issue #$issue_num.
 
 Please read the instructions at $instructions_file and implement the issue.
 
@@ -428,19 +480,20 @@ Start by:
 3. Implementing the required changes
 4. Testing your implementation
 5. Creating commits with descriptive messages"
+fi
 
 echo "\$prompt"
 echo ""
 echo "========================================"
 echo "To launch Claude Code manually, run:"
-echo "  claude \"\$prompt\" --dangerously-skip-permissions"
+echo "  claude \"\$prompt\"
 echo "========================================"
 echo ""
 
 # Try to launch Claude automatically
 if command -v claude &> /dev/null; then
     echo "Attempting to launch Claude Code..."
-    claude "\$prompt" --dangerously-skip-permissions
+    claude "\$prompt"
 else
     echo "Claude CLI not found in PATH."
     echo "Please run the command above manually to start Claude Code."
@@ -498,25 +551,78 @@ launch_claude_cli_with_agent() {
     # Change to worktree directory
     cd "$worktree_path"
     
-    # Create initial prompt
-    local prompt="You are working as a $agent_type agent on issue #$issue_num.
+    # Create initial prompt with agent references
+    if [ "$agent_type" = "backend-tech-lead" ] || [ "$agent_type" = "frontend-architect" ]; then
+        # Tech lead/architect prompt with delegation
+        local prompt="Can you get the @agent-$agent_type to validate the plan for issue #$issue_num.
 
-Please read the instructions at $instructions_file and implement the issue.
+First, read the instructions at: cat $instructions_file
 
-Start by:
-1. Reading the instructions file: cat $instructions_file
-2. Understanding the codebase structure: ls -la
-3. Reviewing the CLAUDE.md file for project guidelines
-4. Implementing the required changes
-5. Testing your implementation
-6. Creating commits with descriptive messages
-7. Creating a PR when complete
+Then:
+1. Analyze the technical approach and architecture
+2. Create a detailed implementation plan using TodoWrite
+3. Delegate the work to @agent-${agent_type/tech-lead/engineer} or @agent-${agent_type/architect/react-engineer} who should make regular commits
+4. Involve the @agent-qa-lead-tester to create test suites and mock data
+5. Validate the work at the end through a PR review
+
+The implementation should include:
+- Frequent, descriptive commits
+- Comprehensive test coverage
+- Following CLAUDE.md guidelines
+- Creating a PR when complete"
+    elif [ "$agent_type" = "backend-engineer" ] || [ "$agent_type" = "frontend-react-engineer" ]; then
+        # Implementation engineer prompt
+        local prompt="Can you get the @agent-$agent_type to implement issue #$issue_num.
+
+Start by reading: cat $instructions_file
+
+Work closely with:
+- @agent-qa-lead-tester for test coverage and validation
+- The tech lead who created the plan for guidance
+
+Implementation steps:
+1. Review any triage notes and technical plans
+2. Understand the codebase: ls -la && cat CLAUDE.md
+3. Implement changes incrementally with regular commits
+4. Write comprehensive tests with @agent-qa-lead-tester
+5. Validate implementation meets requirements
+6. Create PR with detailed description
 
 Remember to:
-- Make descriptive commits frequently
-- Run tests before creating PR
-- Follow the project's coding standards
-- Use the TodoWrite tool to track your progress"
+- Make frequent, descriptive commits
+- Follow coding standards in CLAUDE.md
+- Use TodoWrite to track progress"
+    elif [ "$agent_type" = "qa-lead-tester" ]; then
+        # QA lead prompt
+        local prompt="Can you get the @agent-qa-lead-tester to validate issue #$issue_num.
+
+Start by reading: cat $instructions_file
+
+Your responsibilities:
+1. Review implementation quality and completeness
+2. Create comprehensive test suites for all functionality
+3. Generate mock data for API endpoints
+4. Validate error handling and edge cases
+5. Ensure coverage: >80% backend, >75% frontend
+6. Coordinate with @agent-backend-engineer or @agent-frontend-react-engineer on issues
+7. Approve PR when standards are met
+
+Use TodoWrite to track testing tasks."
+    else
+        # Default prompt
+        local prompt="You are working as @agent-$agent_type on issue #$issue_num.
+
+Read instructions: cat $instructions_file
+
+Steps:
+1. Understand codebase: ls -la && cat CLAUDE.md
+2. Implement required changes
+3. Test implementation
+4. Create descriptive commits
+5. Create PR when complete
+
+Use TodoWrite to track your progress."
+    fi
 
     # Launch Claude using the agent-launcher script
     if [ -f "$SCRIPT_DIR/agent-launcher.sh" ]; then
