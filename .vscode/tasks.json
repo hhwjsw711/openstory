@@ -2,6 +2,20 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Launch Claude Agent",
+      "type": "shell",
+      "command": "[ -f \"${workspaceFolder}/.launch-claude.sh\" ] && \"${workspaceFolder}/.launch-claude.sh\" || echo 'Claude launch script not found'",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Start Supabase",
       "type": "shell",
       "command": "pnpm supabase:start",

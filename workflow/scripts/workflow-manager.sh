@@ -75,20 +75,22 @@ determine_issue_type() {
 }
 
 # Function to select appropriate agent
+# Now implements two-stage process: tech leads triage first, then assign to engineers
 select_agent() {
     local issue_type=$1
     local complexity=$2
+    local stage=${3:-triage}  # Default to triage stage
     
     case "$issue_type" in
         backend)
-            if [ "$complexity" = "high" ]; then
+            if [ "$stage" = "triage" ]; then
                 echo "backend-tech-lead"
             else
                 echo "backend-engineer"
             fi
             ;;
         frontend)
-            if [ "$complexity" = "high" ]; then
+            if [ "$stage" = "triage" ]; then
                 echo "frontend-architect"
             else
                 echo "frontend-react-engineer"
@@ -184,31 +186,101 @@ create_agent_instructions() {
     local worktree_path=$3
     local issue_title=$4
     local issue_body=$5
+    local stage=${6:-implementation}  # Default to implementation stage
     
-    local instructions_file="$INSTRUCTIONS_DIR/issue-${issue_num}-instructions.md"
+    local instructions_file="$INSTRUCTIONS_DIR/issue-${issue_num}-${stage}-instructions.md"
     
-    cat > "$instructions_file" << EOF
-# Agent Instructions for Issue #$issue_num
+    if [ "$stage" = "triage" ]; then
+        # Triage stage instructions for tech leads
+        cat > "$instructions_file" << EOF
+# Agent Instructions for Issue #$issue_num - TRIAGE STAGE
 
 ## Agent: $agent_type
 ## Working Directory: $worktree_path
+## Stage: TRIAGE
 
 ## Issue Details
 **Title:** $issue_title
 **Description:**
 $issue_body
 
-## Your Task
+## Your Task - Technical Review and Planning
 
-You are tasked with implementing issue #$issue_num. Follow these steps:
+As the $agent_type, you are responsible for triaging this issue before implementation. Your tasks:
 
-### 1. Setup and Context
+### 1. Technical Analysis
+- Review the issue requirements thoroughly
+- Analyze the codebase to understand current implementation
+- Identify all components that need to be modified
+- Assess technical complexity and potential risks
+
+### 2. Architecture Planning
+- Design the solution architecture
+- Identify required design patterns
+- Plan component interfaces and data flow
+- Consider performance and scalability implications
+
+### 3. Implementation Plan
+- Break down the work into specific tasks
+- Create a detailed implementation checklist
+- Identify dependencies and prerequisites
+- Estimate complexity for each component
+
+### 4. Create Implementation Guide
+- Write detailed technical specifications
+- Document key decisions and trade-offs
+- Prepare code examples or pseudocode where helpful
+- List acceptance criteria and test scenarios
+
+### 5. Prepare for Handoff
+- Create a comprehensive TODO list using TodoWrite
+- Document any setup requirements
+- Note potential challenges or blockers
+- Prepare questions that need clarification
+
+**IMPORTANT**: Do NOT implement the solution. Your role is to:
+- Analyze and plan the technical approach
+- Create detailed specifications
+- Prepare everything for the implementation engineer
+- The implementation will be done by ${agent_type/tech-lead/engineer} or ${agent_type/architect/engineer} in the next stage
+
+When complete, provide a summary with:
+1. Technical approach overview
+2. Detailed task breakdown
+3. Key architectural decisions
+4. Implementation readiness checklist
+EOF
+    else
+        # Implementation stage instructions for engineers
+        cat > "$instructions_file" << EOF
+# Agent Instructions for Issue #$issue_num - IMPLEMENTATION STAGE
+
+## Agent: $agent_type
+## Working Directory: $worktree_path
+## Stage: IMPLEMENTATION
+
+## Issue Details
+**Title:** $issue_title
+**Description:**
+$issue_body
+
+## Your Task - Implementation
+
+You are tasked with implementing issue #$issue_num. The technical approach has been reviewed and planned by the tech lead.
+
+### 1. Review Previous Analysis
+- Check for any triage notes in: $INSTRUCTIONS_DIR/issue-${issue_num}-triage-instructions.md
+- Review any TODO lists or specifications created during triage
+- Understand the technical approach that was planned
+
+### 2. Setup and Context
 - Your working directory is already set to: $worktree_path
 - You are on branch: $(cd "$worktree_path" && git branch --show-current)
 - Review the project guidelines in CLAUDE.md
 
-### 2. Implementation Steps
+### 3. Implementation Steps
 EOF
+    fi
 
     # Add agent-specific instructions
     case "$agent_type" in
@@ -331,42 +403,13 @@ Start by:
 4. Testing your implementation
 5. Creating commits with descriptive messages"
 
+echo "\$prompt"
+
 # Launch Claude with the prompt
-echo "\$prompt" | claude
+claude "\$prompt"
 EOF
 
     chmod +x "$launch_script"
-    
-    # Create VS Code tasks.json for auto-launch
-    mkdir -p "$worktree_path/.vscode"
-    cat > "$worktree_path/.vscode/tasks.json" << 'EOF'
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Launch Claude Agent",
-      "type": "shell",
-      "command": "${workspaceFolder}/.launch-claude.sh",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new",
-        "focus": true
-      },
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
-      "problemMatcher": []
-    }
-  ]
-}
-EOF
-    
-    # Also create settings to enable task auto-run
-    cat > "$worktree_path/.vscode/settings.json" << 'EOF'
-{
-  "task.allowAutomaticTasks": "on"
-}
-EOF
     
     info "Launch script created at $launch_script"
     info "Claude will auto-launch when Cursor opens (via VS Code task)"
@@ -426,8 +469,9 @@ Remember to:
 # Function to process issue
 process_issue() {
     local issue_num=$1
+    local stage=${2:-triage}  # Default to triage stage
     
-    log "Processing issue #$issue_num"
+    log "Processing issue #$issue_num (stage: $stage)"
     
     # Get issue details
     local issue_json=$(gh issue view "$issue_num" --json number,title,body,labels)
@@ -439,10 +483,10 @@ process_issue() {
     local issue_type=$(determine_issue_type "$title" "$body" "$labels")
     local complexity="normal"  # Could be enhanced with complexity detection
     
-    # Select appropriate agent
-    local agent_type=$(select_agent "$issue_type" "$complexity")
+    # Select appropriate agent based on stage
+    local agent_type=$(select_agent "$issue_type" "$complexity" "$stage")
     
-    log "Issue type: $issue_type, Agent: $agent_type"
+    log "Issue type: $issue_type, Stage: $stage, Agent: $agent_type"
     
     # Create branch name
     local branch_name=$(sanitize_branch_name "$issue_num" "$title")
@@ -450,8 +494,8 @@ process_issue() {
     # Create worktree
     local worktree_path=$(create_worktree "$issue_num" "$branch_name")
     
-    # Create agent instructions
-    local instructions_file=$(create_agent_instructions "$issue_num" "$agent_type" "$worktree_path" "$title" "$body")
+    # Create agent instructions (different for triage vs implementation)
+    local instructions_file=$(create_agent_instructions "$issue_num" "$agent_type" "$worktree_path" "$title" "$body" "$stage")
     
     # Track state
     local state_file="$STATE_DIR/issue-${issue_num}.json"
@@ -460,6 +504,7 @@ process_issue() {
   "issue_number": $issue_num,
   "title": "$title",
   "agent": "$agent_type",
+  "stage": "$stage",
   "worktree_path": "$worktree_path",
   "branch": "$branch_name",
   "instructions": "$instructions_file",
@@ -622,8 +667,9 @@ show_status() {
         for state_file in "$STATE_DIR"/*.json; do
             local issue_num=$(jq -r '.issue_number' "$state_file")
             local agent=$(jq -r '.agent' "$state_file")
+            local stage=$(jq -r '.stage // "unknown"' "$state_file")
             local status=$(jq -r '.status' "$state_file")
-            echo "  Issue #$issue_num - Agent: $agent - Status: $status"
+            echo "  Issue #$issue_num - Stage: $stage - Agent: $agent - Status: $status"
         done
     else
         echo "  No active issues"
@@ -643,7 +689,14 @@ case "${1:-}" in
             error "Usage: $0 assign <issue_number>"
             exit 1
         fi
-        process_issue "$2"
+        process_issue "$2" "triage"
+        ;;
+    implement)
+        if [ -z "${2:-}" ]; then
+            error "Usage: $0 implement <issue_number>"
+            exit 1
+        fi
+        process_issue "$2" "implementation"
         ;;
     review)
         monitor_pr_reviews
@@ -665,14 +718,15 @@ case "${1:-}" in
     *)
         echo "Claude Code Workflow Manager"
         echo ""
-        echo "Usage: $0 {assign|review|cleanup|status|reset}"
+        echo "Usage: $0 {assign|implement|review|cleanup|status|reset}"
         echo ""
         echo "Commands:"
-        echo "  assign <issue_num>  - Assign issue to appropriate agent"
-        echo "  review             - Check for PRs needing review"
-        echo "  cleanup            - Clean up merged PR worktrees"
-        echo "  status             - Show current workflow status"
-        echo "  reset              - Reset all worktrees and state"
+        echo "  assign <issue_num>     - Assign issue to tech lead for triage"
+        echo "  implement <issue_num>  - Assign issue to engineer for implementation"
+        echo "  review                 - Check for PRs needing review"
+        echo "  cleanup                - Clean up merged PR worktrees"
+        echo "  status                 - Show current workflow status"
+        echo "  reset                  - Reset all worktrees and state"
         echo ""
         echo "Environment Variables:"
         echo "  LAUNCH_METHOD=cursor|claude-cli  (default: cursor)"
@@ -689,14 +743,18 @@ case "${1:-}" in
         echo ""
         echo "Example workflows:"
         echo ""
-        echo "  # Default (Cursor IDE):"
+        echo "  # Two-stage workflow (recommended):"
+        echo "  $0 assign 123        # Tech lead triages the issue"
+        echo "  $0 implement 123     # Engineer implements after triage"
+        echo ""
+        echo "  # Default triage (Cursor IDE):"
         echo "  $0 assign 123"
         echo ""
         echo "  # Claude CLI interactive:"
         echo "  LAUNCH_METHOD=claude-cli $0 assign 123"
         echo ""
         echo "  # Claude CLI non-interactive with auto-review:"
-        echo "  LAUNCH_METHOD=claude-cli CLAUDE_MODE=print AUTO_LAUNCH_REVIEW=yes $0 assign 123"
+        echo "  LAUNCH_METHOD=claude-cli CLAUDE_MODE=print AUTO_LAUNCH_REVIEW=yes $0 implement 123"
         echo ""
         echo "  # Review PRs:"
         echo "  $0 review"
