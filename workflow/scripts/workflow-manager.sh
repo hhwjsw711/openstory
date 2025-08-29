@@ -170,6 +170,31 @@ setup_worktree_environment() {
         info "Copied .vercel directory"
     fi
     
+    # Copy Claude settings to worktree
+    if [ -d "$PROJECT_ROOT/.claude" ]; then
+        mkdir -p "$worktree_path/.claude"
+        
+        # Copy all Claude settings including local settings
+        if [ -f "$PROJECT_ROOT/.claude/settings.local.json" ]; then
+            cp "$PROJECT_ROOT/.claude/settings.local.json" "$worktree_path/.claude/"
+            info "Copied .claude/settings.local.json"
+        fi
+        
+        # Copy agent definitions if they exist
+        if [ -d "$PROJECT_ROOT/.claude/agents" ]; then
+            cp -r "$PROJECT_ROOT/.claude/agents" "$worktree_path/.claude/"
+            info "Copied .claude/agents directory"
+        fi
+        
+        # Copy any other Claude configuration files
+        for file in "$PROJECT_ROOT/.claude"/*.{json,md,yaml,yml} 2>/dev/null; do
+            if [ -f "$file" ] && [ "$(basename "$file")" != "settings.local.json" ]; then
+                cp "$file" "$worktree_path/.claude/"
+                info "Copied $(basename "$file")"
+            fi
+        done
+    fi
+    
     # Install dependencies
     log "Installing dependencies with pnpm..."
     (cd "$worktree_path" && pnpm install) || {
@@ -333,7 +358,8 @@ When implementation is complete:
 ```bash
 gh pr create \
   --title "fix: #ISSUE_NUM - ISSUE_TITLE" \
-  --body "Closes #ISSUE_NUM\n\n## Changes\n- List changes here\n\n## Testing\n- Describe testing done"
+  --body "Closes #ISSUE_NUM\n\n## Changes\n- List changes here\n\n## Testing\n- Describe testing done" \
+  --assignee "@me"
 ```
 
 ### 6. Success Criteria
@@ -404,15 +430,60 @@ Start by:
 5. Creating commits with descriptive messages"
 
 echo "\$prompt"
+echo ""
+echo "========================================"
+echo "To launch Claude Code manually, run:"
+echo "  claude \"\$prompt\" --dangerously-skip-permissions"
+echo "========================================"
+echo ""
 
-# Launch Claude with the prompt
-claude "\$prompt" --dangerously-skip-permissions
+# Try to launch Claude automatically
+if command -v claude &> /dev/null; then
+    echo "Attempting to launch Claude Code..."
+    claude "\$prompt" --dangerously-skip-permissions
+else
+    echo "Claude CLI not found in PATH."
+    echo "Please run the command above manually to start Claude Code."
+    echo ""
+    echo "If Claude is not installed, install it with:"
+    echo "  npm install -g @anthropic-ai/claude"
+fi
 EOF
 
     chmod +x "$launch_script"
     
     info "Launch script created at $launch_script"
-    info "Claude will auto-launch when Cursor opens (via VS Code task)"
+    info ""
+    info "========================================"
+    info "MANUAL LAUNCH INSTRUCTIONS:"
+    info "If Claude doesn't auto-launch, run this in the Cursor terminal:"
+    info "  ./.launch-claude.sh"
+    info "========================================"
+    
+    # Create a VS Code task file for auto-launch (may not work in all environments)
+    mkdir -p "$worktree_path/.vscode"
+    cat > "$worktree_path/.vscode/tasks.json" << 'EOF'
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Launch Claude Code Agent",
+            "type": "shell",
+            "command": "./.launch-claude.sh",
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
+EOF
+    
+    info "VS Code task created for auto-launch (may require manual trigger)"
 }
 
 # Function to launch Claude CLI directly
@@ -474,10 +545,11 @@ process_issue() {
     log "Processing issue #$issue_num (stage: $stage)"
     
     # Get issue details
-    local issue_json=$(gh issue view "$issue_num" --json number,title,body,labels)
+    local issue_json=$(gh issue view "$issue_num" --json number,title,body,labels,assignees)
     local title=$(echo "$issue_json" | jq -r '.title')
     local body=$(echo "$issue_json" | jq -r '.body // ""')
     local labels=$(echo "$issue_json" | jq -r '.labels | map(.name) | join(" ")')
+    local assignees=$(echo "$issue_json" | jq -r '.assignees | length')
     
     # Determine issue type and complexity
     local issue_type=$(determine_issue_type "$title" "$body" "$labels")
@@ -485,6 +557,27 @@ process_issue() {
     
     # Select appropriate agent based on stage
     local agent_type=$(select_agent "$issue_type" "$complexity" "$stage")
+    
+    # Assign issue to current user if not already assigned
+    if [ "$assignees" -eq 0 ]; then
+        log "Assigning issue #$issue_num to current user..."
+        gh issue edit "$issue_num" --add-assignee "@me" || {
+            warning "Failed to assign issue #$issue_num, but continuing..."
+        }
+        
+        # Add a comment to indicate work has started
+        local comment="🤖 Claude Code workflow has picked up this issue.
+
+**Agent:** ${agent_type}
+**Stage:** ${stage}
+**Started:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+        
+        gh issue comment "$issue_num" --body "$comment" || {
+            warning "Failed to add comment to issue #$issue_num"
+        }
+    else
+        info "Issue #$issue_num already has assignees"
+    fi
     
     log "Issue type: $issue_type, Stage: $stage, Agent: $agent_type"
     

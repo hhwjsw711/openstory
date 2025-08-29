@@ -152,14 +152,48 @@ pnpm dev
 pnpm build
 ```
 
+## Manual Claude Launch
+
+If Claude doesn't automatically launch when Cursor opens, you have several options:
+
+### Option 1: Use the Launch Script (In Cursor Terminal)
+```bash
+# Navigate to the worktree directory shown in Cursor
+./.launch-claude.sh
+```
+
+### Option 2: Use the Manual Launcher (From Main Project)
+```bash
+# List all active issues being worked on
+./workflow/scripts/manual-claude-launcher.sh list
+
+# Launch Claude for a specific issue (e.g., issue #42)
+./workflow/scripts/manual-claude-launcher.sh launch 42
+```
+
+### Option 3: Direct Claude Command
+Check the `.launch-claude.sh` file in your worktree for the exact command to run.
+
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Worktree conflicts**: Run `./scripts/reset.sh` to clean up
-2. **Agent stuck**: Check logs in `data/logs/`
-3. **Cursor not opening**: Ensure Cursor CLI is installed
-4. **Claude timeout**: Increase timeout in `config/agents.yaml`
+1. **Claude not launching automatically**: 
+   - Use the manual launch options above
+   - Check if Claude CLI is installed: `which claude`
+   - Ensure VS Code tasks are enabled in Cursor
+
+2. **Worktree conflicts**: Run `./scripts/reset.sh` to clean up
+
+3. **Agent stuck**: Check logs in `data/logs/`
+
+4. **Cursor not opening**: Ensure Cursor CLI is installed
+
+5. **Claude timeout**: Increase timeout in `config/agents.yaml`
+
+6. **Missing Claude settings in worktree**:
+   - The workflow now automatically copies `.claude/` directory
+   - Check if `.claude/settings.local.json` exists in worktree
 
 ## Security
 

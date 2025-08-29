@@ -71,6 +71,11 @@ get_ready_to_code_issues() {
                   title
                   body
                   state
+                  assignees(first: 10) {
+                    nodes {
+                      login
+                    }
+                  }
                   labels(first: 10) {
                     nodes {
                       name
@@ -101,20 +106,43 @@ get_ready_to_code_issues() {
         return 1
     fi
     
-    # Parse and filter for "ready to code" status
-    echo "$response" | jq -r '
-      .data.organization.projectV2.items.nodes[] |
-      select(
-        .content.state == "OPEN" and
-        (.fieldValues.nodes[] | select(.field.name == "Status" and .name == "Ready to code"))
-      ) |
-      .content | {
-        number: .number,
-        title: .title,
-        body: .body,
-        labels: [.labels.nodes[].name]
-      }
-    ' 2>/dev/null || echo ""
+    # Parse and filter for "ready to code" status (and optionally unassigned)
+    local skip_assigned="${SKIP_ASSIGNED_ISSUES:-true}"
+    
+    if [ "$skip_assigned" = "true" ]; then
+        # Filter for unassigned issues only
+        echo "$response" | jq -r '
+          .data.organization.projectV2.items.nodes[] |
+          select(
+            .content.state == "OPEN" and
+            (.fieldValues.nodes[] | select(.field.name == "Status" and .name == "Ready to Code")) and
+            (.content.assignees.nodes | length == 0)
+          ) |
+          .content | {
+            number: .number,
+            title: .title,
+            body: .body,
+            labels: [.labels.nodes[].name],
+            assignees: [.assignees.nodes[].login]
+          }
+        ' 2>/dev/null || echo ""
+    else
+        # Include all ready to code issues
+        echo "$response" | jq -r '
+          .data.organization.projectV2.items.nodes[] |
+          select(
+            .content.state == "OPEN" and
+            (.fieldValues.nodes[] | select(.field.name == "Status" and .name == "Ready to Code"))
+          ) |
+          .content | {
+            number: .number,
+            title: .title,
+            body: .body,
+            labels: [.labels.nodes[].name],
+            assignees: [.assignees.nodes[].login]
+          }
+        ' 2>/dev/null || echo ""
+    fi
 }
 
 # Fallback function to get issues by label
@@ -313,11 +341,13 @@ case "${1:-}" in
         echo "  test    - Test mode - check for ready issues once"
         echo ""
         echo "Environment Variables:"
-        echo "  GITHUB_ORG=<org>              - GitHub organization (default: velro-ai)"
-        echo "  GITHUB_PROJECT_NUMBER=<num>   - Project number (default: 1)"
-        echo "  CHECK_INTERVAL=<seconds>      - Check interval in seconds (default: 60)"
-        echo "  DEFAULT_STAGE=assign|implement - Default workflow stage (default: assign)"
+        echo "  GITHUB_ORG=<org>                - GitHub organization (default: velro-ai)"
+        echo "  GITHUB_PROJECT_NUMBER=<num>     - Project number (default: 1)"
+        echo "  CHECK_INTERVAL=<seconds>        - Check interval in seconds (default: 60)"
+        echo "  DEFAULT_STAGE=assign|implement  - Default workflow stage (default: assign)"
         echo "  LAUNCH_METHOD=cursor|claude-cli - How to launch agents (default: cursor)"
+        echo "  SKIP_ASSIGNED_ISSUES=true|false - Skip already assigned issues (default: true)"
+        echo "  FALLBACK_TO_LABELS=yes|no       - Use label fallback if no project access (default: yes)"
         echo ""
         echo "Examples:"
         echo "  # Start with default settings (triage stage):"
