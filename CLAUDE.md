@@ -13,9 +13,9 @@ pnpm start            # Start production server
 
 ### Code Quality
 ```bash
-pnpx @biomejs/biome check .          # Run linter
-pnpx @biomejs/biome format .         # Format code
-pnpx @biomejs/biome check --write .  # Fix linting and formatting
+pnpm biome check .          # Run linter
+pnpm biome format .         # Format code
+pnpm biome check --write .  # Fix linting and formatting
 ```
 
 ### Supabase

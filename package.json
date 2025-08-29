@@ -14,13 +14,15 @@
     "workflow:orchestrator": "./workflow/scripts/orchestrator.sh"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.56.0",
     "@upstash/qstash": "^2.8.2",
     "next": "15.5.2",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
+    "@biomejs/biome": "2.2.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
