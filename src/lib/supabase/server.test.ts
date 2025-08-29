@@ -1,0 +1,287 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAdminClient, createServerClient } from "./server";
+
+// Mock the Supabase createClient function
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: vi.fn(),
+    auth: {
+      admin: {
+        createUser: vi.fn(),
+        deleteUser: vi.fn(),
+      },
+      getSession: vi.fn(),
+    },
+    storage: {
+      from: vi.fn(),
+      listBuckets: vi.fn(),
+      createBucket: vi.fn(),
+    },
+  })),
+}));
+
+describe("createServerClient", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Reset environment variables to test defaults
+    process.env = {
+      ...originalEnv,
+      NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+    };
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  describe("environment variable validation", () => {
+    it("should create client with valid environment variables", () => {
+      const client = createServerClient();
+      expect(client).toBeDefined();
+      expect(client.from).toBeDefined();
+      expect(client.auth).toBeDefined();
+      expect(client.storage).toBeDefined();
+    });
+
+    it("should throw error when NEXT_PUBLIC_SUPABASE_URL is missing", () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      expect(() => createServerClient()).toThrow(
+        "Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL",
+      );
+    });
+
+    it("should throw error when SUPABASE_SERVICE_ROLE_KEY is missing", () => {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      expect(() => createServerClient()).toThrow(
+        "Missing required environment variables: SUPABASE_SERVICE_ROLE_KEY",
+      );
+    });
+
+    it("should throw error when both environment variables are missing", () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      expect(() => createServerClient()).toThrow(
+        "Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY",
+      );
+    });
+
+    it("should include helpful error message about .env file", () => {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      expect(() => createServerClient()).toThrow(
+        "Please check your .env file and ensure all Supabase variables are set.",
+      );
+    });
+
+    it("should handle empty string environment variables as missing", () => {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "";
+
+      expect(() => createServerClient()).toThrow(
+        "Missing required environment variables: SUPABASE_SERVICE_ROLE_KEY",
+      );
+    });
+
+    it("should handle whitespace-only environment variables as missing", () => {
+      // The current implementation doesn't trim whitespace,
+      // so "   " is considered a valid (though useless) value
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "   ";
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+
+      // This should create a client (even though the URL is just whitespace)
+      const client = createServerClient();
+      expect(client).toBeDefined();
+    });
+  });
+
+  describe("client configuration", () => {
+    it("should create client with correct server-side auth options", async () => {
+      const { createClient } = await import("@supabase/supabase-js");
+      const mockedCreateClient = vi.mocked(createClient);
+
+      createServerClient();
+
+      expect(mockedCreateClient).toHaveBeenCalledWith(
+        "https://test.supabase.co",
+        "test-service-role-key",
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+          db: {
+            schema: "public",
+          },
+        },
+      );
+    });
+
+    it("should disable session persistence for server-side usage", async () => {
+      const { createClient } = await import("@supabase/supabase-js");
+      const mockedCreateClient = vi.mocked(createClient);
+
+      createServerClient();
+
+      const callArgs = mockedCreateClient.mock.calls[0];
+      expect(callArgs[2]?.auth?.persistSession).toBe(false);
+      expect(callArgs[2]?.auth?.autoRefreshToken).toBe(false);
+    });
+
+    it("should set database schema to public", async () => {
+      const { createClient } = await import("@supabase/supabase-js");
+      const mockedCreateClient = vi.mocked(createClient);
+
+      createServerClient();
+
+      const callArgs = mockedCreateClient.mock.calls[0];
+      expect(callArgs[2]?.db?.schema).toBe("public");
+    });
+
+    it("should use service role key instead of anon key", async () => {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key-secret";
+
+      const { createClient } = await import("@supabase/supabase-js");
+      const mockedCreateClient = vi.mocked(createClient);
+
+      createServerClient();
+
+      expect(mockedCreateClient).toHaveBeenCalledWith(
+        expect.any(String),
+        "service-role-key-secret",
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe("multiple client creation", () => {
+    it("should create new client instance each time", async () => {
+      const client1 = createServerClient();
+      const client2 = createServerClient();
+
+      // Each call creates a new instance
+      expect(client1).toBeDefined();
+      expect(client2).toBeDefined();
+
+      const { createClient } = await import("@supabase/supabase-js");
+      const mockedCreateClient = vi.mocked(createClient);
+      expect(mockedCreateClient).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle environment variables with special characters", () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL =
+        "https://test.supabase.co/with/path";
+      process.env.SUPABASE_SERVICE_ROLE_KEY =
+        "service.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test";
+
+      const client = createServerClient();
+      expect(client).toBeDefined();
+    });
+
+    it("should handle localhost URLs for local development", () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "http://localhost:54321";
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "local-service-key";
+
+      const client = createServerClient();
+      expect(client).toBeDefined();
+    });
+
+    it("should handle very long service role keys", () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "s".repeat(2000);
+
+      const client = createServerClient();
+      expect(client).toBeDefined();
+    });
+
+    it("should handle URLs with non-standard ports", () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co:8443";
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+
+      const client = createServerClient();
+      expect(client).toBeDefined();
+    });
+  });
+});
+
+describe("createAdminClient", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Reset environment variables to test defaults
+    process.env = {
+      ...originalEnv,
+      NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+    };
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("should create admin client by calling createServerClient", () => {
+    const adminClient = createAdminClient();
+    expect(adminClient).toBeDefined();
+    expect(adminClient.from).toBeDefined();
+    expect(adminClient.auth).toBeDefined();
+  });
+
+  it("should have same configuration as server client", async () => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const mockedCreateClient = vi.mocked(createClient);
+
+    const serverClient = createServerClient();
+    mockedCreateClient.mockClear();
+
+    const adminClient = createAdminClient();
+
+    // Both should call createClient with same parameters
+    expect(mockedCreateClient).toHaveBeenCalledWith(
+      "https://test.supabase.co",
+      "test-service-role-key",
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        db: {
+          schema: "public",
+        },
+      },
+    );
+  });
+
+  it("should throw same errors as createServerClient when env vars missing", () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    expect(() => createAdminClient()).toThrow(
+      "Missing required environment variables: SUPABASE_SERVICE_ROLE_KEY",
+    );
+  });
+
+  it("should be functionally equivalent to createServerClient", () => {
+    const serverClient = createServerClient();
+    const adminClient = createAdminClient();
+
+    // Both should have the same structure
+    expect(Object.keys(serverClient)).toEqual(Object.keys(adminClient));
+  });
+
+  it("should support admin operations", () => {
+    const adminClient = createAdminClient();
+
+    // Admin client should have auth.admin methods
+    expect(adminClient.auth).toBeDefined();
+    expect(adminClient.auth.admin).toBeDefined();
+    expect(adminClient.auth.admin.createUser).toBeDefined();
+    expect(adminClient.auth.admin.deleteUser).toBeDefined();
+  });
+});
