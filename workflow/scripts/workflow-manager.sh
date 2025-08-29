@@ -26,7 +26,7 @@ mkdir -p "$WORKTREE_DIR"
 mkdir -p "$INSTRUCTIONS_DIR"
 
 log() {
-    echo -e "${GREEN}[WORKFLOW]${NC} $1"
+    echo -e "${GREEN}[WORKFLOW]${NC} $1" >&2
 }
 
 error() {
@@ -34,7 +34,11 @@ error() {
 }
 
 info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
+}
+
+warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
 }
 
 # Function to sanitize branch name
@@ -105,8 +109,6 @@ create_worktree() {
     local branch_name=$2
     local worktree_path="$WORKTREE_DIR/$branch_name"
     
-    log "Creating worktree for issue #$issue_num at $worktree_path"
-    
     # Check if worktree already exists by checking git worktree list
     if git worktree list | grep -q "$worktree_path"; then
         info "Worktree already exists at $worktree_path"
@@ -115,6 +117,8 @@ create_worktree() {
         echo "$worktree_path"
         return 0
     fi
+    
+    log "Creating worktree for issue #$issue_num at $worktree_path"
     
     # Check if directory exists but is not a worktree (cleanup needed)
     if [ -d "$worktree_path" ]; then
