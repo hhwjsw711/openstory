@@ -13,7 +13,7 @@
     "supabase:start": "pnpx supabase start",
     "supabase:stop": "pnpx supabase stop",
     "supabase:types": "pnpm supabase gen types typescript --local > src/lib/gen.types.ts",
-    "supabase:types:ci": "test -n \"$POSTGRES_URL\" && pnpm supabase gen types typescript --db-url \"$POSTGRES_URL\" > src/lib/gen.types.ts || echo '// Types will be generated at build time' > src/lib/gen.types.ts",
+    "supabase:types:ci": "test -n \"$POSTGRES_URL\" && pnpm supabase gen types typescript --db-url \"$POSTGRES_URL\" > src/lib/gen.types.ts",
     "qstash:dev": "pnpx @upstash/qstash-cli dev",
     "setup:env": "./scripts/setup-env.sh",
     "workflow:assign": "./workflow/scripts/workflow-manager.sh assign",
