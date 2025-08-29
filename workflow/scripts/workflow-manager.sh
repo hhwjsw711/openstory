@@ -107,17 +107,32 @@ create_worktree() {
     
     log "Creating worktree for issue #$issue_num at $worktree_path"
     
-    # Check if worktree already exists
-    if [ -d "$worktree_path" ]; then
+    # Check if worktree already exists by checking git worktree list
+    if git worktree list | grep -q "$worktree_path"; then
         info "Worktree already exists at $worktree_path"
+        # Ensure we're on the right branch
+        (cd "$worktree_path" && git checkout "$branch_name" 2>/dev/null || true)
         echo "$worktree_path"
         return 0
     fi
     
-    # Check if branch exists
+    # Check if directory exists but is not a worktree (cleanup needed)
+    if [ -d "$worktree_path" ]; then
+        warning "Directory exists but is not a worktree, cleaning up..."
+        rm -rf "$worktree_path"
+    fi
+    
+    # Check if branch exists locally
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        log "Branch $branch_name already exists locally"
+        git worktree add "$worktree_path" "$branch_name"
+    # Check if branch exists on remote
+    elif git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
+        log "Branch $branch_name exists on remote, checking out"
+        git fetch origin "$branch_name":"$branch_name"
         git worktree add "$worktree_path" "$branch_name"
     else
+        log "Creating new branch $branch_name from main"
         git worktree add -b "$branch_name" "$worktree_path" main
     fi
     
@@ -406,6 +421,9 @@ EOF
 cleanup_merged() {
     log "Cleaning up merged PRs..."
     
+    # First prune any stale worktrees
+    git worktree prune
+    
     local merged=$(gh pr list --state merged --json number,headRefName)
     
     echo "$merged" | jq -c '.[]' | while read -r pr; do
@@ -421,6 +439,28 @@ cleanup_merged() {
             git branch -D "$branch" 2>/dev/null || true
             rm -f "$STATE_DIR/issue-${issue_num}.json"
             rm -f "$INSTRUCTIONS_DIR/issue-${issue_num}-instructions.md"
+        fi
+    done
+    
+    # Clean up any orphaned worktrees
+    cleanup_orphaned_worktrees
+}
+
+# Function to cleanup orphaned worktrees
+cleanup_orphaned_worktrees() {
+    log "Checking for orphaned worktrees..."
+    
+    # Get list of all worktrees
+    git worktree list --porcelain | grep "^worktree " | cut -d' ' -f2 | while read -r worktree_path; do
+        # Skip the main worktree
+        if [ "$worktree_path" = "$PROJECT_ROOT" ]; then
+            continue
+        fi
+        
+        # Check if worktree directory exists
+        if [ ! -d "$worktree_path" ]; then
+            warning "Removing stale worktree entry: $worktree_path"
+            git worktree prune
         fi
     done
 }

@@ -82,15 +82,32 @@ create_worktree() {
     
     log "Creating worktree for issue #$issue_num..."
     
-    # Check if branch exists
+    # Check if worktree already exists by checking git worktree list
+    if git worktree list | grep -q "$worktree_path"; then
+        log "Worktree already exists for $branch_name"
+        # Ensure we're on the right branch
+        (cd "$worktree_path" && git checkout "$branch_name" 2>/dev/null || true)
+        echo "$worktree_path"
+        return 0
+    fi
+    
+    # Check if directory exists but is not a worktree (cleanup needed)
+    if [ -d "$worktree_path" ]; then
+        warning "Directory exists but is not a worktree, cleaning up..."
+        rm -rf "$worktree_path"
+    fi
+    
+    # Check if branch exists locally
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
-        log "Branch $branch_name already exists"
-        git worktree add "$worktree_path" "$branch_name" 2>/dev/null || {
-            warning "Worktree already exists for $branch_name"
-            return 1
-        }
+        log "Branch $branch_name already exists locally"
+        git worktree add "$worktree_path" "$branch_name"
+    # Check if branch exists on remote
+    elif git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
+        log "Branch $branch_name exists on remote, checking out"
+        git fetch origin "$branch_name":"$branch_name"
+        git worktree add "$worktree_path" "$branch_name"
     else
-        # Create new branch from main
+        log "Creating new branch $branch_name from main"
         git worktree add -b "$branch_name" "$worktree_path" main
     fi
     
