@@ -290,13 +290,14 @@ EOF
     echo "$instructions_file"
 }
 
-# Function to launch Claude with agent
-launch_claude_with_agent() {
+# Function to launch Claude with agent using Cursor
+launch_cursor_with_agent() {
     local worktree_path=$1
     local agent_type=$2
     local instructions_file=$3
+    local issue_num=$4
     
-    log "Launching Claude Code with $agent_type agent"
+    log "Launching Cursor IDE with $agent_type agent"
     
     # Open Cursor in the worktree
     info "Opening Cursor IDE at $worktree_path"
@@ -315,14 +316,23 @@ echo "Starting Claude Code with $agent_type agent..."
 echo ""
 echo "Instructions are available at: $instructions_file"
 echo ""
-echo "To begin, tell Claude:"
-echo "  'Please read the instructions at $instructions_file and implement issue #$issue_num'"
-echo ""
-echo "Claude will use the $agent_type agent to complete the task."
+echo "Initial prompt for Claude:"
 echo ""
 
-# Start Claude Code
-claude chat
+# Create initial prompt
+prompt="You are working as a $agent_type agent on issue #$issue_num.
+
+Please read the instructions at $instructions_file and implement the issue.
+
+Start by:
+1. Reading the instructions file
+2. Understanding the codebase structure
+3. Implementing the required changes
+4. Testing your implementation
+5. Creating commits with descriptive messages"
+
+# Launch Claude with the prompt
+echo "\$prompt" | claude
 EOF
 
     chmod +x "$launch_script"
@@ -360,6 +370,57 @@ EOF
     
     info "Launch script created at $launch_script"
     info "Claude will auto-launch when Cursor opens (via VS Code task)"
+}
+
+# Function to launch Claude CLI directly
+launch_claude_cli_with_agent() {
+    local worktree_path=$1
+    local agent_type=$2
+    local instructions_file=$3
+    local issue_num=$4
+    
+    log "Launching Claude CLI with $agent_type agent for issue #$issue_num"
+    
+    # Change to worktree directory
+    cd "$worktree_path"
+    
+    # Create initial prompt
+    local prompt="You are working as a $agent_type agent on issue #$issue_num.
+
+Please read the instructions at $instructions_file and implement the issue.
+
+Start by:
+1. Reading the instructions file: cat $instructions_file
+2. Understanding the codebase structure: ls -la
+3. Reviewing the CLAUDE.md file for project guidelines
+4. Implementing the required changes
+5. Testing your implementation
+6. Creating commits with descriptive messages
+7. Creating a PR when complete
+
+Remember to:
+- Make descriptive commits frequently
+- Run tests before creating PR
+- Follow the project's coding standards
+- Use the TodoWrite tool to track your progress"
+
+    # Launch Claude using the agent-launcher script
+    if [ -f "$SCRIPT_DIR/agent-launcher.sh" ]; then
+        # Use the agent-launcher script if available
+        CLAUDE_MODE="${CLAUDE_MODE:-repl}" \
+        CLAUDE_MODEL="${CLAUDE_MODEL:-}" \
+        CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-20}" \
+        "$SCRIPT_DIR/agent-launcher.sh" implement "$worktree_path" "$issue_num" "$agent_type"
+    else
+        # Fallback to direct Claude CLI launch
+        if [ "${CLAUDE_MODE:-repl}" = "print" ]; then
+            claude -p "$prompt" --max-turns "${CLAUDE_MAX_TURNS:-20}"
+        else
+            claude "$prompt"
+        fi
+    fi
+    
+    log "Claude CLI session completed for issue #$issue_num"
 }
 
 # Function to process issue
@@ -407,8 +468,16 @@ process_issue() {
 }
 EOF
 
-    # Launch Claude with agent
-    launch_claude_with_agent "$worktree_path" "$agent_type" "$instructions_file"
+    # Choose launch method based on environment variable
+    local launch_method="${LAUNCH_METHOD:-cursor}"
+    
+    if [ "$launch_method" = "claude-cli" ]; then
+        # Launch Claude CLI directly
+        launch_claude_cli_with_agent "$worktree_path" "$agent_type" "$instructions_file" "$issue_num"
+    else
+        # Launch Cursor with Claude context (default)
+        launch_cursor_with_agent "$worktree_path" "$agent_type" "$instructions_file" "$issue_num"
+    fi
     
     log "Issue #$issue_num assigned to $agent_type"
 }
@@ -448,8 +517,52 @@ Use the Task tool to invoke the qa-lead-tester agent for this review.
 EOF
             
             info "Review instructions created at $review_file"
+            
+            # Optionally auto-launch review agent if configured
+            if [ "${AUTO_LAUNCH_REVIEW:-no}" = "yes" ]; then
+                launch_review_agent "$pr_num" "$review_file"
+            fi
         fi
     done
+}
+
+# Function to launch review agent
+launch_review_agent() {
+    local pr_num=$1
+    local review_file=$2
+    local agent_type="qa-lead-tester"
+    
+    log "Launching review for PR #$pr_num with $agent_type"
+    
+    local launch_method="${LAUNCH_METHOD:-cursor}"
+    
+    if [ "$launch_method" = "claude-cli" ]; then
+        # Launch Claude CLI for review
+        if [ -f "$SCRIPT_DIR/agent-launcher.sh" ]; then
+            CLAUDE_MODE="${CLAUDE_MODE:-repl}" \
+            CLAUDE_MODEL="${CLAUDE_MODEL:-}" \
+            CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-15}" \
+            "$SCRIPT_DIR/agent-launcher.sh" review "$pr_num" "$agent_type"
+        else
+            # Fallback to direct Claude CLI
+            local prompt="You are acting as a $agent_type reviewing PR #$pr_num.
+
+Please review the PR:
+1. Check the diff: gh pr diff $pr_num
+2. Verify CI checks: gh pr checks $pr_num
+3. Review for code quality, test coverage, security, and performance
+4. Leave constructive feedback
+5. Approve or request changes as appropriate"
+            
+            if [ "${CLAUDE_MODE:-repl}" = "print" ]; then
+                claude -p "$prompt" --max-turns "${CLAUDE_MAX_TURNS:-15}"
+            else
+                claude "$prompt"
+            fi
+        fi
+    else
+        info "Please review PR #$pr_num manually using the instructions at $review_file"
+    fi
 }
 
 # Function to cleanup merged PRs
@@ -561,11 +674,35 @@ case "${1:-}" in
         echo "  status             - Show current workflow status"
         echo "  reset              - Reset all worktrees and state"
         echo ""
-        echo "Example workflow:"
-        echo "  1. $0 assign 123    # Assign issue #123 to an agent"
-        echo "  2. Agent works in Cursor with Claude Code"
-        echo "  3. $0 review        # Check for PRs to review"
-        echo "  4. $0 cleanup       # Clean up after merge"
+        echo "Environment Variables:"
+        echo "  LAUNCH_METHOD=cursor|claude-cli  (default: cursor)"
+        echo "    - cursor: Opens Cursor IDE with context"
+        echo "    - claude-cli: Launches Claude CLI directly"
+        echo ""
+        echo "  CLAUDE_MODE=repl|print  (default: repl)"
+        echo "    - repl: Interactive mode"
+        echo "    - print: Non-interactive mode (requires LAUNCH_METHOD=claude-cli)"
+        echo ""
+        echo "  CLAUDE_MODEL=<model>  (optional, e.g., claude-3-5-sonnet-20241022)"
+        echo "  CLAUDE_MAX_TURNS=<number>  (default: 20 for implement, 15 for review)"
+        echo "  AUTO_LAUNCH_REVIEW=yes|no  (default: no) - Auto-launch review agents"
+        echo ""
+        echo "Example workflows:"
+        echo ""
+        echo "  # Default (Cursor IDE):"
+        echo "  $0 assign 123"
+        echo ""
+        echo "  # Claude CLI interactive:"
+        echo "  LAUNCH_METHOD=claude-cli $0 assign 123"
+        echo ""
+        echo "  # Claude CLI non-interactive with auto-review:"
+        echo "  LAUNCH_METHOD=claude-cli CLAUDE_MODE=print AUTO_LAUNCH_REVIEW=yes $0 assign 123"
+        echo ""
+        echo "  # Review PRs:"
+        echo "  $0 review"
+        echo ""
+        echo "  # Cleanup after merge:"
+        echo "  $0 cleanup"
         exit 1
         ;;
 esac

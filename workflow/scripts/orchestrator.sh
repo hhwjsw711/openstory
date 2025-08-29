@@ -169,6 +169,24 @@ open_cursor_with_claude() {
     log "Cursor opened with context for $agent_type agent"
 }
 
+# Function to launch Claude CLI agent
+launch_claude_cli_agent() {
+    local worktree_path=$1
+    local issue_num=$2
+    local issue_type=$3
+    local agent_type=$4
+    
+    log "Launching Claude CLI for issue #$issue_num with $agent_type agent..."
+    
+    # Create agent context file first
+    create_agent_context "$worktree_path" "$issue_num" "$agent_type"
+    
+    # Launch the agent using the agent-launcher script
+    "$SCRIPT_DIR/agent-launcher.sh" implement "$worktree_path" "$issue_num" "$agent_type"
+    
+    log "Claude CLI agent completed for issue #$issue_num"
+}
+
 # Function to create agent context
 create_agent_context() {
     local worktree_path=$1
@@ -298,8 +316,16 @@ process_issue() {
     # Track state
     track_state "$issue_num" "in_progress" "$agent_type" "$worktree_path"
     
-    # Open Cursor with Claude context
-    open_cursor_with_claude "$worktree_path" "$issue_num" "$issue_type" "$agent_type"
+    # Choose launch method based on environment variable or default
+    local launch_method="${LAUNCH_METHOD:-cursor}"
+    
+    if [ "$launch_method" = "claude-cli" ]; then
+        # Launch Claude CLI agent
+        launch_claude_cli_agent "$worktree_path" "$issue_num" "$issue_type" "$agent_type"
+    else
+        # Open Cursor with Claude context (default)
+        open_cursor_with_claude "$worktree_path" "$issue_num" "$issue_type" "$agent_type"
+    fi
     
     log "Issue #$issue_num is now being processed by $agent_type agent"
 }

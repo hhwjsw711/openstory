@@ -9,7 +9,9 @@
     "supabase:start": "pnpx supabase start",
     "supabase:stop": "pnpx supabase stop",
     "qstash:dev": "pnpx @upstash/qstash-cli dev",
-    "setup:env": "./scripts/setup-env.sh"
+    "setup:env": "./scripts/setup-env.sh",
+    "workflow:assign": "./workflow/scripts/workflow-manager.sh assign",
+    "workflow:orchestrator": "./workflow/scripts/orchestrator.sh"
   },
   "dependencies": {
     "@upstash/qstash": "^2.8.2",
