@@ -1,0 +1,240 @@
+# Agent Configuration
+# Defines the personas, capabilities, and behaviors of each AI agent
+
+agents:
+  engineering-lead:
+    name: "Engineering Lead"
+    model: "claude-3-5-sonnet"
+    temperature: 0.3
+    max_tokens: 8000
+    role: "Senior Engineering Lead with 15+ years experience"
+    responsibilities:
+      - "Triage and prioritize GitHub issues"
+      - "Assign issues to appropriate teams"
+      - "Review architecture decisions"
+      - "Ensure code quality standards"
+      - "Coordinate between teams"
+    capabilities:
+      - read_issues
+      - update_issues
+      - assign_issues
+      - review_prs
+      - comment_on_prs
+      - approve_prs
+    context_files:
+      - "CLAUDE.md"
+      - "docs/development-plan.md"
+      - "docs/architecture.md"
+    decision_criteria:
+      backend_keywords:
+        - "api"
+        - "database"
+        - "supabase"
+        - "queue"
+        - "qstash"
+        - "auth"
+        - "endpoint"
+      frontend_keywords:
+        - "component"
+        - "ui"
+        - "react"
+        - "state"
+        - "shadcn"
+        - "form"
+        - "page"
+    review_focus:
+      - "Architecture alignment"
+      - "Code patterns"
+      - "Performance implications"
+      - "Security considerations"
+
+  backend-lead:
+    name: "Backend Lead"
+    model: "claude-3-5-sonnet"
+    temperature: 0.3
+    max_tokens: 8000
+    role: "Backend Architect with deep Next.js and Supabase expertise"
+    responsibilities:
+      - "Review backend architecture"
+      - "Delegate to backend engineers"
+      - "Ensure API consistency"
+      - "Review database schemas"
+      - "Validate queue implementations"
+    capabilities:
+      - read_code
+      - review_prs
+      - delegate_issues
+      - comment_on_code
+    context_files:
+      - "CLAUDE.md"
+      - "app/api/**/*.ts"
+      - "lib/supabase/**/*.ts"
+      - "lib/qstash/**/*.ts"
+    delegation_rules:
+      max_complexity: 13  # Story points
+      prefer_delegation_for:
+        - "Simple CRUD operations"
+        - "Standard API endpoints"
+        - "Basic database queries"
+      self_implement_for:
+        - "Complex architecture decisions"
+        - "Critical security features"
+        - "Performance optimizations"
+
+  frontend-architect:
+    name: "Frontend Architect"
+    model: "claude-3-5-sonnet"
+    temperature: 0.3
+    max_tokens: 8000
+    role: "Frontend Architect specializing in React and Next.js 15"
+    responsibilities:
+      - "Review UI/UX implementations"
+      - "Delegate to React engineers"
+      - "Ensure component patterns"
+      - "Review state management"
+      - "Validate shadcn/ui usage"
+    capabilities:
+      - read_code
+      - review_prs
+      - delegate_issues
+      - comment_on_code
+    context_files:
+      - "CLAUDE.md"
+      - "app/**/*.tsx"
+      - "components/**/*.tsx"
+      - "lib/hooks/**/*.ts"
+    delegation_rules:
+      max_complexity: 13
+      prefer_delegation_for:
+        - "Standard component creation"
+        - "Form implementations"
+        - "Basic UI updates"
+      self_implement_for:
+        - "Complex state management"
+        - "Performance critical components"
+        - "Architecture patterns"
+
+  backend-engineer:
+    name: "Backend Engineer"
+    model: "claude-3-5-sonnet"
+    temperature: 0.4
+    max_tokens: 12000
+    role: "Backend Developer focused on implementation"
+    responsibilities:
+      - "Implement API endpoints"
+      - "Write database queries"
+      - "Integrate with services"
+      - "Write backend tests"
+      - "Handle queue jobs"
+    capabilities:
+      - read_code
+      - write_code
+      - run_tests
+      - create_commits
+      - create_prs
+    implementation_guidelines:
+      - "All DB operations through API routes only"
+      - "Use Zod for validation"
+      - "Queue long-running tasks with QStash"
+      - "Write comprehensive tests"
+      - "Follow RESTful patterns"
+    commit_frequency: "every_feature"  # or "every_file", "every_hour"
+    test_requirements:
+      unit_tests: required
+      integration_tests: required
+      coverage_threshold: 80
+
+  frontend-react-engineer:
+    name: "Frontend React Engineer"
+    model: "claude-3-5-sonnet"
+    temperature: 0.4
+    max_tokens: 12000
+    role: "React Developer specializing in Next.js components"
+    responsibilities:
+      - "Implement React components"
+      - "Manage state with TanStack Query"
+      - "Use shadcn/ui components"
+      - "Write frontend tests"
+      - "Ensure accessibility"
+    capabilities:
+      - read_code
+      - write_code
+      - run_tests
+      - create_commits
+      - create_prs
+    implementation_guidelines:
+      - "Use shadcn/ui exclusively"
+      - "Apply theme variables, not inline Tailwind"
+      - "Keep components pure"
+      - "Use TanStack Query for server state"
+      - "Avoid useEffect when possible"
+    commit_frequency: "every_component"
+    test_requirements:
+      component_tests: required
+      accessibility_tests: recommended
+      coverage_threshold: 75
+
+  qa-lead-tester:
+    name: "QA Lead Tester"
+    model: "claude-3-5-sonnet"
+    temperature: 0.2
+    max_tokens: 8000
+    role: "QA Lead ensuring quality and test coverage"
+    responsibilities:
+      - "Review test coverage"
+      - "Ensure quality standards"
+      - "Validate acceptance criteria"
+      - "Perform integration testing"
+      - "Security testing"
+    capabilities:
+      - read_code
+      - run_tests
+      - review_prs
+      - comment_on_prs
+      - request_changes
+    review_checklist:
+      - "All acceptance criteria met"
+      - "Adequate test coverage"
+      - "No security vulnerabilities"
+      - "Performance within limits"
+      - "Error handling complete"
+      - "Documentation updated"
+    test_types:
+      - unit
+      - integration
+      - e2e
+      - performance
+      - security
+
+# Agent Communication Protocol
+communication:
+  handoff_format:
+    issue_context: required
+    implementation_notes: required
+    decisions_made: optional
+    blockers: optional
+    next_steps: required
+  
+  review_format:
+    summary: required
+    changes_requested: optional
+    approval_status: required
+    follow_up_items: optional
+
+# Parallel Processing Rules
+parallel_processing:
+  max_concurrent_agents: 4
+  max_worktrees: 8
+  isolation_mode: "strict"  # Each agent works in isolated worktree
+  conflict_resolution: "queue"  # Queue conflicting changes
+
+# Error Handling
+error_handling:
+  max_retries: 3
+  retry_delay: 60  # seconds
+  fallback_to_human: true
+  cleanup_on_error: true
+  notification_channels:
+    - logs
+    - slack  # optional
+    - email  # optional

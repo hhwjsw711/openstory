@@ -43,3 +43,9 @@ next-env.d.ts
 #pnpm
 .pnpm-store/
 
+# workflow
+.trees/
+workflow/state/
+workflow/instructions/
+workflow/logs/
+workflow/data/
