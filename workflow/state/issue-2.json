@@ -1,0 +1,12 @@
+{
+  "issue_number": 2,
+  "title": "[Backend] Setup: Initialize Supabase backend infrastructure",
+  "agent": "backend-engineer",
+  "worktree_path": "[0;32m[WORKFLOW][0m Creating worktree for issue #2 at /Users/tom/code/velro/.trees/2-backend-setup-initialize-supabase-backend-infrastr
+HEAD is now at 72cd2b4 Updated setup env
+/Users/tom/code/velro/.trees/2-backend-setup-initialize-supabase-backend-infrastr",
+  "branch": "2-backend-setup-initialize-supabase-backend-infrastr",
+  "instructions": "/Users/tom/code/velro/workflow/instructions/issue-2-instructions.md",
+  "status": "assigned",
+  "timestamp": "2025-08-29T05:24:30Z"
+}

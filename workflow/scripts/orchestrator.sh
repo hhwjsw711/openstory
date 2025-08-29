@@ -94,7 +94,41 @@ create_worktree() {
         git worktree add -b "$branch_name" "$worktree_path" main
     fi
     
+    # Setup worktree environment
+    setup_worktree_environment "$worktree_path"
+    
     echo "$worktree_path"
+}
+
+# Function to setup worktree environment
+setup_worktree_environment() {
+    local worktree_path=$1
+    
+    log "Setting up environment for worktree..."
+    
+    # Copy environment files from main project
+    if [ -f "$PROJECT_ROOT/.env.local" ]; then
+        cp "$PROJECT_ROOT/.env.local" "$worktree_path/"
+        log "Copied .env.local"
+    fi
+    
+    if [ -f "$PROJECT_ROOT/.env.development.local" ]; then
+        cp "$PROJECT_ROOT/.env.development.local" "$worktree_path/"
+        log "Copied .env.development.local"
+    fi
+    
+    if [ -d "$PROJECT_ROOT/.vercel" ]; then
+        cp -r "$PROJECT_ROOT/.vercel" "$worktree_path/"
+        log "Copied .vercel directory"
+    fi
+    
+    # Install dependencies
+    log "Installing dependencies with pnpm..."
+    (cd "$worktree_path" && pnpm install --frozen-lockfile) || {
+        warning "Failed to install dependencies, but continuing..."
+    }
+    
+    log "Worktree environment setup complete"
 }
 
 # Function to open Cursor with Claude

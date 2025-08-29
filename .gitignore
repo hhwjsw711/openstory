@@ -43,3 +43,5 @@ next-env.d.ts
 #pnpm
 .pnpm-store/
 
+#workflow
+.trees/
