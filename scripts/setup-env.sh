@@ -28,18 +28,21 @@ else
     exit 1
 fi
 
-# Get QStash credentials
-echo -e "${BLUE}Setting up QStash credentials...${NC}"
-echo -e "${YELLOW}Please provide your QStash credentials from https://console.upstash.com/qstash${NC}"
-read -p "Enter your QSTASH_TOKEN: " QSTASH_TOKEN
-read -p "Enter your QSTASH_URL (press Enter for default: https://qstash.upstash.io): " QSTASH_URL
-QSTASH_URL=${QSTASH_URL:-"https://qstash.upstash.io"}
+# Setup QStash for local development (using hardcoded user 1)
+echo -e "${BLUE}Setting up QStash for local development...${NC}"
+echo -e "${YELLOW}Make sure 'pnpm qstash:dev' is running in another terminal!${NC}"
 
-# Get the tunnel URL if qstash dev is running
-echo -e "${BLUE}Checking for QStash tunnel...${NC}"
-echo -e "${YELLOW}If you have 'pnpm qstash:dev' running, enter the tunnel URL (e.g., https://xxx.ngrok.io)${NC}"
-echo -e "${YELLOW}Otherwise, press Enter to skip:${NC}"
-read -p "QStash tunnel URL: " QSTASH_TUNNEL_URL
+# Hardcoded credentials for user 1 from qstash dev server
+QSTASH_TOKEN="eyJVc2VySUQiOiJ1c2VyMSIsIlBhc3N3b3JkIjoicGFzc3dvcmQxIn0="
+QSTASH_CURRENT_SIGNING_KEY="sig_KkL1JBDHaKWSkqfCH9hy5vZKhoDC"
+QSTASH_NEXT_SIGNING_KEY="sig_JjS9n2n6md8S5W2QmqKMCSTrdTmE"
+QSTASH_URL="http://localhost:8080"
+
+# Get the tunnel URL if needed
+echo -e "${BLUE}Setting up tunnel for QStash callbacks...${NC}"
+echo -e "${YELLOW}If you have a tunnel running (e.g., ngrok), enter the URL${NC}"
+echo -e "${YELLOW}Otherwise, press Enter to use localhost:${NC}"
+read -p "Tunnel URL (optional): " QSTASH_TUNNEL_URL
 
 # Create .env.development.local file
 ENV_FILE=".env.development.local"
@@ -54,8 +57,8 @@ DATABASE_URL=$DATABASE_URL
 # QStash
 QSTASH_TOKEN=$QSTASH_TOKEN
 QSTASH_URL=$QSTASH_URL
-QSTASH_CURRENT_SIGNING_KEY=local_dev_key
-QSTASH_NEXT_SIGNING_KEY=local_dev_key_next
+QSTASH_CURRENT_SIGNING_KEY=$QSTASH_CURRENT_SIGNING_KEY
+QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 
 # App URL (for QStash callbacks)
 EOF
@@ -83,11 +86,13 @@ echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Supabase URL: $SUPABASE_URL"
 echo "  Database URL: $DATABASE_URL"
-echo "  QStash URL: $QSTASH_URL"
+echo "  QStash URL: $QSTASH_URL (local dev)"
+echo "  QStash User: user1"
 if [ -n "$QSTASH_TUNNEL_URL" ]; then
     echo "  App URL (tunnel): $QSTASH_TUNNEL_URL"
 else
     echo "  App URL: http://localhost:3000"
 fi
 echo ""
+echo -e "${YELLOW}Remember to keep 'pnpm qstash:dev' running in another terminal!${NC}"
 echo -e "${GREEN}Setup complete! You can now run 'pnpm dev'${NC}"
