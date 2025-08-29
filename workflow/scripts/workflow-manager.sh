@@ -327,8 +327,39 @@ EOF
 
     chmod +x "$launch_script"
     
+    # Create VS Code tasks.json for auto-launch
+    mkdir -p "$worktree_path/.vscode"
+    cat > "$worktree_path/.vscode/tasks.json" << 'EOF'
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Launch Claude Agent",
+      "type": "shell",
+      "command": "${workspaceFolder}/.launch-claude.sh",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+EOF
+    
+    # Also create settings to enable task auto-run
+    cat > "$worktree_path/.vscode/settings.json" << 'EOF'
+{
+  "task.allowAutomaticTasks": "on"
+}
+EOF
+    
     info "Launch script created at $launch_script"
-    info "Run '.launch-claude.sh' in Cursor's terminal to start the agent"
+    info "Claude will auto-launch when Cursor opens (via VS Code task)"
 }
 
 # Function to process issue
