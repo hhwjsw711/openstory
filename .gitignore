@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated types (auto-generated on postinstall)
+src/lib/gen.types.ts
+
 #pnpm
 .pnpm-store/
 

@@ -24,7 +24,15 @@ pnpx supabase start     # Start local Supabase
 pnpx supabase stop      # Stop local Supabase
 pnpx supabase db reset  # Reset database
 pnpx supabase status    # Check local services status
+pnpm supabase:types     # Generate TypeScript types from database
 ```
+
+**Note**: Database types (`src/lib/gen.types.ts`) are auto-generated:
+- Generated automatically on `pnpm install` via postinstall hook
+- Can be manually regenerated with `pnpm supabase:types`
+- File is gitignored to ensure types always match local database schema
+- Types are generated from your local Supabase instance (must be running)
+- Use the convenience exports from `@/types/database` for cleaner imports
 
 ### TypeScript
 ```bash
