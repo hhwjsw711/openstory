@@ -23,6 +23,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "lefthook": "^1.12.3",
     "supabase": "^2.39.2",
     "tailwindcss": "^4",
     "typescript": "^5"
