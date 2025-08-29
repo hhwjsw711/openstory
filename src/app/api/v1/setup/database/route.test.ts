@@ -357,6 +357,10 @@ describe("POST /api/v1/setup/database", () => {
 
   describe("error handling", () => {
     it("should handle validation errors", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       const request = new NextRequest(
         "http://localhost/api/v1/setup/database",
         {
@@ -371,6 +375,8 @@ describe("POST /api/v1/setup/database", () => {
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
       expect(data.message).toBe("Invalid input parameters");
+
+      consoleErrorSpy.mockRestore();
     });
 
     it("should handle table check failures", async () => {
@@ -451,6 +457,10 @@ describe("POST /api/v1/setup/database", () => {
     });
 
     it("should handle JSON parsing errors", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       const request = new NextRequest(
         "http://localhost/api/v1/setup/database",
         {
@@ -465,6 +475,8 @@ describe("POST /api/v1/setup/database", () => {
       expect(response.status).toBe(500);
       expect(data.success).toBe(false);
       expect(data.message).toBe("Failed to initialize database");
+
+      consoleErrorSpy.mockRestore();
     });
 
     it("should handle unexpected errors gracefully", async () => {

@@ -115,7 +115,10 @@ describe("initializeDatabaseSchema", () => {
     });
 
     it("should allow optional fields in type", () => {
-      const validInput: InitializeDatabaseInput = {};
+      const validInput: InitializeDatabaseInput = {
+        skipIfExists: false,
+        seedData: false,
+      };
       const result = initializeDatabaseSchema.parse(validInput);
 
       expect(result.skipIfExists).toBe(false);
@@ -200,7 +203,9 @@ describe("setupStatusSchema", () => {
     });
 
     it("should allow optional field in type", () => {
-      const validInput: SetupStatusInput = {};
+      const validInput: SetupStatusInput = {
+        includeDetails: false,
+      };
       const result = setupStatusSchema.parse(validInput);
 
       expect(result.includeDetails).toBe(false);

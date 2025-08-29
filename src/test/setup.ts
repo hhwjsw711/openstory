@@ -1,5 +1,4 @@
-import { vi } from "vitest";
-import "@testing-library/jest-dom";
+import { afterEach, vi } from "vitest";
 
 // Mock environment variables for testing
 vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
