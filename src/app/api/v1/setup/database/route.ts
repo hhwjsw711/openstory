@@ -1,12 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Database } from "@/lib/database.types";
-import {
-  DatabaseError,
-  handleApiError,
-  StorageError,
-  ValidationError,
-} from "@/lib/errors";
+import { handleApiError, ValidationError } from "@/lib/errors";
 import { initializeDatabaseSchema } from "@/lib/schemas/setup";
 import { createAdminClient } from "@/lib/supabase/server";
 

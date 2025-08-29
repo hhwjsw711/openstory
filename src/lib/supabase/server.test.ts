@@ -238,10 +238,10 @@ describe("createAdminClient", () => {
     const { createClient } = await import("@supabase/supabase-js");
     const mockedCreateClient = vi.mocked(createClient);
 
-    const serverClient = createServerClient();
+    const _serverClient = createServerClient();
     mockedCreateClient.mockClear();
 
-    const adminClient = createAdminClient();
+    const _adminClient = createAdminClient();
 
     // Both should call createClient with same parameters
     expect(mockedCreateClient).toHaveBeenCalledWith(
