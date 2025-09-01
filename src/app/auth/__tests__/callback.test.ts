@@ -22,7 +22,8 @@ vi.mock("@/lib/supabase/server", () => ({
 
 // Mock NextResponse.redirect
 vi.mock("next/server", async () => {
-  const actual = await vi.importActual<typeof import("next/server")>("next/server");
+  const actual =
+    await vi.importActual<typeof import("next/server")>("next/server");
   return {
     ...actual,
     NextResponse: {
@@ -101,7 +102,9 @@ describe("/auth/callback", () => {
 
       const response = await GET(request);
 
-      expect(mockSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith("test-code");
+      expect(mockSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith(
+        "test-code",
+      );
       expect(mockAuthService.getUserProfile).toHaveBeenCalledWith("user-123");
       expect(mockAuthService.upsertUserProfile).not.toHaveBeenCalled();
       expect(NextResponse.redirect).toHaveBeenCalled();
@@ -141,7 +144,9 @@ describe("/auth/callback", () => {
 
       const response = await GET(request);
 
-      expect(mockAuthService.getUserProfile).toHaveBeenCalledWith("new-user-456");
+      expect(mockAuthService.getUserProfile).toHaveBeenCalledWith(
+        "new-user-456",
+      );
       expect(mockAuthService.upsertUserProfile).toHaveBeenCalledWith({
         id: "new-user-456",
         anonymous_id: null,
@@ -179,7 +184,9 @@ describe("/auth/callback", () => {
         error: null,
       });
       mockAuthService.getUserProfile.mockResolvedValue(mockProfile);
-      mockAuthService.upgradeAnonymousSession.mockResolvedValue({ success: true });
+      mockAuthService.upgradeAnonymousSession.mockResolvedValue({
+        success: true,
+      });
 
       const request = new NextRequest(
         "http://localhost:3000/auth/callback?code=upgrade-code&anonymousId=anon-session-123",
@@ -317,9 +324,7 @@ describe("/auth/callback", () => {
     });
 
     it("should handle missing code parameter", async () => {
-      const request = new NextRequest(
-        "http://localhost:3000/auth/callback",
-      );
+      const request = new NextRequest("http://localhost:3000/auth/callback");
 
       const response = await GET(request);
 
@@ -327,7 +332,9 @@ describe("/auth/callback", () => {
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/login");
-      expect(redirectCall.toString()).toContain("error=Invalid%20authentication%20request");
+      expect(redirectCall.toString()).toContain(
+        "error=Invalid%20authentication%20request",
+      );
     });
 
     it("should handle exceptions during authentication process", async () => {
@@ -344,7 +351,9 @@ describe("/auth/callback", () => {
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/login");
-      expect(redirectCall.toString()).toContain("error=Authentication%20failed");
+      expect(redirectCall.toString()).toContain(
+        "error=Authentication%20failed",
+      );
     });
 
     it("should handle profile creation errors gracefully", async () => {
@@ -375,7 +384,9 @@ describe("/auth/callback", () => {
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/login");
-      expect(redirectCall.toString()).toContain("error=Authentication%20failed");
+      expect(redirectCall.toString()).toContain(
+        "error=Authentication%20failed",
+      );
     });
   });
 
@@ -440,7 +451,9 @@ describe("/auth/callback", () => {
         error: null,
       });
       mockAuthService.getUserProfile.mockResolvedValue(null);
-      mockAuthService.upgradeAnonymousSession.mockResolvedValue({ success: true });
+      mockAuthService.upgradeAnonymousSession.mockResolvedValue({
+        success: true,
+      });
       mockAuthService.upsertUserProfile.mockResolvedValue({
         id: "no-email-user",
         full_name: "No Email User",

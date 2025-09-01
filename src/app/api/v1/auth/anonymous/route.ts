@@ -14,15 +14,15 @@ export async function POST(request: NextRequest) {
     let initialData: Record<string, unknown> | undefined;
     try {
       const schema = z.object({
-        data: z.record(z.unknown()).optional(),
+        data: z.record(z.string(), z.unknown()).optional(),
       });
       const result = schema.parse(body || {});
       initialData = result.data;
     } catch (zodError) {
       // Fallback validation for test environments where Zod might have issues
-      if (body && typeof body === 'object' && 'data' in body) {
+      if (body && typeof body === "object" && "data" in body) {
         const data = (body as any).data;
-        if (data === undefined || (typeof data === 'object' && data !== null)) {
+        if (data === undefined || (typeof data === "object" && data !== null)) {
           initialData = data;
         } else {
           return NextResponse.json(
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid request data",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 },
       );
@@ -145,22 +145,31 @@ export async function PATCH(request: NextRequest) {
     // Handle validation with graceful fallback for test environments
     let sessionId: string;
     let data: Record<string, unknown>;
-    
+
     try {
       const updateSchema = z.object({
         sessionId: z.string(),
-        data: z.record(z.unknown()),
+        data: z.record(z.string(), z.unknown()),
       });
       const result = updateSchema.parse(body);
       sessionId = result.sessionId;
       data = result.data;
     } catch (zodError) {
       // Fallback validation for test environments
-      if (body && typeof body === 'object' && 'sessionId' in body && 'data' in body) {
+      if (
+        body &&
+        typeof body === "object" &&
+        "sessionId" in body &&
+        "data" in body
+      ) {
         const rawSessionId = (body as any).sessionId;
         const rawData = (body as any).data;
-        
-        if (typeof rawSessionId === 'string' && rawData && typeof rawData === 'object') {
+
+        if (
+          typeof rawSessionId === "string" &&
+          rawData &&
+          typeof rawData === "object"
+        ) {
           sessionId = rawSessionId;
           data = rawData;
         } else {
@@ -204,7 +213,7 @@ export async function PATCH(request: NextRequest) {
         {
           success: false,
           error: "Invalid request data",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 },
       );

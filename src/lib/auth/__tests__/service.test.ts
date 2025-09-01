@@ -9,7 +9,7 @@ vi.mock("@/lib/supabase/server", () => ({
 
 // Mock crypto.randomUUID
 vi.mock("crypto", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     randomUUID: vi.fn(() => "mock-uuid-123"),

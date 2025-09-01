@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 -- 2. Anonymous sessions
 CREATE TABLE IF NOT EXISTS anonymous_sessions (
   id VARCHAR(36) PRIMARY KEY,
-  team_id UUID REFERENCES teams(id),
+  team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
   data JSONB DEFAULT '{}', -- Temporary work storage
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days'

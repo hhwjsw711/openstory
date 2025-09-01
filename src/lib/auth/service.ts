@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { createAdminClient, createServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
+type Json = Database["public"]["Tables"]["anonymous_sessions"]["Row"]["data"];
+
 type AnonymousSession =
   Database["public"]["Tables"]["anonymous_sessions"]["Row"];
 type AnonymousSessionInsert =
@@ -24,7 +26,7 @@ export class AuthService {
 
     const sessionData: AnonymousSessionInsert = {
       id: sessionId,
-      data: initialData || {},
+      data: (initialData || {}) as Json,
     };
 
     const { data, error } = await this.supabase
@@ -69,7 +71,7 @@ export class AuthService {
   ): Promise<AnonymousSession> {
     const { data: updatedSession, error } = await this.supabase
       .from("anonymous_sessions")
-      .update({ data })
+      .update({ data: data as Json })
       .eq("id", sessionId)
       .select()
       .single();

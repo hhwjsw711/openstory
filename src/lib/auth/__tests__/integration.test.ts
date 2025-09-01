@@ -186,7 +186,7 @@ describe("Authentication Integration Tests", () => {
 
   describe("Error Handling Scenarios", () => {
     it("should handle database connection failures gracefully", async () => {
-      // Mock the chain: from().insert().select().single() 
+      // Mock the chain: from().insert().select().single()
       mockSupabase.single.mockResolvedValue({
         data: null,
         error: { message: "Connection timeout" },

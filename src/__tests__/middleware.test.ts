@@ -22,7 +22,9 @@ describe("middleware", () => {
       },
     };
 
-    const { createMiddlewareClient } = await import("@/lib/supabase/middleware");
+    const { createMiddlewareClient } = await import(
+      "@/lib/supabase/middleware"
+    );
     vi.mocked(createMiddlewareClient).mockReturnValue(mockSupabase as any);
   });
 
@@ -68,9 +70,7 @@ describe("middleware", () => {
     });
 
     it("should skip middleware for non-auth API routes", async () => {
-      const request = new NextRequest(
-        "http://localhost:3000/api/v1/sequences",
-      );
+      const request = new NextRequest("http://localhost:3000/api/v1/sequences");
 
       const response = await middleware(request);
 
@@ -112,11 +112,11 @@ describe("middleware", () => {
 
     it("should allow access to public routes with authentication", async () => {
       mockSupabase.auth.getSession.mockResolvedValue({
-        data: { 
+        data: {
           session: {
             user: { id: "user-123" },
             access_token: "token",
-          } 
+          },
         },
       });
 
@@ -141,7 +141,7 @@ describe("middleware", () => {
         });
 
         const request = new NextRequest(`http://localhost:3000${route}`);
-        
+
         const response = await middleware(request);
 
         expect(response.status).toBe(307); // Redirect status

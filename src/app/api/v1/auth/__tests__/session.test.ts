@@ -363,7 +363,7 @@ describe("/api/v1/auth/session", () => {
       const response = await GET(request);
       const result = await response.json();
 
-      // The route should still return the session data, 
+      // The route should still return the session data,
       // letting the client handle the expired state
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
