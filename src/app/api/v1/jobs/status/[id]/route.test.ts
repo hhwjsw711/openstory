@@ -3,7 +3,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createMockJobManager,
@@ -29,6 +28,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
+import { NextResponse } from "next/server";
 // Import mocked function
 import { getJobManager, type JobManager } from "@/lib/qstash/job-manager";
 
@@ -75,7 +75,6 @@ describe("Job Status API", () => {
             id: testUUIDs.job1,
             type: "image",
             status: "completed",
-            result: { imageUrl: "https://example.com/image.jpg" },
           }),
           message: "Job status retrieved successfully",
         }),
@@ -85,6 +84,9 @@ describe("Job Status API", () => {
     it("should include events when requested", async () => {
       const job = createTestJobRow({
         id: testUUIDs.job1,
+      });
+      const jobWithEvents = {
+        ...job,
         events: [
           {
             id: testUUIDs.event1,
@@ -93,9 +95,9 @@ describe("Job Status API", () => {
             createdAt: "2024-01-01T00:00:00Z",
           },
         ],
-      });
+      };
 
-      mockJobManager.getJob.mockResolvedValue(job);
+      mockJobManager.getJob.mockResolvedValue(jobWithEvents);
 
       const request = {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}?includeEvents=true`,
@@ -133,6 +135,7 @@ describe("Job Status API", () => {
 
       const _response = await GET(request, { params: { id: testUUIDs.job1 } });
 
+      // biome-ignore lint/suspicious/noExplicitAny: Testing mock calls
       const responseData = (NextResponse.json as any).mock.calls[0][0];
       expect(responseData.job.result).toBeUndefined();
     });

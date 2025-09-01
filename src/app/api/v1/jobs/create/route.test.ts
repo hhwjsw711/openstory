@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VelroError } from "@/lib/errors";
 import {
+  createMockJobManager,
   createMockNextRequest,
   createMockQStashClient,
   createTestJobRow,
@@ -28,6 +29,7 @@ vi.mock("@/lib/qstash/job-manager", () => ({
   },
 }));
 
+import { NextResponse } from "next/server";
 // Import mocked functions
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
@@ -44,19 +46,18 @@ vi.mock("next/server", () => ({
 
 describe("Job Creation API", () => {
   let mockQStashClient: ReturnType<typeof createMockQStashClient>;
-  let mockJobManager: any;
+  let mockJobManager: ReturnType<typeof createMockJobManager>;
   let testSetup: ReturnType<typeof setupVitestMocks>;
 
   beforeEach(() => {
     testSetup = setupVitestMocks();
     mockQStashClient = createMockQStashClient();
+    mockJobManager = createMockJobManager();
 
-    mockJobManager = {
-      createJob: vi.fn(),
-    };
-
-    vi.mocked(getQStashClient).mockReturnValue(mockQStashClient);
-    vi.mocked(getJobManager).mockReturnValue(mockJobManager);
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
+    vi.mocked(getQStashClient).mockReturnValue(mockQStashClient as any);
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
+    vi.mocked(getJobManager).mockReturnValue(mockJobManager as any);
   });
 
   afterEach(() => {
@@ -92,7 +93,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.createJob).toHaveBeenCalledWith({
         type: "image",
@@ -115,7 +116,6 @@ describe("Job Creation API", () => {
         },
       );
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -152,7 +152,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockQStashClient.publishVideoJob).toHaveBeenCalledWith(
         expect.any(Object),
@@ -186,7 +186,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockQStashClient.publishScriptJob).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -208,12 +208,11 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
       expect(mockQStashClient.publishImageJob).not.toHaveBeenCalled();
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -233,9 +232,8 @@ describe("Job Creation API", () => {
         method: "POST",
       };
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -262,9 +260,8 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -282,7 +279,7 @@ describe("Job Creation API", () => {
       });
 
       mockJobManager.createJob.mockResolvedValue(newJob);
-      mockJobManager.failJob = vi.fn().mockResolvedValue(newJob);
+      mockJobManager.failJob.mockResolvedValue(newJob);
 
       const qstashError = new VelroError(
         "QStash service unavailable",
@@ -301,14 +298,13 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.failJob).toHaveBeenCalledWith(
         newJob.id,
         "Failed to publish to QStash: QStash service unavailable",
       );
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -330,11 +326,10 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -359,11 +354,10 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
@@ -395,7 +389,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const _response = await POST(request as NextRequest);
+      const _response = await POST(request as unknown as NextRequest);
 
       expect(mockJobManager.createJob).toHaveBeenCalledWith({
         type: "image",
@@ -404,7 +398,6 @@ describe("Job Creation API", () => {
         teamId: undefined,
       });
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -419,7 +412,6 @@ describe("Job Creation API", () => {
     it("should return endpoint information", async () => {
       const _response = await GET();
 
-      const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Job creation endpoint",

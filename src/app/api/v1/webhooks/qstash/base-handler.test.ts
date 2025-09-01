@@ -42,7 +42,8 @@ describe("BaseWebhookHandler", () => {
   beforeEach(() => {
     testSetup = setupVitestMocks();
     mockJobManager = createMockJobManager();
-    vi.mocked(getJobManager).mockReturnValue(mockJobManager);
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
+    vi.mocked(getJobManager).mockReturnValue(mockJobManager as any);
     handler = new BaseWebhookHandler();
   });
 

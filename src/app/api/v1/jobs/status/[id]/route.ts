@@ -13,12 +13,14 @@ import { getJobManager } from "@/lib/qstash/job-manager";
 const statusQuerySchema = z.object({
   includeEvents: z
     .string()
+    .nullable()
     .optional()
     .transform((val) => val === "true"),
   includeResult: z
     .string()
+    .nullable()
     .optional()
-    .transform((val) => val !== "false"), // Default to true
+    .transform((val) => val !== "false" && val !== null), // Default to true
 });
 
 interface JobStatusResponse {
