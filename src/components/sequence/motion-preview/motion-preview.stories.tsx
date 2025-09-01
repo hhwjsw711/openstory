@@ -60,11 +60,12 @@ const sampleFrame = generateMockFrame({
   id: "motion-frame-1",
   order_index: 1,
   description: "A cinematic establishing shot of a cityscape at golden hour",
-  thumbnail_url: "https://picsum.photos/seed/motion1/640/360",
+  thumbnail_url:
+    "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=640&h=360&fit=crop",
   duration_ms: 5000,
 });
 
-// Sample video URL (this would be a real video in production)
+// Sample video URLs from open sources
 const sampleVideoUrl =
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
@@ -73,7 +74,8 @@ export const WithVideo: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -84,7 +86,8 @@ export const ThumbnailOnly: Story = {
   args: {
     // No videoUrl provided
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -95,7 +98,8 @@ export const Loading: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     loading: true,
@@ -107,7 +111,8 @@ export const AutoPlay: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     autoPlay: true,
@@ -120,7 +125,8 @@ export const Unmuted: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     muted: false,
@@ -131,13 +137,15 @@ export const Unmuted: Story = {
 export const Frame2: Story = {
   args: {
     videoUrl: sampleVideoUrl,
-    thumbnailUrl: "https://picsum.photos/seed/motion2/640/360",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=640&h=360&fit=crop",
     duration: 8500,
     frame: generateMockFrame({
       id: "motion-frame-2",
       order_index: 2,
       description: "Close-up character dialogue scene",
-      thumbnail_url: "https://picsum.photos/seed/motion2/640/360",
+      thumbnail_url:
+        "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=640&h=360&fit=crop",
       duration_ms: 8500,
     }),
   },
@@ -146,13 +154,15 @@ export const Frame2: Story = {
 export const Frame3: Story = {
   args: {
     videoUrl: sampleVideoUrl,
-    thumbnailUrl: "https://picsum.photos/seed/motion3/640/360",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1553095066-5014bc7b7f2d?w=640&h=360&fit=crop",
     duration: 3200,
     frame: generateMockFrame({
       id: "motion-frame-3",
       order_index: 3,
       description: "Action sequence with dynamic movement",
-      thumbnail_url: "https://picsum.photos/seed/motion3/640/360",
+      thumbnail_url:
+        "https://images.unsplash.com/photo-1553095066-5014bc7b7f2d?w=640&h=360&fit=crop",
       duration_ms: 3200,
     }),
   },
@@ -162,13 +172,15 @@ export const Frame3: Story = {
 export const LongDuration: Story = {
   args: {
     videoUrl: sampleVideoUrl,
-    thumbnailUrl: "https://picsum.photos/seed/long/640/360",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=640&h=360&fit=crop",
     duration: 15000,
     frame: generateMockFrame({
       id: "long-motion-frame",
       order_index: 5,
       description: "Extended scene with multiple story beats",
-      thumbnail_url: "https://picsum.photos/seed/long/640/360",
+      thumbnail_url:
+        "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=640&h=360&fit=crop",
       duration_ms: 15000,
     }),
   },
@@ -192,28 +204,32 @@ const MultiplePreviewsTemplate: Story = {
         id: "multi-1",
         order_index: 1,
         description: "Opening landscape shot",
-        thumbnail_url: "https://picsum.photos/seed/multi1/640/360",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=360&fit=crop",
         duration_ms: 4000,
       }),
       generateMockFrame({
         id: "multi-2",
         order_index: 2,
         description: "Character introduction",
-        thumbnail_url: "https://picsum.photos/seed/multi2/640/360",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=640&h=360&fit=crop",
         duration_ms: 6000,
       }),
       generateMockFrame({
         id: "multi-3",
         order_index: 3,
         description: "Action sequence",
-        thumbnail_url: "https://picsum.photos/seed/multi3/640/360",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=640&h=360&fit=crop",
         duration_ms: 3500,
       }),
       generateMockFrame({
         id: "multi-4",
         order_index: 4,
         description: "Dialogue scene",
-        thumbnail_url: "https://picsum.photos/seed/multi4/640/360",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1524712245354-2c4e5e7121c0?w=640&h=360&fit=crop",
         duration_ms: 8000,
       }),
     ];
@@ -227,7 +243,8 @@ const MultiplePreviewsTemplate: Story = {
             // Every other frame has video, others are thumbnail-only
             videoUrl={index % 2 === 0 ? sampleVideoUrl : undefined}
             thumbnailUrl={
-              frame.thumbnail_url || "https://via.placeholder.com/640x360"
+              frame.thumbnail_url ||
+              "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop"
             }
             duration={frame.duration_ms || undefined}
             frame={frame}
@@ -256,7 +273,8 @@ export const Interactive: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -283,7 +301,7 @@ export const LoadingStates: Story = {
         <h3 className="text-sm font-medium">Video Loading</h3>
         <MotionPreview
           videoUrl={sampleVideoUrl}
-          thumbnailUrl="https://picsum.photos/seed/loading1/640/360"
+          thumbnailUrl="https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=640&h=360&fit=crop"
           duration={5000}
           frame={generateMockFrame({ order_index: 1 })}
           loading={true}
@@ -293,7 +311,7 @@ export const LoadingStates: Story = {
       <div className="space-y-2">
         <h3 className="text-sm font-medium">No Video</h3>
         <MotionPreview
-          thumbnailUrl="https://picsum.photos/seed/loading2/640/360"
+          thumbnailUrl="https://images.unsplash.com/photo-1485846234645-a62644f84728?w=640&h=360&fit=crop"
           duration={5000}
           frame={generateMockFrame({ order_index: 2 })}
         />
@@ -337,7 +355,8 @@ export const Responsive: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url || "https://via.placeholder.com/640x360",
+      sampleFrame.thumbnail_url ||
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=640&h=360&fit=crop",
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },

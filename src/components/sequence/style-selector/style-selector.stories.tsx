@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { useState } from "react";
-import { generateMockStyles } from "@/lib/mocks/data-generators";
+import { stylePresets } from "@/lib/mocks/style-presets";
 import { StyleSelector } from "./style-selector";
 
 const meta: Meta<typeof StyleSelector> = {
@@ -42,8 +42,8 @@ const meta: Meta<typeof StyleSelector> = {
 export default meta;
 type Story = StoryObj<typeof StyleSelector>;
 
-// Mock data
-const mockStyles = generateMockStyles(12);
+// Mock data - use predefined style presets for better visual examples
+const mockStyles = stylePresets;
 
 // Interactive wrapper for stories that need selection state
 function InteractiveStyleSelector(
@@ -126,9 +126,9 @@ export const EmptyState: Story = {
 export const Disabled: Story = {
   render: () => (
     <InteractiveStyleSelector
-      styles={mockStyles.slice(0, 6)}
+      styles={stylePresets.slice(0, 6)}
       disabled
-      initialSelectedId={mockStyles[1].id}
+      initialSelectedId={stylePresets[1].id}
     />
   ),
   parameters: {
@@ -142,7 +142,7 @@ export const Disabled: Story = {
 };
 
 export const SmallCollection: Story = {
-  render: () => <InteractiveStyleSelector styles={mockStyles.slice(0, 3)} />,
+  render: () => <InteractiveStyleSelector styles={stylePresets.slice(0, 3)} />,
   parameters: {
     docs: {
       description: {
@@ -154,7 +154,18 @@ export const SmallCollection: Story = {
 };
 
 export const LargeCollection: Story = {
-  render: () => <InteractiveStyleSelector styles={generateMockStyles(24)} />,
+  render: () => (
+    <InteractiveStyleSelector
+      styles={[
+        ...stylePresets,
+        ...stylePresets.map((s) => ({
+          ...s,
+          id: `${s.id}-2`,
+          name: `${s.name} v2`,
+        })),
+      ]}
+    />
+  ),
   parameters: {
     docs: {
       description: {
@@ -189,6 +200,95 @@ export const ResponsiveLayout: Story = {
           name: "Desktop",
           styles: { width: "1440px", height: "900px" },
         },
+      },
+    },
+  },
+};
+
+export const StyleCategories: Story = {
+  render: () => (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-lg font-medium mb-4">Cinematic Styles</h3>
+        <InteractiveStyleSelector
+          styles={stylePresets.filter((s) =>
+            [
+              "style-cinematic",
+              "style-noir",
+              "style-documentary",
+              "style-horror",
+            ].includes(s.id),
+          )}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-4">Artistic Styles</h3>
+        <InteractiveStyleSelector
+          styles={stylePresets.filter((s) =>
+            [
+              "style-watercolor",
+              "style-oil-painting",
+              "style-minimalist",
+            ].includes(s.id),
+          )}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-4">Modern & Stylized</h3>
+        <InteractiveStyleSelector
+          styles={stylePresets.filter((s) =>
+            [
+              "style-anime",
+              "style-cyberpunk",
+              "style-retro",
+              "style-comic",
+              "style-fantasy",
+            ].includes(s.id),
+          )}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        story:
+          "StyleSelector organized by categories, showing different visual style groups for video generation.",
+      },
+    },
+  },
+};
+
+export const PopularStyles: Story = {
+  render: () => (
+    <div className="space-y-4">
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-2">Popular Styles</h2>
+        <p className="text-muted-foreground">
+          Most used styles by our community
+        </p>
+      </div>
+      <InteractiveStyleSelector
+        styles={[
+          stylePresets.find((s) => s.id === "style-cinematic")!,
+          stylePresets.find((s) => s.id === "style-anime")!,
+          stylePresets.find((s) => s.id === "style-cyberpunk")!,
+          stylePresets.find((s) => s.id === "style-watercolor")!,
+          stylePresets.find((s) => s.id === "style-minimalist")!,
+          stylePresets.find((s) => s.id === "style-comic")!,
+        ].filter(Boolean)}
+        initialSelectedId="style-cinematic"
+      />
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A curated selection of the most popular styles, pre-selected with Cinematic Epic.",
       },
     },
   },
