@@ -1,16 +1,16 @@
 ---
-allowed-tools: Task
+allowed-tools: Task, Write, Bash
 argument-hint: <issue_number>
-description: Analyze a GitHub issue and assign to the appropriate tech lead for planning
+description: Triage a GitHub issue and create an implementation plan
 ---
 
-# Workflow: Assign Issue #$ARGUMENTS
+# Triage Issue #$ARGUMENTS
 
-Let me analyze issue #$ARGUMENTS and assign it to the appropriate tech lead/architect for planning.
+Let me analyze issue #$ARGUMENTS and create an implementation plan.
 
 !gh issue view $ARGUMENTS --json number,title,body,labels,assignees,url
 
-Now I'll analyze the issue content and labels to determine the appropriate agent.
+Now I'll analyze the issue content and labels to determine the appropriate tech lead agent.
 
 Based on the issue details above, I'll select the right tech lead/architect:
 - If it mentions API, database, Supabase, QStash, or has backend labels → `backend-tech-lead`
@@ -24,8 +24,10 @@ The selected agent will:
 1. **Analyze Requirements** - Review issue details and acceptance criteria
 2. **Review Codebase** - Understand existing implementation and patterns
 3. **Design Architecture** - Plan the technical approach and data flow
-4. **Create Implementation Plan** - Break down into specific tasks using TodoWrite
+4. **Create Implementation Plan** - Break down into specific tasks
 5. **Identify Risks** - Note potential challenges and dependencies
-6. **Prepare Specifications** - Document for the implementation engineer
+6. **Document Specifications** - Create detailed implementation instructions
 
-**Important**: The tech lead creates the plan but does NOT implement. After the plan is approved, an engineer will implement it based on these specifications.
+After the tech lead creates the plan, I'll save it to `workflow/instructions/issue-$ARGUMENTS-plan.md` for the implementation phase.
+
+**Important**: This creates the plan only. Use `/implement $ARGUMENTS` to execute the plan with an engineer.
