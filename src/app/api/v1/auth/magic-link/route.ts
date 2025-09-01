@@ -27,11 +27,11 @@ export async function POST(request: NextRequest) {
       redirectTo,
     );
 
-    if (!result.success) {
+    if (!result || !result.success) {
       return NextResponse.json(
         {
           success: false,
-          error: result.error || "Failed to send magic link",
+          error: result?.error || "Failed to send magic link",
         },
         { status: 400 },
       );
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid request data",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 },
       );

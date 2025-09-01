@@ -13,11 +13,14 @@ describe("/api/v1/auth/magic-link", () => {
   let mockAuthService: any;
 
   beforeEach(async () => {
-    const { AuthService } = vi.mocked(await import("@/lib/auth/service"));
+    vi.clearAllMocks();
+
     mockAuthService = {
       sendMagicLink: vi.fn(),
     };
-    AuthService.prototype = mockAuthService;
+
+    const { AuthService } = await import("@/lib/auth/service");
+    vi.mocked(AuthService).mockImplementation(() => mockAuthService as any);
   });
 
   afterEach(() => {

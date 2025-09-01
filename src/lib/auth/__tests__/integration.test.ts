@@ -16,6 +16,9 @@ describe("Authentication Integration Tests", () => {
     // Reset mocks
     vi.clearAllMocks();
 
+    // Set up required environment variables for tests
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+
     // Create comprehensive mock clients
     mockSupabase = {
       from: vi.fn().mockReturnThis(),
@@ -102,13 +105,13 @@ describe("Authentication Integration Tests", () => {
       });
 
       // Mock successful profile creation
-      mockAdminClient.single.mockResolvedValueOnce({
+      mockAdminClient.upsert.mockResolvedValueOnce({
         data: { id: "user-123", anonymous_id: "anon-123" },
         error: null,
       });
 
       // Mock successful session deletion
-      mockAdminClient.delete.mockResolvedValueOnce({
+      mockAdminClient.eq.mockResolvedValueOnce({
         data: null,
         error: null,
       });
@@ -183,7 +186,11 @@ describe("Authentication Integration Tests", () => {
 
   describe("Error Handling Scenarios", () => {
     it("should handle database connection failures gracefully", async () => {
-      mockSupabase.single.mockRejectedValue(new Error("Connection timeout"));
+      // Mock the chain: from().insert().select().single() 
+      mockSupabase.single.mockResolvedValue({
+        data: null,
+        error: { message: "Connection timeout" },
+      });
 
       await expect(authService.createAnonymousSession()).rejects.toThrow(
         "Failed to create anonymous session: Connection timeout",
@@ -212,7 +219,8 @@ describe("Authentication Integration Tests", () => {
       });
 
       // Mock profile creation failure
-      mockAdminClient.single.mockResolvedValue({
+      // The upsert method returns a promise directly, not through single()
+      mockAdminClient.upsert.mockResolvedValue({
         data: null,
         error: { message: "Profile creation failed" },
       });
