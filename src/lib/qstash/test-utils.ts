@@ -53,12 +53,11 @@ export const createMockSupabaseClient = () => {
       range: vi.fn().mockReturnThis(),
     };
 
-    // Make the chain thenable
-    Object.assign(chain, {
-      then: vi.fn((onResolve) => {
-        const defaultResult = { data: [], error: null };
-        return Promise.resolve(defaultResult).then(onResolve);
-      }),
+    // Make the chain thenable - biome wants this as a property
+    // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
+    chain.then = vi.fn((onResolve) => {
+      const defaultResult = { data: [], error: null };
+      return Promise.resolve(defaultResult).then(onResolve);
     });
 
     return chain;
@@ -87,6 +86,20 @@ export const createMockSupabaseClient = () => {
  */
 export const createMockQStashReceiver = (shouldVerify = true) => ({
   verify: vi.fn().mockResolvedValue(shouldVerify),
+});
+
+/**
+ * Mock Job Manager for testing
+ */
+export const createMockJobManager = () => ({
+  createJob: vi.fn(),
+  getJob: vi.fn(),
+  updateJob: vi.fn(),
+  cancelJob: vi.fn(),
+  startJob: vi.fn(),
+  completeJob: vi.fn(),
+  failJob: vi.fn(),
+  getJobsByStatus: vi.fn(),
 });
 
 /**
@@ -242,6 +255,7 @@ export const testUUIDs = {
   user2: "550e8400-e29b-41d4-a716-446655440012",
   team1: "550e8400-e29b-41d4-a716-446655440021",
   team2: "550e8400-e29b-41d4-a716-446655440022",
+  event1: "550e8400-e29b-41d4-a716-446655440031",
 };
 
 /**
