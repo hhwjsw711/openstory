@@ -115,7 +115,7 @@ create_worktree() {
     if git worktree list | grep -q "$worktree_path"; then
         info "Worktree already exists at $worktree_path"
         # Ensure we're on the right branch
-        (cd "$worktree_path" && git checkout "$branch_name" 2>/dev/null || true)
+        (cd "$worktree_path" && git checkout "$branch_name" >/dev/null 2>&1 || true)
         echo "$worktree_path"
         return 0
     fi
@@ -131,15 +131,15 @@ create_worktree() {
     # Check if branch exists locally
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
         log "Branch $branch_name already exists locally"
-        git worktree add "$worktree_path" "$branch_name"
+        git worktree add "$worktree_path" "$branch_name" >&2
     # Check if branch exists on remote
     elif git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
         log "Branch $branch_name exists on remote, checking out"
-        git fetch origin "$branch_name":"$branch_name"
-        git worktree add "$worktree_path" "$branch_name"
+        git fetch origin "$branch_name":"$branch_name" >&2
+        git worktree add "$worktree_path" "$branch_name" >&2
     else
         log "Creating new branch $branch_name from main"
-        git worktree add -b "$branch_name" "$worktree_path" main
+        git worktree add -b "$branch_name" "$worktree_path" main >&2
     fi
     
     # Setup worktree environment
@@ -187,17 +187,19 @@ setup_worktree_environment() {
         fi
         
         # Copy any other Claude configuration files
-        for file in "$PROJECT_ROOT/.claude"/*.{json,md,yaml,yml} 2>/dev/null; do
-            if [ -f "$file" ] && [ "$(basename "$file")" != "settings.local.json" ]; then
-                cp "$file" "$worktree_path/.claude/"
-                info "Copied $(basename "$file")"
-            fi
+        for ext in json md yaml yml; do
+            for file in "$PROJECT_ROOT/.claude"/*."$ext"; do
+                if [ -f "$file" ] && [ "$(basename "$file")" != "settings.local.json" ]; then
+                    cp "$file" "$worktree_path/.claude/"
+                    info "Copied $(basename "$file")"
+                fi
+            done
         done
     fi
     
     # Install dependencies
     log "Installing dependencies with pnpm..."
-    (cd "$worktree_path" && pnpm install) || {
+    (cd "$worktree_path" && pnpm install >/dev/null 2>&1) || {
         error "Failed to install dependencies, but continuing..."
     }
     
@@ -388,23 +390,20 @@ EOF
     echo "$instructions_file"
 }
 
-# Function to launch Claude with agent using Cursor
-launch_cursor_with_agent() {
+# Function to create or recreate the launch script
+create_launch_script() {
     local worktree_path=$1
     local agent_type=$2
     local instructions_file=$3
     local issue_num=$4
-    
-    log "Launching Cursor IDE with $agent_type agent"
-    
-    # Open Cursor in the worktree
-    info "Opening Cursor IDE at $worktree_path"
-    cursor "$worktree_path" &
-    
-    sleep 3
-    
-    # Create a launch script that can be run in Cursor's terminal
     local launch_script="$worktree_path/.launch-claude.sh"
+    
+    # Check if we need to create/recreate the script
+    if [ ! -f "$launch_script" ]; then
+        info "Creating launch script at $launch_script"
+    else
+        info "Recreating launch script at $launch_script"
+    fi
     
     cat > "$launch_script" << EOF
 #!/bin/bash
@@ -486,7 +485,7 @@ echo "\$prompt"
 echo ""
 echo "========================================"
 echo "To launch Claude Code manually, run:"
-echo "  claude \"\$prompt\"
+echo "  claude \"\$prompt\""
 echo "========================================"
 echo ""
 
@@ -505,7 +504,28 @@ EOF
 
     chmod +x "$launch_script"
     
-    info "Launch script created at $launch_script"
+    echo "$launch_script"
+}
+
+# Function to launch Claude with agent using Cursor
+launch_cursor_with_agent() {
+    local worktree_path=$1
+    local agent_type=$2
+    local instructions_file=$3
+    local issue_num=$4
+    
+    log "Launching Cursor IDE with $agent_type agent"
+    
+    # Open Cursor in the worktree
+    info "Opening Cursor IDE at $worktree_path"
+    cursor "$worktree_path" &
+    
+    sleep 3
+    
+    # Create or recreate the launch script
+    local launch_script=$(create_launch_script "$worktree_path" "$agent_type" "$instructions_file" "$issue_num")
+    
+    info "Launch script ready at $launch_script"
     info ""
     info "========================================"
     info "MANUAL LAUNCH INSTRUCTIONS:"
@@ -698,19 +718,28 @@ process_issue() {
     
     # Track state
     local state_file="$STATE_DIR/issue-${issue_num}.json"
-    cat > "$state_file" << EOF
-{
-  "issue_number": $issue_num,
-  "title": "$title",
-  "agent": "$agent_type",
-  "stage": "$stage",
-  "worktree_path": "$worktree_path",
-  "branch": "$branch_name",
-  "instructions": "$instructions_file",
-  "status": "assigned",
-  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOF
+    # Use jq to properly escape JSON values
+    jq -n \
+        --arg issue_num "$issue_num" \
+        --arg title "$title" \
+        --arg agent "$agent_type" \
+        --arg stage "$stage" \
+        --arg worktree "$worktree_path" \
+        --arg branch "$branch_name" \
+        --arg instructions "$instructions_file" \
+        --arg status "assigned" \
+        --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        '{
+            issue_number: ($issue_num | tonumber),
+            title: $title,
+            agent: $agent,
+            stage: $stage,
+            worktree_path: $worktree,
+            branch: $branch,
+            instructions: $instructions,
+            status: $status,
+            timestamp: $timestamp
+        }' > "$state_file"
 
     # Choose launch method based on environment variable
     local launch_method="${LAUNCH_METHOD:-cursor}"
@@ -719,6 +748,14 @@ EOF
         # Launch Claude CLI directly
         launch_claude_cli_with_agent "$worktree_path" "$agent_type" "$instructions_file" "$issue_num"
     else
+        # Check if launch script exists, recreate if missing
+        local launch_script="$worktree_path/.launch-claude.sh"
+        if [ ! -f "$launch_script" ]; then
+            warning "Launch script missing, recreating it..."
+            create_launch_script "$worktree_path" "$agent_type" "$instructions_file" "$issue_num" >/dev/null
+            info "Launch script recreated at $launch_script"
+        fi
+        
         # Launch Cursor with Claude context (default)
         launch_cursor_with_agent "$worktree_path" "$agent_type" "$instructions_file" "$issue_num"
     fi
@@ -914,10 +951,40 @@ case "${1:-}" in
         rm -f "$INSTRUCTIONS_DIR"/*.md
         log "Reset complete"
         ;;
+    recreate-launch)
+        if [ -z "${2:-}" ]; then
+            error "Usage: $0 recreate-launch <issue_number>"
+            exit 1
+        fi
+        
+        issue_num="$2"
+        state_file="$STATE_DIR/issue-${issue_num}.json"
+        
+        if [ ! -f "$state_file" ]; then
+            error "No state found for issue #$issue_num. Please run 'assign' or 'implement' first."
+            exit 1
+        fi
+        
+        # Read state
+        worktree_path=$(jq -r '.worktree_path' "$state_file")
+        agent_type=$(jq -r '.agent' "$state_file")
+        instructions_file=$(jq -r '.instructions' "$state_file")
+        
+        if [ ! -d "$worktree_path" ]; then
+            error "Worktree not found at $worktree_path"
+            exit 1
+        fi
+        
+        # Recreate the launch script
+        info "Recreating launch script for issue #$issue_num..."
+        create_launch_script "$worktree_path" "$agent_type" "$instructions_file" "$issue_num" >/dev/null
+        info "Launch script recreated at $worktree_path/.launch-claude.sh"
+        info "You can now run: cd $worktree_path && ./.launch-claude.sh"
+        ;;
     *)
         echo "Claude Code Workflow Manager"
         echo ""
-        echo "Usage: $0 {assign|implement|review|cleanup|status|reset}"
+        echo "Usage: $0 {assign|implement|review|cleanup|status|reset|recreate-launch}"
         echo ""
         echo "Commands:"
         echo "  assign <issue_num>     - Assign issue to tech lead for triage"
@@ -926,6 +993,7 @@ case "${1:-}" in
         echo "  cleanup                - Clean up merged PR worktrees"
         echo "  status                 - Show current workflow status"
         echo "  reset                  - Reset all worktrees and state"
+        echo "  recreate-launch <num>  - Recreate the .launch-claude.sh script"
         echo ""
         echo "Environment Variables:"
         echo "  LAUNCH_METHOD=cursor|claude-cli  (default: cursor)"
