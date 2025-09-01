@@ -53,3 +53,4 @@ workflow/instructions/
 workflow/logs/
 workflow/data/
 .launch-claude.sh
+.env*.local
