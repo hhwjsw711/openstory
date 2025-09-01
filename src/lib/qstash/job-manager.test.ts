@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DatabaseError, ValidationError, VelroError } from "@/lib/errors";
+import { DatabaseError, ValidationError } from "@/lib/errors";
 import { getJobManager, JobManager, JobStatus, JobType } from "./job-manager";
 import {
   createMockSupabaseClient,
@@ -18,19 +18,31 @@ vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: vi.fn(),
 }));
 
+// Import the mocked module
+import { createAdminClient } from "@/lib/supabase/server";
+
 describe("JobManager", () => {
   let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
   let jobManager: JobManager;
   let testSetup: ReturnType<typeof setupVitestMocks>;
 
+  const setupMockChainResponse = (mockData: { data: any; error: any }) => {
+    const chain = mockSupabase.from("jobs");
+    chain.then = vi.fn((onResolve) => {
+      return Promise.resolve(mockData).then(onResolve);
+    });
+  };
+
   beforeEach(() => {
     testSetup = setupVitestMocks();
     mockSupabase = createMockSupabaseClient();
 
-    const { createAdminClient } = require("@/lib/supabase/server");
-    createAdminClient.mockReturnValue(mockSupabase);
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase);
 
     jobManager = new JobManager();
+
+    // Reset the chain's then method to default behavior for each test
+    setupMockChainResponse({ data: [], error: null });
   });
 
   afterEach(() => {
@@ -48,10 +60,7 @@ describe("JobManager", () => {
         updated_at: createTestDate(),
       });
 
-      mockSupabase.mockHelpers.mockSingle.mockResolvedValue({
-        data: newJob,
-        error: null,
-      });
+      setupMockChainResponse({ data: newJob, error: null });
 
       const result = await jobManager.createJob({
         type: "image",
@@ -375,9 +384,10 @@ describe("JobManager", () => {
         }),
       ];
 
-      mockSupabase.mockHelpers.mockOrder.mockResolvedValue({
-        data: jobs,
-        error: null,
+      // Get the chain and override its 'then' method to return our test data
+      const chain = mockSupabase.from("jobs");
+      chain.then = vi.fn((onResolve) => {
+        return Promise.resolve({ data: jobs, error: null }).then(onResolve);
       });
 
       const result = await jobManager.getJobsByStatus("completed", {
@@ -385,6 +395,10 @@ describe("JobManager", () => {
         userId: testUUIDs.user1,
       });
 
+      expect(mockSupabase.mockHelpers.mockEq).toHaveBeenCalledWith(
+        "status",
+        "completed",
+      );
       expect(mockSupabase.mockHelpers.mockEq).toHaveBeenCalledWith(
         "team_id",
         testUUIDs.team1,

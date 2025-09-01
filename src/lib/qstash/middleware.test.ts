@@ -16,7 +16,6 @@ import {
 import {
   createMockQStashReceiver,
   createTestWebhookRequest,
-  generateTestSignature,
   setupVitestMocks,
 } from "./test-utils";
 
@@ -188,15 +187,19 @@ describe("QStash Middleware", () => {
 
   describe("withQStashVerification", () => {
     it("should wrap handler with signature verification", async () => {
-      const mockHandler = vi
-        .fn()
-        .mockResolvedValue(NextResponse.json({ success: true }));
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true }),
+      };
+      const mockHandler = vi.fn().mockResolvedValue(mockResponse);
       const wrappedHandler = withQStashVerification(mockHandler);
 
       const mockRequest = createTestWebhookRequest({
         headers: {
           "upstash-signature": "valid-signature",
           "upstash-message-id": "msg_test123",
+          "upstash-timestamp": "1704067200",
         },
       });
 
@@ -209,7 +212,10 @@ describe("QStash Middleware", () => {
           qstashMessageId: "msg_test123",
         }),
       );
-      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(result).toBeDefined();
+      expect(result.status).toBe(200);
+      const resultData = await result.json();
+      expect(resultData).toEqual(expect.objectContaining({ success: true }));
     });
 
     it("should return error response if signature verification fails", async () => {
@@ -225,13 +231,18 @@ describe("QStash Middleware", () => {
         },
       });
 
-      const result = await wrappedHandler(mockRequest as any);
+      const _result = await wrappedHandler(mockRequest as any);
 
       expect(mockHandler).not.toHaveBeenCalled();
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          message: "Invalid QStash signature",
+          message:
+            "QStash signature verification failed: Invalid QStash signature",
+          error: expect.objectContaining({
+            code: "QSTASH_SIGNATURE_VERIFICATION_FAILED",
+          }),
+          timestamp: expect.any(String),
         }),
         { status: 401 },
       );
@@ -248,7 +259,7 @@ describe("QStash Middleware", () => {
         },
       });
 
-      const result = await wrappedHandler(mockRequest as any);
+      const _result = await wrappedHandler(mockRequest as any);
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -274,7 +285,7 @@ describe("QStash Middleware", () => {
         },
       });
 
-      const result = await wrappedHandler(mockRequest as any);
+      const _result = await wrappedHandler(mockRequest as any);
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -402,6 +413,7 @@ describe("QStash Middleware", () => {
         headers: {
           "upstash-message-id": "msg_test123",
           "upstash-signature": "signature123",
+          "upstash-timestamp": "1704067200",
         },
       });
 
@@ -414,8 +426,12 @@ describe("QStash Middleware", () => {
           method: "POST",
           messageId: "msg_test123",
           signature: "signature123",
+          timestamp: "1704067200",
           isQStashRequest: true,
           custom: "context",
+          retryCount: 0,
+          scheduleId: null,
+          forwardedFor: null,
         }),
       );
 

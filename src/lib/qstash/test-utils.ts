@@ -39,38 +39,45 @@ export const createMockQStashClient = () => ({
  * Mock Supabase client for testing
  */
 export const createMockSupabaseClient = () => {
-  const mockSelect = vi.fn().mockReturnThis();
-  const mockInsert = vi.fn().mockReturnThis();
-  const mockUpdate = vi.fn().mockReturnThis();
-  const mockDelete = vi.fn().mockReturnThis();
-  const mockEq = vi.fn().mockReturnThis();
-  const mockSingle = vi.fn().mockReturnThis();
-  const mockLimit = vi.fn().mockReturnThis();
-  const mockOrder = vi.fn().mockReturnThis();
-  const mockRange = vi.fn().mockReturnThis();
+  // Create a proper mock chain that can be awaited
+  const createQueryChain = () => {
+    const chain = {
+      select: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
+    };
+
+    // Make the chain thenable
+    Object.assign(chain, {
+      then: vi.fn((onResolve) => {
+        const defaultResult = { data: [], error: null };
+        return Promise.resolve(defaultResult).then(onResolve);
+      }),
+    });
+
+    return chain;
+  };
+
+  const chainMock = createQueryChain();
 
   return {
-    from: vi.fn(() => ({
-      select: mockSelect,
-      insert: mockInsert,
-      update: mockUpdate,
-      delete: mockDelete,
-      eq: mockEq,
-      single: mockSingle,
-      limit: mockLimit,
-      order: mockOrder,
-      range: mockRange,
-    })),
+    from: vi.fn(() => chainMock),
     mockHelpers: {
-      mockSelect,
-      mockInsert,
-      mockUpdate,
-      mockDelete,
-      mockEq,
-      mockSingle,
-      mockLimit,
-      mockOrder,
-      mockRange,
+      mockSelect: chainMock.select,
+      mockInsert: chainMock.insert,
+      mockUpdate: chainMock.update,
+      mockDelete: chainMock.delete,
+      mockEq: chainMock.eq,
+      mockSingle: chainMock.single,
+      mockLimit: chainMock.limit,
+      mockOrder: chainMock.order,
+      mockRange: chainMock.range,
     },
   };
 };
@@ -96,8 +103,8 @@ export const createTestJobPayload = (
     width: 1024,
     height: 1024,
   },
-  userId: "user123",
-  teamId: "team456",
+  userId: "550e8400-e29b-41d4-a716-446655440011",
+  teamId: "550e8400-e29b-41d4-a716-446655440021",
   ...overrides,
 });
 
@@ -116,8 +123,8 @@ export const createTestJobRow = (overrides?: Partial<JobRow>): JobRow => ({
   },
   result: null,
   error: null,
-  user_id: "user123",
-  team_id: "team456",
+  user_id: "550e8400-e29b-41d4-a716-446655440011",
+  team_id: "550e8400-e29b-41d4-a716-446655440021",
   created_at: "2024-01-01T00:00:00.000Z",
   updated_at: "2024-01-01T00:00:00.000Z",
   started_at: null,
@@ -136,18 +143,24 @@ export const createTestWebhookRequest = (
     method: string;
   }>,
 ) => {
-  const defaultHeaders = {
+  const baseHeaders = {
     "content-type": "application/json",
-    "upstash-signature": "test-signature-12345",
     "upstash-message-id": "msg_test123456789",
     "upstash-timestamp": "1704067200",
-    ...overrides?.headers,
   };
+
+  // Only add signature if not explicitly overridden
+  const defaultHeaders = {
+    ...baseHeaders,
+    "upstash-signature": "test-signature-12345",
+  };
+
+  const headers = overrides?.headers || defaultHeaders;
 
   const defaultBody = createTestJobPayload();
 
   return {
-    headers: new Headers(defaultHeaders),
+    headers: new Headers(headers),
     json: vi.fn().mockResolvedValue(overrides?.body || defaultBody),
     text: vi
       .fn()
@@ -225,10 +238,10 @@ export const createTestDate = (offset = 0): string => {
 export const testUUIDs = {
   job1: "550e8400-e29b-41d4-a716-446655440001",
   job2: "550e8400-e29b-41d4-a716-446655440002",
-  user1: "user-550e8400-e29b-41d4-a716-446655440001",
-  user2: "user-550e8400-e29b-41d4-a716-446655440002",
-  team1: "team-550e8400-e29b-41d4-a716-446655440001",
-  team2: "team-550e8400-e29b-41d4-a716-446655440002",
+  user1: "550e8400-e29b-41d4-a716-446655440011",
+  user2: "550e8400-e29b-41d4-a716-446655440012",
+  team1: "550e8400-e29b-41d4-a716-446655440021",
+  team2: "550e8400-e29b-41d4-a716-446655440022",
 };
 
 /**

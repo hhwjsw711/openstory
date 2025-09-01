@@ -41,7 +41,7 @@ describe("QStashClient", () => {
 
   describe("constructor", () => {
     it("should initialize with valid environment variables", () => {
-      const client = new QStashClient();
+      const _client = new QStashClient();
       expect(Client).toHaveBeenCalledWith({
         token: "test-qstash-token-12345",
       });

@@ -4,11 +4,10 @@
 
 import type { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ValidationError, VelroError } from "@/lib/errors";
+import { VelroError } from "@/lib/errors";
 import {
   createMockNextRequest,
   createMockQStashClient,
-  createMockSupabaseClient,
   createTestJobRow,
   setupVitestMocks,
   testUUIDs,
@@ -28,6 +27,10 @@ vi.mock("@/lib/qstash/job-manager", () => ({
     SCRIPT: "script",
   },
 }));
+
+// Import mocked functions
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
 
 vi.mock("next/server", () => ({
   NextResponse: {
@@ -52,11 +55,8 @@ describe("Job Creation API", () => {
       createJob: vi.fn(),
     };
 
-    const { getQStashClient } = require("@/lib/qstash/client");
-    const { getJobManager } = require("@/lib/qstash/job-manager");
-
-    getQStashClient.mockReturnValue(mockQStashClient);
-    getJobManager.mockReturnValue(mockJobManager);
+    vi.mocked(getQStashClient).mockReturnValue(mockQStashClient);
+    vi.mocked(getJobManager).mockReturnValue(mockJobManager);
   });
 
   afterEach(() => {
@@ -92,7 +92,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.createJob).toHaveBeenCalledWith({
         type: "image",
@@ -152,7 +152,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockQStashClient.publishVideoJob).toHaveBeenCalledWith(
         expect.any(Object),
@@ -186,7 +186,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockQStashClient.publishScriptJob).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -208,7 +208,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
       expect(mockQStashClient.publishImageJob).not.toHaveBeenCalled();
@@ -233,7 +233,7 @@ describe("Job Creation API", () => {
         method: "POST",
       };
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -262,7 +262,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -301,7 +301,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.failJob).toHaveBeenCalledWith(
         newJob.id,
@@ -330,7 +330,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
 
@@ -359,7 +359,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.createJob).not.toHaveBeenCalled();
 
@@ -395,7 +395,7 @@ describe("Job Creation API", () => {
         body: requestBody,
       });
 
-      const response = await POST(request as NextRequest);
+      const _response = await POST(request as NextRequest);
 
       expect(mockJobManager.createJob).toHaveBeenCalledWith({
         type: "image",
@@ -417,7 +417,7 @@ describe("Job Creation API", () => {
 
   describe("GET /api/v1/jobs/create", () => {
     it("should return endpoint information", async () => {
-      const response = await GET();
+      const _response = await GET();
 
       const { NextResponse } = require("next/server");
       expect(NextResponse.json).toHaveBeenCalledWith(
