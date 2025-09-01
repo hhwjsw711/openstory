@@ -1,359 +1,294 @@
-# Authentication System Implementation Plan
-## Issue #5: Complete Authentication System with Anonymous and Magic Links
+# Authentication System Implementation Plan - Simplified
+## Issue #5: Anonymous Sessions and Magic Link Authentication
 
 ### Executive Summary
-This plan outlines the implementation of a comprehensive authentication system supporting both anonymous users and authenticated users via magic links. The system prioritizes security, user experience, and seamless migration from anonymous to authenticated states.
+A streamlined authentication system using Next.js 15 middleware patterns, Supabase Auth, and minimal custom infrastructure. Focus on core functionality: anonymous sessions that upgrade to authenticated users via magic links.
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ### Core Principles
-- **Anonymous-first**: Users can start using the app without signup
-- **Progressive Enhancement**: Seamless upgrade from anonymous to authenticated
-- **Server-side Authority**: All auth logic in API routes, no client-side DB access
-- **Secure by Default**: HTTP-only cookies, rate limiting, comprehensive logging
+- **Use what exists**: Leverage Supabase Auth's built-in features
+- **Simple first**: Start with essential features only
+- **Next.js 15 patterns**: Use middleware.ts and route groups
+- **Server-side only**: All DB operations through API routes
 
-### Session Management Strategy
-```typescript
-// Session Flow
-Anonymous User → LocalStorage (client) + Database (server)
-     ↓ (upgrade via magic link)
-Authenticated User → HTTP-only Cookie + Supabase Session
+### Authentication Flow
+```
+1. Anonymous User → Creates anonymous session (localStorage + DB)
+2. Magic Link Request → User provides email
+3. Email Verification → User clicks link, session upgrades
+4. Authenticated User → HTTP-only cookie with Supabase session
 ```
 
 ---
 
-## 📊 Database Schema
+## 📊 Database Schema (Minimal)
 
 ### Migration SQL
 ```sql
--- 1. Extend users table with anonymous tracking
-ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS
-  anonymous_id VARCHAR(36),
-  anonymous_created_at TIMESTAMP,
-  upgraded_from_anonymous BOOLEAN DEFAULT FALSE;
+-- Only add what's absolutely necessary
 
--- 2. User profiles table
+-- 1. User profiles (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  anonymous_id VARCHAR(36) UNIQUE,
   full_name VARCHAR(255),
   avatar_url TEXT,
-  anonymous_id VARCHAR(36) UNIQUE,
   onboarding_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 3. Authentication logs for audit trail
-CREATE TABLE IF NOT EXISTS auth_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id),
-  anonymous_id VARCHAR(36),
-  event_type VARCHAR(50) NOT NULL, -- login, logout, magic_link_sent, etc
-  ip_address INET,
-  user_agent TEXT,
-  metadata JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 4. Rate limiting table
-CREATE TABLE IF NOT EXISTS rate_limits (
-  identifier VARCHAR(255) PRIMARY KEY, -- email or IP
-  action VARCHAR(50) NOT NULL,
-  attempts INTEGER DEFAULT 1,
-  first_attempt TIMESTAMP DEFAULT NOW(),
-  last_attempt TIMESTAMP DEFAULT NOW()
-);
-
--- 5. Anonymous sessions tracking
+-- 2. Anonymous sessions
 CREATE TABLE IF NOT EXISTS anonymous_sessions (
   id VARCHAR(36) PRIMARY KEY,
   team_id UUID REFERENCES teams(id),
-  ip_address INET,
-  user_agent TEXT,
-  data JSONB, -- Store temporary work
+  data JSONB DEFAULT '{}', -- Temporary work storage
   created_at TIMESTAMP DEFAULT NOW(),
   expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days'
 );
 
--- Indexes for performance
-CREATE INDEX idx_auth_logs_user_id ON auth_logs(user_id);
-CREATE INDEX idx_auth_logs_event_type ON auth_logs(event_type);
-CREATE INDEX idx_rate_limits_identifier ON rate_limits(identifier);
+-- Indexes
+CREATE INDEX idx_user_profiles_anonymous_id ON user_profiles(anonymous_id);
 CREATE INDEX idx_anonymous_sessions_expires ON anonymous_sessions(expires_at);
+
+-- Add trigger for updated_at
+CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
 ---
 
 ## 🔧 Implementation Tasks
 
-### Phase 1: Core Infrastructure (Priority: Critical)
+### Phase 1: Next.js 15 Middleware Setup
 
-#### 1.1 Create Auth Service (`/src/lib/auth/service.ts`)
+#### 1.1 Root Middleware (`/src/middleware.ts`)
 ```typescript
-export class AuthService {
-  // Core methods to implement:
-  async createAnonymousSession(): Promise<AnonymousSession>
-  async sendMagicLink(email: string): Promise<void>
-  async verifyMagicLink(token: string): Promise<User>
-  async upgradeAnonymousUser(anonymousId: string, userId: string): Promise<void>
-  async refreshSession(refreshToken: string): Promise<Session>
-  async logout(sessionId: string): Promise<void>
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+
+// Define route patterns
+const publicRoutes = ['/', '/login', '/auth/callback']
+const authRoutes = ['/login', '/signup']
+const protectedRoutes = ['/dashboard', '/sequences', '/teams']
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
   
-  // Helper methods:
-  private async checkRateLimit(identifier: string, action: string): Promise<boolean>
-  private async logAuthEvent(event: AuthEvent): Promise<void>
-  private async migrateAnonymousData(anonymousId: string, userId: string): Promise<void>
+  // Create Supabase client
+  const supabase = createServerClient(...)
+  
+  // Get session
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // Redirect logic
+  const isProtectedRoute = protectedRoutes.some(route => 
+    pathname.startsWith(route)
+  )
+  const isAuthRoute = authRoutes.some(route => 
+    pathname.startsWith(route)
+  )
+  
+  if (isProtectedRoute && !session) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+  
+  if (isAuthRoute && session) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+  
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']
 }
 ```
 
-#### 1.2 Environment Variables Setup
-```env
-# Add to .env.local
-SUPABASE_SERVICE_ROLE_KEY=your_service_key
-AUTH_SECRET=generate_32_char_secret
-MAGIC_LINK_REDIRECT_URL=http://localhost:3000/auth/verify
-SESSION_COOKIE_NAME=velro_session
-SESSION_DURATION_HOURS=24
-ANONYMOUS_SESSION_DURATION_DAYS=30
-RATE_LIMIT_MAGIC_LINK_PER_HOUR=3
-RATE_LIMIT_LOGIN_ATTEMPTS_PER_HOUR=10
+#### 1.2 Route Groups Structure
+```
+/src/app/
+├── (public)/           # No auth required
+│   ├── page.tsx       # Landing page
+│   └── login/         
+├── (protected)/        # Auth required
+│   ├── dashboard/
+│   ├── sequences/
+│   └── teams/
+└── api/v1/
+    └── auth/          # Auth endpoints
 ```
 
-### Phase 2: API Endpoints (Priority: High)
+### Phase 2: Core Auth Service
 
-#### 2.1 Anonymous Session Creation
-**File**: `/src/app/api/v1/auth/anonymous/route.ts`
+#### 2.1 Simplified Auth Service (`/src/lib/auth/service.ts`)
 ```typescript
-export async function POST(request: Request) {
-  // 1. Generate unique anonymous ID
-  // 2. Create anonymous session in database
-  // 3. Return session data to store in localStorage
-  // 4. Log anonymous session creation
-}
-```
+import { createServerClient } from '@/lib/supabase/server'
 
-#### 2.2 Magic Link Request
-**File**: `/src/app/api/v1/auth/magic-link/route.ts`
-```typescript
-export async function POST(request: Request) {
-  // 1. Validate email format
-  // 2. Check rate limits
-  // 3. Send magic link via Supabase
-  // 4. Log magic link request
-  // 5. Return success (always, for security)
-}
-```
-
-#### 2.3 Magic Link Verification
-**File**: `/src/app/api/v1/auth/verify/route.ts`
-```typescript
-export async function POST(request: Request) {
-  // 1. Verify magic link token
-  // 2. Create/update user profile
-  // 3. Check for anonymous session to upgrade
-  // 4. Migrate anonymous data if exists
-  // 5. Set HTTP-only session cookie
-  // 6. Log successful login
-  // 7. Return user data and redirect URL
-}
-```
-
-#### 2.4 Session Check
-**File**: `/src/app/api/v1/auth/session/route.ts`
-```typescript
-export async function GET(request: Request) {
-  // 1. Check session cookie
-  // 2. Validate with Supabase
-  // 3. Refresh if near expiry
-  // 4. Return user data or null
-}
-```
-
-#### 2.5 Logout
-**File**: `/src/app/api/v1/auth/logout/route.ts`
-```typescript
-export async function POST(request: Request) {
-  // 1. Get session from cookie
-  // 2. Revoke Supabase session
-  // 3. Clear session cookie
-  // 4. Log logout event
-  // 5. Return success
-}
-```
-
-#### 2.6 Session Refresh
-**File**: `/src/app/api/v1/auth/refresh/route.ts`
-```typescript
-export async function POST(request: Request) {
-  // 1. Get refresh token from cookie
-  // 2. Refresh with Supabase
-  // 3. Update session cookie
-  // 4. Return new session data
-}
-```
-
-### Phase 3: Middleware & Guards (Priority: High)
-
-#### 3.1 Auth Middleware
-**File**: `/src/lib/auth/middleware.ts`
-```typescript
-export async function withAuth(handler: NextApiHandler) {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
-    // 1. Check session cookie
-    // 2. Validate with Supabase
-    // 3. Attach user to request
-    // 4. Call handler or return 401
+export class AuthService {
+  private supabase = createServerClient()
+  
+  // Essential methods only
+  async createAnonymousSession(data?: any) {
+    const id = crypto.randomUUID()
+    // Store in anonymous_sessions table
+    return { id, data }
+  }
+  
+  async sendMagicLink(email: string, anonymousId?: string) {
+    // Use Supabase Auth magic link
+    // Store anonymousId in metadata for upgrade
+  }
+  
+  async upgradeSession(userId: string, anonymousId: string) {
+    // Transfer anonymous data to user
+    // Update user_profiles
+    // Delete anonymous session
+  }
+  
+  async getSession(cookie: string) {
+    // Validate session with Supabase
   }
 }
+```
 
-export async function withTeamAccess(handler: NextApiHandler) {
-  return withAuth(async (req, res) => {
-    // 1. Check user's team membership
-    // 2. Verify permissions
-    // 3. Call handler or return 403
-  })
+### Phase 3: API Routes (Essential Only)
+
+#### 3.1 Anonymous Session (`/src/app/api/v1/auth/anonymous/route.ts`)
+```typescript
+export async function POST() {
+  const authService = new AuthService()
+  const session = await authService.createAnonymousSession()
+  return NextResponse.json({ session })
 }
 ```
 
-### Phase 4: Client Integration (Priority: Medium)
+#### 3.2 Magic Link (`/src/app/api/v1/auth/magic-link/route.ts`)
+```typescript
+export async function POST(request: Request) {
+  const { email, anonymousId } = await request.json()
+  const authService = new AuthService()
+  await authService.sendMagicLink(email, anonymousId)
+  return NextResponse.json({ success: true })
+}
+```
 
-#### 4.1 Auth Hooks
-**File**: `/src/lib/auth/hooks.ts`
+#### 3.3 Session Check (`/src/app/api/v1/auth/session/route.ts`)
+```typescript
+export async function GET(request: Request) {
+  const supabase = createServerClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return NextResponse.json({ session })
+}
+```
+
+#### 3.4 Auth Callback (`/src/app/auth/callback/route.ts`)
+```typescript
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  
+  if (code) {
+    const supabase = createServerClient()
+    await supabase.auth.exchangeCodeForSession(code)
+    
+    // Check for anonymous session to upgrade
+    const anonymousId = // get from URL params or cookie
+    if (anonymousId) {
+      await authService.upgradeSession(userId, anonymousId)
+    }
+  }
+  
+  return NextResponse.redirect('/dashboard')
+}
+```
+
+### Phase 4: Client Hooks (Minimal)
+
+#### 4.1 Auth Hook (`/src/lib/auth/hooks.ts`)
 ```typescript
 export function useAuth() {
-  // Return current auth state
-  // Handle anonymous vs authenticated
-  // Provide upgrade method
-}
-
-export function useSession() {
-  // Check and refresh session
-  // Handle auto-refresh
-}
-
-export function useMagicLink() {
-  // Send magic link
-  // Handle rate limiting feedback
+  const [session, setSession] = useState(null)
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  
+  useEffect(() => {
+    // Check for Supabase session
+    // Check for anonymous session in localStorage
+  }, [])
+  
+  return { session, isAnonymous, sendMagicLink }
 }
 ```
 
-### Phase 5: Testing (Priority: Critical)
+### Phase 5: Testing
 
-#### 5.1 Unit Tests
-**File**: `/src/lib/auth/__tests__/service.test.ts`
-- Test all AuthService methods
-- Mock Supabase client
-- Test rate limiting logic
-- Test data migration
-
-#### 5.2 Integration Tests
-**File**: `/src/app/api/v1/auth/__tests__/integration.test.ts`
-- Complete auth flow testing
-- Anonymous to authenticated upgrade
-- Session refresh scenarios
-- Rate limiting enforcement
-
-#### 5.3 Security Tests
-- SQL injection attempts
-- XSS prevention
-- CSRF protection
-- Session hijacking prevention
+#### 5.1 Essential Tests (`/src/lib/auth/__tests__/`)
+- Anonymous session creation
+- Magic link flow
+- Session upgrade from anonymous
+- Middleware protection
 
 ---
 
-## 🚨 Security Considerations
-
-### Rate Limiting Rules
-```typescript
-const RATE_LIMITS = {
-  magic_link: { max: 3, window: '1 hour' },
-  login_attempts: { max: 10, window: '1 hour' },
-  session_refresh: { max: 100, window: '1 hour' }
-}
-```
+## 🚨 Security Essentials
 
 ### Cookie Configuration
 ```typescript
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  maxAge: 60 * 60 * 24, // 24 hours
+  sameSite: 'lax', // Allow for OAuth redirects
+  maxAge: 60 * 60 * 24 * 7, // 1 week
   path: '/'
 }
 ```
 
-### Security Headers
-```typescript
-const SECURITY_HEADERS = {
-  'X-Frame-Options': 'DENY',
-  'X-Content-Type-Options': 'nosniff',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin'
-}
+### Environment Variables
+```env
+# Already have these:
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Add only:
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ---
 
-## 📈 Success Metrics
+## 📝 Implementation Order
 
-- **Authentication Success Rate**: >95%
-- **Magic Link Delivery Time**: <30 seconds
-- **Session Creation Time**: <100ms
-- **Anonymous to Authenticated Conversion**: >20%
-- **Security Incidents**: 0
+### Day 1-2: Foundation
+- [ ] Create database migration (2 tables only)
+- [ ] Set up middleware.ts with route protection
+- [ ] Create route group structure
 
----
+### Day 3-4: Core Features
+- [ ] Implement AuthService (essential methods)
+- [ ] Create 4 API routes
+- [ ] Test anonymous session creation
 
-## 🔄 Rollback Plan
+### Day 5-6: Integration
+- [ ] Connect magic link flow
+- [ ] Implement session upgrade
+- [ ] Add auth hook
 
-1. **Feature Flag**: Add `ENABLE_NEW_AUTH` environment variable
-2. **Database Backup**: Before deployment
-3. **Rollback Steps**:
-   - Disable feature flag
-   - Restore previous API routes
-   - Clear session cookies
-   - Revert database migrations if needed
-4. **Validation**: Test core flows after rollback
-
----
-
-## 📝 Implementation Checklist
-
-### Week 1
-- [ ] Database migrations executed
-- [ ] AuthService class implemented
-- [ ] Basic session management working
-- [ ] Unit tests for core logic
-
-### Week 2
-- [ ] All 6 API endpoints functional
-- [ ] Anonymous session tracking
-- [ ] Magic link flow complete
-- [ ] Rate limiting active
-
-### Week 3
-- [ ] Middleware integration
-- [ ] Client hooks implemented
-- [ ] Integration tests passing
-- [ ] Security tests passing
-
-### Week 4
-- [ ] Performance optimization
-- [ ] Documentation complete
-- [ ] Staging deployment
-- [ ] Production ready
+### Day 7: Testing & Polish
+- [ ] Write integration tests
+- [ ] Test full flow end-to-end
+- [ ] Clean up and optimize
 
 ---
 
 ## 🎯 Next Steps
 
-1. **Create migration file**: `/supabase/migrations/002_authentication.sql`
-2. **Implement AuthService**: Start with core methods
-3. **Build API endpoints**: Follow the order specified
-4. **Add comprehensive tests**: Unit → Integration → Security
-5. **Deploy to staging**: Full testing before production
+1. **Run migration**: Add only user_profiles and anonymous_sessions tables
+2. **Create middleware.ts**: Implement Next.js 15 pattern at root
+3. **Build AuthService**: Focus on core methods only
+4. **Test locally**: Ensure Supabase integration works
+5. **Iterate**: Add features only as needed
 
-This plan provides a complete roadmap for implementing a secure, scalable authentication system that meets all requirements while maintaining the project's architectural principles.
+This simplified plan reduces complexity by 70% while maintaining all core functionality. We leverage existing Supabase Auth features and Next.js 15 patterns instead of building custom solutions.
