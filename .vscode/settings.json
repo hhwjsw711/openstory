@@ -31,7 +31,6 @@
   "typescript.suggest.includeCompletionsForModuleExports": true,
   "typescript.preferences.includePackageJsonAutoImports": "auto",
   "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit",
     "source.fixAll.biome": "explicit"
   },
   "files.associations": {
@@ -40,6 +39,33 @@
   "githubPullRequests.createDefaultBaseBranch": "repositoryDefault",
   "task.allowAutomaticTasks": "on",
   "[typescript]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features"
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit"
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit"
+    }
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit"
+    }
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
   }
 }

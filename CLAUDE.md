@@ -36,7 +36,7 @@ pnpm supabase:types     # Generate TypeScript types from database
 
 ### TypeScript
 ```bash
-pnpx tsc --noEmit      # Type check without building
+pnpm tsc --noEmit      # Type check without building
 ```
 
 ## Project Architecture
@@ -144,4 +144,4 @@ Frames are the building blocks of sequences:
 
 ### Testing
 - Use vitest to create tests and include tests for all logic on frontend and backend.
-
+- Include database types in the codebase from types/database instead of supabase/gen.types

@@ -1,0 +1,270 @@
+/**
+ * QStash client wrapper for Velro
+ * Provides typed message publishing with error handling and logging
+ */
+
+import { Client } from "@upstash/qstash";
+import { ConfigurationError, VelroError } from "@/lib/errors";
+
+export interface QStashMessage {
+  url: string;
+  body: Record<string, unknown>;
+  headers?: Record<string, string>;
+  delay?: number;
+  not_before?: number;
+  deduplicationId?: string;
+  contentBasedDeduplication?: boolean;
+  retries?: number;
+  callback?: string;
+  failure_callback?: string;
+}
+
+export interface QStashResponse {
+  messageId: string;
+  deduplicated?: boolean;
+}
+
+export interface JobPayload extends Record<string, unknown> {
+  jobId: string;
+  type: "image" | "video" | "script";
+  data: Record<string, unknown>;
+  userId?: string;
+  teamId?: string;
+}
+
+class QStashClient {
+  private client: Client;
+  private baseWebhookUrl: string;
+
+  constructor() {
+    const token = process.env.QSTASH_TOKEN;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!token) {
+      throw new ConfigurationError(
+        "QSTASH_TOKEN environment variable is required",
+      );
+    }
+
+    if (!apiUrl) {
+      throw new ConfigurationError(
+        "NEXT_PUBLIC_API_URL environment variable is required",
+      );
+    }
+
+    this.client = new Client({ token });
+    this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
+
+    console.log("[QStash] Client initialized", {
+      baseWebhookUrl: this.baseWebhookUrl,
+      hasToken: !!token,
+    });
+  }
+
+  /**
+   * Publish a message to QStash
+   */
+  async publishMessage(message: QStashMessage): Promise<QStashResponse> {
+    try {
+      console.log("[QStash] Publishing message", {
+        url: message.url,
+        hasBody: !!message.body,
+        delay: message.delay,
+        deduplicationId: message.deduplicationId,
+      });
+
+      const response = await this.client.publishJSON({
+        url: message.url,
+        body: message.body,
+        headers: {
+          "Content-Type": "application/json",
+          ...message.headers,
+        },
+        delay: message.delay,
+        notBefore: message.not_before,
+        deduplicationId: message.deduplicationId,
+        contentBasedDeduplication: message.contentBasedDeduplication,
+        retries: message.retries ?? 3, // Default to 3 retries
+        callback: message.callback,
+        failureCallback: message.failure_callback,
+      });
+
+      const result = {
+        messageId: response.messageId,
+        deduplicated: response.deduplicated,
+      };
+
+      console.log("[QStash] Message published successfully", {
+        messageId: result.messageId,
+        deduplicated: result.deduplicated,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("[QStash] Failed to publish message", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        url: message.url,
+      });
+
+      if (error instanceof Error) {
+        throw new VelroError(
+          `Failed to publish QStash message: ${error.message}`,
+          "QSTASH_PUBLISH_ERROR",
+          503,
+          { originalError: error.name, url: message.url },
+        );
+      }
+
+      throw new VelroError(
+        "Failed to publish QStash message: Unknown error",
+        "QSTASH_PUBLISH_ERROR",
+        503,
+        { url: message.url },
+      );
+    }
+  }
+
+  /**
+   * Publish an image generation job
+   */
+  async publishImageJob(
+    payload: JobPayload,
+    options?: {
+      delay?: number;
+      deduplicationId?: string;
+    },
+  ): Promise<QStashResponse> {
+    return this.publishMessage({
+      url: `${this.baseWebhookUrl}/image`,
+      body: payload,
+      delay: options?.delay,
+      deduplicationId: options?.deduplicationId ?? payload.jobId,
+      contentBasedDeduplication: false, // Use explicit deduplication ID
+      retries: 3,
+    });
+  }
+
+  /**
+   * Publish a video generation job
+   */
+  async publishVideoJob(
+    payload: JobPayload,
+    options?: {
+      delay?: number;
+      deduplicationId?: string;
+    },
+  ): Promise<QStashResponse> {
+    return this.publishMessage({
+      url: `${this.baseWebhookUrl}/video`,
+      body: payload,
+      delay: options?.delay,
+      deduplicationId: options?.deduplicationId ?? payload.jobId,
+      contentBasedDeduplication: false,
+      retries: 3,
+    });
+  }
+
+  /**
+   * Publish a script analysis job
+   */
+  async publishScriptJob(
+    payload: JobPayload,
+    options?: {
+      delay?: number;
+      deduplicationId?: string;
+    },
+  ): Promise<QStashResponse> {
+    return this.publishMessage({
+      url: `${this.baseWebhookUrl}/script`,
+      body: payload,
+      delay: options?.delay,
+      deduplicationId: options?.deduplicationId ?? payload.jobId,
+      contentBasedDeduplication: false,
+      retries: 3,
+    });
+  }
+
+  /**
+   * Cancel a message (if it hasn't been processed yet)
+   */
+  async cancelMessage(messageId: string): Promise<void> {
+    try {
+      console.log("[QStash] Cancelling message", { messageId });
+
+      await this.client.messages.delete(messageId);
+
+      console.log("[QStash] Message cancelled successfully", { messageId });
+    } catch (error) {
+      console.error("[QStash] Failed to cancel message", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        messageId,
+      });
+
+      if (error instanceof Error) {
+        throw new VelroError(
+          `Failed to cancel QStash message: ${error.message}`,
+          "QSTASH_CANCEL_ERROR",
+          503,
+          { originalError: error.name, messageId },
+        );
+      }
+
+      throw new VelroError(
+        "Failed to cancel QStash message: Unknown error",
+        "QSTASH_CANCEL_ERROR",
+        503,
+        { messageId },
+      );
+    }
+  }
+
+  /**
+   * Get message details
+   */
+  async getMessage(messageId: string): Promise<unknown> {
+    try {
+      console.log("[QStash] Getting message details", { messageId });
+
+      const message = await this.client.messages.get(messageId);
+
+      console.log("[QStash] Message retrieved successfully", { messageId });
+
+      return message;
+    } catch (error) {
+      console.error("[QStash] Failed to get message", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        messageId,
+      });
+
+      if (error instanceof Error) {
+        throw new VelroError(
+          `Failed to get QStash message: ${error.message}`,
+          "QSTASH_GET_ERROR",
+          503,
+          { originalError: error.name, messageId },
+        );
+      }
+
+      throw new VelroError(
+        "Failed to get QStash message: Unknown error",
+        "QSTASH_GET_ERROR",
+        503,
+        { messageId },
+      );
+    }
+  }
+}
+
+// Create a singleton instance
+let qstashClient: QStashClient | null = null;
+
+export const getQStashClient = (): QStashClient => {
+  if (!qstashClient) {
+    qstashClient = new QStashClient();
+  }
+  return qstashClient;
+};
+
+// Export types and client
+export { QStashClient };
+export default getQStashClient;

@@ -345,7 +345,7 @@ EOF
 
 ### 3. Testing and Validation
 - Run tests: `pnpm test`
-- Check types: `pnpx tsc --noEmit`
+- Check types: `pnpm tsc --noEmit`
 - Lint code: `pnpx @biomejs/biome check --write .`
 
 ### 4. Commit Guidelines
