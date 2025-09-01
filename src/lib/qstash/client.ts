@@ -24,7 +24,7 @@ export interface QStashResponse {
   deduplicated?: boolean;
 }
 
-export interface JobPayload {
+export interface JobPayload extends Record<string, unknown> {
   jobId: string;
   type: "image" | "video" | "script";
   data: Record<string, unknown>;

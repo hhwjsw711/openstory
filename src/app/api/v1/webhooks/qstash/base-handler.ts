@@ -6,14 +6,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError, ValidationError, VelroError } from "@/lib/errors";
-import { getJobManager, type JobPayload } from "@/lib/qstash/job-manager";
+import type { JobPayload } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
 import type { QStashVerifiedRequest } from "@/lib/qstash/middleware";
 
 // Base webhook request schema
 export const webhookRequestSchema = z.object({
   jobId: z.string().uuid(),
-  type: z.enum(["image", "video", "script"]),
-  data: z.record(z.unknown()),
+  type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
+  data: z.record(z.string(), z.unknown()),
   userId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
 });

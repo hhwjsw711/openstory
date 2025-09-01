@@ -3,7 +3,7 @@
  * Verifies incoming webhook requests are authentically from QStash
  */
 
-import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+import { Receiver } from "@upstash/qstash";
 import { type NextRequest, NextResponse } from "next/server";
 import { ConfigurationError, VelroError } from "@/lib/errors";
 
@@ -48,17 +48,50 @@ export async function verifyQStashSignature(
       ),
     });
 
-    // Use QStash's built-in signature verification
-    const verifiedRequest = await verifySignatureAppRouter(
-      request,
+    // Create receiver with signing keys
+    const receiver = new Receiver({
       currentSigningKey,
       nextSigningKey,
-    );
+    });
 
     // Extract QStash headers for debugging and tracking
+    const signature = request.headers.get("upstash-signature");
     const messageId = request.headers.get("upstash-message-id");
     const scheduleId = request.headers.get("upstash-schedule-id");
     const retryCount = request.headers.get("upstash-retried");
+
+    if (!signature) {
+      throw new VelroError(
+        "Missing QStash signature header",
+        "QSTASH_SIGNATURE_MISSING",
+        401,
+        {
+          url: request.url,
+          method: request.method,
+        },
+      );
+    }
+
+    // Get the raw request body
+    const body = await request.text();
+
+    // Verify the signature
+    const isValid = await receiver.verify({
+      signature,
+      body,
+    });
+
+    if (!isValid) {
+      throw new VelroError(
+        "Invalid QStash signature",
+        "QSTASH_SIGNATURE_INVALID",
+        401,
+        {
+          url: request.url,
+          method: request.method,
+        },
+      );
+    }
 
     console.log("[QStash Middleware] Signature verified successfully", {
       url: request.url,
@@ -67,8 +100,13 @@ export async function verifyQStashSignature(
       retryCount: retryCount ? Number.parseInt(retryCount, 10) : 0,
     });
 
-    // Add QStash metadata to the request object
-    const enhancedRequest = verifiedRequest as QStashVerifiedRequest;
+    // Create a new request with the body (since we consumed it)
+    const enhancedRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body,
+    }) as QStashVerifiedRequest;
+
     enhancedRequest.qstashSignatureVerified = true;
     enhancedRequest.qstashMessageId = messageId || undefined;
     enhancedRequest.qstashScheduleId = scheduleId || undefined;

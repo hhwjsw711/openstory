@@ -30,21 +30,20 @@ export type JobTypeType = (typeof JobType)[keyof typeof JobType];
 
 // Zod schemas for validation
 export const createJobSchema = z.object({
-  type: z.enum([JobType.IMAGE, JobType.VIDEO, JobType.SCRIPT]),
-  payload: z.record(z.unknown()),
+  type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
+  payload: z.record(z.string(), z.unknown()),
   userId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
 });
 
 export const updateJobSchema = z.object({
-  status: z.enum([
-    JobStatus.PENDING,
-    JobStatus.RUNNING,
-    JobStatus.COMPLETED,
-    JobStatus.FAILED,
-    JobStatus.CANCELLED,
-  ]),
-  result: z.record(z.unknown()).optional(),
+  status: z
+    .literal("pending")
+    .or(z.literal("running"))
+    .or(z.literal("completed"))
+    .or(z.literal("failed"))
+    .or(z.literal("cancelled")),
+  result: z.record(z.string(), z.unknown()).optional(),
   error: z.string().optional(),
   startedAt: z.string().datetime().optional(),
   completedAt: z.string().datetime().optional(),

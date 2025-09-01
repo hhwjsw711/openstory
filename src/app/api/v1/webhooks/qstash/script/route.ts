@@ -3,7 +3,7 @@
  * Processes script analysis jobs from QStash
  */
 
-import type { JobPayload } from "@/lib/qstash/job-manager";
+import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
