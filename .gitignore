@@ -54,3 +54,6 @@ workflow/logs/
 workflow/data/
 .launch-claude.sh
 .env*.local
+
+*storybook.log
+storybook-static
