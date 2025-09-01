@@ -76,7 +76,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(mockJobManager.getJob).toHaveBeenCalledWith(testUUIDs.job1);
@@ -110,7 +110,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(mockJobManager.cancelJob).toHaveBeenCalledWith(testUUIDs.job1);
@@ -134,7 +134,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(mockJobManager.cancelJob).not.toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(mockJobManager.cancelJob).not.toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: "non-existent" },
+        params: Promise.resolve({ id: "non-existent" }),
       });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -195,7 +195,9 @@ describe("Job Cancellation API", () => {
 
     it("should handle invalid job ID", async () => {
       const request = {} as NextRequest;
-      const _response = await POST(request, { params: { id: "" } });
+      const _response = await POST(request, {
+        params: Promise.resolve({ id: "" }),
+      });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -215,7 +217,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -242,7 +244,7 @@ describe("Job Cancellation API", () => {
 
       const request = {} as NextRequest;
       const _response = await POST(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(mockJobManager.cancelJob).toHaveBeenCalledWith(testUUIDs.job1);
@@ -261,7 +263,7 @@ describe("Job Cancellation API", () => {
     it("should return endpoint information", async () => {
       const request = {} as NextRequest;
       const _response = await GET(request, {
-        params: { id: testUUIDs.job1 },
+        params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
       expect(NextResponse.json).toHaveBeenCalledWith(

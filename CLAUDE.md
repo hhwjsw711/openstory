@@ -36,7 +36,7 @@ pnpm supabase:types     # Generate TypeScript types from database
 
 ### TypeScript
 ```bash
-pnpx tsc --noEmit      # Type check without building
+pnpm tsc --noEmit      # Type check without building
 ```
 
 ## Project Architecture

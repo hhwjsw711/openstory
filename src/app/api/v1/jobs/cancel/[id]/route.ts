@@ -24,10 +24,10 @@ interface JobCancelResponse {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: jobId } = params;
+    const { id: jobId } = await params;
 
     console.log("[JobCancel] Received cancellation request", {
       jobId,
@@ -145,7 +145,7 @@ export async function POST(
     return NextResponse.json(response);
   } catch (error) {
     console.error("[JobCancel] Job cancellation failed", {
-      jobId: params?.id,
+      jobId: (await params)?.id,
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
@@ -167,9 +167,9 @@ export async function POST(
  */
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: jobId } = params;
+  const { id: jobId } = await params;
 
   return NextResponse.json({
     message: `Job cancellation endpoint for job ${jobId}`,

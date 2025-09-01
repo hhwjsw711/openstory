@@ -65,7 +65,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: testUUIDs.job1 } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: testUUIDs.job1 }),
+      });
 
       expect(mockJobManager.getJob).toHaveBeenCalledWith(testUUIDs.job1, false);
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -103,7 +105,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}?includeEvents=true`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: testUUIDs.job1 } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: testUUIDs.job1 }),
+      });
 
       expect(mockJobManager.getJob).toHaveBeenCalledWith(testUUIDs.job1, true);
       expect(NextResponse.json).toHaveBeenCalledWith(
@@ -133,7 +137,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}?includeResult=false`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: testUUIDs.job1 } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: testUUIDs.job1 }),
+      });
 
       // biome-ignore lint/suspicious/noExplicitAny: Testing mock calls
       const responseData = (NextResponse.json as any).mock.calls[0][0];
@@ -147,7 +153,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/non-existent`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: "non-existent" } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: "non-existent" }),
+      });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -166,7 +174,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: "" } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: "" }),
+      });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -188,7 +198,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: testUUIDs.job1 } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: testUUIDs.job1 }),
+      });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -214,7 +226,9 @@ describe("Job Status API", () => {
         url: `https://example.com/api/v1/jobs/status/${testUUIDs.job1}`,
       } as NextRequest;
 
-      const _response = await GET(request, { params: { id: testUUIDs.job1 } });
+      const _response = await GET(request, {
+        params: Promise.resolve({ id: testUUIDs.job1 }),
+      });
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({

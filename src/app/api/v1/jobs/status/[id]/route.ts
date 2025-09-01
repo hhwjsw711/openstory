@@ -53,10 +53,10 @@ interface JobStatusResponse {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: jobId } = params;
+    const { id: jobId } = await params;
 
     console.log("[JobStatus] Received status request", {
       jobId,
@@ -140,7 +140,7 @@ export async function GET(
     return NextResponse.json(response);
   } catch (error) {
     console.error("[JobStatus] Failed to get job status", {
-      jobId: params?.id,
+      jobId: (await params)?.id,
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
