@@ -9,20 +9,14 @@ This document outlines a step-by-step implementation plan for adding Storybook v
 ### 1.1 Installation and Initial Setup
 
 ```bash
-# Install Storybook v9 for Next.js 15 with Vite builder
-pnpm add -D @storybook/nextjs@^9.0.0 @storybook/react@^9.0.0 @storybook/addon-essentials@^9.0.0 @storybook/addon-interactions@^9.0.0 @storybook/test@^9.0.0 @storybook/addon-themes@^9.0.0 @storybook/addon-coverage@^2.0.0 @storybook/addon-viewport@^9.0.0 @storybook/addon-docs@^9.0.0
-
-# Install v9-compatible testing utilities with improved performance
-pnpm add -D @storybook/test-runner@^0.21.0 @storybook/addon-a11y@^9.0.0 @storybook/addon-measure@^9.0.0 @storybook/addon-outline@^9.0.0
-
-# Install MSW 2.x for v9 compatibility
-pnpm add -D msw@^2.7.0 msw-storybook-addon@^2.0.5
+# Install Storybook v9 for Next.js 15
+pnpm create storybook@latest
 
 # Install TanStack Query v5 for data fetching
 pnpm add @tanstack/react-query@^5.63.0 @tanstack/react-query-devtools@^5.63.0
 
 # Install additional v9 performance tools
-pnpm add -D @storybook/addon-performance@^1.0.0 vite@^6.0.0
+pnpm add -D @storybook/addon-performance@^1.0.0
 ```
 
 ### 1.2 Storybook v9 Configuration Files
