@@ -1,0 +1,302 @@
+/**
+ * Test utilities for QStash async job queue integration
+ * Provides mocks, fixtures, and test helpers for unit testing
+ */
+
+import { vi } from "vitest";
+import type { JobPayload, QStashResponse } from "./client";
+import type { JobRow } from "./job-manager";
+
+/**
+ * Mock QStash client for testing
+ */
+export const createMockQStashClient = () => ({
+  publishMessage: vi.fn().mockResolvedValue({
+    messageId: "msg_test123456789",
+    deduplicated: false,
+  } as QStashResponse),
+  publishImageJob: vi.fn().mockResolvedValue({
+    messageId: "msg_image123456789",
+    deduplicated: false,
+  } as QStashResponse),
+  publishVideoJob: vi.fn().mockResolvedValue({
+    messageId: "msg_video123456789",
+    deduplicated: false,
+  } as QStashResponse),
+  publishScriptJob: vi.fn().mockResolvedValue({
+    messageId: "msg_script123456789",
+    deduplicated: false,
+  } as QStashResponse),
+  cancelMessage: vi.fn().mockResolvedValue(undefined),
+  getMessage: vi.fn().mockResolvedValue({
+    messageId: "msg_test123456789",
+    url: "https://example.com/webhook",
+    body: "test body",
+  }),
+});
+
+/**
+ * Mock Supabase client for testing
+ */
+export const createMockSupabaseClient = () => {
+  const mockSelect = vi.fn().mockReturnThis();
+  const mockInsert = vi.fn().mockReturnThis();
+  const mockUpdate = vi.fn().mockReturnThis();
+  const mockDelete = vi.fn().mockReturnThis();
+  const mockEq = vi.fn().mockReturnThis();
+  const mockSingle = vi.fn().mockReturnThis();
+  const mockLimit = vi.fn().mockReturnThis();
+  const mockOrder = vi.fn().mockReturnThis();
+  const mockRange = vi.fn().mockReturnThis();
+
+  return {
+    from: vi.fn(() => ({
+      select: mockSelect,
+      insert: mockInsert,
+      update: mockUpdate,
+      delete: mockDelete,
+      eq: mockEq,
+      single: mockSingle,
+      limit: mockLimit,
+      order: mockOrder,
+      range: mockRange,
+    })),
+    mockHelpers: {
+      mockSelect,
+      mockInsert,
+      mockUpdate,
+      mockDelete,
+      mockEq,
+      mockSingle,
+      mockLimit,
+      mockOrder,
+      mockRange,
+    },
+  };
+};
+
+/**
+ * Mock QStash Receiver for signature verification testing
+ */
+export const createMockQStashReceiver = (shouldVerify = true) => ({
+  verify: vi.fn().mockResolvedValue(shouldVerify),
+});
+
+/**
+ * Test job payload fixtures
+ */
+export const createTestJobPayload = (
+  overrides?: Partial<JobPayload>,
+): JobPayload => ({
+  jobId: "550e8400-e29b-41d4-a716-446655440000",
+  type: "image",
+  data: {
+    prompt: "A beautiful landscape with mountains",
+    style: "photographic",
+    width: 1024,
+    height: 1024,
+  },
+  userId: "user123",
+  teamId: "team456",
+  ...overrides,
+});
+
+/**
+ * Test job record fixtures
+ */
+export const createTestJobRow = (overrides?: Partial<JobRow>): JobRow => ({
+  id: "550e8400-e29b-41d4-a716-446655440000",
+  type: "image",
+  status: "pending",
+  payload: {
+    prompt: "A beautiful landscape with mountains",
+    style: "photographic",
+    width: 1024,
+    height: 1024,
+  },
+  result: null,
+  error: null,
+  user_id: "user123",
+  team_id: "team456",
+  created_at: "2024-01-01T00:00:00.000Z",
+  updated_at: "2024-01-01T00:00:00.000Z",
+  started_at: null,
+  completed_at: null,
+  ...overrides,
+});
+
+/**
+ * Test QStash webhook request fixtures
+ */
+export const createTestWebhookRequest = (
+  overrides?: Partial<{
+    headers: Record<string, string>;
+    body: Record<string, unknown>;
+    url: string;
+    method: string;
+  }>,
+) => {
+  const defaultHeaders = {
+    "content-type": "application/json",
+    "upstash-signature": "test-signature-12345",
+    "upstash-message-id": "msg_test123456789",
+    "upstash-timestamp": "1704067200",
+    ...overrides?.headers,
+  };
+
+  const defaultBody = createTestJobPayload();
+
+  return {
+    headers: new Headers(defaultHeaders),
+    json: vi.fn().mockResolvedValue(overrides?.body || defaultBody),
+    text: vi
+      .fn()
+      .mockResolvedValue(JSON.stringify(overrides?.body || defaultBody)),
+    url: overrides?.url || "https://example.com/api/v1/webhooks/qstash/image",
+    method: overrides?.method || "POST",
+  };
+};
+
+/**
+ * Generate test QStash signature (mock implementation)
+ */
+export const generateTestSignature = (
+  body: string,
+  timestamp = "1704067200",
+  key = "test-signing-key",
+): string => {
+  // This is a mock implementation for testing
+  // In real usage, QStash generates the actual signature
+  return `test-signature-${Buffer.from(`${key}-${timestamp}-${body.length}`)
+    .toString("base64")
+    .slice(0, 16)}`;
+};
+
+/**
+ * Test environment variables setup
+ */
+export const setupTestEnv = () => {
+  process.env.QSTASH_TOKEN = "test-qstash-token-12345";
+  process.env.QSTASH_CURRENT_SIGNING_KEY = "test-current-signing-key";
+  process.env.QSTASH_NEXT_SIGNING_KEY = "test-next-signing-key";
+  process.env.QSTASH_URL = "https://qstash.upstash.io";
+  process.env.NEXT_PUBLIC_API_URL = "https://test-api.example.com";
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test-project.supabase.co";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+};
+
+/**
+ * Clean up test environment
+ */
+export const cleanupTestEnv = () => {
+  delete process.env.QSTASH_TOKEN;
+  delete process.env.QSTASH_CURRENT_SIGNING_KEY;
+  delete process.env.QSTASH_NEXT_SIGNING_KEY;
+  delete process.env.QSTASH_URL;
+  delete process.env.NEXT_PUBLIC_API_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+};
+
+/**
+ * Assert helpers for testing
+ */
+export const assertJobMatches = (
+  actualJob: JobRow,
+  expectedJob: Partial<JobRow>,
+) => {
+  Object.entries(expectedJob).forEach(([key, value]) => {
+    expect(actualJob[key as keyof JobRow]).toEqual(value);
+  });
+};
+
+/**
+ * Time-related test utilities
+ */
+export const createTestDate = (offset = 0): string => {
+  const date = new Date("2024-01-01T00:00:00.000Z");
+  date.setMinutes(date.getMinutes() + offset);
+  return date.toISOString();
+};
+
+/**
+ * UUID test utilities
+ */
+export const testUUIDs = {
+  job1: "550e8400-e29b-41d4-a716-446655440001",
+  job2: "550e8400-e29b-41d4-a716-446655440002",
+  user1: "user-550e8400-e29b-41d4-a716-446655440001",
+  user2: "user-550e8400-e29b-41d4-a716-446655440002",
+  team1: "team-550e8400-e29b-41d4-a716-446655440001",
+  team2: "team-550e8400-e29b-41d4-a716-446655440002",
+};
+
+/**
+ * Error test helpers
+ */
+export const expectVelroError = (
+  error: unknown,
+  code: string,
+  statusCode: number,
+) => {
+  expect(error).toBeInstanceOf(Error);
+  const velroError = error as any;
+  expect(velroError.code).toBe(code);
+  expect(velroError.statusCode).toBe(statusCode);
+};
+
+/**
+ * Mock Next.js Request/Response for API route testing
+ */
+export const createMockNextRequest = (options?: {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  searchParams?: Record<string, string>;
+}) => {
+  const url = new URL(options?.url || "https://example.com/api/test");
+
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+
+  return {
+    method: options?.method || "POST",
+    url: url.toString(),
+    headers: new Headers(options?.headers || {}),
+    json: vi.fn().mockResolvedValue(options?.body || {}),
+    text: vi.fn().mockResolvedValue(JSON.stringify(options?.body || {})),
+  };
+};
+
+export const createMockNextResponse = () => ({
+  json: vi.fn().mockImplementation((data) => ({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(data),
+  })),
+});
+
+/**
+ * Vitest test setup helper
+ */
+export const setupVitestMocks = () => {
+  // Mock console methods to avoid noise in tests
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+
+  // Setup test environment
+  setupTestEnv();
+
+  return {
+    restoreConsole: () => {
+      vi.restoreAllMocks();
+    },
+    cleanupEnv: cleanupTestEnv,
+  };
+};
