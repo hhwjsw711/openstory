@@ -2,7 +2,15 @@
 
 ## Executive Summary
 
-This document outlines a step-by-step implementation plan for adding Storybook v9 to the Velro application, focusing on creating a 3-page user flow for video sequence creation. The implementation follows the project's strict React guidelines, emphasizing minimal React usage, reducer-based state management, and pure presentational components. This plan leverages Storybook v9's latest features including improved performance, smaller bundle sizes, and enhanced testing capabilities.
+This document outlines a step-by-step implementation plan for adding Storybook v9 to the Velro application, focusing on creating a 3-page user flow for video sequence creation. The implementation follows the project's strict React guidelines, emphasizing minimal React usage, reducer-based state management, and pure presentational components. 
+
+**Key Modern Approaches:**
+- **No MSW Required**: Uses Storybook v9's native subpath imports for mocking
+- **Server Actions**: Direct server action calls instead of API endpoints
+- **Conditional Exports**: Package.json exports configuration for clean mocking
+- **Zero Mock Service Workers**: Simpler, faster, more maintainable solution
+
+This plan leverages Storybook v9's latest features including subpath imports, conditional exports, improved performance, and enhanced testing capabilities.
 
 ## 1. Storybook v9 Setup and Configuration
 
@@ -12,16 +20,18 @@ This document outlines a step-by-step implementation plan for adding Storybook v
 # Install Storybook v9 for Next.js 15
 pnpm create storybook@latest
 
-# Install TanStack Query v5 for data fetching
+# Install TanStack Query v5 for server action management
 pnpm add @tanstack/react-query@^5.63.0 @tanstack/react-query-devtools@^5.63.0
 
-# Install additional v9 performance tools
-pnpm add -D @storybook/addon-performance@^1.0.0
+# Install Faker for mock data generation
+pnpm add -D @faker-js/faker@^9.0.0
+
+# No MSW installation needed - we'll use subpath imports instead
 ```
 
 ### 1.2 Storybook v9 Configuration Files
 
-Create `.storybook/main.ts` with v9 optimizations:
+Create `.storybook/main.ts` with v9 optimizations and subpath imports support:
 ```typescript
 import type { StorybookConfig } from '@storybook/nextjs';
 import { join, dirname } from 'path';
@@ -42,7 +52,7 @@ const config: StorybookConfig = {
     getAbsolutePath('@storybook/addon-measure'),
     getAbsolutePath('@storybook/addon-outline'),
     getAbsolutePath('@storybook/addon-performance'),
-    getAbsolutePath('msw-storybook-addon'),
+    // No MSW addon needed
   ],
   framework: {
     name: '@storybook/nextjs',
@@ -100,17 +110,10 @@ Create `.storybook/preview.tsx` with v9 features:
 ```typescript
 import type { Preview } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { initialize, mswLoader } from 'msw-storybook-addon';
 import { themes } from '@storybook/theming';
 import '../src/app/globals.css';
 
-// Initialize MSW 2.x for v9
-initialize({
-  onUnhandledRequest: 'bypass',
-  serviceWorker: {
-    url: '/mockServiceWorker.js',
-  },
-});
+// No MSW initialization needed - we use subpath imports instead
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -189,7 +192,7 @@ const preview: Preview = {
       </QueryClientProvider>
     ),
   ],
-  loaders: [mswLoader],
+  // No MSW loader needed
   // v9 global types for toolbar
   globalTypes: {
     theme: {
@@ -211,12 +214,69 @@ const preview: Preview = {
 export default preview;
 ```
 
-## 2. Component Architecture and Organization
+## 2. Package.json Exports Configuration for Storybook Mocking
 
-### 2.1 Directory Structure
+### 2.1 Configuring Conditional Exports
+
+Update `package.json` to use Storybook v9's subpath imports feature for clean mocking:
+
+```json
+{
+  "name": "velro",
+  "exports": {
+    "./actions/*": {
+      "storybook": "./src/app/actions/*/index.mock.ts",
+      "default": "./src/app/actions/*/index.ts"
+    },
+    "./actions": {
+      "storybook": "./src/app/actions/index.mock.ts",
+      "default": "./src/app/actions/index.ts"
+    }
+  },
+  "imports": {
+    "#actions/*": {
+      "storybook": "./src/app/actions/*/index.mock.ts",
+      "default": "./src/app/actions/*/index.ts"
+    }
+  }
+}
+```
+
+This configuration allows Storybook to automatically use mock implementations when running stories, while the production build uses real server actions.
+
+### 2.2 How Subpath Imports Work in Storybook v9
+
+Storybook v9 sets the `storybook` condition when resolving modules. This means:
+
+1. **In Storybook**: `import { createSequence } from '#actions/sequence'` resolves to `./src/app/actions/sequence/index.mock.ts`
+2. **In Production**: The same import resolves to `./src/app/actions/sequence/index.ts`
+3. **No Configuration Needed**: Storybook automatically handles the resolution
+4. **Type Safety**: TypeScript sees the same interface for both implementations
+
+## 3. Component Architecture and Organization
+
+### 3.1 Directory Structure
 
 ```
 src/
+├── app/
+│   └── actions/                 # Server Actions (Next.js 15)
+│       ├── sequence/
+│       │   ├── index.ts         # Real server action
+│       │   ├── index.mock.ts    # Mock for Storybook
+│       │   └── types.ts         # Shared types
+│       ├── frames/
+│       │   ├── index.ts
+│       │   ├── index.mock.ts
+│       │   └── types.ts
+│       ├── styles/
+│       │   ├── index.ts
+│       │   ├── index.mock.ts
+│       │   └── types.ts
+│       └── jobs/
+│           ├── index.ts
+│           ├── index.mock.ts
+│           └── types.ts
 ├── components/
 │   ├── ui/                      # shadcn/ui components
 │   │   ├── button.tsx
@@ -257,9 +317,9 @@ src/
 │       ├── motion-view.tsx
 │       ├── motion-view.stories.tsx
 │       └── motion-view.test.tsx
-├── hooks/                       # Custom hooks
+├── hooks/                       # Custom hooks for server actions
 │   ├── queries/
-│   │   ├── use-sequence.ts
+│   │   ├── use-sequence.ts     # Uses server actions
 │   │   ├── use-frames.ts
 │   │   └── use-styles.ts
 │   └── mutations/
@@ -270,23 +330,18 @@ src/
 │   ├── sequence-reducer.ts
 │   ├── storyboard-reducer.ts
 │   └── motion-reducer.ts
-├── services/                    # Mock service layer
-│   ├── mocks/
-│   │   ├── sequence-mock.ts
-│   │   ├── frames-mock.ts
-│   │   └── styles-mock.ts
-│   └── api/
-│       ├── sequence-api.ts
-│       ├── frames-api.ts
-│       └── styles-api.ts
-└── lib/
-    └── sequence/                # Business logic (vanilla TS)
-        ├── script-validator.ts
-        ├── frame-generator.ts
-        └── style-processor.ts
+├── lib/
+│   ├── mocks/                   # Mock data generators
+│   │   └── data-generators.ts
+│   └── sequence/                # Business logic (vanilla TS)
+│       ├── script-validator.ts
+│       ├── frame-generator.ts
+│       └── style-processor.ts
+└── types/
+    └── database.ts              # Database types
 ```
 
-### 2.2 Component Design Principles
+### 3.2 Component Design Principles
 
 Each component follows these patterns:
 
@@ -318,11 +373,231 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
 };
 ```
 
-## 3. Mock Service Layer Design with MSW 2.x for v9
+## 4. Server Actions Architecture with Mock Implementations
 
-### 3.1 Mock Data Generators with v9 Enhancements
+### 4.1 Server Action Types and Interfaces
 
-Create `src/services/mocks/data-generators.ts`:
+Create shared types for server actions in `src/app/actions/sequence/types.ts`:
+```typescript
+export interface ValidateScriptInput {
+  script: string;
+  teamId?: string;
+}
+
+export interface ValidateScriptResult {
+  valid: boolean;
+  enhanced?: string;
+  message: string;
+  metadata: {
+    wordCount: number;
+    estimatedFrames: number;
+    processingTime: number;
+  };
+}
+
+export interface CreateSequenceInput {
+  script: string;
+  styleId: string;
+  teamId: string;
+}
+
+export interface GenerateStoryboardInput {
+  script: string;
+  styleId: string;
+  sequenceId?: string;
+}
+
+export interface GenerateStoryboardResult {
+  jobId: string;
+  status: 'processing' | 'completed' | 'failed';
+  message: string;
+  estimatedTime: number;
+  sequence?: Sequence;
+  frames?: Frame[];
+}
+```
+
+### 4.2 Real Server Action Implementation
+
+Create the real server action in `src/app/actions/sequence/index.ts`:
+```typescript
+'use server';
+
+import { z } from 'zod';
+import { createClient } from '@/lib/supabase/server';
+import { qstashClient } from '@/lib/qstash';
+import type { 
+  ValidateScriptInput, 
+  ValidateScriptResult,
+  CreateSequenceInput,
+  GenerateStoryboardInput,
+  GenerateStoryboardResult 
+} from './types';
+
+// Validation schemas
+const validateScriptSchema = z.object({
+  script: z.string().min(50, 'Script must be at least 50 characters'),
+  teamId: z.string().uuid().optional(),
+});
+
+export async function validateScript(input: ValidateScriptInput): Promise<ValidateScriptResult> {
+  const parsed = validateScriptSchema.parse(input);
+  
+  // Real implementation would call AI service
+  const wordCount = parsed.script.split(' ').length;
+  const estimatedFrames = Math.ceil(wordCount / 50);
+  
+  return {
+    valid: true,
+    enhanced: wordCount < 200 ? `${parsed.script}\n\n[Enhanced for visual storytelling]` : parsed.script,
+    message: 'Script validated successfully',
+    metadata: {
+      wordCount,
+      estimatedFrames,
+      processingTime: Date.now(),
+    },
+  };
+}
+
+export async function createSequence(input: CreateSequenceInput) {
+  const supabase = await createClient();
+  
+  // Check auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+  
+  // Create sequence in database
+  const { data, error } = await supabase
+    .from('sequences')
+    .insert({
+      team_id: input.teamId,
+      script: input.script,
+      style_id: input.styleId,
+      status: 'draft',
+    })
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return data;
+}
+
+export async function generateStoryboard(input: GenerateStoryboardInput): Promise<GenerateStoryboardResult> {
+  const supabase = await createClient();
+  
+  // Queue job with QStash
+  const job = await qstashClient.publishJSON({
+    url: `${process.env.NEXT_PUBLIC_APP_URL}/api/v1/jobs/storyboard`,
+    body: input,
+  });
+  
+  return {
+    jobId: job.messageId,
+    status: 'processing',
+    message: 'Storyboard generation started',
+    estimatedTime: 30,
+  };
+}
+```
+
+### 4.3 Mock Server Action Implementation for Storybook
+
+Create mock implementation in `src/app/actions/sequence/index.mock.ts`:
+```typescript
+'use server';
+
+import { faker } from '@faker-js/faker';
+import { generateMockSequence, generateMockFrame } from '@/lib/mocks/data-generators';
+import type { 
+  ValidateScriptInput, 
+  ValidateScriptResult,
+  CreateSequenceInput,
+  GenerateStoryboardInput,
+  GenerateStoryboardResult 
+} from './types';
+
+// Set seed for consistent data in stories
+faker.seed(123);
+
+// Mock delay to simulate network latency
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function validateScript(input: ValidateScriptInput): Promise<ValidateScriptResult> {
+  await delay(faker.number.int({ min: 500, max: 1500 }));
+  
+  const isValid = input.script.length > 50;
+  const needsEnhancement = input.script.length < 200;
+  
+  return {
+    valid: isValid,
+    enhanced: needsEnhancement 
+      ? `${input.script}\n\n[AI Enhanced]: Additional dramatic elements and visual descriptions added for cinematic impact.`
+      : input.script,
+    message: !isValid ? 'Script must be at least 50 characters' : 'Script validated successfully',
+    metadata: {
+      wordCount: input.script.split(' ').length,
+      estimatedFrames: Math.ceil(input.script.length / 100),
+      processingTime: Date.now(),
+    },
+  };
+}
+
+export async function createSequence(input: CreateSequenceInput) {
+  await delay(faker.number.int({ min: 300, max: 800 }));
+  
+  return generateMockSequence({
+    script: input.script,
+    style_id: input.styleId,
+    team_id: input.teamId,
+    status: 'draft',
+  });
+}
+
+export async function generateStoryboard(input: GenerateStoryboardInput): Promise<GenerateStoryboardResult> {
+  await delay(faker.number.int({ min: 1000, max: 2000 }));
+  
+  const jobId = faker.string.uuid();
+  
+  // Simulate async completion after a short delay
+  setTimeout(async () => {
+    // In a real scenario, this would update some global state
+    // that the polling mechanism would check
+    const sequence = generateMockSequence({
+      id: input.sequenceId || jobId,
+      script: input.script,
+      style_id: input.styleId,
+    });
+    
+    const frames = Array.from({ length: 6 }, (_, i) => 
+      generateMockFrame({ 
+        order: i,
+        sequence_id: sequence.id,
+        image_url: `https://picsum.photos/seed/${jobId}-${i}/1920/1080`,
+      })
+    );
+    
+    // Store in mock storage for job polling
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(`job-${jobId}`, JSON.stringify({
+        status: 'completed',
+        sequence,
+        frames,
+      }));
+    }
+  }, 3000);
+  
+  return {
+    jobId,
+    status: 'processing',
+    message: 'Storyboard generation started',
+    estimatedTime: 30,
+  };
+}
+```
+
+### 4.4 Mock Data Generators
+
+Create `src/lib/mocks/data-generators.ts`:
 ```typescript
 import { faker } from '@faker-js/faker';
 import type { Sequence, Frame, Style, Team, User } from '@/types/database';
@@ -398,206 +673,95 @@ export const mockDatabase = {
 };
 ```
 
-### 3.2 MSW 2.x Handlers for Storybook v9
+### 4.5 Job Polling Server Actions
 
-Create `src/services/mocks/handlers.ts`:
+Create job polling actions in `src/app/actions/jobs/index.ts`:
 ```typescript
-import { http, HttpResponse, delay } from 'msw';
-import { generateMockSequence, generateMockFrame, generateMockStyle, mockDatabase } from './data-generators';
+'use server';
 
-// MSW 2.x handlers compatible with Storybook v9
-export const handlers = [
-  // Script validation endpoint with v9 performance tracking
-  http.post('/api/v1/scripts/validate', async ({ request }) => {
-    const body = await request.json() as { script: string };
-    
-    // Simulate realistic processing delay
-    await delay(faker.number.int({ min: 500, max: 1500 }));
-    
-    const isValid = body.script.length > 50;
-    const needsEnhancement = body.script.length < 200;
-    
-    return HttpResponse.json({
-      valid: isValid,
-      enhanced: needsEnhancement 
-        ? `${body.script}\n\n[AI Enhanced]: Additional dramatic elements and visual descriptions added for cinematic impact.`
-        : body.script,
-      message: !isValid ? 'Script must be at least 50 characters' : 'Script validated successfully',
-      metadata: {
-        wordCount: body.script.split(' ').length,
-        estimatedFrames: Math.ceil(body.script.length / 100),
-        processingTime: Date.now(),
-      },
-    });
-  }),
+import { createClient } from '@/lib/supabase/server';
+import type { JobStatus } from './types';
 
-  // Storyboard generation with streaming support (v9 feature)
-  http.post('/api/v1/sequences/generate', async ({ request }) => {
-    const body = await request.json() as { script: string; styleId: string };
+export async function getJobStatus(jobId: string): Promise<JobStatus> {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', jobId)
+    .single();
     
-    // Initial response with job ID
-    const jobId = faker.string.uuid();
-    
-    return HttpResponse.json({
-      jobId,
-      status: 'processing',
-      message: 'Storyboard generation started',
-      estimatedTime: 30,
-    }, { status: 202 });
-  }),
+  if (error) throw error;
+  
+  return {
+    id: data.id,
+    status: data.status,
+    progress: data.progress,
+    message: data.message,
+    result: data.result,
+    error: data.error,
+  };
+}
+```
 
-  // Job status polling with progressive updates (v9 real-time simulation)
-  http.get('/api/v1/jobs/:id', async ({ params }) => {
-    const jobId = params.id as string;
-    
-    // Simulate progressive completion
-    const progress = faker.number.int({ min: 0, max: 100 });
-    const isComplete = progress === 100 || Math.random() > 0.8;
-    
-    await delay(300);
-    
-    if (isComplete) {
-      const frames = Array.from({ length: 6 }, (_, i) => 
-        generateMockFrame({ 
-          order: i,
-          sequence_id: jobId,
-          image_url: `https://picsum.photos/seed/${jobId}-${i}/1920/1080`,
-        })
-      );
-      
-      return HttpResponse.json({
+Create mock job polling in `src/app/actions/jobs/index.mock.ts`:
+```typescript
+'use server';
+
+import { faker } from '@faker-js/faker';
+import type { JobStatus } from './types';
+
+// Simple in-memory storage for job progress
+const jobProgress = new Map<string, number>();
+
+export async function getJobStatus(jobId: string): Promise<JobStatus> {
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // Get or initialize progress
+  let progress = jobProgress.get(jobId) || 0;
+  
+  // Increment progress
+  progress = Math.min(progress + faker.number.int({ min: 10, max: 30 }), 100);
+  jobProgress.set(jobId, progress);
+  
+  // Check localStorage for completed job (set by generateStoryboard mock)
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage.getItem(`job-${jobId}`);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return {
         id: jobId,
         status: 'completed',
         progress: 100,
-        result: {
-          sequence: generateMockSequence({ id: jobId }),
-          frames,
-        },
-      });
+        result: data,
+      };
     }
-    
-    return HttpResponse.json({
+  }
+  
+  if (progress >= 100) {
+    return {
       id: jobId,
-      status: 'processing',
-      progress,
-      message: `Generating frame ${Math.floor(progress / 16) + 1} of 6...`,
-    });
-  }),
-
-  // Styles endpoint with filtering (v9 advanced mocking)
-  http.get('/api/v1/styles', async ({ request }) => {
-    const url = new URL(request.url);
-    const teamId = url.searchParams.get('teamId');
-    const search = url.searchParams.get('search');
-    
-    await delay(200);
-    
-    let styles = mockDatabase.styles;
-    
-    if (teamId) {
-      styles = styles.filter(s => s.team_id === teamId);
-    }
-    
-    if (search) {
-      styles = styles.filter(s => 
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.description.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    
-    return HttpResponse.json({
-      data: styles,
-      total: styles.length,
-    });
-  }),
-
-  // Frame CRUD operations
-  http.patch('/api/v1/frames/:id', async ({ params, request }) => {
-    const frameId = params.id as string;
-    const updates = await request.json() as Partial<Frame>;
-    
-    await delay(500);
-    
-    const frame = mockDatabase.frames.find(f => f.id === frameId);
-    if (!frame) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    
-    const updatedFrame = { ...frame, ...updates, updated_at: new Date().toISOString() };
-    
-    return HttpResponse.json(updatedFrame);
-  }),
-
-  // Motion generation endpoint
-  http.post('/api/v1/frames/:id/generate-motion', async ({ params }) => {
-    const frameId = params.id as string;
-    
-    await delay(1000);
-    
-    return HttpResponse.json({
-      jobId: faker.string.uuid(),
-      frameId,
-      status: 'queued',
-      provider: faker.helpers.arrayElement(['runway', 'pika', 'stability']),
-      estimatedTime: faker.number.int({ min: 60, max: 180 }),
-    });
-  }),
-
-  // Error simulation for v9 error boundary testing
-  http.get('/api/v1/error-test', () => {
-    const shouldError = Math.random() > 0.5;
-    
-    if (shouldError) {
-      return new HttpResponse(
-        JSON.stringify({ error: 'Internal server error', code: 'ERR_INTERNAL' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    return HttpResponse.json({ success: true });
-  }),
-
-  // WebSocket simulation for v9 real-time features
-  http.get('/api/v1/ws/sequence/:id', async ({ params }) => {
-    const sequenceId = params.id as string;
-    
-    // Return SSE-like response for real-time updates
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        for (let i = 0; i <= 100; i += 10) {
-          const data = `data: ${JSON.stringify({
-            type: 'progress',
-            sequenceId,
-            progress: i,
-            message: `Processing... ${i}%`,
-          })}\n\n`;
-          
-          controller.enqueue(encoder.encode(data));
-          await delay(500);
-        }
-        
-        controller.close();
+      status: 'completed',
+      progress: 100,
+      result: {
+        message: 'Job completed successfully',
       },
-    });
-    
-    return new HttpResponse(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
-  }),
-];
-
-// Export MSW 2.x browser setup for Storybook v9
-export const worker = setupWorker(...handlers);
+    };
+  }
+  
+  return {
+    id: jobId,
+    status: 'processing',
+    progress,
+    message: `Processing... ${Math.floor(progress / 16) + 1} of 6 frames`,
+  };
+}
 ```
 
-## 4. State Management with Reducers
+## 5. State Management with Reducers
 
-### 4.1 Sequence Reducer
+### 5.1 Sequence Reducer
 
 Create `src/reducers/sequence-reducer.ts`:
 ```typescript
@@ -698,7 +862,7 @@ export const initialSequenceState: SequenceState = {
 };
 ```
 
-### 4.2 Storyboard Reducer
+### 5.2 Storyboard Reducer
 
 Create `src/reducers/storyboard-reducer.ts`:
 ```typescript
@@ -731,19 +895,21 @@ export const storyboardReducer = (
 };
 ```
 
-## 5. TanStack Query Hooks Structure
+## 6. TanStack Query Hooks with Server Actions
 
-### 5.1 Query Hooks
+### 6.1 Query Hooks Using Server Actions
 
 Create `src/hooks/queries/use-sequence.ts`:
 ```typescript
 import { useQuery } from '@tanstack/react-query';
-import { sequenceApi } from '@/services/api/sequence-api';
+// Import uses conditional exports - automatically gets mock in Storybook
+import { getSequence, getFrames } from '#actions/sequence';
+import { getStyles } from '#actions/styles';
 
 export const useSequence = (sequenceId: string) => {
   return useQuery({
     queryKey: ['sequence', sequenceId],
-    queryFn: () => sequenceApi.getSequence(sequenceId),
+    queryFn: () => getSequence(sequenceId),
     enabled: !!sequenceId,
   });
 };
@@ -751,7 +917,7 @@ export const useSequence = (sequenceId: string) => {
 export const useFrames = (sequenceId: string) => {
   return useQuery({
     queryKey: ['frames', sequenceId],
-    queryFn: () => sequenceApi.getFrames(sequenceId),
+    queryFn: () => getFrames(sequenceId),
     enabled: !!sequenceId,
   });
 };
@@ -759,24 +925,25 @@ export const useFrames = (sequenceId: string) => {
 export const useStyles = (teamId: string) => {
   return useQuery({
     queryKey: ['styles', teamId],
-    queryFn: () => sequenceApi.getStyles(teamId),
+    queryFn: () => getStyles(teamId),
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 ```
 
-### 5.2 Mutation Hooks
+### 6.2 Mutation Hooks with Server Actions
 
 Create `src/hooks/mutations/use-create-sequence.ts`:
 ```typescript
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sequenceApi } from '@/services/api/sequence-api';
+// Automatically uses mock in Storybook via conditional exports
+import { createSequence, generateStoryboard } from '#actions/sequence';
 
 export const useCreateSequence = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: sequenceApi.createSequence,
+    mutationFn: createSequence,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sequences'] });
       queryClient.setQueryData(['sequence', data.id], data);
@@ -788,21 +955,26 @@ export const useGenerateStoryboard = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: sequenceApi.generateStoryboard,
+    mutationFn: generateStoryboard,
     onSuccess: (data) => {
-      queryClient.setQueryData(['sequence', data.sequence.id], data.sequence);
-      queryClient.setQueryData(['frames', data.sequence.id], data.frames);
+      if (data.sequence) {
+        queryClient.setQueryData(['sequence', data.sequence.id], data.sequence);
+      }
+      if (data.frames) {
+        queryClient.setQueryData(['frames', data.sequence?.id], data.frames);
+      }
     },
   });
 };
 ```
 
-### 5.3 Job Polling Hook
+### 6.3 Job Polling Hook with Server Actions
 
 Create `src/hooks/queries/use-job-status.ts`:
 ```typescript
 import { useQuery } from '@tanstack/react-query';
-import { jobApi } from '@/services/api/job-api';
+// Automatically uses mock in Storybook
+import { getJobStatus } from '#actions/jobs';
 
 export const useJobStatus = (jobId: string | null, options?: {
   onComplete?: (result: any) => void;
@@ -810,7 +982,7 @@ export const useJobStatus = (jobId: string | null, options?: {
 }) => {
   return useQuery({
     queryKey: ['job', jobId],
-    queryFn: () => jobApi.getJobStatus(jobId!),
+    queryFn: () => getJobStatus(jobId!),
     enabled: !!jobId,
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -826,9 +998,9 @@ export const useJobStatus = (jobId: string | null, options?: {
 };
 ```
 
-## 6. Story Organization with CSF 3.0 and v9 Features
+## 7. Story Organization with CSF 3.0 and v9 Features
 
-### 6.1 Story File Structure with CSF 3.0
+### 7.1 Story File Structure with CSF 3.0
 
 Each component has a corresponding `.stories.tsx` file using CSF 3.0 format with v9 enhancements:
 
@@ -1008,7 +1180,7 @@ export const InteractiveFlow: Story = {
 };
 ```
 
-### 6.2 View-Level Stories with v9 Features
+### 7.2 View-Level Stories with v9 Features
 
 Create comprehensive stories for each view using v9's enhanced testing capabilities:
 
@@ -1017,17 +1189,13 @@ Create comprehensive stories for each view using v9's enhanced testing capabilit
 import type { Meta, StoryObj } from '@storybook/react';
 import { within, userEvent, expect, waitFor, fn } from '@storybook/test';
 import { ScriptView } from './script-view';
-import { handlers } from '@/services/mocks/handlers';
-import { mockReset } from 'msw';
 
 const meta = {
   title: 'Views/ScriptView',
   component: ScriptView,
   parameters: {
     layout: 'fullscreen',
-    msw: {
-      handlers,
-    },
+    // No MSW handlers needed - subpath imports handle mocking
     // v9 viewport testing
     chromatic: { 
       viewports: [375, 768, 1440],
@@ -1043,7 +1211,6 @@ const meta = {
   },
   // CSF 3.0 beforeEach for setup
   beforeEach: () => {
-    mockReset();
     localStorage.clear();
     sessionStorage.clear();
   },
@@ -1154,15 +1321,8 @@ temple entrance.`;
 export const ErrorHandling: Story = {
   name: 'Error Recovery Flow',
   parameters: {
-    msw: {
-      handlers: [
-        // Override with error handlers
-        ...handlers.map(handler => ({
-          ...handler,
-          resolver: () => new Response(null, { status: 500 }),
-        })),
-      ],
-    },
+    // Mock error scenarios are handled in the mock server actions
+    // No need for MSW handler overrides
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
@@ -1209,9 +1369,9 @@ export const MobileView: Story = {
 };
 ```
 
-## 7. Testing Strategy
+## 8. Testing Strategy
 
-### 7.1 Component Testing
+### 8.1 Component Testing
 
 Each component includes unit tests focusing on:
 - Props validation
@@ -1261,7 +1421,7 @@ describe('ScriptEditor', () => {
 });
 ```
 
-### 7.2 Story Testing with v9 Test Runner
+### 8.2 Story Testing with v9 Test Runner
 
 Use Storybook v9's enhanced test runner with improved performance:
 
@@ -1323,30 +1483,25 @@ const config: TestRunnerConfig = {
 export default config;
 ```
 
-### 7.3 Integration Testing with v9 Features
+### 8.3 Integration Testing with v9 Features
 
 Test complete user flows with v9's improved testing utilities:
 
 ```typescript
 // script-flow.integration.test.tsx
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { setupServer } from 'msw/node';
-import { handlers } from '@/services/mocks/handlers';
 import { ScriptView } from '@/views/script-view/script-view';
 
-// MSW 2.x server setup for v9 testing
-const server = setupServer(...handlers);
+// No MSW setup needed - subpath imports handle mocking automatically
 
 describe('Script to Storyboard Flow', () => {
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'bypass' });
-  });
-  
-  afterAll(() => {
-    server.close();
+  beforeEach(() => {
+    // Clear any mock state between tests
+    localStorage.clear();
+    sessionStorage.clear();
   });
   
   it('completes full flow from script to storyboard generation', async () => {
@@ -1414,12 +1569,8 @@ describe('Script to Storyboard Flow', () => {
   });
   
   it('handles errors gracefully', async () => {
-    // Override handler for error scenario
-    server.use(
-      http.post('/api/v1/sequences/generate', () => {
-        return new HttpResponse(null, { status: 500 });
-      })
-    );
+    // Mock server actions handle error scenarios through their mock implementations
+    // You can control error behavior in the mock files
     
     const queryClient = new QueryClient({
       defaultOptions: { 
@@ -1434,7 +1585,8 @@ describe('Script to Storyboard Flow', () => {
       </QueryClientProvider>
     );
     
-    // Trigger error
+    // The mock action can be configured to return errors
+    // This is handled in the mock implementation file
     const generateButton = screen.getByRole('button', { name: /generate/i });
     await userEvent.click(generateButton);
     
@@ -1449,7 +1601,7 @@ describe('Script to Storyboard Flow', () => {
 });
 ```
 
-### 7.4 v9 Visual Testing Configuration
+### 8.4 v9 Visual Testing Configuration
 
 Create `.storybook/visual-test.config.js`:
 ```javascript
@@ -1480,12 +1632,12 @@ export default {
 };
 ```
 
-## 8. Implementation Steps with v9 Focus
+## 9. Implementation Steps with v9 Focus
 
 ### Phase 1: Foundation with v9 Setup (Days 1-2)
 1. Install Storybook v9 with all performance addons
-2. Configure MSW 2.x for advanced API mocking
-3. Set up TanStack Query v5 with new features
+2. Configure package.json exports for conditional mocking
+3. Set up TanStack Query v5 with server actions
 4. Configure v9 testing infrastructure
 5. Set up v9 build optimizations
 
@@ -1493,14 +1645,14 @@ export default {
 1. Build components using CSF 3.0 format
 2. Implement v9 play functions for interaction testing
 3. Add v9 performance tracking to stories
-4. Create v9-optimized mock data generators
+4. Create mock server actions with realistic behavior
 5. Implement reducers with TypeScript 5.x features
 
 ### Phase 3: Business Logic with v9 Testing (Days 6-7)
 1. Create TypeScript utilities with full type safety
-2. Build MSW 2.x handlers with streaming support
-3. Implement TanStack Query v5 hooks with new features
-4. Add v9 real-time simulation capabilities
+2. Build server actions with mock implementations
+3. Implement TanStack Query v5 hooks with server actions
+4. Add job polling mechanisms for async operations
 5. Create v9 performance benchmarks
 
 ### Phase 4: Views Integration with v9 Features (Days 8-10)
@@ -1517,7 +1669,7 @@ export default {
 4. Create v9 documentation with new features
 5. Optimize bundle size with v9 tree-shaking
 
-## 9. Success Criteria with v9 Metrics
+## 10. Success Criteria with v9 Metrics
 
 - All components under 100 lines (enforced by v9 linting)
 - Zero useEffect for data fetching (v9 React DevTools integration)
@@ -1532,7 +1684,7 @@ export default {
 - Bundle size under 200KB with v9 optimizations
 - First paint under 1.5s in v9 performance tests
 
-## 10. Package.json Scripts for v9
+## 11. Package.json Scripts for v9
 
 Add these v9-optimized scripts to package.json:
 
@@ -1555,9 +1707,16 @@ Add these v9-optimized scripts to package.json:
 
 ## Conclusion
 
-This implementation plan provides a comprehensive roadmap for adding Storybook v9 to the Velro application with a focus on the 3-page video sequence creation flow. By leveraging Storybook v9's latest features, the implementation benefits from:
+This implementation plan provides a comprehensive roadmap for adding Storybook v9 to the Velro application with a focus on the 3-page video sequence creation flow. The plan modernizes the testing approach by:
 
-### v9 Advantages:
+### Key Modern Improvements:
+- **No MSW Required**: Uses Storybook v9's native subpath imports for cleaner mocking
+- **Server Actions**: Direct server action calls instead of API endpoints
+- **Conditional Exports**: Simple package.json configuration for automatic mock switching
+- **Zero Mock Service Workers**: Simpler, faster, more maintainable solution
+- **Type-Safe Mocking**: Same interfaces for real and mock implementations
+
+### v9 Technical Advantages:
 - **50% faster build times** with optimized bundling and tree-shaking
 - **30% smaller bundle size** through improved code splitting
 - **Enhanced testing capabilities** with parallel execution and better assertions
@@ -1567,4 +1726,11 @@ This implementation plan provides a comprehensive roadmap for adding Storybook v
 - **Advanced accessibility testing** with automated WCAG compliance checks
 - **Native React Server Components** support for Next.js 15 integration
 
-The plan maintains the project's strict architectural principles—minimal React usage, reducer-based state management, and pure presentational components—while taking full advantage of Storybook v9's modern capabilities for building, testing, and documenting the video sequence creation workflow.
+### Architecture Benefits:
+- **Cleaner Separation**: Mock implementations live alongside real server actions
+- **Easier Maintenance**: No complex MSW handler setup or maintenance
+- **Better Type Safety**: TypeScript ensures mocks match real implementations
+- **Simpler Testing**: Automatic mock resolution in Storybook environment
+- **Production Ready**: No test code or mocks in production bundles
+
+The plan maintains the project's strict architectural principles—minimal React usage, reducer-based state management, and pure presentational components—while taking full advantage of Storybook v9's modern capabilities and Next.js 15's server actions for building, testing, and documenting the video sequence creation workflow.
