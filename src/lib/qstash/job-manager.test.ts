@@ -28,6 +28,7 @@ describe("JobManager", () => {
 
   const setupMockChainResponse = (mockData: { data: any; error: any }) => {
     const chain = mockSupabase.from("jobs");
+    // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
     chain.then = vi.fn((onResolve) => {
       return Promise.resolve(mockData).then(onResolve);
     });
@@ -386,6 +387,7 @@ describe("JobManager", () => {
 
       // Get the chain and override its 'then' method to return our test data
       const chain = mockSupabase.from("jobs");
+      // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
       chain.then = vi.fn((onResolve) => {
         return Promise.resolve({ data: jobs, error: null }).then(onResolve);
       });
