@@ -3,9 +3,9 @@
  * Provides mocks, fixtures, and test helpers for unit testing
  */
 
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
+import type { Job } from "@/types/database";
 import type { JobPayload, QStashResponse } from "./client";
-import type { JobRow } from "./job-manager";
 
 /**
  * Mock QStash client for testing
@@ -51,6 +51,8 @@ export const createMockSupabaseClient = () => {
       limit: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
+      // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
+      then: vi.fn().mockReturnThis(),
     };
 
     // Make the chain thenable - biome wants this as a property
@@ -124,7 +126,7 @@ export const createTestJobPayload = (
 /**
  * Test job record fixtures
  */
-export const createTestJobRow = (overrides?: Partial<JobRow>): JobRow => ({
+export const createTestJobRow = (overrides?: Partial<Job>): Job => ({
   id: "550e8400-e29b-41d4-a716-446655440000",
   type: "image",
   status: "pending",
@@ -227,12 +229,9 @@ export const cleanupTestEnv = () => {
 /**
  * Assert helpers for testing
  */
-export const assertJobMatches = (
-  actualJob: JobRow,
-  expectedJob: Partial<JobRow>,
-) => {
+export const assertJobMatches = (actualJob: Job, expectedJob: Partial<Job>) => {
   Object.entries(expectedJob).forEach(([key, value]) => {
-    expect(actualJob[key as keyof JobRow]).toEqual(value);
+    expect(actualJob[key as keyof Job]).toEqual(value);
   });
 };
 
