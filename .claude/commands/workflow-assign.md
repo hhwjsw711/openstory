@@ -1,31 +1,31 @@
 ---
-allowed-tools: Bash, Task
+allowed-tools: Task
 argument-hint: <issue_number>
-description: Assign a GitHub issue to an appropriate agent for triage
+description: Analyze a GitHub issue and assign to the appropriate tech lead for planning
 ---
 
-# Workflow: Assign Issue #$1 for Triage
+# Workflow: Assign Issue #$ARGUMENTS
 
-I'll assign issue #$1 to the appropriate tech lead/architect for triage and planning.
+Let me analyze issue #$ARGUMENTS and assign it to the appropriate tech lead/architect for planning.
 
-!gh issue view $1 --json number,title,body,labels,assignees
+!gh issue view $ARGUMENTS --json number,title,body,labels,assignees,url
 
-First, let me analyze the issue and set up the workflow:
+Now I'll analyze the issue content and labels to determine the appropriate agent.
 
-1. Determine the issue type and appropriate agent
-2. Create a dedicated worktree for this issue
-3. Generate triage instructions for the agent
-4. Launch the agent to create an implementation plan
+Based on the issue details above, I'll select the right tech lead/architect:
+- If it mentions API, database, Supabase, QStash, or has backend labels → `backend-tech-lead`
+- If it mentions UI, React, components, shadcn, or has frontend labels → `frontend-architect`
+- If it mentions testing, QA, or has test labels → `qa-lead-tester`
+- Otherwise → `engineering-lead`
 
-The triage stage agent will:
-- Analyze technical requirements
-- Design the solution architecture  
-- Create a detailed implementation plan
-- Prepare specifications for the implementation engineer
-- NOT implement the solution (that's done with /workflow-implement)
+I'll now use the Task tool to invoke the appropriate agent to create a comprehensive implementation plan.
 
-Let me run the workflow manager to assign this issue:
+The selected agent will:
+1. **Analyze Requirements** - Review issue details and acceptance criteria
+2. **Review Codebase** - Understand existing implementation and patterns
+3. **Design Architecture** - Plan the technical approach and data flow
+4. **Create Implementation Plan** - Break down into specific tasks using TodoWrite
+5. **Identify Risks** - Note potential challenges and dependencies
+6. **Prepare Specifications** - Document for the implementation engineer
 
-!./workflow/scripts/workflow-manager.sh assign $1
-
-After the triage is complete, use `/workflow-implement $1` to have an engineer implement the solution based on the plan.
+**Important**: The tech lead creates the plan but does NOT implement. After the plan is approved, an engineer will implement it based on these specifications.
