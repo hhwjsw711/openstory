@@ -49,7 +49,7 @@ next-env.d.ts
 # workflow
 .trees/
 workflow/state/
-workflow/instructions/
+# workflow/instructions/  # Track implementation plans
 workflow/logs/
 workflow/data/
 .launch-claude.sh
