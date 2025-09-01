@@ -141,7 +141,6 @@ describe("Job Status API", () => {
         params: Promise.resolve({ id: testUUIDs.job1 }),
       });
 
-      // biome-ignore lint/suspicious/noExplicitAny: Testing mock calls
       const responseData = (NextResponse.json as any).mock.calls[0][0];
       expect(responseData.job.result).toBeUndefined();
     });

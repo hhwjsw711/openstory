@@ -27,7 +27,6 @@ describe("JobManager", () => {
   let testSetup: ReturnType<typeof setupVitestMocks>;
 
   const setupMockChainResponse = (mockData: { data: any; error: any }) => {
-    // biome-ignore lint/suspicious/noExplicitAny: Test helper function
     const chain = (mockSupabase as any).from("jobs");
     // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
     chain.then = vi.fn((onResolve) => {
@@ -39,7 +38,6 @@ describe("JobManager", () => {
     testSetup = setupVitestMocks();
     mockSupabase = createMockSupabaseClient();
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
 
     jobManager = new JobManager();
@@ -388,7 +386,6 @@ describe("JobManager", () => {
       ];
 
       // Get the chain and override its 'then' method to return our test data
-      // biome-ignore lint/suspicious/noExplicitAny: Test helper function
       const chain = (mockSupabase as any).from("jobs");
       // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
       chain.then = vi.fn((onResolve) => {

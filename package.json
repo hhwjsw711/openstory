@@ -6,6 +6,8 @@
     "dev": "pnpm supabase:types && next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
+    "lint": "biome check --write .",
+    "lint:check": "biome check .",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",

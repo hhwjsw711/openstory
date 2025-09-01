@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!**/*.css"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -42,6 +49,21 @@
         "rules": {
           "style": {
             "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
           }
         }
       }

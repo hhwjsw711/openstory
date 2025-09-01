@@ -13,7 +13,7 @@ import {
   setupVitestMocks,
   testUUIDs,
 } from "@/lib/qstash/test-utils";
-import { BaseWebhookHandler, type JobProcessor } from "./base-handler";
+import { BaseWebhookHandler } from "./base-handler";
 
 // Mock dependencies
 vi.mock("@/lib/qstash/job-manager", () => ({
@@ -42,7 +42,6 @@ describe("BaseWebhookHandler", () => {
   beforeEach(() => {
     testSetup = setupVitestMocks();
     mockJobManager = createMockJobManager();
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(getJobManager).mockReturnValue(mockJobManager as any);
     handler = new BaseWebhookHandler();
   });
@@ -95,7 +94,7 @@ describe("BaseWebhookHandler", () => {
   });
 
   describe("processWebhook", () => {
-    const mockProcessor: JobProcessor = vi.fn();
+    const mockProcessor = vi.fn();
     let request: QStashVerifiedRequest;
 
     beforeEach(() => {
@@ -128,7 +127,7 @@ describe("BaseWebhookHandler", () => {
         status: "completed",
         result: processingResult,
       });
-      (mockProcessor as any).mockResolvedValue(processingResult);
+      mockProcessor.mockResolvedValue(processingResult);
 
       const _response = await handler.processWebhook(request, mockProcessor);
 
@@ -231,7 +230,7 @@ describe("BaseWebhookHandler", () => {
         status: "failed",
         error: processingError.message,
       });
-      (mockProcessor as any).mockRejectedValue(processingError);
+      mockProcessor.mockRejectedValue(processingError);
 
       const _response = await handler.processWebhook(request, mockProcessor);
 

@@ -3,7 +3,7 @@
  */
 
 import { Receiver } from "@upstash/qstash";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigurationError, VelroError } from "@/lib/errors";
 import {
@@ -166,7 +166,9 @@ describe("QStash Middleware", () => {
         },
       });
 
-      const result = await verifyQStashSignature(mockRequest as any);
+      const result = await verifyQStashSignature(
+        mockRequest as unknown as NextRequest,
+      );
 
       expect(result.qstashRetryCount).toBe(3);
     });
@@ -179,7 +181,9 @@ describe("QStash Middleware", () => {
         },
       });
 
-      const result = await verifyQStashSignature(mockRequest as any);
+      const result = await verifyQStashSignature(
+        mockRequest as unknown as NextRequest,
+      );
 
       expect(result.qstashRetryCount).toBeUndefined();
     });

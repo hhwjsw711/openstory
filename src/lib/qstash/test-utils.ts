@@ -4,6 +4,7 @@
  */
 
 import { expect, vi } from "vitest";
+import type { VelroError } from "@/lib/errors";
 import type { Job } from "@/types/database";
 import type { JobPayload, QStashResponse } from "./client";
 
@@ -266,7 +267,7 @@ export const expectVelroError = (
   statusCode: number,
 ) => {
   expect(error).toBeInstanceOf(Error);
-  const velroError = error as any;
+  const velroError = error as VelroError;
   expect(velroError.code).toBe(code);
   expect(velroError.statusCode).toBe(statusCode);
 };

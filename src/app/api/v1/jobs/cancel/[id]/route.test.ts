@@ -47,9 +47,7 @@ describe("Job Cancellation API", () => {
     testSetup = setupVitestMocks();
     mockJobManager = createMockJobManager();
     mockQStashClient = createMockQStashClient();
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(getJobManager).mockReturnValue(mockJobManager as any);
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(getQStashClient).mockReturnValue(mockQStashClient as any);
   });
 

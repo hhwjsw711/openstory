@@ -54,9 +54,7 @@ describe("Job Creation API", () => {
     mockQStashClient = createMockQStashClient();
     mockJobManager = createMockJobManager();
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(getQStashClient).mockReturnValue(mockQStashClient as any);
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking external dependencies
     vi.mocked(getJobManager).mockReturnValue(mockJobManager as any);
   });
 
