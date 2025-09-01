@@ -30,7 +30,7 @@ vi.mock("next/server", () => ({
 }));
 
 // Import mocked function
-import { getJobManager } from "@/lib/qstash/job-manager";
+import { getJobManager, type JobManager } from "@/lib/qstash/job-manager";
 
 describe("Job Status API", () => {
   let mockJobManager: ReturnType<typeof createMockJobManager>;
@@ -39,7 +39,9 @@ describe("Job Status API", () => {
   beforeEach(() => {
     testSetup = setupVitestMocks();
     mockJobManager = createMockJobManager();
-    vi.mocked(getJobManager).mockReturnValue(mockJobManager);
+    vi.mocked(getJobManager).mockReturnValue(
+      mockJobManager as unknown as JobManager,
+    );
   });
 
   afterEach(() => {

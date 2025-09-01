@@ -40,8 +40,8 @@ const processImageGeneration: JobProcessor = async (
   // Example result structure
   const result = {
     imageUrls: [
-      "https://example.com/generated-image-1.png",
-      "https://example.com/generated-image-2.png",
+      `https://picsum.photos/seed/1/${data.width || 1024}/${data.height || 1024}`,
+      `https://picsum.photos/seed/2/${data.width || 1024}/${data.height || 1024}`,
     ],
     parameters: data,
     generatedAt: new Date().toISOString(),

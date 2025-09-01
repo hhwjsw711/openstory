@@ -37,23 +37,27 @@ const processVideoGeneration: JobProcessor = async (
   // Simulate longer processing time for video
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  // Example result structure
+  // Example result structure using real test videos
   const result = {
-    videoUrls: ["https://example.com/generated-video-1.mp4"],
-    thumbnailUrls: ["https://example.com/generated-video-1-thumbnail.jpg"],
+    videoUrls: [
+      "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    ],
+    thumbnailUrls: [
+      "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+    ],
     parameters: data,
     generatedAt: new Date().toISOString(),
     processingTimeMs: 3000,
     provider: "mock-video-provider",
     metadata: {
-      prompt: data.prompt || "Generated video",
-      style: data.style || "default",
-      duration: data.duration || 5, // seconds
+      prompt: data.prompt || "Big Buck Bunny - Open source animated short film",
+      style: data.style || "animation",
+      duration: data.duration || 596, // actual duration in seconds
       dimensions: {
-        width: data.width || 1280,
-        height: data.height || 720,
+        width: data.width || 1920,
+        height: data.height || 1080,
       },
-      fps: data.fps || 24,
+      fps: data.fps || 30,
       format: "mp4",
     },
   };

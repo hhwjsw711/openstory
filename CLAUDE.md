@@ -144,4 +144,4 @@ Frames are the building blocks of sequences:
 
 ### Testing
 - Use vitest to create tests and include tests for all logic on frontend and backend.
-
+- Include database types in the codebase from types/database instead of supabase/gen.types

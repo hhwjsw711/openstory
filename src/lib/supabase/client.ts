@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "../gen.types";
+import type { Database } from "./gen.types";
 
 interface BrowserEnvironmentVariables {
   NEXT_PUBLIC_SUPABASE_URL: string;

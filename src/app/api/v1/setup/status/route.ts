@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { handleApiError, ValidationError } from "@/lib/errors";
-import type { Database } from "@/lib/gen.types";
 import { setupStatusSchema } from "@/lib/schemas/setup";
 import { createAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 
 interface DatabaseStatus {
   connected: boolean;

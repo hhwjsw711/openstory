@@ -5,8 +5,8 @@
 
 import { z } from "zod";
 import { DatabaseError, ValidationError, VelroError } from "@/lib/errors";
-import type { Database } from "@/lib/gen.types";
 import { createAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 
 // Job status enum matching database
 export const JobStatus = {
