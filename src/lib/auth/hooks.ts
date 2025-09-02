@@ -61,7 +61,7 @@ export function useAuth() {
           console.error("Auth session error:", error);
         }
 
-        if (session && session.user) {
+        if (session?.user) {
           // Fetch user profile
           const response = await fetch("/api/v1/auth/session");
           const result = await response.json();
@@ -174,7 +174,7 @@ export function useAuth() {
             } else {
               localStorage.removeItem(ANONYMOUS_SESSION_KEY);
             }
-          } catch (error) {
+          } catch (_error) {
             localStorage.removeItem(ANONYMOUS_SESSION_KEY);
           }
         }

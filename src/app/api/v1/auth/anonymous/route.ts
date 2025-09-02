@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       });
       const result = schema.parse(body || {});
       initialData = result.data;
-    } catch (zodError) {
+    } catch (_zodError) {
       // Fallback validation for test environments where Zod might have issues
       if (body && typeof body === "object" && "data" in body) {
         const data = (body as any).data;
@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest) {
       const result = updateSchema.parse(body);
       sessionId = result.sessionId;
       data = result.data;
-    } catch (zodError) {
+    } catch (_zodError) {
       // Fallback validation for test environments
       if (
         body &&
