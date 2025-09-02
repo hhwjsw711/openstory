@@ -1,10 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { PageContainer } from "@/components/layout";
 import { GenerationSection } from "@/components/sequence/generation-section/generation-section";
 import { ProgressSection } from "@/components/sequence/progress-section/progress-section";
 import { ScriptSection } from "@/components/sequence/script-section/script-section";
 import { StyleSection } from "@/components/sequence/style-section/style-section";
+import {
+  PageDescription,
+  PageHeader,
+  PageHeading,
+} from "@/components/typography";
 import {
   useCreateSequence,
   useGenerateStoryboard,
@@ -145,48 +151,41 @@ export const NewSequencePage: React.FC<NewSequencePageProps> = ({
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div
-        className="max-w-4xl mx-auto space-y-8"
-        data-testid="new-sequence-page"
-      >
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Create New Sequence
-          </h1>
-          <p className="text-muted-foreground">
-            Transform your script into a professional video sequence with
-            AI-powered visual generation.
-          </p>
-        </div>
+    <PageContainer maxWidth="narrow" data-testid="new-sequence-page">
+      <PageHeader>
+        <PageHeading>Create New Sequence</PageHeading>
+        <PageDescription>
+          Transform your script into a professional video sequence with
+          AI-powered visual generation.
+        </PageDescription>
+      </PageHeader>
 
-        <ProgressSection progress={progress} />
+      <ProgressSection progress={progress} />
 
-        <ScriptSection
-          script={state.script}
-          onScriptChange={handleScriptChange}
-          error={state.validationErrors.script}
-          disabled={state.isSubmitting}
-        />
+      <ScriptSection
+        script={state.script}
+        onScriptChange={handleScriptChange}
+        error={state.validationErrors.script}
+        disabled={state.isSubmitting}
+      />
 
-        <StyleSection
-          selectedStyleId={state.selectedStyleId}
-          onStyleSelect={handleStyleSelect}
-          styles={stylesQuery.data || []}
-          loading={stylesQuery.isLoading}
-          error={stylesQuery.isError}
-          disabled={state.isSubmitting}
-        />
+      <StyleSection
+        selectedStyleId={state.selectedStyleId}
+        onStyleSelect={handleStyleSelect}
+        styles={stylesQuery.data || []}
+        loading={stylesQuery.isLoading}
+        error={stylesQuery.isError}
+        disabled={state.isSubmitting}
+      />
 
-        <GenerationSection
-          onGenerateStoryboard={handleGenerateStoryboard}
-          canGenerate={canGenerateStoryboard}
-          isSubmitting={state.isSubmitting}
-          submitError={state.submitError ?? undefined}
-          validationRequirements={validationRequirements}
-        />
-      </div>
-    </div>
+      <GenerationSection
+        onGenerateStoryboard={handleGenerateStoryboard}
+        canGenerate={canGenerateStoryboard}
+        isSubmitting={state.isSubmitting}
+        submitError={state.submitError ?? undefined}
+        validationRequirements={validationRequirements}
+      />
+    </PageContainer>
   );
 };
 

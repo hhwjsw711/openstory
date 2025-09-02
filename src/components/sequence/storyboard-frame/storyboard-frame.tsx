@@ -1,14 +1,76 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { cva, type VariantProps } from "class-variance-authority";
 import Image from "next/image";
 import type * as React from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Frame } from "@/types/database";
 
-interface StoryboardFrameProps {
+const storyboardFrameVariants = cva(
+  "relative rounded-lg border-2 bg-white shadow-sm transition-all",
+  {
+    variants: {
+      selected: {
+        true: "border-blue-500 ring-2 ring-blue-200",
+        false: "border-gray-200",
+      },
+      dragging: {
+        true: "opacity-50",
+        false: "",
+      },
+      disabled: {
+        true: "opacity-50",
+        false: "hover:shadow-md",
+      },
+    },
+    defaultVariants: {
+      selected: false,
+      dragging: false,
+      disabled: false,
+    },
+  },
+);
+
+const orderIndicatorVariants = cva(
+  "absolute -top-2 -left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold text-white cursor-grab",
+  {
+    variants: {
+      color: {
+        primary: "bg-blue-500",
+      },
+    },
+    defaultVariants: {
+      color: "primary",
+    },
+  },
+);
+
+const frameContentVariants = cva(
+  "aspect-video w-full overflow-hidden rounded-md",
+);
+
+const frameImageVariants = cva("h-full w-full object-cover");
+
+const emptyFrameVariants = cva(
+  "flex h-full w-full items-center justify-center bg-gray-100 text-gray-500",
+);
+
+const frameInfoVariants = cva("p-3");
+
+const frameDescriptionVariants = cva("text-sm text-gray-600 line-clamp-2");
+
+const frameDurationVariants = cva("mt-1 text-xs text-gray-400");
+
+const actionOverlayVariants = cva(
+  "absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100",
+);
+
+const actionButtonsVariants = cva("flex gap-2");
+
+interface StoryboardFrameProps
+  extends VariantProps<typeof storyboardFrameVariants> {
   frame: Frame;
-  selected?: boolean;
-  disabled?: boolean;
   showOrder?: boolean;
   onSelect?: (frameId: string) => void;
   onEdit?: (frameId: string) => void;
@@ -20,11 +82,12 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
   frame,
   selected = false,
   disabled = false,
+  dragging = false,
   showOrder = true,
-  onSelect,
+  onSelect: _onSelect,
   onEdit,
   onDelete,
-  onReorder,
+  onReorder: _onReorder,
 }) => {
   const {
     attributes,
@@ -35,7 +98,7 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
     isDragging,
   } = useSortable({
     id: frame.id,
-    disabled,
+    disabled: disabled || false,
   });
 
   const style = {
@@ -47,14 +110,18 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative rounded-lg border-2 bg-white shadow-sm transition-all ${
-        selected ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
-      } ${isDragging ? "opacity-50" : ""} ${disabled ? "opacity-50" : "hover:shadow-md"}`}
+      className={cn(
+        storyboardFrameVariants({
+          selected,
+          disabled,
+          dragging: isDragging || dragging,
+        }),
+      )}
     >
       {/* Order indicator */}
       {showOrder && (
         <div
-          className="absolute -top-2 -left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white cursor-grab"
+          className={cn(orderIndicatorVariants())}
           {...attributes}
           {...listeners}
         >
@@ -63,29 +130,25 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
       )}
 
       {/* Frame content */}
-      <div className="aspect-video w-full overflow-hidden rounded-md">
+      <div className={cn(frameContentVariants())}>
         {frame.thumbnail_url ? (
           <Image
             src={frame.thumbnail_url}
             alt={`Frame ${frame.order_index} preview`}
-            className="h-full w-full object-cover"
+            className={cn(frameImageVariants())}
             width={1920}
             height={1080}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-500">
-            No preview available
-          </div>
+          <div className={cn(emptyFrameVariants())}>No preview available</div>
         )}
       </div>
 
       {/* Frame info */}
-      <div className="p-3">
-        <p className="text-sm text-gray-600 line-clamp-2">
-          {frame.description}
-        </p>
+      <div className={cn(frameInfoVariants())}>
+        <p className={cn(frameDescriptionVariants())}>{frame.description}</p>
         {frame.duration_ms && (
-          <p className="mt-1 text-xs text-gray-400">
+          <p className={cn(frameDurationVariants())}>
             {(frame.duration_ms / 1000).toFixed(1)}s
           </p>
         )}
@@ -93,8 +156,8 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
 
       {/* Action buttons (shown on hover) */}
       {!disabled && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100">
-          <div className="flex gap-2">
+        <div className={cn(actionOverlayVariants())}>
+          <div className={cn(actionButtonsVariants())}>
             <Button
               onClick={(e) => {
                 e.stopPropagation();

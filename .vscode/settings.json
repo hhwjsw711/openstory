@@ -67,5 +67,6 @@
   },
   "[jsonc]": {
     "editor.defaultFormatter": "biomejs.biome"
-  }
+  },
+  "task.problemMatchers.neverPrompt": false
 }

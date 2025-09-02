@@ -57,3 +57,6 @@ workflow/data/
 
 *storybook.log
 storybook-static
+
+# conductor
+.conductor/

@@ -1,4 +1,5 @@
 import type * as React from "react";
+import { Progress } from "@/components/ui/progress";
 
 interface ProgressData {
   completed: number;
@@ -21,13 +22,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
           {progress.completed} of {progress.total} steps
         </span>
       </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary transition-all duration-500"
-          style={{ width: `${progress.percentage}%` }}
-          data-testid="progress-bar"
-        />
-      </div>
+      <Progress value={progress.percentage} data-testid="progress-bar" />
     </div>
   );
 };

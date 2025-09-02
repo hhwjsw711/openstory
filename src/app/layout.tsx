@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AppLayout } from "@/components/layout";
 import "./global.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const RootLayout: React.FC<RootLayoutProps> = ({ children }) => {
   return (
     <html lang="en">
       <body>
-        <main className="min-h-screen bg-background">{children}</main>
+        <AppLayout>{children}</AppLayout>
       </body>
     </html>
   );

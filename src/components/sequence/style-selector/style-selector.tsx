@@ -1,4 +1,6 @@
+import Image from "next/image";
 import * as React from "react";
+import { GalleryIcon } from "@/components/icons/gallery-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -52,7 +54,6 @@ const StyleCard: React.FC<StyleCardProps> = ({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={disabled ? -1 : 0}
-      role="button"
       aria-pressed={selected}
       aria-disabled={disabled}
       data-testid={`style-card-${style.id}`}
@@ -60,11 +61,13 @@ const StyleCard: React.FC<StyleCardProps> = ({
       <CardContent className="p-4">
         <div className="flex flex-col gap-3">
           <div className="aspect-[4/3] overflow-hidden rounded-lg bg-muted">
-            <img
+            <Image
               src={style.preview_url || ""}
               alt={`${style.name} style preview`}
               className="h-full w-full object-cover"
               loading="lazy"
+              width={1920}
+              height={1080}
             />
           </div>
 
@@ -88,9 +91,9 @@ const StyleCard: React.FC<StyleCardProps> = ({
                 <div className="flex gap-1 mt-1" data-testid="color-palette">
                   {style.config_json.colorPalette
                     .slice(0, 4)
-                    .map((color: any, index: number) => (
+                    .map((color, index) => (
                       <div
-                        key={index}
+                        key={`color-${String(color)}-${index}`}
                         className="w-3 h-3 rounded-full border border-border/20"
                         style={{ backgroundColor: String(color) }}
                         title={String(color)}
@@ -140,8 +143,9 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <StyleCardSkeleton key={index} />
+        {Array.from({ length: 8 }, (_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton key
+          <StyleCardSkeleton key={`skeleton-${index}`} />
         ))}
       </div>
     );
@@ -154,19 +158,7 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
         data-testid="empty-state"
       >
         <div className="rounded-full bg-muted p-6 mb-4">
-          <svg
-            className="w-8 h-8 text-muted-foreground"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
+          <GalleryIcon className="text-muted-foreground" size="lg" />
         </div>
         <h3 className="text-lg font-medium mb-2">No styles available</h3>
         <p className="text-muted-foreground max-w-sm">
