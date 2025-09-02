@@ -1,13 +1,14 @@
 import type {
   Database,
   Enums,
+  Json,
   Tables,
   TablesInsert,
   TablesUpdate,
 } from "@/lib/supabase/gen.types";
 
-// Re-export the Database type
-export type { Database };
+// Re-export the Database and Json types
+export type { Database, Json };
 
 // Table row types (what you get from SELECT)
 export type User = Tables<"users">;

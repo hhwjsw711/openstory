@@ -21,14 +21,14 @@ import {
   UpdateStyleSchema,
 } from "@/lib/schemas/style-stack";
 import { createAdminClient, createServerClient } from "@/lib/supabase/server";
-import type { Style, StyleInsert, StyleUpdate } from "@/types/database";
+import type { Json, Style, StyleInsert, StyleUpdate } from "@/types/database";
 
 export interface StyleWithAdaptations extends Style {
   style_adaptations?: {
     id: string;
     model_provider: string;
     model_name: string;
-    adapted_config: any;
+    adapted_config: Json;
     created_at: string;
   }[];
 }
@@ -81,7 +81,7 @@ export class StyleStackService {
       team_id: teamId,
       name: validatedInput.name,
       description: validatedInput.description || null,
-      config: validatedInput.config as any,
+      config: validatedInput.config as Json,
       category: validatedInput.category || null,
       tags: validatedInput.tags,
       is_public: validatedInput.is_public,
@@ -190,7 +190,7 @@ export class StyleStackService {
     }
 
     // Get adaptations if requested
-    let adaptations;
+    let adaptations: StyleWithAdaptations["style_adaptations"];
     if (validatedInput.include_adaptations) {
       const { data: adaptationsData, error: adaptationsError } =
         await this.supabase
@@ -247,7 +247,7 @@ export class StyleStackService {
     if (validatedInput.description !== undefined)
       updateData.description = validatedInput.description;
     if (validatedInput.config !== undefined)
-      updateData.config = validatedInput.config as any;
+      updateData.config = validatedInput.config as Json;
     if (validatedInput.category !== undefined)
       updateData.category = validatedInput.category;
     if (validatedInput.tags !== undefined)
@@ -394,7 +394,7 @@ export class StyleStackService {
         style_id: data.id,
         model_provider: adaptation.model_provider,
         model_name: adaptation.model_name,
-        adapted_config: adaptation.adapted_config as any,
+        adapted_config: adaptation.adapted_config,
       }));
 
       const { error: adaptationsError } = await this.adminClient
@@ -446,7 +446,7 @@ export class StyleStackService {
       style_id: validatedInput.style_id,
       model_provider: validatedInput.model_provider,
       model_name: validatedInput.model_name,
-      adapted_config: validatedInput.adapted_config as any,
+      adapted_config: validatedInput.adapted_config as Json,
     });
 
     if (error) {
@@ -585,7 +585,7 @@ export class StyleStackService {
 
       const { error: updateError } = await this.adminClient
         .from("frames")
-        .update({ metadata: newMetadata as any })
+        .update({ metadata: newMetadata as Json })
         .eq("id", frameId);
 
       if (updateError) {
@@ -641,7 +641,7 @@ export class StyleStackService {
       team_id: userTeamMember.team_id,
       name: validatedInput.name || validatedInput.style_data.name,
       description: `Imported style: ${validatedInput.style_data.name}`,
-      config: validatedInput.style_data as any,
+      config: validatedInput.style_data as Json,
       category: validatedInput.category || null,
       tags: validatedInput.tags,
       is_public: false, // Imported styles are private by default
@@ -732,7 +732,10 @@ export class StyleStackService {
       exportData.adaptations = {};
       for (const adaptation of style.style_adaptations) {
         const key = `${adaptation.model_provider}:${adaptation.model_name}`;
-        exportData.adaptations[key] = adaptation.adapted_config;
+        exportData.adaptations[key] = adaptation.adapted_config as Record<
+          string,
+          unknown
+        >;
       }
     }
 

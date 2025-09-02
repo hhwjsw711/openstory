@@ -1,5 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StyleStackConfig } from "@/lib/schemas/style-stack";
-import type { StyleInsert } from "@/types/database";
+import type { Database, StyleInsert } from "@/types/database";
 
 // Default style templates that can be imported into any team
 export const DEFAULT_STYLE_TEMPLATES: Array<
@@ -500,7 +501,9 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
  * Service function to seed default templates into the database
  * This should be run during app initialization or migration
  */
-export async function seedDefaultTemplates(supabaseClient: any): Promise<void> {
+export async function seedDefaultTemplates(
+  supabaseClient: SupabaseClient<Database>,
+): Promise<void> {
   try {
     // Create a system team for templates if it doesn't exist
     const systemTeamSlug = "system-templates";
@@ -533,6 +536,10 @@ export async function seedDefaultTemplates(supabaseClient: any): Promise<void> {
       throw new Error(`Failed to get system team: ${teamError.message}`);
     }
 
+    if (!systemTeam) {
+      throw new Error("System team is required but not found");
+    }
+
     // Check which templates already exist
     const { data: existingTemplates, error: existingError } =
       await supabaseClient
@@ -547,9 +554,7 @@ export async function seedDefaultTemplates(supabaseClient: any): Promise<void> {
       );
     }
 
-    const existingNames = new Set(
-      existingTemplates?.map((t: any) => t.name) || [],
-    );
+    const existingNames = new Set(existingTemplates?.map((t) => t.name) || []);
 
     // Filter out templates that already exist
     const templatesToInsert = DEFAULT_STYLE_TEMPLATES.filter(
