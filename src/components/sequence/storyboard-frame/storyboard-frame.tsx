@@ -1,6 +1,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Image from "next/image";
 import type * as React from "react";
+import { Button } from "@/components/ui/button";
 import type { Frame } from "@/types/database";
 
 interface StoryboardFrameProps {
@@ -48,7 +50,6 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
       className={`relative rounded-lg border-2 bg-white shadow-sm transition-all ${
         selected ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
       } ${isDragging ? "opacity-50" : ""} ${disabled ? "opacity-50" : "hover:shadow-md"}`}
-      onClick={() => !disabled && onSelect?.(frame.id)}
     >
       {/* Order indicator */}
       {showOrder && (
@@ -64,10 +65,12 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
       {/* Frame content */}
       <div className="aspect-video w-full overflow-hidden rounded-md">
         {frame.thumbnail_url ? (
-          <img
+          <Image
             src={frame.thumbnail_url}
             alt={`Frame ${frame.order_index} preview`}
             className="h-full w-full object-cover"
+            width={1920}
+            height={1080}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-500">
@@ -92,24 +95,23 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
       {!disabled && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100">
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit?.(frame.id);
               }}
-              className="rounded bg-blue-500 px-3 py-1 text-xs text-white hover:bg-blue-600"
             >
               Edit
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete?.(frame.id);
               }}
-              className="rounded bg-red-500 px-3 py-1 text-xs text-white hover:bg-red-600"
+              variant="destructive"
             >
               Delete
-            </button>
+            </Button>
           </div>
         </div>
       )}

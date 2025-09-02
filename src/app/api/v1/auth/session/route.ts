@@ -5,7 +5,7 @@ import { AuthService } from "@/lib/auth/service";
  * Get current user session
  * GET /api/v1/auth/session
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const authService = new AuthService();
     const session = await authService.getSession();
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
  * Sign out current user
  * DELETE /api/v1/auth/session
  */
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   try {
     const authService = new AuthService();
     const result = await authService.signOut();

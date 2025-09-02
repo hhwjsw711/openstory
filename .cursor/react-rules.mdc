@@ -47,7 +47,7 @@ alwaysApply: false
 ## 7. Avoid passing style to components
 
 - Avoid passing styles to components, or styling your components in views
-- Create a component that is pre-styled
+- Create components that are pre-styled
 - Create variants - e.g. small, medium, large - rather than size={18}
 - Avoid using styles in views as much as possible
 
