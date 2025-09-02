@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": [],
+    "ask": ["Bash(git commit --no-verify)"]
+  }
+}

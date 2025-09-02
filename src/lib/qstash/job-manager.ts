@@ -32,8 +32,8 @@ export type JobTypeType = (typeof JobType)[keyof typeof JobType];
 export const createJobSchema = z.object({
   type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
   payload: z.record(z.string(), z.unknown()),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  userId: z.uuid().optional(),
+  teamId: z.uuid().optional(),
 });
 
 export const updateJobSchema = z.object({
