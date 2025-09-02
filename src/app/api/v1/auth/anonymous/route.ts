@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     } catch (_zodError) {
       // Fallback validation for test environments where Zod might have issues
       if (body && typeof body === "object" && "data" in body) {
-        const data = (body as any).data;
+        const data = body.data;
         if (data === undefined || (typeof data === "object" && data !== null)) {
           initialData = data;
         } else {

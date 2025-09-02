@@ -2,7 +2,6 @@ import "@testing-library/jest-dom/vitest";
 import type { ImageProps } from "next/image";
 import React from "react";
 import { afterEach, vi } from "vitest";
-import { is } from "zod/v4/locales";
 
 // Make React available globally for component tests
 globalThis.React = React;

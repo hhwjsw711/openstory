@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "biome check --write .",
     "lint:check": "biome check .",
+    "lint:open": "./scripts/lint-and-open.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",

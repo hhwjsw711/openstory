@@ -129,7 +129,7 @@ export const Interactive: Story = {
   args: {
     frame: sampleFrame,
   },
-  play: async ({ canvasElement, step }) => {
+  play: async () => {
     // This story demonstrates interactions but cannot simulate all hover states in Storybook
     // In real usage, hover states would show action buttons
   },
