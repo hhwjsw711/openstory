@@ -100,7 +100,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=test-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith(
         "test-code",
@@ -142,7 +142,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=new-user-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockAuthService.getUserProfile).toHaveBeenCalledWith(
         "new-user-456",
@@ -192,7 +192,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=upgrade-code&anonymousId=anon-session-123",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockAuthService.upgradeAnonymousSession).toHaveBeenCalledWith(
         "user-789",
@@ -229,7 +229,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=redirect-code&redirectTo=/profile/settings",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
@@ -266,7 +266,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=fail-upgrade-code&anonymousId=anon-fail-123",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockAuthService.upgradeAnonymousSession).toHaveBeenCalledWith(
         "user-fail-upgrade",
@@ -291,7 +291,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=invalid-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
@@ -315,7 +315,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=no-user-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
@@ -326,7 +326,7 @@ describe("/auth/callback", () => {
     it("should handle missing code parameter", async () => {
       const request = new NextRequest("http://localhost:3000/auth/callback");
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockSupabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
       expect(NextResponse.redirect).toHaveBeenCalled();
@@ -346,7 +346,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=error-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
@@ -379,7 +379,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=profile-error-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];
@@ -418,7 +418,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=minimal-code",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockAuthService.upsertUserProfile).toHaveBeenCalledWith({
         id: "minimal-user",
@@ -465,7 +465,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=no-email-code&anonymousId=anon-no-email",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockAuthService.upgradeAnonymousSession).toHaveBeenCalledWith(
         "no-email-user",
@@ -509,7 +509,7 @@ describe("/auth/callback", () => {
         "http://localhost:3000/auth/callback?code=encoded-code&redirectTo=%2Fprofile%2Fsettings%3Ftab%3Dsecurity",
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(NextResponse.redirect).toHaveBeenCalled();
       const redirectCall = vi.mocked(NextResponse.redirect).mock.calls[0][0];

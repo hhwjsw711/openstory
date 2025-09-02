@@ -14,8 +14,8 @@ import { getJobManager, JobType } from "@/lib/qstash/job-manager";
 const createJobRequestSchema = z.object({
   type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
   data: z.record(z.string(), z.unknown()),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  userId: z.uuid().optional(),
+  teamId: z.uuid().optional(),
   delay: z.number().min(0).max(86400).optional(), // Max 24 hours delay
 });
 

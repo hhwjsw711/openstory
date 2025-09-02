@@ -49,8 +49,14 @@ next-env.d.ts
 # workflow
 .trees/
 workflow/state/
-# workflow/instructions/  # Track implementation plans
+# workflow/instructions/
 workflow/logs/
 workflow/data/
 .launch-claude.sh
 .env*.local
+
+*storybook.log
+storybook-static
+
+# conductor
+.conductor/

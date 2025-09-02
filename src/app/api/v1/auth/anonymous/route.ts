@@ -18,10 +18,10 @@ export async function POST(request: NextRequest) {
       });
       const result = schema.parse(body || {});
       initialData = result.data;
-    } catch (zodError) {
+    } catch (_zodError) {
       // Fallback validation for test environments where Zod might have issues
       if (body && typeof body === "object" && "data" in body) {
-        const data = (body as any).data;
+        const data = body.data;
         if (data === undefined || (typeof data === "object" && data !== null)) {
           initialData = data;
         } else {
@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest) {
       const result = updateSchema.parse(body);
       sessionId = result.sessionId;
       data = result.data;
-    } catch (zodError) {
+    } catch (_zodError) {
       // Fallback validation for test environments
       if (
         body &&
@@ -162,8 +162,8 @@ export async function PATCH(request: NextRequest) {
         "sessionId" in body &&
         "data" in body
       ) {
-        const rawSessionId = (body as any).sessionId;
-        const rawData = (body as any).data;
+        const rawSessionId = body.sessionId;
+        const rawData = body.data;
 
         if (
           typeof rawSessionId === "string" &&

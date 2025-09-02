@@ -98,7 +98,7 @@ Use `@/*` to import from src directory:
 import { something } from '@/app/api/utils'
 ```
 
-## Development Guidelines
+## Backend Development Guidelines
 
 ### When creating new features:
 1. Start with API route in `/app/api/v1/[feature]`
@@ -123,26 +123,115 @@ Frames are the building blocks of sequences:
 - AI adjusts frame boundaries when script changes
 
 
-### React Guidelines
-1. Use as little React as possible - keep components small and externalise logic
-2. Avoid using useEffect - use tanstack query if possible
-3. Use useState sparingly
-4. Use React.FC and expand props
-5. Avoid globals and global state
-6. Use reducers
-7. Avoid adding style ontop of components - adjust the component style
-8. Use a common theme for styling
-9. Use flexbox
-10. Avoid margin
-11. Use kebab-case for file names
-12. Create a component library and use storybook
-13. Avoid hard coding width or height
-14. Use a show/hide prop if you need to hide something
-15. Use biome after editing
-16. Views are routes
-17. Avoid default exports
+## Frontend Development Guidelines
+### 1. Use as little React as possible
 
-### Testing
-- Use vitest to create tests and include tests for all logic on frontend and backend.
+- Keep components small - less than 100 lines
+- Views reference components
+- Remove as much logic as possible from components and views
+- Externalize functions rather and keep external functions _vanilla typescript_
+- Vanilla typescript is easier to test, and package for other uses
+
+### 2. Avoid using useEffect
+
+- Avoid using useEffect to fetch data or initialise state
+- Use hooks, tanstack query, or the new `use` feature in react 19
+- use useEffect to update state when something else changes
+
+### 3. Use useState sparingly
+
+- Using a local variable is often more optimal - even if something has to be calculated
+- useState uses reducers under the hood
+- If you have more than 3 useStates you might as well use reducers
+
+### 4. Use React.FC and expand props
+
+- Expand props so that each parameter is named
+- It's easier to know which props are not used
+
+### 5. Avoid globals and global state
+
+- Globals including auth globals, often lead to race conditions
+- Global state is only useful in rare cases. SPAs with signifant complexity
+- Start with reducers which are passed through props
+- If that's too complicated, use React context
+- As a last resort for very complicated SPAs - use zustand
+
+### 6. Use reducers
+
+- Reducers are great - read up on them and understand them
+- They keep all state update logic in one place
+- They are vanilla typescript - keep them that way
+- Use them to update state based on other state.
+- Note that updating any part of the state returned from a reducer will cause a re-render if the whole state is a parameter - you can pass just parts of it
+
+### 7. Avoid adding styles on top of components
+
+- Avoid passing styles to components, or styling your components in views
+- Create components that are pre-styled
+- Create variants - e.g. small, medium, large - rather than size={18}
+- Avoid using styles in views as much as possible
+
+### 8. Use the theme
+
+- Create constants for your theme or use a consistent structure
+- Use the theme fonts and colors
+- Avoid naming fonts and inluding color values directly in views and components
+
+### 9. Use flexbox
+
+- Use flexbox for every component
+
+### 10. Avoid margin
+
+- Don't pre-add padding or margin to the outside of components, unless there is a specific reason to
+- Use flexbox gap instead
+
+### 11. Use kebab-case for file names
+
+- Use PascalCase for component names, but kebab case for file-names
+- PascalCase can often give you issues in git as case sensitive file names is not supported on all platforms
+
+### 12. Create a component library
+
+- If using a 3rd party component library, wrap those components then include your wrapped components. It makes it easier to change libraries
+- Shadcn makes this easy - it includes the source in your repo, and imports only primitives from that source.
+- You don't need to wrap Shadcn generated components - just edit the component source with your changes
+- Don't create duplicates of components for minor variations. Create a variation
+- Customise the component if there's a new variation - don't style from the outside
+- Put your components into a high level components folder
+- Use an aliases or subpath imports "~" to import components from views.
+
+### 13. Avoid hard coding width or height
+
+- Use flexbox and create rules for screen sizes
+
+### 14. Use a show prop if you need to hide something
+
+- Avoid code that conditionally shows a complex component - this creates janky ui
+- Instead use the display css property to hide or show - this will precalculate everything in the component but not render it
+
+### 15. Use eslint or equivalent
+
+- Ensure the rules of hooks linting rule is on
+- Check out 0xlint and Biome
+
+### 16. Views are routes
+
+- All views should be routable - meaning you can get to them via a route
+- No view should rely on variables or parameters from another
+- A view can be accessed in any order
+- Pass params on the url. You can use url segments for ids, search params should be optional
+- Name views with the same name as the route - or place in a folder with that name
+
+### 17. Avoid default exports
+
+- It's more efficient to export the component directly than to import a default
+- Avoid barrelled imports as much as possible _unless_ you are planning to package that library for others
+
+
+## Testing
+- Use vitest to create tests and include tests for all logic on frontend and backend - but not for components themselves
 - Include database types in the codebase from types/database instead of supabase/gen.types
-- Always use the supabase cli to create migrtations
+- Always use the supabase cli to create migrations
+- Use z.uuid() insteadf of z.uuid()

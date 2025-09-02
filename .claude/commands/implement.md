@@ -29,7 +29,7 @@ Based on the issue type and the plan above, I'll select the appropriate implemen
 - Frontend issues → `frontend-react-engineer`
 - QA/Testing → `qa-lead-tester`
 
-I'll now use the Task tool to invoke the appropriate engineer to implement the solution following the plan.
+I'll now use the Task tool to invoke the appropriate engineer(s) to implement the solution following the plan.
 
 The engineer will:
 1. **Follow the Plan** - Implement according to the tech lead's specifications
