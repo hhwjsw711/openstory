@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import type { Style } from "@/types/database";
-import { StyleSection } from "./style-section";
+import { StyleSection } from "../style-section";
 
 // Mock styles data for stories
 const mockStyles: Style[] = [

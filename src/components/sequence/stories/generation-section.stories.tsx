@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { GenerationSection } from "./generation-section";
+import { GenerationSection } from "../generation-section";
 
 const meta: Meta<typeof GenerationSection> = {
   title: "Components/Sequence/GenerationSection",

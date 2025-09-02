@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { useState } from "react";
 import { stylePresets } from "@/lib/mocks/style-presets";
-import { StyleSelector } from "./style-selector";
+import { StyleSelector } from "../style-selector";
 
 const meta: Meta<typeof StyleSelector> = {
   title: "Components/Sequence/StyleSelector",

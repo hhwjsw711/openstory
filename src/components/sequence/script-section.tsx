@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { ScriptEditor } from "@/components/sequence/script-editor/script-editor";
+import { ScriptEditor } from "@/components/sequence/script-editor";
 
 interface ScriptSectionProps {
   script: string;

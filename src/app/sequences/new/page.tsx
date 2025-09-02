@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { PageContainer } from "@/components/layout";
-import { GenerationSection } from "@/components/sequence/generation-section/generation-section";
-import { ProgressSection } from "@/components/sequence/progress-section/progress-section";
-import { ScriptSection } from "@/components/sequence/script-section/script-section";
-import { StyleSection } from "@/components/sequence/style-section/style-section";
+import { GenerationSection } from "@/components/sequence/generation-section";
+import { ProgressSection } from "@/components/sequence/progress-section";
+import { ScriptSection } from "@/components/sequence/script-section";
+import { StyleSection } from "@/components/sequence/style-section";
 import {
   PageDescription,
   PageHeader,

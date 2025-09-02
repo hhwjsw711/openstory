@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { useState } from "react";
-import { ScriptEditor } from "./script-editor";
+import { ScriptEditor } from "../script-editor";
 
 const meta: Meta<typeof ScriptEditor> = {
   title: "Components/Sequence/ScriptEditor",

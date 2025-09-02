@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { ScriptSection } from "./script-section";
+import { ScriptSection } from "../script-section";
 
 const meta: Meta<typeof ScriptSection> = {
   title: "Components/Sequence/ScriptSection",

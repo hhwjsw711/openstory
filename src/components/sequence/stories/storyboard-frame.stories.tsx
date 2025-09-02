@@ -5,7 +5,7 @@ import {
 } from "@dnd-kit/sortable";
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { generateMockFrame } from "@/lib/mocks/data-generators";
-import { StoryboardFrame } from "./storyboard-frame";
+import { StoryboardFrame } from "../storyboard-frame";
 
 const meta: Meta<typeof StoryboardFrame> = {
   title: "Sequence/StoryboardFrame",

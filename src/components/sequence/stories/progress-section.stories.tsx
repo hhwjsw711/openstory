@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { ProgressSection } from "./progress-section";
+import { ProgressSection } from "../progress-section";
 
 const meta: Meta<typeof ProgressSection> = {
   title: "Components/Sequence/ProgressSection",

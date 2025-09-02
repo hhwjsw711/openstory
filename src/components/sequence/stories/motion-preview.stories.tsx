@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { generateMockFrame } from "@/lib/mocks/data-generators";
-import { MotionPreview } from "./motion-preview";
+import { MotionPreview } from "../motion-preview";
 
 const meta: Meta<typeof MotionPreview> = {
   title: "Sequence/MotionPreview",
