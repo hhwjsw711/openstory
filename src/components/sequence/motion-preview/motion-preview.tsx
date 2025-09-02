@@ -1,6 +1,6 @@
 import { Maximize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import Image from "next/image";
 import * as React from "react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
   };
 
   // Control handlers
-  const togglePlay = () => {
+  const togglePlay = React.useCallback(() => {
     if (!videoRef.current || !hasVideo) return;
 
     if (isPlaying) {
@@ -80,15 +80,15 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
     } else {
       videoRef.current.play();
     }
-  };
+  }, [isPlaying, hasVideo]);
 
-  const toggleMute = () => {
+  const toggleMute = React.useCallback(() => {
     if (!videoRef.current) return;
 
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     videoRef.current.muted = newMuted;
-  };
+  }, [isMuted]);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current || !hasVideo) return;
@@ -103,7 +103,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
     onSeek?.(seekTime);
   };
 
-  const toggleFullscreen = async () => {
+  const toggleFullscreen = React.useCallback(async () => {
     if (!videoRef.current) return;
 
     try {
@@ -117,11 +117,9 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
     } catch (error) {
       console.error("Fullscreen error:", error);
     }
-  };
-
-  // Keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+  }, []);
+  const handleKeyPress = React.useCallback(
+    (e: KeyboardEvent) => {
       if (e.target !== document.body) return; // Only handle when not in input fields
 
       switch (e.key) {
@@ -139,11 +137,15 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           toggleFullscreen();
           break;
       }
-    };
+    },
+    [toggleFullscreen, toggleMute, togglePlay],
+  );
 
+  // Keyboard shortcuts
+  React.useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
     return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [toggleFullscreen, toggleMute, togglePlay]);
+  }, [handleKeyPress]);
 
   // Handle fullscreen change
   React.useEffect(() => {
@@ -189,7 +191,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                 </span>
               </div>
             ) : (
-              <img
+              <Image
                 src={thumbnailUrl}
                 alt={`Frame ${frame.order_index} preview`}
                 className={cn(
@@ -198,6 +200,8 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                 )}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
+                width={1920}
+                height={1080}
               />
             )}
 
@@ -287,6 +291,8 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           >
             {/* Progress bar */}
             <div className="mb-2">
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: seek bar */}
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: seek bar */}
               <div
                 className="bg-white/20 h-1 w-full cursor-pointer rounded-full"
                 onClick={handleSeek}

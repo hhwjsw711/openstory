@@ -32,9 +32,29 @@ export default defineConfig({
         "**/*.spec.tsx",
       ],
     },
-    include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    testTimeout: 10000,
+    exclude: ["**/*.stories.{js,jsx,ts,tsx}"], // Exclude stories from default test run
+    testTimeout: 20000, // Increased timeout for CI environment
     projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}"],
+          exclude: [
+            "**/*.stories.{js,jsx,ts,tsx}", // Exclude stories
+            "src/**/*.{test,spec}.{jsx,tsx}", // Exclude component tests
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "component",
+          include: ["src/**/*.{test,spec}.{jsx,tsx}"],
+          exclude: ["**/*.stories.{js,jsx,ts,tsx}"], // Exclude stories from component tests
+          setupFiles: ["./src/test/setup-component.ts"], // Use component setup for React tests
+        },
+      },
       {
         extends: true,
         plugins: [

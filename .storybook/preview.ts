@@ -29,6 +29,13 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    nextjs: {
+      appDirectory: true,
+      // Configure Next.js Image component for Storybook
+      image: {
+        unoptimized: true, // Disable image optimization in Storybook
+      },
+    },
   },
   decorators: [withQueryClient],
 };
