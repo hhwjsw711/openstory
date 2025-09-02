@@ -73,12 +73,10 @@ export function useUpdateSequence() {
         result &&
         typeof result === "object" &&
         result !== null &&
-        "id" in result
+        "id" in result &&
+        typeof result.id === "string"
       ) {
-        queryClient.setQueryData(
-          sequenceKeys.detail((result as any).id),
-          result,
-        );
+        queryClient.setQueryData(sequenceKeys.detail(result.id), result);
       }
       // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });

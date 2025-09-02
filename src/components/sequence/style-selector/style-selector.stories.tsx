@@ -273,13 +273,15 @@ export const PopularStyles: Story = {
       </div>
       <InteractiveStyleSelector
         styles={[
-          stylePresets.find((s) => s.id === "style-cinematic")!,
-          stylePresets.find((s) => s.id === "style-anime")!,
-          stylePresets.find((s) => s.id === "style-cyberpunk")!,
-          stylePresets.find((s) => s.id === "style-watercolor")!,
-          stylePresets.find((s) => s.id === "style-minimalist")!,
-          stylePresets.find((s) => s.id === "style-comic")!,
-        ].filter(Boolean)}
+          "style-cinematic",
+          "style-anime",
+          "style-cyberpunk",
+          "style-watercolor",
+          "style-minimalist",
+          "style-comic",
+        ]
+          .map((id) => stylePresets.find((s) => s.id === id))
+          .filter((s): s is NonNullable<typeof s> => s !== undefined)}
         initialSelectedId="style-cinematic"
       />
     </div>

@@ -74,9 +74,10 @@ export function useUpdateStyle() {
         result &&
         typeof result === "object" &&
         result !== null &&
-        "id" in result
+        "id" in result &&
+        typeof result.id === "string"
       ) {
-        queryClient.setQueryData(styleKeys.detail((result as any).id), result);
+        queryClient.setQueryData(styleKeys.detail(result.id), result);
       }
       queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
