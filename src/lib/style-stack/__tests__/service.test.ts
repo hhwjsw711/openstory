@@ -103,6 +103,24 @@ describe("StyleStackService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Reset the mock implementation to default for each test
+    (mockSupabaseClient.from as Mock).mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      contains: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      single: vi.fn(),
+      gt: vi.fn().mockReturnThis(),
+    });
+
     styleService = new StyleStackService();
   });
 
@@ -540,30 +558,56 @@ describe("StyleStackService", () => {
     it("should duplicate public style successfully", async () => {
       const publicStyle = { ...mockStyle, is_public: true };
 
-      // Mock getting original style
-      (mockSupabaseClient.from as Mock)
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
+      // Create a counter to track how many times from() is called
+      let fromCallCount = 0;
+
+      (mockSupabaseClient.from as Mock).mockImplementation(
+        (tableName: string) => {
+          fromCallCount++;
+
+          if (fromCallCount === 1 && tableName === "styles") {
+            // First call: getting original style
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
                 data: publicStyle,
                 error: null,
               }),
-            }),
-          }),
-        })
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { team_id: "080c66c9-0797-4611-9227-21a0d57ab694" },
-                  error: null,
-                }),
+            };
+          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+            // Second call: getting style adaptations (from getStyleById with include_adaptations)
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
               }),
-            }),
-          }),
-        });
+            };
+          } else if (fromCallCount === 3 && tableName === "team_members") {
+            // Third call: getting user's team (with limit method)
+            const queryObj: any = {};
+            queryObj.select = vi.fn(() => queryObj);
+            queryObj.eq = vi.fn(() => queryObj);
+            queryObj.limit = vi.fn(() => queryObj);
+            queryObj.single = vi.fn().mockResolvedValue({
+              data: { team_id: "080c66c9-0797-4611-9227-21a0d57ab694" },
+              error: null,
+            });
+            return queryObj;
+          }
+          // Return a default mock for any unexpected calls
+          const defaultMock: any = {};
+          defaultMock.select = vi.fn(() => defaultMock);
+          defaultMock.eq = vi.fn(() => defaultMock);
+          defaultMock.limit = vi.fn(() => defaultMock);
+          defaultMock.single = vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "Unexpected call" },
+          });
+          return defaultMock;
+        },
+      );
 
       const duplicatedStyle = {
         ...mockStyle,
@@ -600,30 +644,55 @@ describe("StyleStackService", () => {
     it("should not allow duplicating private style without access", async () => {
       const privateStyle = { ...mockStyle, is_public: false };
 
-      // Mock getting original style
-      (mockSupabaseClient.from as Mock)
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
+      // Create a counter to track how many times from() is called
+      let fromCallCount = 0;
+
+      (mockSupabaseClient.from as Mock).mockImplementation(
+        (tableName: string) => {
+          fromCallCount++;
+
+          if (fromCallCount === 1 && tableName === "styles") {
+            // First call: getting original style
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
                 data: privateStyle,
                 error: null,
               }),
-            }),
-          }),
-        })
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: null,
-                  error: { message: "Not found" },
-                }),
+            };
+          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+            // Second call: getting style adaptations (from getStyleById with include_adaptations)
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
               }),
-            }),
-          }),
-        });
+            };
+          } else if (fromCallCount === 3 && tableName === "team_members") {
+            // Third call: checking team membership (with two eq() calls)
+            const queryObj: any = {};
+            queryObj.select = vi.fn(() => queryObj);
+            queryObj.eq = vi.fn(() => queryObj);
+            queryObj.single = vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: "Not found" },
+            });
+            return queryObj;
+          }
+          // Return a default mock for any unexpected calls
+          const defaultMock: any = {};
+          defaultMock.select = vi.fn(() => defaultMock);
+          defaultMock.eq = vi.fn(() => defaultMock);
+          defaultMock.limit = vi.fn(() => defaultMock);
+          defaultMock.single = vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "Unexpected call" },
+          });
+          return defaultMock;
+        },
+      );
 
       const input = {
         id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
@@ -636,6 +705,102 @@ describe("StyleStackService", () => {
           "bf4ca47e-ab95-4c46-9035-8f75daa93029",
         ),
       ).rejects.toThrow("Unauthorized: Cannot duplicate private style");
+    });
+
+    it("should allow duplicating private style with team access", async () => {
+      const privateStyle = { ...mockStyle, is_public: false };
+
+      // Create a counter to track how many times from() is called
+      let fromCallCount = 0;
+
+      (mockSupabaseClient.from as Mock).mockImplementation(
+        (tableName: string) => {
+          fromCallCount++;
+
+          if (fromCallCount === 1 && tableName === "styles") {
+            // First call: getting original style
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: privateStyle,
+                error: null,
+              }),
+            };
+          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+            // Second call: getting style adaptations (from getStyleById with include_adaptations)
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            };
+          } else if (fromCallCount === 3 && tableName === "team_members") {
+            // Third call: checking team membership (user is a member)
+            const queryObj: any = {};
+            queryObj.select = vi.fn(() => queryObj);
+            queryObj.eq = vi.fn(() => queryObj);
+            queryObj.single = vi.fn().mockResolvedValue({
+              data: { role: "member" },
+              error: null,
+            });
+            return queryObj;
+          } else if (fromCallCount === 4 && tableName === "team_members") {
+            // Fourth call: getting user's team
+            const queryObj: any = {};
+            queryObj.select = vi.fn(() => queryObj);
+            queryObj.eq = vi.fn(() => queryObj);
+            queryObj.limit = vi.fn(() => queryObj);
+            queryObj.single = vi.fn().mockResolvedValue({
+              data: { team_id: "080c66c9-0797-4611-9227-21a0d57ab694" },
+              error: null,
+            });
+            return queryObj;
+          }
+          // Return a default mock for any unexpected calls
+          const defaultMock: any = {};
+          defaultMock.select = vi.fn(() => defaultMock);
+          defaultMock.eq = vi.fn(() => defaultMock);
+          defaultMock.limit = vi.fn(() => defaultMock);
+          defaultMock.single = vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "Unexpected call" },
+          });
+          return defaultMock;
+        },
+      );
+
+      const duplicatedStyle = {
+        ...mockStyle,
+        id: "d22d721b-ef44-41e4-b089-65c618aedc06",
+        name: "Duplicated Style from Private",
+        team_id: "080c66c9-0797-4611-9227-21a0d57ab694",
+        parent_id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+      };
+
+      (mockAdminClient.from as Mock).mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: duplicatedStyle,
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      const input = {
+        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        name: "Duplicated Style from Private",
+      };
+
+      const result = await styleService.duplicateStyle(
+        input,
+        "1359a1a3-e189-448d-8451-734b4be680ec",
+      );
+
+      expect(result).toEqual(duplicatedStyle);
     });
   });
 
