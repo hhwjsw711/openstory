@@ -12,11 +12,11 @@ import type { QStashVerifiedRequest } from "@/lib/qstash/middleware";
 
 // Base webhook request schema
 export const webhookRequestSchema = z.object({
-  jobId: z.string().uuid(),
+  jobId: z.uuid(),
   type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
   data: z.record(z.string(), z.unknown()),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  userId: z.uuid().optional(),
+  teamId: z.uuid().optional(),
 });
 
 export type WebhookRequest = z.infer<typeof webhookRequestSchema>;

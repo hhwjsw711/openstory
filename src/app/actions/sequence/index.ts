@@ -3,17 +3,17 @@
 import { z } from "zod";
 
 // Schema definitions
-export const createSequenceSchema = z.object({
+const createSequenceSchema = z.object({
   name: z.string().min(1).max(100),
   script: z.string().min(10).max(10000),
-  style_id: z.string().uuid().optional(),
+  style_id: z.uuid().optional(),
 });
 
-export const updateSequenceSchema = z.object({
-  id: z.string().uuid(),
+const updateSequenceSchema = z.object({
+  id: z.uuid(),
   name: z.string().min(1).max(100).optional(),
   script: z.string().min(10).max(10000).optional(),
-  style_id: z.string().uuid().nullable().optional(),
+  style_id: z.uuid().nullable().optional(),
 });
 
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

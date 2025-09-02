@@ -234,3 +234,4 @@ Frames are the building blocks of sequences:
 - Use vitest to create tests and include tests for all logic on frontend and backend - but not for components themselves
 - Include database types in the codebase from types/database instead of supabase/gen.types
 - Always use the supabase cli to create migrations
+- Use z.uuid() insteadf of z.uuid()

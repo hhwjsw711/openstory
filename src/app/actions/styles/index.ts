@@ -3,7 +3,8 @@
 import { z } from "zod";
 
 // Schema definitions
-export const createStyleSchema = z.object({
+
+const createStyleSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(10).max(500),
   settings: z.object({
