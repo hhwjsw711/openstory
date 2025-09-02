@@ -362,39 +362,95 @@ export type Database = {
           },
         ];
       };
-      styles: {
+      style_adaptations: {
         Row: {
-          config_json: Json;
+          adapted_config: Json;
           created_at: string;
-          created_by: string | null;
           id: string;
-          is_public: boolean | null;
-          name: string;
-          preview_url: string | null;
-          team_id: string;
-          updated_at: string;
+          model_name: string;
+          model_provider: string;
+          style_id: string;
         };
         Insert: {
-          config_json?: Json;
+          adapted_config?: Json;
           created_at?: string;
-          created_by?: string | null;
           id?: string;
-          is_public?: boolean | null;
-          name: string;
-          preview_url?: string | null;
-          team_id: string;
-          updated_at?: string;
+          model_name: string;
+          model_provider: string;
+          style_id: string;
         };
         Update: {
-          config_json?: Json;
+          adapted_config?: Json;
+          created_at?: string;
+          id?: string;
+          model_name?: string;
+          model_provider?: string;
+          style_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "style_adaptations_style_id_fkey";
+            columns: ["style_id"];
+            isOneToOne: false;
+            referencedRelation: "styles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      styles: {
+        Row: {
+          category: string | null;
+          config: Json;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          is_public: boolean | null;
+          is_template: boolean | null;
+          name: string;
+          parent_id: string | null;
+          preview_url: string | null;
+          tags: string[] | null;
+          team_id: string;
+          updated_at: string;
+          usage_count: number | null;
+          version: number | null;
+        };
+        Insert: {
+          category?: string | null;
+          config?: Json;
           created_at?: string;
           created_by?: string | null;
+          description?: string | null;
           id?: string;
           is_public?: boolean | null;
-          name?: string;
+          is_template?: boolean | null;
+          name: string;
+          parent_id?: string | null;
           preview_url?: string | null;
+          tags?: string[] | null;
+          team_id: string;
+          updated_at?: string;
+          usage_count?: number | null;
+          version?: number | null;
+        };
+        Update: {
+          category?: string | null;
+          config?: Json;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          is_public?: boolean | null;
+          is_template?: boolean | null;
+          name?: string;
+          parent_id?: string | null;
+          preview_url?: string | null;
+          tags?: string[] | null;
           team_id?: string;
           updated_at?: string;
+          usage_count?: number | null;
+          version?: number | null;
         };
         Relationships: [
           {
@@ -402,6 +458,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "styles_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "styles";
             referencedColumns: ["id"];
           },
           {
@@ -628,6 +691,16 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      create_style_version: {
+        Args: {
+          creator_id: string;
+          new_config: Json;
+          new_description: string;
+          new_name: string;
+          original_style_id: string;
+        };
+        Returns: string;
+      };
       gtrgm_compress: {
         Args: { "": unknown };
         Returns: unknown;
@@ -647,6 +720,10 @@ export type Database = {
       gtrgm_out: {
         Args: { "": unknown };
         Returns: unknown;
+      };
+      increment_style_usage: {
+        Args: { style_uuid: string };
+        Returns: undefined;
       };
       set_limit: {
         Args: { "": number };

@@ -9,7 +9,7 @@ const mockStyles: Style[] = [
     name: "Cinematic Drama",
     preview_url:
       "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=400&h=300&fit=crop",
-    config_json: {
+    config: {
       artStyle: "Cinematic",
       colorPalette: ["#1a1a1a", "#d4af37", "#8b4513", "#2c2c2c"],
     },
@@ -18,13 +18,20 @@ const mockStyles: Style[] = [
     created_by: null,
     is_public: false,
     team_id: "team-1",
+    category: null,
+    description: null,
+    is_template: null,
+    parent_id: null,
+    tags: null,
+    usage_count: null,
+    version: null,
   },
   {
     id: "style-2",
     name: "Animated Adventure",
     preview_url:
       "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop",
-    config_json: {
+    config: {
       artStyle: "Animation",
       colorPalette: ["#ff6b35", "#f7931e", "#1f4e79", "#85c7de"],
     },
@@ -33,13 +40,20 @@ const mockStyles: Style[] = [
     created_by: null,
     is_public: false,
     team_id: "team-1",
+    category: null,
+    description: null,
+    is_template: null,
+    parent_id: null,
+    tags: null,
+    usage_count: null,
+    version: null,
   },
   {
     id: "style-3",
     name: "Film Noir",
     preview_url:
       "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400&h=300&fit=crop",
-    config_json: {
+    config: {
       artStyle: "Film Noir",
       colorPalette: ["#000000", "#ffffff", "#404040", "#808080"],
     },
@@ -48,6 +62,13 @@ const mockStyles: Style[] = [
     created_by: null,
     is_public: false,
     team_id: "team-1",
+    category: null,
+    description: null,
+    is_template: null,
+    parent_id: null,
+    tags: null,
+    usage_count: null,
+    version: null,
   },
 ];
 

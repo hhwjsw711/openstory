@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
     } catch (_zodError) {
       // Fallback validation for test environments where Zod might have issues
       if (body && typeof body === "object" && "data" in body) {
-        const data = body.data;
+        const data = (body as Record<string, unknown>).data;
         if (data === undefined || (typeof data === "object" && data !== null)) {
-          initialData = data;
+          initialData = data as Record<string, unknown> | undefined;
         } else {
           return NextResponse.json(
             {
@@ -162,8 +162,9 @@ export async function PATCH(request: NextRequest) {
         "sessionId" in body &&
         "data" in body
       ) {
-        const rawSessionId = body.sessionId;
-        const rawData = body.data;
+        const bodyObj = body as Record<string, unknown>;
+        const rawSessionId = bodyObj.sessionId;
+        const rawData = bodyObj.data;
 
         if (
           typeof rawSessionId === "string" &&
@@ -171,7 +172,7 @@ export async function PATCH(request: NextRequest) {
           typeof rawData === "object"
         ) {
           sessionId = rawSessionId;
-          data = rawData;
+          data = rawData as Record<string, unknown>;
         } else {
           return NextResponse.json(
             {

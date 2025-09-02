@@ -76,32 +76,30 @@ const StyleCard: React.FC<StyleCardProps> = ({
               {style.name}
             </h3>
 
-            {style.config_json &&
-              typeof style.config_json === "object" &&
-              "artStyle" in style.config_json && (
+            {style.config &&
+              typeof style.config === "object" &&
+              "artStyle" in style.config && (
                 <p className="text-xs text-muted-foreground line-clamp-1">
-                  {String(style.config_json.artStyle)}
+                  {String(style.config.artStyle)}
                 </p>
               )}
 
-            {style.config_json &&
-              typeof style.config_json === "object" &&
-              "colorPalette" in style.config_json &&
-              Array.isArray(style.config_json.colorPalette) && (
+            {style.config &&
+              typeof style.config === "object" &&
+              "colorPalette" in style.config &&
+              Array.isArray(style.config.colorPalette) && (
                 <div className="flex gap-1 mt-1" data-testid="color-palette">
-                  {style.config_json.colorPalette
-                    .slice(0, 4)
-                    .map((color, index) => (
-                      <div
-                        key={`color-${String(color)}-${index}`}
-                        className="w-3 h-3 rounded-full border border-border/20"
-                        style={{ backgroundColor: String(color) }}
-                        title={String(color)}
-                      />
-                    ))}
-                  {style.config_json.colorPalette.length > 4 && (
+                  {style.config.colorPalette.slice(0, 4).map((color, index) => (
+                    <div
+                      key={`color-${String(color)}-${index}`}
+                      className="w-3 h-3 rounded-full border border-border/20"
+                      style={{ backgroundColor: String(color) }}
+                      title={String(color)}
+                    />
+                  ))}
+                  {style.config.colorPalette.length > 4 && (
                     <div className="flex items-center justify-center w-3 h-3 text-[8px] text-muted-foreground">
-                      +{style.config_json.colorPalette.length - 4}
+                      +{style.config.colorPalette.length - 4}
                     </div>
                   )}
                 </div>

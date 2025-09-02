@@ -148,7 +148,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
       "https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=400&h=300&fit=crop", // Marble texture
       "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=300&fit=crop", // Purple gradient
     ]),
-    config_json: {
+    config: {
       colorPalette: faker.helpers.arrayElements(
         [
           "#FF6B6B",
@@ -171,6 +171,13 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
     created_at: faker.date.past().toISOString(),
     updated_at: faker.date.recent().toISOString(),
     created_by: faker.string.uuid(),
+    category: null,
+    description: null,
+    is_template: null,
+    parent_id: null,
+    tags: null,
+    usage_count: null,
+    version: null,
     ...overrides,
   };
 };

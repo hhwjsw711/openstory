@@ -20,7 +20,7 @@ export async function createStyle(input: CreateStyleInput): Promise<Style> {
 
   const newStyle = generateMockStyle({
     name: input.name,
-    config_json: input.settings,
+    config: input.settings,
     is_public: input.is_public,
   });
 
