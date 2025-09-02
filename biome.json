@@ -25,6 +25,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "error"
+      },
       "style": {
         "noRestrictedImports": {
           "level": "error",
