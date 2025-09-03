@@ -1,4 +1,8 @@
 import type {
+  SupabaseClient,
+  User as SupabaseUser,
+} from "@supabase/supabase-js";
+import type {
   Database,
   Enums,
   Json,
@@ -7,11 +11,21 @@ import type {
   TablesUpdate,
 } from "@/lib/supabase/gen.types";
 
-// Re-export the Database and Json types
-export type { Database, Json };
+// Re-export the Database and Json types for infrastructure code
+// Note: Use specific table types (UserProfile, Team, etc.) instead of raw Database types in application code
+export type { Json };
+
+export type DatabaseClient = SupabaseClient<Database>;
+
+// Enhanced user type that extends Supabase auth.users with profile data
+export interface UserProfile extends SupabaseUser {
+  full_name?: string | null;
+  avatar_url?: string | null;
+  onboarding_completed?: boolean;
+}
 
 // Table row types (what you get from SELECT)
-export type User = Tables<"users">;
+export type AnonymousSession = Tables<"anonymous_sessions">;
 export type Team = Tables<"teams">;
 export type TeamMember = Tables<"team_members">;
 export type Sequence = Tables<"sequences">;
@@ -25,7 +39,7 @@ export type Credit = Tables<"credits">;
 export type Transaction = Tables<"transactions">;
 
 // Insert types (for creating new records)
-export type UserInsert = TablesInsert<"users">;
+export type AnonymousSessionInsert = TablesInsert<"anonymous_sessions">;
 export type TeamInsert = TablesInsert<"teams">;
 export type TeamMemberInsert = TablesInsert<"team_members">;
 export type SequenceInsert = TablesInsert<"sequences">;
@@ -39,7 +53,7 @@ export type CreditInsert = TablesInsert<"credits">;
 export type TransactionInsert = TablesInsert<"transactions">;
 
 // Update types (for updating existing records)
-export type UserUpdate = TablesUpdate<"users">;
+export type AnonymousSessionUpdate = TablesUpdate<"anonymous_sessions">;
 export type TeamUpdate = TablesUpdate<"teams">;
 export type TeamMemberUpdate = TablesUpdate<"team_members">;
 export type SequenceUpdate = TablesUpdate<"sequences">;

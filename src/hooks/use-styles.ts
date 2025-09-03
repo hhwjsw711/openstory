@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateStyleInput } from "#actions/styles";
-
-// Import the actions (will resolve to mock in Storybook)
-const actions = import("#actions/styles");
+import {
+  type CreateStyleInput,
+  createStyle,
+  deleteStyle,
+  getStyle,
+  listStyles,
+  updateStyle,
+} from "#actions/styles";
+import type { Style } from "@/types/database";
 
 // Query keys
 export const styleKeys = {
@@ -15,11 +20,14 @@ export const styleKeys = {
 
 // Hook for listing styles
 export function useStyles(teamId?: string) {
-  return useQuery({
+  return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
-      const { listStyles } = await actions;
-      return listStyles(teamId);
+      const result = await listStyles();
+      if (result.success && result.styles) {
+        return result.styles;
+      }
+      throw new Error(result.error || "Failed to list styles");
     },
     staleTime: 10 * 60 * 1000, // 10 minutes (styles change less frequently)
   });
@@ -27,11 +35,14 @@ export function useStyles(teamId?: string) {
 
 // Hook for getting single style
 export function useStyle(id: string) {
-  return useQuery({
+  return useQuery<Style>({
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
-      const { getStyle } = await actions;
-      return getStyle(id);
+      const result = await getStyle(id);
+      if (result.success && result.style) {
+        return result.style;
+      }
+      throw new Error(result.error || "Failed to get style");
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!id,
@@ -42,9 +53,8 @@ export function useStyle(id: string) {
 export function useCreateStyle() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<unknown, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
-      const { createStyle } = await actions;
       return createStyle(input);
     },
     onSuccess: () => {
@@ -57,7 +67,14 @@ export function useCreateStyle() {
 export function useUpdateStyle() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    unknown,
+    Error,
+    {
+      id: string;
+      input: Partial<CreateStyleInput>;
+    }
+  >({
     mutationFn: async ({
       id,
       input,
@@ -65,7 +82,6 @@ export function useUpdateStyle() {
       id: string;
       input: Partial<CreateStyleInput>;
     }) => {
-      const { updateStyle } = await actions;
       return updateStyle(id, input);
     },
     onSuccess: (data, _variables) => {
@@ -88,10 +104,9 @@ export function useUpdateStyle() {
 export function useDeleteStyle() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
-      const { deleteStyle } = await actions;
-      return deleteStyle(id);
+      await deleteStyle(id);
     },
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: styleKeys.detail(id) });

@@ -1,5 +1,6 @@
 import Image from "next/image";
-import * as React from "react";
+import type * as React from "react";
+import { useCallback } from "react";
 import { GalleryIcon } from "@/components/icons/gallery-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,13 +28,13 @@ const StyleCard: React.FC<StyleCardProps> = ({
   onSelect,
   disabled = false,
 }) => {
-  const handleClick = React.useCallback(() => {
+  const handleClick = useCallback(() => {
     if (!disabled) {
       onSelect(style.id);
     }
   }, [style.id, onSelect, disabled]);
 
-  const handleKeyDown = React.useCallback(
+  const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -61,14 +62,30 @@ const StyleCard: React.FC<StyleCardProps> = ({
       <CardContent className="p-4">
         <div className="flex flex-col gap-3">
           <div className="aspect-[4/3] overflow-hidden rounded-lg bg-muted">
-            <Image
-              src={style.preview_url || ""}
-              alt={`${style.name} style preview`}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              width={1920}
-              height={1080}
-            />
+            {style.preview_url ? (
+              <Image
+                src={style.preview_url}
+                alt={`${style.name} style preview`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                width={400}
+                height={300}
+                onError={(e) => {
+                  console.warn(
+                    `Failed to load image for style ${style.name}:`,
+                    style.preview_url,
+                  );
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-muted">
+                <GalleryIcon
+                  className="text-muted-foreground opacity-50"
+                  size="lg"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1">

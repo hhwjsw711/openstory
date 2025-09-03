@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { AuthService } from "@/lib/auth/service";
-import { createServerClient } from "@/lib/supabase/server";
+import { createSessionAwareClient } from "@/lib/supabase/server";
 
 /**
  * Handle magic link callback
@@ -9,12 +9,12 @@ import { createServerClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const anonymousId = requestUrl.searchParams.get("anonymousId");
+  const _anonymousId = requestUrl.searchParams.get("anonymousId");
   const redirectTo = requestUrl.searchParams.get("redirectTo") || "/dashboard";
 
   if (code) {
     try {
-      const supabase = createServerClient();
+      const supabase = await createSessionAwareClient();
 
       // Exchange code for session
       const { data: sessionData, error: sessionError } =
@@ -44,34 +44,54 @@ export async function GET(request: NextRequest) {
 
       const authService = new AuthService();
 
-      // If there's an anonymous session to upgrade, do it
-      if (anonymousId) {
-        const upgradeResult = await authService.upgradeAnonymousSession(
-          user.id,
-          anonymousId,
-        );
+      // For anonymous upgrade, we now use the native Supabase approach
+      // Anonymous users already have:
+      // 1. A team (created when they became anonymous)
+      // 2. A user record (created when they became anonymous)
+      // 3. Team membership as owner (created when they became anonymous)
+      // Note: Email is stored only in auth.users, not in our users table
 
-        if (!upgradeResult.success) {
-          console.warn(
-            "Failed to upgrade anonymous session:",
-            upgradeResult.error,
-          );
-          // Don't fail the login process for this
+      // Update the user profile data (not email, which is in auth.users)
+      const { error: userError } = await supabase
+        .from("users")
+        .upsert({
+          id: user.id,
+          full_name:
+            user.user_metadata?.full_name || user.email?.split("@")[0] || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        })
+        .select()
+        .single();
+
+      if (userError && userError.code !== "42P01") {
+        // Ignore "relation does not exist" errors
+        console.error("Error updating user profile:", userError);
+      }
+
+      // Update team name to be more personalized if this is a user with email
+      if (user.email) {
+        const teamId = await authService.getCurrentUserTeamId();
+        if (teamId) {
+          const teamName = user.user_metadata?.full_name
+            ? `${user.user_metadata.full_name}'s Team`
+            : `${user.email.split("@")[0]}'s Team`;
+
+          await supabase
+            .from("teams")
+            .update({ name: teamName })
+            .eq("id", teamId);
         }
       }
 
-      // Ensure user profile exists
-      let userProfile = await authService.getUserProfile(user.id);
+      // Update user profile metadata if needed
+      const profileUpdate = {
+        full_name:
+          user.user_metadata?.full_name || user.email?.split("@")[0] || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        onboarding_completed: user.user_metadata?.onboarding_completed || false,
+      };
 
-      if (!userProfile) {
-        userProfile = await authService.upsertUserProfile({
-          id: user.id,
-          anonymous_id: anonymousId || null,
-          full_name: user.user_metadata?.full_name || user.email?.split("@")[0],
-          avatar_url: user.user_metadata?.avatar_url || null,
-          onboarding_completed: false,
-        });
-      }
+      await authService.updateUserProfile(profileUpdate);
 
       // Redirect to the intended destination
       const redirectUrl = new URL(redirectTo, request.url);

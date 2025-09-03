@@ -117,10 +117,8 @@ describe.skip("Authentication Integration Tests", () => {
         error: null,
       });
 
-      const upgradeResult = await authService.upgradeAnonymousSession(
-        "user-123",
-        "anon-123",
-      );
+      const upgradeResult =
+        await authService.upgradeAnonymousUser("test@example.com");
 
       expect(upgradeResult.success).toBe(true);
       expect(mockAdminClient.upsert).toHaveBeenCalledWith({
@@ -153,10 +151,7 @@ describe.skip("Authentication Integration Tests", () => {
         error: { code: "PGRST116", message: "No rows found" },
       });
 
-      const result = await authService.upgradeAnonymousSession(
-        "user-123",
-        "expired-session",
-      );
+      const result = await authService.upgradeAnonymousUser("test@example.com");
 
       expect(result).toEqual({
         success: false,
@@ -229,10 +224,7 @@ describe.skip("Authentication Integration Tests", () => {
         error: { message: "Profile creation failed" },
       });
 
-      const result = await authService.upgradeAnonymousSession(
-        "user-123",
-        "anon-123",
-      );
+      const result = await authService.upgradeAnonymousUser("test@example.com");
 
       expect(result.success).toBe(false);
       expect(result.error).toBe(
@@ -308,9 +300,9 @@ describe.skip("Authentication Integration Tests", () => {
         error: null,
       });
 
-      const profile = await authService.getUserProfile("user-123");
+      const profile = await authService.getUserProfile();
 
-      expect(profile).toEqual(mockProfile);
+      expect(profile).toMatchObject(mockProfile);
       expect(mockSupabase.from).toHaveBeenCalledWith("user_profiles");
       expect(mockSupabase.eq).toHaveBeenCalledWith("id", "user-123");
     });
