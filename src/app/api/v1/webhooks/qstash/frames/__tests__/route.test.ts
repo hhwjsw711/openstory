@@ -7,6 +7,18 @@ import type { FrameGenerationPayload } from "@/lib/qstash/types";
 
 // Mock dependencies
 const mockJobManager = {
+  getJob: mock(() =>
+    Promise.resolve({
+      id: "job-123",
+      team_id: "team-123",
+      user_id: "user-123",
+      status: "pending",
+      type: "frame_generation",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      payload: {},
+    } as any),
+  ),
   startJob: mock(() => Promise.resolve()),
   completeJob: mock(() => Promise.resolve()),
   failJob: mock(() => Promise.resolve()),
@@ -15,7 +27,22 @@ const mockJobManager = {
 const mockAdminClient = {
   from: mock((table: string) => {
     // Handle different table operations
-    if (table === "frames") {
+    if (table === "team_members") {
+      return {
+        select: mock(() => ({
+          eq: mock(() => ({
+            eq: mock(() => ({
+              single: mock(() =>
+                Promise.resolve({
+                  data: { id: "member-123" },
+                  error: null,
+                }),
+              ),
+            })),
+          })),
+        })),
+      };
+    } else if (table === "frames") {
       return {
         delete: mock(() => ({
           eq: mock(() =>
@@ -66,6 +93,7 @@ const mockAdminClient = {
                     id: "sequence-123",
                     script: "This is a test script for the sequence.",
                     style_id: "style-123",
+                    team_id: "team-123",
                     metadata: {},
                     styles: {
                       metadata: { theme: "dark" },
@@ -173,6 +201,7 @@ describe("Frame Generation Webhook", () => {
 
   beforeEach(async () => {
     // Clear mocks
+    mockJobManager.getJob.mockClear();
     mockJobManager.startJob.mockClear();
     mockJobManager.completeJob.mockClear();
     mockJobManager.failJob.mockClear();
@@ -188,8 +217,6 @@ describe("Frame Generation Webhook", () => {
     const payload: FrameGenerationPayload = {
       jobId: "job-123",
       type: "frame_generation",
-      userId: "user-123",
-      teamId: "team-123",
       data: {
         sequenceId: "sequence-123",
         options: {
@@ -214,6 +241,9 @@ describe("Frame Generation Webhook", () => {
     expect(data.success).toBe(true);
     expect(data.jobId).toBe("job-123");
     expect(data.frameCount).toBe(5);
+
+    // Verify job was retrieved for authorization
+    expect(mockJobManager.getJob).toHaveBeenCalledWith("job-123");
 
     // Verify job was started
     expect(mockJobManager.startJob).toHaveBeenCalledWith("job-123");
@@ -247,11 +277,23 @@ describe("Frame Generation Webhook", () => {
   });
 
   it("should use provided script analysis", async () => {
+    // Update mock for this test's job
+    mockJobManager.getJob.mockImplementationOnce(() =>
+      Promise.resolve({
+        id: "job-456",
+        team_id: "team-123",
+        user_id: "user-456",
+        status: "pending",
+        type: "frame_generation",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        payload: {},
+      } as any),
+    );
+
     const payload: FrameGenerationPayload = {
       jobId: "job-456",
       type: "frame_generation",
-      userId: "user-456",
-      teamId: "team-456",
       data: {
         sequenceId: "sequence-456",
       },
@@ -316,16 +358,170 @@ describe("Frame Generation Webhook", () => {
     expect(data.error).toBe("Invalid job payload");
   });
 
+  it("should reject job with team ID mismatch", async () => {
+    // Mock job with different team ID
+    mockJobManager.getJob.mockImplementationOnce(() =>
+      Promise.resolve({
+        id: "job-unauthorized",
+        team_id: "different-team",
+        user_id: "user-123",
+        status: "pending",
+        type: "frame_generation",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        payload: {},
+      } as any),
+    );
+
+    const payload: FrameGenerationPayload = {
+      jobId: "job-unauthorized",
+      type: "frame_generation",
+      data: {
+        sequenceId: "sequence-123",
+      },
+    };
+
+    const request = new Request("http://localhost/api/webhooks/qstash/frames", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe("Frame generation failed");
+    expect(data.details).toContain("Unauthorized: Team ID mismatch");
+
+    // Job should be marked as failed
+    expect(mockJobManager.failJob).toHaveBeenCalledWith(
+      "job-unauthorized",
+      "Unauthorized: Team ID mismatch",
+    );
+  });
+
+  it("should reject job when user is not a team member", async () => {
+    // Mock job with user who is not a team member
+    mockJobManager.getJob.mockImplementationOnce(() =>
+      Promise.resolve({
+        id: "job-no-member",
+        team_id: "team-123",
+        user_id: "user-not-member",
+        status: "pending",
+        type: "frame_generation",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        payload: {},
+      } as any),
+    );
+
+    // Store original implementation
+    const originalFrom = mockAdminClient.from.getMockImplementation();
+
+    // Replace the from implementation temporarily
+    mockAdminClient.from.mockImplementation((table: string): any => {
+      if (table === "team_members") {
+        return {
+          select: mock(() => ({
+            eq: mock(() => ({
+              eq: mock(() => ({
+                single: mock(() =>
+                  Promise.resolve({
+                    data: null,
+                    error: { code: "PGRST116", message: "Not found" },
+                  }),
+                ),
+              })),
+            })),
+          })),
+        };
+      }
+      // Use original implementation for other tables
+      return originalFrom?.(table);
+    });
+
+    const payload: FrameGenerationPayload = {
+      jobId: "job-no-member",
+      type: "frame_generation",
+      data: {
+        sequenceId: "sequence-123",
+      },
+    };
+
+    const request = new Request("http://localhost/api/webhooks/qstash/frames", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    // Restore original mock
+    mockAdminClient.from.mockImplementation(originalFrom as any);
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe("Frame generation failed");
+    expect(data.details).toContain("Unauthorized: User not a team member");
+
+    // Job should be marked as failed
+    expect(mockJobManager.failJob).toHaveBeenCalledWith(
+      "job-no-member",
+      "Unauthorized: User not a team member",
+    );
+  });
+
+  it("should return 404 when job not found", async () => {
+    // Mock job not found
+    mockJobManager.getJob.mockImplementationOnce(() =>
+      Promise.resolve(null as any),
+    );
+
+    const payload: FrameGenerationPayload = {
+      jobId: "job-not-found",
+      type: "frame_generation",
+      data: {
+        sequenceId: "sequence-123",
+      },
+    };
+
+    const request = new Request("http://localhost/api/webhooks/qstash/frames", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBe("Job not found");
+
+    // Job should not be started or marked as failed
+    expect(mockJobManager.startJob).not.toHaveBeenCalled();
+    expect(mockJobManager.failJob).not.toHaveBeenCalled();
+  });
+
   it("should handle script analysis failure", async () => {
     mockAnalyzeScript.mockImplementationOnce(() =>
       Promise.reject(new Error("AI service unavailable")),
     );
 
+    // Update mock for this test's job
+    mockJobManager.getJob.mockImplementationOnce(() =>
+      Promise.resolve({
+        id: "job-789",
+        team_id: "team-123",
+        user_id: "user-789",
+        status: "pending",
+        type: "frame_generation",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        payload: {},
+      } as any),
+    );
+
     const payload: FrameGenerationPayload = {
       jobId: "job-789",
       type: "frame_generation",
-      userId: "user-789",
-      teamId: "team-789",
       data: {
         sequenceId: "sequence-789",
       },

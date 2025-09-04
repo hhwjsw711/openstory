@@ -52,11 +52,20 @@ async function handler(req: QStashVerifiedRequest) {
       options: data.options,
     });
 
+    // Step 1: Validate job authorization
+    console.log("[Frames Webhook] Validating job authorization");
+    const storedJob = await jobManager.getJob(jobId);
+
+    if (!storedJob) {
+      console.error("[Frames Webhook] Job not found:", jobId);
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
     // Mark job as running
     await jobManager.startJob(jobId);
 
     try {
-      // Step 1: Load sequence data from database
+      // Step 2: Load sequence data from database
       console.log("[Frames Webhook] Loading sequence data from database");
       const { data: sequence, error: sequenceError } = await supabase
         .from("sequences")
@@ -68,6 +77,43 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error(`Sequence not found: ${data.sequenceId}`);
       }
 
+      // Step 3: Verify team authorization
+      // Check that the job's team_id matches the sequence's team_id
+      if (storedJob.team_id && sequence.team_id !== storedJob.team_id) {
+        console.error(
+          "[Frames Webhook] Team ID mismatch - unauthorized access",
+          {
+            jobTeamId: storedJob.team_id,
+            sequenceTeamId: sequence.team_id,
+            jobId,
+            sequenceId: data.sequenceId,
+          },
+        );
+        throw new Error("Unauthorized: Team ID mismatch");
+      }
+
+      // Additional check: if job has a userId, verify it exists in the team
+      if (storedJob.user_id && storedJob.team_id) {
+        const { data: member } = await supabase
+          .from("team_members")
+          .select("id")
+          .eq("team_id", storedJob.team_id)
+          .eq("user_id", storedJob.user_id)
+          .single();
+
+        if (!member) {
+          console.error(
+            "[Frames Webhook] User not a team member - unauthorized",
+            {
+              userId: storedJob.user_id,
+              teamId: storedJob.team_id,
+              jobId,
+            },
+          );
+          throw new Error("Unauthorized: User not a team member");
+        }
+      }
+
       if (!sequence.script) {
         throw new Error("Sequence has no script");
       }
@@ -76,7 +122,7 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error("Sequence has no style selected");
       }
 
-      // Step 2: Analyze script to determine frame boundaries
+      // Step 4: Analyze script to determine frame boundaries
       console.log("[Frames Webhook] Analyzing script for scenes");
       const scriptAnalysis = await analyzeScriptForFrames(
         sequence.script,
@@ -87,7 +133,7 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error("Failed to analyze script or no scenes found");
       }
 
-      // Step 3: Generate frame descriptions for each scene
+      // Step 5: Generate frame descriptions for each scene
       console.log("[Frames Webhook] Generating frame descriptions", {
         sceneCount: scriptAnalysis.scenes.length,
         framesPerScene: data.options?.framesPerScene ?? 5,
@@ -113,7 +159,7 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error("Failed to generate frame descriptions");
       }
 
-      // Step 4: Handle existing frames
+      // Step 6: Handle existing frames
       // Check if we should regenerate all frames or just missing ones
       const regenerateAll = data.options?.regenerateAll !== false; // Default to true
 
@@ -165,7 +211,7 @@ async function handler(req: QStashVerifiedRequest) {
         }
       }
 
-      // Step 5: Insert the generated frames
+      // Step 7: Insert the generated frames
       const framesToInsert: FrameInsert[] = frameDescriptions.frames.map(
         (frame) => ({
           sequence_id: data.sequenceId,
@@ -223,7 +269,7 @@ async function handler(req: QStashVerifiedRequest) {
         });
       }
 
-      // Step 6: Update sequence metadata with frame generation info
+      // Step 8: Update sequence metadata with frame generation info
       const { data: currentSequence } = await supabase
         .from("sequences")
         .select("metadata")

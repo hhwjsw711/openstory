@@ -453,11 +453,10 @@ export async function generateFramesAction(
     });
 
     // Prepare the QStash payload with minimal data
+    // userId and teamId are already stored in the job record for security
     const payload: FrameGenerationPayload = {
       jobId: job.id,
       type: "frame_generation",
-      userId: user?.id,
-      teamId: sequence.team_id,
       data: {
         sequenceId: validated.sequenceId,
         options: validated.options,

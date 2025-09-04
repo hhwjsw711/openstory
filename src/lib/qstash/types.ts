@@ -29,6 +29,8 @@ export type JobStatusType = (typeof JobStatus)[keyof typeof JobStatus];
 export interface BaseJobPayload {
   jobId: string;
   type: JobTypeType;
+  // userId and teamId are stored in the jobs table for security
+  // They should not be included in QStash payloads
   userId?: string;
   teamId?: string;
 }
