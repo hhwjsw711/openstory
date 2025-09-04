@@ -110,19 +110,23 @@ export const createMockJobManager = () => ({
  */
 export const createTestJobPayload = (
   overrides?: Partial<JobPayload>,
-): JobPayload => ({
-  jobId: "550e8400-e29b-41d4-a716-446655440000",
-  type: "image",
-  data: {
-    prompt: "A beautiful landscape with mountains",
-    style: "photographic",
-    width: 1024,
-    height: 1024,
-  },
-  userId: "550e8400-e29b-41d4-a716-446655440011",
-  teamId: "550e8400-e29b-41d4-a716-446655440021",
-  ...overrides,
-});
+): JobPayload => {
+  const base = {
+    jobId: "550e8400-e29b-41d4-a716-446655440000",
+    type: "image" as const,
+    data: {
+      prompt: "A beautiful landscape with mountains",
+      style: "photographic",
+      width: 1024,
+      height: 1024,
+    },
+    userId: "550e8400-e29b-41d4-a716-446655440011",
+    teamId: "550e8400-e29b-41d4-a716-446655440021",
+  };
+
+  // Type assertion to handle discriminated union
+  return { ...base, ...overrides } as JobPayload;
+};
 
 /**
  * Test job record fixtures

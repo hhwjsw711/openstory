@@ -2,11 +2,14 @@
  * QStash webhook handler for frame generation jobs
  */
 
-import { verifySignature } from "@upstash/qstash/nextjs";
 import { NextResponse } from "next/server";
 import { generateFrameDescriptions } from "@/lib/ai/frame-generator";
 import { analyzeScriptForFrames } from "@/lib/ai/script-analyzer";
 import { getJobManager } from "@/lib/qstash/job-manager";
+import {
+  type QStashVerifiedRequest,
+  withQStashVerification,
+} from "@/lib/qstash/middleware";
 import type {
   FrameGenerationPayload,
   FrameGenerationResult,
@@ -15,12 +18,7 @@ import type {
 import { createAdminClient } from "@/lib/supabase/server";
 import type { FrameInsert, Json } from "@/types/database";
 
-// Verify QStash signature
-export const POST = verifySignature(handler, {
-  nextSigningKeys: [process.env.QSTASH_CURRENT_SIGNING_KEY!],
-});
-
-async function handler(req: Request) {
+async function handler(req: QStashVerifiedRequest) {
   const jobManager = getJobManager();
   const supabase = createAdminClient();
 
@@ -96,17 +94,34 @@ async function handler(req: Request) {
       }
 
       // Step 3: Clear existing placeholder frames if any
-      const { error: deleteError } = await supabase
+      // First get frames with matching jobId in metadata
+      const { data: existingFrames } = await supabase
         .from("frames")
-        .delete()
-        .eq("sequence_id", data.sequenceId)
-        .eq("metadata->jobId", jobId);
+        .select("id, metadata")
+        .eq("sequence_id", data.sequenceId);
 
-      if (deleteError) {
-        console.warn(
-          "[Frames Webhook] Failed to delete placeholder frames:",
-          deleteError,
-        );
+      // Filter frames with matching jobId and delete them
+      if (existingFrames && existingFrames.length > 0) {
+        const framesToDelete = existingFrames
+          .filter((frame) => {
+            const metadata = frame.metadata as Record<string, unknown> | null;
+            return metadata?.jobId === jobId;
+          })
+          .map((frame) => frame.id);
+
+        if (framesToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from("frames")
+            .delete()
+            .in("id", framesToDelete);
+
+          if (deleteError) {
+            console.warn(
+              "[Frames Webhook] Failed to delete placeholder frames:",
+              deleteError,
+            );
+          }
+        }
       }
 
       // Step 4: Insert the generated frames
@@ -140,20 +155,26 @@ async function handler(req: Request) {
       });
 
       // Step 5: Update sequence metadata with frame generation info
+      const { data: currentSequence } = await supabase
+        .from("sequences")
+        .select("metadata")
+        .eq("id", data.sequenceId)
+        .single();
+
+      const updatedMetadata = {
+        ...((currentSequence?.metadata as Record<string, unknown>) || {}),
+        lastFrameGeneration: {
+          jobId,
+          generatedAt: new Date().toISOString(),
+          frameCount: insertedFrames?.length || 0,
+          totalDuration: frameDescriptions.totalDuration,
+        },
+      };
+
       const { error: updateError } = await supabase
         .from("sequences")
         .update({
-          metadata: supabase.sql`
-            COALESCE(metadata, '{}'::jsonb) || 
-            ${JSON.stringify({
-              lastFrameGeneration: {
-                jobId,
-                generatedAt: new Date().toISOString(),
-                frameCount: insertedFrames?.length || 0,
-                totalDuration: frameDescriptions.totalDuration,
-              },
-            })}::jsonb
-          `,
+          metadata: updatedMetadata as Json,
           updated_at: new Date().toISOString(),
         })
         .eq("id", data.sequenceId);
@@ -172,7 +193,10 @@ async function handler(req: Request) {
         frameCount: frameDescriptions.frameCount,
       };
 
-      await jobManager.completeJob(jobId, result);
+      await jobManager.completeJob(
+        jobId,
+        result as unknown as Record<string, unknown>,
+      );
 
       console.log("[Frames Webhook] Job completed successfully", {
         jobId,
@@ -197,11 +221,25 @@ async function handler(req: Request) {
       );
 
       // Clean up any partial frames
-      await supabase
+      // First get frames with matching jobId in metadata
+      const { data: partialFrames } = await supabase
         .from("frames")
-        .delete()
-        .eq("sequence_id", data.sequenceId)
-        .eq("metadata->jobId", jobId);
+        .select("id, metadata")
+        .eq("sequence_id", data.sequenceId);
+
+      // Filter frames with matching jobId and delete them
+      if (partialFrames && partialFrames.length > 0) {
+        const framesToDelete = partialFrames
+          .filter((frame) => {
+            const metadata = frame.metadata as Record<string, unknown> | null;
+            return metadata?.jobId === jobId;
+          })
+          .map((frame) => frame.id);
+
+        if (framesToDelete.length > 0) {
+          await supabase.from("frames").delete().in("id", framesToDelete);
+        }
+      }
 
       return NextResponse.json(
         {
@@ -222,3 +260,6 @@ async function handler(req: Request) {
     );
   }
 }
+
+// Export verified POST handler
+export const POST = withQStashVerification(handler);

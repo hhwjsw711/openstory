@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateFrameInput,
-  UpdateFrameInput,
   GenerateFramesInput,
   RegenerateFrameInput,
+  UpdateFrameInput,
 } from "#actions/frames";
 import {
   bulkCreateFrames,
@@ -292,7 +292,7 @@ export function useGenerateFrames() {
 
       // Snapshot previous frames
       const previousFrames = queryClient.getQueryData<Frame[]>(
-        frameKeys.list(sequenceId)
+        frameKeys.list(sequenceId),
       );
 
       return { previousFrames, sequenceId };
@@ -308,7 +308,7 @@ export function useGenerateFrames() {
       if (context?.previousFrames && context.sequenceId) {
         queryClient.setQueryData(
           frameKeys.list(context.sequenceId),
-          context.previousFrames
+          context.previousFrames,
         );
       }
     },
@@ -332,10 +332,10 @@ export function useRegenerateFrame() {
       queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
       });
-      
+
       // Also invalidate the frames list if we can determine the sequence
       const frameData = queryClient.getQueryData<Frame>(
-        frameKeys.detail(frameId)
+        frameKeys.detail(frameId),
       );
       if (frameData?.sequence_id) {
         queryClient.invalidateQueries({
@@ -352,13 +352,13 @@ export function useFrameGenerationStatus(
   options?: {
     enabled?: boolean;
     refetchInterval?: number;
-  }
+  },
 ) {
   return useQuery<Job | null>({
     queryKey: ["jobs", jobId],
     queryFn: async () => {
       if (!jobId) return null;
-      
+
       // This would typically call an API to get job status
       // For now, returning null as we need to implement the job status endpoint
       const response = await fetch(`/api/v1/jobs/status/${jobId}`);
@@ -368,9 +368,12 @@ export function useFrameGenerationStatus(
       return response.json();
     },
     enabled: !!jobId && (options?.enabled ?? true),
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Stop polling if job is completed or failed
-      if (data?.status === "completed" || data?.status === "failed") {
+      if (
+        query.state.data?.status === "completed" ||
+        query.state.data?.status === "failed"
+      ) {
         return false;
       }
       // Poll every 2 seconds by default

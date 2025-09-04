@@ -9,6 +9,11 @@ import { z } from "zod";
 import { handleApiError, ValidationError } from "@/lib/errors";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager, JobType } from "@/lib/qstash/job-manager";
+import type {
+  ImageGenerationPayload,
+  ScriptAnalysisPayload,
+  VideoGenerationPayload,
+} from "@/lib/qstash/types";
 
 // Request schema for job creation
 const createJobRequestSchema = z.object({
@@ -102,8 +107,8 @@ export async function POST(request: NextRequest) {
           qstashResponse = await qstashClient.publishImageJob(
             {
               jobId: job.id,
-              type,
-              data,
+              type: "image" as const,
+              data: data as ImageGenerationPayload["data"], // Type will be validated by publishImageJob
               userId,
               teamId,
             },
@@ -118,8 +123,8 @@ export async function POST(request: NextRequest) {
           qstashResponse = await qstashClient.publishVideoJob(
             {
               jobId: job.id,
-              type,
-              data,
+              type: "video" as const,
+              data: data as VideoGenerationPayload["data"], // Type will be validated by publishVideoJob
               userId,
               teamId,
             },
@@ -134,8 +139,8 @@ export async function POST(request: NextRequest) {
           qstashResponse = await qstashClient.publishScriptJob(
             {
               jobId: job.id,
-              type,
-              data,
+              type: "script" as const,
+              data: data as ScriptAnalysisPayload["data"], // Type will be validated by publishScriptJob
               userId,
               teamId,
             },

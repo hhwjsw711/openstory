@@ -2,11 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/server";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import type { FrameGenerationPayload } from "@/lib/qstash/types";
+import { createAdminClient, createServerClient } from "@/lib/supabase/server";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
 // Schema definitions
@@ -416,16 +415,16 @@ export async function generateFramesAction(
     const validated = generateFramesSchema.parse(input);
     const supabase = createServerClient();
     const adminSupabase = createAdminClient();
-    
+
     // Get the current user
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    
+
     // Verify sequence exists and get team info
     const { data: sequence, error: sequenceError } = await supabase
       .from("sequences")
-      .select("id, team_id, name")
+      .select("*")
       .eq("id", validated.sequenceId)
       .single();
 
@@ -443,7 +442,9 @@ export async function generateFramesAction(
         .single();
 
       if (!member) {
-        throw new Error("You don't have permission to generate frames for this sequence");
+        throw new Error(
+          "You don't have permission to generate frames for this sequence",
+        );
       }
     }
 
@@ -479,7 +480,8 @@ export async function generateFramesAction(
 
     // Queue the frame generation job
     const qstashClient = getQStashClient();
-    const qstashResponse = await qstashClient.publishFrameGenerationJob(payload);
+    const qstashResponse =
+      await qstashClient.publishFrameGenerationJob(payload);
 
     console.log("[generateFramesAction] Job queued", {
       jobId: job.id,
@@ -532,7 +534,8 @@ export async function generateFramesAction(
     console.error("Error generating frames:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to generate frames",
+      error:
+        error instanceof Error ? error.message : "Failed to generate frames",
     };
   }
 }
@@ -550,7 +553,7 @@ export async function regenerateFrameAction(
   try {
     const validated = regenerateFrameSchema.parse(input);
     const supabase = createServerClient();
-    
+
     // Get the frame and sequence info
     const { data: frame, error: frameError } = await supabase
       .from("frames")
@@ -618,7 +621,8 @@ export async function regenerateFrameAction(
     console.error("Error regenerating frame:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to regenerate frame",
+      error:
+        error instanceof Error ? error.message : "Failed to regenerate frame",
     };
   }
 }

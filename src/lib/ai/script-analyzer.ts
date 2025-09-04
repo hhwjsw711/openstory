@@ -110,8 +110,12 @@ function performHeuristicAnalysis(script: string): SceneAnalysis {
     });
 
     // Extract characters and settings from this scene
-    extractCharacters(sceneText).forEach((char) => characters.add(char));
-    extractSettings(sceneText).forEach((setting) => settings.add(setting));
+    for (const char of extractCharacters(sceneText)) {
+      characters.add(char);
+    }
+    for (const setting of extractSettings(sceneText)) {
+      settings.add(setting);
+    }
   }
 
   const totalDuration = scenes.reduce(
@@ -146,11 +150,13 @@ function findSceneMarkers(script: string): number[] {
   ];
 
   for (const pattern of scenePatterns) {
-    let match;
-    while ((match = pattern.exec(script)) !== null) {
+    let match: RegExpExecArray | null;
+    match = pattern.exec(script);
+    while (match !== null) {
       if (!markers.includes(match.index)) {
         markers.push(match.index);
       }
+      match = pattern.exec(script);
     }
   }
 
@@ -200,9 +206,9 @@ function extractCharacters(script: string): string[] {
 
   // Look for dialogue markers (CHARACTER NAME:)
   const dialoguePattern = /^([A-Z][A-Z\s]+):/gm;
-  let match;
-
-  while ((match = dialoguePattern.exec(script)) !== null) {
+  let match: RegExpExecArray | null;
+  match = dialoguePattern.exec(script);
+  while (match !== null) {
     const name = match[1].trim();
     // Filter out common non-character markers
     if (
@@ -210,16 +216,20 @@ function extractCharacters(script: string): string[] {
     ) {
       characters.add(name);
     }
+    match = dialoguePattern.exec(script);
   }
 
   // Also look for character mentions in action lines
   const actionPattern = /\b([A-Z][a-z]+ [A-Z][a-z]+)\b/g;
-  while ((match = actionPattern.exec(script)) !== null) {
-    const name = match[1];
+  let actionMatch: RegExpExecArray | null;
+  actionMatch = actionPattern.exec(script);
+  while (actionMatch !== null) {
+    const name = actionMatch[1];
     // Basic validation - likely a character name
     if (name.split(" ").every((part) => part.length > 2)) {
       characters.add(name);
     }
+    actionMatch = actionPattern.exec(script);
   }
 
   return Array.from(characters).slice(0, 10); // Limit to 10 main characters
@@ -235,12 +245,14 @@ function extractSettings(script: string): string[] {
   const locationPatterns = [/INT\.\s+([^-\n]+)/gi, /EXT\.\s+([^-\n]+)/gi];
 
   for (const pattern of locationPatterns) {
-    let match;
-    while ((match = pattern.exec(script)) !== null) {
+    let match: RegExpExecArray | null;
+    match = pattern.exec(script);
+    while (match !== null) {
       const location = match[1].trim().replace(/\s*-\s*.*$/, ""); // Remove time indicators
       if (location) {
         settings.add(location);
       }
+      match = pattern.exec(script);
     }
   }
 

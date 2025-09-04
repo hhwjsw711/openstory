@@ -37,6 +37,17 @@ const processVideoGeneration: JobProcessor = async (
   // Simulate longer processing time for video
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
+  // Type assertion for video data
+  const videoData = data as {
+    prompt?: string;
+    style?: unknown;
+    duration?: number;
+    width?: number;
+    height?: number;
+    fps?: number;
+    [key: string]: unknown;
+  };
+
   // Example result structure using real test videos
   const result = {
     videoUrls: [
@@ -50,14 +61,15 @@ const processVideoGeneration: JobProcessor = async (
     processingTimeMs: 3000,
     provider: "mock-video-provider",
     metadata: {
-      prompt: data.prompt || "Big Buck Bunny - Open source animated short film",
-      style: data.style || "animation",
-      duration: data.duration || 596, // actual duration in seconds
+      prompt:
+        videoData.prompt || "Big Buck Bunny - Open source animated short film",
+      style: videoData.style || "animation",
+      duration: videoData.duration || 596, // actual duration in seconds
       dimensions: {
-        width: data.width || 1920,
-        height: data.height || 1080,
+        width: videoData.width || 1920,
+        height: videoData.height || 1080,
       },
-      fps: data.fps || 30,
+      fps: videoData.fps || 30,
       format: "mp4",
     },
   };

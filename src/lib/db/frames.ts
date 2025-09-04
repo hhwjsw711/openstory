@@ -128,7 +128,8 @@ export async function updateFrameWithVersion(
       throw new DatabaseError("Frame not found", { frameId });
     }
 
-    const currentVersion = (current.metadata as any)?.version || 0;
+    const currentVersion =
+      ((current.metadata as Record<string, unknown>)?.version as number) || 0;
     if (currentVersion !== expectedVersion) {
       throw new DatabaseError("Frame has been modified by another process", {
         frameId,
@@ -141,7 +142,10 @@ export async function updateFrameWithVersion(
   // Update with incremented version
   const newMetadata = {
     ...((updates.metadata as Record<string, unknown>) || {}),
-    version: ((updates.metadata as any)?.version || expectedVersion || 0) + 1,
+    version:
+      (((updates.metadata as Record<string, unknown>)?.version as number) ||
+        expectedVersion ||
+        0) + 1,
     lastModified: new Date().toISOString(),
   };
 

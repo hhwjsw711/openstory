@@ -13,7 +13,11 @@ import type { QStashVerifiedRequest } from "@/lib/qstash/middleware";
 // Base webhook request schema
 export const webhookRequestSchema = z.object({
   jobId: z.uuid(),
-  type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
+  type: z
+    .literal("image")
+    .or(z.literal("video"))
+    .or(z.literal("script"))
+    .or(z.literal("frame_generation")),
   data: z.record(z.string(), z.unknown()),
   userId: z.uuid().optional(),
   teamId: z.uuid().optional(),
@@ -175,14 +179,15 @@ export class BaseWebhookHandler {
         await this.jobManager.startJob(jobId);
       }
 
-      // Prepare job payload
-      const jobPayload: JobPayload = {
+      // Prepare job payload - cast to any to allow flexible data types
+      // The actual type checking happens in the processor function
+      const jobPayload = {
         jobId,
         type,
         data,
         userId,
         teamId,
-      };
+      } as JobPayload;
 
       // Process the job
       console.log("[BaseWebhookHandler] Processing job", {

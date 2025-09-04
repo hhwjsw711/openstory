@@ -37,22 +37,31 @@ const processImageGeneration: JobProcessor = async (
   // Simulate processing time
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
+  // Type assertion for image generation data
+  const imageData = data as {
+    prompt?: string;
+    style?: unknown;
+    width?: number;
+    height?: number;
+    [key: string]: unknown;
+  };
+
   // Example result structure
   const result = {
     imageUrls: [
-      `https://picsum.photos/seed/1/${data.width || 1024}/${data.height || 1024}`,
-      `https://picsum.photos/seed/2/${data.width || 1024}/${data.height || 1024}`,
+      `https://picsum.photos/seed/1/${imageData.width || 1024}/${imageData.height || 1024}`,
+      `https://picsum.photos/seed/2/${imageData.width || 1024}/${imageData.height || 1024}`,
     ],
     parameters: data,
     generatedAt: new Date().toISOString(),
     processingTimeMs: 1000,
     provider: "mock-provider",
     metadata: {
-      prompt: data.prompt || "Generated image",
-      style: data.style || "default",
+      prompt: imageData.prompt || "Generated image",
+      style: imageData.style || "default",
       dimensions: {
-        width: data.width || 1024,
-        height: data.height || 1024,
+        width: imageData.width || 1024,
+        height: imageData.height || 1024,
       },
     },
   };
