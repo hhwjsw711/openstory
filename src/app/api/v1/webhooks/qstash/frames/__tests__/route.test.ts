@@ -22,6 +22,18 @@ const mockJobManager = {
   startJob: mock(() => Promise.resolve()),
   completeJob: mock(() => Promise.resolve()),
   failJob: mock(() => Promise.resolve()),
+  createJob: mock(() =>
+    Promise.resolve({
+      id: "image-job-123",
+      team_id: "team-123",
+      user_id: "user-123",
+      status: "pending",
+      type: "image",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      payload: {},
+    } as any),
+  ),
 };
 
 const mockAdminClient = {
@@ -173,9 +185,23 @@ const mockGenerateDescriptions = mock(() =>
   }),
 );
 
+// Mock QStash client
+const mockQStashClient = {
+  publishImageJob: mock(() =>
+    Promise.resolve({
+      messageId: "msg-image-123",
+      deduplicated: false,
+    }),
+  ),
+};
+
 // Mock modules
 mock.module("@/lib/qstash/job-manager", () => ({
   getJobManager: () => mockJobManager,
+}));
+
+mock.module("@/lib/qstash/client", () => ({
+  getQStashClient: () => mockQStashClient,
 }));
 
 mock.module("@/lib/supabase/server", () => ({

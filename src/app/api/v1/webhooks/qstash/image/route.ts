@@ -6,6 +6,7 @@
 import { FAL_IMAGE_MODELS, generateImage } from "@/lib/ai/fal-client";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
+import { createAdminClient } from "@/lib/supabase/server";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
@@ -40,6 +41,8 @@ const processImageGeneration: JobProcessor = async (
     num_images?: number;
     style?: unknown;
     seed?: number;
+    frameId?: string;
+    sequenceId?: string;
     [key: string]: unknown;
   };
 
@@ -84,7 +87,7 @@ const processImageGeneration: JobProcessor = async (
           width: img.width,
           height: img.height,
         })),
-        file_sizes: falResponse.images.map((img) => img.file_size),
+        file_sizes: falResponse.images.map((img) => img.file_size || 0),
         seed: falResponse.seed,
         has_nsfw_concepts: falResponse.has_nsfw_concepts,
       },
@@ -96,6 +99,37 @@ const processImageGeneration: JobProcessor = async (
       provider: result.provider,
       inferenceTime: falResponse.timings?.inference,
     });
+
+    // If this is for a frame, update the frame with the generated image URL
+    if (imageData.frameId && result.imageUrls.length > 0) {
+      console.log("[ImageWebhook] Updating frame with generated image", {
+        frameId: imageData.frameId,
+        imageUrl: result.imageUrls[0],
+      });
+
+      const supabase = createAdminClient();
+      const { error: updateError } = await supabase
+        .from("frames")
+        .update({
+          thumbnail_url: result.imageUrls[0],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", imageData.frameId);
+
+      if (updateError) {
+        console.error("[ImageWebhook] Failed to update frame with image URL", {
+          frameId: imageData.frameId,
+          error: updateError.message,
+        });
+      } else {
+        console.log(
+          "[ImageWebhook] Frame updated with image URL successfully",
+          {
+            frameId: imageData.frameId,
+          },
+        );
+      }
+    }
 
     return result;
   } catch (error) {
@@ -121,6 +155,40 @@ const processImageGeneration: JobProcessor = async (
       jobId,
       error: fallbackResult.metadata.error,
     });
+
+    // If this is for a frame, update the frame with the fallback image URL
+    if (imageData.frameId && fallbackResult.imageUrls.length > 0) {
+      console.log("[ImageWebhook] Updating frame with fallback image", {
+        frameId: imageData.frameId,
+        imageUrl: fallbackResult.imageUrls[0],
+      });
+
+      const supabase = createAdminClient();
+      const { error: updateError } = await supabase
+        .from("frames")
+        .update({
+          thumbnail_url: fallbackResult.imageUrls[0],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", imageData.frameId);
+
+      if (updateError) {
+        console.error(
+          "[ImageWebhook] Failed to update frame with fallback image URL",
+          {
+            frameId: imageData.frameId,
+            error: updateError.message,
+          },
+        );
+      } else {
+        console.log(
+          "[ImageWebhook] Frame updated with fallback image URL successfully",
+          {
+            frameId: imageData.frameId,
+          },
+        );
+      }
+    }
 
     return fallbackResult;
   }

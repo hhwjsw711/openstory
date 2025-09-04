@@ -579,3 +579,229 @@ export async function regenerateFrameAction(
     };
   }
 }
+
+/**
+ * Get active frame generation job for a sequence
+ */
+export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
+  success: boolean;
+  job?: {
+    id: string;
+    type: string;
+    status: string;
+    progress?: number;
+    result?: unknown;
+    error?: string;
+    created_at: string;
+    updated_at: string;
+    framesProgress?: {
+      total: number;
+      completed: number;
+      frames: Array<{
+        id: string;
+        order_index: number;
+        thumbnail_url?: string | null;
+      }>;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = createServerClient();
+
+    // Query for the most recent frame_generation job for this sequence
+    // where status is pending or running
+    const { data: jobs, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("type", "frame_generation")
+      .in("status", ["pending", "running"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!jobs || jobs.length === 0) {
+      return {
+        success: true,
+        job: undefined,
+      };
+    }
+
+    // Check if this job is for the requested sequence
+    const job = jobs[0];
+    const payload = job.payload as Record<string, unknown> | null;
+    const jobSequenceId = payload?.sequenceId as string | undefined;
+
+    if (jobSequenceId !== sequenceId) {
+      return {
+        success: true,
+        job: undefined,
+      };
+    }
+
+    // Get frame progress
+    const { data: frames } = await supabase
+      .from("frames")
+      .select("id, order_index, thumbnail_url")
+      .eq("sequence_id", sequenceId)
+      .order("order_index", { ascending: true });
+
+    const options = payload?.options as Record<string, unknown> | undefined;
+    const framesPerScene = (options?.framesPerScene as number) || 3;
+
+    return {
+      success: true,
+      job: {
+        id: job.id,
+        type: job.type,
+        status: job.status,
+        progress: undefined,
+        result: job.result,
+        error: job.error || undefined,
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        framesProgress: {
+          total: framesPerScene,
+          completed: frames?.filter((f) => f.thumbnail_url).length || 0,
+          frames: frames || [],
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error getting active job for sequence:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to get active job",
+    };
+  }
+}
+
+/**
+ * Get job status for frame generation
+ */
+export async function getFrameGenerationJobStatus(jobId: string): Promise<{
+  success: boolean;
+  job?: {
+    id: string;
+    type: string;
+    status: string;
+    progress?: number;
+    result?: unknown;
+    error?: string;
+    created_at: string;
+    updated_at: string;
+    framesProgress?: {
+      total: number;
+      completed: number;
+      frames: Array<{
+        id: string;
+        order_index: number;
+        thumbnail_url?: string | null;
+      }>;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    const jobManager = getJobManager();
+    const job = await jobManager.getJob(jobId);
+
+    if (!job) {
+      return {
+        success: false,
+        error: "Job not found",
+      };
+    }
+
+    const supabase = createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Check if user has access to this job
+    if (user && job.user_id && job.user_id !== user.id) {
+      // Check if user is part of the same team
+      if (job.team_id) {
+        const { data: member } = await supabase
+          .from("team_members")
+          .select("id")
+          .eq("team_id", job.team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (!member) {
+          return {
+            success: false,
+            error: "Unauthorized",
+          };
+        }
+      } else {
+        return {
+          success: false,
+          error: "Unauthorized",
+        };
+      }
+    }
+
+    // If job is for frame generation, also check how many frames have been created
+    let framesProgress:
+      | {
+          total: number;
+          completed: number;
+          frames: Array<{
+            id: string;
+            order_index: number;
+            thumbnail_url?: string | null;
+          }>;
+        }
+      | undefined;
+    if (job.type === "frame_generation" && job.payload) {
+      // Safely access the payload which is typed as Json
+      const payload = job.payload as Record<string, unknown>;
+      const sequenceId = payload.sequenceId as string | undefined;
+
+      if (sequenceId) {
+        const { data: frames } = await supabase
+          .from("frames")
+          .select("id, order_index, thumbnail_url")
+          .eq("sequence_id", sequenceId)
+          .order("order_index", { ascending: true });
+
+        const options = payload.options as Record<string, unknown> | undefined;
+        const framesPerScene = (options?.framesPerScene as number) || 3;
+
+        framesProgress = {
+          total: framesPerScene,
+          completed: frames?.filter((f) => f.thumbnail_url).length || 0,
+          frames: frames || [],
+        };
+      }
+    }
+
+    return {
+      success: true,
+      job: {
+        id: job.id,
+        type: job.type,
+        status: job.status,
+        progress: undefined, // Job doesn't have a progress field in the database
+        result: job.result,
+        error: job.error || undefined,
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        framesProgress,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting job status:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to get job status",
+    };
+  }
+}

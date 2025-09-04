@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { use, useCallback, useState } from "react";
+import { use, useCallback } from "react";
 import { PageContainer } from "@/components/layout";
 import { StepNavigation } from "@/components/sequence-flow/step-navigation";
 import { StoryboardStep } from "@/components/sequence-flow/storyboard-step";
@@ -9,8 +9,10 @@ import {
   PageHeader,
   PageHeading,
 } from "@/components/typography";
-import { useFramesBySequence, useReorderFrames } from "@/hooks/use-frames";
-import { useSequence } from "@/hooks/use-sequences";
+import {
+  useActiveFrameGeneration,
+  useFramesBySequence,
+} from "@/hooks/use-frames";
 import { useUser } from "@/hooks/use-user";
 
 interface StoryboardPageProps {
@@ -22,20 +24,20 @@ interface StoryboardPageProps {
 export default function StoryboardPage({ params }: StoryboardPageProps) {
   const { id: sequenceId } = use(params);
   const router = useRouter();
-  const { data: userData } = useUser();
-  const _user = userData?.user;
 
-  // Load the sequence data
-  const { data: sequence, isLoading: isLoadingSequence } =
-    useSequence(sequenceId);
-  const { data: frames = [], isLoading: isLoadingFrames } =
-    useFramesBySequence(sequenceId);
-  const reorderFrames = useReorderFrames();
-  const isLoading = isLoadingSequence || isLoadingFrames;
+  // Verify session
+  useUser();
 
-  // Local state for generation
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
+  // Check for active frame generation job
+  const { data: activeJob } = useActiveFrameGeneration(sequenceId);
+  const isBackgroundGenerating =
+    activeJob?.status === "running" || activeJob?.status === "pending";
+
+  // Load frames with auto-refresh when generating
+  const { data: frames = [] } = useFramesBySequence(sequenceId, {
+    // Refetch every 2 seconds when frames are being generated
+    refetchInterval: isBackgroundGenerating ? 2000 : false,
+  });
 
   // Completed steps based on what's in the sequence
   const completedSteps = new Set([1]); // Script is always completed to get here
@@ -48,47 +50,8 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   }, [sequenceId, router]);
 
   const handlePrevious = useCallback(() => {
-    router.push(`/sequences/new`);
-  }, [router]);
-
-  const handleStepClick = useCallback(
-    (step: 1 | 2 | 3) => {
-      switch (step) {
-        case 1:
-          router.push(`/sequences/${sequenceId}/script`);
-          break;
-        case 2:
-          // Already on storyboard page
-          break;
-        case 3:
-          if (completedSteps.has(2)) {
-            router.push(`/sequences/${sequenceId}/motion`);
-          }
-          break;
-      }
-    },
-    [sequenceId, router, completedSteps],
-  );
-
-  if (isLoading) {
-    return (
-      <PageContainer maxWidth="narrow" data-testid="storyboard-page">
-        <PageHeader>
-          <PageHeading>Loading sequence...</PageHeading>
-        </PageHeader>
-      </PageContainer>
-    );
-  }
-
-  if (!sequence) {
-    return (
-      <PageContainer maxWidth="narrow" data-testid="storyboard-page">
-        <PageHeader>
-          <PageHeading>Sequence not found</PageHeading>
-        </PageHeader>
-      </PageContainer>
-    );
-  }
+    router.push(`/sequences/${sequenceId}/script`);
+  }, [sequenceId, router]);
 
   return (
     <PageContainer maxWidth="narrow" data-testid="storyboard-page">
@@ -100,37 +63,13 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
       </PageHeader>
 
       <StepNavigation
+        sequenceId={sequenceId}
         currentStep={2}
         completedSteps={completedSteps}
-        onStepClick={handleStepClick}
       />
 
       <StoryboardStep
-        sequence={sequence}
-        frames={frames}
-        isGenerating={isGenerating}
-        generationError={generationError}
-        onGenerationStart={() => {
-          setIsGenerating(true);
-          setGenerationError(null);
-        }}
-        onGenerationComplete={() => {
-          setIsGenerating(false);
-          // Frames are already saved in the database by generateFrames
-          // The useFramesBySequence hook will automatically refetch
-        }}
-        onGenerationError={(error) => {
-          setIsGenerating(false);
-          setGenerationError(error);
-        }}
-        onFrameReorder={(reorderedFrames) => {
-          // Create the new order mapping
-          const frameOrders = reorderedFrames.map((frame, index) => ({
-            id: frame.id,
-            order_index: index + 1,
-          }));
-          reorderFrames.mutate({ sequenceId, frameOrders });
-        }}
+        sequenceId={sequenceId}
         onNext={handleNext}
         onPrevious={handlePrevious}
       />

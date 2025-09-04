@@ -11,13 +11,15 @@ import {
   deleteFrame,
   deleteFramesBySequence,
   generateFramesAction,
+  getActiveFrameGenerationJob,
   getFrame,
+  getFrameGenerationJobStatus,
   getFramesBySequence,
   regenerateFrameAction,
   reorderFrames,
   updateFrame,
 } from "#actions/frames";
-import type { Frame, Job } from "@/types/database";
+import type { Frame } from "@/types/database";
 
 // Query keys
 export const frameKeys = {
@@ -28,8 +30,13 @@ export const frameKeys = {
   detail: (id: string) => [...frameKeys.details(), id] as const,
 };
 
-// Hook for listing frames by sequence
-export function useFramesBySequence(sequenceId: string) {
+// Hook for listing frames by sequence with optional auto-refresh
+export function useFramesBySequence(
+  sequenceId: string,
+  options?: {
+    refetchInterval?: number | false;
+  },
+) {
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId),
     queryFn: async () => {
@@ -41,6 +48,7 @@ export function useFramesBySequence(sequenceId: string) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!sequenceId,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -298,9 +306,14 @@ export function useGenerateFrames() {
       return { previousFrames, sequenceId };
     },
     onSuccess: (_, { sequenceId }) => {
-      // Invalidate frames list to show placeholder frames
+      // Invalidate frames list to trigger refresh
       queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
+      });
+
+      // Invalidate active job query to start tracking the new job
+      queryClient.invalidateQueries({
+        queryKey: ["active-job", sequenceId],
       });
     },
     onError: (_, __, context) => {
@@ -354,18 +367,33 @@ export function useFrameGenerationStatus(
     refetchInterval?: number;
   },
 ) {
-  return useQuery<Job | null>({
+  const queryClient = useQueryClient();
+
+  return useQuery({
     queryKey: ["jobs", jobId],
     queryFn: async () => {
       if (!jobId) return null;
 
-      // This would typically call an API to get job status
-      // For now, returning null as we need to implement the job status endpoint
-      const response = await fetch(`/api/v1/jobs/status/${jobId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch job status");
+      const result = await getFrameGenerationJobStatus(jobId);
+      if (result.success && result.job) {
+        // If frames are being generated, invalidate the frames list to show updates
+        if (result.job.framesProgress && result.job.status === "running") {
+          const sequenceId =
+            result.job.framesProgress.frames[0]?.id?.split("-")[0];
+          if (sequenceId) {
+            queryClient.invalidateQueries({
+              queryKey: frameKeys.list(sequenceId),
+            });
+          }
+        }
+        return result.job;
       }
-      return response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch job status");
+      }
+
+      return null;
     },
     enabled: !!jobId && (options?.enabled ?? true),
     refetchInterval: (query) => {
@@ -378,6 +406,44 @@ export function useFrameGenerationStatus(
       }
       // Poll every 2 seconds by default
       return options?.refetchInterval ?? 2000;
+    },
+  });
+}
+
+// Hook to check for active frame generation jobs for a sequence
+export function useActiveFrameGeneration(sequenceId: string) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: ["active-job", sequenceId],
+    queryFn: async () => {
+      const result = await getActiveFrameGenerationJob(sequenceId);
+
+      if (result.success && result.job) {
+        // If frames are being generated, invalidate the frames list to show updates
+        if (result.job.status === "running") {
+          queryClient.invalidateQueries({
+            queryKey: frameKeys.list(sequenceId),
+          });
+        }
+
+        return result.job;
+      }
+
+      return null;
+    },
+    enabled: !!sequenceId,
+    refetchInterval: (query) => {
+      // Stop polling if no job or job is completed/failed
+      if (
+        !query.state.data ||
+        query.state.data.status === "completed" ||
+        query.state.data.status === "failed"
+      ) {
+        return false;
+      }
+      // Poll every 2 seconds while job is active
+      return 2000;
     },
   });
 }

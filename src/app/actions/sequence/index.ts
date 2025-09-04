@@ -67,6 +67,9 @@ export async function saveSequence(
 
       sequence = data;
     } else {
+      // TODO: TB Sep 2025 - At some point you'll want the user to be able to select a team
+      // That team id should then be passed to this function as the teamId parameter
+
       // Create new sequence - get any team for the current user
       // Prefer teams where user is owner, but accept any team
       const { data: teamMemberships, error: teamError } = await supabase

@@ -29,9 +29,9 @@ const falImageResponseSchema = z.object({
   images: z.array(
     z.object({
       url: z.string().url(),
-      content_type: z.string(),
-      file_name: z.string(),
-      file_size: z.number(),
+      content_type: z.string().optional(),
+      file_name: z.string().optional(),
+      file_size: z.number().optional(),
       width: z.number(),
       height: z.number(),
     }),
@@ -299,6 +299,9 @@ export async function generateImage(
       requestData,
       apiKey,
     );
+
+    // Log the actual response for debugging
+    console.log("[FAL] Raw API response:", JSON.stringify(result, null, 2));
 
     const validated = falImageResponseSchema.parse(result);
 

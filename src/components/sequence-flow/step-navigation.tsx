@@ -1,11 +1,13 @@
+import { useRouter } from "next/navigation";
 import type * as React from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface StepNavigationProps {
+  sequenceId: string;
   currentStep: 1 | 2 | 3;
   completedSteps: Set<number>;
-  onStepClick: (step: 1 | 2 | 3) => void;
   className?: string;
 }
 
@@ -34,11 +36,12 @@ const STEPS: StepConfig[] = [
 ];
 
 export const StepNavigation: React.FC<StepNavigationProps> = ({
+  sequenceId,
   currentStep,
   completedSteps,
-  onStepClick,
   className,
 }) => {
+  const router = useRouter();
   const getStepStatus = (
     stepNumber: number,
   ): "current" | "completed" | "upcoming" => {
@@ -62,6 +65,28 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
     return false;
   };
 
+  const handleStepClick = useCallback(
+    (step: 1 | 2 | 3) => {
+      if (step === currentStep) return;
+      switch (step) {
+        case 1:
+          router.push(`/sequences/${sequenceId}/script`);
+          break;
+        case 2:
+          if (completedSteps.has(1)) {
+            router.push(`/sequences/${sequenceId}/storyboard`);
+          }
+          break;
+        case 3:
+          if (completedSteps.has(2)) {
+            router.push(`/sequences/${sequenceId}/motion`);
+          }
+          break;
+      }
+    },
+    [sequenceId, router, completedSteps, currentStep],
+  );
+
   return (
     <nav
       className={cn("w-full", className)}
@@ -79,7 +104,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => isClickable && onStepClick(step.number)}
+                  onClick={() => isClickable && handleStepClick(step.number)}
                   disabled={!isClickable}
                   className={cn(
                     "flex flex-col items-center p-2 h-auto min-w-0 gap-1",

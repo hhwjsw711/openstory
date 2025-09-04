@@ -23,8 +23,7 @@ export default function MotionPage({ params }: MotionPageProps) {
   const { id: sequenceId } = use(params);
   const router = useRouter();
   // Verify session
-  const { data: userData } = useUser();
-  const _user = userData?.user;
+  useUser();
 
   // Load the sequence data
   const { data: sequence, isLoading: isLoadingSequence } =
@@ -53,23 +52,6 @@ export default function MotionPage({ params }: MotionPageProps) {
   const handlePrevious = useCallback(() => {
     router.push(`/sequences/${sequenceId}/storyboard`);
   }, [sequenceId, router]);
-
-  const handleStepClick = useCallback(
-    (step: 1 | 2 | 3) => {
-      switch (step) {
-        case 1:
-          router.push(`/sequences/${sequenceId}/script`);
-          break;
-        case 2:
-          router.push(`/sequences/${sequenceId}/storyboard`);
-          break;
-        case 3:
-          // Already on motion page
-          break;
-      }
-    },
-    [sequenceId, router],
-  );
 
   if (isLoading) {
     return (
@@ -102,9 +84,9 @@ export default function MotionPage({ params }: MotionPageProps) {
       </PageHeader>
 
       <StepNavigation
+        sequenceId={sequenceId}
         currentStep={3}
         completedSteps={completedSteps}
-        onStepClick={handleStepClick}
       />
 
       <MotionStep
