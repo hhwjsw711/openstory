@@ -104,12 +104,8 @@ export async function getCurrentUser(): Promise<UserResponse> {
 
     // If no user or session error, try to create anonymous user
     if (!user || sessionError) {
-      console.log(
-        "[getCurrentUser] No user found, attempting to create anonymous user",
-      );
       const anonResult = await createAnonymousUser(supabase);
 
-      console.log("[getCurrentUser] Anonymous user created", anonResult);
       // If anonymous creation fails due to no session context, return special error
       if (
         !anonResult.success &&

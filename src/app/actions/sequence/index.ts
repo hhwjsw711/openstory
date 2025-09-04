@@ -43,7 +43,6 @@ export async function saveSequence(
       throw new Error(userResult.error || "Failed to get or create user");
     }
 
-    console.log("[saveSequence] userResult:", userResult);
     const supabase = await createSessionAwareClient();
 
     let sequence: Sequence | null = null;
