@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { createSessionAwareClient } from "@/lib/supabase/server";
 import type { UserProfile } from "@/types/database";
 
-export interface UserResponse {
+interface UserResponse {
   success: boolean;
   data?: {
     user: UserProfile;
@@ -12,6 +12,71 @@ export interface UserResponse {
     isAnonymous: boolean;
   };
   error?: string;
+}
+
+/**
+ * Helper function to create an anonymous user
+ */
+async function createAnonymousUser(
+  supabase: Awaited<ReturnType<typeof createSessionAwareClient>>,
+): Promise<UserResponse> {
+  const { data, error: anonError } = await supabase.auth.signInAnonymously();
+
+  if (anonError) {
+    return {
+      success: false,
+      error: "Failed to create anonymous session",
+    };
+  }
+
+  if (!data.user) {
+    return {
+      success: false,
+      error: "No user returned from anonymous sign-in",
+    };
+  }
+
+  // Create team and user records for anonymous user
+  const result = await createUserWithTeam(supabase, data.user);
+  if (!result.success) {
+    return result;
+  }
+
+  // Return the new anonymous user
+  return createAnonymousUserResponse(data.user);
+}
+
+/**
+ * Helper function to create user profile from user data
+ */
+function createUserProfile(user: User): UserProfile {
+  return {
+    ...user,
+    full_name: user.user_metadata?.full_name || null,
+    avatar_url: user.user_metadata?.avatar_url || null,
+    onboarding_completed: user.user_metadata?.onboarding_completed || false,
+  };
+}
+
+/**
+ * Helper function to create anonymous user response
+ */
+function createAnonymousUserResponse(user: User): UserResponse {
+  const userProfile: UserProfile = {
+    ...user,
+    full_name: null,
+    avatar_url: null,
+    onboarding_completed: false,
+  };
+
+  return {
+    success: true,
+    data: {
+      user: userProfile,
+      isAuthenticated: false,
+      isAnonymous: true,
+    },
+  };
 }
 
 /**
@@ -39,45 +104,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
         sessionError.code === "refresh_token_not_found"
       ) {
         // Create a new anonymous session
-        const { data, error: anonError } =
-          await supabase.auth.signInAnonymously();
-
-        if (anonError) {
-          return {
-            success: false,
-            error: "Failed to create anonymous session",
-          };
-        }
-
-        if (!data.user) {
-          return {
-            success: false,
-            error: "No user returned from anonymous sign-in",
-          };
-        }
-
-        // Create team and user records for anonymous user
-        const result = await createUserWithTeam(supabase, data.user);
-        if (!result.success) {
-          return result;
-        }
-
-        // Return the new anonymous user
-        const userProfile: UserProfile = {
-          ...data.user,
-          full_name: null,
-          avatar_url: null,
-          onboarding_completed: false,
-        };
-
-        return {
-          success: true,
-          data: {
-            user: userProfile,
-            isAuthenticated: false,
-            isAnonymous: true,
-          },
-        };
+        return await createAnonymousUser(supabase);
       }
 
       // For other session errors, return a generic error
@@ -89,45 +116,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
 
     // If no authenticated user exists, create an anonymous user
     if (!user) {
-      const { data, error: anonError } =
-        await supabase.auth.signInAnonymously();
-
-      if (anonError) {
-        return {
-          success: false,
-          error: "Failed to create anonymous session",
-        };
-      }
-
-      if (!data.user) {
-        return {
-          success: false,
-          error: "No user returned from anonymous sign-in",
-        };
-      }
-
-      // Create team and user records
-      const result = await createUserWithTeam(supabase, data.user);
-      if (!result.success) {
-        return result;
-      }
-
-      // Return the new anonymous user
-      const userProfile: UserProfile = {
-        ...data.user,
-        full_name: null,
-        avatar_url: null,
-        onboarding_completed: false,
-      };
-
-      return {
-        success: true,
-        data: {
-          user: userProfile,
-          isAuthenticated: false,
-          isAnonymous: true,
-        },
-      };
+      return await createAnonymousUser(supabase);
     }
 
     // We have a valid authenticated user
@@ -147,12 +136,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
       }
     }
 
-    const userProfile: UserProfile = {
-      ...user,
-      full_name: user.user_metadata?.full_name || null,
-      avatar_url: user.user_metadata?.avatar_url || null,
-      onboarding_completed: user.user_metadata?.onboarding_completed || false,
-    };
+    const userProfile = createUserProfile(user);
 
     const isAnonymous = user.is_anonymous === true;
 
@@ -176,29 +160,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
         // Try to create a new anonymous session
         try {
           const supabase = await createSessionAwareClient();
-          const { data, error: anonError } =
-            await supabase.auth.signInAnonymously();
-
-          if (!anonError && data.user) {
-            const result = await createUserWithTeam(supabase, data.user);
-            if (result.success) {
-              const userProfile: UserProfile = {
-                ...data.user,
-                full_name: null,
-                avatar_url: null,
-                onboarding_completed: false,
-              };
-
-              return {
-                success: true,
-                data: {
-                  user: userProfile,
-                  isAuthenticated: false,
-                  isAnonymous: true,
-                },
-              };
-            }
-          }
+          return await createAnonymousUser(supabase);
         } catch {
           // Fall through to generic error
         }

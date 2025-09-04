@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { AuthService } from "@/lib/auth/service";
+import { getCurrentUser } from "@/app/actions/user";
 import { createSessionAwareClient } from "@/lib/supabase/server";
 import type { Json, Style, StyleInsert } from "@/types/database";
 
@@ -30,6 +30,26 @@ export type CreateStyleInput = z.infer<typeof createStyleSchema>;
 export type UpdateStyleInput = z.infer<typeof updateStyleSchema>;
 
 /**
+ * Helper function to get the current user's team ID
+ */
+async function getCurrentUserTeamId(): Promise<string | null> {
+  const userResult = await getCurrentUser();
+  if (!userResult.success || !userResult.data) {
+    return null;
+  }
+
+  const supabase = await createSessionAwareClient();
+  const { data: teamMembership } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", userResult.data.user.id)
+    .eq("role", "owner")
+    .single();
+
+  return teamMembership?.team_id || null;
+}
+
+/**
  * Create a new style for the current user's team
  */
 export async function createStyle(
@@ -37,10 +57,9 @@ export async function createStyle(
 ): Promise<{ success: boolean; style?: Style; error?: string }> {
   try {
     const supabase = await createSessionAwareClient();
-    const authService = new AuthService();
 
     // Get the current user's team
-    const teamId = await authService.getCurrentUserTeamId();
+    const teamId = await getCurrentUserTeamId();
     if (!teamId) {
       return { success: false, error: "No team found for current user" };
     }
@@ -87,10 +106,9 @@ export async function updateStyle(
 ): Promise<{ success: boolean; style?: Style; error?: string }> {
   try {
     const supabase = await createSessionAwareClient();
-    const authService = new AuthService();
 
     // Get the current user's team to verify ownership
-    const teamId = await authService.getCurrentUserTeamId();
+    const teamId = await getCurrentUserTeamId();
     if (!teamId) {
       return { success: false, error: "No team found for current user" };
     }
@@ -148,10 +166,9 @@ export async function deleteStyle(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createSessionAwareClient();
-    const authService = new AuthService();
 
     // Get the current user's team to verify ownership
-    const teamId = await authService.getCurrentUserTeamId();
+    const teamId = await getCurrentUserTeamId();
     if (!teamId) {
       return { success: false, error: "No team found for current user" };
     }
@@ -216,10 +233,9 @@ export async function listStyles(): Promise<{
 }> {
   try {
     const supabase = await createSessionAwareClient();
-    const authService = new AuthService();
 
     // Get the current user's team
-    const teamId = await authService.getCurrentUserTeamId();
+    const teamId = await getCurrentUserTeamId();
 
     if (!teamId) {
       // If no team, just return public styles

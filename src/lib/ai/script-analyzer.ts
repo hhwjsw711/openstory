@@ -16,18 +16,18 @@ import {
 const sceneAnalysisSchema = z.object({
   scenes: z.array(
     z.object({
-      start: z.number(),
-      end: z.number(),
+      start: z.coerce.number(),
+      end: z.coerce.number(),
       description: z.string(),
-      duration: z.number().optional(),
+      duration: z.coerce.number().optional(),
       type: z.string().optional(), // e.g., "action", "dialogue", "montage"
-      intensity: z.number().min(1).max(10).optional(), // Emotional/action intensity
+      intensity: z.coerce.number().min(1).max(10).optional(), // Emotional/action intensity
     }),
   ),
   characters: z.array(z.string()).optional(),
   settings: z.array(z.string()).optional(),
   themes: z.array(z.string()).optional(),
-  totalDuration: z.number().optional(),
+  totalDuration: z.coerce.number().optional(),
 });
 
 export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;

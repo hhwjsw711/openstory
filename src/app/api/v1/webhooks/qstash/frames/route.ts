@@ -13,7 +13,6 @@ import {
 import type {
   FrameGenerationPayload,
   FrameGenerationResult,
-  QStashWebhookPayload,
 } from "@/lib/qstash/types";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { FrameInsert, Json } from "@/types/database";
@@ -25,10 +24,10 @@ async function handler(req: QStashVerifiedRequest) {
   try {
     // Parse the webhook payload
     const body = await req.text();
-    let payload: QStashWebhookPayload<FrameGenerationPayload>;
+    let jobPayload: FrameGenerationPayload;
 
     try {
-      payload = JSON.parse(body);
+      jobPayload = JSON.parse(body);
     } catch (e) {
       console.error("[Frames Webhook] Invalid JSON payload:", e);
       return NextResponse.json(
@@ -36,8 +35,6 @@ async function handler(req: QStashVerifiedRequest) {
         { status: 400 },
       );
     }
-
-    const jobPayload = payload.body;
 
     if (!jobPayload?.jobId || jobPayload.type !== "frame_generation") {
       console.error("[Frames Webhook] Invalid job payload:", jobPayload);
