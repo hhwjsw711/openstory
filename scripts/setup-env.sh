@@ -74,6 +74,7 @@ fi
 cat >> $ENV_FILE << EOF
 
 # Optional: AI Service Keys (add as needed)
+# OPENROUTER_API_KEY=
 # FAL_KEY=
 # RUNWAY_API_SECRET=
 # KLING_ACCESS_KEY=

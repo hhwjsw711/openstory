@@ -87,7 +87,7 @@ export interface FrameGenerationPayload extends BaseJobPayload {
       framesPerScene?: number; // Default: 3-7
       generateThumbnails?: boolean;
       generateDescriptions?: boolean;
-      aiProvider?: "openai" | "anthropic";
+      aiProvider?: "openai" | "anthropic" | "openrouter";
     };
   };
 }

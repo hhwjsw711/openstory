@@ -56,7 +56,7 @@ const generateFramesSchema = z.object({
       framesPerScene: z.number().min(1).max(10).optional(),
       generateThumbnails: z.boolean().optional(),
       generateDescriptions: z.boolean().optional(),
-      aiProvider: z.enum(["openai", "anthropic"]).optional(),
+      aiProvider: z.enum(["openai", "anthropic", "openrouter"]).optional(),
     })
     .optional(),
 });

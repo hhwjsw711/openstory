@@ -5,6 +5,13 @@
 
 import { z } from "zod";
 import type { Json } from "@/types/database";
+import {
+  callOpenRouter,
+  extractJSON,
+  RECOMMENDED_MODELS,
+  systemMessage,
+  userMessage,
+} from "./openrouter-client";
 
 // Frame description schema
 const frameDescriptionSchema = z.object({
@@ -38,7 +45,7 @@ export interface GenerateFrameDescriptionsParams {
   };
   styleStack?: Json;
   framesPerScene?: number;
-  aiProvider?: "openai" | "anthropic";
+  aiProvider?: "openai" | "anthropic" | "openrouter";
 }
 
 export interface FrameDescriptionResult {
@@ -74,7 +81,7 @@ export async function generateFrameDescriptions(
     scriptAnalysis,
     styleStack,
     framesPerScene = 5,
-    aiProvider = "openai",
+    aiProvider = "openrouter",
   } = params;
 
   console.log("[FrameGenerator] Generating frame descriptions", {
@@ -142,7 +149,7 @@ async function generateSceneFrames(params: {
   styleStack?: Json;
   characters?: string[];
   settings?: string[];
-  aiProvider: "openai" | "anthropic";
+  aiProvider: "openai" | "anthropic" | "openrouter";
 }): Promise<Omit<FrameDescriptionResult["frames"][0], "orderIndex">[]> {
   const {
     sceneScript,
@@ -218,7 +225,7 @@ async function createFrameDescription(params: {
   styleStack?: Json;
   characters?: string[];
   settings?: string[];
-  aiProvider: "openai" | "anthropic";
+  aiProvider: "openai" | "anthropic" | "openrouter";
 }): Promise<FrameDescription> {
   const {
     sceneScript,
@@ -234,7 +241,7 @@ async function createFrameDescription(params: {
   } = params;
 
   // Build the prompt for AI
-  const _prompt = buildFramePrompt({
+  const prompt = buildFramePrompt({
     sceneScript,
     sceneDescription,
     framePosition,
@@ -247,8 +254,78 @@ async function createFrameDescription(params: {
     settings,
   });
 
-  // For now, return a mock response
-  // In production, this would call the actual AI API
+  // Use OpenRouter to generate frame description if provider is set
+  if (params.aiProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+    try {
+      const response = await callOpenRouter({
+        model: RECOMMENDED_MODELS.creative,
+        messages: [
+          systemMessage(
+            "You are a professional storyboard artist and cinematographer. Generate detailed, cinematic frame descriptions for video production. Return your response as a JSON object matching the provided schema.",
+          ),
+          userMessage(
+            `${prompt}\n\nReturn a JSON object with this structure:\n${JSON.stringify(
+              {
+                description: "detailed frame description",
+                visualElements: {
+                  shotType: "shot type",
+                  cameraAngle: "camera angle",
+                  lighting: "lighting description",
+                  mood: "mood/atmosphere",
+                  colorPalette: ["color1", "color2", "color3"],
+                },
+                characters: ["character names if present"],
+                settings: ["location/setting names"],
+                action: "main action in frame",
+                dialogue: "any dialogue if present",
+              },
+              null,
+              2,
+            )}`,
+          ),
+        ],
+        temperature: 0.8,
+        max_tokens: 500,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = extractJSON<FrameDescription>(content);
+
+      if (parsed) {
+        // Validate and ensure all required fields
+        return {
+          description:
+            parsed.description ||
+            generateMockDescription({
+              sceneDescription,
+              framePosition,
+              totalFrames,
+              shotType,
+              characters,
+              settings,
+            }),
+          visualElements: {
+            shotType: parsed.visualElements?.shotType || shotType,
+            cameraAngle: parsed.visualElements?.cameraAngle || "eye level",
+            lighting:
+              parsed.visualElements?.lighting ||
+              getMockLighting(framePosition, totalFrames),
+            mood: parsed.visualElements?.mood || getMockMood(sceneDescription),
+            colorPalette: parsed.visualElements?.colorPalette,
+          },
+          characters: parsed.characters || characters.slice(0, 2),
+          settings: parsed.settings || settings.slice(0, 1),
+          action: parsed.action,
+          dialogue: parsed.dialogue,
+        };
+      }
+    } catch (error) {
+      console.error("[FrameGenerator] OpenRouter error:", error);
+      // Fall back to mock on error
+    }
+  }
+
+  // Fall back to mock response
   const mockDescription: FrameDescription = {
     description: generateMockDescription({
       sceneDescription,

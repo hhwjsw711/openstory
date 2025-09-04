@@ -4,6 +4,13 @@
  */
 
 import { z } from "zod";
+import {
+  callOpenRouter,
+  extractJSON,
+  RECOMMENDED_MODELS,
+  systemMessage,
+  userMessage,
+} from "./openrouter-client";
 
 // Scene analysis schema
 const sceneAnalysisSchema = z.object({
@@ -30,15 +37,70 @@ export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
  */
 export async function analyzeScriptForFrames(
   script: string,
-  aiProvider?: "openai" | "anthropic",
+  aiProvider?: "openai" | "anthropic" | "openrouter",
 ): Promise<SceneAnalysis> {
   console.log("[ScriptAnalyzer] Analyzing script", {
     scriptLength: script.length,
-    aiProvider: aiProvider || "openai",
+    aiProvider: aiProvider || "openrouter",
   });
 
-  // For now, we'll use a simple heuristic-based approach
-  // In production, this would use actual AI APIs
+  // Use OpenRouter for AI-powered analysis if available
+  if (aiProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+    try {
+      const response = await callOpenRouter({
+        model: RECOMMENDED_MODELS.structured,
+        messages: [
+          systemMessage(
+            "You are a professional script analyst. Analyze scripts to identify scene boundaries, extract key information, and estimate timing. Return structured JSON data.",
+          ),
+          userMessage(
+            `Analyze this script and identify scene boundaries:\n\n${script.slice(
+              0,
+              3000,
+            )}${script.length > 3000 ? "..." : ""}\n\nReturn a JSON object with:\n${JSON.stringify(
+              {
+                scenes: [
+                  {
+                    start: "character position where scene starts",
+                    end: "character position where scene ends",
+                    description: "brief scene description",
+                    duration: "estimated duration in milliseconds",
+                    type: "action/dialogue/montage/transition",
+                    intensity: "1-10 emotional/action intensity",
+                  },
+                ],
+                characters: ["list of character names"],
+                settings: ["list of locations/settings"],
+                themes: ["key themes"],
+                totalDuration: "total estimated duration in milliseconds",
+              },
+              null,
+              2,
+            )}`,
+          ),
+        ],
+        temperature: 0.3, // Lower temperature for more consistent structured output
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = extractJSON<SceneAnalysis>(content);
+
+      if (parsed) {
+        try {
+          return sceneAnalysisSchema.parse(parsed);
+        } catch (error) {
+          console.error("[ScriptAnalyzer] Invalid OpenRouter response:", error);
+          // Fall back to heuristic analysis
+        }
+      }
+    } catch (error) {
+      console.error("[ScriptAnalyzer] OpenRouter error:", error);
+      // Fall back to heuristic analysis
+    }
+  }
+
+  // Fall back to heuristic-based approach
   const analysis = performHeuristicAnalysis(script);
 
   // Validate the analysis
