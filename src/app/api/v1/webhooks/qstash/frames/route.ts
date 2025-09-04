@@ -93,33 +93,54 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error("Failed to generate frame descriptions");
       }
 
-      // Step 3: Clear existing placeholder frames if any
-      // First get frames with matching jobId in metadata
-      const { data: existingFrames } = await supabase
-        .from("frames")
-        .select("id, metadata")
-        .eq("sequence_id", data.sequenceId);
+      // Step 3: Handle existing frames
+      // Check if we should regenerate all frames or just missing ones
+      const regenerateAll = data.options?.regenerateAll !== false; // Default to true
 
-      // Filter frames with matching jobId and delete them
-      if (existingFrames && existingFrames.length > 0) {
-        const framesToDelete = existingFrames
-          .filter((frame) => {
-            const metadata = frame.metadata as Record<string, unknown> | null;
-            return metadata?.jobId === jobId;
-          })
-          .map((frame) => frame.id);
+      if (regenerateAll) {
+        // Delete ALL existing frames for this sequence to avoid conflicts
+        const { error: deleteError } = await supabase
+          .from("frames")
+          .delete()
+          .eq("sequence_id", data.sequenceId);
 
-        if (framesToDelete.length > 0) {
-          const { error: deleteError } = await supabase
-            .from("frames")
-            .delete()
-            .in("id", framesToDelete);
+        if (deleteError) {
+          console.warn(
+            "[Frames Webhook] Failed to delete existing frames:",
+            deleteError,
+          );
+        } else {
+          console.log("[Frames Webhook] Deleted existing frames for sequence", {
+            sequenceId: data.sequenceId,
+          });
+        }
+      } else {
+        // Only delete frames with matching jobId (placeholder frames)
+        const { data: existingFrames } = await supabase
+          .from("frames")
+          .select("id, metadata")
+          .eq("sequence_id", data.sequenceId);
 
-          if (deleteError) {
-            console.warn(
-              "[Frames Webhook] Failed to delete placeholder frames:",
-              deleteError,
-            );
+        if (existingFrames && existingFrames.length > 0) {
+          const framesToDelete = existingFrames
+            .filter((frame) => {
+              const metadata = frame.metadata as Record<string, unknown> | null;
+              return metadata?.jobId === jobId;
+            })
+            .map((frame) => frame.id);
+
+          if (framesToDelete.length > 0) {
+            const { error: deleteError } = await supabase
+              .from("frames")
+              .delete()
+              .in("id", framesToDelete);
+
+            if (deleteError) {
+              console.warn(
+                "[Frames Webhook] Failed to delete placeholder frames:",
+                deleteError,
+              );
+            }
           }
         }
       }
@@ -140,19 +161,47 @@ async function handler(req: QStashVerifiedRequest) {
         }),
       );
 
+      // Try to insert frames, use upsert if there's a conflict
       const { data: insertedFrames, error: insertError } = await supabase
         .from("frames")
         .insert(framesToInsert)
         .select();
 
       if (insertError) {
-        throw new Error(`Failed to insert frames: ${insertError.message}`);
-      }
+        // If we get a unique constraint violation, try upsert instead
+        if (
+          insertError.code === "23505" ||
+          insertError.message.includes("duplicate key")
+        ) {
+          console.log(
+            "[Frames Webhook] Conflict detected, using upsert instead",
+          );
 
-      console.log("[Frames Webhook] Frames inserted successfully", {
-        count: insertedFrames?.length,
-        sequenceId: data.sequenceId,
-      });
+          const { data: upsertedFrames, error: upsertError } = await supabase
+            .from("frames")
+            .upsert(framesToInsert, {
+              onConflict: "sequence_id,order_index",
+              ignoreDuplicates: false,
+            })
+            .select();
+
+          if (upsertError) {
+            throw new Error(`Failed to upsert frames: ${upsertError.message}`);
+          }
+
+          console.log("[Frames Webhook] Frames upserted successfully", {
+            count: upsertedFrames?.length,
+            sequenceId: data.sequenceId,
+          });
+        } else {
+          throw new Error(`Failed to insert frames: ${insertError.message}`);
+        }
+      } else {
+        console.log("[Frames Webhook] Frames inserted successfully", {
+          count: insertedFrames?.length,
+          sequenceId: data.sequenceId,
+        });
+      }
 
       // Step 5: Update sequence metadata with frame generation info
       const { data: currentSequence } = await supabase

@@ -88,6 +88,7 @@ export interface FrameGenerationPayload extends BaseJobPayload {
       generateThumbnails?: boolean;
       generateDescriptions?: boolean;
       aiProvider?: "openai" | "anthropic" | "openrouter";
+      regenerateAll?: boolean; // Default: true - whether to delete existing frames
     };
   };
 }

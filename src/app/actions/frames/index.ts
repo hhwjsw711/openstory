@@ -57,6 +57,7 @@ const generateFramesSchema = z.object({
       generateThumbnails: z.boolean().optional(),
       generateDescriptions: z.boolean().optional(),
       aiProvider: z.enum(["openai", "anthropic", "openrouter"]).optional(),
+      regenerateAll: z.boolean().optional(), // Default: true
     })
     .optional(),
 });
