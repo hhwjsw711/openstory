@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import { use, useCallback, useState } from "react";
 import { PageContainer } from "@/components/layout";
@@ -14,8 +13,6 @@ import { useFramesBySequence } from "@/hooks/use-frames";
 import { useSequence } from "@/hooks/use-sequences";
 import { useUser } from "@/hooks/use-user";
 
-export const dynamic = "force-dynamic";
-
 interface MotionPageProps {
   params: Promise<{
     id: string;
@@ -25,6 +22,7 @@ interface MotionPageProps {
 export default function MotionPage({ params }: MotionPageProps) {
   const { id: sequenceId } = use(params);
   const router = useRouter();
+  // Verify session
   const { data: userData } = useUser();
   const _user = userData?.user;
 
@@ -60,7 +58,7 @@ export default function MotionPage({ params }: MotionPageProps) {
     (step: 1 | 2 | 3) => {
       switch (step) {
         case 1:
-          router.push(`/sequences/new`);
+          router.push(`/sequences/${sequenceId}/script`);
           break;
         case 2:
           router.push(`/sequences/${sequenceId}/storyboard`);

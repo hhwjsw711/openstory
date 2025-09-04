@@ -1,7 +1,6 @@
 "use client";
-
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { PageContainer } from "@/components/layout";
 import { ScriptStep } from "@/components/sequence-flow/script-step";
 import {
@@ -10,45 +9,21 @@ import {
   PageHeading,
 } from "@/components/typography";
 import { useUser } from "@/hooks/use-user";
-import { useSequenceFlowReducer } from "@/reducers/sequence-flow-reducer";
-
-export const dynamic = "force-dynamic";
 
 export default function NewSequencePage() {
+  // Verify session
+  const { data: userData } = useUser();
+  const _user = userData?.user;
+
   const router = useRouter();
-  const { data } = useUser();
-  const user = data?.user;
 
-  const [state, dispatch] = useSequenceFlowReducer({
-    user: user
-      ? {
-          id: user.id,
-          sessionId: `session_${user.id}`,
-          createdAt: user.created_at || new Date().toISOString(),
-          expiresAt: new Date(
-            Date.now() + 7 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        }
-      : null,
-  });
-
-  const handleNext = useCallback(async () => {
-    // When frames are generated, navigate to storyboard page
-    // The ScriptStep component will handle generating frames
-    // and will update the sequence with an ID
-    if (state.sequence?.id && state.sequence.frames.length > 0) {
-      const sequenceId = state.sequence.id;
+  const handleSuccess = useCallback(
+    (sequenceId: string) => {
+      // Navigate to storyboard page after successful generation
       router.push(`/sequences/${sequenceId}/storyboard`);
-    }
-  }, [state.sequence, router]);
-
-  // Watch for when frames are generated and navigate
-  useEffect(() => {
-    if (state.sequence?.id && state.sequence.frames.length > 0) {
-      const sequenceId = state.sequence.id;
-      router.push(`/sequences/${sequenceId}/storyboard`);
-    }
-  }, [state.sequence?.id, state.sequence?.frames.length, router]);
+    },
+    [router],
+  );
 
   return (
     <PageContainer maxWidth="narrow" data-testid="new-sequence-page">
@@ -60,7 +35,7 @@ export default function NewSequencePage() {
         </PageDescription>
       </PageHeader>
 
-      <ScriptStep state={state} dispatch={dispatch} onNext={handleNext} />
+      <ScriptStep onSuccess={handleSuccess} />
     </PageContainer>
   );
 }
