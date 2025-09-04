@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "#actions/user";
+import { createBrowserClient } from "@/lib/supabase/client";
 import type { UserProfile } from "@/types/database";
 
 interface UserData {
@@ -11,17 +12,28 @@ interface UserData {
 }
 
 async function fetchUser(): Promise<UserData> {
+  // Call the server action to get or create user
   const result = await getCurrentUser();
 
   if (!result.success) {
-    // Don't throw for auth errors - return a default anonymous user state
-    if (result.error?.includes("auth") || result.error?.includes("session")) {
-      return {
-        user: {} as UserProfile,
-        isAuthenticated: false,
-        isAnonymous: true,
-      };
+    // Handle case where server needs client to create session first
+    if (result.error === "REQUIRES_CLIENT_AUTH") {
+      // Create anonymous session on client
+      const supabase = createBrowserClient();
+      const { data, error } = await supabase.auth.signInAnonymously();
+
+      if (!error && data?.session) {
+        // Retry the server action with the new session
+        const retryResult = await getCurrentUser();
+        if (retryResult.success && retryResult.data) {
+          return retryResult.data;
+        }
+      }
+
+      // If we still can't authenticate, throw error
+      throw new Error("Failed to create user session");
     }
+
     throw new Error(result.error || "Failed to fetch user");
   }
 

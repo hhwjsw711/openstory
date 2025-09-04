@@ -39,9 +39,11 @@ export async function saveSequence(
     // Ensure we have a user (create anonymous if needed)
     const userResult = await getCurrentUser();
     if (!userResult.success || !userResult.data) {
-      throw new Error(userResult.error || "Failed to get user");
+      console.error("[saveSequence] getCurrentUser failed:", userResult.error);
+      throw new Error(userResult.error || "Failed to get or create user");
     }
 
+    console.log("[saveSequence] userResult:", userResult);
     const supabase = await createSessionAwareClient();
 
     let sequence: Sequence | null = null;
@@ -66,22 +68,22 @@ export async function saveSequence(
 
       sequence = data;
     } else {
-      // Create new sequence - get team_id for current user
-      // Since we ensured a user exists above, they should have a team
-      const { data: teamMembership } = await supabase
+      // Create new sequence - get any team for the current user
+      // Prefer teams where user is owner, but accept any team
+      const { data: teamMemberships, error: teamError } = await supabase
         .from("team_members")
-        .select("team_id")
+        .select("team_id, role")
         .eq("user_id", userResult.data.user.id)
-        .eq("role", "owner")
-        .single();
+        .order("role", { ascending: true }) // 'owner' comes before 'member' alphabetically
+        .limit(1);
 
-      if (!teamMembership) {
+      if (teamError || !teamMemberships || teamMemberships.length === 0) {
         throw new Error(
           "No team found for user. Please refresh the page to initialize your account.",
         );
       }
 
-      const teamId = teamMembership.team_id;
+      const teamId = teamMemberships[0].team_id;
 
       const sequenceData: SequenceInsert = {
         script,
