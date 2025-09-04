@@ -7,12 +7,7 @@ import {
   createServerClient,
   createSessionAwareClient,
 } from "@/lib/supabase/server";
-import type {
-  Frame,
-  FrameInsert,
-  Sequence,
-  SequenceInsert,
-} from "@/types/database";
+import type { Frame, Sequence, SequenceInsert } from "@/types/database";
 
 // Schema definitions
 const createSequenceSchema = z.object({
@@ -177,53 +172,54 @@ export async function saveSequence(
 }
 
 /**
- * Generate frames from script and save to database
+ * Generate frames from script and save to database using AI
  */
 export async function generateFrames(
   script: string,
-  styleId: string,
+  _styleId: string,
   sequenceId: string,
-): Promise<{ success: boolean; frames?: Frame[]; error?: string }> {
+): Promise<{
+  success: boolean;
+  frames?: Frame[];
+  jobId?: string;
+  error?: string;
+}> {
   try {
-    const supabase = createServerClient();
+    // Import the AI-powered frame generation action
+    const { generateFramesAction } = await import("#actions/frames");
 
-    // First, use the mock function to generate frame data
-    // In production, this would call an AI service
-    const { generateFrames: generateMockFrames } = await import(
-      "#actions/anonymous-flow"
-    );
-    const mockResult = await generateMockFrames(script, styleId, sequenceId);
+    // Analyze the script to determine frame boundaries
+    const { analyzeScriptForFrames } = await import("@/lib/ai/script-analyzer");
+    const scriptAnalysis = await analyzeScriptForFrames(script, "openrouter");
 
-    if (!mockResult.success || !mockResult.frames) {
-      throw new Error(mockResult.error || "Failed to generate frames");
+    // Call the AI-powered generation action with OpenRouter as the provider
+    const result = await generateFramesAction({
+      sequenceId,
+      script,
+      scriptAnalysis: {
+        scenes: scriptAnalysis.scenes || [],
+        characters: scriptAnalysis.characters,
+        settings: scriptAnalysis.settings,
+      },
+      styleStack: undefined, // Will be fetched from the style_id in the webhook
+      options: {
+        framesPerScene: 3, // Generate 3 frames per scene
+        generateThumbnails: true,
+        generateDescriptions: true,
+        aiProvider: "openrouter", // Use OpenRouter for AI generation
+        regenerateAll: true, // Delete existing frames before generating new ones
+      },
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to generate frames");
     }
 
-    // Save frames to database
-    const frameInserts: FrameInsert[] = mockResult.frames.map(
-      (frame, index) => ({
-        sequence_id: sequenceId,
-        description: frame.description,
-        order_index: index + 1,
-        thumbnail_url: frame.thumbnail_url,
-        video_url: frame.video_url,
-        duration_ms: frame.duration_ms,
-        metadata: frame.metadata,
-      }),
-    );
-
-    const { data, error } = await supabase
-      .from("frames")
-      .insert(frameInserts)
-      .select();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    revalidatePath(`/sequences/${sequenceId}`);
+    // Return success with job ID for tracking
     return {
       success: true,
-      frames: data,
+      jobId: result.jobId,
+      frames: [], // Frames will be populated asynchronously via QStash
     };
   } catch (error) {
     console.error("Error generating frames:", error);

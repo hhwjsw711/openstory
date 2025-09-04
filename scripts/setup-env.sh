@@ -60,15 +60,11 @@ QSTASH_URL=$QSTASH_URL
 QSTASH_CURRENT_SIGNING_KEY=$QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 
-# App URL (for QStash callbacks)
+# QStash tunnel URL (when using qstash:dev)
 EOF
 
 if [ -n "$QSTASH_TUNNEL_URL" ]; then
-    echo "NEXT_PUBLIC_APP_URL=$QSTASH_TUNNEL_URL" >> $ENV_FILE
-    echo "APP_URL=$QSTASH_TUNNEL_URL" >> $ENV_FILE
-else
-    echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> $ENV_FILE
-    echo "APP_URL=http://localhost:3000" >> $ENV_FILE
+    echo "QSTASH_TUNNEL_URL=$QSTASH_TUNNEL_URL" >> $ENV_FILE
 fi
 
 cat >> $ENV_FILE << EOF
@@ -90,9 +86,7 @@ echo "  Database URL: $DATABASE_URL"
 echo "  QStash URL: $QSTASH_URL (local dev)"
 echo "  QStash User: user1"
 if [ -n "$QSTASH_TUNNEL_URL" ]; then
-    echo "  App URL (tunnel): $QSTASH_TUNNEL_URL"
-else
-    echo "  App URL: http://localhost:3000"
+    echo "  QStash Tunnel URL: $QSTASH_TUNNEL_URL"
 fi
 echo ""
 echo -e "${YELLOW}Remember to keep 'bun qstash:dev' running in another terminal!${NC}"

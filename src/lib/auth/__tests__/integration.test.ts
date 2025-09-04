@@ -17,7 +17,7 @@ describe.skip("Authentication Integration Tests", () => {
     mock.restore();
 
     // Set up required environment variables for tests
-    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    process.env.VERCEL_URL = "localhost:3000";
 
     // Create comprehensive mock clients
     mockSupabase = {

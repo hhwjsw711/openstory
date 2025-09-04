@@ -5,6 +5,7 @@
 
 import { Client } from "@upstash/qstash";
 import { ConfigurationError, VelroError } from "@/lib/errors";
+import { getAbsoluteUrl } from "@/lib/utils/get-base-url";
 import type { JobPayload as TypedJobPayload } from "./types";
 
 export interface QStashMessage {
@@ -34,7 +35,6 @@ class QStashClient {
 
   constructor() {
     const token = process.env.QSTASH_TOKEN;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
     if (!token) {
       throw new ConfigurationError(
@@ -42,12 +42,7 @@ class QStashClient {
       );
     }
 
-    if (!apiUrl) {
-      throw new ConfigurationError(
-        "NEXT_PUBLIC_API_URL environment variable is required",
-      );
-    }
-
+    const apiUrl = getAbsoluteUrl();
     this.client = new Client({ token });
     this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
 

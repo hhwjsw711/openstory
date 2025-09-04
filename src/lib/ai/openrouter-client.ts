@@ -86,7 +86,7 @@ export async function callOpenRouter(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://velro.ai",
+        "HTTP-Referer": "https://velro.ai",
         "X-Title": "Velro AI",
       },
       body: JSON.stringify({

@@ -2,6 +2,7 @@ import {
   createAdminClient,
   createSessionAwareClient,
 } from "@/lib/supabase/server";
+import { getAbsoluteUrl } from "@/lib/utils/get-base-url";
 import type {
   AnonymousSession,
   AnonymousSessionInsert,
@@ -221,8 +222,7 @@ export class AuthService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = await this.getSupabase();
-      const finalRedirectTo =
-        redirectTo || `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`;
+      const finalRedirectTo = redirectTo || `${getAbsoluteUrl()}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,

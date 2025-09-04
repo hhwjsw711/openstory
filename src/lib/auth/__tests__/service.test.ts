@@ -223,7 +223,7 @@ describe.skip("AuthService", () => {
 
   describe("sendMagicLink", () => {
     it("should send magic link successfully", async () => {
-      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+      process.env.VERCEL_URL = "localhost:3000";
 
       mockSignInWithOtp.mockResolvedValue({
         data: {},
@@ -235,14 +235,14 @@ describe.skip("AuthService", () => {
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
         email: "user@example.com",
         options: {
-          emailRedirectTo: "http://localhost:3000/auth/callback",
+          emailRedirectTo: "https://localhost:3000/auth/callback",
         },
       });
       expect(result).toEqual({ success: true });
     });
 
     it("should send magic link with anonymous ID", async () => {
-      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+      process.env.VERCEL_URL = "localhost:3000";
 
       mockSignInWithOtp.mockResolvedValue({
         data: {},
@@ -258,7 +258,7 @@ describe.skip("AuthService", () => {
         email: "user@example.com",
         options: {
           emailRedirectTo:
-            "http://localhost:3000/auth/callback?anonymousId=anonymous-123",
+            "https://localhost:3000/auth/callback?anonymousId=anonymous-123",
         },
       });
       expect(result).toEqual({ success: true });

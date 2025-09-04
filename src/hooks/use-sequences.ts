@@ -143,7 +143,7 @@ export function useGenerateStoryboard() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    Frame[],
+    { frames: Frame[]; jobId?: string },
     Error,
     {
       sequenceId: string;
@@ -161,8 +161,12 @@ export function useGenerateStoryboard() {
       styleId: string;
     }) => {
       const result = await generateFrames(script, styleId, sequenceId);
-      if (result.success && result.frames) {
-        return result.frames;
+      if (result.success) {
+        // Return both frames and jobId for tracking async generation
+        return {
+          frames: result.frames || [],
+          jobId: result.jobId,
+        };
       }
       throw new Error(result.error || "Failed to generate storyboard");
     },
