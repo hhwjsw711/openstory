@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateFrameInput, UpdateFrameInput } from "#actions/frames";
+import type {
+  CreateFrameInput,
+  UpdateFrameInput,
+  GenerateFramesInput,
+  RegenerateFrameInput,
+} from "#actions/frames";
 import {
   bulkCreateFrames,
   createFrame,
   deleteFrame,
   deleteFramesBySequence,
+  generateFramesAction,
   getFrame,
   getFramesBySequence,
+  regenerateFrameAction,
   reorderFrames,
   updateFrame,
 } from "#actions/frames";
-import type { Frame } from "@/types/database";
+import type { Frame, Job } from "@/types/database";
 
 // Query keys
 export const frameKeys = {
@@ -256,6 +263,118 @@ export function useDeleteFramesBySequence() {
       queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
+    },
+  });
+}
+
+// Hook for generating frames with AI
+export function useGenerateFrames() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { jobId: string; message?: string },
+    Error,
+    GenerateFramesInput,
+    { previousFrames: Frame[] | undefined; sequenceId: string }
+  >({
+    mutationFn: async (input: GenerateFramesInput) => {
+      const result = await generateFramesAction(input);
+      if (result.success && result.jobId) {
+        return { jobId: result.jobId, message: result.message };
+      }
+      throw new Error(result.error || "Failed to generate frames");
+    },
+    onMutate: async ({ sequenceId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+
+      // Snapshot previous frames
+      const previousFrames = queryClient.getQueryData<Frame[]>(
+        frameKeys.list(sequenceId)
+      );
+
+      return { previousFrames, sequenceId };
+    },
+    onSuccess: (_, { sequenceId }) => {
+      // Invalidate frames list to show placeholder frames
+      queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+    },
+    onError: (_, __, context) => {
+      // Rollback to previous frames on error
+      if (context?.previousFrames && context.sequenceId) {
+        queryClient.setQueryData(
+          frameKeys.list(context.sequenceId),
+          context.previousFrames
+        );
+      }
+    },
+  });
+}
+
+// Hook for regenerating a single frame
+export function useRegenerateFrame() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ jobId: string }, Error, RegenerateFrameInput>({
+    mutationFn: async (input: RegenerateFrameInput) => {
+      const result = await regenerateFrameAction(input);
+      if (result.success && result.jobId) {
+        return { jobId: result.jobId };
+      }
+      throw new Error(result.error || "Failed to regenerate frame");
+    },
+    onSuccess: (_, { frameId }) => {
+      // Invalidate the specific frame
+      queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frameId),
+      });
+      
+      // Also invalidate the frames list if we can determine the sequence
+      const frameData = queryClient.getQueryData<Frame>(
+        frameKeys.detail(frameId)
+      );
+      if (frameData?.sequence_id) {
+        queryClient.invalidateQueries({
+          queryKey: frameKeys.list(frameData.sequence_id),
+        });
+      }
+    },
+  });
+}
+
+// Hook for polling frame generation status
+export function useFrameGenerationStatus(
+  jobId: string | null,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number;
+  }
+) {
+  return useQuery<Job | null>({
+    queryKey: ["jobs", jobId],
+    queryFn: async () => {
+      if (!jobId) return null;
+      
+      // This would typically call an API to get job status
+      // For now, returning null as we need to implement the job status endpoint
+      const response = await fetch(`/api/v1/jobs/status/${jobId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch job status");
+      }
+      return response.json();
+    },
+    enabled: !!jobId && (options?.enabled ?? true),
+    refetchInterval: (data) => {
+      // Stop polling if job is completed or failed
+      if (data?.status === "completed" || data?.status === "failed") {
+        return false;
+      }
+      // Poll every 2 seconds by default
+      return options?.refetchInterval ?? 2000;
     },
   });
 }

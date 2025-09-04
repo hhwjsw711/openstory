@@ -24,13 +24,18 @@ export const JobType = {
   IMAGE: "image",
   VIDEO: "video",
   SCRIPT: "script",
+  FRAME_GENERATION: "frame_generation",
 } as const;
 
 export type JobTypeType = (typeof JobType)[keyof typeof JobType];
 
 // Zod schemas for validation
 export const createJobSchema = z.object({
-  type: z.literal("image").or(z.literal("video")).or(z.literal("script")),
+  type: z
+    .literal("image")
+    .or(z.literal("video"))
+    .or(z.literal("script"))
+    .or(z.literal("frame_generation")),
   payload: z.record(z.string(), z.unknown()),
   userId: z.uuid().optional(),
   teamId: z.uuid().optional(),

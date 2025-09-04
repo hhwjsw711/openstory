@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
+import type { FrameGenerationPayload } from "@/lib/qstash/types";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
 // Schema definitions
@@ -30,9 +34,45 @@ const deleteFrameSchema = z.object({
   id: z.string().uuid(),
 });
 
+const generateFramesSchema = z.object({
+  sequenceId: z.string().uuid(),
+  script: z.string().min(1),
+  scriptAnalysis: z
+    .object({
+      scenes: z.array(
+        z.object({
+          start: z.number(),
+          end: z.number(),
+          description: z.string(),
+          duration: z.number().optional(),
+        }),
+      ),
+      characters: z.array(z.string()).optional(),
+      settings: z.array(z.string()).optional(),
+    })
+    .optional(),
+  styleStack: z.any().optional() as z.ZodType<Json | undefined>,
+  options: z
+    .object({
+      framesPerScene: z.number().min(1).max(10).optional(),
+      generateThumbnails: z.boolean().optional(),
+      generateDescriptions: z.boolean().optional(),
+      aiProvider: z.enum(["openai", "anthropic"]).optional(),
+    })
+    .optional(),
+});
+
+const regenerateFrameSchema = z.object({
+  frameId: z.string().uuid(),
+  regenerateDescription: z.boolean().optional(),
+  regenerateThumbnail: z.boolean().optional(),
+});
+
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
 export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
+export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
+export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
 
 /**
  * Create a new frame for a sequence
@@ -357,6 +397,228 @@ export async function deleteFramesBySequence(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete frames",
+    };
+  }
+}
+
+/**
+ * Generate frames for a sequence using AI
+ */
+export async function generateFramesAction(
+  input: GenerateFramesInput,
+): Promise<{
+  success: boolean;
+  jobId?: string;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const validated = generateFramesSchema.parse(input);
+    const supabase = createServerClient();
+    const adminSupabase = createAdminClient();
+    
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    
+    // Verify sequence exists and get team info
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("id, team_id, name")
+      .eq("id", validated.sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      throw new Error("Sequence not found");
+    }
+
+    // Verify user has access to this sequence (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", sequence.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error("You don't have permission to generate frames for this sequence");
+      }
+    }
+
+    // Create a job record
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "frame_generation",
+      payload: {
+        sequenceId: validated.sequenceId,
+        script: validated.script,
+        scriptAnalysis: validated.scriptAnalysis,
+        styleStack: validated.styleStack,
+        options: validated.options,
+      },
+      userId: user?.id,
+      teamId: sequence.team_id,
+    });
+
+    // Prepare the QStash payload
+    const payload: FrameGenerationPayload = {
+      jobId: job.id,
+      type: "frame_generation",
+      userId: user?.id,
+      teamId: sequence.team_id,
+      data: {
+        sequenceId: validated.sequenceId,
+        script: validated.script,
+        scriptAnalysis: validated.scriptAnalysis,
+        styleStack: validated.styleStack,
+        options: validated.options,
+      },
+    };
+
+    // Queue the frame generation job
+    const qstashClient = getQStashClient();
+    const qstashResponse = await qstashClient.publishFrameGenerationJob(payload);
+
+    console.log("[generateFramesAction] Job queued", {
+      jobId: job.id,
+      messageId: qstashResponse.messageId,
+      sequenceId: validated.sequenceId,
+    });
+
+    // Create optimistic placeholder frames if requested
+    if (validated.scriptAnalysis?.scenes) {
+      const placeholderFrames: FrameInsert[] = [];
+      let orderIndex = 0;
+
+      for (const scene of validated.scriptAnalysis.scenes) {
+        const framesPerScene = validated.options?.framesPerScene ?? 5;
+        const frameDuration = (scene.duration || 5000) / framesPerScene;
+
+        for (let i = 0; i < framesPerScene; i++) {
+          placeholderFrames.push({
+            sequence_id: validated.sequenceId,
+            description: `Generating frame ${i + 1} of scene: ${scene.description.slice(0, 100)}...`,
+            order_index: orderIndex++,
+            duration_ms: Math.round(frameDuration),
+            metadata: {
+              scene: validated.scriptAnalysis.scenes.indexOf(scene),
+              status: "generating",
+              jobId: job.id,
+            } as Json,
+          });
+        }
+      }
+
+      // Insert placeholder frames
+      const { error: insertError } = await adminSupabase
+        .from("frames")
+        .insert(placeholderFrames);
+
+      if (insertError) {
+        console.error("Failed to create placeholder frames:", insertError);
+      }
+    }
+
+    revalidatePath(`/sequences/${validated.sequenceId}`);
+
+    return {
+      success: true,
+      jobId: job.id,
+      message: "Frame generation started. This may take a few minutes.",
+    };
+  } catch (error) {
+    console.error("Error generating frames:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate frames",
+    };
+  }
+}
+
+/**
+ * Regenerate a single frame
+ */
+export async function regenerateFrameAction(
+  input: RegenerateFrameInput,
+): Promise<{
+  success: boolean;
+  jobId?: string;
+  error?: string;
+}> {
+  try {
+    const validated = regenerateFrameSchema.parse(input);
+    const supabase = createServerClient();
+    
+    // Get the frame and sequence info
+    const { data: frame, error: frameError } = await supabase
+      .from("frames")
+      .select("*, sequences!inner(id, team_id, script)")
+      .eq("id", validated.frameId)
+      .single();
+
+    if (frameError || !frame) {
+      throw new Error("Frame not found");
+    }
+
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Verify user has access (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", frame.sequences.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error("You don't have permission to regenerate this frame");
+      }
+    }
+
+    // Create a job for regeneration
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "frame_generation",
+      payload: {
+        frameId: validated.frameId,
+        sequenceId: frame.sequence_id,
+        regenerateDescription: validated.regenerateDescription ?? true,
+        regenerateThumbnail: validated.regenerateThumbnail ?? false,
+      },
+      userId: user?.id,
+      teamId: frame.sequences.team_id,
+    });
+
+    // Update frame metadata with regeneration status
+    await supabase
+      .from("frames")
+      .update({
+        metadata: {
+          ...(frame.metadata as Record<string, unknown>),
+          regenerationJobId: job.id,
+          status: "regenerating",
+        } as Json,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validated.frameId);
+
+    revalidatePath(`/sequences/${frame.sequence_id}`);
+
+    return {
+      success: true,
+      jobId: job.id,
+    };
+  } catch (error) {
+    console.error("Error regenerating frame:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to regenerate frame",
     };
   }
 }
