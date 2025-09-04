@@ -43,14 +43,6 @@ class QStashClient {
     }
 
     const apiUrl = getQStashWebhookUrl();
-
-    // Warn if using localhost without a tunnel
-    if (apiUrl === "http://localhost:3000" && !process.env.VERCEL_URL) {
-      console.warn(
-        "[QStash] Using localhost URL - webhooks will fail unless 'bun qstash:dev' is running",
-      );
-    }
-
     this.client = new Client({ token });
     this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
 

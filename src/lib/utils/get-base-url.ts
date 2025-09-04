@@ -44,7 +44,8 @@ export function getAbsoluteUrl(): string {
 
 /**
  * Get the URL for QStash webhooks
- * QStash requires a publicly accessible URL
+ * In production, QStash needs a publicly accessible URL
+ * In local development, we use a local QStash server that can reach localhost
  */
 export function getQStashWebhookUrl(): string {
   // In production (Vercel deployment)
@@ -52,19 +53,17 @@ export function getQStashWebhookUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  // Local development with QStash tunnel (from bun qstash:dev)
+  // Local development with QStash tunnel (if using cloud QStash)
   if (process.env.QSTASH_TUNNEL_URL) {
     return process.env.QSTASH_TUNNEL_URL;
   }
 
   // Fallback to APP_URL if explicitly set
-  if (process.env.APP_URL && process.env.APP_URL !== "http://localhost:3000") {
+  if (process.env.APP_URL) {
     return process.env.APP_URL;
   }
 
-  // In local development without tunnel, QStash webhooks won't work
-  console.warn(
-    "[QStash] No public URL available for webhooks. Run 'bun qstash:dev' to set up a tunnel for local development.",
-  );
+  // Local development with local QStash server (default)
+  // The local QStash server at localhost:8080 can reach localhost:3000
   return "http://localhost:3000";
 }
