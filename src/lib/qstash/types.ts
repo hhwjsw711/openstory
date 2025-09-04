@@ -66,23 +66,11 @@ export interface VideoGenerationPayload extends BaseJobPayload {
   };
 }
 
-// Frame generation payload
+// Frame generation payload - simplified to only require sequenceId
 export interface FrameGenerationPayload extends BaseJobPayload {
   type: "frame_generation";
   data: {
     sequenceId: string;
-    script: string;
-    scriptAnalysis?: {
-      scenes: Array<{
-        start: number;
-        end: number;
-        description: string;
-        duration?: number;
-      }>;
-      characters?: string[];
-      settings?: string[];
-    };
-    styleStack?: Json;
     options?: {
       framesPerScene?: number; // Default: 3-7
       generateThumbnails?: boolean;

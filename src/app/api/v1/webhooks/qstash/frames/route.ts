@@ -49,7 +49,6 @@ async function handler(req: QStashVerifiedRequest) {
     console.log("[Frames Webhook] Processing job:", {
       jobId,
       sequenceId: data.sequenceId,
-      hasScriptAnalysis: !!data.scriptAnalysis,
       options: data.options,
     });
 
@@ -57,31 +56,55 @@ async function handler(req: QStashVerifiedRequest) {
     await jobManager.startJob(jobId);
 
     try {
-      // Step 1: Analyze script if no analysis provided
-      let scriptAnalysis = data.scriptAnalysis;
+      // Step 1: Load sequence data from database
+      console.log("[Frames Webhook] Loading sequence data from database");
+      const { data: sequence, error: sequenceError } = await supabase
+        .from("sequences")
+        .select("*, styles(*)")
+        .eq("id", data.sequenceId)
+        .single();
 
-      if (!scriptAnalysis) {
-        console.log("[Frames Webhook] Analyzing script for scenes");
-        scriptAnalysis = await analyzeScriptForFrames(
-          data.script,
-          data.options?.aiProvider,
-        );
+      if (sequenceError || !sequence) {
+        throw new Error(`Sequence not found: ${data.sequenceId}`);
       }
+
+      if (!sequence.script) {
+        throw new Error("Sequence has no script");
+      }
+
+      if (!sequence.style_id) {
+        throw new Error("Sequence has no style selected");
+      }
+
+      // Step 2: Analyze script to determine frame boundaries
+      console.log("[Frames Webhook] Analyzing script for scenes");
+      const scriptAnalysis = await analyzeScriptForFrames(
+        sequence.script,
+        data.options?.aiProvider,
+      );
 
       if (!scriptAnalysis?.scenes || scriptAnalysis.scenes.length === 0) {
         throw new Error("Failed to analyze script or no scenes found");
       }
 
-      // Step 2: Generate frame descriptions for each scene
+      // Step 3: Generate frame descriptions for each scene
       console.log("[Frames Webhook] Generating frame descriptions", {
         sceneCount: scriptAnalysis.scenes.length,
         framesPerScene: data.options?.framesPerScene ?? 5,
       });
 
+      // Get style metadata if styles were loaded
+      let styleStack: unknown;
+      if (sequence.styles && typeof sequence.styles === "object") {
+        // Type assertion since Supabase doesn't give us perfect types for joins
+        const style = sequence.styles as { metadata?: unknown };
+        styleStack = style.metadata;
+      }
+
       const frameDescriptions = await generateFrameDescriptions({
-        script: data.script,
+        script: sequence.script,
         scriptAnalysis,
-        styleStack: data.styleStack,
+        styleStack: styleStack as Json | undefined,
         framesPerScene: data.options?.framesPerScene ?? 5,
         aiProvider: data.options?.aiProvider,
       });
@@ -90,7 +113,7 @@ async function handler(req: QStashVerifiedRequest) {
         throw new Error("Failed to generate frame descriptions");
       }
 
-      // Step 3: Handle existing frames
+      // Step 4: Handle existing frames
       // Check if we should regenerate all frames or just missing ones
       const regenerateAll = data.options?.regenerateAll !== false; // Default to true
 
@@ -142,7 +165,7 @@ async function handler(req: QStashVerifiedRequest) {
         }
       }
 
-      // Step 4: Insert the generated frames
+      // Step 5: Insert the generated frames
       const framesToInsert: FrameInsert[] = frameDescriptions.frames.map(
         (frame) => ({
           sequence_id: data.sequenceId,
@@ -200,7 +223,7 @@ async function handler(req: QStashVerifiedRequest) {
         });
       }
 
-      // Step 5: Update sequence metadata with frame generation info
+      // Step 6: Update sequence metadata with frame generation info
       const { data: currentSequence } = await supabase
         .from("sequences")
         .select("metadata")

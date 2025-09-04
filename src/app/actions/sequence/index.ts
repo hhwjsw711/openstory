@@ -44,6 +44,8 @@ export async function saveSequence(
 
     const supabase = await createSessionAwareClient();
 
+    let sequence: Sequence | null = null;
+
     if (sequenceId) {
       // Update existing sequence
       const { data, error } = await supabase
@@ -62,11 +64,7 @@ export async function saveSequence(
         throw new Error(error.message);
       }
 
-      revalidatePath(`/sequences/${sequenceId}`);
-      return {
-        success: true,
-        sequence: data,
-      };
+      sequence = data;
     } else {
       // Create new sequence - get team_id for current user
       // Since we ensured a user exists above, they should have a team
@@ -103,12 +101,16 @@ export async function saveSequence(
         throw new Error(error.message);
       }
 
-      revalidatePath("/");
-      return {
-        success: true,
-        sequence: data,
-      };
+      sequence = data;
     }
+
+    // The script and / or style may have changed, so we need to regenerate the frames
+    await generateFrames(sequence.id);
+
+    return {
+      success: true,
+      sequence,
+    };
   } catch (error) {
     console.error("Error saving sequence:", error);
     return {
@@ -121,11 +123,7 @@ export async function saveSequence(
 /**
  * Generate frames from script and save to database using AI
  */
-export async function generateFrames(
-  script: string,
-  _styleId: string,
-  sequenceId: string,
-): Promise<{
+export async function generateFrames(sequenceId: string): Promise<{
   success: boolean;
   frames?: Frame[];
   jobId?: string;
@@ -135,20 +133,9 @@ export async function generateFrames(
     // Import the AI-powered frame generation action
     const { generateFramesAction } = await import("#actions/frames");
 
-    // Analyze the script to determine frame boundaries
-    const { analyzeScriptForFrames } = await import("@/lib/ai/script-analyzer");
-    const scriptAnalysis = await analyzeScriptForFrames(script, "openrouter");
-
-    // Call the AI-powered generation action with OpenRouter as the provider
+    // Call the simplified frame generation action - it will load everything from the database
     const result = await generateFramesAction({
       sequenceId,
-      script,
-      scriptAnalysis: {
-        scenes: scriptAnalysis.scenes || [],
-        characters: scriptAnalysis.characters,
-        settings: scriptAnalysis.settings,
-      },
-      styleStack: undefined, // Will be fetched from the style_id in the webhook
       options: {
         framesPerScene: 3, // Generate 3 frames per scene
         generateThumbnails: true,
@@ -321,5 +308,5 @@ export async function generateStoryboard(sequenceId: string) {
     throw new Error("Sequence missing script or style");
   }
 
-  return generateFrames(script, style_id, sequenceId);
+  return generateFrames(sequenceId);
 }

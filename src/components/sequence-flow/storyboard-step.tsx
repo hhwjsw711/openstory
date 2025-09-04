@@ -43,11 +43,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     setCurrentOperation("Analyzing script...");
 
     try {
-      const result = await generateFrames(
-        sequence.script,
-        styleId,
-        sequence.id,
-      );
+      const result = await generateFrames(sequence.id);
 
       if (result.success && result.frames) {
         onGenerationComplete();

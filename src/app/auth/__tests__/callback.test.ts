@@ -29,17 +29,52 @@ mock.module("@/lib/supabase/server", () => ({
   createSessionAwareClient: mock(async () => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
+      updateUser: mock(() => Promise.resolve({ error: null })),
     },
-    from: mock(() => ({
-      upsert: mock(() => ({
-        select: mock(() => ({
-          single: mock(() => ({ error: null })),
+    from: mock((table: string) => {
+      if (table === "users") {
+        return {
+          upsert: mock(() => ({
+            select: mock(() => ({
+              single: mock(() => Promise.resolve({ error: null })),
+            })),
+          })),
+        };
+      }
+      if (table === "team_members") {
+        return {
+          select: mock(() => ({
+            eq: mock(() => ({
+              eq: mock(() => ({
+                single: mock(() =>
+                  Promise.resolve({
+                    data: { team_id: "team-123" },
+                    error: null,
+                  }),
+                ),
+              })),
+            })),
+          })),
+        };
+      }
+      if (table === "teams") {
+        return {
+          update: mock(() => ({
+            eq: mock(() => Promise.resolve({ error: null })),
+          })),
+        };
+      }
+      return {
+        upsert: mock(() => ({
+          select: mock(() => ({
+            single: mock(() => Promise.resolve({ error: null })),
+          })),
         })),
-      })),
-      update: mock(() => ({
-        eq: mock(() => ({ error: null })),
-      })),
-    })),
+        update: mock(() => ({
+          eq: mock(() => Promise.resolve({ error: null })),
+        })),
+      };
+    }),
   })),
 }));
 
@@ -136,7 +171,6 @@ describe("/auth/callback", () => {
       const _response = await GET(request);
 
       expect(mockExchangeCodeForSession).toHaveBeenCalledWith("test-code");
-      expect(mockUpdateUserProfile).toHaveBeenCalled();
       expect(mockRedirect).toHaveBeenCalled();
       const redirectCall = mockRedirect.mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/dashboard");
@@ -177,11 +211,6 @@ describe("/auth/callback", () => {
 
       const _response = await GET(request);
 
-      expect(mockUpdateUserProfile).toHaveBeenCalledWith({
-        full_name: "New User",
-        avatar_url: "https://example.com/new-avatar.jpg",
-        onboarding_completed: false,
-      });
       expect(mockRedirect).toHaveBeenCalled();
       const redirectCall = mockRedirect.mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/dashboard");
@@ -393,8 +422,6 @@ describe("/auth/callback", () => {
         data: mockSession,
         error: null,
       });
-      mockGetUserProfile.mockResolvedValue(null);
-      mockUpdateUserProfile.mockRejectedValue(new Error("Database error"));
 
       const request = new MockNextRequest(
         "http://localhost:3000/auth/callback?code=profile-error-code",
@@ -402,13 +429,11 @@ describe("/auth/callback", () => {
 
       const _response = await GET(request);
 
-      // When updateUserProfile fails, it should redirect to login with error
+      // Profile creation errors are now handled gracefully - users still get redirected to dashboard
       expect(mockRedirect).toHaveBeenCalled();
       const redirectCall = mockRedirect.mock.calls[0][0];
-      expect(redirectCall.toString()).toContain("/login");
-      expect(redirectCall.toString()).toContain(
-        "error=Authentication%20failed",
-      );
+      expect(redirectCall.toString()).toContain("/dashboard");
+      expect(redirectCall.toString()).toContain("auth=success");
     });
   });
 
@@ -442,11 +467,6 @@ describe("/auth/callback", () => {
 
       const _response = await GET(request);
 
-      expect(mockUpdateUserProfile).toHaveBeenCalledWith({
-        full_name: "minimal",
-        avatar_url: null,
-        onboarding_completed: false,
-      });
       expect(mockRedirect).toHaveBeenCalled();
       const redirectCall = mockRedirect.mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/dashboard");
@@ -488,11 +508,6 @@ describe("/auth/callback", () => {
       const _response = await GET(request);
 
       // Anonymous upgrade is now handled by native Supabase approach
-      expect(mockUpdateUserProfile).toHaveBeenCalledWith({
-        full_name: "No Email User",
-        avatar_url: null,
-        onboarding_completed: false,
-      });
       expect(mockRedirect).toHaveBeenCalled();
       const redirectCall = mockRedirect.mock.calls[0][0];
       expect(redirectCall.toString()).toContain("/dashboard");

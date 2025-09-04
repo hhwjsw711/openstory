@@ -35,6 +35,11 @@ const createMockServerClient = () =>
                       id: "123e4567-e89b-12d3-a456-426614174000",
                       team_id: "123e4567-e89b-12d3-a456-426614174002",
                       name: "Test Sequence",
+                      script: "This is a test script for frame generation.",
+                      style_id: "style-123",
+                      styles: {
+                        metadata: { theme: "dark" },
+                      },
                     },
                     error: null,
                   }),
@@ -151,8 +156,6 @@ describe("generateFramesAction", () => {
   it("should successfully generate frames with basic input", async () => {
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "This is a test script for frame generation.",
-      styleStack: undefined,
     };
 
     const result = await generateFramesAction(input);
@@ -168,7 +171,6 @@ describe("generateFramesAction", () => {
       type: "frame_generation",
       payload: expect.objectContaining({
         sequenceId: input.sequenceId,
-        script: input.script,
       }),
       userId: "123e4567-e89b-12d3-a456-426614174001",
       teamId: "123e4567-e89b-12d3-a456-426614174002",
@@ -178,43 +180,20 @@ describe("generateFramesAction", () => {
     expect(mockQStashClient.publishFrameGenerationJob).toHaveBeenCalledTimes(1);
   });
 
-  it("should generate frames with script analysis", async () => {
+  it("should generate frames with custom options", async () => {
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "This is a test script.",
-      scriptAnalysis: {
-        scenes: [
-          {
-            start: 0,
-            end: 100,
-            description: "Opening scene",
-            duration: 5000,
-          },
-          {
-            start: 100,
-            end: 200,
-            description: "Action scene",
-            duration: 7000,
-          },
-        ],
-        characters: ["Hero", "Villain"],
-        settings: ["City", "Office"],
-      },
       options: {
         framesPerScene: 3,
         generateThumbnails: true,
         aiProvider: "openai",
       },
-      styleStack: undefined,
     };
 
     const result = await generateFramesAction(input);
 
     expect(result.success).toBe(true);
     expect(result.jobId).toBe("job-123");
-
-    // Verify placeholder frames would be created (admin client is called within action)
-    // Note: We can't verify the admin client calls directly since it's created inside the action
   });
 
   it("should handle sequence not found error", async () => {
@@ -275,8 +254,6 @@ describe("generateFramesAction", () => {
 
     const input: GenerateFramesInput = {
       sequenceId: "223e4567-e89b-12d3-a456-426614174999",
-      script: "Test script",
-      styleStack: undefined,
     };
 
     const result = await testAction(input);
@@ -313,6 +290,8 @@ describe("generateFramesAction", () => {
                       id: "123e4567-e89b-12d3-a456-426614174000",
                       team_id: "123e4567-e89b-12d3-a456-426614174002",
                       name: "Test Sequence",
+                      script: "Test script",
+                      style_id: "style-123",
                     },
                     error: null,
                   }),
@@ -363,8 +342,6 @@ describe("generateFramesAction", () => {
 
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "Test script",
-      styleStack: undefined,
     };
 
     const result = await testAction(input);
@@ -378,15 +355,10 @@ describe("generateFramesAction", () => {
   it("should handle custom options", async () => {
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "Test script",
       options: {
         framesPerScene: 7,
         generateDescriptions: true,
         aiProvider: "anthropic",
-      },
-      styleStack: {
-        colors: ["#000000", "#FFFFFF"],
-        mood: "dark",
       },
     };
 
@@ -399,7 +371,6 @@ describe("generateFramesAction", () => {
       expect.objectContaining({
         payload: expect.objectContaining({
           options: input.options,
-          styleStack: input.styleStack,
         }),
       }),
     );
@@ -413,8 +384,6 @@ describe("generateFramesAction", () => {
 
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "Test script",
-      styleStack: undefined,
     };
 
     const result = await generateFramesAction(input);
@@ -423,24 +392,12 @@ describe("generateFramesAction", () => {
     expect(result.error).toContain("QStash service unavailable");
   });
 
-  it("should create placeholder frames when script analysis is provided", async () => {
+  it("should handle options for frame generation", async () => {
     const input: GenerateFramesInput = {
       sequenceId: "123e4567-e89b-12d3-a456-426614174000",
-      script: "Test script",
-      scriptAnalysis: {
-        scenes: [
-          {
-            start: 0,
-            end: 50,
-            description: "Scene 1",
-            duration: 3000,
-          },
-        ],
-      },
       options: {
         framesPerScene: 2,
       },
-      styleStack: undefined,
     };
 
     const result = await generateFramesAction(input);
@@ -452,11 +409,10 @@ describe("generateFramesAction", () => {
 
     expect(result.success).toBe(true);
 
-    // Verify admin client was called to create placeholder frames
-    expect(mockCreateAdminClient).toHaveBeenCalled();
-
-    // Since the admin client is mocked, we can't easily verify the exact insert,
-    // but the success of the action indicates it worked
+    // The implementation no longer creates placeholder frames,
+    // it queues the job and lets the webhook handle everything
+    expect(mockQStashClient.publishFrameGenerationJob).toHaveBeenCalled();
+    expect(result.jobId).toBe("job-123");
   });
 
   afterEach(() => {

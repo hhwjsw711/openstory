@@ -3,10 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type {
-  FrameGenerationPayload,
-  QStashWebhookPayload,
-} from "@/lib/qstash/types";
+import type { FrameGenerationPayload } from "@/lib/qstash/types";
 
 // Mock dependencies
 const mockJobManager = {
@@ -59,14 +56,30 @@ const mockAdminClient = {
       };
     } else if (table === "sequences") {
       return {
-        select: mock(() => ({
+        select: mock((selectFields: string) => ({
           eq: mock(() => ({
-            single: mock(() =>
-              Promise.resolve({
+            single: mock(() => {
+              // Return sequence with styles if joined
+              if (selectFields?.includes("styles")) {
+                return Promise.resolve({
+                  data: {
+                    id: "sequence-123",
+                    script: "This is a test script for the sequence.",
+                    style_id: "style-123",
+                    metadata: {},
+                    styles: {
+                      metadata: { theme: "dark" },
+                    },
+                  },
+                  error: null,
+                });
+              }
+              // Return just metadata for metadata-only queries
+              return Promise.resolve({
                 data: { metadata: {} },
                 error: null,
-              }),
-            ),
+              });
+            }),
           })),
         })),
         update: mock(() => ({
@@ -172,26 +185,17 @@ describe("Frame Generation Webhook", () => {
   });
 
   it("should process frame generation job successfully", async () => {
-    const payload: QStashWebhookPayload<FrameGenerationPayload> = {
-      body: {
-        jobId: "job-123",
-        type: "frame_generation",
-        userId: "user-123",
-        teamId: "team-123",
-        data: {
-          sequenceId: "sequence-123",
-          script: "Test script for frame generation",
-          options: {
-            framesPerScene: 3,
-            generateDescriptions: true,
-          },
+    const payload: FrameGenerationPayload = {
+      jobId: "job-123",
+      type: "frame_generation",
+      userId: "user-123",
+      teamId: "team-123",
+      data: {
+        sequenceId: "sequence-123",
+        options: {
+          framesPerScene: 3,
+          generateDescriptions: true,
         },
-      },
-      headers: {},
-      meta: {
-        messageId: "msg-123",
-        attempts: 1,
-        createdAt: Date.now(),
       },
     };
 
@@ -216,17 +220,21 @@ describe("Frame Generation Webhook", () => {
 
     // Verify script was analyzed
     expect(mockAnalyzeScript).toHaveBeenCalledWith(
-      "Test script for frame generation",
+      "This is a test script for the sequence.",
       undefined,
     );
 
     // Verify descriptions were generated
-    expect(mockGenerateDescriptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        script: "Test script for frame generation",
-        framesPerScene: 3,
-      }),
-    );
+    expect(mockGenerateDescriptions).toHaveBeenCalled();
+    const generateCalls = mockGenerateDescriptions.mock.calls as any[];
+    expect(generateCalls.length).toBeGreaterThan(0);
+    if (generateCalls.length > 0) {
+      const generateCall = generateCalls[0][0];
+      expect(generateCall.script).toBe(
+        "This is a test script for the sequence.",
+      );
+      expect(generateCall.framesPerScene).toBe(3);
+    }
 
     // Verify job was completed
     expect(mockJobManager.completeJob).toHaveBeenCalledWith(
@@ -239,30 +247,13 @@ describe("Frame Generation Webhook", () => {
   });
 
   it("should use provided script analysis", async () => {
-    const payload: QStashWebhookPayload<FrameGenerationPayload> = {
-      body: {
-        jobId: "job-456",
-        type: "frame_generation",
-        data: {
-          sequenceId: "sequence-456",
-          script: "Test script",
-          scriptAnalysis: {
-            scenes: [
-              {
-                start: 0,
-                end: 50,
-                description: "Custom scene",
-                duration: 2000,
-              },
-            ],
-          },
-        },
-      },
-      headers: {},
-      meta: {
-        messageId: "msg-456",
-        attempts: 1,
-        createdAt: Date.now(),
+    const payload: FrameGenerationPayload = {
+      jobId: "job-456",
+      type: "frame_generation",
+      userId: "user-456",
+      teamId: "team-456",
+      data: {
+        sequenceId: "sequence-456",
       },
     };
 
@@ -277,15 +268,11 @@ describe("Frame Generation Webhook", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
 
-    // Script analyzer should NOT be called when analysis is provided
-    expect(mockAnalyzeScript).not.toHaveBeenCalled();
+    // Script analyzer is now always called (loads from DB)
+    expect(mockAnalyzeScript).toHaveBeenCalled();
 
-    // Descriptions should be generated with provided analysis
-    expect(mockGenerateDescriptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        scriptAnalysis: payload.body.data.scriptAnalysis,
-      }),
-    );
+    // Descriptions should be generated
+    expect(mockGenerateDescriptions).toHaveBeenCalled();
   });
 
   it("should handle invalid payload", async () => {
@@ -307,7 +294,6 @@ describe("Frame Generation Webhook", () => {
         type: "frame_generation",
         data: {
           sequenceId: "sequence-123",
-          script: "Test",
         },
       },
       headers: {},
@@ -335,20 +321,13 @@ describe("Frame Generation Webhook", () => {
       Promise.reject(new Error("AI service unavailable")),
     );
 
-    const payload: QStashWebhookPayload<FrameGenerationPayload> = {
-      body: {
-        jobId: "job-789",
-        type: "frame_generation",
-        data: {
-          sequenceId: "sequence-789",
-          script: "Test script",
-        },
-      },
-      headers: {},
-      meta: {
-        messageId: "msg-789",
-        attempts: 1,
-        createdAt: Date.now(),
+    const payload: FrameGenerationPayload = {
+      jobId: "job-789",
+      type: "frame_generation",
+      userId: "user-789",
+      teamId: "team-789",
+      data: {
+        sequenceId: "sequence-789",
       },
     };
 
@@ -428,20 +407,13 @@ describe("Frame Generation Webhook", () => {
     const module = await import("../route");
     handler = module.POST;
 
-    const payload: QStashWebhookPayload<FrameGenerationPayload> = {
-      body: {
-        jobId: "job-fail",
-        type: "frame_generation",
-        data: {
-          sequenceId: "sequence-fail",
-          script: "Test script",
-        },
-      },
-      headers: {},
-      meta: {
-        messageId: "msg-fail",
-        attempts: 1,
-        createdAt: Date.now(),
+    const payload: FrameGenerationPayload = {
+      jobId: "job-fail",
+      type: "frame_generation",
+      userId: "user-fail",
+      teamId: "team-fail",
+      data: {
+        sequenceId: "sequence-fail",
       },
     };
 
@@ -461,20 +433,13 @@ describe("Frame Generation Webhook", () => {
   });
 
   it("should clean up placeholder frames", async () => {
-    const payload: QStashWebhookPayload<FrameGenerationPayload> = {
-      body: {
-        jobId: "job-cleanup",
-        type: "frame_generation",
-        data: {
-          sequenceId: "sequence-cleanup",
-          script: "Test script",
-        },
-      },
-      headers: {},
-      meta: {
-        messageId: "msg-cleanup",
-        attempts: 1,
-        createdAt: Date.now(),
+    const payload: FrameGenerationPayload = {
+      jobId: "job-cleanup",
+      type: "frame_generation",
+      userId: "user-cleanup",
+      teamId: "team-cleanup",
+      data: {
+        sequenceId: "sequence-cleanup",
       },
     };
 

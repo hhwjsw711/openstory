@@ -39,7 +39,10 @@ async function createAnonymousUser(
   // Create team and user records for anonymous user
   const result = await createUserWithTeam(supabase, data.user);
   if (!result.success) {
-    return result;
+    return {
+      success: false,
+      error: result.error || "Failed to create user with team",
+    };
   }
 
   // Return the new anonymous user
@@ -132,7 +135,10 @@ export async function getCurrentUser(): Promise<UserResponse> {
       // User exists but has no team - create one for them
       const result = await createUserWithTeam(supabase, user);
       if (!result.success) {
-        return result;
+        return {
+          success: false,
+          error: result.error || "Failed to create team for user",
+        };
       }
     }
 
@@ -180,7 +186,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
 async function createUserWithTeam(
   supabase: Awaited<ReturnType<typeof createSessionAwareClient>>,
   user: User,
-): Promise<UserResponse> {
+): Promise<{ success: boolean; error?: string }> {
   const teamSlug = `user-${user.id.substring(0, 8)}-${Date.now()}`;
 
   // Create team

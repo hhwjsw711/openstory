@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import type { FrameGenerationPayload } from "@/lib/qstash/types";
-import { createAdminClient, createServerClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
 // Schema definitions
@@ -35,22 +35,6 @@ const deleteFrameSchema = z.object({
 
 const generateFramesSchema = z.object({
   sequenceId: z.string().uuid(),
-  script: z.string().min(1),
-  scriptAnalysis: z
-    .object({
-      scenes: z.array(
-        z.object({
-          start: z.number(),
-          end: z.number(),
-          description: z.string(),
-          duration: z.number().optional(),
-        }),
-      ),
-      characters: z.array(z.string()).optional(),
-      settings: z.array(z.string()).optional(),
-    })
-    .optional(),
-  styleStack: z.any().optional() as z.ZodType<Json | undefined>,
   options: z
     .object({
       framesPerScene: z.number().min(1).max(10).optional(),
@@ -415,22 +399,29 @@ export async function generateFramesAction(
   try {
     const validated = generateFramesSchema.parse(input);
     const supabase = createServerClient();
-    const adminSupabase = createAdminClient();
 
     // Get the current user
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Verify sequence exists and get team info
+    // Verify sequence exists and get all required data
     const { data: sequence, error: sequenceError } = await supabase
       .from("sequences")
-      .select("*")
+      .select("*, styles(*)")
       .eq("id", validated.sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       throw new Error("Sequence not found");
+    }
+
+    if (!sequence.script) {
+      throw new Error("Sequence has no script");
+    }
+
+    if (!sequence.style_id) {
+      throw new Error("Sequence has no style selected");
     }
 
     // Verify user has access to this sequence (through team membership)
@@ -449,22 +440,19 @@ export async function generateFramesAction(
       }
     }
 
-    // Create a job record
+    // Create a job record with just the sequenceId
     const jobManager = getJobManager();
     const job = await jobManager.createJob({
       type: "frame_generation",
       payload: {
         sequenceId: validated.sequenceId,
-        script: validated.script,
-        scriptAnalysis: validated.scriptAnalysis,
-        styleStack: validated.styleStack,
         options: validated.options,
       },
       userId: user?.id,
       teamId: sequence.team_id,
     });
 
-    // Prepare the QStash payload
+    // Prepare the QStash payload with minimal data
     const payload: FrameGenerationPayload = {
       jobId: job.id,
       type: "frame_generation",
@@ -472,9 +460,6 @@ export async function generateFramesAction(
       teamId: sequence.team_id,
       data: {
         sequenceId: validated.sequenceId,
-        script: validated.script,
-        scriptAnalysis: validated.scriptAnalysis,
-        styleStack: validated.styleStack,
         options: validated.options,
       },
     };
@@ -490,39 +475,7 @@ export async function generateFramesAction(
       sequenceId: validated.sequenceId,
     });
 
-    // Create optimistic placeholder frames if requested
-    if (validated.scriptAnalysis?.scenes) {
-      const placeholderFrames: FrameInsert[] = [];
-      let orderIndex = 0;
-
-      for (const scene of validated.scriptAnalysis.scenes) {
-        const framesPerScene = validated.options?.framesPerScene ?? 5;
-        const frameDuration = (scene.duration || 5000) / framesPerScene;
-
-        for (let i = 0; i < framesPerScene; i++) {
-          placeholderFrames.push({
-            sequence_id: validated.sequenceId,
-            description: `Generating frame ${i + 1} of scene: ${scene.description.slice(0, 100)}...`,
-            order_index: orderIndex++,
-            duration_ms: Math.round(frameDuration),
-            metadata: {
-              scene: validated.scriptAnalysis.scenes.indexOf(scene),
-              status: "generating",
-              jobId: job.id,
-            } as Json,
-          });
-        }
-      }
-
-      // Insert placeholder frames
-      const { error: insertError } = await adminSupabase
-        .from("frames")
-        .insert(placeholderFrames);
-
-      if (insertError) {
-        console.error("Failed to create placeholder frames:", insertError);
-      }
-    }
+    // Don't create placeholder frames here - let the webhook handle everything
 
     revalidatePath(`/sequences/${validated.sequenceId}`);
 
