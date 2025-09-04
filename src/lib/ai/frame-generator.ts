@@ -255,7 +255,7 @@ async function createFrameDescription(params: {
   });
 
   // Use OpenRouter to generate frame description if provider is set
-  if (params.aiProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+  if (params.aiProvider === "openrouter" && process.env.OPENROUTER_KEY) {
     try {
       const response = await callOpenRouter({
         model: RECOMMENDED_MODELS.creative,

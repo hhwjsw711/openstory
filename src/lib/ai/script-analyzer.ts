@@ -45,7 +45,7 @@ export async function analyzeScriptForFrames(
   });
 
   // Use OpenRouter for AI-powered analysis if available
-  if (aiProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+  if (aiProvider === "openrouter" && process.env.OPENROUTER_KEY) {
     try {
       const response = await callOpenRouter({
         model: RECOMMENDED_MODELS.structured,

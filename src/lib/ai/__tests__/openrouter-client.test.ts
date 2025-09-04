@@ -19,7 +19,7 @@ describe("OpenRouter Client", () => {
   beforeEach(() => {
     mockFetch.mockClear();
     // Reset environment variables
-    delete process.env.OPENROUTER_API_KEY;
+    delete process.env.OPENROUTER_KEY;
   });
 
   describe("callOpenRouter", () => {
@@ -36,7 +36,7 @@ describe("OpenRouter Client", () => {
     });
 
     test("should call OpenRouter API when key is set", async () => {
-      process.env.OPENROUTER_API_KEY = "test-api-key";
+      process.env.OPENROUTER_KEY = "test-api-key";
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -76,7 +76,7 @@ describe("OpenRouter Client", () => {
     });
 
     test("should fall back to mock on API error", async () => {
-      process.env.OPENROUTER_API_KEY = "test-api-key";
+      process.env.OPENROUTER_KEY = "test-api-key";
 
       mockFetch.mockResolvedValue({
         ok: false,

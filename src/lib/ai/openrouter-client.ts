@@ -71,11 +71,11 @@ export const RECOMMENDED_MODELS = {
 export async function callOpenRouter(
   params: OpenRouterRequestParams,
 ): Promise<OpenRouterResponse> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_KEY;
 
   if (!apiKey) {
     console.warn(
-      "[OpenRouter] No API key found, using mock response. Set OPENROUTER_API_KEY environment variable.",
+      "[OpenRouter] No API key found, using mock response. Set OPENROUTER_KEY environment variable.",
     );
     return getMockResponse(params);
   }
