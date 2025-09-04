@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import { use, useCallback, useState } from "react";
 import { PageContainer } from "@/components/layout";
@@ -13,8 +12,6 @@ import {
 import { useFramesBySequence, useReorderFrames } from "@/hooks/use-frames";
 import { useSequence } from "@/hooks/use-sequences";
 import { useUser } from "@/hooks/use-user";
-
-export const dynamic = "force-dynamic";
 
 interface StoryboardPageProps {
   params: Promise<{
@@ -58,7 +55,7 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
     (step: 1 | 2 | 3) => {
       switch (step) {
         case 1:
-          router.push(`/sequences/new`);
+          router.push(`/sequences/${sequenceId}/script`);
           break;
         case 2:
           // Already on storyboard page
