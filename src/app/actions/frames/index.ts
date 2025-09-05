@@ -469,6 +469,7 @@ export async function generateFramesAction(
         ? (sequence.styles as { metadata?: unknown }).metadata
         : undefined;
 
+    // This just takes the analysis and structures it into frames
     const frameDescriptions = await generateFrameDescriptions({
       script: sequence.script,
       scriptAnalysis,

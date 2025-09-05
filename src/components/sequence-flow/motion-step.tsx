@@ -42,11 +42,13 @@ export const MotionStep: React.FC<MotionStepProps> = ({
       onMotionGenerationStart(frameId);
 
       try {
-        const result = await generateFrameMotion(
-          frameId,
-          frame.description || `Frame ${frameId}`,
-          styleId,
-        );
+        // Use script chunk from metadata if available, otherwise fall back to description
+        const metadata = frame.metadata as Record<string, unknown> | null;
+        const scriptChunk = metadata?.scriptChunk as string | undefined;
+        const frameText =
+          scriptChunk || frame.description || `Frame ${frameId}`;
+
+        const result = await generateFrameMotion(frameId, frameText, styleId);
 
         if (result.success && result.videoUrl) {
           onMotionGenerationComplete(frameId, result.videoUrl);
@@ -91,9 +93,15 @@ export const MotionStep: React.FC<MotionStepProps> = ({
       // In production, this could be parallelized with Promise.all
       for (const frame of framesToGenerate) {
         try {
+          // Use script chunk from metadata if available, otherwise fall back to description
+          const metadata = frame.metadata as Record<string, unknown> | null;
+          const scriptChunk = metadata?.scriptChunk as string | undefined;
+          const frameText =
+            scriptChunk || frame.description || `Frame ${frame.id}`;
+
           const result = await generateFrameMotion(
             frame.id,
-            frame.description || `Frame ${frame.id}`,
+            frameText,
             styleId,
           );
 

@@ -126,6 +126,7 @@ export async function saveSequence(
 
 /**
  * Generate frames from script and save to database using AI
+ * Creates a QStash job that triggers the frames webhook which calls generateFramesAction
  */
 export async function generateFrames(sequenceId: string): Promise<{
   success: boolean;
@@ -134,29 +135,90 @@ export async function generateFrames(sequenceId: string): Promise<{
   error?: string;
 }> {
   try {
-    // Import the AI-powered frame generation action
-    const { generateFramesAction } = await import("#actions/frames");
+    const supabase = createServerClient();
 
-    // Call the simplified frame generation action - it will load everything from the database
-    const result = await generateFramesAction({
-      sequenceId,
-      options: {
-        framesPerScene: 3, // Generate 3 frames per scene
-        generateThumbnails: true,
-        generateDescriptions: true,
-        aiProvider: "openrouter", // Use OpenRouter for AI generation
-        regenerateAll: true, // Delete existing frames before generating new ones
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Verify sequence exists and get team info
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("id, team_id")
+      .eq("id", sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      throw new Error("Sequence not found");
+    }
+
+    // Verify user has access to this sequence (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", sequence.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error(
+          "You don't have permission to generate frames for this sequence",
+        );
+      }
+    }
+
+    // Import QStash dependencies
+    const { getJobManager } = await import("@/lib/qstash/job-manager");
+    const { getQStashClient } = await import("@/lib/qstash/client");
+
+    // Create a job for frame generation
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "frame_generation",
+      payload: {
+        sequenceId,
+        options: {
+          framesPerScene: 3, // Generate 3 frames per scene
+          generateThumbnails: true,
+          generateDescriptions: true,
+          aiProvider: "openrouter", // Use OpenRouter for AI generation
+          regenerateAll: true, // Delete existing frames before generating new ones
+        },
+      },
+      userId: user?.id,
+      teamId: sequence.team_id,
+    });
+
+    // Queue the frame generation job via QStash
+    const qstashClient = getQStashClient();
+    await qstashClient.publishFrameGenerationJob({
+      jobId: job.id,
+      type: "frame_generation",
+      userId: user?.id || undefined,
+      teamId: sequence.team_id || undefined,
+      data: {
+        sequenceId,
+        options: {
+          framesPerScene: 3,
+          generateThumbnails: true,
+          generateDescriptions: true,
+          aiProvider: "openrouter",
+          regenerateAll: true,
+        },
       },
     });
 
-    if (!result.success) {
-      throw new Error(result.error || "Failed to generate frames");
-    }
+    console.log("[generateFrames] Frame generation job queued", {
+      sequenceId,
+      jobId: job.id,
+    });
 
     // Return success with job ID for tracking
     return {
       success: true,
-      jobId: result.jobId,
+      jobId: job.id,
       frames: [], // Frames will be populated asynchronously via QStash
     };
   } catch (error) {

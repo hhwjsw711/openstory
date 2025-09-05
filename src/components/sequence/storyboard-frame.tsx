@@ -144,9 +144,15 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
         )}
       </div>
 
-      {/* Frame info */}
+      {/* Frame info - show script chunk from metadata or fallback to description */}
       <div className={cn(frameInfoVariants())}>
-        <p className={cn(frameDescriptionVariants())}>{frame.description}</p>
+        <p className={cn(frameDescriptionVariants())}>
+          {(() => {
+            const metadata = frame.metadata as Record<string, unknown> | null;
+            const scriptChunk = metadata?.scriptChunk as string | undefined;
+            return scriptChunk || frame.description;
+          })()}
+        </p>
         {frame.duration_ms && (
           <p className={cn(frameDurationVariants())}>
             {(frame.duration_ms / 1000).toFixed(1)}s
