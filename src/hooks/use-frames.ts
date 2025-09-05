@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateFrameInput, UpdateFrameInput } from "#actions/frames";
+import type {
+  CreateFrameInput,
+  GenerateFramesInput,
+  RegenerateFrameInput,
+  UpdateFrameInput,
+} from "#actions/frames";
 import {
   bulkCreateFrames,
   createFrame,
   deleteFrame,
   deleteFramesBySequence,
+  generateFramesAction,
+  getActiveFrameGenerationJob,
   getFrame,
+  getFrameGenerationJobStatus,
   getFramesBySequence,
+  regenerateFrameAction,
   reorderFrames,
   updateFrame,
 } from "#actions/frames";
@@ -21,8 +30,13 @@ export const frameKeys = {
   detail: (id: string) => [...frameKeys.details(), id] as const,
 };
 
-// Hook for listing frames by sequence
-export function useFramesBySequence(sequenceId: string) {
+// Hook for listing frames by sequence with optional auto-refresh
+export function useFramesBySequence(
+  sequenceId: string,
+  options?: {
+    refetchInterval?: number | false;
+  },
+) {
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId),
     queryFn: async () => {
@@ -34,6 +48,7 @@ export function useFramesBySequence(sequenceId: string) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!sequenceId,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -256,6 +271,188 @@ export function useDeleteFramesBySequence() {
       queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
+    },
+  });
+}
+
+// Hook for generating frames with AI
+export function useGenerateFrames() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { jobId: string; message?: string },
+    Error,
+    GenerateFramesInput,
+    { previousFrames: Frame[] | undefined; sequenceId: string }
+  >({
+    mutationFn: async (input: GenerateFramesInput) => {
+      const result = await generateFramesAction(input);
+      if (result.success && result.jobId) {
+        return { jobId: result.jobId, message: result.message };
+      }
+      throw new Error(result.error || "Failed to generate frames");
+    },
+    onMutate: async ({ sequenceId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+
+      // Snapshot previous frames
+      const previousFrames = queryClient.getQueryData<Frame[]>(
+        frameKeys.list(sequenceId),
+      );
+
+      return { previousFrames, sequenceId };
+    },
+    onSuccess: (_, { sequenceId }) => {
+      // Invalidate frames list to trigger refresh
+      queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+
+      // Invalidate active job query to start tracking the new job
+      queryClient.invalidateQueries({
+        queryKey: ["active-job", sequenceId],
+      });
+    },
+    onError: (_, __, context) => {
+      // Rollback to previous frames on error
+      if (context?.previousFrames && context.sequenceId) {
+        queryClient.setQueryData(
+          frameKeys.list(context.sequenceId),
+          context.previousFrames,
+        );
+      }
+    },
+  });
+}
+
+// Hook for regenerating a single frame
+export function useRegenerateFrame() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ jobId: string }, Error, RegenerateFrameInput>({
+    mutationFn: async (input: RegenerateFrameInput) => {
+      const result = await regenerateFrameAction(input);
+      if (result.success && result.jobId) {
+        return { jobId: result.jobId };
+      }
+      throw new Error(result.error || "Failed to regenerate frame");
+    },
+    onSuccess: (_, { frameId }) => {
+      // Invalidate the specific frame
+      queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frameId),
+      });
+
+      // Also invalidate the frames list if we can determine the sequence
+      const frameData = queryClient.getQueryData<Frame>(
+        frameKeys.detail(frameId),
+      );
+      if (frameData?.sequence_id) {
+        queryClient.invalidateQueries({
+          queryKey: frameKeys.list(frameData.sequence_id),
+        });
+      }
+    },
+  });
+}
+
+// Hook for polling frame generation status
+export function useFrameGenerationStatus(
+  jobId: string | null,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number;
+  },
+) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: ["jobs", jobId],
+    queryFn: async () => {
+      if (!jobId) return null;
+
+      const result = await getFrameGenerationJobStatus(jobId);
+      if (result.success && result.job) {
+        // If frames are being generated, invalidate the frames list to show updates
+        if (result.job.framesProgress && result.job.status === "running") {
+          const sequenceId =
+            result.job.framesProgress.frames[0]?.id?.split("-")[0];
+          if (sequenceId) {
+            queryClient.invalidateQueries({
+              queryKey: frameKeys.list(sequenceId),
+            });
+          }
+        }
+        return result.job;
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch job status");
+      }
+
+      return null;
+    },
+    enabled: !!jobId && (options?.enabled ?? true),
+    refetchInterval: (query) => {
+      // Stop polling if job is completed or failed
+      if (
+        query.state.data?.status === "completed" ||
+        query.state.data?.status === "failed"
+      ) {
+        return false;
+      }
+      // Poll every 2 seconds by default
+      return options?.refetchInterval ?? 2000;
+    },
+  });
+}
+
+// Hook to check for active frame generation jobs for a sequence
+export function useActiveFrameGeneration(sequenceId: string) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: ["active-job", sequenceId],
+    queryFn: async () => {
+      const result = await getActiveFrameGenerationJob(sequenceId);
+
+      if (result.success && result.job) {
+        // Invalidate frames list when job is running or has just completed
+        if (
+          result.job.status === "running" ||
+          result.job.status === "completed"
+        ) {
+          queryClient.invalidateQueries({
+            queryKey: frameKeys.list(sequenceId),
+          });
+        }
+
+        return result.job;
+      }
+
+      return null;
+    },
+    enabled: !!sequenceId,
+    refetchInterval: (query) => {
+      // Stop polling if no job or job is completed/failed
+      if (
+        !query.state.data ||
+        query.state.data.status === "completed" ||
+        query.state.data.status === "failed"
+      ) {
+        // One final invalidation when job completes
+        if (query.state.data?.status === "completed") {
+          queryClient.invalidateQueries({
+            queryKey: frameKeys.list(sequenceId),
+          });
+        }
+        return false;
+      }
+      // Poll every 2 seconds while job is active
+      return 2000;
     },
   });
 }

@@ -56,13 +56,10 @@ describe.skip("QStashClient", () => {
       );
     });
 
-    it("should throw ConfigurationError if NEXT_PUBLIC_API_URL is missing", () => {
-      delete process.env.NEXT_PUBLIC_API_URL;
-
-      expect(() => new QStashClient()).toThrow(ConfigurationError);
-      expect(() => new QStashClient()).toThrow(
-        "NEXT_PUBLIC_API_URL environment variable is required",
-      );
+    it("should initialize with getAbsoluteUrl when no VERCEL_URL is set", () => {
+      // Should not throw when NEXT_PUBLIC_API_URL is missing
+      // as it now uses getAbsoluteUrl internally
+      expect(() => new QStashClient()).not.toThrow();
     });
   });
 

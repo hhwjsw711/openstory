@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { createSessionAwareClient } from "@/lib/supabase/server";
 import type { UserProfile } from "@/types/database";
 
-export interface UserResponse {
+interface UserResponse {
   success: boolean;
   data?: {
     user: UserProfile;
@@ -12,6 +12,78 @@ export interface UserResponse {
     isAnonymous: boolean;
   };
   error?: string;
+}
+
+/**
+ * Helper function to create an anonymous user
+ */
+async function createAnonymousUser(
+  supabase: Awaited<ReturnType<typeof createSessionAwareClient>>,
+): Promise<UserResponse> {
+  const { data, error: anonError } = await supabase.auth.signInAnonymously();
+
+  if (anonError) {
+    console.error(
+      "[createAnonymousUser] Failed to create anonymous session:",
+      anonError,
+    );
+    return {
+      success: false,
+      error: anonError.message || "Failed to create anonymous session",
+    };
+  }
+
+  if (!data.user) {
+    return {
+      success: false,
+      error: "No user returned from anonymous sign-in",
+    };
+  }
+
+  // Create user record and team for NEW anonymous user
+  const result = await ensureUserAndTeam(supabase, data.user);
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || "Failed to create user with team",
+    };
+  }
+
+  // Return the new anonymous user
+  return createAnonymousUserResponse(data.user);
+}
+
+/**
+ * Helper function to create user profile from user data
+ */
+function createUserProfile(user: User): UserProfile {
+  return {
+    ...user,
+    full_name: user.user_metadata?.full_name || null,
+    avatar_url: user.user_metadata?.avatar_url || null,
+    onboarding_completed: user.user_metadata?.onboarding_completed || false,
+  };
+}
+
+/**
+ * Helper function to create anonymous user response
+ */
+function createAnonymousUserResponse(user: User): UserResponse {
+  const userProfile: UserProfile = {
+    ...user,
+    full_name: null,
+    avatar_url: null,
+    onboarding_completed: false,
+  };
+
+  return {
+    success: true,
+    data: {
+      user: userProfile,
+      isAuthenticated: false,
+      isAnonymous: true,
+    },
+  };
 }
 
 /**
@@ -30,129 +102,39 @@ export async function getCurrentUser(): Promise<UserResponse> {
       error: sessionError,
     } = await supabase.auth.getUser();
 
-    // Handle refresh token errors
-    if (sessionError) {
-      // Check if this is a refresh token error
+    // If no user or session error, try to create anonymous user
+    if (!user || sessionError) {
+      const anonResult = await createAnonymousUser(supabase);
+
+      // If anonymous creation fails due to no session context, return special error
       if (
-        sessionError.message?.includes("refresh_token_not_found") ||
-        sessionError.message?.includes("Invalid Refresh Token") ||
-        sessionError.code === "refresh_token_not_found"
+        !anonResult.success &&
+        (anonResult.error?.includes("AuthSessionMissingError") ||
+          anonResult.error?.includes("Auth session missing"))
       ) {
-        // Create a new anonymous session
-        const { data, error: anonError } =
-          await supabase.auth.signInAnonymously();
-
-        if (anonError) {
-          return {
-            success: false,
-            error: "Failed to create anonymous session",
-          };
-        }
-
-        if (!data.user) {
-          return {
-            success: false,
-            error: "No user returned from anonymous sign-in",
-          };
-        }
-
-        // Create team and user records for anonymous user
-        const result = await createUserWithTeam(supabase, data.user);
-        if (!result.success) {
-          return result;
-        }
-
-        // Return the new anonymous user
-        const userProfile: UserProfile = {
-          ...data.user,
-          full_name: null,
-          avatar_url: null,
-          onboarding_completed: false,
-        };
-
-        return {
-          success: true,
-          data: {
-            user: userProfile,
-            isAuthenticated: false,
-            isAnonymous: true,
-          },
-        };
-      }
-
-      // For other session errors, return a generic error
-      return {
-        success: false,
-        error: sessionError.message || "Failed to get session",
-      };
-    }
-
-    // If no authenticated user exists, create an anonymous user
-    if (!user) {
-      const { data, error: anonError } =
-        await supabase.auth.signInAnonymously();
-
-      if (anonError) {
+        console.log(
+          "[getCurrentUser] Cannot create anonymous user in server action without existing session",
+        );
         return {
           success: false,
-          error: "Failed to create anonymous session",
+          error: "REQUIRES_CLIENT_AUTH",
         };
       }
 
-      if (!data.user) {
-        return {
-          success: false,
-          error: "No user returned from anonymous sign-in",
-        };
-      }
-
-      // Create team and user records
-      const result = await createUserWithTeam(supabase, data.user);
-      if (!result.success) {
-        return result;
-      }
-
-      // Return the new anonymous user
-      const userProfile: UserProfile = {
-        ...data.user,
-        full_name: null,
-        avatar_url: null,
-        onboarding_completed: false,
-      };
-
-      return {
-        success: true,
-        data: {
-          user: userProfile,
-          isAuthenticated: false,
-          isAnonymous: true,
-        },
-      };
+      return anonResult;
     }
 
     // We have a valid authenticated user
-    // Ensure they have a team
-    const { data: teamMembership } = await supabase
-      .from("team_members")
-      .select("team_id")
-      .eq("user_id", user.id)
-      .eq("role", "owner")
-      .single();
-
-    if (!teamMembership) {
-      // User exists but has no team - create one for them
-      const result = await createUserWithTeam(supabase, user);
-      if (!result.success) {
-        return result;
-      }
+    // Just ensure user record exists (team should have been created during initial signup)
+    const result = await ensureUserAndTeam(supabase, user);
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to ensure user has team",
+      };
     }
 
-    const userProfile: UserProfile = {
-      ...user,
-      full_name: user.user_metadata?.full_name || null,
-      avatar_url: user.user_metadata?.avatar_url || null,
-      onboarding_completed: user.user_metadata?.onboarding_completed || false,
-    };
+    const userProfile = createUserProfile(user);
 
     const isAnonymous = user.is_anonymous === true;
 
@@ -166,106 +148,85 @@ export async function getCurrentUser(): Promise<UserResponse> {
     };
   } catch (error) {
     console.error("Error in getCurrentUser:", error);
-
-    // Handle any auth errors specifically
-    if (error instanceof Error) {
-      if (
-        error.message?.includes("refresh_token_not_found") ||
-        error.message?.includes("Invalid Refresh Token")
-      ) {
-        // Try to create a new anonymous session
-        try {
-          const supabase = await createSessionAwareClient();
-          const { data, error: anonError } =
-            await supabase.auth.signInAnonymously();
-
-          if (!anonError && data.user) {
-            const result = await createUserWithTeam(supabase, data.user);
-            if (result.success) {
-              const userProfile: UserProfile = {
-                ...data.user,
-                full_name: null,
-                avatar_url: null,
-                onboarding_completed: false,
-              };
-
-              return {
-                success: true,
-                data: {
-                  user: userProfile,
-                  isAuthenticated: false,
-                  isAnonymous: true,
-                },
-              };
-            }
-          }
-        } catch {
-          // Fall through to generic error
-        }
-      }
-    }
-
     return {
       success: false,
-      error: "Failed to get user data",
+      error: error instanceof Error ? error.message : "Failed to get user",
     };
   }
 }
 
 /**
- * Helper function to create user record and team
+ * Ensure user has a record and at least one team
+ * Only creates team if user has no teams at all
  */
-async function createUserWithTeam(
+async function ensureUserAndTeam(
   supabase: Awaited<ReturnType<typeof createSessionAwareClient>>,
   user: User,
-): Promise<UserResponse> {
-  const teamSlug = `user-${user.id.substring(0, 8)}-${Date.now()}`;
-
-  // Create team
-  const { data: team, error: teamError } = await supabase
-    .from("teams")
-    .insert({
-      name: "My Team",
-      slug: teamSlug,
-    })
-    .select()
+): Promise<{ success: boolean; error?: string }> {
+  // First check if user record exists
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", user.id)
     .single();
 
-  if (teamError) {
-    return {
-      success: false,
-      error: `Failed to create team: ${teamError.message}`,
-    };
+  if (!existingUser) {
+    // Create user record
+    const { error: userInsertError } = await supabase.from("users").insert({
+      id: user.id,
+    });
+
+    if (userInsertError) {
+      return {
+        success: false,
+        error: `Failed to create user record: ${userInsertError.message}`,
+      };
+    }
   }
 
-  // Create user record if doesn't exist
-  const { error: userInsertError } = await supabase.from("users").insert({
-    id: user.id,
-  });
+  // Check if user has any teams
+  const { data: teams } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", user.id)
+    .limit(1);
 
-  // Ignore duplicate key errors (user already exists)
-  if (userInsertError && userInsertError.code !== "23505") {
-    await supabase.from("teams").delete().eq("id", team.id);
-    return {
-      success: false,
-      error: `Failed to create user record: ${userInsertError.message}`,
-    };
-  }
+  // Only create a team if user has NO teams at all
+  if (!teams || teams.length === 0) {
+    const teamSlug = `user-${user.id.substring(0, 8)}-${Date.now()}`;
 
-  // Add user as team owner
-  const { error: memberError } = await supabase.from("team_members").insert({
-    user_id: user.id,
-    team_id: team.id,
-    role: "owner",
-  });
+    // Create team
+    const { data: team, error: teamError } = await supabase
+      .from("teams")
+      .insert({
+        name: "My Team",
+        slug: teamSlug,
+      })
+      .select()
+      .single();
 
-  if (memberError && memberError.code !== "23505") {
-    // Ignore duplicate key errors
-    await supabase.from("teams").delete().eq("id", team.id);
-    return {
-      success: false,
-      error: `Failed to create team membership: ${memberError.message}`,
-    };
+    if (teamError) {
+      return {
+        success: false,
+        error: `Failed to create team: ${teamError.message}`,
+      };
+    }
+
+    // Add user as team owner
+    const { error: memberError } = await supabase.from("team_members").insert({
+      user_id: user.id,
+      team_id: team.id,
+      role: "owner",
+    });
+
+    if (memberError) {
+      // Clean up team if we can't create membership
+      await supabase.from("teams").delete().eq("id", team.id);
+      return {
+        success: false,
+        error: `Failed to create team membership: ${memberError.message}`,
+      };
+    }
   }
 
   return { success: true };

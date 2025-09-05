@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { generateFrames, getSequence, saveSequence } from "#actions/sequence";
-import type { Frame, Sequence } from "@/types/database";
+import { getSequence, saveSequence } from "#actions/sequence";
+import type { Sequence } from "@/types/database";
 
 // Query keys
 export const sequenceKeys = {
@@ -134,43 +134,6 @@ export function useDeleteSequence() {
       queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
-    },
-  });
-}
-
-// Hook for generating storyboard
-export function useGenerateStoryboard() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    Frame[],
-    Error,
-    {
-      sequenceId: string;
-      script: string;
-      styleId: string;
-    }
-  >({
-    mutationFn: async ({
-      sequenceId,
-      script,
-      styleId,
-    }: {
-      sequenceId: string;
-      script: string;
-      styleId: string;
-    }) => {
-      const result = await generateFrames(script, styleId, sequenceId);
-      if (result.success && result.frames) {
-        return result.frames;
-      }
-      throw new Error(result.error || "Failed to generate storyboard");
-    },
-    onSuccess: (_, { sequenceId }) => {
-      // Invalidate the sequence to get updated status
-      queryClient.invalidateQueries({
-        queryKey: sequenceKeys.detail(sequenceId),
-      });
     },
   });
 }

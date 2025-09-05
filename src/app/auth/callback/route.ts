@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { AuthService } from "@/lib/auth/service";
 import { createSessionAwareClient } from "@/lib/supabase/server";
 
 /**
@@ -42,8 +41,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const authService = new AuthService();
-
       // For anonymous upgrade, we now use the native Supabase approach
       // Anonymous users already have:
       // 1. A team (created when they became anonymous)
@@ -70,8 +67,15 @@ export async function GET(request: NextRequest) {
 
       // Update team name to be more personalized if this is a user with email
       if (user.email) {
-        const teamId = await authService.getCurrentUserTeamId();
-        if (teamId) {
+        // Get user's team ID
+        const { data: teamMembership } = await supabase
+          .from("team_members")
+          .select("team_id")
+          .eq("user_id", user.id)
+          .eq("role", "owner")
+          .single();
+
+        if (teamMembership) {
           const teamName = user.user_metadata?.full_name
             ? `${user.user_metadata.full_name}'s Team`
             : `${user.email.split("@")[0]}'s Team`;
@@ -79,19 +83,24 @@ export async function GET(request: NextRequest) {
           await supabase
             .from("teams")
             .update({ name: teamName })
-            .eq("id", teamId);
+            .eq("id", teamMembership.team_id);
         }
       }
 
-      // Update user profile metadata if needed
-      const profileUpdate = {
-        full_name:
-          user.user_metadata?.full_name || user.email?.split("@")[0] || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
-        onboarding_completed: user.user_metadata?.onboarding_completed || false,
-      };
+      // Update user profile metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name:
+            user.user_metadata?.full_name || user.email?.split("@")[0] || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          onboarding_completed:
+            user.user_metadata?.onboarding_completed || false,
+        },
+      });
 
-      await authService.updateUserProfile(profileUpdate);
+      if (updateError) {
+        console.error("Error updating user metadata:", updateError);
+      }
 
       // Redirect to the intended destination
       const redirectUrl = new URL(redirectTo, request.url);

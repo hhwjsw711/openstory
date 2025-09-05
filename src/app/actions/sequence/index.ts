@@ -2,17 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { AuthService } from "@/lib/auth/service";
+import { getCurrentUser } from "@/app/actions/user";
 import {
   createServerClient,
   createSessionAwareClient,
 } from "@/lib/supabase/server";
-import type {
-  Frame,
-  FrameInsert,
-  Sequence,
-  SequenceInsert,
-} from "@/types/database";
+import type { Frame, Sequence, SequenceInsert } from "@/types/database";
 
 // Schema definitions
 const createSequenceSchema = z.object({
@@ -41,71 +36,16 @@ export async function saveSequence(
   name?: string,
 ): Promise<{ success: boolean; sequence?: Sequence; error?: string }> {
   try {
-    // Use session-aware client to access the current user's session
-    const supabase = await createSessionAwareClient();
-    const authService = new AuthService();
-
-    // First ensure we have a user (create anonymous if needed)
-    let {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // If no user exists, create an anonymous user
-    if (!user) {
-      const { data: anonData, error: anonError } =
-        await supabase.auth.signInAnonymously();
-
-      if (anonError || !anonData.user) {
-        throw new Error(
-          "Failed to initialize user account. Please refresh the page and try again.",
-        );
-      }
-
-      user = anonData.user;
-
-      // Create team for the new anonymous user
-      const teamSlug = `user-${user.id.substring(0, 8)}-${Date.now()}`;
-      const { data: team, error: teamError } = await supabase
-        .from("teams")
-        .insert({
-          name: "My Team",
-          slug: teamSlug,
-        })
-        .select()
-        .single();
-
-      if (teamError) {
-        throw new Error(`Failed to create team: ${teamError.message}`);
-      }
-
-      // Create user record
-      const { error: userError } = await supabase.from("users").insert({
-        id: user.id,
-      });
-
-      if (userError && userError.code !== "23505") {
-        // Ignore duplicate key errors
-        await supabase.from("teams").delete().eq("id", team.id);
-        throw new Error(`Failed to create user record: ${userError.message}`);
-      }
-
-      // Add user as team owner
-      const { error: memberError } = await supabase
-        .from("team_members")
-        .insert({
-          user_id: user.id,
-          team_id: team.id,
-          role: "owner",
-        });
-
-      if (memberError && memberError.code !== "23505") {
-        // Ignore duplicate key errors
-        await supabase.from("teams").delete().eq("id", team.id);
-        throw new Error(
-          `Failed to create team membership: ${memberError.message}`,
-        );
-      }
+    // Ensure we have a user (create anonymous if needed)
+    const userResult = await getCurrentUser();
+    if (!userResult.success || !userResult.data) {
+      console.error("[saveSequence] getCurrentUser failed:", userResult.error);
+      throw new Error(userResult.error || "Failed to get or create user");
     }
+
+    const supabase = await createSessionAwareClient();
+
+    let sequence: Sequence | null = null;
 
     if (sequenceId) {
       // Update existing sequence
@@ -125,23 +65,27 @@ export async function saveSequence(
         throw new Error(error.message);
       }
 
-      revalidatePath(`/sequences/${sequenceId}`);
-      return {
-        success: true,
-        sequence: data,
-      };
+      sequence = data;
     } else {
-      // Create new sequence - get team_id for current user
-      // Since we ensured a user exists above, they should have a team
-      const teamId = await authService.getCurrentUserTeamId();
+      // TODO: TB Sep 2025 - At some point you'll want the user to be able to select a team
+      // That team id should then be passed to this function as the teamId parameter
 
-      if (!teamId) {
-        // This should not happen anymore since we ensure user exists above
-        // But keeping as fallback
+      // Create new sequence - get any team for the current user
+      // Prefer teams where user is owner, but accept any team
+      const { data: teamMemberships, error: teamError } = await supabase
+        .from("team_members")
+        .select("team_id, role")
+        .eq("user_id", userResult.data.user.id)
+        .order("role", { ascending: true }) // 'owner' comes before 'member' alphabetically
+        .limit(1);
+
+      if (teamError || !teamMemberships || teamMemberships.length === 0) {
         throw new Error(
           "No team found for user. Please refresh the page to initialize your account.",
         );
       }
+
+      const teamId = teamMemberships[0].team_id;
 
       const sequenceData: SequenceInsert = {
         script,
@@ -161,12 +105,16 @@ export async function saveSequence(
         throw new Error(error.message);
       }
 
-      revalidatePath("/");
-      return {
-        success: true,
-        sequence: data,
-      };
+      sequence = data;
     }
+
+    // The script and / or style may have changed, so we need to regenerate the frames
+    await generateFrames(sequence.id);
+
+    return {
+      success: true,
+      sequence,
+    };
   } catch (error) {
     console.error("Error saving sequence:", error);
     return {
@@ -177,53 +125,39 @@ export async function saveSequence(
 }
 
 /**
- * Generate frames from script and save to database
+ * Generate frames from script and save to database using AI
  */
-export async function generateFrames(
-  script: string,
-  styleId: string,
-  sequenceId: string,
-): Promise<{ success: boolean; frames?: Frame[]; error?: string }> {
+export async function generateFrames(sequenceId: string): Promise<{
+  success: boolean;
+  frames?: Frame[];
+  jobId?: string;
+  error?: string;
+}> {
   try {
-    const supabase = createServerClient();
+    // Import the AI-powered frame generation action
+    const { generateFramesAction } = await import("#actions/frames");
 
-    // First, use the mock function to generate frame data
-    // In production, this would call an AI service
-    const { generateFrames: generateMockFrames } = await import(
-      "#actions/anonymous-flow"
-    );
-    const mockResult = await generateMockFrames(script, styleId, sequenceId);
+    // Call the simplified frame generation action - it will load everything from the database
+    const result = await generateFramesAction({
+      sequenceId,
+      options: {
+        framesPerScene: 3, // Generate 3 frames per scene
+        generateThumbnails: true,
+        generateDescriptions: true,
+        aiProvider: "openrouter", // Use OpenRouter for AI generation
+        regenerateAll: true, // Delete existing frames before generating new ones
+      },
+    });
 
-    if (!mockResult.success || !mockResult.frames) {
-      throw new Error(mockResult.error || "Failed to generate frames");
+    if (!result.success) {
+      throw new Error(result.error || "Failed to generate frames");
     }
 
-    // Save frames to database
-    const frameInserts: FrameInsert[] = mockResult.frames.map(
-      (frame, index) => ({
-        sequence_id: sequenceId,
-        description: frame.description,
-        order_index: index + 1,
-        thumbnail_url: frame.thumbnail_url,
-        video_url: frame.video_url,
-        duration_ms: frame.duration_ms,
-        metadata: frame.metadata,
-      }),
-    );
-
-    const { data, error } = await supabase
-      .from("frames")
-      .insert(frameInserts)
-      .select();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    revalidatePath(`/sequences/${sequenceId}`);
+    // Return success with job ID for tracking
     return {
       success: true,
-      frames: data,
+      jobId: result.jobId,
+      frames: [], // Frames will be populated asynchronously via QStash
     };
   } catch (error) {
     console.error("Error generating frames:", error);
@@ -378,5 +312,5 @@ export async function generateStoryboard(sequenceId: string) {
     throw new Error("Sequence missing script or style");
   }
 
-  return generateFrames(script, style_id, sequenceId);
+  return generateFrames(sequenceId);
 }

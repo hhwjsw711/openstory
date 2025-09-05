@@ -37,6 +37,14 @@ const processScriptAnalysis: JobProcessor = async (
   // Simulate processing time
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
+  // Type assertion for script data
+  const scriptData = data as {
+    script?: string;
+    language?: string;
+    genre?: string;
+    [key: string]: unknown;
+  };
+
   // Example result structure
   const result = {
     analysis: {
@@ -97,9 +105,10 @@ const processScriptAnalysis: JobProcessor = async (
     processingTimeMs: 2000,
     provider: "mock-ai-provider",
     metadata: {
-      scriptLength: typeof data.script === "string" ? data.script.length : 0,
-      language: data.language || "en",
-      genre: data.genre || "unknown",
+      scriptLength:
+        typeof scriptData.script === "string" ? scriptData.script.length : 0,
+      language: scriptData.language || "en",
+      genre: scriptData.genre || "unknown",
     },
   };
 

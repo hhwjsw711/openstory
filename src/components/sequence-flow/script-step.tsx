@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   useCreateSequence,
-  useGenerateStoryboard,
   useSequence,
   useUpdateSequence,
 } from "@/hooks/use-sequences";
@@ -67,7 +66,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   // TanStack Query mutations
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
-  const generateStoryboardMutation = useGenerateStoryboard();
 
   // Determine which mutation to use
   const isEditMode = !!sequenceId;
@@ -175,7 +173,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
   // Handle save and generate
   const handleSaveAndGenerate = useCallback(async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      console.error("Script validation failed");
+      return;
+    }
 
     try {
       let savedSequenceId: string;
@@ -198,13 +199,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         savedSequenceId = result.id;
       }
 
-      // Generate storyboard - we've validated these are not null
-      await generateStoryboardMutation.mutateAsync({
-        sequenceId: savedSequenceId,
-        script: formData.script || "",
-        styleId: formData.styleId || "",
-      });
-
       // Success - notify parent
       onSuccess(savedSequenceId);
     } catch (error) {
@@ -218,7 +212,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     sequenceId,
     createSequenceMutation,
     updateSequenceMutation,
-    generateStoryboardMutation,
     onSuccess,
   ]);
 
@@ -264,21 +257,12 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       formData.script.trim().length >= 10 &&
       formData.styleId &&
       validationResult?.success === true &&
-      !saveMutation.isPending &&
-      !generateStoryboardMutation.isPending
+      !saveMutation.isPending
     );
-  }, [
-    formData,
-    validationResult,
-    saveMutation.isPending,
-    generateStoryboardMutation.isPending,
-  ]);
+  }, [formData, validationResult, saveMutation.isPending]);
 
   // Combine all loading states
-  const isLoading =
-    saveMutation.isPending ||
-    generateStoryboardMutation.isPending ||
-    isLoadingSequence;
+  const isLoading = saveMutation.isPending || isLoadingSequence;
 
   // Get error messages
   const scriptError = errors.script || validationResult?.errors?.[0];
@@ -286,10 +270,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   const hasSuggestions = (validationResult?.suggestions?.length || 0) > 0;
 
   // Show main error from mutations
-  const mutationError =
-    saveMutation.error ||
-    updateSequenceMutation.error ||
-    generateStoryboardMutation.error;
+  const mutationError = saveMutation.error || updateSequenceMutation.error;
 
   return (
     <div className="space-y-8" data-testid="script-step">
@@ -302,14 +283,12 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       )}
 
       {/* Success Alert for save only */}
-      {isEditMode &&
-        updateSequenceMutation.isSuccess &&
-        !generateStoryboardMutation.isPending && (
-          <Alert>
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>Script saved successfully!</AlertDescription>
-          </Alert>
-        )}
+      {isEditMode && updateSequenceMutation.isSuccess && (
+        <Alert>
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>Script saved successfully!</AlertDescription>
+        </Alert>
+      )}
 
       {/* Script Section */}
       <div className="space-y-4">
@@ -450,7 +429,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
           size="lg"
           data-testid="generate-storyboard-button"
         >
-          {saveMutation.isPending || generateStoryboardMutation.isPending
+          {saveMutation.isPending
             ? "Generating..."
             : sequenceId
               ? "Regenerate Storyboard →"

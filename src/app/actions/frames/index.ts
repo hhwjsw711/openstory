@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
+import type { FrameGenerationPayload } from "@/lib/qstash/types";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
@@ -30,9 +33,30 @@ const deleteFrameSchema = z.object({
   id: z.string().uuid(),
 });
 
+const generateFramesSchema = z.object({
+  sequenceId: z.string().uuid(),
+  options: z
+    .object({
+      framesPerScene: z.number().min(1).max(10).optional(),
+      generateThumbnails: z.boolean().optional(),
+      generateDescriptions: z.boolean().optional(),
+      aiProvider: z.enum(["openai", "anthropic", "openrouter"]).optional(),
+      regenerateAll: z.boolean().optional(), // Default: true
+    })
+    .optional(),
+});
+
+const regenerateFrameSchema = z.object({
+  frameId: z.string().uuid(),
+  regenerateDescription: z.boolean().optional(),
+  regenerateThumbnail: z.boolean().optional(),
+});
+
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
 export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
+export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
+export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
 
 /**
  * Create a new frame for a sequence
@@ -357,6 +381,427 @@ export async function deleteFramesBySequence(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete frames",
+    };
+  }
+}
+
+/**
+ * Generate frames for a sequence using AI
+ */
+export async function generateFramesAction(
+  input: GenerateFramesInput,
+): Promise<{
+  success: boolean;
+  jobId?: string;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const validated = generateFramesSchema.parse(input);
+    const supabase = createServerClient();
+
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Verify sequence exists and get all required data
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("*, styles(*)")
+      .eq("id", validated.sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      throw new Error("Sequence not found");
+    }
+
+    if (!sequence.script) {
+      throw new Error("Sequence has no script");
+    }
+
+    if (!sequence.style_id) {
+      throw new Error("Sequence has no style selected");
+    }
+
+    // Verify user has access to this sequence (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", sequence.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error(
+          "You don't have permission to generate frames for this sequence",
+        );
+      }
+    }
+
+    // Create a job record with just the sequenceId
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "frame_generation",
+      payload: {
+        sequenceId: validated.sequenceId,
+        options: validated.options,
+      },
+      userId: user?.id,
+      teamId: sequence.team_id,
+    });
+
+    // Prepare the QStash payload with minimal data
+    // userId and teamId are already stored in the job record for security
+    const payload: FrameGenerationPayload = {
+      jobId: job.id,
+      type: "frame_generation",
+      data: {
+        sequenceId: validated.sequenceId,
+        options: validated.options,
+      },
+    };
+
+    // Queue the frame generation job
+    const qstashClient = getQStashClient();
+    const qstashResponse =
+      await qstashClient.publishFrameGenerationJob(payload);
+
+    console.log("[generateFramesAction] Job queued", {
+      jobId: job.id,
+      messageId: qstashResponse.messageId,
+      sequenceId: validated.sequenceId,
+    });
+
+    // Don't create placeholder frames here - let the webhook handle everything
+
+    revalidatePath(`/sequences/${validated.sequenceId}`);
+
+    return {
+      success: true,
+      jobId: job.id,
+      message: "Frame generation started. This may take a few minutes.",
+    };
+  } catch (error) {
+    console.error("Error generating frames:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to generate frames",
+    };
+  }
+}
+
+/**
+ * Regenerate a single frame
+ */
+export async function regenerateFrameAction(
+  input: RegenerateFrameInput,
+): Promise<{
+  success: boolean;
+  jobId?: string;
+  error?: string;
+}> {
+  try {
+    const validated = regenerateFrameSchema.parse(input);
+    const supabase = createServerClient();
+
+    // Get the frame and sequence info
+    const { data: frame, error: frameError } = await supabase
+      .from("frames")
+      .select("*, sequences!inner(id, team_id, script)")
+      .eq("id", validated.frameId)
+      .single();
+
+    if (frameError || !frame) {
+      throw new Error("Frame not found");
+    }
+
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Verify user has access (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", frame.sequences.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error("You don't have permission to regenerate this frame");
+      }
+    }
+
+    // Create a job for regeneration
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "frame_generation",
+      payload: {
+        frameId: validated.frameId,
+        sequenceId: frame.sequence_id,
+        regenerateDescription: validated.regenerateDescription ?? true,
+        regenerateThumbnail: validated.regenerateThumbnail ?? false,
+      },
+      userId: user?.id,
+      teamId: frame.sequences.team_id,
+    });
+
+    // Update frame metadata with regeneration status
+    await supabase
+      .from("frames")
+      .update({
+        metadata: {
+          ...(frame.metadata as Record<string, unknown>),
+          regenerationJobId: job.id,
+          status: "regenerating",
+        } as Json,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validated.frameId);
+
+    revalidatePath(`/sequences/${frame.sequence_id}`);
+
+    return {
+      success: true,
+      jobId: job.id,
+    };
+  } catch (error) {
+    console.error("Error regenerating frame:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to regenerate frame",
+    };
+  }
+}
+
+/**
+ * Get active frame generation job for a sequence
+ */
+export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
+  success: boolean;
+  job?: {
+    id: string;
+    type: string;
+    status: string;
+    progress?: number;
+    result?: unknown;
+    error?: string;
+    created_at: string;
+    updated_at: string;
+    framesProgress?: {
+      total: number;
+      completed: number;
+      frames: Array<{
+        id: string;
+        order_index: number;
+        thumbnail_url?: string | null;
+      }>;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = createServerClient();
+
+    // Query for the most recent frame_generation job for this sequence
+    // where status is pending or running
+    const { data: jobs, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("type", "frame_generation")
+      .in("status", ["pending", "running"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!jobs || jobs.length === 0) {
+      return {
+        success: true,
+        job: undefined,
+      };
+    }
+
+    // Check if this job is for the requested sequence
+    const job = jobs[0];
+    const payload = job.payload as Record<string, unknown> | null;
+    const jobSequenceId = payload?.sequenceId as string | undefined;
+
+    if (jobSequenceId !== sequenceId) {
+      return {
+        success: true,
+        job: undefined,
+      };
+    }
+
+    // Get frame progress
+    const { data: frames } = await supabase
+      .from("frames")
+      .select("id, order_index, thumbnail_url")
+      .eq("sequence_id", sequenceId)
+      .order("order_index", { ascending: true });
+
+    const options = payload?.options as Record<string, unknown> | undefined;
+    const framesPerScene = (options?.framesPerScene as number) || 3;
+
+    return {
+      success: true,
+      job: {
+        id: job.id,
+        type: job.type,
+        status: job.status,
+        progress: undefined,
+        result: job.result,
+        error: job.error || undefined,
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        framesProgress: {
+          total: framesPerScene,
+          completed: frames?.filter((f) => f.thumbnail_url).length || 0,
+          frames: frames || [],
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error getting active job for sequence:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to get active job",
+    };
+  }
+}
+
+/**
+ * Get job status for frame generation
+ */
+export async function getFrameGenerationJobStatus(jobId: string): Promise<{
+  success: boolean;
+  job?: {
+    id: string;
+    type: string;
+    status: string;
+    progress?: number;
+    result?: unknown;
+    error?: string;
+    created_at: string;
+    updated_at: string;
+    framesProgress?: {
+      total: number;
+      completed: number;
+      frames: Array<{
+        id: string;
+        order_index: number;
+        thumbnail_url?: string | null;
+      }>;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    const jobManager = getJobManager();
+    const job = await jobManager.getJob(jobId);
+
+    if (!job) {
+      return {
+        success: false,
+        error: "Job not found",
+      };
+    }
+
+    const supabase = createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Check if user has access to this job
+    if (user && job.user_id && job.user_id !== user.id) {
+      // Check if user is part of the same team
+      if (job.team_id) {
+        const { data: member } = await supabase
+          .from("team_members")
+          .select("id")
+          .eq("team_id", job.team_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (!member) {
+          return {
+            success: false,
+            error: "Unauthorized",
+          };
+        }
+      } else {
+        return {
+          success: false,
+          error: "Unauthorized",
+        };
+      }
+    }
+
+    // If job is for frame generation, also check how many frames have been created
+    let framesProgress:
+      | {
+          total: number;
+          completed: number;
+          frames: Array<{
+            id: string;
+            order_index: number;
+            thumbnail_url?: string | null;
+          }>;
+        }
+      | undefined;
+    if (job.type === "frame_generation" && job.payload) {
+      // Safely access the payload which is typed as Json
+      const payload = job.payload as Record<string, unknown>;
+      const sequenceId = payload.sequenceId as string | undefined;
+
+      if (sequenceId) {
+        const { data: frames } = await supabase
+          .from("frames")
+          .select("id, order_index, thumbnail_url")
+          .eq("sequence_id", sequenceId)
+          .order("order_index", { ascending: true });
+
+        const options = payload.options as Record<string, unknown> | undefined;
+        const framesPerScene = (options?.framesPerScene as number) || 3;
+
+        framesProgress = {
+          total: framesPerScene,
+          completed: frames?.filter((f) => f.thumbnail_url).length || 0,
+          frames: frames || [],
+        };
+      }
+    }
+
+    return {
+      success: true,
+      job: {
+        id: job.id,
+        type: job.type,
+        status: job.status,
+        progress: undefined, // Job doesn't have a progress field in the database
+        result: job.result,
+        error: job.error || undefined,
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        framesProgress,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting job status:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to get job status",
     };
   }
 }

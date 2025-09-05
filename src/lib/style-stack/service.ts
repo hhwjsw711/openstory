@@ -1,4 +1,3 @@
-import { AuthService } from "@/lib/auth/service";
 import {
   type ApplyStyleToFramesInput,
   ApplyStyleToFramesSchema,
@@ -20,7 +19,10 @@ import {
   type UpdateStyleInput,
   UpdateStyleSchema,
 } from "@/lib/schemas/style-stack";
-import { createAdminClient } from "@/lib/supabase/server";
+import {
+  createAdminClient,
+  createSessionAwareClient,
+} from "@/lib/supabase/server";
 import type { Json, Style, StyleInsert, StyleUpdate } from "@/types/database";
 
 export interface StyleWithAdaptations extends Style {
@@ -43,7 +45,6 @@ export interface PaginatedStyles {
 
 export class StyleStackService {
   private adminClient = createAdminClient();
-  private authService = new AuthService();
 
   // Use admin client for most operations, session-aware client for auth-specific needs
   private get supabase() {
@@ -59,8 +60,12 @@ export class StyleStackService {
     // Get current user if userId provided
     let teamId: string;
     if (userId) {
-      const session = await this.authService.getSession();
-      if (!session?.user || session.user.id !== userId) {
+      const supabase = await createSessionAwareClient();
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error || !user || user.id !== userId) {
         throw new Error("Unauthorized: Invalid user session");
       }
 

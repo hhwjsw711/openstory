@@ -6,6 +6,7 @@ import { StyleStackService } from "../service";
 mock.module("@/lib/supabase/server", () => ({
   createServerClient: mock(() => mockSupabaseClient),
   createAdminClient: mock(() => mockAdminClient),
+  createSessionAwareClient: mock(async () => mockSessionAwareClient),
 }));
 
 mock.module("@/lib/auth/service", () => ({
@@ -47,6 +48,23 @@ const mockSupabaseClient = {
 const mockAdminClient = {
   from: mock(() => mockQueryBuilder),
   rpc: mock(),
+};
+
+const mockSessionAwareClient = {
+  auth: {
+    getUser: mock(() =>
+      Promise.resolve({
+        data: {
+          user: {
+            id: "1359a1a3-e189-448d-8451-734b4be680ec",
+            email: "test@example.com",
+          },
+        },
+        error: null,
+      }),
+    ),
+  },
+  from: mock(() => mockQueryBuilder),
 };
 
 const mockAuthService = {
@@ -152,7 +170,7 @@ describe("StyleStackService", () => {
       );
 
       expect(result).toEqual(mockStyle);
-      expect(mockAuthService.getSession).toHaveBeenCalled();
+      expect(mockSessionAwareClient.auth.getUser).toHaveBeenCalled();
     });
 
     it("should throw error if user has no team", async () => {

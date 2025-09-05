@@ -1,93 +1,98 @@
 import type * as React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { generateFrames } from "#actions/sequence";
+import {
+  FrameSkeleton,
+  FrameSkeletonGrid,
+} from "@/components/sequence/frame-skeleton";
 import { StoryboardFrame } from "@/components/sequence/storyboard-frame";
 import { SectionHeading } from "@/components/typography";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { Frame, Sequence } from "@/types/database";
+import {
+  useActiveFrameGeneration,
+  useFramesBySequence,
+  useReorderFrames,
+} from "@/hooks/use-frames";
+import { useSequence } from "@/hooks/use-sequences";
+import type { Frame } from "@/types/database";
 
 interface StoryboardStepProps {
-  sequence: Sequence;
-  frames: Frame[];
-  isGenerating: boolean;
-  generationError: string | null;
-  onGenerationStart: () => void;
-  onGenerationComplete: () => void;
-  onGenerationError: (error: string) => void;
-  onFrameReorder: (frames: Frame[]) => void;
+  sequenceId: string;
   onNext: () => void;
   onPrevious: () => void;
 }
 
 export const StoryboardStep: React.FC<StoryboardStepProps> = ({
-  sequence,
-  frames,
-  isGenerating,
-  generationError,
-  onGenerationStart,
-  onGenerationComplete,
-  onGenerationError,
-  onFrameReorder,
+  sequenceId,
   onNext,
   onPrevious,
 }) => {
-  const [currentOperation, setCurrentOperation] = useState<string | null>(null);
+  // Load the sequence data
+  const { data: sequence } = useSequence(sequenceId);
+
+  // Check for active frame generation job
+  const { data: activeJob } = useActiveFrameGeneration(sequenceId);
+  const isBackgroundGenerating =
+    activeJob?.status === "running" || activeJob?.status === "pending";
+  const expectedFrameCount = activeJob?.framesProgress?.total || 3;
+  const completedFrames = activeJob?.framesProgress?.completed || 0;
+
+  // Load frames with auto-refresh when generating
+  const { data: frames = [] } = useFramesBySequence(sequenceId, {
+    // Refetch every 2 seconds when frames are being generated
+    refetchInterval: isBackgroundGenerating ? 2000 : false,
+  });
+
+  const reorderFrames = useReorderFrames();
+
+  // Local state for generation
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
   const hasFrames = frames.length > 0;
-  const styleId = sequence.style_id;
+  const styleId = sequence?.style_id;
 
   const handleGenerateStoryboard = useCallback(async () => {
-    if (!sequence.script || !styleId) return;
+    if (!sequence?.script || !styleId) return;
 
-    onGenerationStart();
-    setCurrentOperation("Analyzing script...");
+    setGenerationError(null);
 
     try {
-      const result = await generateFrames(
-        sequence.script,
-        styleId,
-        sequence.id,
-      );
+      const result = await generateFrames(sequenceId);
 
       if (result.success && result.frames) {
-        onGenerationComplete();
-      } else {
-        onGenerationError(result.error || "Failed to generate storyboard");
+        setGenerationError(result.error || "Failed to generate storyboard");
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : "Unexpected error during generation";
-      onGenerationError(errorMessage);
-    } finally {
-      setCurrentOperation(null);
-    }
-  }, [
-    sequence,
-    styleId,
-    onGenerationStart,
-    onGenerationComplete,
-    onGenerationError,
-  ]);
 
+      setGenerationError(errorMessage);
+    }
+  }, [sequence, styleId, sequenceId]);
+
+  // Frame reordering
   const handleFrameReorder = useCallback(
     (fromIndex: number, toIndex: number) => {
       const newFrames = [...frames];
       const [removed] = newFrames.splice(fromIndex, 1);
       newFrames.splice(toIndex, 0, removed);
 
-      // Update order_index for all frames
-      const updatedFrames = newFrames.map((frame, index) => ({
-        ...frame,
-        order_index: index,
+      // Create the new order mapping
+      const frameOrders = newFrames.map((frame, index) => ({
+        id: frame.id,
+        order_index: index + 1,
       }));
 
-      onFrameReorder(updatedFrames);
+      // Reorder frames
+      reorderFrames.mutate({ sequenceId, frameOrders });
     },
-    [frames, onFrameReorder],
+    [frames, reorderFrames, sequenceId],
   );
 
+  // Next button
   const handleNext = useCallback(() => {
     if (hasFrames) {
       onNext();
@@ -96,14 +101,14 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
   const canGenerate = useMemo(() => {
     return (
-      sequence.script &&
+      sequence?.script &&
       sequence.script.trim().length >= 10 &&
       styleId &&
-      !isGenerating
+      !isBackgroundGenerating
     );
-  }, [sequence.script, styleId, isGenerating]);
+  }, [sequence?.script, styleId, isBackgroundGenerating]);
 
-  const canProceed = hasFrames && !isGenerating;
+  const canProceed = hasFrames && !isBackgroundGenerating;
 
   if (!sequence) {
     return (
@@ -124,84 +129,46 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
         </p>
       </div>
 
-      {/* Generation Controls */}
-      {!hasFrames && (
-        <div className="space-y-4">
-          <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
-            <div className="space-y-4">
-              <div className="text-muted-foreground">
-                Ready to generate your storyboard from the script
-              </div>
-
-              <Button
-                onClick={handleGenerateStoryboard}
-                disabled={!canGenerate}
-                size="lg"
-                data-testid="generate-storyboard-button"
-              >
-                {isGenerating ? "Generating..." : "Generate Storyboard"}
-              </Button>
-            </div>
-          </div>
-
-          {generationError && (
-            <Alert variant="destructive">
-              <div className="space-y-2">
-                <div className="font-medium">Generation Failed</div>
-                <div className="text-sm">{generationError}</div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateStoryboard}
-                  disabled={!canGenerate}
-                >
-                  Try Again
-                </Button>
-              </div>
-            </Alert>
-          )}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isGenerating && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-              <div className="space-y-2">
-                <div className="font-medium">Generating Your Storyboard</div>
-                {currentOperation && (
-                  <div className="text-sm text-muted-foreground">
-                    {currentOperation}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Generated Frames */}
-      {hasFrames && (
+      {/* Show skeleton loaders when frames are being generated in background */}
+      {isBackgroundGenerating && !hasFrames && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              {frames.length} frames generated
+              Generating {expectedFrameCount} frames...
+            </div>
+            {completedFrames > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {completedFrames} of {expectedFrameCount} completed
+              </div>
+            )}
+          </div>
+          <FrameSkeletonGrid count={expectedFrameCount} isGenerating={true} />
+        </div>
+      )}
+
+      {/* Generated Frames - show even if some are still generating */}
+      {(hasFrames || (isBackgroundGenerating && frames.length > 0)) && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {isBackgroundGenerating && frames.length < expectedFrameCount
+                ? `${frames.length} of ${expectedFrameCount} frames ready`
+                : `${frames.length} frames generated`}
             </div>
 
             <Button
               variant="outline"
               size="sm"
               onClick={handleGenerateStoryboard}
-              disabled={!canGenerate}
+              disabled={!canGenerate || isBackgroundGenerating}
               data-testid="regenerate-storyboard-button"
             >
-              Regenerate All
+              {isBackgroundGenerating ? "Generating..." : "Regenerate All"}
             </Button>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Show existing frames */}
             {frames
               .sort((a: Frame, b: Frame) => a.order_index - b.order_index)
               .map((frame: Frame, index: number) => (
@@ -219,6 +186,19 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                   data-testid={`storyboard-frame-${index}`}
                 />
               ))}
+
+            {/* Show skeleton loaders for frames still being generated */}
+            {isBackgroundGenerating &&
+              frames.length < expectedFrameCount &&
+              Array.from({ length: expectedFrameCount - frames.length }).map(
+                (_, index) => (
+                  <FrameSkeleton
+                    key={`pending-frame-${frames.length + index}`}
+                    index={frames.length + index}
+                    isGenerating={true}
+                  />
+                ),
+              )}
           </div>
 
           {generationError && (

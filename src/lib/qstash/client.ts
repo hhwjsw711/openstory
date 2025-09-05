@@ -5,10 +5,12 @@
 
 import { Client } from "@upstash/qstash";
 import { ConfigurationError, VelroError } from "@/lib/errors";
+import { getQStashWebhookUrl } from "@/lib/utils/get-base-url";
+import type { JobPayload as TypedJobPayload } from "./types";
 
 export interface QStashMessage {
   url: string;
-  body: Record<string, unknown>;
+  body: JobPayload | Record<string, unknown>;
   headers?: Record<string, string>;
   delay?: number;
   not_before?: number;
@@ -24,13 +26,8 @@ export interface QStashResponse {
   deduplicated?: boolean;
 }
 
-export interface JobPayload extends Record<string, unknown> {
-  jobId: string;
-  type: "image" | "video" | "script";
-  data: Record<string, unknown>;
-  userId?: string;
-  teamId?: string;
-}
+// Re-export typed payload for backwards compatibility
+export type JobPayload = TypedJobPayload;
 
 class QStashClient {
   private client: Client;
@@ -38,7 +35,6 @@ class QStashClient {
 
   constructor() {
     const token = process.env.QSTASH_TOKEN;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
     if (!token) {
       throw new ConfigurationError(
@@ -46,12 +42,7 @@ class QStashClient {
       );
     }
 
-    if (!apiUrl) {
-      throw new ConfigurationError(
-        "NEXT_PUBLIC_API_URL environment variable is required",
-      );
-    }
-
+    const apiUrl = getQStashWebhookUrl();
     this.client = new Client({ token });
     this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
 
@@ -176,6 +167,26 @@ class QStashClient {
   ): Promise<QStashResponse> {
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/script`,
+      body: payload,
+      delay: options?.delay,
+      deduplicationId: options?.deduplicationId ?? payload.jobId,
+      contentBasedDeduplication: false,
+      retries: 3,
+    });
+  }
+
+  /**
+   * Publish a frame generation job
+   */
+  async publishFrameGenerationJob(
+    payload: JobPayload,
+    options?: {
+      delay?: number;
+      deduplicationId?: string;
+    },
+  ): Promise<QStashResponse> {
+    return this.publishMessage({
+      url: `${this.baseWebhookUrl}/frames`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,

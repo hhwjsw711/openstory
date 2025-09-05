@@ -110,19 +110,23 @@ export const createMockJobManager = () => ({
  */
 export const createTestJobPayload = (
   overrides?: Partial<JobPayload>,
-): JobPayload => ({
-  jobId: "550e8400-e29b-41d4-a716-446655440000",
-  type: "image",
-  data: {
-    prompt: "A beautiful landscape with mountains",
-    style: "photographic",
-    width: 1024,
-    height: 1024,
-  },
-  userId: "550e8400-e29b-41d4-a716-446655440011",
-  teamId: "550e8400-e29b-41d4-a716-446655440021",
-  ...overrides,
-});
+): JobPayload => {
+  const base = {
+    jobId: "550e8400-e29b-41d4-a716-446655440000",
+    type: "image" as const,
+    data: {
+      prompt: "A beautiful landscape with mountains",
+      style: "photographic",
+      width: 1024,
+      height: 1024,
+    },
+    userId: "550e8400-e29b-41d4-a716-446655440011",
+    teamId: "550e8400-e29b-41d4-a716-446655440021",
+  };
+
+  // Type assertion to handle discriminated union
+  return { ...base, ...overrides } as JobPayload;
+};
 
 /**
  * Test job record fixtures
@@ -209,7 +213,7 @@ export const setupTestEnv = () => {
   process.env.QSTASH_CURRENT_SIGNING_KEY = "test-current-signing-key";
   process.env.QSTASH_NEXT_SIGNING_KEY = "test-next-signing-key";
   process.env.QSTASH_URL = "https://qstash.upstash.io";
-  process.env.NEXT_PUBLIC_API_URL = "https://test-api.example.com";
+  process.env.VERCEL_URL = "test-api.example.com";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test-project.supabase.co";
   process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 };
@@ -222,7 +226,7 @@ export const cleanupTestEnv = () => {
   delete process.env.QSTASH_CURRENT_SIGNING_KEY;
   delete process.env.QSTASH_NEXT_SIGNING_KEY;
   delete process.env.QSTASH_URL;
-  delete process.env.NEXT_PUBLIC_API_URL;
+  delete process.env.VERCEL_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 };

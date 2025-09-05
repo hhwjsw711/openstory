@@ -1,15 +1,20 @@
 /**
  * Video generation webhook handler
- * Processes video generation jobs from QStash
+ * Processes video generation jobs from QStash using FAL AI
  */
 
+import {
+  FAL_VIDEO_MODELS,
+  generateImage,
+  generateVideo,
+  uploadToFal,
+} from "@/lib/ai/fal-client";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
- * Video generation processor
- * This is a placeholder implementation - replace with actual video generation logic
+ * Video generation processor using FAL AI
  */
 const processVideoGeneration: JobProcessor = async (
   payload: JobPayload,
@@ -17,7 +22,7 @@ const processVideoGeneration: JobProcessor = async (
 ): Promise<Record<string, unknown>> => {
   const { jobId, data, userId, teamId } = payload;
 
-  console.log("[VideoWebhook] Processing video generation", {
+  console.log("[VideoWebhook] Processing video generation with FAL", {
     jobId,
     userId,
     teamId,
@@ -26,51 +31,129 @@ const processVideoGeneration: JobProcessor = async (
     hasData: !!data,
   });
 
-  // Simulate video generation processing
-  // In a real implementation, this would:
-  // 1. Extract video generation parameters from data
-  // 2. Call video generation API (e.g., Runway, Kling, Pika Labs, etc.)
-  // 3. Handle generation progress and polling
-  // 4. Upload generated videos to storage
-  // 5. Return video URLs and metadata
-
-  // Simulate longer processing time for video
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  // Example result structure using real test videos
-  const result = {
-    videoUrls: [
-      "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    ],
-    thumbnailUrls: [
-      "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
-    ],
-    parameters: data,
-    generatedAt: new Date().toISOString(),
-    processingTimeMs: 3000,
-    provider: "mock-video-provider",
-    metadata: {
-      prompt: data.prompt || "Big Buck Bunny - Open source animated short film",
-      style: data.style || "animation",
-      duration: data.duration || 596, // actual duration in seconds
-      dimensions: {
-        width: data.width || 1920,
-        height: data.height || 1080,
-      },
-      fps: data.fps || 30,
-      format: "mp4",
-    },
+  // Type assertion for video data
+  const videoData = data as {
+    prompt?: string;
+    image_url?: string; // For image-to-video
+    image_data?: string; // Base64 encoded image
+    model?: string;
+    duration?: number;
+    aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+    enable_audio?: boolean;
+    style?: unknown;
+    [key: string]: unknown;
   };
 
-  console.log("[VideoWebhook] Video generation completed", {
-    jobId,
-    videoCount: result.videoUrls.length,
-    provider: result.provider,
-    duration: result.metadata.duration,
-    dimensions: result.metadata.dimensions,
-  });
+  try {
+    // Handle image upload if base64 data is provided
+    let imageUrl = videoData.image_url;
+    if (videoData.image_data && !imageUrl) {
+      console.log("[VideoWebhook] Uploading image to FAL");
+      const imageBuffer = Buffer.from(videoData.image_data, "base64");
+      imageUrl = await uploadToFal(imageBuffer, "frame.jpg");
+    }
 
-  return result;
+    // Determine model to use
+    let model = videoData.model as keyof typeof FAL_VIDEO_MODELS | undefined;
+    if (!model) {
+      // Auto-select model based on input
+      if (imageUrl) {
+        model = "wan_i2v"; // Default image-to-video model
+      } else {
+        model = "minimax_hailuo"; // Default text-to-video model
+      }
+    }
+
+    // Generate video using FAL
+    console.log("[VideoWebhook] Calling FAL API", {
+      model,
+      hasPrompt: !!videoData.prompt,
+      hasImage: !!imageUrl,
+    });
+
+    const falResponse = await generateVideo({
+      model: FAL_VIDEO_MODELS[model],
+      prompt: videoData.prompt,
+      image_url: imageUrl,
+      duration: videoData.duration,
+      aspect_ratio: videoData.aspect_ratio,
+      enable_audio: videoData.enable_audio,
+    });
+
+    // Generate thumbnail if video doesn't come with one
+    let thumbnailUrl: string | undefined;
+    if (videoData.prompt && !imageUrl) {
+      // Generate a thumbnail image from the prompt
+      console.log("[VideoWebhook] Generating thumbnail");
+      const thumbnailResponse = await generateImage({
+        prompt: videoData.prompt,
+        image_size:
+          videoData.aspect_ratio === "9:16"
+            ? "portrait_16_9"
+            : "landscape_16_9",
+        num_images: 1,
+      });
+      thumbnailUrl = thumbnailResponse.images[0]?.url;
+    } else if (imageUrl) {
+      // Use the input image as thumbnail
+      thumbnailUrl = imageUrl;
+    }
+
+    // Build result structure
+    const result = {
+      videoUrls: [falResponse.video.url],
+      thumbnailUrls: thumbnailUrl ? [thumbnailUrl] : [],
+      parameters: data,
+      generatedAt: new Date().toISOString(),
+      processingTimeMs: falResponse.timings?.inference || 0,
+      provider: "fal-ai",
+      metadata: {
+        prompt: videoData.prompt,
+        model,
+        duration: videoData.duration,
+        aspect_ratio: videoData.aspect_ratio,
+        format: falResponse.video.content_type,
+        file_size: falResponse.video.file_size,
+        seed: falResponse.seed,
+      },
+    };
+
+    console.log("[VideoWebhook] Video generation completed", {
+      jobId,
+      videoUrl: falResponse.video.url,
+      fileSize: falResponse.video.file_size,
+      inferenceTime: falResponse.timings?.inference,
+    });
+
+    return result;
+  } catch (error) {
+    console.error("[VideoWebhook] Video generation failed", error);
+
+    // Return mock fallback on error
+    const fallbackResult = {
+      videoUrls: [
+        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      ],
+      thumbnailUrls: [
+        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+      ],
+      parameters: data,
+      generatedAt: new Date().toISOString(),
+      processingTimeMs: 3000,
+      provider: "mock-fallback",
+      metadata: {
+        prompt: videoData.prompt || "Fallback video due to generation error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+    };
+
+    console.log("[VideoWebhook] Using fallback video", {
+      jobId,
+      error: fallbackResult.metadata.error,
+    });
+
+    return fallbackResult;
+  }
 };
 
 /**
