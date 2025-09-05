@@ -585,16 +585,16 @@ export async function generateFramesAction(
             image_size: "landscape_16_9",
             num_images: 1,
           },
-          userId: user?.id || undefined,
-          teamId: sequence.team_id || undefined,
+          userId: user?.id,
+          teamId: sequence.team_id,
         });
 
         // Queue the image generation job
         const imagePayload = {
           jobId: imageJob.id,
           type: "image" as const,
-          userId: user?.id || undefined,
-          teamId: sequence.team_id || undefined,
+          userId: user?.id,
+          teamId: sequence.team_id,
           data: {
             frameId: frame.id,
             sequenceId: validated.sequenceId,

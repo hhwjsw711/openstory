@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   useActiveFrameGeneration,
+  useFramePreviewStatus,
   useFramesBySequence,
   useReorderFrames,
 } from "@/hooks/use-frames";
@@ -43,6 +44,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     // Refetch every 2 seconds when frames are being generated
     refetchInterval: isBackgroundGenerating ? 2000 : false,
   });
+
+  // Track preview generation status for all frames
+  const framePreviewStatus = useFramePreviewStatus(frames);
 
   const reorderFrames = useReorderFrames();
 
@@ -171,21 +175,25 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
             {/* Show existing frames */}
             {frames
               .sort((a: Frame, b: Frame) => a.order_index - b.order_index)
-              .map((frame: Frame, index: number) => (
-                <StoryboardFrame
-                  key={frame.id}
-                  frame={frame}
-                  onReorder={(frameId: string, newOrder: number) => {
-                    const currentIndex = frames.findIndex(
-                      (f: Frame) => f.id === frameId,
-                    );
-                    if (currentIndex !== -1) {
-                      handleFrameReorder(currentIndex, newOrder - 1); // Convert to 0-based index
-                    }
-                  }}
-                  data-testid={`storyboard-frame-${index}`}
-                />
-              ))}
+              .map((frame: Frame, index: number) => {
+                const previewStatus = framePreviewStatus.get(frame.id);
+                return (
+                  <StoryboardFrame
+                    key={frame.id}
+                    frame={frame}
+                    isGeneratingPreview={previewStatus?.isGenerating || false}
+                    onReorder={(frameId: string, newOrder: number) => {
+                      const currentIndex = frames.findIndex(
+                        (f: Frame) => f.id === frameId,
+                      );
+                      if (currentIndex !== -1) {
+                        handleFrameReorder(currentIndex, newOrder - 1); // Convert to 0-based index
+                      }
+                    }}
+                    data-testid={`storyboard-frame-${index}`}
+                  />
+                );
+              })}
 
             {/* Show skeleton loaders for frames still being generated */}
             {isBackgroundGenerating &&

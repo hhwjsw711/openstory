@@ -72,6 +72,7 @@ interface StoryboardFrameProps
   extends VariantProps<typeof storyboardFrameVariants> {
   frame: Frame;
   showOrder?: boolean;
+  isGeneratingPreview?: boolean;
   onSelect?: (frameId: string) => void;
   onEdit?: (frameId: string) => void;
   onDelete?: (frameId: string) => void;
@@ -84,6 +85,7 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
   disabled = false,
   dragging = false,
   showOrder = true,
+  isGeneratingPreview = false,
   onSelect: _onSelect,
   onEdit,
   onDelete,
@@ -140,7 +142,16 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
             height={1080}
           />
         ) : (
-          <div className={cn(emptyFrameVariants())}>No preview available</div>
+          <div className={cn(emptyFrameVariants())}>
+            {isGeneratingPreview ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                <span className="text-xs">Generating preview...</span>
+              </div>
+            ) : (
+              "No preview available"
+            )}
+          </div>
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type {
   CreateFrameInput,
   GenerateFramesInput,
@@ -455,4 +456,50 @@ export function useActiveFrameGeneration(sequenceId: string) {
       return 2000;
     },
   });
+}
+
+// Hook to track preview image generation status for frames
+export function useFramePreviewStatus(frames: Frame[]) {
+  // Get frames that might be generating previews (no thumbnail_url but were recently created)
+  const framesNeedingPreviews = useMemo(() => {
+    return frames.filter((frame) => {
+      if (frame.thumbnail_url) return false; // Already has preview
+
+      // Check if frame was created recently (within last 10 minutes)
+      const createdAt = new Date(frame.created_at).getTime();
+      const now = Date.now();
+      const tenMinutesAgo = now - 10 * 60 * 1000;
+
+      return createdAt > tenMinutesAgo;
+    });
+  }, [frames]);
+
+  // Auto-refresh frames list when there are frames potentially generating previews
+  const { data: refreshedFrames = frames } = useFramesBySequence(
+    frames.length > 0 ? frames[0].sequence_id : "",
+    {
+      refetchInterval: framesNeedingPreviews.length > 0 ? 3000 : false,
+    },
+  );
+
+  // Return status map for each frame
+  return useMemo(() => {
+    const statusMap = new Map<
+      string,
+      { isGenerating: boolean; hasPreview: boolean }
+    >();
+
+    refreshedFrames.forEach((frame) => {
+      const hasPreview = !!frame.thumbnail_url;
+      const isGenerating =
+        framesNeedingPreviews.some((f) => f.id === frame.id) && !hasPreview;
+
+      statusMap.set(frame.id, {
+        isGenerating,
+        hasPreview,
+      });
+    });
+
+    return statusMap;
+  }, [refreshedFrames, framesNeedingPreviews]);
 }
