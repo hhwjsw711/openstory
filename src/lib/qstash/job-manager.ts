@@ -25,6 +25,7 @@ export const JobType = {
   VIDEO: "video",
   SCRIPT: "script",
   FRAME_GENERATION: "frame_generation",
+  MOTION: "motion",
 } as const;
 
 export type JobTypeType = (typeof JobType)[keyof typeof JobType];
@@ -35,7 +36,8 @@ export const createJobSchema = z.object({
     .literal("image")
     .or(z.literal("video"))
     .or(z.literal("script"))
-    .or(z.literal("frame_generation")),
+    .or(z.literal("frame_generation"))
+    .or(z.literal("motion")),
   payload: z.record(z.string(), z.unknown()),
   userId: z.uuid().optional(),
   teamId: z.uuid().optional(),
@@ -89,13 +91,6 @@ class JobManager {
    */
   async createJob(params: CreateJobParams): Promise<Job> {
     try {
-      console.log("[JobManager] Creating job", {
-        type: params.type,
-        hasPayload: !!params.payload,
-        userId: params.userId,
-        teamId: params.teamId,
-      });
-
       // Validate input
       const validatedParams = createJobSchema.parse(params);
 
@@ -122,12 +117,6 @@ class JobManager {
           code: error.code,
         });
       }
-
-      console.log("[JobManager] Job created successfully", {
-        jobId: data.id,
-        type: data.type,
-        status: data.status,
-      });
 
       // Log the creation event
       await this.logJobEvent(data.id, "job.created", {
@@ -164,8 +153,6 @@ class JobManager {
     includeEvents = false,
   ): Promise<JobWithEvents | null> {
     try {
-      console.log("[JobManager] Getting job", { jobId, includeEvents });
-
       const { data, error } = await this.supabase
         .from("jobs")
         .select("*")
@@ -194,12 +181,6 @@ class JobManager {
         jobWithEvents.events = [];
       }
 
-      console.log("[JobManager] Job retrieved successfully", {
-        jobId: data.id,
-        status: data.status,
-        hasEvents: includeEvents,
-      });
-
       return jobWithEvents;
     } catch (error) {
       console.error("[JobManager] Error getting job", { error, jobId });
@@ -220,13 +201,6 @@ class JobManager {
    */
   async updateJob(jobId: string, updates: UpdateJobParams): Promise<Job> {
     try {
-      console.log("[JobManager] Updating job", {
-        jobId,
-        status: updates.status,
-        hasResult: !!updates.result,
-        hasError: !!updates.error,
-      });
-
       // Validate input
       const validatedUpdates = updateJobSchema.parse(updates);
 
@@ -267,12 +241,6 @@ class JobManager {
         });
       }
 
-      console.log("[JobManager] Job updated successfully", {
-        jobId: data.id,
-        status: data.status,
-        updatedAt: data.updated_at,
-      });
-
       // Log the status change event
       await this.logJobEvent(jobId, `job.status.${updates.status}`, {
         previousStatus: data.status, // Note: this might not be accurate due to race conditions
@@ -307,8 +275,6 @@ class JobManager {
    * Cancel a job (mark as cancelled)
    */
   async cancelJob(jobId: string): Promise<Job> {
-    console.log("[JobManager] Cancelling job", { jobId });
-
     return this.updateJob(jobId, {
       status: JobStatus.CANCELLED,
       completedAt: new Date().toISOString(),
@@ -319,8 +285,6 @@ class JobManager {
    * Mark job as started
    */
   async startJob(jobId: string): Promise<Job> {
-    console.log("[JobManager] Starting job", { jobId });
-
     return this.updateJob(jobId, {
       status: JobStatus.RUNNING,
       startedAt: new Date().toISOString(),
@@ -334,8 +298,6 @@ class JobManager {
     jobId: string,
     result: Record<string, unknown>,
   ): Promise<Job> {
-    console.log("[JobManager] Completing job", { jobId, hasResult: !!result });
-
     return this.updateJob(jobId, {
       status: JobStatus.COMPLETED,
       result,
@@ -347,8 +309,6 @@ class JobManager {
    * Mark job as failed with error
    */
   async failJob(jobId: string, error: string): Promise<Job> {
-    console.log("[JobManager] Failing job", { jobId, error });
-
     return this.updateJob(jobId, {
       status: JobStatus.FAILED,
       error,
@@ -369,11 +329,6 @@ class JobManager {
     },
   ): Promise<Job[]> {
     try {
-      console.log("[JobManager] Getting jobs by status", {
-        status,
-        ...options,
-      });
-
       let query = this.supabase
         .from("jobs")
         .select("*")
@@ -413,11 +368,6 @@ class JobManager {
         });
       }
 
-      console.log("[JobManager] Jobs retrieved successfully", {
-        status,
-        count: data.length,
-      });
-
       return data;
     } catch (error) {
       console.error("[JobManager] Error getting jobs by status", {
@@ -446,28 +396,11 @@ class JobManager {
    * Log a job event (placeholder for when job_events table is available)
    */
   private async logJobEvent(
-    jobId: string,
-    event: string,
-    data?: Record<string, unknown>,
+    _event: string,
+    _jobId: string,
+    _data?: Record<string, unknown>,
   ): Promise<void> {
-    try {
-      console.log("[JobManager] Logging job event", {
-        jobId,
-        event,
-        hasData: !!data,
-      });
-
-      // TODO: Implement job events logging once job_events table is available
-      // For now, we just log to console
-      console.log(`[Job Event] ${jobId}: ${event}`, data);
-    } catch (error) {
-      // Don't throw errors for event logging failures
-      console.error("[JobManager] Failed to log job event", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        jobId,
-        event,
-      });
-    }
+    // TODO: Implement job event logging once job_events table is available
   }
 }
 

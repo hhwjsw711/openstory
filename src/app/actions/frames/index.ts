@@ -7,6 +7,14 @@ import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
+// Helper function to revalidate all sequence-related pages
+function revalidateSequencePages(sequenceId: string): void {
+  revalidatePath(`/sequences/${sequenceId}`);
+  revalidatePath(`/sequences/${sequenceId}/script`);
+  revalidatePath(`/sequences/${sequenceId}/storyboard`);
+  revalidatePath(`/sequences/${sequenceId}/motion`);
+}
+
 // Schema definitions
 const createFrameSchema = z.object({
   sequence_id: z.string().uuid(),
@@ -51,11 +59,20 @@ const regenerateFrameSchema = z.object({
   regenerateThumbnail: z.boolean().optional(),
 });
 
+const generateMotionSchema = z.object({
+  frameId: z.string().uuid(),
+  model: z.enum(["svd-lcm", "stable-video", "animatediff"]).optional(),
+  duration: z.number().min(1).max(10).optional(),
+  fps: z.number().min(7).max(30).optional(),
+  motionBucket: z.number().min(1).max(255).optional(),
+});
+
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
 export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
 export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
 export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
+export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
 
 /**
  * Create a new frame for a sequence
@@ -87,7 +104,7 @@ export async function createFrame(
       throw new Error(error.message);
     }
 
-    revalidatePath(`/sequences/${validated.sequence_id}`);
+    revalidateSequencePages(validated.sequence_id);
     return {
       success: true,
       frame: data,
@@ -146,7 +163,7 @@ export async function updateFrame(
 
     // Get sequence_id to revalidate the correct path
     if (data?.sequence_id) {
-      revalidatePath(`/sequences/${data.sequence_id}`);
+      revalidateSequencePages(data.sequence_id);
     }
 
     return {
@@ -190,7 +207,7 @@ export async function deleteFrame(
 
     // Revalidate the sequence page if we found the sequence_id
     if (frame?.sequence_id) {
-      revalidatePath(`/sequences/${frame.sequence_id}`);
+      revalidateSequencePages(frame.sequence_id);
     }
 
     return {
@@ -295,7 +312,7 @@ export async function reorderFrames(
       throw new Error("Failed to reorder some frames");
     }
 
-    revalidatePath(`/sequences/${sequenceId}`);
+    revalidateSequencePages(sequenceId);
     return {
       success: true,
     };
@@ -338,7 +355,7 @@ export async function bulkCreateFrames(
       throw new Error(error.message);
     }
 
-    revalidatePath(`/sequences/${sequenceId}`);
+    revalidateSequencePages(sequenceId);
     return {
       success: true,
       frames: data,
@@ -371,7 +388,7 @@ export async function deleteFramesBySequence(
       throw new Error(error.message);
     }
 
-    revalidatePath(`/sequences/${sequenceId}`);
+    revalidateSequencePages(sequenceId);
     return {
       success: true,
     };
@@ -398,8 +415,9 @@ export async function generateFramesAction(
   error?: string;
   frameCount?: number;
 }> {
+  const validated = generateFramesSchema.parse(input);
+
   try {
-    const validated = generateFramesSchema.parse(input);
     const supabase = createServerClient();
 
     // Get the current user
@@ -442,6 +460,29 @@ export async function generateFramesAction(
       }
     }
 
+    // Set sequence status to processing and store generation metadata
+    const generationMetadata = {
+      frameGeneration: {
+        status: "processing",
+        startedAt: new Date().toISOString(),
+        expectedFrameCount: null, // Will be updated after script analysis
+        completedFrameCount: 0,
+        options: validated.options,
+      },
+    };
+
+    await supabase
+      .from("sequences")
+      .update({
+        status: "processing",
+        metadata: {
+          ...((sequence.metadata as Record<string, unknown>) || {}),
+          ...generationMetadata,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validated.sequenceId);
+
     // Import AI services dynamically to avoid circular dependencies
     const { analyzeScriptForFrames } = await import("@/lib/ai/script-analyzer");
     const { generateFrameDescriptions } = await import(
@@ -471,10 +512,8 @@ export async function generateFramesAction(
 
     // This just takes the analysis and structures it into frames
     const frameDescriptions = await generateFrameDescriptions({
-      script: sequence.script,
       scriptAnalysis,
       styleStack: styleStack as Json | undefined,
-      framesPerScene: validated.options?.framesPerScene ?? 5,
       aiProvider: validated.options?.aiProvider,
     });
 
@@ -638,15 +677,33 @@ export async function generateFramesAction(
       }
     }
 
-    // Update sequence metadata with frame generation info
+    // Update sequence status and metadata - frames are created, images may still be generating
     const { data: currentSequence } = await supabase
       .from("sequences")
-      .select("metadata")
+      .select("metadata, status")
       .eq("id", validated.sequenceId)
       .single();
 
-    const updatedMetadata = {
+    const finalMetadata = {
       ...((currentSequence?.metadata as Record<string, unknown>) || {}),
+      frameGeneration: {
+        status:
+          validated.options?.generateThumbnails !== false
+            ? "generating_thumbnails"
+            : "completed",
+        startedAt:
+          ((
+            (currentSequence?.metadata as Record<string, unknown>)
+              ?.frameGeneration as Record<string, unknown>
+          )?.startedAt as string) || new Date().toISOString(),
+        completedAt:
+          validated.options?.generateThumbnails !== false
+            ? null
+            : new Date().toISOString(),
+        expectedFrameCount: insertedFrames?.length || 0,
+        completedFrameCount: insertedFrames?.length || 0,
+        thumbnailsGenerating: validated.options?.generateThumbnails !== false,
+      },
       lastFrameGeneration: {
         generatedAt: new Date().toISOString(),
         frameCount: insertedFrames?.length || 0,
@@ -654,18 +711,24 @@ export async function generateFramesAction(
       },
     };
 
+    // Set status to draft if thumbnails are still generating, completed if not
+    const newStatus =
+      validated.options?.generateThumbnails !== false ? "draft" : "completed";
+
     await supabase
       .from("sequences")
       .update({
-        metadata: updatedMetadata as Json,
+        status: newStatus,
+        metadata: finalMetadata as Json,
         updated_at: new Date().toISOString(),
       })
       .eq("id", validated.sequenceId);
 
-    revalidatePath(`/sequences/${validated.sequenceId}`);
+    revalidateSequencePages(validated.sequenceId);
 
     return {
       success: true,
+      jobId: `frames-${validated.sequenceId}-${Date.now()}`, // Add a jobId for tracking
       message: `${insertedFrames?.length || 0} frames created successfully. ${
         validated.options?.generateThumbnails !== false
           ? "Image generation is in progress."
@@ -675,6 +738,42 @@ export async function generateFramesAction(
     };
   } catch (error) {
     console.error("Error generating frames:", error);
+
+    // Try to reset the sequence status on error
+    try {
+      const supabase = createServerClient();
+      const { data: currentMeta } = await supabase
+        .from("sequences")
+        .select("metadata")
+        .eq("id", validated.sequenceId)
+        .single();
+
+      const updatedMetadata = {
+        ...((currentMeta?.metadata as Record<string, unknown>) || {}),
+        frameGeneration: {
+          status: "failed",
+          failedAt: new Date().toISOString(),
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      };
+
+      await supabase
+        .from("sequences")
+        .update({
+          status: "draft",
+          metadata: updatedMetadata as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", validated.sequenceId);
+
+      revalidateSequencePages(validated.sequenceId);
+    } catch (updateError) {
+      console.error(
+        "Failed to update sequence status after error:",
+        updateError,
+      );
+    }
+
     return {
       success: false,
       error:
@@ -754,7 +853,7 @@ export async function regenerateFrameAction(
       })
       .eq("id", validated.frameId);
 
-    revalidatePath(`/sequences/${frame.sequence_id}`);
+    revalidateSequencePages(frame.sequence_id);
 
     return {
       success: true,
@@ -866,6 +965,136 @@ export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
       success: false,
       error:
         error instanceof Error ? error.message : "Failed to get active job",
+    };
+  }
+}
+
+/**
+ * Generate motion (video) for a frame from its thumbnail
+ */
+export async function generateMotionAction(
+  input: GenerateMotionInput,
+): Promise<{
+  success: boolean;
+  jobId?: string;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const validated = generateMotionSchema.parse(input);
+    const supabase = createServerClient();
+
+    // Get the frame with sequence info
+    const { data: frame, error: frameError } = await supabase
+      .from("frames")
+      .select("*, sequences!inner(id, team_id, script, style_id, styles(*))")
+      .eq("id", validated.frameId)
+      .single();
+
+    if (frameError || !frame) {
+      throw new Error("Frame not found");
+    }
+
+    // Validate frame has thumbnail
+    if (!frame.thumbnail_url) {
+      throw new Error("Frame must have a thumbnail before generating motion");
+    }
+
+    // Get the current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Verify user has access (through team membership)
+    if (user) {
+      const { data: member } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", frame.sequences.team_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) {
+        throw new Error(
+          "You don't have permission to generate motion for this frame",
+        );
+      }
+    }
+
+    // Create a job for motion generation
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "motion",
+      payload: {
+        frameId: validated.frameId,
+        sequenceId: frame.sequence_id,
+        thumbnailUrl: frame.thumbnail_url,
+        prompt: frame.description,
+        model: validated.model,
+        duration: validated.duration,
+        fps: validated.fps,
+        motionBucket: validated.motionBucket,
+      },
+      userId: user?.id,
+      teamId: frame.sequences.team_id,
+    });
+
+    // Queue the motion generation job
+    const qstashClient = getQStashClient();
+    const motionPayload = {
+      jobId: job.id,
+      type: "motion" as const,
+      userId: user?.id,
+      teamId: frame.sequences.team_id,
+      data: {
+        frameId: validated.frameId,
+        sequenceId: frame.sequence_id,
+        thumbnailUrl: frame.thumbnail_url,
+        prompt: frame.description || undefined,
+        model: validated.model || "svd-lcm", // Default to fast model
+        duration: validated.duration || 2,
+        fps: validated.fps || 7,
+        motionBucket: validated.motionBucket || 127,
+      },
+    };
+
+    const response = await qstashClient.publishMotionJob(motionPayload, {
+      delay: 0, // Process immediately
+    });
+
+    console.log("[generateMotionAction] Motion job queued", {
+      frameId: validated.frameId,
+      jobId: job.id,
+      messageId: response.messageId,
+    });
+
+    // Update frame metadata with motion generation status
+    await supabase
+      .from("frames")
+      .update({
+        metadata: {
+          ...(frame.metadata as Record<string, unknown>),
+          motionJobId: job.id,
+          motionStatus: "generating",
+          motionModel: validated.model || "svd-lcm",
+        } as Json,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validated.frameId);
+
+    revalidateSequencePages(frame.sequence_id);
+
+    return {
+      success: true,
+      jobId: job.id,
+      message: "Motion generation started successfully",
+    };
+  } catch (error) {
+    console.error("Error generating motion:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to generate motion",
     };
   }
 }
