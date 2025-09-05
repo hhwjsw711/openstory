@@ -420,8 +420,11 @@ export function useActiveFrameGeneration(sequenceId: string) {
       const result = await getActiveFrameGenerationJob(sequenceId);
 
       if (result.success && result.job) {
-        // If frames are being generated, invalidate the frames list to show updates
-        if (result.job.status === "running") {
+        // Invalidate frames list when job is running or has just completed
+        if (
+          result.job.status === "running" ||
+          result.job.status === "completed"
+        ) {
           queryClient.invalidateQueries({
             queryKey: frameKeys.list(sequenceId),
           });
@@ -440,6 +443,12 @@ export function useActiveFrameGeneration(sequenceId: string) {
         query.state.data.status === "completed" ||
         query.state.data.status === "failed"
       ) {
+        // One final invalidation when job completes
+        if (query.state.data?.status === "completed") {
+          queryClient.invalidateQueries({
+            queryKey: frameKeys.list(sequenceId),
+          });
+        }
         return false;
       }
       // Poll every 2 seconds while job is active

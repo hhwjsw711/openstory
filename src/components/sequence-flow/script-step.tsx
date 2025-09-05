@@ -173,7 +173,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
   // Handle save and generate
   const handleSaveAndGenerate = useCallback(async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      console.error("Script validation failed");
+      return;
+    }
 
     try {
       let savedSequenceId: string;

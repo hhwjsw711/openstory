@@ -1,5 +1,5 @@
 "use client";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { use } from "react";
 import { PageContainer } from "@/components/layout";
 import { ScriptStep } from "@/components/sequence-flow/script-step";
@@ -19,12 +19,14 @@ export default function ScriptPage({
   }>;
 }) {
   const { id: sequenceId } = use(params);
+
+  const router = useRouter();
   // Verify session
   useUser();
 
   const handleSuccess = (updatedSequenceId: string) => {
     // Navigate to storyboard page after successful generation
-    redirect(`/sequences/${updatedSequenceId}/storyboard`);
+    router.push(`/sequences/${updatedSequenceId}/storyboard`);
   };
 
   return (
