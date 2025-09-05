@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
-import type { FrameGenerationPayload } from "@/lib/qstash/types";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Frame, FrameInsert, FrameUpdate, Json } from "@/types/database";
 
@@ -387,6 +386,8 @@ export async function deleteFramesBySequence(
 
 /**
  * Generate frames for a sequence using AI
+ * Phase 1: Quick frame creation (synchronous)
+ * Phase 2: Async image generation (queued jobs)
  */
 export async function generateFramesAction(
   input: GenerateFramesInput,
@@ -395,6 +396,7 @@ export async function generateFramesAction(
   jobId?: string;
   message?: string;
   error?: string;
+  frameCount?: number;
 }> {
   try {
     const validated = generateFramesSchema.parse(input);
@@ -440,48 +442,235 @@ export async function generateFramesAction(
       }
     }
 
-    // Create a job record with just the sequenceId
-    const jobManager = getJobManager();
-    const job = await jobManager.createJob({
-      type: "frame_generation",
-      payload: {
-        sequenceId: validated.sequenceId,
-        options: validated.options,
-      },
-      userId: user?.id,
-      teamId: sequence.team_id,
+    // Import AI services dynamically to avoid circular dependencies
+    const { analyzeScriptForFrames } = await import("@/lib/ai/script-analyzer");
+    const { generateFrameDescriptions } = await import(
+      "@/lib/ai/frame-generator"
+    );
+
+    // PHASE 1: Quick frame creation (synchronous)
+    console.log(
+      "[generateFramesAction] Phase 1: Analyzing script and creating frames",
+    );
+
+    // Step 1: Analyze script to determine frame boundaries
+    const scriptAnalysis = await analyzeScriptForFrames(
+      sequence.script,
+      validated.options?.aiProvider,
+    );
+
+    if (!scriptAnalysis?.scenes || scriptAnalysis.scenes.length === 0) {
+      throw new Error("Failed to analyze script or no scenes found");
+    }
+
+    // Step 2: Generate frame descriptions for each scene
+    const styleStack =
+      sequence.styles && typeof sequence.styles === "object"
+        ? (sequence.styles as { metadata?: unknown }).metadata
+        : undefined;
+
+    const frameDescriptions = await generateFrameDescriptions({
+      script: sequence.script,
+      scriptAnalysis,
+      styleStack: styleStack as Json | undefined,
+      framesPerScene: validated.options?.framesPerScene ?? 5,
+      aiProvider: validated.options?.aiProvider,
     });
 
-    // Prepare the QStash payload with minimal data
-    // userId and teamId are already stored in the job record for security
-    const payload: FrameGenerationPayload = {
-      jobId: job.id,
-      type: "frame_generation",
-      data: {
-        sequenceId: validated.sequenceId,
-        options: validated.options,
-      },
-    };
+    if (!frameDescriptions?.frames || frameDescriptions.frames.length === 0) {
+      throw new Error("Failed to generate frame descriptions");
+    }
 
-    // Queue the frame generation job
-    const qstashClient = getQStashClient();
-    const qstashResponse =
-      await qstashClient.publishFrameGenerationJob(payload);
+    // Step 3: Handle existing frames
+    const regenerateAll = validated.options?.regenerateAll !== false; // Default to true
 
-    console.log("[generateFramesAction] Job queued", {
-      jobId: job.id,
-      messageId: qstashResponse.messageId,
+    if (regenerateAll) {
+      // Delete ALL existing frames for this sequence
+      const { error: deleteError } = await supabase
+        .from("frames")
+        .delete()
+        .eq("sequence_id", validated.sequenceId);
+
+      if (deleteError) {
+        console.warn(
+          "[generateFramesAction] Failed to delete existing frames:",
+          deleteError,
+        );
+      }
+    }
+
+    // Step 4: Insert the generated frames
+    const framesToInsert: FrameInsert[] = frameDescriptions.frames.map(
+      (frame) => ({
+        sequence_id: validated.sequenceId,
+        description: frame.description,
+        order_index: frame.orderIndex,
+        duration_ms: frame.durationMs,
+        metadata: {
+          ...frame.metadata,
+          generatedAt: new Date().toISOString(),
+          aiProvider: validated.options?.aiProvider || "openai",
+        } as Json,
+      }),
+    );
+
+    let insertedFrames: Array<Frame> | null = null;
+    const { data: insertedFramesResult, error: insertError } = await supabase
+      .from("frames")
+      .insert(framesToInsert)
+      .select();
+
+    if (insertError) {
+      // If we get a unique constraint violation, try upsert instead
+      if (
+        insertError.code === "23505" ||
+        insertError.message.includes("duplicate key")
+      ) {
+        console.log("[generateFramesAction] Conflict detected, using upsert");
+
+        const { data: upsertedFrames, error: upsertError } = await supabase
+          .from("frames")
+          .upsert(framesToInsert, {
+            onConflict: "sequence_id,order_index",
+            ignoreDuplicates: false,
+          })
+          .select();
+
+        if (upsertError) {
+          throw new Error(`Failed to upsert frames: ${upsertError.message}`);
+        }
+
+        insertedFrames = upsertedFrames;
+      } else {
+        throw new Error(`Failed to insert frames: ${insertError.message}`);
+      }
+    } else {
+      insertedFrames = insertedFramesResult;
+    }
+
+    console.log("[generateFramesAction] Frames created successfully", {
+      count: insertedFrames?.length,
       sequenceId: validated.sequenceId,
     });
 
-    // Don't create placeholder frames here - let the webhook handle everything
+    // PHASE 2: Queue individual image generation jobs
+    if (
+      validated.options?.generateThumbnails !== false &&
+      insertedFrames &&
+      insertedFrames.length > 0
+    ) {
+      console.log(
+        "[generateFramesAction] Phase 2: Queueing image generation for frames",
+      );
+
+      const jobManager = getJobManager();
+      const qstashClient = getQStashClient();
+      const imageGenerationPromises = [];
+
+      for (const frame of insertedFrames) {
+        // Skip frames without descriptions
+        if (!frame.description) {
+          continue;
+        }
+
+        // Create an image generation job for each frame
+        const imageJob = await jobManager.createJob({
+          type: "image",
+          payload: {
+            frameId: frame.id,
+            sequenceId: validated.sequenceId,
+            prompt: frame.description,
+            model: "flux_schnell", // Use fast model for thumbnails
+            image_size: "landscape_16_9",
+            num_images: 1,
+          },
+          userId: user?.id || undefined,
+          teamId: sequence.team_id || undefined,
+        });
+
+        // Queue the image generation job
+        const imagePayload = {
+          jobId: imageJob.id,
+          type: "image" as const,
+          userId: user?.id || undefined,
+          teamId: sequence.team_id || undefined,
+          data: {
+            frameId: frame.id,
+            sequenceId: validated.sequenceId,
+            prompt: frame.description,
+            model: "flux_schnell",
+            image_size: "landscape_16_9" as const,
+            num_images: 1,
+            // Add style information if available
+            style: styleStack as Json | undefined,
+          },
+        };
+
+        imageGenerationPromises.push(
+          qstashClient
+            .publishImageJob(imagePayload, {
+              delay: 0, // Process immediately
+            })
+            .then((response) => {
+              console.log("[generateFramesAction] Image job queued", {
+                frameId: frame.id,
+                imageJobId: imageJob.id,
+                messageId: response.messageId,
+              });
+              return { frameId: frame.id, imageJobId: imageJob.id };
+            }),
+        );
+      }
+
+      // Wait for all image jobs to be queued
+      try {
+        await Promise.all(imageGenerationPromises);
+        console.log("[generateFramesAction] All image generation jobs queued", {
+          count: imageGenerationPromises.length,
+        });
+      } catch (error) {
+        console.error(
+          "[generateFramesAction] Failed to queue some image jobs",
+          error,
+        );
+        // Don't fail the entire operation if image queueing fails
+      }
+    }
+
+    // Update sequence metadata with frame generation info
+    const { data: currentSequence } = await supabase
+      .from("sequences")
+      .select("metadata")
+      .eq("id", validated.sequenceId)
+      .single();
+
+    const updatedMetadata = {
+      ...((currentSequence?.metadata as Record<string, unknown>) || {}),
+      lastFrameGeneration: {
+        generatedAt: new Date().toISOString(),
+        frameCount: insertedFrames?.length || 0,
+        totalDuration: frameDescriptions.totalDuration,
+      },
+    };
+
+    await supabase
+      .from("sequences")
+      .update({
+        metadata: updatedMetadata as Json,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validated.sequenceId);
 
     revalidatePath(`/sequences/${validated.sequenceId}`);
 
     return {
       success: true,
-      jobId: job.id,
-      message: "Frame generation started. This may take a few minutes.",
+      message: `${insertedFrames?.length || 0} frames created successfully. ${
+        validated.options?.generateThumbnails !== false
+          ? "Image generation is in progress."
+          : ""
+      }`,
+      frameCount: insertedFrames?.length || 0,
     };
   } catch (error) {
     console.error("Error generating frames:", error);

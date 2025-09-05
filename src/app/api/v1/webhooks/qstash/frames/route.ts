@@ -1,5 +1,10 @@
 /**
  * QStash webhook handler for frame generation jobs
+ *
+ * NOTE: This webhook is now primarily used for legacy compatibility
+ * and special frame regeneration cases. The main frame generation
+ * flow now happens synchronously in generateFramesAction with only
+ * image generation being async.
  */
 
 import { generateFrameDescriptions } from "@/lib/ai/frame-generator";
