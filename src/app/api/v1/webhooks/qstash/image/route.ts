@@ -94,6 +94,63 @@ const processImageGeneration: JobProcessor = async (
           frameId: imageData.frameId,
           error: updateError.message,
         });
+        return result;
+      }
+
+      const { data: frameData } = await supabase
+        .from("frames")
+        .select("sequence_id")
+        .eq("id", imageData.frameId)
+        .single();
+
+      if (frameData?.sequence_id) {
+        // Check if all frames for this sequence now have thumbnails
+        const { data: allFrames } = await supabase
+          .from("frames")
+          .select("id, thumbnail_url")
+          .eq("sequence_id", frameData.sequence_id);
+
+        if (allFrames) {
+          const framesWithThumbnails = allFrames.filter(
+            (frame) => frame.thumbnail_url,
+          );
+          const allFramesHaveThumbnails =
+            framesWithThumbnails.length === allFrames.length;
+
+          if (allFramesHaveThumbnails && allFrames.length > 0) {
+            const { data: sequence } = await supabase
+              .from("sequences")
+              .select("metadata")
+              .eq("id", frameData.sequence_id)
+              .single();
+
+            if (sequence) {
+              const existingMetadata =
+                (sequence.metadata as Record<string, unknown>) || {};
+              const frameGeneration =
+                (existingMetadata.frameGeneration as Record<string, unknown>) ||
+                {};
+
+              const updatedMetadata = {
+                ...existingMetadata,
+                frameGeneration: {
+                  ...frameGeneration,
+                  status: "completed",
+                  completedAt: new Date().toISOString(),
+                  thumbnailsGenerating: false,
+                },
+              };
+
+              await supabase
+                .from("sequences")
+                .update({
+                  metadata: updatedMetadata,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", frameData.sequence_id);
+            }
+          }
+        }
       }
     }
 
