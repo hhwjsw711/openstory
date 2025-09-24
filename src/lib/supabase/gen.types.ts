@@ -194,6 +194,76 @@ export type Database = {
           },
         ];
       };
+      fal_requests: {
+        Row: {
+          cost_credits: number | null;
+          created_at: string;
+          error: string | null;
+          id: string;
+          job_id: string | null;
+          latency_ms: number | null;
+          model: string;
+          request_payload: Json;
+          response_data: Json | null;
+          status: Database["public"]["Enums"]["fal_request_status"];
+          team_id: string | null;
+          updated_at: string;
+          user_id: string | null;
+        };
+        Insert: {
+          cost_credits?: number | null;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          job_id?: string | null;
+          latency_ms?: number | null;
+          model: string;
+          request_payload?: Json;
+          response_data?: Json | null;
+          status?: Database["public"]["Enums"]["fal_request_status"];
+          team_id?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          cost_credits?: number | null;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          job_id?: string | null;
+          latency_ms?: number | null;
+          model?: string;
+          request_payload?: Json;
+          response_data?: Json | null;
+          status?: Database["public"]["Enums"]["fal_request_status"];
+          team_id?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fal_requests_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fal_requests_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fal_requests_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       frames: {
         Row: {
           created_at: string;
@@ -746,6 +816,7 @@ export type Database = {
       };
     };
     Enums: {
+      fal_request_status: "pending" | "completed" | "failed";
       sequence_status:
         | "draft"
         | "processing"
@@ -891,6 +962,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      fal_request_status: ["pending", "completed", "failed"],
       sequence_status: [
         "draft",
         "processing",

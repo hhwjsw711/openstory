@@ -60,21 +60,26 @@ const processImageGeneration: JobProcessor = async (
 
     // Build result structure
     const result = {
-      imageUrls: falResponse.images.map((img) => img.url),
+      imageUrls: falResponse.data?.images.map((img) => img.url) || [],
       parameters: data,
       generatedAt: new Date().toISOString(),
-      processingTimeMs: falResponse.timings?.inference || 0,
+      processingTimeMs:
+        falResponse.data?.timings?.inference || falResponse.latencyMs || 0,
       provider: "fal-ai",
       metadata: {
         prompt: imageData.prompt,
         model,
-        dimensions: falResponse.images.map((img) => ({
-          width: img.width,
-          height: img.height,
-        })),
-        file_sizes: falResponse.images.map((img) => img.file_size || 0),
-        seed: falResponse.seed,
-        has_nsfw_concepts: falResponse.has_nsfw_concepts,
+        dimensions:
+          falResponse.data?.images.map((img) => ({
+            width: img.width,
+            height: img.height,
+          })) || [],
+        file_sizes:
+          falResponse.data?.images.map((img) => img.file_size || 0) || [],
+        seed: falResponse.data?.seed,
+        has_nsfw_concepts: falResponse.data?.has_nsfw_concepts,
+        cost: falResponse.cost,
+        requestId: falResponse.requestId,
       },
     };
 
