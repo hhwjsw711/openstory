@@ -1,0 +1,10 @@
+reviews:
+  auto_review: true              # run on every new PR / new commit
+  review_drafts: true            # also review draft PRs (optional)
+  review_simple_changes: true    # don't smart-skip tiny/trivial PRs
+  path_includes: ["**"]          # review anything that changes
+  path_excludes: []              # make sure nothing is silently excluded
+
+comments:
+  enable_review_summary: true
+  include_code_suggestions: true
