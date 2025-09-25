@@ -43,8 +43,6 @@ export const falRequestInsertSchema = falRequestSchema
     cost_credits: true,
     latency_ms: true,
     error: true,
-    cache_key: true,
-    cached_until: true,
   });
 
 // Update schema (for updating existing records)

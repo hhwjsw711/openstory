@@ -3,7 +3,7 @@ import type { FalImageModel, FalVideoModel } from "@/lib/ai/models";
 import { FAL_IMAGE_MODELS, FAL_VIDEO_MODELS } from "@/lib/ai/models";
 import { VelroError, withRetry } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database";
+import type { Json } from "@/lib/types/database";
 
 // Request/Response types
 export interface FalServiceRequest {
@@ -286,10 +286,8 @@ export class FalService {
           delayMs: 1000,
           backoffMultiplier: 2,
           shouldRetry: (error) => {
-            // Don't retry on client errors (4xx)
-            if (error instanceof Error && error.message.includes("4")) {
-              return false;
-            }
+            const status = this.extractStatusCode(error);
+            if (status && status >= 400 && status < 500) return false; // don't retry on 4xx
             return true;
           },
         },
@@ -340,6 +338,15 @@ export class FalService {
     }
   }
 
+  private extractStatusCode(error: unknown): number | undefined {
+    const e = error as {
+      status?: number;
+      response?: { status?: number };
+      cause?: { status?: number };
+    };
+    return e?.status ?? e?.response?.status ?? e?.cause?.status;
+  }
+
   /**
    * Make the actual API request to Fal.ai using the official client
    */
@@ -368,7 +375,7 @@ export class FalService {
 
       return result;
     } catch (error) {
-      // Re-throw with more context
+      // Re-throw with more context while preserving status for retry logic
       throw new Error(
         `FAL API request failed: ${error instanceof Error ? error.message : String(error)}`,
       );
