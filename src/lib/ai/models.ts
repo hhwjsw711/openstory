@@ -33,6 +33,10 @@ export const FAL_IMAGE_MODELS = {
   flux_schnell: "fal-ai/flux/schnell",
   sdxl: "fal-ai/fast-sdxl",
   sdxl_lightning: "fal-ai/fast-lightning-sdxl",
+  flux_pro_kontext_max: "fal-ai/flux-pro/kontext/max", // https://fal.ai/models/fal-ai/flux-pro/kontext/max/api#api-call-install
+  imagen4_preview_ultra: "fal-ai/imagen4/preview/ultra", // https://fal.ai/models/fal-ai/imagen4/preview/ultra/api#api-call-install
+  flux_pro_v1_1_ultra: "fal-ai/flux-pro/v1.1-ultra", // https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api#api-call-install
+  flux_krea_lora: "fal-ai/flux-krea-lora", // https://fal.ai/models/fal-ai/flux-krea-lora/api#api-call-install
 } as const;
 
 export type FalVideoModel =

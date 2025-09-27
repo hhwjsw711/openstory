@@ -7,12 +7,15 @@ import { SectionHeading } from "@/components/typography";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFalModels } from "@/hooks/use-fal-models";
 import {
   useActiveFrameGeneration,
   useFramePreviewStatus,
   useFramesBySequence,
+  useUpdateFrame,
 } from "@/hooks/use-frames";
 import { useSequence } from "@/hooks/use-sequences";
+import { useStyles } from "@/hooks/use-styles";
 import type { Frame } from "@/types/database";
 
 interface FrameGenerationMetadata {
@@ -32,6 +35,15 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   sequenceId,
   onPrevious,
 }) => {
+  // Load FAL models first (before any conditional returns)
+  const { data: falModelsResp } = useFalModels({
+    type: "image",
+    includeCosts: false,
+  });
+
+  // Load styles
+  const { data: styles } = useStyles();
+
   // Load the sequence data with polling
   const { data: sequence } = useSequence(sequenceId, {
     refetchInterval: 2000, // Poll sequence status
@@ -66,6 +78,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
       refetchInterval: isBackgroundGenerating ? 2000 : false,
     },
   );
+
+  // Update frame
+  const { mutate: updateFrame } = useUpdateFrame();
 
   // Track preview generation status for all frames
   const framePreviewStatus = useFramePreviewStatus(frames);
@@ -114,11 +129,16 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
   // Handle frame updates (e.g., after motion generation)
   const handleFrameUpdate = useCallback(
-    async (_updatedFrame: Frame) => {
+    async (updatedFrame: Frame) => {
       // Trigger a refetch to update the frames list
+      console.log("[StoryboardStep] Frame updated", updatedFrame);
+      await updateFrame({
+        ...updatedFrame,
+        description: updatedFrame.description ?? undefined,
+      });
       await refetchFrames();
     },
-    [refetchFrames],
+    [refetchFrames, updateFrame],
   );
 
   const canGenerate = useMemo(() => {
@@ -246,10 +266,13 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                       // TODO: Implement delete functionality
                       console.log("Delete frame:", frameId);
                     }}
-                    onRegenerate={(frameId) => {
+                    onRegenerate={(payload: Record<string, unknown>) => {
                       // TODO: Implement regenerate functionality
-                      console.log("Regenerate frame:", frameId);
+                      console.log("Regenerate frame:", payload);
+                      handleFrameUpdate(frame);
                     }}
+                    falModels={falModelsResp?.models || []}
+                    styles={styles || []}
                   />
                 );
               })}

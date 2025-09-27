@@ -1,11 +1,31 @@
 import { Play, Video } from "lucide-react";
 import Image from "next/image";
-import type * as React from "react";
+import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { generateFrameMotion } from "#actions/sequence";
+import type { FalGeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import {
+  useEstimateImageCostByFal,
+  useGenerateImageByFal,
+  useGenerateImageStatusByJobId,
+} from "@/hooks/use-fal-models";
+import {
+  combineStyleWithScript,
+  getStyleTechnicalParams,
+} from "@/lib/ai/style-script-combiner";
 import { cn } from "@/lib/utils";
-import type { Frame } from "@/types/database";
+import type { Frame, Style } from "@/types/database";
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  model: string;
+  type: "image" | "video";
+  cost?: number;
+  costUnit?: string;
+}
 
 interface StoryboardFrameWithScriptProps {
   frame: Frame;
@@ -13,8 +33,10 @@ interface StoryboardFrameWithScriptProps {
   styleId?: string;
   onEdit?: (frameId: string) => void;
   onDelete?: (frameId: string) => void;
-  onRegenerate?: (frameId: string) => void;
+  onRegenerate?: (payload: Record<string, unknown>) => void;
   onFrameUpdate?: (frame: Frame) => void;
+  falModels?: ModelInfo[];
+  styles?: Style[];
 }
 
 export const StoryboardFrameWithScript: React.FC<
@@ -27,6 +49,8 @@ export const StoryboardFrameWithScript: React.FC<
   onDelete,
   onRegenerate,
   onFrameUpdate,
+  falModels,
+  styles,
 }) => {
   // Extract script chunk from metadata or use description
   const metadata = frame.metadata as Record<string, unknown> | null;
@@ -42,6 +66,23 @@ export const StoryboardFrameWithScript: React.FC<
 
   const hasVideo = Boolean(frame.video_url);
   const hasThumbnail = Boolean(frame.thumbnail_url);
+
+  // Image generation with selected model
+  const [selectedModel, setSelectedModel] = useState<string | null>("");
+  const [selectedStyle, setSelectedStyle] = useState<string | null>("");
+  const generateImageMutation = useGenerateImageByFal();
+  const estimateImageCostMutation = useEstimateImageCostByFal({
+    model: selectedModel || "",
+    prompt: displayScript || "",
+    extra_params: {
+      frame_id: frame.id,
+      sequence_id: frame.sequence_id,
+    },
+  });
+  const [jobId, setJobId] = useState<string | null>(null);
+  const { data: activeJob } = useGenerateImageStatusByJobId(jobId || "", {
+    enabled: !!jobId,
+  });
 
   // Handle video playback
   const handlePlay = useCallback(() => {
@@ -131,6 +172,144 @@ export const StoryboardFrameWithScript: React.FC<
       setIsGeneratingMotion(false);
     }
   }, [frame, displayScript, styleId, onFrameUpdate]);
+
+  // Handle FAL generation with style and script
+  const handleGenerateWithSelectedModel = useCallback(async () => {
+    if (!selectedModel) return;
+
+    try {
+      // Get selected style configuration
+      const selectedStyleConfig = styles?.find(
+        (style) => style.id === selectedStyle,
+      );
+
+      // Combine style with script using utility function
+      const combination = combineStyleWithScript(
+        displayScript || "",
+        selectedStyleConfig,
+        selectedModel,
+      );
+
+      // Get style-specific technical parameters
+      const styleParams = getStyleTechnicalParams(
+        selectedStyleConfig,
+        selectedModel,
+      );
+
+      console.log(`[${selectedModel}] Style + Script combination:`, {
+        original: combination.originalScript,
+        enhanced: combination.enhancedPrompt,
+        optimized: combination.optimizedPrompt,
+        styleElements: combination.styleElements,
+        modelEnhancements: combination.modelSpecificEnhancements,
+        styleId: combination.styleId,
+        styleName: combination.styleName,
+        technicalParams: styleParams,
+      });
+
+      const result = await generateImageMutation.mutateAsync({
+        frame_id: frame.id,
+        sequence_id: frame.sequence_id,
+        model: selectedModel as string,
+        prompt: combination.optimizedPrompt,
+        extra_params: {
+          image_url: frame.thumbnail_url || "",
+          style_id: selectedStyle || undefined,
+          ...styleParams, // Include style-specific technical parameters
+        },
+      });
+      if (result?.success && result?.jobId) {
+        onFrameUpdate?.({
+          ...frame,
+          thumbnail_url: null,
+        });
+        setJobId(result.jobId);
+      }
+    } catch (error) {
+      console.error(
+        "[handleGenerateWithSelectedModel] FAL generation failed",
+        error,
+      );
+    }
+  }, [
+    frame,
+    generateImageMutation,
+    selectedModel,
+    displayScript,
+    selectedStyle,
+    styles,
+    onFrameUpdate,
+  ]);
+
+  // check cost per frame with style
+  const handleCheckCost = useCallback(async () => {
+    if (!selectedModel) return;
+
+    // Get selected style configuration
+    const selectedStyleConfig = styles?.find(
+      (style) => style.id === selectedStyle,
+    );
+
+    // Combine style with script using utility function
+    const combination = combineStyleWithScript(
+      displayScript || "",
+      selectedStyleConfig,
+      selectedModel,
+    );
+
+    // Get style-specific technical parameters
+    const styleParams = getStyleTechnicalParams(
+      selectedStyleConfig,
+      selectedModel,
+    );
+
+    const result = await estimateImageCostMutation.mutateAsync({
+      model: selectedModel,
+      prompt: combination.enhancedPrompt,
+      extra_params: {
+        frame_id: frame.id,
+        sequence_id: frame.sequence_id,
+        style_id: selectedStyle || undefined,
+        ...styleParams,
+      },
+    });
+    console.log("[handleCheckCost] Style + Script cost result:", {
+      result,
+      combination,
+      styleParams,
+    });
+  }, [
+    frame,
+    selectedModel,
+    displayScript,
+    selectedStyle,
+    styles,
+    estimateImageCostMutation,
+  ]);
+
+  React.useEffect(() => {
+    if (jobId) {
+      switch (activeJob?.data?.status) {
+        case "completed": {
+          const imageProcessed =
+            activeJob?.data as unknown as FalGeneratedImageStatusResponse;
+          const imageUrl = (
+            imageProcessed?.result as unknown as { imageUrls: string[] }
+          )?.imageUrls?.pop() as string;
+          onFrameUpdate?.({
+            ...frame,
+            thumbnail_url: imageUrl,
+          });
+          break;
+        }
+        case "failed":
+          // TODO: For handling failed cases
+          break;
+        default:
+          break;
+      }
+    }
+  }, [jobId, activeJob, onFrameUpdate, frame]);
 
   return (
     <div
@@ -297,10 +476,11 @@ export const StoryboardFrameWithScript: React.FC<
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onRegenerate(frame.id)}
+              onClick={() => handleGenerateWithSelectedModel()}
               className="flex-1"
+              disabled={!selectedModel}
             >
-              Regenerate Frame
+              {isGeneratingPreview ? "Generating..." : "Regenerate Frame"}
             </Button>
           )}
           {onEdit && (
@@ -323,7 +503,52 @@ export const StoryboardFrameWithScript: React.FC<
               Delete
             </Button>
           )}
+
+          {
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleCheckCost()}
+            >
+              Check Cost
+            </Button>
+          }
         </div>
+
+        {/* Select model */}
+        {falModels && (
+          <div className="opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="w-full flex-1 flex flex-col gap-2">
+              <Select
+                placeholder="Select Model"
+                options={falModels.map((model) => ({
+                  label: model.name,
+                  value: model.id,
+                }))}
+                onChange={(value) => {
+                  setSelectedModel(value);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Select style */}
+        {styles && (
+          <div className="opacity-0 transition-opacity group-hover:opacity-100">
+            <Select
+              placeholder="Select Style"
+              options={styles.map((style) => ({
+                label: style.name,
+                value: style.id,
+              }))}
+              onChange={(value) => {
+                setSelectedStyle(value);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

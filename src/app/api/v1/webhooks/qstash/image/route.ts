@@ -49,6 +49,8 @@ const processImageGeneration: JobProcessor = async (
       model = "flux_schnell";
     }
 
+    console.log("[ImageWebhook] Generating image with model", imageData);
+
     // Generate image using FAL
     const falResponse = await generateImage({
       model: FAL_IMAGE_MODELS[model],
@@ -56,6 +58,7 @@ const processImageGeneration: JobProcessor = async (
       image_size: imageData.image_size,
       num_images: imageData.num_images || 1,
       seed: imageData.seed,
+      image_url: imageData.image_url as string,
     });
 
     // Build result structure

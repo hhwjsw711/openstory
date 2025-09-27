@@ -110,6 +110,7 @@ class QStashClient {
       deduplicationId?: string;
     },
   ): Promise<QStashResponse> {
+    console.log("[QStashClient] Publishing image job", payload);
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/image`,
       body: payload,
