@@ -334,40 +334,37 @@ export const fal = {
       return getMockVideoResponse({});
     }
 
-    // For direct API calls, we'll determine if it's image or video based on model name
-    // and use the appropriate unified function
+    // Determine route based on known model lists first, then simple heuristics
+    const isKnownImage = Object.values(FAL_IMAGE_MODELS).includes(
+      model as FalImageModel,
+    );
+    const isKnownVideo = Object.values(FAL_VIDEO_MODELS).includes(
+      model as FalVideoModel,
+    );
+    const isImageHeuristic =
+      !isKnownVideo && (model.includes("flux") || model.includes("sdxl"));
 
-    if (
-      model.includes("image") ||
-      model.includes("flux") ||
-      model.includes("sdxl")
-    ) {
-      // Image generation
+    if (isKnownImage || isImageHeuristic) {
       const result = await generateImage({
-        model: model as FalImageModel,
-        prompt: params.input.prompt as string,
+        model: (isKnownImage ? (model as FalImageModel) : undefined) as
+          | FalImageModel
+          | undefined,
+        prompt: (params.input.prompt as string) || "",
         ...params.input,
       } as FalImageGenerationParams);
-
-      if (result.success) {
-        return result.data;
-      } else {
-        throw new Error(result.error || "Image generation failed");
-      }
-    } else {
-      // Video generation
-      const result = await generateVideo({
-        model: model as FalVideoModel,
-        prompt: params.input.prompt as string,
-        ...params.input,
-      } as FalVideoGenerationParams);
-
-      if (result.success) {
-        return result.data;
-      } else {
-        throw new Error(result.error || "Video generation failed");
-      }
+      if (result.success) return result.data;
+      throw new Error(result.error || "Image generation failed");
     }
+
+    const result = await generateVideo({
+      model: (isKnownVideo ? (model as FalVideoModel) : undefined) as
+        | FalVideoModel
+        | undefined,
+      prompt: (params.input.prompt as string) || "",
+      ...params.input,
+    } as FalVideoGenerationParams);
+    if (result.success) return result.data;
+    throw new Error(result.error || "Video generation failed");
   },
 };
 

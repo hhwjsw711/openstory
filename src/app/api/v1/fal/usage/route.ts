@@ -18,9 +18,8 @@ const usageQuerySchema = z.object({
   period: z.enum(["day", "week", "month", "year"]).optional().default("month"),
   includeBreakdown: z
     .string()
-    .nullable()
     .optional()
-    .transform((val) => val === "true")
+    .transform((val) => (val === undefined ? undefined : val === "true"))
     .default(true),
 });
 
@@ -54,7 +53,7 @@ export async function GET(request: Request) {
       startDate: url.searchParams.get("startDate"),
       endDate: url.searchParams.get("endDate"),
       period: url.searchParams.get("period"),
-      includeBreakdown: url.searchParams.get("includeBreakdown"),
+      includeBreakdown: url.searchParams.get("includeBreakdown") ?? undefined,
     };
 
     const { teamId, userId, startDate, endDate, period, includeBreakdown } =

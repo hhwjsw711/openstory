@@ -55,10 +55,10 @@ export async function GET(request: Request) {
     const availableModels = falService.getAvailableModels();
 
     // Prepare response based on type filter
-    let models: ModelsResponse | ModelInfo[] = {};
+    const modelsObj: Partial<ModelsResponse> = {};
 
     if (type === "all" || type === "image") {
-      models.image = Object.entries(availableModels.image).map(
+      modelsObj.image = Object.entries(availableModels.image).map(
         ([key, model]) => ({
           id: key,
           name: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     }
 
     if (type === "all" || type === "video") {
-      models.video = Object.entries(availableModels.video).map(
+      modelsObj.video = Object.entries(availableModels.video).map(
         ([key, model]) => ({
           id: key,
           name: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
@@ -87,20 +87,14 @@ export async function GET(request: Request) {
       );
     }
 
-    // If specific type requested, flatten the response
-    if (type !== "all") {
-      models = models[type] || [];
-    }
+    // Resolve final models shape
+    const models: ModelsResponse | ModelInfo[] =
+      type === "all" ? (modelsObj as ModelsResponse) : (modelsObj[type] ?? []);
 
     // Calculate total count with proper type checking
-    let totalCount = 0;
-    if (type === "all" && !Array.isArray(models)) {
-      totalCount = (models.image?.length || 0) + (models.video?.length || 0);
-    } else if (Array.isArray(models)) {
-      totalCount = models.length;
-    } else {
-      totalCount = Object.keys(models).length;
-    }
+    const totalCount = Array.isArray(models)
+      ? models.length
+      : (models.image?.length ?? 0) + (models.video?.length ?? 0);
 
     const response = {
       success: true,
