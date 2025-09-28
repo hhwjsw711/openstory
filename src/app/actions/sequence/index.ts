@@ -180,8 +180,55 @@ export async function generateFrames(sequenceId: string): Promise<{
     const { getJobManager } = await import("@/lib/qstash/job-manager");
     const { getQStashClient } = await import("@/lib/qstash/client");
 
-    // Create a job for frame generation
+    // Check for existing active jobs to prevent duplicates
     const jobManager = getJobManager();
+    const existingJobs = await jobManager.getJobsByStatus("running", {
+      teamId: sequence.team_id,
+    });
+
+    // Check for existing frame generation job for this sequence
+    const existingFrameJob = existingJobs.find((job) => {
+      if (job.type !== "frame_generation") return false;
+      const payload = job.payload as { sequenceId?: string };
+      return payload?.sequenceId === sequenceId;
+    });
+
+    if (existingFrameJob) {
+      console.log("[generateFrames] Found existing active job, returning it", {
+        sequenceId,
+        existingJobId: existingFrameJob.id,
+      });
+      return {
+        success: true,
+        jobId: existingFrameJob.id,
+        frames: [],
+      };
+    }
+
+    // Also check for pending jobs
+    const pendingJobs = await jobManager.getJobsByStatus("pending", {
+      teamId: sequence.team_id,
+    });
+
+    const existingPendingJob = pendingJobs.find((job) => {
+      if (job.type !== "frame_generation") return false;
+      const payload = job.payload as { sequenceId?: string };
+      return payload?.sequenceId === sequenceId;
+    });
+
+    if (existingPendingJob) {
+      console.log("[generateFrames] Found existing pending job, returning it", {
+        sequenceId,
+        existingJobId: existingPendingJob.id,
+      });
+      return {
+        success: true,
+        jobId: existingPendingJob.id,
+        frames: [],
+      };
+    }
+
+    // Create a job for frame generation
     const job = await jobManager.createJob({
       type: "frame_generation",
       payload: {

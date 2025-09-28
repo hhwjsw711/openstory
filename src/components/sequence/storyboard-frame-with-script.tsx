@@ -288,28 +288,29 @@ export const StoryboardFrameWithScript: React.FC<
   ]);
 
   React.useEffect(() => {
-    if (jobId) {
-      switch (activeJob?.data?.status) {
-        case "completed": {
-          const imageProcessed =
-            activeJob?.data as unknown as FalGeneratedImageStatusResponse;
-          const imageUrl = (
-            imageProcessed?.result as unknown as { imageUrls: string[] }
-          )?.imageUrls?.pop() as string;
-          onFrameUpdate?.({
-            ...frame,
-            thumbnail_url: imageUrl,
-          });
-          break;
-        }
-        case "failed":
-          // TODO: For handling failed cases
-          break;
-        default:
-          break;
+    if (jobId && activeJob?.data?.status === "completed") {
+      const imageProcessed =
+        activeJob?.data as unknown as FalGeneratedImageStatusResponse;
+      const imageUrl = (
+        imageProcessed?.result as unknown as { imageUrls: string[] }
+      )?.imageUrls?.pop() as string;
+
+      if (imageUrl && imageUrl !== frame.thumbnail_url) {
+        onFrameUpdate?.({
+          ...frame,
+          thumbnail_url: imageUrl,
+        });
       }
     }
-  }, [jobId, activeJob, onFrameUpdate, frame]);
+  }, [
+    jobId,
+    activeJob?.data?.status,
+    onFrameUpdate,
+    frame,
+    frame.id,
+    frame.thumbnail_url,
+    activeJob?.data,
+  ]);
 
   return (
     <div
