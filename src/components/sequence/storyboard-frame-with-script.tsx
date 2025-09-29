@@ -74,6 +74,7 @@ export const StoryboardFrameWithScript: React.FC<
     },
   });
   const [jobId, setJobId] = useState<string | null>(null);
+  const [processedJobId, setProcessedJobId] = useState<string | null>(null);
   const { data: activeJob } = useGenerateImageStatusByJobId(jobId || "", {
     enabled: !!jobId,
   });
@@ -222,7 +223,11 @@ export const StoryboardFrameWithScript: React.FC<
   }, [frame, selectedModel, displayScript, estimateImageCostMutation]);
 
   React.useEffect(() => {
-    if (jobId && activeJob?.data?.status === "completed") {
+    if (
+      jobId &&
+      activeJob?.data?.status === "completed" &&
+      jobId !== processedJobId
+    ) {
       const imageProcessed =
         activeJob?.data as unknown as FalGeneratedImageStatusResponse;
       const imageUrls =
@@ -235,16 +240,16 @@ export const StoryboardFrameWithScript: React.FC<
           ...frame,
           thumbnail_url: imageUrl,
         });
+        setProcessedJobId(jobId);
       }
     }
   }, [
     jobId,
-    activeJob?.data?.status,
-    onFrameUpdate,
-    frame,
-    frame.id,
-    frame.thumbnail_url,
     activeJob?.data,
+    processedJobId,
+    frame.thumbnail_url,
+    frame,
+    onFrameUpdate,
   ]);
 
   return (
@@ -460,7 +465,7 @@ export const StoryboardFrameWithScript: React.FC<
                 placeholder="Select Model"
                 options={falModels.map((model) => ({
                   label: model.name,
-                  value: model.model,
+                  value: model.id,
                 }))}
                 onChange={(value) => {
                   setSelectedModel(value);

@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     // Parse and validate request body
     const body = await request.json();
     const validatedData = generateImageSchema.safeParse(body);
+    console.log("[api/v1/generates/image] validatedData:", validatedData);
     if (!validatedData.success) {
       return NextResponse.json(
         {
