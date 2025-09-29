@@ -216,7 +216,12 @@ export async function generateImage(
   if (params.image_url) requestData.image_url = params.image_url;
 
   if (process.env.NODE_ENV !== "production") {
-    const redacted = { ...requestData, prompt: "[redacted]" };
+    const { prompt, image_url, ...rest } = requestData;
+    const redacted = {
+      ...rest,
+      prompt: prompt ? "[redacted]" : undefined,
+      image_url: image_url ? "[redacted]" : undefined,
+    };
     console.debug("[FAL] Request data:", redacted);
   }
 

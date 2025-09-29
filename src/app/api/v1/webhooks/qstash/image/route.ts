@@ -49,7 +49,17 @@ const processImageGeneration: JobProcessor = async (
       model = "flux_schnell";
     }
 
-    console.log("[ImageWebhook] Generating image with model", imageData);
+    if (process.env.NODE_ENV !== "production") {
+      const { prompt, image_url, ...rest } = imageData as Record<
+        string,
+        unknown
+      >;
+      console.debug("[ImageWebhook] Generating image", {
+        ...rest,
+        prompt: prompt ? "[redacted]" : undefined,
+        image_url: image_url ? "[redacted]" : undefined,
+      });
+    }
 
     // Generate image using FAL
     const falResponse = await generateImage({

@@ -4,13 +4,13 @@ import { FAL_IMAGE_MODELS } from "@/lib/ai/models";
 // flux_pro_kontext_max schema
 export const fluxProKontextMaxSchema = z.object({
   prompt: z.string(),
-  image_url: z.string().url(),
+  image_url: z.string().url().optional(),
   seed: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   safety_tolerance: z.enum(["1", "2", "3", "4", "5", "6"]).optional(),
-  enhanced_prompt: z.boolean().optional(),
+  enhance_prompt: z.boolean().optional(),
   aspect_ratio: z
     .enum(["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"])
     .optional(),
@@ -40,7 +40,7 @@ export const fluxProV11UltraSchema = z.object({
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   enable_safety_checker: z.boolean().optional(),
-  output_format: z.enum(["jpg", "png"]).optional(),
+  output_format: z.enum(["jpeg", "png"]).optional(),
   safety_tolerance: z.enum(["1", "2", "3", "4", "5", "6"]).optional(),
   aspect_ratio: z
     .enum(["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"])
@@ -83,7 +83,7 @@ export const fluxKreaLoraSchema = z.object({
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   enable_safety_checker: z.boolean().optional(),
-  output_format: z.enum(["jpg", "png"]).optional(),
+  output_format: z.enum(["jpeg", "png"]).optional(),
 });
 
 interface ExtraParamsSchemaByModelData {

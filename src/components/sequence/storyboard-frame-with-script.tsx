@@ -225,9 +225,10 @@ export const StoryboardFrameWithScript: React.FC<
     if (jobId && activeJob?.data?.status === "completed") {
       const imageProcessed =
         activeJob?.data as unknown as FalGeneratedImageStatusResponse;
-      const imageUrl = (
-        imageProcessed?.result as unknown as { imageUrls: string[] }
-      )?.imageUrls?.pop() as string;
+      const imageUrls =
+        (imageProcessed?.result as unknown as { imageUrls?: string[] })
+          ?.imageUrls ?? [];
+      const imageUrl = imageUrls.at(-1) ?? "";
 
       if (imageUrl && imageUrl !== frame.thumbnail_url) {
         onFrameUpdate?.({
@@ -459,7 +460,7 @@ export const StoryboardFrameWithScript: React.FC<
                 placeholder="Select Model"
                 options={falModels.map((model) => ({
                   label: model.name,
-                  value: model.id,
+                  value: model.model,
                 }))}
                 onChange={(value) => {
                   setSelectedModel(value);
