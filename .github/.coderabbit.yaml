@@ -1,9 +1,14 @@
+# .coderabbit.yaml
 reviews:
-  auto_review: true              # run on every new PR / new commit
-  review_drafts: true            # also review draft PRs (optional)
-  review_simple_changes: true    # don't smart-skip tiny/trivial PRs
-  path_includes: ["**"]          # review anything that changes
-  path_excludes: []              # make sure nothing is silently excluded
+  auto_review:
+    enabled: true
+    base_branches:
+      - ".*"          # regex: allow ANY base/target branch
+  review_drafts: true
+  review_simple_changes: true
+  path_includes:
+    - "**"
+  path_excludes: []
 
 comments:
   enable_review_summary: true
