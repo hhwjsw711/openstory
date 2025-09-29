@@ -32,9 +32,9 @@ export const Select: React.FC<SelectProps> = ({
   ...props
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [selectedValue, setSelectedValue] = React.useState(
-    value || defaultValue || "",
-  );
+  const isControlled = value !== undefined;
+  const [internalValue, setInternalValue] = React.useState(defaultValue || "");
+  const selectedValue = isControlled ? (value as string) : internalValue;
 
   const selectedOption = options.find(
     (option) => option.value === selectedValue,
@@ -42,7 +42,7 @@ export const Select: React.FC<SelectProps> = ({
 
   const handleSelect = (optionValue: string) => {
     if (disabled) return;
-    setSelectedValue(optionValue);
+    if (!isControlled) setInternalValue(optionValue);
     onChange?.(optionValue);
     setIsOpen(false);
   };

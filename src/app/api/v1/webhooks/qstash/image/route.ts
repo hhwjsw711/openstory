@@ -149,13 +149,23 @@ const processImageGeneration: JobProcessor = async (
                 },
               };
 
-              await supabase
+              const { error: seqUpdateError } = await supabase
                 .from("sequences")
                 .update({
                   metadata: updatedMetadata,
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", frameData.sequence_id);
+
+              if (seqUpdateError) {
+                console.error(
+                  "[ImageWebhook] Failed to update sequence metadata",
+                  {
+                    sequenceId: frameData.sequence_id,
+                    error: seqUpdateError.message,
+                  },
+                );
+              }
             }
           }
         }

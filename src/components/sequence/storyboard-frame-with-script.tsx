@@ -11,10 +11,6 @@ import {
   useGenerateImageByFal,
   useGenerateImageStatusByJobId,
 } from "@/hooks/use-fal-models";
-import {
-  combineStyleWithScript,
-  getStyleTechnicalParams,
-} from "@/lib/ai/style-script-combiner";
 import { cn } from "@/lib/utils";
 import type { Frame, Style } from "@/types/database";
 
@@ -50,7 +46,6 @@ export const StoryboardFrameWithScript: React.FC<
   onRegenerate,
   onFrameUpdate,
   falModels,
-  styles,
 }) => {
   // Extract script chunk from metadata or use description
   const metadata = frame.metadata as Record<string, unknown> | null;
@@ -69,7 +64,6 @@ export const StoryboardFrameWithScript: React.FC<
 
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>("");
-  const [selectedStyle, setSelectedStyle] = useState<string | null>("");
   const generateImageMutation = useGenerateImageByFal();
   const estimateImageCostMutation = useEstimateImageCostByFal({
     model: selectedModel || "",
@@ -176,46 +170,18 @@ export const StoryboardFrameWithScript: React.FC<
   // Handle FAL generation with style and script
   const handleGenerateWithSelectedModel = useCallback(async () => {
     if (!selectedModel) return;
-
+    console.log(
+      "[handleGenerateWithSelectedModel] displayScript:",
+      displayScript,
+    );
     try {
-      // Get selected style configuration
-      const selectedStyleConfig = styles?.find(
-        (style) => style.id === selectedStyle,
-      );
-
-      // Combine style with script using utility function
-      const combination = combineStyleWithScript(
-        displayScript || "",
-        selectedStyleConfig,
-        selectedModel,
-      );
-
-      // Get style-specific technical parameters
-      const styleParams = getStyleTechnicalParams(
-        selectedStyleConfig,
-        selectedModel,
-      );
-
-      console.log(`[${selectedModel}] Style + Script combination:`, {
-        original: combination.originalScript,
-        enhanced: combination.enhancedPrompt,
-        optimized: combination.optimizedPrompt,
-        styleElements: combination.styleElements,
-        modelEnhancements: combination.modelSpecificEnhancements,
-        styleId: combination.styleId,
-        styleName: combination.styleName,
-        technicalParams: styleParams,
-      });
-
       const result = await generateImageMutation.mutateAsync({
         frame_id: frame.id,
         sequence_id: frame.sequence_id,
         model: selectedModel as string,
-        prompt: combination.optimizedPrompt,
+        prompt: displayScript || "",
         extra_params: {
           image_url: frame.thumbnail_url || "",
-          style_id: selectedStyle || undefined,
-          ...styleParams, // Include style-specific technical parameters
         },
       });
       if (result?.success && result?.jobId) {
@@ -236,8 +202,6 @@ export const StoryboardFrameWithScript: React.FC<
     generateImageMutation,
     selectedModel,
     displayScript,
-    selectedStyle,
-    styles,
     onFrameUpdate,
   ]);
 
@@ -245,47 +209,17 @@ export const StoryboardFrameWithScript: React.FC<
   const handleCheckCost = useCallback(async () => {
     if (!selectedModel) return;
 
-    // Get selected style configuration
-    const selectedStyleConfig = styles?.find(
-      (style) => style.id === selectedStyle,
-    );
-
-    // Combine style with script using utility function
-    const combination = combineStyleWithScript(
-      displayScript || "",
-      selectedStyleConfig,
-      selectedModel,
-    );
-
-    // Get style-specific technical parameters
-    const styleParams = getStyleTechnicalParams(
-      selectedStyleConfig,
-      selectedModel,
-    );
-
     const result = await estimateImageCostMutation.mutateAsync({
       model: selectedModel,
-      prompt: combination.enhancedPrompt,
+      prompt: displayScript || "",
       extra_params: {
         frame_id: frame.id,
         sequence_id: frame.sequence_id,
-        style_id: selectedStyle || undefined,
-        ...styleParams,
       },
     });
-    console.log("[handleCheckCost] Style + Script cost result:", {
-      result,
-      combination,
-      styleParams,
-    });
-  }, [
-    frame,
-    selectedModel,
-    displayScript,
-    selectedStyle,
-    styles,
-    estimateImageCostMutation,
-  ]);
+
+    console.log("[handleCheckCost] Cost result:", result);
+  }, [frame, selectedModel, displayScript, estimateImageCostMutation]);
 
   React.useEffect(() => {
     if (jobId && activeJob?.data?.status === "completed") {
@@ -532,22 +466,6 @@ export const StoryboardFrameWithScript: React.FC<
                 }}
               />
             </div>
-          </div>
-        )}
-
-        {/* Select style */}
-        {styles && (
-          <div className="opacity-0 transition-opacity group-hover:opacity-100">
-            <Select
-              placeholder="Select Style"
-              options={styles.map((style) => ({
-                label: style.name,
-                value: style.id,
-              }))}
-              onChange={(value) => {
-                setSelectedStyle(value);
-              }}
-            />
           </div>
         )}
       </div>

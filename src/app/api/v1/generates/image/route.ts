@@ -1,22 +1,7 @@
 import { NextResponse } from "next/server";
-import z from "zod";
 import { generateImageByFalAction } from "#actions/generates/image";
-import { FAL_IMAGE_MODELS } from "@/lib/ai/models";
-import { extraParamsSchemaByModel } from "@/lib/ai/models-validation";
+import { generateImageSchema } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
-
-const generateImageSchema = z
-  .object({
-    sequence_id: z.string(),
-    frame_id: z.string(),
-    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
-    prompt: z.string(),
-    extra_params: z.record(z.string(), z.any()).optional(),
-  })
-  .refine((data) => extraParamsSchemaByModel(data), {
-    message:
-      "[api/v1/generates/image] Generating image | extra_params validation failed for the selected model",
-  });
 
 export async function POST(request: Request) {
   try {

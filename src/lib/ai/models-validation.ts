@@ -10,11 +10,11 @@ export const fluxProKontextMaxSchema = z.object({
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   safety_tolerance: z.enum(["1", "2", "3", "4", "5", "6"]).optional(),
-  enhanced_prompt: z.string().optional(),
+  enhanced_prompt: z.boolean().optional(),
   aspect_ratio: z
     .enum(["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"])
     .optional(),
-  output_format: z.enum(["jpg", "png"]).optional(),
+  output_format: z.enum(["jpeg", "png"]).optional(),
 });
 
 export type FluxProKontextMaxSchema = z.infer<typeof fluxProKontextMaxSchema>;
@@ -26,7 +26,7 @@ export const imagen4PreviewUltraSchema = z.object({
   aspect_ratio: z.enum(["1:1", "16:9", "9:16", "3:4", "4:3"]).optional(),
   num_images: z.number().positive().optional(),
   seed: z.number().positive().optional(),
-  resolution: z.enum(["1K", "2K"]).optional(),
+  resolution: z.enum(["1K", "2K"]).default("1K"),
 });
 
 export type Imagen4PreviewUltraSchema = z.infer<
@@ -116,3 +116,19 @@ export const extraParamsSchemaByModel = (
   }
   return true;
 };
+
+// generate image schema
+export const generateImageSchema = z
+  .object({
+    sequence_id: z.string(),
+    frame_id: z.string(),
+    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
+    prompt: z.string(),
+    extra_params: z.record(z.string(), z.any()).optional(),
+  })
+  .refine((data) => extraParamsSchemaByModel(data), {
+    message:
+      "[api/v1/generates/image] Generating image | extra_params validation failed for the selected model",
+  });
+
+export type GenerateImageInput = z.infer<typeof generateImageSchema>;

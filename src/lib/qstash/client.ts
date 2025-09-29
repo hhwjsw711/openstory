@@ -110,7 +110,12 @@ class QStashClient {
       deduplicationId?: string;
     },
   ): Promise<QStashResponse> {
-    console.log("[QStashClient] Publishing image job", payload);
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[QStashClient] Publishing image job", {
+        jobId: payload.jobId,
+        type: payload.type,
+      });
+    }
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/image`,
       body: payload,

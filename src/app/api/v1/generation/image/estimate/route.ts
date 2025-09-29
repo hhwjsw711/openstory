@@ -23,13 +23,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = estimateImageCostSchema.parse(body);
 
-    const costResult = await calculateFalCost(
-      validatedData.model as FalImageModel,
+    const modelKey = validatedData.model as keyof typeof FAL_IMAGE_MODELS;
+    const model = FAL_IMAGE_MODELS[modelKey] as FalImageModel;
+    const costResult = calculateFalCost(
+      model,
       validatedData.extra_params || {},
     );
-
-    const timeResult = await calculateFalTime(
-      validatedData.model as FalImageModel,
+    const timeResult = calculateFalTime(
+      model,
       validatedData.extra_params || {},
     );
 

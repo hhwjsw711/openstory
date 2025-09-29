@@ -215,7 +215,10 @@ export async function generateImage(
   if (params.seed !== undefined) requestData.seed = params.seed;
   if (params.image_url) requestData.image_url = params.image_url;
 
-  console.log("[FAL] Request data:", requestData);
+  if (process.env.NODE_ENV !== "production") {
+    const redacted = { ...requestData, prompt: "[redacted]" };
+    console.debug("[FAL] Request data:", redacted);
+  }
 
   const result = await falService.generateImage(model, requestData, {
     userId: params.userId,

@@ -109,7 +109,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   const handleFrameUpdate = useCallback(
     async (updatedFrame: Frame) => {
       // Trigger a refetch to update the frames list
-      console.log("[StoryboardStep] Frame updated", updatedFrame);
       await updateFrame({
         ...updatedFrame,
         description: updatedFrame.description ?? undefined,

@@ -1,22 +1,8 @@
-import { z } from "zod";
-import { FAL_IMAGE_MODELS } from "@/lib/ai/models";
-import { extraParamsSchemaByModel } from "@/lib/ai/models-validation";
+import {
+  type GenerateImageInput,
+  generateImageSchema,
+} from "@/lib/ai/models-validation";
 import type { FalGeneratedImageStatusResponse } from "./types";
-
-const generateImageSchema = z
-  .object({
-    sequence_id: z.string(),
-    frame_id: z.string(),
-    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
-    prompt: z.string(),
-    extra_params: z.record(z.string(), z.any()).optional(),
-  })
-  .refine((data) => extraParamsSchemaByModel(data), {
-    message:
-      "[actions/generates/image] Generating image | extra_params validation failed for the selected model",
-  });
-
-type GenerateImageInput = z.infer<typeof generateImageSchema>;
 
 //  Generate image by FAL Model
 export async function generateImageByFalAction(
@@ -35,12 +21,13 @@ export async function generateImageByFalAction(
       prompt: validated.prompt,
       ...validated.extra_params,
     };
-    console.log(
-      "[actions/generates/image] Generating image with model",
-      validated.model,
-      "and params",
-      params,
-    );
+    if (process.env.NODE_ENV !== "production")
+      console.log(
+        "[actions/generates/image] Generating image with model",
+        validated.model,
+        "and params",
+        params,
+      );
 
     // Import QStash dependencies
     const { getJobManager } = await import("@/lib/qstash/job-manager");
