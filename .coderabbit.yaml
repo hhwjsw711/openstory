@@ -1,9 +1,15 @@
+# .coderabbit.yaml (repo root, committed to default branch, e.g., main)
 reviews:
-  enabled: true            
-  drafts: true             
-  simple_changes: true     
-  base_branches:               
-    - "*"                      
+  auto_review:
+    enabled: true
+    base_branches:
+      - ".*"        # regex: allow ANY base/target branch
+  review_drafts: true
+  review_simple_changes: true
+  path_includes:
+    - "**"
+  path_excludes: []
+
 comments:
-  summary: true
-  code_suggestions: true
+  enable_review_summary: true
+  include_code_suggestions: true

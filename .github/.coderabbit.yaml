@@ -1,9 +1,0 @@
-reviews:
-  enabled: true            
-  drafts: true             
-  simple_changes: true     
-  base_branches:               
-    - "*"                      
-comments:
-  summary: true
-  code_suggestions: true
