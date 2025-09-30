@@ -49,6 +49,18 @@ const processImageGeneration: JobProcessor = async (
       model = "flux_schnell";
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      const { prompt, image_url, ...rest } = imageData as Record<
+        string,
+        unknown
+      >;
+      console.debug("[ImageWebhook] Generating image", {
+        ...rest,
+        prompt: prompt ? "[redacted]" : undefined,
+        image_url: image_url ? "[redacted]" : undefined,
+      });
+    }
+
     // Generate image using FAL
     const falResponse = await generateImage({
       model: FAL_IMAGE_MODELS[model],
@@ -56,6 +68,7 @@ const processImageGeneration: JobProcessor = async (
       image_size: imageData.image_size,
       num_images: imageData.num_images || 1,
       seed: imageData.seed,
+      image_url: imageData.image_url as string,
     });
 
     // Build result structure
@@ -99,6 +112,73 @@ const processImageGeneration: JobProcessor = async (
           frameId: imageData.frameId,
           error: updateError.message,
         });
+        return result;
+      }
+
+      const { data: frameData } = await supabase
+        .from("frames")
+        .select("sequence_id")
+        .eq("id", imageData.frameId)
+        .single();
+
+      if (frameData?.sequence_id) {
+        // Check if all frames for this sequence now have thumbnails
+        const { data: allFrames } = await supabase
+          .from("frames")
+          .select("id, thumbnail_url")
+          .eq("sequence_id", frameData.sequence_id);
+
+        if (allFrames) {
+          const framesWithThumbnails = allFrames.filter(
+            (frame) => frame.thumbnail_url,
+          );
+          const allFramesHaveThumbnails =
+            framesWithThumbnails.length === allFrames.length;
+
+          if (allFramesHaveThumbnails && allFrames.length > 0) {
+            const { data: sequence } = await supabase
+              .from("sequences")
+              .select("metadata")
+              .eq("id", frameData.sequence_id)
+              .single();
+
+            if (sequence) {
+              const existingMetadata =
+                (sequence.metadata as Record<string, unknown>) || {};
+              const frameGeneration =
+                (existingMetadata.frameGeneration as Record<string, unknown>) ||
+                {};
+
+              const updatedMetadata = {
+                ...existingMetadata,
+                frameGeneration: {
+                  ...frameGeneration,
+                  status: "completed",
+                  completedAt: new Date().toISOString(),
+                  thumbnailsGenerating: false,
+                },
+              };
+
+              const { error: seqUpdateError } = await supabase
+                .from("sequences")
+                .update({
+                  metadata: updatedMetadata,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", frameData.sequence_id);
+
+              if (seqUpdateError) {
+                console.error(
+                  "[ImageWebhook] Failed to update sequence metadata",
+                  {
+                    sequenceId: frameData.sequence_id,
+                    error: seqUpdateError.message,
+                  },
+                );
+              }
+            }
+          }
+        }
       }
     }
 

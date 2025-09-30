@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { generateFrames } from "#actions/sequence";
 import { StoryboardFrameSkeletonWithScript } from "@/components/sequence/storyboard-frame-skeleton-with-script";
 import { StoryboardFrameWithScript } from "@/components/sequence/storyboard-frame-with-script";
@@ -7,21 +7,14 @@ import { SectionHeading } from "@/components/typography";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFalModels } from "@/hooks/use-fal-models";
+import { useFramePreviewStatus, useUpdateFrame } from "@/hooks/use-frames";
 import {
-  useActiveFrameGeneration,
-  useFramePreviewStatus,
-  useFramesBySequence,
-} from "@/hooks/use-frames";
-import { useSequence } from "@/hooks/use-sequences";
+  type FrameGenerationMetadata,
+  useStoryboardStatus,
+} from "@/hooks/use-storyboard-status";
+import { useStyles } from "@/hooks/use-styles";
 import type { Frame } from "@/types/database";
-
-interface FrameGenerationMetadata {
-  frameGeneration?: {
-    status?: string;
-    expectedFrameCount?: number;
-    completedFrameCount?: number;
-  };
-}
 
 interface StoryboardStepProps {
   sequenceId: string;
@@ -32,23 +25,27 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   sequenceId,
   onPrevious,
 }) => {
-  // Load the sequence data with polling
-  const { data: sequence } = useSequence(sequenceId, {
-    refetchInterval: 2000, // Poll sequence status
+  const { data: falModelsResp } = useFalModels({
+    type: "image",
+    includeCosts: false,
   });
 
-  // Check if frames are being generated based on sequence status
-  const metadata = sequence?.metadata as FrameGenerationMetadata | null;
-  const sequenceGenerating = sequence?.status === "processing";
+  // Load styles
+  const { data: styles } = useStyles();
 
-  // Check for active frame generation job as fallback
-  const { data: activeJob } = useActiveFrameGeneration(sequenceId);
-  const jobGenerating =
-    activeJob?.status === "running" || activeJob?.status === "pending";
-
-  const isBackgroundGenerating = sequenceGenerating || jobGenerating;
+  // Use unified storyboard status hook (replaces multiple polling hooks)
+  const {
+    sequence,
+    frames,
+    activeJob,
+    isGenerating: isBackgroundGenerating,
+    hasFrames,
+    canGenerate: canGenerateFromHook,
+    refetch: refetchFrames,
+  } = useStoryboardStatus(sequenceId);
 
   // Get expected frame count from sequence metadata or job
+  const metadata = sequence?.metadata as FrameGenerationMetadata | null;
   const expectedFrameCount =
     metadata?.frameGeneration?.expectedFrameCount ||
     activeJob?.framesProgress?.total ||
@@ -58,14 +55,13 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     activeJob?.framesProgress?.completed ||
     0;
 
-  // Load frames with auto-refresh when generating
-  const { data: frames = [], refetch: refetchFrames } = useFramesBySequence(
-    sequenceId,
-    {
-      // Refetch every 2 seconds when frames are being generated
-      refetchInterval: isBackgroundGenerating ? 2000 : false,
-    },
-  );
+  // Check for errors in sequence metadata
+  const metadataError = metadata?.frameGeneration?.error;
+  const hasMetadataError =
+    metadataError && metadata?.frameGeneration?.status === "failed";
+
+  // Update frame
+  const { mutate: updateFrame } = useUpdateFrame();
 
   // Track preview generation status for all frames
   const framePreviewStatus = useFramePreviewStatus(frames);
@@ -73,10 +69,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   // Local state for generation
   const [generationError, setGenerationError] = useState<string | null>(null);
 
-  const hasFrames = frames.length > 0;
-  const styleId = sequence?.style_id;
-
-  // Count frames with motion
+  // Count frames with motion (hasFrames already available from hook)
   const framesWithMotion = frames.filter((frame: Frame) => frame.video_url);
   const totalFrames = frames.length;
   const _hasAnyMotion = framesWithMotion.length > 0;
@@ -84,7 +77,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     totalFrames > 0 && framesWithMotion.length === totalFrames;
 
   const handleGenerateStoryboard = useCallback(async () => {
-    if (!sequence?.script || !styleId) return;
+    if (!canGenerateFromHook) return;
 
     setGenerationError(null);
 
@@ -102,7 +95,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
       setGenerationError(errorMessage);
     }
-  }, [sequence, styleId, sequenceId]);
+  }, [canGenerateFromHook, sequenceId]);
 
   // Next button - now goes to the next sequence step (removed motion page)
   const handleNext = useCallback(() => {
@@ -114,21 +107,16 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
   // Handle frame updates (e.g., after motion generation)
   const handleFrameUpdate = useCallback(
-    async (_updatedFrame: Frame) => {
+    async (updatedFrame: Frame) => {
       // Trigger a refetch to update the frames list
+      await updateFrame({
+        ...updatedFrame,
+        description: updatedFrame.description ?? undefined,
+      });
       await refetchFrames();
     },
-    [refetchFrames],
+    [refetchFrames, updateFrame],
   );
-
-  const canGenerate = useMemo(() => {
-    return (
-      sequence?.script &&
-      sequence.script.trim().length >= 10 &&
-      styleId &&
-      !isBackgroundGenerating
-    );
-  }, [sequence?.script, styleId, isBackgroundGenerating]);
 
   const canProceed = hasFrames && !isBackgroundGenerating;
 
@@ -217,7 +205,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
               variant="outline"
               size="sm"
               onClick={handleGenerateStoryboard}
-              disabled={!canGenerate || isBackgroundGenerating}
+              disabled={!canGenerateFromHook || isBackgroundGenerating}
               data-testid="regenerate-storyboard-button"
             >
               {isBackgroundGenerating ? "Generating..." : "Regenerate All"}
@@ -235,7 +223,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                   <StoryboardFrameWithScript
                     key={frame.id}
                     frame={frame}
-                    styleId={styleId || undefined}
+                    styleId={sequence?.style_id || undefined}
                     isGeneratingPreview={previewStatus?.isGenerating || false}
                     onFrameUpdate={handleFrameUpdate}
                     onEdit={(frameId) => {
@@ -246,10 +234,13 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                       // TODO: Implement delete functionality
                       console.log("Delete frame:", frameId);
                     }}
-                    onRegenerate={(frameId) => {
+                    onRegenerate={(payload: Record<string, unknown>) => {
                       // TODO: Implement regenerate functionality
-                      console.log("Regenerate frame:", frameId);
+                      console.log("Regenerate frame:", payload);
+                      handleFrameUpdate(frame);
                     }}
+                    falModels={falModelsResp?.models || []}
+                    styles={styles || []}
                   />
                 );
               })}
@@ -268,6 +259,25 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
               )}
           </div>
 
+          {/* Show metadata error from sequence */}
+          {hasMetadataError && (
+            <Alert variant="destructive">
+              <div className="space-y-2">
+                <div className="font-medium">Generation Failed</div>
+                <div className="text-sm">{metadataError}</div>
+                {metadata?.frameGeneration?.failedAt && (
+                  <div className="text-xs text-muted-foreground">
+                    Failed at:{" "}
+                    {new Date(
+                      metadata.frameGeneration.failedAt,
+                    ).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </Alert>
+          )}
+
+          {/* Show local generation error */}
           {generationError && (
             <Alert variant="destructive">
               <div className="space-y-2">
@@ -277,6 +287,22 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
             </Alert>
           )}
         </div>
+      )}
+
+      {/* Show metadata errors even when no frames exist */}
+      {hasMetadataError && !hasFrames && !isBackgroundGenerating && (
+        <Alert variant="destructive" className="w-full flex items-start gap-2">
+          <div className="space-y-2">
+            <div className="font-medium">Generation Failed</div>
+            <div className="text-sm">Reason: {metadataError}</div>
+            {metadata?.frameGeneration?.failedAt && (
+              <div className="text-xs text-muted-foreground">
+                Failed at:{" "}
+                {new Date(metadata.frameGeneration.failedAt).toLocaleString()}
+              </div>
+            )}
+          </div>
+        </Alert>
       )}
 
       {/* Navigation */}

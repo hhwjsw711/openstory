@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { Job } from "@/hooks/use-storyboard-status";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ function revalidateSequencePages(sequenceId: string): void {
 // Schema definitions
 const createFrameSchema = z.object({
   sequence_id: z.string().uuid(),
-  description: z.string().min(1).max(1000),
+  description: z.string().min(1).max(5000),
   order_index: z.number().int().positive(),
   thumbnail_url: z.string().url().optional(),
   video_url: z.string().url().optional(),
@@ -27,8 +28,8 @@ const createFrameSchema = z.object({
 
 const updateFrameSchema = z.object({
   id: z.string().uuid(),
-  description: z.string().min(1).max(1000).optional(),
-  order_index: z.number().int().positive().optional(),
+  description: z.string().min(1).max(5000).optional(),
+  order_index: z.number().int().optional(),
   thumbnail_url: z.string().url().nullable().optional(),
   video_url: z.string().url().nullable().optional(),
   duration_ms: z.number().int().min(1).nullable().optional(),
@@ -467,6 +468,8 @@ export async function generateFramesAction(
         expectedFrameCount: null, // Will be updated after script analysis
         completedFrameCount: 0,
         options: validated.options,
+        error: null,
+        failedAt: null,
       },
     };
 
@@ -710,14 +713,12 @@ export async function generateFramesAction(
       },
     };
 
-    // Set status to draft if thumbnails are still generating, completed if not
-    const newStatus =
-      validated.options?.generateThumbnails !== false ? "draft" : "completed";
-
+    // Always set status back to draft after frame creation (removes "processing" state)
+    // This ensures frontend polling stops even when thumbnails are still generating
     await supabase
       .from("sequences")
       .update({
-        status: newStatus,
+        status: "draft", // Always reset from "processing" to stop infinite polling
         metadata: finalMetadata as Json,
         updated_at: new Date().toISOString(),
       })
@@ -873,25 +874,7 @@ export async function regenerateFrameAction(
  */
 export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
   success: boolean;
-  job?: {
-    id: string;
-    type: string;
-    status: string;
-    progress?: number;
-    result?: unknown;
-    error?: string;
-    created_at: string;
-    updated_at: string;
-    framesProgress?: {
-      total: number;
-      completed: number;
-      frames: Array<{
-        id: string;
-        order_index: number;
-        thumbnail_url?: string | null;
-      }>;
-    };
-  };
+  job?: Job;
   error?: string;
 }> {
   try {

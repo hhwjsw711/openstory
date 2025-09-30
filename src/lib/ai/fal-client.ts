@@ -37,16 +37,16 @@ const falImageResponseSchema = z.object({
   images: z.array(
     z.object({
       url: z.string().url(),
-      content_type: z.string().optional(),
-      file_name: z.string().optional(),
-      file_size: z.number().optional(),
-      width: z.number(),
-      height: z.number(),
+      content_type: z.string().nullable().optional(),
+      file_name: z.string().nullable().optional(),
+      file_size: z.number().nullable().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
     }),
   ),
   timings: z
     .object({
-      inference: z.number(),
+      inference: z.number().optional(),
     })
     .optional(),
   seed: z.number().optional(),
@@ -98,6 +98,7 @@ export interface FalImageGenerationParams {
   num_images?: number;
   enable_safety_checker?: boolean;
   seed?: number;
+  image_url?: string;
   // Service layer options
   userId?: string;
   teamId?: string;
@@ -212,6 +213,17 @@ export async function generateImage(
     requestData.enable_safety_checker = params.enable_safety_checker;
   }
   if (params.seed !== undefined) requestData.seed = params.seed;
+  if (params.image_url) requestData.image_url = params.image_url;
+
+  if (process.env.NODE_ENV !== "production") {
+    const { prompt, image_url, ...rest } = requestData;
+    const redacted = {
+      ...rest,
+      prompt: prompt ? "[redacted]" : undefined,
+      image_url: image_url ? "[redacted]" : undefined,
+    };
+    console.debug("[FAL] Request data:", redacted);
+  }
 
   const result = await falService.generateImage(model, requestData, {
     userId: params.userId,
@@ -427,4 +439,15 @@ export function calculateFalCost(
 ): number {
   const falService = getFalService();
   return falService.calculateCost(model, params);
+}
+
+/**
+ * Calculate the estimated time for a Fal.ai request
+ */
+export function calculateFalTime(
+  model: FalImageModel | FalVideoModel,
+  params: Record<string, unknown>,
+): number {
+  const falService = getFalService();
+  return falService.calculateTime(model, params);
 }
