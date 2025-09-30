@@ -6,7 +6,7 @@
 /**
  * Available FAL models for video generation
  */
-export const FAL_VIDEO_MODELS = {
+export const VIDEO_MODELS = {
   // Text to video models
   minimax_hailuo: "fal-ai/minimax-video/text-to-video",
   mochi_v1: "fal-ai/mochi-v1/text-to-video",
@@ -27,7 +27,7 @@ export const FAL_VIDEO_MODELS = {
 /**
  * Available FAL models for image generation
  */
-export const FAL_IMAGE_MODELS = {
+export const IMAGE_MODELS = {
   flux_pro: "fal-ai/flux-pro",
   flux_dev: "fal-ai/flux/dev",
   flux_schnell: "fal-ai/flux/schnell",
@@ -37,9 +37,24 @@ export const FAL_IMAGE_MODELS = {
   imagen4_preview_ultra: "fal-ai/imagen4/preview/ultra", // https://fal.ai/models/fal-ai/imagen4/preview/ultra/api#api-call-install
   flux_pro_v1_1_ultra: "fal-ai/flux-pro/v1.1-ultra", // https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api#api-call-install
   flux_krea_lora: "fal-ai/flux-krea-lora", // https://fal.ai/models/fal-ai/flux-krea-lora/api#api-call-install
+  letzai: "letzai/image",
 } as const;
 
-export type FalVideoModel =
-  (typeof FAL_VIDEO_MODELS)[keyof typeof FAL_VIDEO_MODELS];
-export type FalImageModel =
-  (typeof FAL_IMAGE_MODELS)[keyof typeof FAL_IMAGE_MODELS];
+/**
+ * AI provider mappings
+ */
+export const AI_PROVIDER_MAPPINGS = {
+  flux_pro: "fal-ai",
+  flux_dev: "fal-ai",
+  flux_schnell: "fal-ai",
+  sdxl: "fal-ai",
+  sdxl_lightning: "fal-ai",
+  flux_pro_kontext_max: "fal-ai",
+  imagen4_preview_ultra: "fal-ai",
+  flux_pro_v1_1_ultra: "fal-ai",
+  flux_krea_lora: "fal-ai",
+  letzai: "letz-ai",
+} as const;
+
+export type FalVideoModel = (typeof VIDEO_MODELS)[keyof typeof VIDEO_MODELS];
+export type FalImageModel = (typeof IMAGE_MODELS)[keyof typeof IMAGE_MODELS];

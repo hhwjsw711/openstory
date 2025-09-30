@@ -21,7 +21,12 @@ export const letzaiEndpointSchema = z.enum([
 ]);
 
 // LetzAI image generation modes
-export const letzaiModeSchema = z.enum(["default", "sigma", "turbo"]);
+export const letzaiModeSchema = z.enum([
+  "default",
+  "sigma",
+  "turbo",
+  "cinematic",
+]);
 
 // LetzAI image editing modes
 export const letzaiEditModeSchema = z.enum(["context", "in", "out", "skin"]);
@@ -34,15 +39,15 @@ export const letzaiImageRequestSchema = z.object({
   prompt: z.string().min(1, "Prompt is required"),
   width: z.number().int().min(520).max(2160).default(1600),
   height: z.number().int().min(520).max(2160).default(1600),
-  quality: z.number().int().min(1).max(5).default(2),
+  quality: z.number().int().min(1).max(5).default(5),
   creativity: z.number().int().min(1).max(5).default(2),
-  hasWatermark: z.boolean().default(true),
+  hasWatermark: z.boolean().default(false),
   systemVersion: z
     .number()
     .int()
     .refine((val) => val === 2 || val === 3)
     .default(2),
-  mode: letzaiModeSchema.default("default"),
+  mode: letzaiModeSchema.default("cinematic"),
 });
 
 // LetzAI image editing request

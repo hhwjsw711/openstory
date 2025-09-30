@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import z from "zod";
 import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
-import { FAL_IMAGE_MODELS, type FalImageModel } from "@/lib/ai/models";
+import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
 import { extraParamsSchemaByModel } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
 const estimateImageCostSchema = z
   .object({
-    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
+    model: z.enum(Object.keys(IMAGE_MODELS) as [string, ...string[]]),
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })
@@ -23,8 +23,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = estimateImageCostSchema.parse(body);
 
-    const modelKey = validatedData.model as keyof typeof FAL_IMAGE_MODELS;
-    const model = FAL_IMAGE_MODELS[modelKey] as FalImageModel;
+    const modelKey = validatedData.model as keyof typeof IMAGE_MODELS;
+    const model = IMAGE_MODELS[modelKey] as FalImageModel;
     const costResult = calculateFalCost(
       model,
       validatedData.extra_params || {},

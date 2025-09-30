@@ -8,10 +8,10 @@
 
 import { z } from "zod";
 import {
-  FAL_IMAGE_MODELS,
-  FAL_VIDEO_MODELS,
   type FalImageModel,
   type FalVideoModel,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
 } from "@/lib/ai/models";
 import type { FalServiceResponse } from "@/lib/fal/service";
 import { getFalService } from "@/lib/fal/service";
@@ -59,10 +59,10 @@ export type FalImageResponse = z.infer<typeof falImageResponseSchema>;
 
 // Import model definitions from separate file to avoid circular dependencies
 export {
-  FAL_IMAGE_MODELS,
-  FAL_VIDEO_MODELS,
   type FalImageModel,
   type FalVideoModel,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
 } from "@/lib/ai/models";
 
 /**
@@ -127,7 +127,7 @@ export async function generateVideo(
   }
 
   const falService = getFalService();
-  const model = params.model || FAL_VIDEO_MODELS.minimax_hailuo;
+  const model = params.model || VIDEO_MODELS.minimax_hailuo;
 
   const requestData: Record<string, unknown> = {};
 
@@ -139,7 +139,7 @@ export async function generateVideo(
   if (params.seed !== undefined) requestData.seed = params.seed;
 
   // Special handling for Veo3 which supports audio
-  if (model === FAL_VIDEO_MODELS.veo3 && params.enable_audio !== undefined) {
+  if (model === VIDEO_MODELS.veo3 && params.enable_audio !== undefined) {
     requestData.enable_audio = params.enable_audio;
   }
 
@@ -200,7 +200,7 @@ export async function generateImage(
   }
 
   const falService = getFalService();
-  const model = params.model || FAL_IMAGE_MODELS.flux_schnell;
+  const model = params.model || IMAGE_MODELS.flux_schnell;
 
   const requestData: Record<string, unknown> = {
     prompt: params.prompt,
@@ -343,10 +343,10 @@ export const fal = {
     }
 
     // Determine route based on known model lists first, then simple heuristics
-    const isKnownImage = Object.values(FAL_IMAGE_MODELS).includes(
+    const isKnownImage = Object.values(IMAGE_MODELS).includes(
       model as FalImageModel,
     );
-    const isKnownVideo = Object.values(FAL_VIDEO_MODELS).includes(
+    const isKnownVideo = Object.values(VIDEO_MODELS).includes(
       model as FalVideoModel,
     );
     const isImageHeuristic =

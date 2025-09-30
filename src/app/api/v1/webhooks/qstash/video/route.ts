@@ -4,10 +4,10 @@
  */
 
 import {
-  FAL_VIDEO_MODELS,
   generateImage,
   generateVideo,
   uploadToFal,
+  VIDEO_MODELS,
 } from "@/lib/ai/fal-client";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
@@ -44,7 +44,7 @@ const processVideoGeneration: JobProcessor = async (
     }
 
     // Determine model to use
-    let model = videoData.model as keyof typeof FAL_VIDEO_MODELS | undefined;
+    let model = videoData.model as keyof typeof VIDEO_MODELS | undefined;
     if (!model) {
       // Auto-select model based on input
       if (imageUrl) {
@@ -56,7 +56,7 @@ const processVideoGeneration: JobProcessor = async (
 
     // Generate video using FAL
     const falResponse = await generateVideo({
-      model: FAL_VIDEO_MODELS[model],
+      model: VIDEO_MODELS[model],
       prompt: videoData.prompt,
       image_url: imageUrl,
       duration: videoData.duration,

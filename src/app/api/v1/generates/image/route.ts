@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateImageByFalAction } from "@/app/actions/generates/image";
+import { generateImageByAction } from "@/app/actions/generates/image";
 import { generateImageSchema } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     // Generate image with prompt
-    const result = await generateImageByFalAction(validatedData.data);
+    const result = await generateImageByAction(validatedData.data);
 
     if (!result.success) {
       throw new Error(

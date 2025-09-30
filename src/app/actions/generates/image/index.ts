@@ -2,10 +2,10 @@ import {
   type GenerateImageInput,
   generateImageSchema,
 } from "@/lib/ai/models-validation";
-import type { FalGeneratedImageStatusResponse } from "./types";
+import type { GeneratedImageStatusResponse } from "./types";
 
-//  Generate image by FAL Model
-export async function generateImageByFalAction(
+//  Generate image by Model
+export async function generateImageByAction(
   input: GenerateImageInput,
 ): Promise<{
   success: boolean;
@@ -66,14 +66,12 @@ export async function generateImageByFalAction(
   }
 }
 
-//  Get FAL generated image status by jobId
-export async function fetchFalGeneratedImageStatusAction(
-  jobId: string,
-): Promise<{
+//  Get generated image status by jobId
+export async function fetchGeneratedImageStatusAction(jobId: string): Promise<{
   success: boolean;
   jobId?: string;
   error?: string;
-  data?: FalGeneratedImageStatusResponse;
+  data?: GeneratedImageStatusResponse;
 }> {
   const { createServerClient } = await import("@/lib/supabase/server");
   const supabase = createServerClient();
@@ -100,6 +98,6 @@ export async function fetchFalGeneratedImageStatusAction(
   return {
     success: true,
     jobId,
-    data: jobData as unknown as FalGeneratedImageStatusResponse,
+    data: jobData as unknown as GeneratedImageStatusResponse,
   };
 }

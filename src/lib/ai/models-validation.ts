@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { FAL_IMAGE_MODELS } from "@/lib/ai/models";
+import { IMAGE_MODELS } from "@/lib/ai/models";
+import { letzaiImageRequestSchema } from "@/lib/schemas/letzai-request";
 
 // flux_pro_kontext_max schema
 export const fluxProKontextMaxSchema = z.object({
@@ -102,18 +103,16 @@ export const extraParamsSchemaByModel = (
     imagen4_preview_ultra: imagen4PreviewUltraSchema,
     flux_pro_v1_1_ultra: fluxProV11UltraSchema,
     flux_krea_lora: fluxKreaLoraSchema,
+    letzai: letzaiImageRequestSchema,
   };
   const schema = modelSchemas[data.model as keyof typeof modelSchemas];
   const params = { prompt: data.prompt, ...data.extra_params };
-  if (!schema) {
-    throw new Error(`[FAL.AI] Unknown image model slug: ${data.model}`);
-  }
 
   if (schema && params) {
     const result = schema.safeParse(params);
     if (!result.success) {
       throw new Error(
-        `[FAL.AI] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+        `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
       );
     }
   }
@@ -125,7 +124,7 @@ export const generateImageSchema = z
   .object({
     sequence_id: z.string(),
     frame_id: z.string(),
-    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
+    model: z.enum(Object.keys(IMAGE_MODELS) as [string, ...string[]]),
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })

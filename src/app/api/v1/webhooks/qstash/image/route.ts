@@ -3,9 +3,21 @@
  * Processes image generation jobs from QStash using FAL AI
  */
 
-import { FAL_IMAGE_MODELS, generateImage } from "@/lib/ai/fal-client";
+import {
+  type FalImageGenerationParams,
+  type FalImageResponse,
+  generateImage as generateImageFal,
+  IMAGE_MODELS,
+} from "@/lib/ai/fal-client";
+import type { LetzAIMode } from "@/lib/ai/letzai-client";
+import { generateImage as generateImageLetzAI } from "@/lib/ai/letzai-client";
+import { AI_PROVIDER_MAPPINGS } from "@/lib/ai/models";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
+import type {
+  LetzAIImageRequest,
+  LetzAIImageResponse,
+} from "@/lib/schemas/letzai-request";
 import { createAdminClient } from "@/lib/supabase/server";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
@@ -43,7 +55,7 @@ const processImageGeneration: JobProcessor = async (
 
   try {
     // Determine model to use
-    let model = imageData.model as keyof typeof FAL_IMAGE_MODELS | undefined;
+    let model = imageData.model as keyof typeof IMAGE_MODELS | undefined;
     if (!model) {
       // Default to fast model
       model = "flux_schnell";
@@ -61,9 +73,9 @@ const processImageGeneration: JobProcessor = async (
       });
     }
 
-    // Generate image using FAL
-    const falResponse = await generateImage({
-      model: FAL_IMAGE_MODELS[model],
+    // Generate image using selected AI provider
+    const resp = await selectedAiProvider({
+      model: IMAGE_MODELS[model],
       prompt: imageData.prompt,
       image_size: imageData.image_size,
       num_images: imageData.num_images || 1,
@@ -71,33 +83,10 @@ const processImageGeneration: JobProcessor = async (
       image_url: imageData.image_url as string,
     });
 
-    // Build result structure
-    const result = {
-      imageUrls: falResponse.data?.images?.map((img) => img.url) ?? [],
-      parameters: data,
-      generatedAt: new Date().toISOString(),
-      processingTimeMs:
-        falResponse.data?.timings?.inference ?? falResponse.latencyMs ?? 0,
-      provider: "fal-ai",
-      metadata: {
-        prompt: imageData.prompt,
-        model,
-        dimensions:
-          falResponse.data?.images?.map((img) => ({
-            width: img.width,
-            height: img.height,
-          })) ?? [],
-        file_sizes:
-          falResponse.data?.images?.map((img) => img.file_size ?? 0) ?? [],
-        seed: falResponse.data?.seed,
-        has_nsfw_concepts: falResponse.data?.has_nsfw_concepts,
-        cost: falResponse.cost,
-        requestId: falResponse.requestId,
-      },
-    };
+    const result = resultByProvider(model, imageData, resp.data as any);
 
     // If this is for a frame, update the frame with the generated image URL
-    if (imageData.frameId && result.imageUrls.length > 0) {
+    if (imageData.frameId && result?.imageUrls.length > 0) {
       const supabase = createAdminClient();
       const { error: updateError } = await supabase
         .from("frames")
@@ -249,4 +238,86 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     status: "active",
   });
+}
+
+/**
+ * private function to select AI provider based on model
+ */
+function selectedAiProvider(payload: Record<string, unknown>) {
+  switch (payload.model) {
+    case "letzai/image": {
+      const letzaiPayload = {
+        prompt: payload.prompt as string,
+        width: payload.width as number,
+        height: payload.height as number,
+        quality: payload.quality as number,
+        creativity: payload.creativity as number,
+        hasWatermark: payload.hasWatermark || (false as boolean),
+        systemVersion: payload.systemVersion || (3 as number),
+        mode: (payload.mode as LetzAIMode) || "cinematic",
+      } as LetzAIImageRequest;
+      return generateImageLetzAI(letzaiPayload);
+    }
+    default:
+      return generateImageFal(payload as unknown as FalImageGenerationParams);
+  }
+}
+
+function resultByProvider(
+  model: string,
+  data: Record<string, unknown>,
+  resp: Record<string, FalImageResponse | LetzAIImageResponse>,
+) {
+  const result = {
+    imageUrls: [] as string[],
+    parameters: data,
+    generatedAt: new Date().toISOString(),
+    processingTimeMs: 0,
+    provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
+    metadata: {
+      prompt: resp.prompt,
+      model,
+      dimensions: [] as { width: number; height: number }[],
+      file_sizes: [] as number[],
+      seed: resp.seed,
+      has_nsfw_concepts: resp.has_nsfw_concepts,
+      cost: (resp as any).cost,
+      requestId: resp.requestId,
+    },
+  };
+
+  switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
+    case "letz-ai": {
+      const generationSettings = (resp as any).generationSettings as Record<
+        string,
+        number
+      >;
+      result.imageUrls = [(resp as any).imageVersions?.original as string];
+      result.processingTimeMs = (resp as any).latencyMs || 0;
+      result.metadata.dimensions = [
+        { width: generationSettings.width, height: generationSettings.height },
+      ];
+      break;
+    }
+    default:
+      result.imageUrls = Array.isArray(resp.images)
+        ? resp.images.map((img: { url: string }) => img.url)
+        : ([] as string[]);
+      result.processingTimeMs = ((resp.timings as { inference?: number })
+        ?.inference ||
+        resp.latencyMs ||
+        0) as number;
+      result.metadata.dimensions = Array.isArray(resp.images)
+        ? resp.images.map((img: { width?: number; height?: number }) => ({
+            width: img.width ?? 0,
+            height: img.height ?? 0,
+          }))
+        : ([] as { width: number; height: number }[]);
+      result.metadata.file_sizes = Array.isArray(resp.images)
+        ? resp.images.map((img: { file_size?: number }) => img.file_size ?? 0)
+        : ([] as number[]);
+      break;
+  }
+
+  return result;
 }
