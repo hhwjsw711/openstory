@@ -61,7 +61,7 @@ export async function generateImageByFalAction(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to generate frames",
+        error instanceof Error ? error.message : "Failed to generate image",
     };
   }
 }

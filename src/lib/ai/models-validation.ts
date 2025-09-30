@@ -103,9 +103,12 @@ export const extraParamsSchemaByModel = (
     flux_pro_v1_1_ultra: fluxProV11UltraSchema,
     flux_krea_lora: fluxKreaLoraSchema,
   };
-  const model = FAL_IMAGE_MODELS[data.model as keyof typeof FAL_IMAGE_MODELS];
-  const schema = modelSchemas[model as keyof typeof modelSchemas];
+  const schema = modelSchemas[data.model as keyof typeof modelSchemas];
   const params = { prompt: data.prompt, ...data.extra_params };
+  if (!schema) {
+    throw new Error(`[FAL.AI] Unknown image model slug: ${data.model}`);
+  }
+
   if (schema && params) {
     const result = schema.safeParse(params);
     if (!result.success) {
