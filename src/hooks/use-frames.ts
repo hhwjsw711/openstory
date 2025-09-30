@@ -500,11 +500,14 @@ export function useFramePreviewStatus(frames: Frame[]) {
       let isGenerating = false;
       if (!hasPreview) {
         const createdAt = new Date(frame.created_at).getTime();
+        const updatedAt = frame.updated_at
+          ? new Date(frame.updated_at).getTime()
+          : createdAt;
         const now = Date.now();
         const twoMinutesAgo = now - 2 * 60 * 1000;
 
         // Only show as generating if created recently
-        isGenerating = createdAt > twoMinutesAgo;
+        isGenerating = createdAt > twoMinutesAgo || updatedAt > twoMinutesAgo;
       }
 
       statusMap.set(frame.id, {
