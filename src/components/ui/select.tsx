@@ -72,14 +72,24 @@ export const Select: React.FC<SelectProps> = ({
     }
 
     switch (e.key) {
-      case "ArrowDown":
+      case "ArrowDown": {
         e.preventDefault();
-        setFocusedIndex((prev) => Math.min(prev + 1, options.length - 1));
+        let nextIndex = focusedIndex + 1;
+        while (nextIndex < options.length && options[nextIndex].disabled) {
+          nextIndex++;
+        }
+        setFocusedIndex(Math.min(nextIndex, options.length - 1));
         break;
-      case "ArrowUp":
+      }
+      case "ArrowUp": {
         e.preventDefault();
-        setFocusedIndex((prev) => Math.max(prev - 1, 0));
+        let prevIndex = focusedIndex - 1;
+        while (prevIndex >= 0 && options[prevIndex].disabled) {
+          prevIndex--;
+        }
+        setFocusedIndex(Math.max(prevIndex, 0));
         break;
+      }
       case "Enter":
         e.preventDefault();
         if (focusedIndex >= 0 && !options[focusedIndex].disabled) {
@@ -157,11 +167,22 @@ export const Select: React.FC<SelectProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-          {options.map((option) => (
+        <div
+          role="listbox"
+          id="select-options"
+          aria-activedescendant={
+            focusedIndex >= 0 ? `option-${focusedIndex}` : undefined
+          }
+          className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          tabIndex={0}
+        >
+          {options.map((option, index) => (
             <button
-              key={option.value}
               type="button"
+              key={option.value}
+              id={`option-${index}`}
+              role="option"
+              aria-selected={selectedValue === option.value}
               className={cn(
                 "flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
                 {

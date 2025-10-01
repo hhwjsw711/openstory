@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import z from "zod";
 import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
 import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
-import { parseExtraParamsByModel } from "@/lib/ai/models-validation";
+import {
+  MODEL_KEYS,
+  parseExtraParamsByModel,
+} from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
 const estimateImageCostSchema = z
   .object({
-    model: z.enum(Object.keys(IMAGE_MODELS) as [string, ...string[]]),
+    model: z.enum(MODEL_KEYS),
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })
