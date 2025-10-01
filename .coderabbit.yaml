@@ -1,7 +1,0 @@
-# .coderabbit.yaml (repo root, committed to default branch, e.g., main)
-reviews:
-  auto_review:
-    enabled: true
-    drafts: true
-    base_branches:
-      - ".*"
