@@ -3,7 +3,7 @@ import Image from "next/image";
 import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { generateFrameMotion } from "#actions/sequence";
-import type { FalGeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
+import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
@@ -229,7 +229,7 @@ export const StoryboardFrameWithScript: React.FC<
       jobId !== processedJobId
     ) {
       const imageProcessed =
-        activeJob?.data as unknown as FalGeneratedImageStatusResponse;
+        activeJob?.data as unknown as GeneratedImageStatusResponse;
       const imageUrls =
         (imageProcessed?.result as unknown as { imageUrls?: string[] })
           ?.imageUrls ?? [];

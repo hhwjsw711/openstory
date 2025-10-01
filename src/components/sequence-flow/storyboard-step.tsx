@@ -61,7 +61,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     metadataError && metadata?.frameGeneration?.status === "failed";
 
   // Update frame
-  const { mutate: updateFrame } = useUpdateFrame();
+  const { mutateAsync: updateFrame } = useUpdateFrame();
 
   // Track preview generation status for all frames
   const framePreviewStatus = useFramePreviewStatus(frames);

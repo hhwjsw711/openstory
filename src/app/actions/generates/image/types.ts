@@ -1,4 +1,4 @@
-export interface FalGeneratedImageStatusResponse {
+export interface GeneratedImageStatusResponse {
   team_id: string;
   user_id: string;
   type: string;

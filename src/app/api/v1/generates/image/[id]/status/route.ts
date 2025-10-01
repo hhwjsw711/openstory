@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchFalGeneratedImageStatusAction } from "#actions/generates/image";
+import { fetchGeneratedImageStatusAction } from "@/app/actions/generates/image";
 import { handleApiError } from "@/lib/errors";
 
 export async function GET(
@@ -14,7 +14,7 @@ export async function GET(
         id,
       },
     );
-    const result = await fetchFalGeneratedImageStatusAction(id);
+    const result = await fetchGeneratedImageStatusAction(id);
     console.log(
       "[api/v1/generates/image/[id]/status] Image generation status result",
       {

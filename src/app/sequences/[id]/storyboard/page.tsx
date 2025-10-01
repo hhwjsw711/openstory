@@ -26,7 +26,7 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   useUser();
 
   // Use unified storyboard status hook (replaces multiple polling hooks)
-  const { frames } = useStoryboardStatus(sequenceId);
+  const { frames, isLoading, error } = useStoryboardStatus(sequenceId);
 
   // Completed steps based on what's in the sequence
   const completedSteps = new Set([1]); // Script is always completed to get here
@@ -41,17 +41,25 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   return (
     <PageContainer maxWidth="narrow" data-testid="storyboard-page">
       <PageHeader>
-        <PageHeading>Storyboard Generation</PageHeading>
-        <PageDescription>
-          Review and refine your AI-generated storyboard frames.
-        </PageDescription>
+        {isLoading && <PageHeading>Loading storyboard...</PageHeading>}
+        {error && <PageHeading>Error loading storyboard</PageHeading>}
+        {!isLoading && !error && (
+          <>
+            <PageHeading>Storyboard Generation</PageHeading>
+            <PageDescription>
+              Review and refine your AI-generated storyboard frames.
+            </PageDescription>
+          </>
+        )}
       </PageHeader>
 
-      <StepNavigation
-        sequenceId={sequenceId}
-        currentStep={2}
-        completedSteps={completedSteps}
-      />
+      {!isLoading && !error && (
+        <StepNavigation
+          sequenceId={sequenceId}
+          currentStep={2}
+          completedSteps={completedSteps}
+        />
+      )}
 
       <StoryboardStep sequenceId={sequenceId} onPrevious={handlePrevious} />
     </PageContainer>

@@ -19,7 +19,7 @@ function revalidateSequencePages(sequenceId: string): void {
 const createFrameSchema = z.object({
   sequence_id: z.string().uuid(),
   description: z.string().min(1).max(5000),
-  order_index: z.number().int().positive(),
+  order_index: z.number().int(),
   thumbnail_url: z.string().url().optional(),
   video_url: z.string().url().optional(),
   duration_ms: z.number().int().min(1).optional(),
@@ -29,7 +29,7 @@ const createFrameSchema = z.object({
 const updateFrameSchema = z.object({
   id: z.string().uuid(),
   description: z.string().min(1).max(5000).optional(),
-  order_index: z.number().int().positive().optional(),
+  order_index: z.number().int().optional(),
   thumbnail_url: z.string().url().nullable().optional(),
   video_url: z.string().url().nullable().optional(),
   duration_ms: z.number().int().min(1).nullable().optional(),
@@ -608,6 +608,8 @@ export async function generateFramesAction(
       const jobManager = getJobManager();
       const qstashClient = getQStashClient();
       const imageGenerationPromises = [];
+      const defaultModel = "flux_krea_lora";
+      const defaultImageSize = "landscape_16_9";
 
       for (const frame of insertedFrames) {
         // Skip frames without descriptions
@@ -622,8 +624,8 @@ export async function generateFramesAction(
             frameId: frame.id,
             sequenceId: validated.sequenceId,
             prompt: frame.description,
-            model: "flux_schnell", // Use fast model for thumbnails
-            image_size: "landscape_16_9",
+            model: defaultModel, // Use fast model for thumbnails
+            image_size: defaultImageSize,
             num_images: 1,
           },
           userId: user?.id,
@@ -640,8 +642,8 @@ export async function generateFramesAction(
             frameId: frame.id,
             sequenceId: validated.sequenceId,
             prompt: frame.description,
-            model: "flux_schnell",
-            image_size: "landscape_16_9" as const,
+            model: defaultModel,
+            image_size: defaultImageSize,
             num_images: 1,
             // Add style information if available
             style: styleStack as Json | undefined,

@@ -371,6 +371,68 @@ export type Database = {
           },
         ];
       };
+      letzai_requests: {
+        Row: {
+          completed_at: string | null;
+          cost_credits: number | null;
+          created_at: string;
+          endpoint: string;
+          error: string | null;
+          id: string;
+          job_id: string | null;
+          latency_ms: number | null;
+          model: string | null;
+          request_payload: Json;
+          response_data: Json | null;
+          status: Database["public"]["Enums"]["letzai_request_status"];
+          team_id: string | null;
+          updated_at: string;
+          user_id: string | null;
+        };
+        Insert: {
+          completed_at?: string | null;
+          cost_credits?: number | null;
+          created_at?: string;
+          endpoint: string;
+          error?: string | null;
+          id?: string;
+          job_id?: string | null;
+          latency_ms?: number | null;
+          model?: string | null;
+          request_payload: Json;
+          response_data?: Json | null;
+          status?: Database["public"]["Enums"]["letzai_request_status"];
+          team_id?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          completed_at?: string | null;
+          cost_credits?: number | null;
+          created_at?: string;
+          endpoint?: string;
+          error?: string | null;
+          id?: string;
+          job_id?: string | null;
+          latency_ms?: number | null;
+          model?: string | null;
+          request_payload?: Json;
+          response_data?: Json | null;
+          status?: Database["public"]["Enums"]["letzai_request_status"];
+          team_id?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "letzai_requests_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sequences: {
         Row: {
           created_at: string;
@@ -817,6 +879,7 @@ export type Database = {
     };
     Enums: {
       fal_request_status: "pending" | "completed" | "failed";
+      letzai_request_status: "pending" | "in_progress" | "completed" | "failed";
       sequence_status:
         | "draft"
         | "processing"
@@ -963,6 +1026,7 @@ export const Constants = {
   public: {
     Enums: {
       fal_request_status: ["pending", "completed", "failed"],
+      letzai_request_status: ["pending", "in_progress", "completed", "failed"],
       sequence_status: [
         "draft",
         "processing",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateImageByFalAction } from "@/app/actions/generates/image";
+import { generateImageByAction } from "@/app/actions/generates/image";
 import { generateImageSchema } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
@@ -8,12 +8,10 @@ export async function POST(request: Request) {
     // Parse and validate request body
     const body = await request.json();
     const validatedData = generateImageSchema.safeParse(body);
-    console.log("[api/v1/generates/image] validatedData:", validatedData);
     if (!validatedData.success) {
       return NextResponse.json(
         {
-          success: true,
-          jobId: null,
+          success: false,
           error: validatedData.error.message,
         },
         { status: 400 },
@@ -21,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     // Generate image with prompt
-    const result = await generateImageByFalAction(validatedData.data);
+    const result = await generateImageByAction(validatedData.data);
 
     if (!result.success) {
       throw new Error(

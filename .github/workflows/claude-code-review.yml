@@ -1,54 +1,46 @@
-name: Claude PR Review with Progress Tracking
+name: Claude PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
-  review-with-tracking:
+  review:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
+
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # give the action access to the full PR history & comments context
+          fetch-depth: 0
 
-      - name: Debug - Check token format (safe)
-        run: |
-          TOKEN="${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
-          echo "Token length: ${#TOKEN}"
-          echo "Token starts with: ${TOKEN:0:15}..."
-          echo "Token ends with: ...${TOKEN: -10}"
-          # Check for newlines
-          if [[ "$TOKEN" == *$'\n'* ]]; then
-            echo "⚠️ WARNING: Token contains newlines!"
-          else
-            echo "✅ Token has no newlines"
-          fi
-          # Check for spaces
-          if [[ "$TOKEN" == *" "* ]]; then
-            echo "⚠️ WARNING: Token contains spaces!"
-          else
-            echo "✅ Token has no spaces"
-          fi
-
-      - name: PR Review with Progress Tracking
+      # --- Claude review step ---
+      - name: Run Claude review
         uses: anthropics/claude-code-action@v1
         with:
+          # IMPORTANT: pass the direct API key (repo/org secret)
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Enable progress tracking
-          track_progress: true
-
-          # Your custom review instructions
+          # (Optional) custom instructions for the review
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
+
+            HARD CONSTRAINTS (do not violate):
+            - Do NOT discuss tests, unit tests, test coverage, or suggest adding tests.
+            - Do NOT include any section titled "Test Coverage" or similar.
+            - Keep feedback focused on code diffs only.
 
             Perform a comprehensive code review with the following focus areas:
 
@@ -88,8 +80,9 @@ jobs:
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
 
-# When track_progress is enabled:
-# - Creates a tracking comment with progress checkboxes
-# - Includes all PR context (comments, attachments, images)
-# - Updates progress as the review proceeds
-# - Marks as completed when done
+      # (Optional) Fail the workflow if Claude returns a hard error
+      - name: Ensure review completed
+        if: failure()
+        run: |
+          echo "Claude review step failed."
+          exit 1

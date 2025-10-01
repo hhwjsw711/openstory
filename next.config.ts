@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.letz.ai",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };

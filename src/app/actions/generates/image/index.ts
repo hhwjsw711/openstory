@@ -2,10 +2,10 @@ import {
   type GenerateImageInput,
   generateImageSchema,
 } from "@/lib/ai/models-validation";
-import type { FalGeneratedImageStatusResponse } from "./types";
+import type { GeneratedImageStatusResponse } from "./types";
 
-//  Generate image by FAL Model
-export async function generateImageByFalAction(
+//  Generate image by Model
+export async function generateImageByAction(
   input: GenerateImageInput,
 ): Promise<{
   success: boolean;
@@ -19,7 +19,7 @@ export async function generateImageByFalAction(
       sequence_id: validated.sequence_id,
       frame_id: validated.frame_id,
       prompt: validated.prompt,
-      ...validated.extra_params,
+      ...(validated.extra_params ?? {}),
     };
     if (process.env.NODE_ENV !== "production")
       console.log(
@@ -66,25 +66,31 @@ export async function generateImageByFalAction(
   }
 }
 
-//  Get FAL generated image status by jobId
-export async function fetchFalGeneratedImageStatusAction(
-  jobId: string,
-): Promise<{
+//  Get generated image status by jobId
+export async function fetchGeneratedImageStatusAction(jobId: string): Promise<{
   success: boolean;
   jobId?: string;
   error?: string;
-  data?: FalGeneratedImageStatusResponse;
+  data?: GeneratedImageStatusResponse;
 }> {
   const { createServerClient } = await import("@/lib/supabase/server");
   const supabase = createServerClient();
 
-  const { data: jobData } = await supabase
+  const { data: jobData, error } = await supabase
     .from("jobs")
     .select(
       "team_id, user_id, type, status, payload, result, error, created_at, updated_at",
     )
     .eq("id", jobId)
     .single();
+
+  if (error) {
+    console.error("[actions/generates/image] Error fetching job status", error);
+    return {
+      success: false,
+      error: "[actions/generates/image] Failed to fetch job status",
+    };
+  }
 
   console.log("[actions/generates/image] FAL generated image status by jobId", {
     jobData,
@@ -100,6 +106,6 @@ export async function fetchFalGeneratedImageStatusAction(
   return {
     success: true,
     jobId,
-    data: jobData as unknown as FalGeneratedImageStatusResponse,
+    data: jobData as unknown as GeneratedImageStatusResponse,
   };
 }

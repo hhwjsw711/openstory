@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import z from "zod";
 import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
-import { FAL_IMAGE_MODELS, type FalImageModel } from "@/lib/ai/models";
+import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
 import { extraParamsSchemaByModel } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
 const estimateImageCostSchema = z
   .object({
-    model: z.enum(Object.keys(FAL_IMAGE_MODELS) as [string, ...string[]]),
+    model: z.enum(Object.keys(IMAGE_MODELS) as [string, ...string[]]),
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })
@@ -21,10 +21,32 @@ export async function POST(request: Request) {
   try {
     // Parse and validate request body
     const body = await request.json();
-    const validatedData = estimateImageCostSchema.parse(body);
+    let parseResult: ReturnType<typeof estimateImageCostSchema.safeParse>;
+    try {
+      parseResult = estimateImageCostSchema.safeParse(body);
+    } catch (schemaError) {
+      if (
+        schemaError instanceof Error &&
+        schemaError.message.startsWith("[model-validations]")
+      ) {
+        return NextResponse.json(
+          { error: schemaError.message },
+          { status: 400 },
+        );
+      }
+      throw schemaError;
+    }
 
-    const modelKey = validatedData.model as keyof typeof FAL_IMAGE_MODELS;
-    const model = FAL_IMAGE_MODELS[modelKey] as FalImageModel;
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const validatedData = parseResult.data;
+
+    const modelKey = validatedData.model as keyof typeof IMAGE_MODELS;
+    const model = IMAGE_MODELS[modelKey] as FalImageModel;
     const costResult = calculateFalCost(
       model,
       validatedData.extra_params || {},

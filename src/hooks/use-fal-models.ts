@@ -15,7 +15,9 @@ export const falModelKeys = {
 async function fetchFalModels(params: FalModelsRequest) {
   const url = new URL("/api/v1/fal/models", window.location.origin);
   url.searchParams.set("type", params.type);
-  url.searchParams.set("includeCosts", params.includeCosts.toString());
+  if (typeof params.includeCosts === "boolean") {
+    url.searchParams.set("includeCosts", String(params.includeCosts));
+  }
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
@@ -79,9 +81,8 @@ async function fetchGeneratedImageByJobId(id: string) {
 // Hook for listing FAL models
 export function useFalModels(params: FalModelsRequest) {
   return useQuery({
-    queryKey: falModelKeys.lists(),
+    queryKey: [...falModelKeys.lists(), params.type, params.includeCosts],
     queryFn: () => fetchFalModels(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

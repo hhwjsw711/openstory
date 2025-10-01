@@ -38,7 +38,7 @@ export type Job = Tables<"jobs">;
 export type Credit = Tables<"credits">;
 export type Transaction = Tables<"transactions">;
 export type FalRequest = Tables<"fal_requests">;
-
+export type LetzAIRequest = Tables<"letzai_requests">;
 // Insert types (for creating new records)
 export type AnonymousSessionInsert = TablesInsert<"anonymous_sessions">;
 export type TeamInsert = TablesInsert<"teams">;
@@ -53,7 +53,7 @@ export type JobInsert = TablesInsert<"jobs">;
 export type CreditInsert = TablesInsert<"credits">;
 export type TransactionInsert = TablesInsert<"transactions">;
 export type FalRequestInsert = TablesInsert<"fal_requests">;
-
+export type LetzAIRequestInsert = TablesInsert<"letzai_requests">;
 // Update types (for updating existing records)
 export type AnonymousSessionUpdate = TablesUpdate<"anonymous_sessions">;
 export type TeamUpdate = TablesUpdate<"teams">;
@@ -68,9 +68,10 @@ export type JobUpdate = TablesUpdate<"jobs">;
 export type CreditUpdate = TablesUpdate<"credits">;
 export type TransactionUpdate = TablesUpdate<"transactions">;
 export type FalRequestUpdate = TablesUpdate<"fal_requests">;
-
+export type LetzAIRequestUpdate = TablesUpdate<"letzai_requests">;
 // Enum types
 export type SequenceStatus = Enums<"sequence_status">;
 export type TeamMemberRole = Enums<"team_member_role">;
 export type TransactionType = Enums<"transaction_type">;
 export type FalRequestStatus = Enums<"fal_request_status">;
+export type LetzAIRequestStatus = Enums<"letzai_request_status">;
