@@ -1,0 +1,78 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # give the action access to the full PR history & comments context
+          fetch-depth: 0
+
+      # --- Claude review step ---
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@v1
+        with:
+          # IMPORTANT: pass the direct API key (repo/org secret)
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # (Optional) custom instructions for the review
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Perform a comprehensive code review with the following focus areas:
+
+            1. Code Quality
+               - Clean code principles and best practices
+               - Error handling and edge cases
+               - Readability & maintainability
+
+            2. Security
+               - Potential vulnerabilities
+               - Input validation/sanitization
+               - AuthN/AuthZ logic
+
+            3. Performance
+               - Bottlenecks & N+1s
+               - DB query efficiency
+               - Resource usage
+
+            4. Documentation
+               - In-code docs/docstrings
+               - README/CHANGELOG/API docs as needed
+
+            Anti-repetition rules:
+            1) Read existing review comments and the PR’s git log first.
+            2) Do NOT repeat suggestions already made.
+            3) If a previous suggestion was applied, acknowledge the fix using:
+               - File: <path>, Line <n>: <issue> → Fixed (commit <sha>) - <brief reason>
+            4) Focus only on new changes or unaddressed issues.
+            5) If no new issues are found, acknowledge improvements.
+
+          # (Optional) extra args for the action/agent
+          # Keep this modest; add --debug temporarily if troubleshooting.
+          claude_args: "--max-turns 8"
+
+      # (Optional) Fail the workflow if Claude returns a hard error
+      - name: Ensure review completed
+        if: failure()
+        run: |
+          echo "Claude review step failed."
+          exit 1
