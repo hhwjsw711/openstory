@@ -32,12 +32,6 @@ fi
 echo -e "${BLUE}Setting up QStash for local development...${NC}"
 echo -e "${YELLOW}Make sure 'bun qstash:dev' is running in another terminal!${NC}"
 
-# Hardcoded credentials for user 1 from qstash dev server
-QSTASH_TOKEN="eyJVc2VySUQiOiJ1c2VyMSIsIlBhc3N3b3JkIjoicGFzc3dvcmQxIn0="
-QSTASH_CURRENT_SIGNING_KEY="sig_KkL1JBDHaKWSkqfCH9hy5vZKhoDC"
-QSTASH_NEXT_SIGNING_KEY="sig_JjS9n2n6md8S5W2QmqKMCSTrdTmE"
-QSTASH_URL="http://localhost:8080"
-
 # Get the tunnel URL if needed
 echo -e "${BLUE}Setting up tunnel for QStash callbacks...${NC}"
 echo -e "${YELLOW}If you have a tunnel running (e.g., ngrok), enter the URL${NC}"

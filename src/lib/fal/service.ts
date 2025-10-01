@@ -1,6 +1,6 @@
 import { createFalClient } from "@fal-ai/client";
 import type { FalImageModel, FalVideoModel } from "@/lib/ai/models";
-import { FAL_IMAGE_MODELS, FAL_VIDEO_MODELS } from "@/lib/ai/models";
+import { IMAGE_MODELS, VIDEO_MODELS } from "@/lib/ai/models";
 import { VelroError, withRetry } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/types/database";
@@ -24,25 +24,54 @@ export interface FalServiceResponse<T = unknown> {
 }
 
 // Cost calculation mapping (in USD)
-const MODEL_COSTS: Record<string, number> = {
+export const MODEL_COSTS: Record<string, number> = {
   // Image models
-  [FAL_IMAGE_MODELS.flux_pro]: 0.05,
-  [FAL_IMAGE_MODELS.flux_dev]: 0.025,
-  [FAL_IMAGE_MODELS.flux_schnell]: 0.01,
-  [FAL_IMAGE_MODELS.sdxl]: 0.02,
-  [FAL_IMAGE_MODELS.sdxl_lightning]: 0.015,
+  [IMAGE_MODELS.flux_pro]: 0.05,
+  [IMAGE_MODELS.flux_dev]: 0.025,
+  [IMAGE_MODELS.flux_schnell]: 0.01,
+  [IMAGE_MODELS.sdxl]: 0.02,
+  [IMAGE_MODELS.sdxl_lightning]: 0.015,
+  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08, // per image
+  [IMAGE_MODELS.imagen4_preview_ultra]: 0.06, // per image
+  [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06, // per image
+  [IMAGE_MODELS.flux_krea_lora]: 0.035, // per mb
 
   // Video models
-  [FAL_VIDEO_MODELS.minimax_hailuo]: 0.3,
-  [FAL_VIDEO_MODELS.mochi_v1]: 0.25,
-  [FAL_VIDEO_MODELS.luma_dream_machine]: 0.4,
-  [FAL_VIDEO_MODELS.kling_v2]: 0.5,
-  [FAL_VIDEO_MODELS.wan_i2v]: 0.35,
-  [FAL_VIDEO_MODELS.kling_i2v]: 0.45,
-  [FAL_VIDEO_MODELS.svd_lcm]: 0.15,
-  [FAL_VIDEO_MODELS.veo3]: 0.8,
-  [FAL_VIDEO_MODELS.veo2_i2v]: 0.6,
-  [FAL_VIDEO_MODELS.wan_v2]: 0.55,
+  [VIDEO_MODELS.minimax_hailuo]: 0.3,
+  [VIDEO_MODELS.mochi_v1]: 0.25,
+  [VIDEO_MODELS.luma_dream_machine]: 0.4,
+  [VIDEO_MODELS.kling_v2]: 0.5,
+  [VIDEO_MODELS.wan_i2v]: 0.35,
+  [VIDEO_MODELS.kling_i2v]: 0.45,
+  [VIDEO_MODELS.svd_lcm]: 0.15,
+  [VIDEO_MODELS.veo3]: 0.8,
+  [VIDEO_MODELS.veo2_i2v]: 0.6,
+  [VIDEO_MODELS.wan_v2]: 0.55,
+};
+
+export const MODEL_TIME_ESTIMATES: Record<string, number> = {
+  // Image models
+  [IMAGE_MODELS.flux_pro]: 0.05,
+  [IMAGE_MODELS.flux_dev]: 0.025,
+  [IMAGE_MODELS.flux_schnell]: 0.01,
+  [IMAGE_MODELS.sdxl]: 0.02,
+  [IMAGE_MODELS.sdxl_lightning]: 0.015,
+  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08,
+  [IMAGE_MODELS.imagen4_preview_ultra]: 0.06,
+  [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06,
+  [IMAGE_MODELS.flux_krea_lora]: 0.035,
+
+  // Video models
+  [VIDEO_MODELS.minimax_hailuo]: 0.3,
+  [VIDEO_MODELS.mochi_v1]: 0.25,
+  [VIDEO_MODELS.luma_dream_machine]: 0.4,
+  [VIDEO_MODELS.kling_v2]: 0.5,
+  [VIDEO_MODELS.wan_i2v]: 0.35,
+  [VIDEO_MODELS.kling_i2v]: 0.45,
+  [VIDEO_MODELS.svd_lcm]: 0.15,
+  [VIDEO_MODELS.veo3]: 0.8,
+  [VIDEO_MODELS.veo2_i2v]: 0.6,
+  [VIDEO_MODELS.wan_v2]: 0.55,
 };
 
 /**
@@ -165,6 +194,11 @@ export class FalService {
     return baseCost * multiplier;
   }
 
+  calculateTime(model: string, _params: Record<string, unknown>): number {
+    const baseTime = MODEL_TIME_ESTIMATES[model] || 0.1; // Default time
+    return baseTime;
+  }
+
   /**
    * Get available models
    */
@@ -173,8 +207,8 @@ export class FalService {
     video: Record<string, string>;
   } {
     return {
-      image: FAL_IMAGE_MODELS,
-      video: FAL_VIDEO_MODELS,
+      image: IMAGE_MODELS,
+      video: VIDEO_MODELS,
     };
   }
 

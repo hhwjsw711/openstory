@@ -3,11 +3,35 @@
  * Processes image generation jobs from QStash using FAL AI
  */
 
-import { FAL_IMAGE_MODELS, generateImage } from "@/lib/ai/fal-client";
+import {
+  type FalImageGenerationParams,
+  type FalImageResponse,
+  generateImage as generateImageFal,
+  IMAGE_MODELS,
+} from "@/lib/ai/fal-client";
+import type { LetzAIMode } from "@/lib/ai/letzai-client";
+import { generateImage as generateImageLetzAI } from "@/lib/ai/letzai-client";
+import { AI_PROVIDER_MAPPINGS } from "@/lib/ai/models";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
+import type {
+  LetzAIImageRequest,
+  LetzAIImageResponse,
+} from "@/lib/schemas/letzai-request";
 import { createAdminClient } from "@/lib/supabase/server";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
+
+const LETZAI_PRESET_DIMENSIONS: Record<
+  string,
+  { width: number; height: number }
+> = {
+  square_hd: { width: 1024, height: 1024 },
+  square: { width: 768, height: 768 },
+  portrait_4_3: { width: 672, height: 896 },
+  portrait_16_9: { width: 576, height: 1024 },
+  landscape_4_3: { width: 1024, height: 768 },
+  landscape_16_9: { width: 1600, height: 900 },
+} as const;
 
 /**
  * Image generation processor using FAL AI
@@ -43,48 +67,41 @@ const processImageGeneration: JobProcessor = async (
 
   try {
     // Determine model to use
-    let model = imageData.model as keyof typeof FAL_IMAGE_MODELS | undefined;
+    let model = imageData.model as keyof typeof IMAGE_MODELS | undefined;
     if (!model) {
       // Default to fast model
-      model = "flux_schnell";
+      model = "flux_krea_lora";
     }
 
-    // Generate image using FAL
-    const falResponse = await generateImage({
-      model: FAL_IMAGE_MODELS[model],
+    if (process.env.NODE_ENV !== "production") {
+      const { prompt, image_url, ...rest } = imageData as Record<
+        string,
+        unknown
+      >;
+      console.debug("[ImageWebhook] Generating image", {
+        ...rest,
+        prompt: prompt ? "[redacted]" : undefined,
+        image_url: image_url ? "[redacted]" : undefined,
+      });
+    }
+
+    // Generate image using selected AI provider
+    const resp = await selectedAiProvider({
+      model: IMAGE_MODELS[model],
       prompt: imageData.prompt,
       image_size: imageData.image_size,
       num_images: imageData.num_images || 1,
       seed: imageData.seed,
+      image_url: imageData.image_url as string,
     });
 
-    // Build result structure
-    const result = {
-      imageUrls: falResponse.data?.images?.map((img) => img.url) ?? [],
-      parameters: data,
-      generatedAt: new Date().toISOString(),
-      processingTimeMs:
-        falResponse.data?.timings?.inference ?? falResponse.latencyMs ?? 0,
-      provider: "fal-ai",
-      metadata: {
-        prompt: imageData.prompt,
-        model,
-        dimensions:
-          falResponse.data?.images?.map((img) => ({
-            width: img.width,
-            height: img.height,
-          })) ?? [],
-        file_sizes:
-          falResponse.data?.images?.map((img) => img.file_size ?? 0) ?? [],
-        seed: falResponse.data?.seed,
-        has_nsfw_concepts: falResponse.data?.has_nsfw_concepts,
-        cost: falResponse.cost,
-        requestId: falResponse.requestId,
-      },
-    };
+    const respData = resp.data as unknown as
+      | FalImageResponse
+      | LetzAIImageResponse;
+    const result = resultByProvider(model, imageData, respData);
 
     // If this is for a frame, update the frame with the generated image URL
-    if (imageData.frameId && result.imageUrls.length > 0) {
+    if (imageData.frameId && result?.imageUrls.length > 0) {
       const supabase = createAdminClient();
       const { error: updateError } = await supabase
         .from("frames")
@@ -99,6 +116,73 @@ const processImageGeneration: JobProcessor = async (
           frameId: imageData.frameId,
           error: updateError.message,
         });
+        return result;
+      }
+
+      const { data: frameData } = await supabase
+        .from("frames")
+        .select("sequence_id")
+        .eq("id", imageData.frameId)
+        .single();
+
+      if (frameData?.sequence_id) {
+        // Check if all frames for this sequence now have thumbnails
+        const { data: allFrames } = await supabase
+          .from("frames")
+          .select("id, thumbnail_url")
+          .eq("sequence_id", frameData.sequence_id);
+
+        if (allFrames) {
+          const framesWithThumbnails = allFrames.filter(
+            (frame) => frame.thumbnail_url,
+          );
+          const allFramesHaveThumbnails =
+            framesWithThumbnails.length === allFrames.length;
+
+          if (allFramesHaveThumbnails && allFrames.length > 0) {
+            const { data: sequence } = await supabase
+              .from("sequences")
+              .select("metadata")
+              .eq("id", frameData.sequence_id)
+              .single();
+
+            if (sequence) {
+              const existingMetadata =
+                (sequence.metadata as Record<string, unknown>) || {};
+              const frameGeneration =
+                (existingMetadata.frameGeneration as Record<string, unknown>) ||
+                {};
+
+              const updatedMetadata = {
+                ...existingMetadata,
+                frameGeneration: {
+                  ...frameGeneration,
+                  status: "completed",
+                  completedAt: new Date().toISOString(),
+                  thumbnailsGenerating: false,
+                },
+              };
+
+              const { error: seqUpdateError } = await supabase
+                .from("sequences")
+                .update({
+                  metadata: updatedMetadata,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", frameData.sequence_id);
+
+              if (seqUpdateError) {
+                console.error(
+                  "[ImageWebhook] Failed to update sequence metadata",
+                  {
+                    sequenceId: frameData.sequence_id,
+                    error: seqUpdateError.message,
+                  },
+                );
+              }
+            }
+          }
+        }
       }
     }
 
@@ -169,4 +253,119 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     status: "active",
   });
+}
+
+/**
+ * private function to select AI provider based on model
+ */
+function selectedAiProvider(payload: Record<string, unknown>) {
+  switch (payload.model) {
+    case "letzai/image": {
+      const sizePreset = payload.image_size as string | undefined;
+      const { width, height } = LETZAI_PRESET_DIMENSIONS[
+        sizePreset ?? "landscape_16_9"
+      ] ?? {
+        width: 1600,
+        height: 900,
+      };
+      const letzaiPayload = {
+        prompt: payload.prompt as string,
+        width,
+        height,
+        quality: payload.quality || (5 as number),
+        creativity: payload.creativity || (2 as number),
+        hasWatermark: payload.hasWatermark || (false as boolean),
+        systemVersion: payload.systemVersion || (3 as number),
+        mode: (payload.mode as LetzAIMode) || "cinematic",
+      } as LetzAIImageRequest;
+      return generateImageLetzAI(letzaiPayload);
+    }
+    default:
+      return generateImageFal(payload as unknown as FalImageGenerationParams);
+  }
+}
+
+function resultByProvider(
+  model: string,
+  data: Record<string, unknown>,
+  resp: FalImageResponse | LetzAIImageResponse,
+) {
+  const result = {
+    imageUrls: [] as string[],
+    parameters: data,
+    generatedAt: new Date().toISOString(),
+    processingTimeMs: 0,
+    provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
+    metadata: {
+      prompt: resp.prompt,
+      model,
+      dimensions: [] as { width: number; height: number }[],
+      file_sizes: [] as number[],
+      seed: (resp as { seed?: number }).seed,
+      has_nsfw_concepts: (resp as { has_nsfw_concepts?: boolean[] })
+        .has_nsfw_concepts,
+      cost: (resp as { cost?: number }).cost,
+      requestId: (resp as { requestId?: string }).requestId,
+    },
+  };
+
+  switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
+    case "letz-ai": {
+      const generationSettings =
+        (resp as { generationSettings?: Record<string, number> })
+          .generationSettings ?? ({} as Record<string, number>);
+      const reqDims = {
+        width: (data as { width?: number }).width,
+        height: (data as { height?: number }).height,
+      };
+      result.imageUrls = [
+        (resp as { imageVersions?: { original: string } }).imageVersions
+          ?.original as string,
+      ];
+      result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
+      result.metadata.dimensions = [
+        {
+          width: generationSettings.width ?? reqDims.width ?? 1600,
+          height: generationSettings.height ?? reqDims.height ?? 900,
+        },
+      ];
+      break;
+    }
+    default: {
+      const images = (
+        resp as {
+          images?: {
+            url: string;
+            width?: number;
+            height?: number;
+            file_size?: number;
+          }[];
+        }
+      ).images;
+      const timings = (resp as { timings?: { inference?: number } }).timings;
+      const latencyMs = (resp as { latencyMs?: number }).latencyMs;
+      const seed = (resp as { seed?: number }).seed;
+      const has_nsfw_concepts = (resp as { has_nsfw_concepts?: boolean[] })
+        .has_nsfw_concepts;
+
+      result.imageUrls = Array.isArray(images)
+        ? images.map((img: { url: string }) => img.url)
+        : ([] as string[]);
+      result.processingTimeMs = timings?.inference || latencyMs || 0;
+      result.metadata.dimensions = Array.isArray(images)
+        ? images.map((img: { width?: number; height?: number }) => ({
+            width: img.width ?? 0,
+            height: img.height ?? 0,
+          }))
+        : ([] as { width: number; height: number }[]);
+      result.metadata.file_sizes = Array.isArray(images)
+        ? images.map((img: { file_size?: number }) => img.file_size ?? 0)
+        : ([] as number[]);
+      result.metadata.seed = seed;
+      result.metadata.has_nsfw_concepts = has_nsfw_concepts;
+      break;
+    }
+  }
+
+  return result;
 }

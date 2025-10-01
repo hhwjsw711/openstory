@@ -8,10 +8,10 @@
 
 import { z } from "zod";
 import {
-  FAL_IMAGE_MODELS,
-  FAL_VIDEO_MODELS,
   type FalImageModel,
   type FalVideoModel,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
 } from "@/lib/ai/models";
 import type { FalServiceResponse } from "@/lib/fal/service";
 import { getFalService } from "@/lib/fal/service";
@@ -37,16 +37,16 @@ const falImageResponseSchema = z.object({
   images: z.array(
     z.object({
       url: z.string().url(),
-      content_type: z.string().optional(),
-      file_name: z.string().optional(),
-      file_size: z.number().optional(),
-      width: z.number(),
-      height: z.number(),
+      content_type: z.string().nullable().optional(),
+      file_name: z.string().nullable().optional(),
+      file_size: z.number().nullable().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
     }),
   ),
   timings: z
     .object({
-      inference: z.number(),
+      inference: z.number().optional(),
     })
     .optional(),
   seed: z.number().optional(),
@@ -59,10 +59,10 @@ export type FalImageResponse = z.infer<typeof falImageResponseSchema>;
 
 // Import model definitions from separate file to avoid circular dependencies
 export {
-  FAL_IMAGE_MODELS,
-  FAL_VIDEO_MODELS,
   type FalImageModel,
   type FalVideoModel,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
 } from "@/lib/ai/models";
 
 /**
@@ -98,6 +98,7 @@ export interface FalImageGenerationParams {
   num_images?: number;
   enable_safety_checker?: boolean;
   seed?: number;
+  image_url?: string;
   // Service layer options
   userId?: string;
   teamId?: string;
@@ -126,7 +127,7 @@ export async function generateVideo(
   }
 
   const falService = getFalService();
-  const model = params.model || FAL_VIDEO_MODELS.minimax_hailuo;
+  const model = params.model || VIDEO_MODELS.minimax_hailuo;
 
   const requestData: Record<string, unknown> = {};
 
@@ -138,7 +139,7 @@ export async function generateVideo(
   if (params.seed !== undefined) requestData.seed = params.seed;
 
   // Special handling for Veo3 which supports audio
-  if (model === FAL_VIDEO_MODELS.veo3 && params.enable_audio !== undefined) {
+  if (model === VIDEO_MODELS.veo3 && params.enable_audio !== undefined) {
     requestData.enable_audio = params.enable_audio;
   }
 
@@ -199,7 +200,7 @@ export async function generateImage(
   }
 
   const falService = getFalService();
-  const model = params.model || FAL_IMAGE_MODELS.flux_schnell;
+  const model = params.model || IMAGE_MODELS.flux_krea_lora;
 
   const requestData: Record<string, unknown> = {
     prompt: params.prompt,
@@ -212,6 +213,17 @@ export async function generateImage(
     requestData.enable_safety_checker = params.enable_safety_checker;
   }
   if (params.seed !== undefined) requestData.seed = params.seed;
+  if (params.image_url) requestData.image_url = params.image_url;
+
+  if (process.env.NODE_ENV !== "production") {
+    const { prompt, image_url, ...rest } = requestData;
+    const redacted = {
+      ...rest,
+      prompt: prompt ? "[redacted]" : undefined,
+      image_url: image_url ? "[redacted]" : undefined,
+    };
+    console.debug("[FAL] Request data:", redacted);
+  }
 
   const result = await falService.generateImage(model, requestData, {
     userId: params.userId,
@@ -331,10 +343,10 @@ export const fal = {
     }
 
     // Determine route based on known model lists first, then simple heuristics
-    const isKnownImage = Object.values(FAL_IMAGE_MODELS).includes(
+    const isKnownImage = Object.values(IMAGE_MODELS).includes(
       model as FalImageModel,
     );
-    const isKnownVideo = Object.values(FAL_VIDEO_MODELS).includes(
+    const isKnownVideo = Object.values(VIDEO_MODELS).includes(
       model as FalVideoModel,
     );
     const isImageHeuristic =
@@ -427,4 +439,15 @@ export function calculateFalCost(
 ): number {
   const falService = getFalService();
   return falService.calculateCost(model, params);
+}
+
+/**
+ * Calculate the estimated time for a Fal.ai request
+ */
+export function calculateFalTime(
+  model: FalImageModel | FalVideoModel,
+  params: Record<string, unknown>,
+): number {
+  const falService = getFalService();
+  return falService.calculateTime(model, params);
 }

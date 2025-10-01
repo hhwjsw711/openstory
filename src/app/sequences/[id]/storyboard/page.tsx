@@ -9,20 +9,8 @@ import {
   PageHeader,
   PageHeading,
 } from "@/components/typography";
-import {
-  useActiveFrameGeneration,
-  useFramesBySequence,
-} from "@/hooks/use-frames";
-import { useSequence } from "@/hooks/use-sequences";
+import { useStoryboardStatus } from "@/hooks/use-storyboard-status";
 import { useUser } from "@/hooks/use-user";
-
-interface FrameGenerationMetadata {
-  frameGeneration?: {
-    status?: string;
-    expectedFrameCount?: number;
-    completedFrameCount?: number;
-  };
-}
 
 interface StoryboardPageProps {
   params: Promise<{
@@ -37,31 +25,8 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   // Verify session
   useUser();
 
-  // Load sequence to check status
-  const { data: sequence } = useSequence(sequenceId, {
-    refetchInterval: 2000, // Poll sequence status
-  });
-
-  // Check if frames are being generated based on sequence status
-  const metadata = sequence?.metadata as FrameGenerationMetadata | null;
-  const isBackgroundGenerating =
-    sequence?.status === "processing" ||
-    metadata?.frameGeneration?.status === "processing" ||
-    metadata?.frameGeneration?.status === "generating_thumbnails";
-
-  // Check for active frame generation job as fallback
-  const { data: activeJob } = useActiveFrameGeneration(sequenceId);
-  const isJobGenerating =
-    activeJob?.status === "running" || activeJob?.status === "pending";
-
-  // Consider generating if either sequence status or job indicates generation
-  const isGenerating = isBackgroundGenerating || isJobGenerating;
-
-  // Load frames with auto-refresh when generating
-  const { data: frames = [] } = useFramesBySequence(sequenceId, {
-    // Refetch every 2 seconds when frames are being generated
-    refetchInterval: isGenerating ? 2000 : false,
-  });
+  // Use unified storyboard status hook (replaces multiple polling hooks)
+  const { frames, isLoading, error } = useStoryboardStatus(sequenceId);
 
   // Completed steps based on what's in the sequence
   const completedSteps = new Set([1]); // Script is always completed to get here
@@ -76,17 +41,25 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   return (
     <PageContainer maxWidth="narrow" data-testid="storyboard-page">
       <PageHeader>
-        <PageHeading>Storyboard Generation</PageHeading>
-        <PageDescription>
-          Review and refine your AI-generated storyboard frames.
-        </PageDescription>
+        {isLoading && <PageHeading>Loading storyboard...</PageHeading>}
+        {error && <PageHeading>Error loading storyboard</PageHeading>}
+        {!isLoading && !error && (
+          <>
+            <PageHeading>Storyboard Generation</PageHeading>
+            <PageDescription>
+              Review and refine your AI-generated storyboard frames.
+            </PageDescription>
+          </>
+        )}
       </PageHeader>
 
-      <StepNavigation
-        sequenceId={sequenceId}
-        currentStep={2}
-        completedSteps={completedSteps}
-      />
+      {!isLoading && !error && (
+        <StepNavigation
+          sequenceId={sequenceId}
+          currentStep={2}
+          completedSteps={completedSteps}
+        />
+      )}
 
       <StoryboardStep sequenceId={sequenceId} onPrevious={handlePrevious} />
     </PageContainer>

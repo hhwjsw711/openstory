@@ -19,6 +19,7 @@ export const LETZAI_MODES = {
   default: "default",
   sigma: "sigma",
   turbo: "turbo",
+  cinematic: "cinematic",
 } as const;
 
 export const LETZAI_EDIT_MODES = {

@@ -55,6 +55,7 @@ export interface ImageGenerationPayload extends BaseJobPayload {
     model?: string;
     width?: number;
     height?: number;
+    [key: string]: unknown;
   };
 }
 

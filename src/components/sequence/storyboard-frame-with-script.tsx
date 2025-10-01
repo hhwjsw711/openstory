@@ -1,11 +1,27 @@
 import { Play, Video } from "lucide-react";
 import Image from "next/image";
-import type * as React from "react";
+import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { generateFrameMotion } from "#actions/sequence";
+import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import {
+  useEstimateImageCostByFal,
+  useGenerateImageByFal,
+  useGenerateImageStatusByJobId,
+} from "@/hooks/use-fal-models";
 import { cn } from "@/lib/utils";
-import type { Frame } from "@/types/database";
+import type { Frame, Style } from "@/types/database";
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  model: string;
+  type: "image" | "video";
+  cost?: number;
+  costUnit?: string;
+}
 
 interface StoryboardFrameWithScriptProps {
   frame: Frame;
@@ -13,8 +29,10 @@ interface StoryboardFrameWithScriptProps {
   styleId?: string;
   onEdit?: (frameId: string) => void;
   onDelete?: (frameId: string) => void;
-  onRegenerate?: (frameId: string) => void;
+  onRegenerate?: (payload: Record<string, unknown>) => void;
   onFrameUpdate?: (frame: Frame) => void;
+  falModels?: ModelInfo[];
+  styles?: Style[];
 }
 
 export const StoryboardFrameWithScript: React.FC<
@@ -27,6 +45,7 @@ export const StoryboardFrameWithScript: React.FC<
   onDelete,
   onRegenerate,
   onFrameUpdate,
+  falModels,
 }) => {
   // Extract script chunk from metadata or use description
   const metadata = frame.metadata as Record<string, unknown> | null;
@@ -42,6 +61,16 @@ export const StoryboardFrameWithScript: React.FC<
 
   const hasVideo = Boolean(frame.video_url);
   const hasThumbnail = Boolean(frame.thumbnail_url);
+
+  // Image generation with selected model
+  const [selectedModel, setSelectedModel] = useState<string | null>("");
+  const generateImageMutation = useGenerateImageByFal();
+  const estimateImageCostMutation = useEstimateImageCostByFal();
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [processedJobId, setProcessedJobId] = useState<string | null>(null);
+  const { data: activeJob } = useGenerateImageStatusByJobId(jobId || "", {
+    enabled: !!jobId,
+  });
 
   // Handle video playback
   const handlePlay = useCallback(() => {
@@ -131,6 +160,90 @@ export const StoryboardFrameWithScript: React.FC<
       setIsGeneratingMotion(false);
     }
   }, [frame, displayScript, styleId, onFrameUpdate]);
+
+  // Handle FAL generation with style and script
+  const handleGenerateWithSelectedModel = useCallback(async () => {
+    if (!selectedModel) return;
+    console.log(
+      "[handleGenerateWithSelectedModel] displayScript:",
+      displayScript,
+    );
+    try {
+      const result = await generateImageMutation.mutateAsync({
+        frame_id: frame.id,
+        sequence_id: frame.sequence_id,
+        model: selectedModel as string,
+        prompt: displayScript || "",
+        extra_params: {
+          image_url: frame.thumbnail_url || "",
+        },
+      });
+      if (result?.success && result?.jobId) {
+        onFrameUpdate?.({
+          ...frame,
+          thumbnail_url: null,
+        });
+        setJobId(result.jobId);
+      }
+    } catch (error) {
+      console.error(
+        "[handleGenerateWithSelectedModel] FAL generation failed",
+        error,
+      );
+    }
+  }, [
+    frame,
+    generateImageMutation,
+    selectedModel,
+    displayScript,
+    onFrameUpdate,
+  ]);
+
+  // check cost per frame with style
+  const handleCheckCost = useCallback(async () => {
+    if (!selectedModel) return;
+
+    const result = await estimateImageCostMutation.mutateAsync({
+      model: selectedModel,
+      prompt: displayScript || "",
+      extra_params: {
+        frame_id: frame.id,
+        sequence_id: frame.sequence_id,
+      },
+    });
+
+    console.log("[handleCheckCost] Cost result:", result);
+  }, [frame, selectedModel, displayScript, estimateImageCostMutation]);
+
+  React.useEffect(() => {
+    if (
+      jobId &&
+      activeJob?.data?.status === "completed" &&
+      jobId !== processedJobId
+    ) {
+      const imageProcessed =
+        activeJob?.data as unknown as GeneratedImageStatusResponse;
+      const imageUrls =
+        (imageProcessed?.result as unknown as { imageUrls?: string[] })
+          ?.imageUrls ?? [];
+      const imageUrl = imageUrls.at(-1) ?? "";
+
+      if (imageUrl && imageUrl !== frame.thumbnail_url) {
+        onFrameUpdate?.({
+          ...frame,
+          thumbnail_url: imageUrl,
+        });
+        setProcessedJobId(jobId);
+      }
+    }
+  }, [
+    jobId,
+    activeJob?.data,
+    processedJobId,
+    frame.thumbnail_url,
+    frame,
+    onFrameUpdate,
+  ]);
 
   return (
     <div
@@ -297,10 +410,11 @@ export const StoryboardFrameWithScript: React.FC<
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onRegenerate(frame.id)}
+              onClick={() => handleGenerateWithSelectedModel()}
               className="flex-1"
+              disabled={!selectedModel}
             >
-              Regenerate Frame
+              {isGeneratingPreview ? "Generating..." : "Regenerate Frame"}
             </Button>
           )}
           {onEdit && (
@@ -323,7 +437,36 @@ export const StoryboardFrameWithScript: React.FC<
               Delete
             </Button>
           )}
+
+          {
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleCheckCost()}
+            >
+              Check Cost
+            </Button>
+          }
         </div>
+
+        {/* Select model */}
+        {falModels && (
+          <div className="opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="w-full flex-1 flex flex-col gap-2">
+              <Select
+                placeholder="Select Model"
+                options={falModels.map((model) => ({
+                  label: model.name,
+                  value: model.id,
+                }))}
+                onChange={(value) => {
+                  setSelectedModel(value);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
