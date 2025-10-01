@@ -37,38 +37,48 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
+            HARD CONSTRAINTS (do not violate):
+            - Do NOT discuss tests, unit tests, test coverage, or suggest adding tests.
+            - Do NOT include any section titled "Test Coverage" or similar.
+            - Keep feedback focused on code diffs only.
+
             Perform a comprehensive code review with the following focus areas:
 
-            1. Code Quality
+            1. **Code Quality**
                - Clean code principles and best practices
-               - Error handling and edge cases
-               - Readability & maintainability
+               - Proper error handling and edge cases
+               - Code readability and maintainability
 
-            2. Security
-               - Potential vulnerabilities
-               - Input validation/sanitization
-               - AuthN/AuthZ logic
+            2. **Security**
+               - Check for potential security vulnerabilities
+               - Validate input sanitization
+               - Review authentication/authorization logic
 
-            3. Performance
-               - Bottlenecks & N+1s
-               - DB query efficiency
-               - Resource usage
+            3. **Performance**
+               - Identify potential performance bottlenecks
+               - Review database queries for efficiency
+               - Check for memory leaks or resource issues
 
-            4. Documentation
-               - In-code docs/docstrings
-               - README/CHANGELOG/API docs as needed
+            4. **Documentation**
+               - Ensure code is properly documented
+               - Verify README updates for new features
+               - Check API documentation accuracy
 
-            Anti-repetition rules:
-            1) Read existing review comments and the PR’s git log first.
-            2) Do NOT repeat suggestions already made.
-            3) If a previous suggestion was applied, acknowledge the fix using:
-               - File: <path>, Line <n>: <issue> → Fixed (commit <sha>) - <brief reason>
-            4) Focus only on new changes or unaddressed issues.
-            5) If no new issues are found, acknowledge improvements.
+            Provide detailed feedback using inline comments for specific issues.
+            Use top-level comments for general observations or praise.
 
-          # (Optional) extra args for the action/agent
-          # Keep this modest; add --debug temporarily if troubleshooting.
-          claude_args: "--max-turns 8"
+            CRITICAL: Anti-repetition rules:
+            1. Read all existing review comments and git log on this PR first
+            2. Do NOT repeat suggestions that have already been made
+            3. If a previous suggestion was applied, acknowledge the fix instead of re-suggesting. Follow the following template:
+              - File: index.py, Line 100: def main(args: list[str]) -> None: syntax error → Fixed (commit xxxxxx) - This is a syntax error in the function signature.
+              - File: index.py, Line 5: synchronize trigger removal → Fixed (commit yyyyyy) - This is a synchronization trigger that was removed.
+            4. Focus ONLY on new changes or previously unaddressed issues
+            5. If no new issues are found, simply acknowledge the improvements made
+
+          # Tools for comprehensive PR review
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
 
       # (Optional) Fail the workflow if Claude returns a hard error
       - name: Ensure review completed
