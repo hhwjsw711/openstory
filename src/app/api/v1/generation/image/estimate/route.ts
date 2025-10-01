@@ -12,7 +12,7 @@ const estimateImageCostSchema = z
   .object({
     model: z.enum(MODEL_KEYS),
     prompt: z.string(),
-    extra_params: z.record(z.string(), z.any()).optional(),
+    extra_params: z.record(z.string(), z.unknown()).optional(),
   })
   .refine(
     (data) => {

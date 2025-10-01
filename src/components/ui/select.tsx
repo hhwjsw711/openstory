@@ -175,6 +175,7 @@ export const Select: React.FC<SelectProps> = ({
           }
           className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
           tabIndex={0}
+          aria-label="Select options"
         >
           {options.map((option, index) => (
             <button

@@ -174,7 +174,8 @@ async function fetchEstimateImageCostByFal(
       "[hooks/use-fal-models/fetchEstimateImageCostByFal] Failed to fetch estimate",
     );
   }
-  return estimateImageCostByFalResponseSchema.parse(response.json());
+  const data = await response.json();
+  return estimateImageCostByFalResponseSchema.parse(data);
 }
 
 // hook for estimating image cost by FAL
