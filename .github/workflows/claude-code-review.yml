@@ -17,9 +17,29 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Debug - Check token format (safe)
+        run: |
+          TOKEN="${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+          echo "Token length: ${#TOKEN}"
+          echo "Token starts with: ${TOKEN:0:15}..."
+          echo "Token ends with: ...${TOKEN: -10}"
+          # Check for newlines
+          if [[ "$TOKEN" == *$'\n'* ]]; then
+            echo "⚠️ WARNING: Token contains newlines!"
+          else
+            echo "✅ Token has no newlines"
+          fi
+          # Check for spaces
+          if [[ "$TOKEN" == *" "* ]]; then
+            echo "⚠️ WARNING: Token contains spaces!"
+          else
+            echo "✅ Token has no spaces"
+          fi
+
       - name: PR Review with Progress Tracking
         uses: anthropics/claude-code-action@v1
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # Enable progress tracking
