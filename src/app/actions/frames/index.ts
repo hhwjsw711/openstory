@@ -18,7 +18,7 @@ function revalidateSequencePages(sequenceId: string): void {
 // Schema definitions
 const createFrameSchema = z.object({
   sequence_id: z.string().uuid(),
-  description: z.string().min(1).max(1000),
+  description: z.string().min(1).max(5000),
   order_index: z.number().int().positive(),
   thumbnail_url: z.string().url().optional(),
   video_url: z.string().url().optional(),
@@ -28,7 +28,7 @@ const createFrameSchema = z.object({
 
 const updateFrameSchema = z.object({
   id: z.string().uuid(),
-  description: z.string().min(1).max(1000).optional(),
+  description: z.string().min(1).max(5000).optional(),
   order_index: z.number().int().positive().optional(),
   thumbnail_url: z.string().url().nullable().optional(),
   video_url: z.string().url().nullable().optional(),

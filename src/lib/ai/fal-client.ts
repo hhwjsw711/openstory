@@ -1,12 +1,20 @@
 /**
  * FAL AI client for video and image generation
  * Provides integration with FAL's generative media models
+ *
+ * This file maintains backward compatibility while providing enhanced
+ * service layer integration for new implementations.
  */
 
 import { z } from "zod";
-
-// FAL API configuration
-const FAL_API_URL = "https://fal.run";
+import {
+  FAL_IMAGE_MODELS,
+  FAL_VIDEO_MODELS,
+  type FalImageModel,
+  type FalVideoModel,
+} from "@/lib/ai/models";
+import type { FalServiceResponse } from "@/lib/fal/service";
+import { getFalService } from "@/lib/fal/service";
 
 // Response schema for FAL video generation
 const falVideoResponseSchema = z.object({
@@ -29,16 +37,16 @@ const falImageResponseSchema = z.object({
   images: z.array(
     z.object({
       url: z.string().url(),
-      content_type: z.string().optional(),
-      file_name: z.string().optional(),
-      file_size: z.number().optional(),
-      width: z.number(),
-      height: z.number(),
+      content_type: z.string().nullable().optional(),
+      file_name: z.string().nullable().optional(),
+      file_size: z.number().nullable().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
     }),
   ),
   timings: z
     .object({
-      inference: z.number(),
+      inference: z.number().optional(),
     })
     .optional(),
   seed: z.number().optional(),
@@ -49,42 +57,13 @@ const falImageResponseSchema = z.object({
 export type FalVideoResponse = z.infer<typeof falVideoResponseSchema>;
 export type FalImageResponse = z.infer<typeof falImageResponseSchema>;
 
-/**
- * Available FAL models for video generation
- */
-export const FAL_VIDEO_MODELS = {
-  // Text to video models
-  minimax_hailuo: "fal-ai/minimax-video/text-to-video",
-  mochi_v1: "fal-ai/mochi-v1/text-to-video",
-  luma_dream_machine: "fal-ai/luma-dream-machine",
-  kling_v2: "fal-ai/kling-video-v1-5/standard/text-to-video",
-
-  // Image to video models
-  wan_i2v: "fal-ai/wan-i2v",
-  kling_i2v: "fal-ai/kling-video-v1-5/standard/image-to-video",
-  svd_lcm: "fal-ai/fast-svd-lcm",
-
-  // Premium models
-  veo3: "fal-ai/veo3", // Google Veo 3 with audio
-  veo2_i2v: "fal-ai/veo2/image-to-video", // Google Veo 2
-  wan_v2: "fal-ai/wan-v2-2-a14b", // WAN 2.2 cinematic quality
-} as const;
-
-/**
- * Available FAL models for image generation
- */
-export const FAL_IMAGE_MODELS = {
-  flux_pro: "fal-ai/flux-pro",
-  flux_dev: "fal-ai/flux/dev",
-  flux_schnell: "fal-ai/flux/schnell",
-  sdxl: "fal-ai/fast-sdxl",
-  sdxl_lightning: "fal-ai/fast-lightning-sdxl",
-} as const;
-
-export type FalVideoModel =
-  (typeof FAL_VIDEO_MODELS)[keyof typeof FAL_VIDEO_MODELS];
-export type FalImageModel =
-  (typeof FAL_IMAGE_MODELS)[keyof typeof FAL_IMAGE_MODELS];
+// Import model definitions from separate file to avoid circular dependencies
+export {
+  FAL_IMAGE_MODELS,
+  FAL_VIDEO_MODELS,
+  type FalImageModel,
+  type FalVideoModel,
+} from "@/lib/ai/models";
 
 /**
  * Parameters for video generation
@@ -97,6 +76,10 @@ export interface FalVideoGenerationParams {
   aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   enable_audio?: boolean; // For models that support audio
   seed?: number;
+  // Service layer options
+  userId?: string;
+  teamId?: string;
+  jobId?: string;
 }
 
 /**
@@ -115,112 +98,42 @@ export interface FalImageGenerationParams {
   num_images?: number;
   enable_safety_checker?: boolean;
   seed?: number;
+  image_url?: string;
+  // Service layer options
+  userId?: string;
+  teamId?: string;
+  jobId?: string;
 }
 
 /**
- * Submit a request to FAL and poll for results
- */
-async function submitAndPoll<T>(
-  endpoint: string,
-  data: Record<string, unknown>,
-  apiKey: string,
-): Promise<T> {
-  // Submit the request
-  const submitResponse = await fetch(`${FAL_API_URL}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!submitResponse.ok) {
-    const error = await submitResponse.text();
-    throw new Error(
-      `FAL API submit error: ${submitResponse.status} - ${error}`,
-    );
-  }
-
-  const submitData = await submitResponse.json();
-  const requestId = submitData.request_id;
-
-  if (!requestId) {
-    // If no request_id, it might be a synchronous response
-    return submitData as T;
-  }
-
-  // Poll for results
-  const statusUrl = `${FAL_API_URL}/${endpoint}/requests/${requestId}/status`;
-  const maxPolls = 120; // 2 minutes with 1 second intervals
-  let polls = 0;
-
-  while (polls < maxPolls) {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
-    polls++;
-
-    const statusResponse = await fetch(statusUrl, {
-      headers: {
-        Authorization: `Key ${apiKey}`,
-      },
-    });
-
-    if (!statusResponse.ok) {
-      throw new Error(`FAL API status error: ${statusResponse.status}`);
-    }
-
-    const statusData = await statusResponse.json();
-
-    if (statusData.status === "completed") {
-      return statusData.output as T;
-    }
-
-    if (statusData.status === "failed") {
-      throw new Error(
-        `FAL generation failed: ${statusData.error || "Unknown error"}`,
-      );
-    }
-
-    // Continue polling if status is "queued" or "in_progress"
-  }
-
-  throw new Error("FAL generation timed out");
-}
-
-/**
- * Generate video using FAL AI
+ * Generate video using FAL AI with full service layer integration
+ * Returns FalServiceResponse with usage tracking, cost info, and error handling
  */
 export async function generateVideo(
   params: FalVideoGenerationParams,
-): Promise<FalVideoResponse> {
+): Promise<FalServiceResponse<FalVideoResponse>> {
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
     console.warn(
       "[FAL] No API key found, using mock response. Set FAL_KEY environment variable.",
     );
-    return getMockVideoResponse(params);
+    return {
+      success: true,
+      data: getMockVideoResponse(params),
+      latencyMs: 15000,
+      cost: 0,
+    };
   }
 
+  const falService = getFalService();
   const model = params.model || FAL_VIDEO_MODELS.minimax_hailuo;
 
-  // Build request data based on model type
   const requestData: Record<string, unknown> = {};
 
-  if (params.image_url) {
-    // Image to video
-    requestData.image_url = params.image_url;
-    if (params.prompt) requestData.prompt = params.prompt;
-  } else if (params.prompt) {
-    // Text to video
-    requestData.prompt = params.prompt;
-  } else {
-    throw new Error(
-      "Either prompt or image_url is required for video generation",
-    );
-  }
-
-  // Add optional parameters
+  // Add parameters based on model type
+  if (params.prompt) requestData.prompt = params.prompt;
+  if (params.image_url) requestData.image_url = params.image_url;
   if (params.duration) requestData.duration = params.duration;
   if (params.aspect_ratio) requestData.aspect_ratio = params.aspect_ratio;
   if (params.seed !== undefined) requestData.seed = params.seed;
@@ -230,38 +143,63 @@ export async function generateVideo(
     requestData.enable_audio = params.enable_audio;
   }
 
-  try {
-    const result = await submitAndPoll<FalVideoResponse>(
-      model,
-      requestData,
-      apiKey,
-    );
+  const result = await falService.generateVideo(model, requestData, {
+    userId: params.userId,
+    teamId: params.teamId,
+    jobId: params.jobId,
+  });
 
-    const validated = falVideoResponseSchema.parse(result);
-
-    return validated;
-  } catch (error) {
-    console.error("[FAL] Video generation failed:", error);
-    // Fall back to mock response
-    return getMockVideoResponse(params);
+  // Validate response data if successful
+  if (result.success && result.data) {
+    try {
+      // Extract the actual data from the nested response structure
+      const actualData =
+        (result.data as Record<string, unknown>)?.data || result.data;
+      const validatedData = falVideoResponseSchema.parse(actualData);
+      return {
+        ...result,
+        data: validatedData,
+      } as FalServiceResponse<FalVideoResponse>;
+    } catch (validationError) {
+      console.error("[FAL] Response validation failed:", validationError);
+      console.error(
+        "[FAL] Actual response structure:",
+        JSON.stringify(result.data, null, 2),
+      );
+      return {
+        success: false,
+        error: "Invalid response format from Fal.ai",
+        latencyMs: result.latencyMs,
+        cost: result.cost,
+      };
+    }
   }
+
+  return result as FalServiceResponse<FalVideoResponse>;
 }
 
 /**
- * Generate image using FAL AI
+ * Generate image using FAL AI with full service layer integration
+ * Returns FalServiceResponse with usage tracking, cost info, and error handling
  */
 export async function generateImage(
   params: FalImageGenerationParams,
-): Promise<FalImageResponse> {
+): Promise<FalServiceResponse<FalImageResponse>> {
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
     console.warn(
       "[FAL] No API key found, using mock response. Set FAL_KEY environment variable.",
     );
-    return getMockImageResponse(params);
+    return {
+      success: true,
+      data: getMockImageResponse(params),
+      latencyMs: 1000,
+      cost: 0,
+    };
   }
 
+  const falService = getFalService();
   const model = params.model || FAL_IMAGE_MODELS.flux_schnell;
 
   const requestData: Record<string, unknown> = {
@@ -275,22 +213,51 @@ export async function generateImage(
     requestData.enable_safety_checker = params.enable_safety_checker;
   }
   if (params.seed !== undefined) requestData.seed = params.seed;
+  if (params.image_url) requestData.image_url = params.image_url;
 
-  try {
-    const result = await submitAndPoll<FalImageResponse>(
-      model,
-      requestData,
-      apiKey,
-    );
-
-    const validated = falImageResponseSchema.parse(result);
-
-    return validated;
-  } catch (error) {
-    console.error("[FAL] Image generation failed:", error);
-    // Fall back to mock response
-    return getMockImageResponse(params);
+  if (process.env.NODE_ENV !== "production") {
+    const { prompt, image_url, ...rest } = requestData;
+    const redacted = {
+      ...rest,
+      prompt: prompt ? "[redacted]" : undefined,
+      image_url: image_url ? "[redacted]" : undefined,
+    };
+    console.debug("[FAL] Request data:", redacted);
   }
+
+  const result = await falService.generateImage(model, requestData, {
+    userId: params.userId,
+    teamId: params.teamId,
+    jobId: params.jobId,
+  });
+
+  // Validate response data if successful
+  if (result.success && result.data) {
+    try {
+      // Extract the actual data from the nested response structure
+      const actualData =
+        (result.data as Record<string, unknown>)?.data || result.data;
+      const validatedData = falImageResponseSchema.parse(actualData);
+      return {
+        ...result,
+        data: validatedData,
+      } as FalServiceResponse<FalImageResponse>;
+    } catch (validationError) {
+      console.error("[FAL] Response validation failed:", validationError);
+      console.error(
+        "[FAL] Actual response structure:",
+        JSON.stringify(result.data, null, 2),
+      );
+      return {
+        success: false,
+        error: "Invalid response format from Fal.ai",
+        latencyMs: result.latencyMs,
+        cost: result.cost,
+      };
+    }
+  }
+
+  return result as FalServiceResponse<FalImageResponse>;
 }
 
 /**
@@ -359,6 +326,9 @@ function getMockImageResponse(
 /**
  * FAL client for direct API calls
  * Used when we need more control over specific model parameters
+ *
+ * Note: For better error handling, usage tracking, and monitoring,
+ * use generateImage() or generateVideo() functions instead.
  */
 export const fal = {
   async run(
@@ -372,7 +342,37 @@ export const fal = {
       return getMockVideoResponse({});
     }
 
-    return submitAndPoll(model, params.input, apiKey);
+    // Determine route based on known model lists first, then simple heuristics
+    const isKnownImage = Object.values(FAL_IMAGE_MODELS).includes(
+      model as FalImageModel,
+    );
+    const isKnownVideo = Object.values(FAL_VIDEO_MODELS).includes(
+      model as FalVideoModel,
+    );
+    const isImageHeuristic =
+      !isKnownVideo && (model.includes("flux") || model.includes("sdxl"));
+
+    if (isKnownImage || isImageHeuristic) {
+      const result = await generateImage({
+        model: (isKnownImage ? (model as FalImageModel) : undefined) as
+          | FalImageModel
+          | undefined,
+        prompt: (params.input.prompt as string) || "",
+        ...params.input,
+      } as FalImageGenerationParams);
+      if (result.success) return result.data;
+      throw new Error(result.error || "Image generation failed");
+    }
+
+    const result = await generateVideo({
+      model: (isKnownVideo ? (model as FalVideoModel) : undefined) as
+        | FalVideoModel
+        | undefined,
+      prompt: (params.input.prompt as string) || "",
+      ...params.input,
+    } as FalVideoGenerationParams);
+    if (result.success) return result.data;
+    throw new Error(result.error || "Video generation failed");
   },
 };
 
@@ -420,4 +420,34 @@ export async function uploadToFal(
 
   const data = await response.json();
   return data.url;
+}
+
+/**
+ * Check the status of a Fal.ai request using the service layer
+ */
+export async function checkFalStatus(): Promise<FalServiceResponse> {
+  const falService = getFalService();
+  return falService.checkStatus();
+}
+
+/**
+ * Calculate the estimated cost for a Fal.ai request
+ */
+export function calculateFalCost(
+  model: FalImageModel | FalVideoModel,
+  params: Record<string, unknown>,
+): number {
+  const falService = getFalService();
+  return falService.calculateCost(model, params);
+}
+
+/**
+ * Calculate the estimated time for a Fal.ai request
+ */
+export function calculateFalTime(
+  model: FalImageModel | FalVideoModel,
+  params: Record<string, unknown>,
+): number {
+  const falService = getFalService();
+  return falService.calculateTime(model, params);
 }

@@ -49,6 +49,18 @@ const processImageGeneration: JobProcessor = async (
       model = "flux_schnell";
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      const { prompt, image_url, ...rest } = imageData as Record<
+        string,
+        unknown
+      >;
+      console.debug("[ImageWebhook] Generating image", {
+        ...rest,
+        prompt: prompt ? "[redacted]" : undefined,
+        image_url: image_url ? "[redacted]" : undefined,
+      });
+    }
+
     // Generate image using FAL
     const falResponse = await generateImage({
       model: FAL_IMAGE_MODELS[model],
@@ -56,25 +68,31 @@ const processImageGeneration: JobProcessor = async (
       image_size: imageData.image_size,
       num_images: imageData.num_images || 1,
       seed: imageData.seed,
+      image_url: imageData.image_url as string,
     });
 
     // Build result structure
     const result = {
-      imageUrls: falResponse.images.map((img) => img.url),
+      imageUrls: falResponse.data?.images?.map((img) => img.url) ?? [],
       parameters: data,
       generatedAt: new Date().toISOString(),
-      processingTimeMs: falResponse.timings?.inference || 0,
+      processingTimeMs:
+        falResponse.data?.timings?.inference ?? falResponse.latencyMs ?? 0,
       provider: "fal-ai",
       metadata: {
         prompt: imageData.prompt,
         model,
-        dimensions: falResponse.images.map((img) => ({
-          width: img.width,
-          height: img.height,
-        })),
-        file_sizes: falResponse.images.map((img) => img.file_size || 0),
-        seed: falResponse.seed,
-        has_nsfw_concepts: falResponse.has_nsfw_concepts,
+        dimensions:
+          falResponse.data?.images?.map((img) => ({
+            width: img.width,
+            height: img.height,
+          })) ?? [],
+        file_sizes:
+          falResponse.data?.images?.map((img) => img.file_size ?? 0) ?? [],
+        seed: falResponse.data?.seed,
+        has_nsfw_concepts: falResponse.data?.has_nsfw_concepts,
+        cost: falResponse.cost,
+        requestId: falResponse.requestId,
       },
     };
 
@@ -141,13 +159,23 @@ const processImageGeneration: JobProcessor = async (
                 },
               };
 
-              await supabase
+              const { error: seqUpdateError } = await supabase
                 .from("sequences")
                 .update({
                   metadata: updatedMetadata,
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", frameData.sequence_id);
+
+              if (seqUpdateError) {
+                console.error(
+                  "[ImageWebhook] Failed to update sequence metadata",
+                  {
+                    sequenceId: frameData.sequence_id,
+                    error: seqUpdateError.message,
+                  },
+                );
+              }
             }
           }
         }

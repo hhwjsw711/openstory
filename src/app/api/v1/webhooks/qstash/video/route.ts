@@ -76,7 +76,7 @@ const processVideoGeneration: JobProcessor = async (
             : "landscape_16_9",
         num_images: 1,
       });
-      thumbnailUrl = thumbnailResponse.images[0]?.url;
+      thumbnailUrl = thumbnailResponse.data?.images[0]?.url;
     } else if (imageUrl) {
       // Use the input image as thumbnail
       thumbnailUrl = imageUrl;
@@ -84,20 +84,23 @@ const processVideoGeneration: JobProcessor = async (
 
     // Build result structure
     const result = {
-      videoUrls: [falResponse.video.url],
+      videoUrls: falResponse.data?.video ? [falResponse.data.video.url] : [],
       thumbnailUrls: thumbnailUrl ? [thumbnailUrl] : [],
       parameters: data,
       generatedAt: new Date().toISOString(),
-      processingTimeMs: falResponse.timings?.inference || 0,
+      processingTimeMs:
+        falResponse.data?.timings?.inference || falResponse.latencyMs || 0,
       provider: "fal-ai",
       metadata: {
         prompt: videoData.prompt,
         model,
         duration: videoData.duration,
         aspect_ratio: videoData.aspect_ratio,
-        format: falResponse.video.content_type,
-        file_size: falResponse.video.file_size,
-        seed: falResponse.seed,
+        format: falResponse.data?.video?.content_type,
+        file_size: falResponse.data?.video?.file_size,
+        seed: falResponse.data?.seed,
+        cost: falResponse.cost,
+        requestId: falResponse.requestId,
       },
     };
 

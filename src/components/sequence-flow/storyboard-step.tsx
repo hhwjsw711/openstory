@@ -7,11 +7,13 @@ import { SectionHeading } from "@/components/typography";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFramePreviewStatus } from "@/hooks/use-frames";
+import { useFalModels } from "@/hooks/use-fal-models";
+import { useFramePreviewStatus, useUpdateFrame } from "@/hooks/use-frames";
 import {
   type FrameGenerationMetadata,
   useStoryboardStatus,
 } from "@/hooks/use-storyboard-status";
+import { useStyles } from "@/hooks/use-styles";
 import type { Frame } from "@/types/database";
 
 interface StoryboardStepProps {
@@ -23,6 +25,14 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   sequenceId,
   onPrevious,
 }) => {
+  const { data: falModelsResp } = useFalModels({
+    type: "image",
+    includeCosts: false,
+  });
+
+  // Load styles
+  const { data: styles } = useStyles();
+
   // Use unified storyboard status hook (replaces multiple polling hooks)
   const {
     sequence,
@@ -49,6 +59,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   const metadataError = metadata?.frameGeneration?.error;
   const hasMetadataError =
     metadataError && metadata?.frameGeneration?.status === "failed";
+
+  // Update frame
+  const { mutate: updateFrame } = useUpdateFrame();
 
   // Track preview generation status for all frames
   const framePreviewStatus = useFramePreviewStatus(frames);
@@ -94,11 +107,15 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
   // Handle frame updates (e.g., after motion generation)
   const handleFrameUpdate = useCallback(
-    async (_updatedFrame: Frame) => {
+    async (updatedFrame: Frame) => {
       // Trigger a refetch to update the frames list
+      await updateFrame({
+        ...updatedFrame,
+        description: updatedFrame.description ?? undefined,
+      });
       await refetchFrames();
     },
-    [refetchFrames],
+    [refetchFrames, updateFrame],
   );
 
   const canProceed = hasFrames && !isBackgroundGenerating;
@@ -217,10 +234,13 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                       // TODO: Implement delete functionality
                       console.log("Delete frame:", frameId);
                     }}
-                    onRegenerate={(frameId) => {
+                    onRegenerate={(payload: Record<string, unknown>) => {
                       // TODO: Implement regenerate functionality
-                      console.log("Regenerate frame:", frameId);
+                      console.log("Regenerate frame:", payload);
+                      handleFrameUpdate(frame);
                     }}
+                    falModels={falModelsResp?.models || []}
+                    styles={styles || []}
                   />
                 );
               })}
