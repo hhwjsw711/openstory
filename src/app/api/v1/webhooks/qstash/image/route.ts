@@ -83,7 +83,11 @@ const processImageGeneration: JobProcessor = async (
       image_url: imageData.image_url as string,
     });
 
-    const result = resultByProvider(model, imageData, resp.data as any);
+    const respData = resp.data as unknown as Record<
+      string,
+      FalImageResponse | LetzAIImageResponse
+    >;
+    const result = resultByProvider(model, imageData, respData);
 
     // If this is for a frame, update the frame with the generated image URL
     if (imageData.frameId && result?.imageUrls.length > 0) {
@@ -250,8 +254,8 @@ function selectedAiProvider(payload: Record<string, unknown>) {
         prompt: payload.prompt as string,
         width: payload.width as number,
         height: payload.height as number,
-        quality: payload.quality as number,
-        creativity: payload.creativity as number,
+        quality: payload.quality || (5 as number),
+        creativity: payload.creativity || (2 as number),
         hasWatermark: payload.hasWatermark || (false as boolean),
         systemVersion: payload.systemVersion || (3 as number),
         mode: (payload.mode as LetzAIMode) || "cinematic",
@@ -281,19 +285,21 @@ function resultByProvider(
       file_sizes: [] as number[],
       seed: resp.seed,
       has_nsfw_concepts: resp.has_nsfw_concepts,
-      cost: (resp as any).cost,
+      cost: (resp as { cost?: number }).cost,
       requestId: resp.requestId,
     },
   };
 
   switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
     case "letz-ai": {
-      const generationSettings = (resp as any).generationSettings as Record<
-        string,
-        number
-      >;
-      result.imageUrls = [(resp as any).imageVersions?.original as string];
-      result.processingTimeMs = (resp as any).latencyMs || 0;
+      const generationSettings = (
+        resp as { generationSettings?: Record<string, number> }
+      ).generationSettings as Record<string, number>;
+      result.imageUrls = [
+        (resp as { imageVersions?: { original: string } }).imageVersions
+          ?.original as string,
+      ];
+      result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
       result.metadata.dimensions = [
         { width: generationSettings.width, height: generationSettings.height },
       ];
