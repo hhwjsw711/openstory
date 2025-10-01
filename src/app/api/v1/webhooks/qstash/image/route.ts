@@ -310,16 +310,23 @@ function resultByProvider(
 
   switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
     case "letz-ai": {
-      const generationSettings = (
-        resp as { generationSettings?: Record<string, number> }
-      ).generationSettings as Record<string, number>;
+      const generationSettings =
+        (resp as { generationSettings?: Record<string, number> })
+          .generationSettings ?? ({} as Record<string, number>);
+      const reqDims = {
+        width: (data as { width?: number }).width,
+        height: (data as { height?: number }).height,
+      };
       result.imageUrls = [
         (resp as { imageVersions?: { original: string } }).imageVersions
           ?.original as string,
       ];
       result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
       result.metadata.dimensions = [
-        { width: generationSettings.width, height: generationSettings.height },
+        {
+          width: generationSettings.width ?? reqDims.width ?? 1600,
+          height: generationSettings.height ?? reqDims.height ?? 900,
+        },
       ];
       break;
     }

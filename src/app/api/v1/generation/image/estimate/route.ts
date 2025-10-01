@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import z from "zod";
 import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
 import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
-import { extraParamsSchemaByModel } from "@/lib/ai/models-validation";
+import { parseExtraParamsByModel } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
 
 const estimateImageCostSchema = z
@@ -11,10 +11,20 @@ const estimateImageCostSchema = z
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })
-  .refine((data) => extraParamsSchemaByModel(data), {
-    message:
-      "[api/v1/generation/image/estimate] Generating image | extra_params validation failed for the selected model",
-  });
+  .refine(
+    (data) => {
+      try {
+        parseExtraParamsByModel(data);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    {
+      message:
+        "[api/v1/generation/image/estimate] Generating image | extra_params validation failed for the selected model",
+    },
+  );
 
 // calculate cost for image generation
 export async function POST(request: Request) {
@@ -47,14 +57,14 @@ export async function POST(request: Request) {
 
     const modelKey = validatedData.model as keyof typeof IMAGE_MODELS;
     const model = IMAGE_MODELS[modelKey] as FalImageModel;
-    const costResult = calculateFalCost(
-      model,
-      validatedData.extra_params || {},
-    );
-    const timeResult = calculateFalTime(
-      model,
-      validatedData.extra_params || {},
-    );
+    // Normalize extra_params with per-model schema to inject defaults/coercions
+    const normalizedResult = parseExtraParamsByModel({
+      model: validatedData.model,
+      prompt: validatedData.prompt,
+      extra_params: validatedData.extra_params,
+    });
+    const costResult = calculateFalCost(model, normalizedResult);
+    const timeResult = calculateFalTime(model, normalizedResult);
 
     return NextResponse.json(
       {

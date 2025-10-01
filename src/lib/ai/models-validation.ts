@@ -181,6 +181,44 @@ export const extraParamsSchemaByModel = (
   return true;
 };
 
+// Parser that returns normalized extra_params with defaults
+export const parseExtraParamsByModel = (
+  data: ExtraParamsSchemaByModelData,
+): Record<string, unknown> => {
+  const modelSchemas = {
+    // Advanced models with specific schemas
+    flux_pro_kontext_max: fluxProKontextMaxSchema,
+    imagen4_preview_ultra: imagen4PreviewUltraSchema,
+    flux_pro_v1_1_ultra: fluxProV11UltraSchema,
+    flux_krea_lora: fluxKreaLoraSchema,
+    letzai: letzaiImageRequestSchema,
+
+    // Basic models with standard parameters
+    flux_pro: fluxProSchema,
+    flux_dev: fluxDevSchema,
+    flux_schnell: fluxSchnellSchema,
+    sdxl: sdxlSchema,
+    sdxl_lightning: sdxlLightningSchema,
+  };
+  const schema = modelSchemas[data.model as keyof typeof modelSchemas];
+
+  if (!schema) {
+    throw new Error(
+      `[model-validations] No validation schema found for model: ${data.model}`,
+    );
+  }
+
+  const params = { prompt: data.prompt, ...data.extra_params };
+  const result = schema.safeParse(params);
+  if (!result.success) {
+    throw new Error(
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+    );
+  }
+
+  return result.data;
+};
+
 // generate image schema
 export const generateImageSchema = z
   .object({

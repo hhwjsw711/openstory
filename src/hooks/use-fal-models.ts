@@ -140,14 +140,13 @@ export interface EstimateImageCostByFalRequest {
 }
 
 // Hook for estimating image cost by FAL
-export function useEstimateImageCostByFal(
-  params: EstimateImageCostByFalRequest,
-) {
+export function useEstimateImageCostByFal() {
   return useMutation<
     { success: boolean; data: { cost: number; time: number } },
     Error,
     EstimateImageCostByFalRequest
   >({
-    mutationFn: () => fetchEstimateImageCostByFal(params),
+    mutationFn: (params: EstimateImageCostByFalRequest) =>
+      fetchEstimateImageCostByFal(params),
   });
 }

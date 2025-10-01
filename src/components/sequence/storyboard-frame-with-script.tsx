@@ -65,14 +65,7 @@ export const StoryboardFrameWithScript: React.FC<
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>("");
   const generateImageMutation = useGenerateImageByFal();
-  const estimateImageCostMutation = useEstimateImageCostByFal({
-    model: selectedModel || "",
-    prompt: displayScript || "",
-    extra_params: {
-      frame_id: frame.id,
-      sequence_id: frame.sequence_id,
-    },
-  });
+  const estimateImageCostMutation = useEstimateImageCostByFal();
   const [jobId, setJobId] = useState<string | null>(null);
   const [processedJobId, setProcessedJobId] = useState<string | null>(null);
   const { data: activeJob } = useGenerateImageStatusByJobId(jobId || "", {
