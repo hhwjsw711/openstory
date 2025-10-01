@@ -26,7 +26,7 @@ export async function generateImageByAction(
         "[actions/generates/image] Generating image with model",
         validated.model,
         "and params",
-        params,
+        { ...params, prompt: "[REDACTED]" },
       );
 
     // Import QStash dependencies

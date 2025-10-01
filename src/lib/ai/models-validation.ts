@@ -3,7 +3,7 @@ import { IMAGE_MODELS } from "@/lib/ai/models";
 import { letzaiImageRequestSchema } from "@/lib/schemas/letzai-request";
 
 // Extract model keys with const assertion for type safety
-const MODEL_KEYS = Object.keys(IMAGE_MODELS) as [
+export const MODEL_KEYS = Object.keys(IMAGE_MODELS) as [
   keyof typeof IMAGE_MODELS,
   ...Array<keyof typeof IMAGE_MODELS>,
 ];
@@ -12,7 +12,7 @@ const MODEL_KEYS = Object.keys(IMAGE_MODELS) as [
 export const fluxProKontextMaxSchema = z.object({
   prompt: z.string(),
   image_url: z.string().url().optional(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   guidance_scale: z.number().positive().optional(),
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
@@ -32,7 +32,7 @@ export const imagen4PreviewUltraSchema = z.object({
   negative_prompt: z.string().optional(),
   aspect_ratio: z.enum(["1:1", "16:9", "9:16", "3:4", "4:3"]).optional(),
   num_images: z.number().positive().optional(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   resolution: z.enum(["1K", "2K"]).default("1K"),
 });
 
@@ -43,7 +43,7 @@ export type Imagen4PreviewUltraSchema = z.infer<
 // flux_pro_v1_1_ultra
 export const fluxProV11UltraSchema = z.object({
   prompt: z.string(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   enable_safety_checker: z.boolean().optional(),
@@ -77,7 +77,7 @@ export const fluxKreaLoraSchema = z.object({
     ])
     .optional(),
   num_inference_steps: z.number().positive().optional(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   loras: z
     .array(
       z.object({
@@ -96,7 +96,7 @@ export const fluxKreaLoraSchema = z.object({
 // Basic schemas for models with minimal parameters
 export const fluxProSchema = z.object({
   prompt: z.string(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   num_inference_steps: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   num_images: z.number().positive().optional(),
@@ -104,7 +104,7 @@ export const fluxProSchema = z.object({
 
 export const fluxDevSchema = z.object({
   prompt: z.string(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   num_inference_steps: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   num_images: z.number().positive().optional(),
@@ -112,7 +112,7 @@ export const fluxDevSchema = z.object({
 
 export const fluxSchnellSchema = z.object({
   prompt: z.string(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   num_inference_steps: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   num_images: z.number().positive().optional(),
@@ -121,7 +121,7 @@ export const fluxSchnellSchema = z.object({
 export const sdxlSchema = z.object({
   prompt: z.string(),
   negative_prompt: z.string().optional(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   num_inference_steps: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   num_images: z.number().positive().optional(),
@@ -130,7 +130,7 @@ export const sdxlSchema = z.object({
 export const sdxlLightningSchema = z.object({
   prompt: z.string(),
   negative_prompt: z.string().optional(),
-  seed: z.number().positive().optional(),
+  seed: z.number().int().min(0).optional(),
   num_inference_steps: z.number().positive().optional(),
   guidance_scale: z.number().positive().optional(),
   num_images: z.number().positive().optional(),
@@ -181,6 +181,44 @@ export const extraParamsSchemaByModel = (
   return true;
 };
 
+// Parser that returns normalized extra_params with defaults
+export const parseExtraParamsByModel = (
+  data: ExtraParamsSchemaByModelData,
+): Record<string, unknown> => {
+  const modelSchemas = {
+    // Advanced models with specific schemas
+    flux_pro_kontext_max: fluxProKontextMaxSchema,
+    imagen4_preview_ultra: imagen4PreviewUltraSchema,
+    flux_pro_v1_1_ultra: fluxProV11UltraSchema,
+    flux_krea_lora: fluxKreaLoraSchema,
+    letzai: letzaiImageRequestSchema,
+
+    // Basic models with standard parameters
+    flux_pro: fluxProSchema,
+    flux_dev: fluxDevSchema,
+    flux_schnell: fluxSchnellSchema,
+    sdxl: sdxlSchema,
+    sdxl_lightning: sdxlLightningSchema,
+  };
+  const schema = modelSchemas[data.model as keyof typeof modelSchemas];
+
+  if (!schema) {
+    throw new Error(
+      `[model-validations] No validation schema found for model: ${data.model}`,
+    );
+  }
+
+  const params = { prompt: data.prompt, ...data.extra_params };
+  const result = schema.safeParse(params);
+  if (!result.success) {
+    throw new Error(
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+    );
+  }
+
+  return result.data;
+};
+
 // generate image schema
 export const generateImageSchema = z
   .object({
@@ -188,7 +226,7 @@ export const generateImageSchema = z
     frame_id: z.string(),
     model: z.enum(MODEL_KEYS),
     prompt: z.string(),
-    extra_params: z.record(z.string(), z.any()).optional(),
+    extra_params: z.record(z.string(), z.unknown()).optional(),
   })
   .refine((data) => extraParamsSchemaByModel(data), {
     message:

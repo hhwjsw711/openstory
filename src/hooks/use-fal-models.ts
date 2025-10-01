@@ -1,5 +1,47 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import z from "zod";
 import type { FalModelsRequest } from "@/lib/schemas/fal-request";
+
+// Validation schemas for response
+const falModelsResponseSchema = z.object({
+  models: z.array(
+    z.object({
+      id: z.string(),
+      model: z.string(),
+      name: z.string(),
+      type: z.enum(["image", "video"]),
+    }),
+  ),
+});
+
+const generateImageByFalResponseSchema = z.object({
+  jobId: z.string(),
+  success: z.boolean(),
+});
+
+const estimateImageCostByFalResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    cost: z.number(),
+    time: z.number(),
+  }),
+});
+
+const generatedImageByJobIdResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  data: z.object({
+    team_id: z.string().nullable(),
+    user_id: z.string().nullable(),
+    type: z.enum(["image", "video"]),
+    status: z.enum(["pending", "completed", "failed"]),
+    payload: z.record(z.string(), z.unknown()),
+    result: z.record(z.string(), z.unknown()),
+    error: z.string().nullable(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  }),
+});
 
 // Query keys
 export const falModelKeys = {
@@ -24,7 +66,8 @@ async function fetchFalModels(params: FalModelsRequest) {
       "[hooks/use-fal-models/fetchFalModels] Failed to fetch FAL models",
     );
   }
-  return response.json();
+  const data = await response.json();
+  return falModelsResponseSchema.parse(data);
 }
 
 // Hook for generating image by FAL
@@ -50,7 +93,8 @@ async function generateImageByFal(params: GenerateImageByFalRequest) {
       "[hooks/use-fal-models/generateImageByFal] Failed to generate image",
     );
   }
-  return response.json();
+  const data = await response.json();
+  return generateImageByFalResponseSchema.parse(data);
 }
 
 export function useGenerateImageByFal() {
@@ -75,7 +119,8 @@ async function fetchGeneratedImageByJobId(id: string) {
       "[hooks/use-fal-models/fetchGeneratedImageByJobId] Failed to fetch generated image by job ID",
     );
   }
-  return response.json();
+  const data = await response.json();
+  return generatedImageByJobIdResponseSchema.parse(data);
 }
 
 // Hook for listing FAL models
@@ -129,7 +174,8 @@ async function fetchEstimateImageCostByFal(
       "[hooks/use-fal-models/fetchEstimateImageCostByFal] Failed to fetch estimate",
     );
   }
-  return response.json();
+  const data = await response.json();
+  return estimateImageCostByFalResponseSchema.parse(data);
 }
 
 // hook for estimating image cost by FAL
@@ -140,14 +186,13 @@ export interface EstimateImageCostByFalRequest {
 }
 
 // Hook for estimating image cost by FAL
-export function useEstimateImageCostByFal(
-  params: EstimateImageCostByFalRequest,
-) {
+export function useEstimateImageCostByFal() {
   return useMutation<
     { success: boolean; data: { cost: number; time: number } },
     Error,
     EstimateImageCostByFalRequest
   >({
-    mutationFn: () => fetchEstimateImageCostByFal(params),
+    mutationFn: (params: EstimateImageCostByFalRequest) =>
+      fetchEstimateImageCostByFal(params),
   });
 }
