@@ -15,7 +15,9 @@ export const falModelKeys = {
 async function fetchFalModels(params: FalModelsRequest) {
   const url = new URL("/api/v1/fal/models", window.location.origin);
   url.searchParams.set("type", params.type);
-  url.searchParams.set("includeCosts", params.includeCosts.toString());
+  if (typeof params.includeCosts === "boolean") {
+    url.searchParams.set("includeCosts", String(params.includeCosts));
+  }
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(

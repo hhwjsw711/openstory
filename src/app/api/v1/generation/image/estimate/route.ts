@@ -21,7 +21,22 @@ export async function POST(request: Request) {
   try {
     // Parse and validate request body
     const body = await request.json();
-    const parseResult = estimateImageCostSchema.safeParse(body);
+    let parseResult: ReturnType<typeof estimateImageCostSchema.safeParse>;
+    try {
+      parseResult = estimateImageCostSchema.safeParse(body);
+    } catch (schemaError) {
+      if (
+        schemaError instanceof Error &&
+        schemaError.message.startsWith("[model-validations]")
+      ) {
+        return NextResponse.json(
+          { error: schemaError.message },
+          { status: 400 },
+        );
+      }
+      throw schemaError;
+    }
+
     if (!parseResult.success) {
       return NextResponse.json(
         { error: parseResult.error.flatten() },

@@ -257,8 +257,8 @@ function selectedAiProvider(payload: Record<string, unknown>) {
       > = {
         square_hd: { width: 1024, height: 1024 },
         square: { width: 768, height: 768 },
-        portrait_4_3: { width: 896, height: 672 },
-        portrait_16_9: { width: 1024, height: 576 },
+        portrait_4_3: { width: 672, height: 896 },
+        portrait_16_9: { width: 576, height: 1024 },
         landscape_4_3: { width: 1024, height: 768 },
         landscape_16_9: { width: 1600, height: 900 },
       };

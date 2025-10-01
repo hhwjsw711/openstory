@@ -163,16 +163,21 @@ export const extraParamsSchemaByModel = (
     sdxl_lightning: sdxlLightningSchema,
   };
   const schema = modelSchemas[data.model as keyof typeof modelSchemas];
-  const params = { prompt: data.prompt, ...data.extra_params };
 
-  if (schema && params) {
-    const result = schema.safeParse(params);
-    if (!result.success) {
-      throw new Error(
-        `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
-      );
-    }
+  if (!schema) {
+    throw new Error(
+      `[model-validations] No validation schema found for model: ${data.model}`,
+    );
   }
+
+  const params = { prompt: data.prompt, ...data.extra_params };
+  const result = schema.safeParse(params);
+  if (!result.success) {
+    throw new Error(
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+    );
+  }
+
   return true;
 };
 

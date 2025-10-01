@@ -2,10 +2,6 @@
 reviews:
   auto_review:
     enabled: true
+    drafts: true
     base_branches:
-      - ".*"        # regex: allow ANY base/target branch
-  review_drafts: true
-  review_simple_changes: true
-  path_includes:
-    - "**"
-  path_excludes: []
+      - ".*"
