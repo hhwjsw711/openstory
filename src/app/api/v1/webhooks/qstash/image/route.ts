@@ -58,7 +58,7 @@ const processImageGeneration: JobProcessor = async (
     let model = imageData.model as keyof typeof IMAGE_MODELS | undefined;
     if (!model) {
       // Default to fast model
-      model = "flux_schnell";
+      model = "flux_krea_lora";
     }
 
     if (process.env.NODE_ENV !== "production") {
@@ -250,10 +250,28 @@ export async function GET() {
 function selectedAiProvider(payload: Record<string, unknown>) {
   switch (payload.model) {
     case "letzai/image": {
+      const sizePreset = payload.image_size as string | undefined;
+      const presetDimensions: Record<
+        string,
+        { width: number; height: number }
+      > = {
+        square_hd: { width: 1024, height: 1024 },
+        square: { width: 768, height: 768 },
+        portrait_4_3: { width: 896, height: 672 },
+        portrait_16_9: { width: 1024, height: 576 },
+        landscape_4_3: { width: 1024, height: 768 },
+        landscape_16_9: { width: 1600, height: 900 },
+      };
+      const { width, height } = presetDimensions[
+        sizePreset ?? "landscape_16_9"
+      ] ?? {
+        width: 1600,
+        height: 900,
+      };
       const letzaiPayload = {
         prompt: payload.prompt as string,
-        width: payload.width as number,
-        height: payload.height as number,
+        width,
+        height,
         quality: payload.quality || (5 as number),
         creativity: payload.creativity || (2 as number),
         hasWatermark: payload.hasWatermark || (false as boolean),

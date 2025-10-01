@@ -21,7 +21,14 @@ export async function POST(request: Request) {
   try {
     // Parse and validate request body
     const body = await request.json();
-    const validatedData = estimateImageCostSchema.parse(body);
+    const parseResult = estimateImageCostSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const validatedData = parseResult.data;
 
     const modelKey = validatedData.model as keyof typeof IMAGE_MODELS;
     const model = IMAGE_MODELS[modelKey] as FalImageModel;

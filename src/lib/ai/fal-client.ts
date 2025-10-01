@@ -200,7 +200,7 @@ export async function generateImage(
   }
 
   const falService = getFalService();
-  const model = params.model || IMAGE_MODELS.flux_schnell;
+  const model = params.model || IMAGE_MODELS.flux_krea_lora;
 
   const requestData: Record<string, unknown> = {
     prompt: params.prompt,

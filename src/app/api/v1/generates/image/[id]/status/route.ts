@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchGeneratedImageStatusAction } from "#actions/generates/image";
+import { fetchGeneratedImageStatusAction } from "@/app/actions/generates/image";
 import { handleApiError } from "@/lib/errors";
 
 export async function GET(

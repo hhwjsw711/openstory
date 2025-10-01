@@ -2,6 +2,12 @@ import { z } from "zod";
 import { IMAGE_MODELS } from "@/lib/ai/models";
 import { letzaiImageRequestSchema } from "@/lib/schemas/letzai-request";
 
+// Extract model keys with const assertion for type safety
+const MODEL_KEYS = Object.keys(IMAGE_MODELS) as [
+  keyof typeof IMAGE_MODELS,
+  ...Array<keyof typeof IMAGE_MODELS>,
+];
+
 // flux_pro_kontext_max schema
 export const fluxProKontextMaxSchema = z.object({
   prompt: z.string(),
@@ -87,6 +93,49 @@ export const fluxKreaLoraSchema = z.object({
   output_format: z.enum(["jpeg", "png"]).optional(),
 });
 
+// Basic schemas for models with minimal parameters
+export const fluxProSchema = z.object({
+  prompt: z.string(),
+  seed: z.number().positive().optional(),
+  num_inference_steps: z.number().positive().optional(),
+  guidance_scale: z.number().positive().optional(),
+  num_images: z.number().positive().optional(),
+});
+
+export const fluxDevSchema = z.object({
+  prompt: z.string(),
+  seed: z.number().positive().optional(),
+  num_inference_steps: z.number().positive().optional(),
+  guidance_scale: z.number().positive().optional(),
+  num_images: z.number().positive().optional(),
+});
+
+export const fluxSchnellSchema = z.object({
+  prompt: z.string(),
+  seed: z.number().positive().optional(),
+  num_inference_steps: z.number().positive().optional(),
+  guidance_scale: z.number().positive().optional(),
+  num_images: z.number().positive().optional(),
+});
+
+export const sdxlSchema = z.object({
+  prompt: z.string(),
+  negative_prompt: z.string().optional(),
+  seed: z.number().positive().optional(),
+  num_inference_steps: z.number().positive().optional(),
+  guidance_scale: z.number().positive().optional(),
+  num_images: z.number().positive().optional(),
+});
+
+export const sdxlLightningSchema = z.object({
+  prompt: z.string(),
+  negative_prompt: z.string().optional(),
+  seed: z.number().positive().optional(),
+  num_inference_steps: z.number().positive().optional(),
+  guidance_scale: z.number().positive().optional(),
+  num_images: z.number().positive().optional(),
+});
+
 interface ExtraParamsSchemaByModelData {
   model: string;
   prompt: string;
@@ -99,11 +148,19 @@ export const extraParamsSchemaByModel = (
 ) => {
   // Validate extra_params based on the selected model
   const modelSchemas = {
+    // Advanced models with specific schemas
     flux_pro_kontext_max: fluxProKontextMaxSchema,
     imagen4_preview_ultra: imagen4PreviewUltraSchema,
     flux_pro_v1_1_ultra: fluxProV11UltraSchema,
     flux_krea_lora: fluxKreaLoraSchema,
     letzai: letzaiImageRequestSchema,
+
+    // Basic models with standard parameters
+    flux_pro: fluxProSchema,
+    flux_dev: fluxDevSchema,
+    flux_schnell: fluxSchnellSchema,
+    sdxl: sdxlSchema,
+    sdxl_lightning: sdxlLightningSchema,
   };
   const schema = modelSchemas[data.model as keyof typeof modelSchemas];
   const params = { prompt: data.prompt, ...data.extra_params };
@@ -124,7 +181,7 @@ export const generateImageSchema = z
   .object({
     sequence_id: z.string(),
     frame_id: z.string(),
-    model: z.enum(Object.keys(IMAGE_MODELS) as [string, ...string[]]),
+    model: z.enum(MODEL_KEYS),
     prompt: z.string(),
     extra_params: z.record(z.string(), z.any()).optional(),
   })

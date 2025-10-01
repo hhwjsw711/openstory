@@ -79,9 +79,8 @@ async function fetchGeneratedImageByJobId(id: string) {
 // Hook for listing FAL models
 export function useFalModels(params: FalModelsRequest) {
   return useQuery({
-    queryKey: falModelKeys.lists(),
+    queryKey: [...falModelKeys.lists(), params.type, params.includeCosts],
     queryFn: () => fetchFalModels(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

@@ -1,4 +1,5 @@
-import React from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption {
@@ -31,10 +32,12 @@ export const Select: React.FC<SelectProps> = ({
   variant = "default",
   ...props
 }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const isControlled = value !== undefined;
-  const [internalValue, setInternalValue] = React.useState(defaultValue || "");
+  const [internalValue, setInternalValue] = useState(defaultValue || "");
   const selectedValue = isControlled ? (value as string) : internalValue;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const selectedOption = options.find(
     (option) => option.value === selectedValue,
@@ -59,8 +62,60 @@ export const Select: React.FC<SelectProps> = ({
     ghost: "bg-transparent border-none hover:bg-accent",
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.min(prev + 1, options.length - 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.max(prev - 1, 0));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (focusedIndex >= 0 && !options[focusedIndex].disabled) {
+          handleSelect(options[focusedIndex].value);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setIsOpen(false);
+        break;
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
   return (
-    <div className={cn("relative inline-block w-full", className)} {...props}>
+    <div
+      className={cn("relative inline-block w-full", className)}
+      {...props}
+      ref={containerRef}
+    >
       <button
         type="button"
         className={cn(
@@ -75,6 +130,10 @@ export const Select: React.FC<SelectProps> = ({
         )}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? "select-options" : undefined}
       >
         <span
           className={cn("truncate", !selectedOption && "text-muted-foreground")}

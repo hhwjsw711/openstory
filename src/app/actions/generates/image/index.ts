@@ -19,7 +19,7 @@ export async function generateImageByAction(
       sequence_id: validated.sequence_id,
       frame_id: validated.frame_id,
       prompt: validated.prompt,
-      ...validated.extra_params,
+      ...(validated.extra_params ?? {}),
     };
     if (process.env.NODE_ENV !== "production")
       console.log(
@@ -76,13 +76,21 @@ export async function fetchGeneratedImageStatusAction(jobId: string): Promise<{
   const { createServerClient } = await import("@/lib/supabase/server");
   const supabase = createServerClient();
 
-  const { data: jobData } = await supabase
+  const { data: jobData, error } = await supabase
     .from("jobs")
     .select(
       "team_id, user_id, type, status, payload, result, error, created_at, updated_at",
     )
     .eq("id", jobId)
     .single();
+
+  if (error) {
+    console.error("[actions/generates/image] Error fetching job status", error);
+    return {
+      success: false,
+      error: "[actions/generates/image] Failed to fetch job status",
+    };
+  }
 
   console.log("[actions/generates/image] FAL generated image status by jobId", {
     jobData,

@@ -9,7 +9,3 @@ reviews:
   path_includes:
     - "**"
   path_excludes: []
-
-comments:
-  enable_review_summary: true
-  include_code_suggestions: true
