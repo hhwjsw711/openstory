@@ -1,0 +1,220 @@
+---
+description: Next.js 15 App Router patterns and conventions for Velro
+globs: 
+  - page.tsx
+  - layout.tsx
+  - route.ts
+  - loading.tsx
+  - error.tsx
+alwaysApply: false
+---
+
+# Next.js 15 App Router Patterns
+
+## Server Components (Default)
+```typescript
+export default function Page() {
+  return <div>Server Component</div>
+}
+
+// Async Server Components for data fetching
+export default async function Page() {
+  const data = await fetchData()
+  return <div>{data}</div>
+}
+```
+
+## Client Components
+Use `'use client'` directive only when necessary (for interactivity, hooks, browser APIs):
+
+```typescript
+'use client';
+
+import { useState } from 'react'
+
+export function InteractiveComponent() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>
+}
+```
+
+## Metadata
+```typescript
+export const metadata = {
+  title: 'Page Title',
+  description: 'Page description'
+}
+
+// Dynamic metadata
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params; // Next.js 15: params must be awaited
+  return {
+    title: `Dynamic Title - ${id}`
+  }
+}
+```
+
+## App Router File Conventions
+- `page.tsx` - Page components
+- `layout.tsx` - Layout components
+- `loading.tsx` - Loading UI
+- `error.tsx` - Error UI (must be Client Component)
+- `not-found.tsx` - 404 UI
+- `route.ts` - API routes
+
+## API Routes Pattern (Velro Standard)
+
+### Standard API Structure
+```typescript
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { z } from "zod";
+import { handleApiError, ValidationError } from "@/lib/errors";
+import { createServerClient } from "@/lib/supabase/server";
+
+// 1. Define request schema with Zod
+const requestSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+});
+
+// 2. API handler with async params
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // 3. Await params (Next.js 15 requirement)
+    const { id } = await params;
+    
+    // 4. Validate UUID if needed
+    const uuidSchema = z.string().uuid();
+    uuidSchema.parse(id);
+    
+    // 5. Check authentication
+    const supabase = createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // 6. Parse and validate request body
+    const body = await request.json();
+    const validatedData = requestSchema.parse(body);
+    
+    // 7. Execute business logic (via server actions)
+    const result = await someAction(validatedData);
+    
+    // 8. Return standardized response
+    return NextResponse.json(
+      { success: true, data: result },
+      { status: 200 }
+    );
+  } catch (error) {
+    // 9. Use centralized error handler
+    const velroError = handleApiError(error);
+    return NextResponse.json(
+      { error: velroError.message },
+      { status: velroError.statusCode }
+    );
+  }
+}
+```
+
+### GET Endpoint Pattern
+```typescript
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = createServerClient();
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    const data = await fetchData(id);
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    const velroError = handleApiError(error);
+    return NextResponse.json(
+      { error: velroError.message },
+      { status: velroError.statusCode }
+    );
+  }
+}
+```
+
+## Server Actions Pattern
+
+Located in `src/app/actions/*/index.ts`:
+
+```typescript
+"use server";
+
+import { z } from "zod";
+import { createServerClient } from "@/lib/supabase/server";
+
+const inputSchema = z.object({
+  name: z.string().min(1),
+});
+
+export type CreateInput = z.infer<typeof inputSchema>;
+
+export async function createAction(input: CreateInput) {
+  try {
+    const validatedInput = inputSchema.parse(input);
+    const supabase = createServerClient();
+    
+    // Database operations here
+    const { data, error } = await supabase
+      .from('table')
+      .insert(validatedInput)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error("[createAction] Error:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    };
+  }
+}
+```
+
+## React 19 Patterns
+```typescript
+import { useTransition, useOptimistic } from 'react'
+
+export function Component() {
+  const [isPending, startTransition] = useTransition()
+  
+  // Use for non-urgent updates
+  startTransition(() => {
+    // Update UI
+  })
+}
+
+// Form actions with useActionState (React 19)
+import { useActionState } from 'react'
+
+function Form() {
+  const [state, formAction] = useActionState(serverAction, initialState)
+  return <form action={formAction}>...</form>
+}
+```
+
+## Important Next.js 15 Changes
+
+1. **Async params/searchParams**: Always await `params` and `searchParams`
+2. **Async request APIs**: `cookies()`, `headers()`, `draftMode()` are now async
+3. **React 19**: Use new hooks like `useActionState`, `useFormStatus`
+4. **Turbopack**: Default dev bundler, faster than Webpack

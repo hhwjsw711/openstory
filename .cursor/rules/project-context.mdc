@@ -1,0 +1,254 @@
+---
+description: Core project context and architecture for Velro AI video platform
+globs: []
+alwaysApply: true
+---
+
+# Velro Project Context
+
+You are working on **Velro**, an AI-powered cinematic content creation platform that transforms scripts into consistent, styled video productions.
+
+## Project Overview
+
+Velro democratizes cinematic content creation through:
+- **Script-to-storyboard AI**: Automatic scene breakdown and frame generation
+- **Style Stacks**: JSON-based presets that ensure consistent artistic vision across AI models
+- **Multi-model support**: Integration with 19+ AI models (Fal.ai, Runway, Kling, etc.)
+- **Character consistency**: LoRA model integration for consistent characters
+- **Motion generation**: Image-to-video with VFX capabilities
+
+## Project Architecture
+
+Single Next.js 15 application (not a monorepo):
+
+```
+velro/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── actions/           # Server Actions (DB operations)
+│   │   │   ├── frames/        # Frame CRUD & generation
+│   │   │   ├── sequence/      # Sequence management
+│   │   │   ├── styles/        # Style Stack operations
+│   │   │   └── script/        # Script analysis
+│   │   ├── api/v1/            # REST API endpoints
+│   │   │   ├── jobs/          # QStash job creation & status
+│   │   │   ├── frames/        # Frame generation endpoints
+│   │   │   ├── sequences/     # Sequence operations
+│   │   │   └── webhooks/      # QStash webhooks
+│   │   ├── sequences/         # Sequence pages
+│   │   └── auth/              # Auth callbacks
+│   ├── components/
+│   │   ├── sequence/          # Storyboard, frame editor
+│   │   ├── sequence-flow/     # Multi-step creation flow
+│   │   ├── ui/                # shadcn/ui components
+│   │   └── layout/            # App layout components
+│   ├── hooks/                 # TanStack Query hooks
+│   │   ├── use-frames.ts      # Frame data management
+│   │   ├── use-sequences.ts   # Sequence data management
+│   │   ├── use-styles.ts      # Style Stack management
+│   │   └── use-user.ts        # User/auth state
+│   ├── lib/
+│   │   ├── ai/                # AI model integrations (OpenAI, Anthropic)
+│   │   ├── fal/               # Fal.ai SDK wrapper
+│   │   ├── qstash/            # QStash job queue
+│   │   ├── supabase/          # Supabase clients & types
+│   │   ├── schemas/           # Zod validation schemas
+│   │   ├── errors.ts          # Custom error classes
+│   │   └── style-stack/       # Style Stack engine
+│   └── types/
+│       └── database.ts        # Supabase generated types
+├── supabase/
+│   ├── migrations/            # Database migrations
+│   └── seed.sql              # Seed data
+└── docs/                      # Architecture & PRD docs
+```
+
+## Technology Stack
+
+### Core Framework
+- **Frontend**: Next.js 15.5 (App Router), React 19, TypeScript 5
+- **Runtime**: Bun (package manager + test runner)
+- **Build**: Turbopack (Next.js default)
+
+### UI & Styling
+- **UI**: shadcn/ui components, Radix UI primitives
+- **Styling**: Tailwind CSS 4
+- **Icons**: Lucide React
+- **Drag & Drop**: dnd-kit
+
+### Backend & Infrastructure
+- **Database**: Supabase PostgreSQL (backend-only access, no RLS)
+- **Auth**: Supabase Auth (anonymous + magic links + passkeys)
+- **Storage**: Supabase Storage (generated images/videos)
+- **Real-time**: Supabase Realtime (generation status updates)
+- **Job Queue**: QStash (Upstash) for async AI generation
+
+### State Management
+- **Server State**: TanStack Query v5
+- **Query Pattern**: Centralized query key factories
+- **Caching**: Optimistic updates, automatic invalidation
+
+### AI & Generation
+- **Primary Provider**: Fal.ai SDK (@fal-ai/client)
+- **Image Models**: flux-pro, imagen4, flux-krea-lora
+- **Video Models**: veo3, kling-video, minimax-hailuo, wan-pro
+- **Script Analysis**: OpenAI GPT-4 / Anthropic Claude
+- **Validation**: Zod schemas
+
+### Development Tools
+- **Testing**: Bun test (Jest-compatible)
+- **Linting**: Biome (fast, replaces ESLint + Prettier)
+- **Git Hooks**: Lefthook
+- **Type Safety**: Supabase CLI generates types
+
+## Core Features
+
+### 1. Script-to-Storyboard Pipeline
+1. User pastes script
+2. AI analyzes and breaks into scenes/frames
+3. Generates frame descriptions
+4. Creates editable storyboard
+
+### 2. Frame Generation
+- Per-frame model selection
+- Style Stack application for consistency
+- Character LoRA injection
+- Reference image support
+- Parallel generation via QStash
+
+### 3. Motion Generation
+- Image-to-video conversion
+- Multiple model options (veo3, kling, wan)
+- VFX LoRA support (wan-pro)
+- Duration/motion controls
+
+### 4. Style Stacks
+- JSON-based style presets
+- Model-agnostic adaptation
+- Director templates (Tarantino, Nolan, etc.)
+- Visual reference upload
+
+### 5. Anonymous-First Flow
+1. Users create without signup
+2. Generate frames with temporary session
+3. Prompted to save (magic link/passkey)
+4. Session transfers to authenticated user
+
+## Data Model
+
+### Core Entities
+- **teams**: Team ownership of all creative assets
+- **users**: Team members (anonymous or authenticated)
+- **sequences**: Video projects (script → storyboard → video)
+- **frames**: Individual shots with thumbnails and motion
+- **styles**: Reusable Style Stack presets
+- **fal_requests**: API call tracking for Fal.ai
+
+### Key Relationships
+- Team → owns Styles, Sequences
+- Sequence → has many Frames, uses one Style
+- Frame → references Characters, VFX, Audio
+
+## Architecture Principles
+
+### Backend-Only Database Access
+- **No RLS**: All auth/authorization in API layer
+- **Server Actions**: All DB operations via actions
+- **Service Account**: Single Supabase admin client
+- Avoids RLS complexity, clearer security model
+
+### State Management Pattern
+```typescript
+// Centralized query keys
+export const entityKeys = {
+  all: ["entities"] as const,
+  lists: () => [...entityKeys.all, "list"] as const,
+  list: (filter?: string) => [...entityKeys.lists(), filter] as const,
+  details: () => [...entityKeys.all, "detail"] as const,
+  detail: (id: string) => [...entityKeys.details(), id] as const,
+};
+
+// React hook with TanStack Query
+export function useEntity(id: string) {
+  return useQuery({
+    queryKey: entityKeys.detail(id),
+    queryFn: async () => {
+      const result = await getEntityAction(id);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
+}
+```
+
+### API Pattern
+```typescript
+// 1. Validate input with Zod
+// 2. Check authentication
+// 3. Execute via Server Action
+// 4. Queue async work (QStash)
+// 5. Return standardized response
+```
+
+### Error Handling
+- Custom error classes: `VelroError`, `ValidationError`
+- Centralized handler: `handleApiError()`
+- User-friendly messages, detailed logs
+
+## Development Workflow
+
+### Local Setup
+1. Start Supabase: `bun supabase:start`
+2. Generate types: `bun supabase:types`
+3. Setup env: `bun setup:env`
+4. Start QStash tunnel: `bun qstash:dev`
+5. Start Next.js: `bun dev`
+
+### Code Conventions
+- **Server Actions**: `"use server"` in `src/app/actions/*/index.ts`
+- **API Routes**: `/api/v1/*` for REST endpoints
+- **Hooks**: TanStack Query hooks in `src/hooks/`
+- **Components**: Client components only when needed
+- **Validation**: Zod schemas in `src/lib/schemas/`
+- **Types**: Export input/output types from actions
+
+## Key Workflows
+
+### Frame Generation Flow
+```
+User triggers → API endpoint → QStash job → Worker processes → 
+Fal.ai API → Save to Storage → Update DB → Realtime notification → UI updates
+```
+
+### Style Stack Application
+```
+User selects Stack → System validates model compatibility → 
+Adapter adjusts for model → Generation with adapted params → 
+Consistent style across all frames
+```
+
+## Security Model
+
+- **Authentication**: Supabase Auth (magic links, passkeys, anonymous)
+- **Authorization**: Team-based access control in API layer
+- **Database**: Backend-only access via service account
+- **API**: Rate limiting, Zod validation, sanitized errors
+- **Secrets**: Never exposed to client, only in API routes
+
+## Development Principles
+
+1. **Type Safety**: TypeScript strict mode, Zod validation
+2. **Component Purity**: Minimal logic, shadcn/ui only
+3. **State Separation**: Server state (TanStack Query) vs UI state (local)
+4. **Error Handling**: Always handle errors, never expose internals
+5. **Performance**: Server Components by default, client when needed
+6. **Accessibility**: WCAG 2.1 AA compliance
+7. **Testing**: Bun test for unit/integration tests
+
+## Future Roadmap
+
+- Phase 2: VFX LoRAs, marketplace, team collaboration
+- Phase 3: DaVinci Resolve plugin, advanced editing
+- Phase 4: Enterprise features, API for developers
+
+Always consider the cinematic creation context and artistic consistency when making decisions.

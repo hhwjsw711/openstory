@@ -1,0 +1,75 @@
+---
+description: Context7 MCP integration for up-to-date documentation
+globs: []
+alwaysApply: true
+---
+
+# Context7 MCP Integration
+
+Always use Context7 MCP when you need current documentation for:
+- Code generation and setup steps
+- Library/API documentation  
+- Configuration examples
+- Framework-specific patterns
+
+This means you should automatically use the Context7 MCP tools to resolve library IDs and get library docs without me having to explicitly ask.
+
+## Pre-configured Library IDs
+
+Use these Context7 library IDs for Velro's tech stack:
+
+### Core Framework
+- `/vercel/next.js` - Next.js 15 documentation and patterns
+- `/microsoft/typescript` - TypeScript best practices
+- `/facebook/react` - React 19 features and hooks
+
+### UI & Styling
+- `/tailwindlabs/tailwindcss` - Tailwind CSS 4 utilities and configuration
+- `/radix-ui/primitives` - Radix UI component APIs
+- `/shadcn/ui` - shadcn/ui component library
+
+### Backend & Data
+- `/supabase/supabase` - Supabase APIs (Auth, Database, Storage, Realtime)
+- `/tanstack/query` - TanStack Query v5 patterns
+- `/colinhacks/zod` - Zod validation schemas
+
+### AI Integration
+- `/fal-ai/client` - Fal.ai SDK for image/video generation
+- `/openai/openai-node` - OpenAI API for script analysis
+
+### Infrastructure
+- `/upstash/qstash` - QStash for async job processing
+- `/oven-sh/bun` - Bun runtime and package manager
+
+## When to Use Context7
+
+Automatically invoke Context7 when:
+- Setting up new components or features
+- Working with framework-specific APIs (Next.js 15 App Router, React Server Components)
+- Implementing authentication patterns (Supabase anonymous + magic links)
+- Configuring AI model integrations (Fal.ai models)
+- Working with async job queues (QStash patterns)
+- Implementing real-time features (Supabase Realtime)
+- Setting up validation schemas (Zod)
+- Troubleshooting integration issues
+- Learning new library features
+
+## Velro-Specific Context Needs
+
+Prioritize Context7 for:
+- **Next.js 15**: Server Actions, async request params, React 19 features
+- **Supabase**: Anonymous auth flow, RLS policies, Storage API
+- **TanStack Query**: Query keys factory pattern, optimistic updates
+- **Fal.ai**: Model-specific parameters (flux, imagen4, veo3, kling, wan)
+- **QStash**: Webhook signature verification, job lifecycle
+
+## Example Usage
+
+Instead of relying on potentially outdated training data, Context7 provides:
+- Current API signatures (especially for Next.js 15 breaking changes)
+- Latest configuration options (Tailwind 4, React 19)
+- Up-to-date code examples (async params in App Router)
+- Recent best practices (Server Components vs Client Components)
+- Breaking changes and migrations (React 18→19, Next.js 14→15)
+
+This ensures all generated code uses current, working patterns rather than deprecated or incorrect approaches.
