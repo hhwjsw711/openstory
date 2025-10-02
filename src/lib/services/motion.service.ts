@@ -209,17 +209,12 @@ export async function generateMotionForFrame(
 
       case "seedance_v1_pro": {
         // Seedance 1.0 Pro model
-        console.log("[generateMotionForFrame] Seedance 1.0 Pro model");
         result = await fal.run(modelConfig.model, {
           input: {
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
-            aspect_ratio:
-              (options.styleStack as Record<string, unknown>).aspect_ratio ||
-              "16:9",
-            resolution:
-              (options.styleStack as Record<string, unknown>).resolution ||
-              "1080p",
+            aspect_ratio: "16:9", // Always use 16:9 aspect ratio
+            resolution: "1080p", // Always use 1080p resolution
             duration: duration,
             seed: Math.floor(Math.random() * 1000000),
           },
