@@ -49,7 +49,7 @@ export const MOTION_MODELS = {
   seedance_v1_pro: {
     provider: "fal",
     model: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
-    name: "Seedance 1.0 Pro, a high quality video generation model developed by Bytedance",
+    name: "Premium Motion (Seedance Pro)",
     duration: 12, // seconds to generate
     cost: 0.5, // per frame
     quality: "best",
@@ -214,16 +214,16 @@ export async function generateMotionForFrame(
           input: {
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
-            aspect_ratio: "16:9",
-            resolution: "1080p",
-            duration: 5,
+            aspect_ratio:
+              (options.styleStack as Record<string, unknown>).aspect_ratio ||
+              "16:9",
+            resolution:
+              (options.styleStack as Record<string, unknown>).resolution ||
+              "1080p",
+            duration: duration,
             seed: Math.floor(Math.random() * 1000000),
           },
         });
-        console.log(
-          "[generateMotionForFrame] Seedance 1.0 Pro result:",
-          result,
-        );
         break;
       }
 
