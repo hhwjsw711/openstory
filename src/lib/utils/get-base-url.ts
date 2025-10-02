@@ -50,7 +50,8 @@ export function getAbsoluteUrl(): string {
 export function getQStashWebhookUrl(): string {
   // In production (Vercel deployment)
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    const baseUrl = process.env.BASE_URL || `https://${process.env.VERCEL_URL}`;
+    return baseUrl;
   }
 
   // Local development with QStash tunnel (if using cloud QStash)
