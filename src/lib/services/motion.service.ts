@@ -46,6 +46,19 @@ export const MOTION_MODELS = {
     minFps: 15,
     maxFps: 30,
   },
+  seedance_v1_pro: {
+    provider: "fal",
+    model: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
+    name: "Premium Motion (Seedance Pro)",
+    duration: 12, // seconds to generate
+    cost: 0.5, // per frame
+    quality: "best",
+    defaultDuration: 5,
+    defaultFps: 25,
+    maxDuration: 8,
+    minFps: 15,
+    maxFps: 30,
+  },
 } as const;
 
 export type MotionModel = keyof typeof MOTION_MODELS;
@@ -188,6 +201,21 @@ export async function generateMotionForFrame(
             fps,
             guidance_scale: 7.5,
             num_inference_steps: 25,
+            seed: Math.floor(Math.random() * 1000000),
+          },
+        });
+        break;
+      }
+
+      case "seedance_v1_pro": {
+        // Seedance 1.0 Pro model
+        result = await fal.run(modelConfig.model, {
+          input: {
+            prompt: enhancedPrompt,
+            image_url: options.imageUrl,
+            aspect_ratio: "16:9", // Always use 16:9 aspect ratio
+            resolution: "1080p", // Always use 1080p resolution
+            duration: duration,
             seed: Math.floor(Math.random() * 1000000),
           },
         });

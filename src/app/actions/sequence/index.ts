@@ -336,7 +336,7 @@ export async function generateFrameMotion(
     const result = await generateMotionForFrame({
       imageUrl: frame.thumbnail_url,
       prompt: frameDescription,
-      model: "svd-lcm", // Start with fast model
+      model: "seedance_v1_pro", // Default to Seedance Pro for better quality output
       styleStack: style?.config || undefined,
       duration: 3, // 3 second videos
       fps: 14,
