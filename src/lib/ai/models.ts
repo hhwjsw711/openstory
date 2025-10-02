@@ -17,6 +17,7 @@ export const VIDEO_MODELS = {
   wan_i2v: "fal-ai/wan-i2v",
   kling_i2v: "fal-ai/kling-video-v1-5/standard/image-to-video",
   svd_lcm: "fal-ai/fast-svd-lcm",
+  seedance_v1_pro: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
 
   // Premium models
   veo3: "fal-ai/veo3", // Google Veo 3 with audio
