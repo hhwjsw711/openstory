@@ -34,7 +34,14 @@ export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
 
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content:
+    | string
+    | { type: string; text: string }
+    | { type: string; image_url: { url: string } }
+    | Array<
+        | { type: string; text: string }
+        | { type: string; image_url: { url: string } }
+      >;
 }
 
 export interface OpenRouterRequestParams {
@@ -123,14 +130,18 @@ export async function callOpenRouter(
  */
 function getMockResponse(params: OpenRouterRequestParams): OpenRouterResponse {
   const lastMessage = params.messages[params.messages.length - 1];
-  const isFrameDescription = lastMessage.content.includes("frame description");
+  const contentStr =
+    typeof lastMessage.content === "string"
+      ? lastMessage.content
+      : JSON.stringify(lastMessage.content);
+  const isFrameDescription = contentStr.includes("frame description");
 
   let content = "Mock AI response: ";
 
   if (isFrameDescription) {
     content = `A cinematic wide shot reveals the scene with dramatic lighting and careful composition. The frame captures the essential narrative elements while maintaining visual coherence with the established style. Characters are positioned thoughtfully within the frame, their expressions and body language conveying the emotional weight of the moment. The environment is richly detailed, with atmospheric elements that enhance the storytelling.`;
   } else {
-    content = `This is a mock response for: ${lastMessage.content.slice(0, 100)}...`;
+    content = `This is a mock response for: ${contentStr.slice(0, 100)}...`;
   }
 
   return {
