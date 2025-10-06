@@ -67,7 +67,6 @@ const processFrameGeneration: JobProcessor = async (
   }
 
   // Call the server action to generate frames
-  console.log("[Frames Webhook] Delegating to generateFramesAction");
   const result = await generateFramesAction({
     sequenceId: data.sequenceId,
     options: data.options,

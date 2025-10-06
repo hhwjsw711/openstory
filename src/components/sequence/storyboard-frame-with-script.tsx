@@ -174,6 +174,7 @@ export const StoryboardFrameWithScript: React.FC<
         sequence_id: frame.sequence_id,
         model: selectedModel as string,
         prompt: displayScript || "",
+        style_id: styleId || "",
         extra_params: {
           image_url: frame.thumbnail_url || "",
         },
@@ -197,6 +198,7 @@ export const StoryboardFrameWithScript: React.FC<
     selectedModel,
     displayScript,
     onFrameUpdate,
+    styleId,
   ]);
 
   // check cost per frame with style

@@ -13,7 +13,7 @@ export async function enhanceScript(originalScript: string): Promise<{
 }> {
   try {
     const result = await enhanceScriptDirect(originalScript, {
-      targetDuration: 30,
+      targetDuration: 60,
       tone: "dramatic",
     });
 

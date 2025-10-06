@@ -80,6 +80,9 @@ For each marked section, include:
 - ALL stage directions (text in parentheses/italics)
 - ALL dialogue
 - Everything between one section header and the next
+- Each small section will be a separate scene
+- Total scenes should be 6 scenes
+- Total duration should be 30 seconds
 
 Return JSON with this structure:
 {
@@ -100,6 +103,7 @@ Return JSON with this structure:
 
 CRITICAL: 
 - Extract EVERYTHING between section markers, including stage directions like *(Playful tone, pet visible)*
+- Ignore any screenwriting transition directions such as "FADE IN", "CUT TO", "SMASH CUT TO BLACK", "DISSOLVE TO", "FADE OUT", or similar at the end of the section.
 - scriptContent must include both the stage directions AND the dialogue
 - Don't just extract dialogue - get the FULL section content
 - If you see "*(Animated, gesturing to pet)*" followed by dialogue, include BOTH

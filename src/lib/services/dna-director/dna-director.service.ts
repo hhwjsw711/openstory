@@ -45,7 +45,7 @@ export async function DNADirectorProcessor(
       cinematicReferences: DNAConfig?.referenceFilms,
       aspectRatio: DNAConfig.aspectRatio,
       frameLookAndExtras: [DNAConfig?.frameRate, DNAConfig?.colorGrading],
-      referenceImageUrl: style?.preview_url,
+      referenceImageUrl: null,
     };
 
     let llmResponse: OpenRouterResponse;
@@ -91,13 +91,16 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     referenceImageUrl,
   } = params;
 
+  console.log("[DNADirectorTemplate] Orignal Prompt", prompt);
+  console.log("[DNADirectorTemplate] Style Name", styleName);
+
   let messages: DNADirectorTemplateMessage[] = [
     {
       role: "system",
       content: `
         You are a visionary film director.  
         Your role is to transform any story prompt 
-        — from a single sentence to a full outline
+        — from the sentences in the prompt to a full outline
         — into a ${styleName} screenplay sequence.
         
         🎥 ${styleName} DNA (Always Apply):  
@@ -139,11 +142,15 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
         content: [
           {
             type: "text",
-            text: `Refer to the sample image as visual inspiration. ${prompt}.`,
+            text: `Refer to the following image and prompt.`,
           },
           {
             type: "image_url",
             image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+          },
+          {
+            type: "text",
+            text: `Prompt: ${prompt}`,
           },
         ],
       },
@@ -158,5 +165,6 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     ];
   }
 
+  console.log("[DNADirectorTemplate] Prompt Messages", messages);
   return messages;
 };
