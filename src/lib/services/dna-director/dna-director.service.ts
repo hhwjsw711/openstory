@@ -75,7 +75,7 @@ export async function DNADirectorProcessor(
     referenceImageUrl: null,
   };
 
-  let llmResponse: OpenRouterResponse;
+  let llmResponse: OpenRouterResponse | undefined;
   try {
     const directorTemplate = await DNADirectorTemplate(payload);
     llmResponse = await callOpenRouter({
@@ -297,6 +297,11 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
           ],
         },
       ];
+    } catch (fetchError) {
+      console.warn(
+        "[DNADirector] Failed to fetch reference image:",
+        fetchError,
+      );
     } finally {
       clearTimeout(timeout);
     }

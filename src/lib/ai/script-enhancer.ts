@@ -309,7 +309,7 @@ Key Requirements
 • Keep the script natural and cinematic
 • Always provide a recommended Velro style stack in JSON
 • Ensure outputs are storyboard-friendly and ready for downstream generation
-• Ensure outputs are using for 6 frames per 30 seconds
+• Ensure outputs are using for 6 frames per 60 seconds
 • Ensure each scene has the person's name in the scene heading
 • Ensure CRANE UP AND BACK should include the person's name in the scene heading`;
 
