@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 // Environment validation
 const requiredEnvVars = {
-  DATABASE_URL: process.env.DATABASE_URL,
+  DATABASE_URL: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 } as const;
