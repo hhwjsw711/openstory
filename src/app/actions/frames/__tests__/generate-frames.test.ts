@@ -381,6 +381,16 @@ describe("generateFramesAction", () => {
                 ),
               })),
             })),
+            update: mock(() => ({
+              eq: mock(() => ({
+                select: mock(() =>
+                  Promise.resolve({
+                    data: null,
+                    error: null,
+                  }),
+                ),
+              })),
+            })),
           };
         }
         return {
@@ -421,6 +431,9 @@ describe("generateFramesAction", () => {
   });
 
   it("should handle permission denied error", async () => {
+    // Mock getUserRole to return null (user not a team member)
+    mockGetUserRole.mockImplementationOnce(() => Promise.resolve(null));
+
     // Create a new mock for permission denied test
     const mockPermissionDenied = mock(() => ({
       auth: {
@@ -449,6 +462,19 @@ describe("generateFramesAction", () => {
                       name: "Test Sequence",
                       script: "Test script",
                       style_id: "style-123",
+                    },
+                    error: null,
+                  }),
+                ),
+              })),
+            })),
+            update: mock(() => ({
+              eq: mock(() => ({
+                select: mock(() =>
+                  Promise.resolve({
+                    data: {
+                      id: "123e4567-e89b-12d3-a456-426614174000",
+                      status: "processing",
                     },
                     error: null,
                   }),
@@ -504,9 +530,7 @@ describe("generateFramesAction", () => {
     const result = await testAction(input);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe(
-      "You don't have permission to generate frames for this sequence",
-    );
+    expect(result.error).toBe("Access denied: not a member of this team");
   });
 
   it("should handle custom options", async () => {
