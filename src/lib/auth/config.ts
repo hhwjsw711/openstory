@@ -48,8 +48,24 @@ export const auth = betterAuth({
   // Email and password authentication
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: process.env.NODE_ENV === "production",
-    sendEmailVerificationOnSignUp: process.env.NODE_ENV === "production",
+    sendResetPassword: async ({ user, url }) => {
+      console.log("[BetterAuth] Sending password reset email", {
+        email: user.email,
+        url,
+      });
+
+      // Import dynamically to avoid issues during build
+      const { sendPasswordResetEmail } = await import("@/lib/email/service");
+      const result = await sendPasswordResetEmail(user.email, url);
+
+      if (!result.success) {
+        console.error("[BetterAuth] Failed to send reset email:", result.error);
+        throw new Error("Failed to send password reset email");
+      }
+
+      console.log("[BetterAuth] Password reset email sent successfully");
+    },
+    resetPasswordTokenExpiresIn: 60 * 60, // 1 hour (in seconds)
   },
 
   // Social providers
