@@ -64,13 +64,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 ## API Routes Pattern (Velro Standard)
 
-### Standard API Structure
+### Standard API Structure with BetterAuth
 ```typescript
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { handleApiError, ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from "@/lib/auth/api-utils";
 
 // 1. Define request schema with Zod
 const requestSchema = z.object({
@@ -91,13 +91,16 @@ export async function POST(
     const uuidSchema = z.string().uuid();
     uuidSchema.parse(id);
     
-    // 5. Check authentication
-    const supabase = createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // 5. Check authentication with BetterAuth
+    const authResult = await authenticateApiRequest(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: 401 }
+      );
     }
+    
+    const { user, session } = authResult;
     
     // 6. Parse and validate request body
     const body = await request.json();
@@ -130,15 +133,76 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServerClient();
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate with BetterAuth
+    const authResult = await authenticateApiRequest(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: 401 }
+      );
     }
     
     const data = await fetchData(id);
     return NextResponse.json({ success: true, data });
+  } catch (error) {
+    const velroError = handleApiError(error);
+    return NextResponse.json(
+      { error: velroError.message },
+      { status: velroError.statusCode }
+    );
+  }
+}
+```
+
+### Optional Authentication Pattern
+For endpoints that allow both authenticated and anonymous users:
+
+```typescript
+export async function GET(request: NextRequest) {
+  try {
+    // Optional authentication
+    const authResult = await authenticateApiRequest(request);
+    const userId = authResult.authenticated ? authResult.user.id : null;
+    const isAnonymous = authResult.user?.isAnonymous ?? true;
+    
+    // Adjust behavior based on auth status
+    const data = await fetchData(userId, { includePrivate: !isAnonymous });
+    
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    const velroError = handleApiError(error);
+    return NextResponse.json(
+      { error: velroError.message },
+      { status: velroError.statusCode }
+    );
+  }
+}
+```
+
+### Blocking Anonymous Users
+For operations that require a full authenticated account:
+
+```typescript
+import { requireAuthenticatedUserForMotion } from "@/lib/auth/api-utils";
+
+export async function POST(request: NextRequest) {
+  try {
+    // Blocks anonymous users
+    const authResult = await requireAuthenticatedUserForMotion(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Account required" },
+        { status: 403 }
+      );
+    }
+    
+    const { user } = authResult;
+    
+    // Execute authenticated-only operation
+    const result = await performOperation(user.id);
+    
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     const velroError = handleApiError(error);
     return NextResponse.json(
@@ -157,6 +221,7 @@ Located in `src/app/actions/*/index.ts`:
 "use server";
 
 import { z } from "zod";
+import { getCurrentUser } from "@/app/actions/user";
 import { createServerClient } from "@/lib/supabase/server";
 
 const inputSchema = z.object({
@@ -167,13 +232,31 @@ export type CreateInput = z.infer<typeof inputSchema>;
 
 export async function createAction(input: CreateInput) {
   try {
+    // 1. Authenticate with BetterAuth
+    const userResult = await getCurrentUser();
+    if (!userResult.success || !userResult.data) {
+      return {
+        success: false,
+        error: "Authentication required",
+      };
+    }
+    
+    const { user } = userResult.data;
+    
+    // 2. Validate input
     const validatedInput = inputSchema.parse(input);
+    
+    // 3. Get Supabase client for database operations
     const supabase = createServerClient();
     
-    // Database operations here
+    // 4. Database operations here
     const { data, error } = await supabase
       .from('table')
-      .insert(validatedInput)
+      .insert({
+        ...validatedInput,
+        user_id: user.id,
+        created_by: user.id,
+      })
       .select()
       .single();
     
@@ -187,6 +270,270 @@ export async function createAction(input: CreateInput) {
       error: error instanceof Error ? error.message : "Unknown error" 
     };
   }
+}
+```
+
+### Server Action with Anonymous Check
+For actions that require authenticated (non-anonymous) users:
+
+```typescript
+"use server";
+
+import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
+import { getCurrentUser } from "@/app/actions/user";
+
+export async function authenticatedOnlyAction(input: ActionInput) {
+  try {
+    // Check authentication
+    const userResult = await getCurrentUser();
+    if (!userResult.success || !userResult.data) {
+      return {
+        success: false,
+        error: "Authentication required",
+      };
+    }
+    
+    // Block anonymous users
+    if (userResult.data.isAnonymous) {
+      return {
+        success: false,
+        error: MOTION_ACCESS_DENIED_MESSAGE,
+      };
+    }
+    
+    const { user } = userResult.data;
+    
+    // Execute authenticated-only operation
+    const result = await performOperation(user.id);
+    
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("[authenticatedOnlyAction] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+```
+
+### Server Action with System Context
+For actions called by webhooks or background jobs:
+
+```typescript
+"use server";
+
+import { getCurrentUser } from "@/app/actions/user";
+import { createServerClient } from "@/lib/supabase/server";
+
+export async function webhookAction(
+  input: ActionInput,
+  systemContext: boolean = false
+) {
+  try {
+    const supabase = createServerClient();
+    let userId: string;
+    
+    if (systemContext) {
+      // For webhook calls, derive userId from related data
+      const { data: relatedRecord } = await supabase
+        .from('related_table')
+        .select('created_by')
+        .eq('id', input.relatedId)
+        .single();
+      
+      if (!relatedRecord?.created_by) {
+        return {
+          success: false,
+          error: "Cannot determine user for system context",
+        };
+      }
+      
+      userId = relatedRecord.created_by;
+    } else {
+      // For user calls, get from session
+      const userResult = await getCurrentUser();
+      if (!userResult.success || !userResult.data) {
+        return {
+          success: false,
+          error: "Authentication required",
+        };
+      }
+      userId = userResult.data.user.id;
+    }
+    
+    // Execute operation with userId
+    const result = await performOperation(userId, input);
+    
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("[webhookAction] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+```
+
+## Client-Side Authentication (BetterAuth)
+
+### Using BetterAuth Hooks
+```typescript
+'use client';
+
+import { authClient, useSession } from "@/lib/auth/client";
+
+export function UserProfile() {
+  // Get current session with BetterAuth
+  const { data: session, isPending, error } = useSession();
+  
+  if (isPending) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return (
+    <div>
+      <p>User ID: {session?.user.id}</p>
+      <p>Anonymous: {session?.user.isAnonymous ? "Yes" : "No"}</p>
+    </div>
+  );
+}
+```
+
+### Anonymous Session Creation
+```typescript
+'use client';
+
+import { authClient } from "@/lib/auth/client";
+import { useEffect } from "react";
+
+export function AnonymousSessionManager() {
+  useEffect(() => {
+    async function initAnonymousSession() {
+      const { data: session } = await authClient.getSession();
+      
+      if (!session) {
+        // Create anonymous session
+        const { data, error } = await authClient.signIn.anonymous();
+        
+        if (error) {
+          console.error("Failed to create anonymous session:", error);
+        }
+      }
+    }
+    
+    initAnonymousSession();
+  }, []);
+  
+  return null;
+}
+```
+
+### Sign In/Sign Up with BetterAuth
+```typescript
+'use client';
+
+import { authClient } from "@/lib/auth/client";
+import { useState } from "react";
+
+export function AuthForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  
+  async function handleSignIn() {
+    const { data, error } = await authClient.signIn.email({
+      email,
+      password,
+    });
+    
+    if (error) {
+      setError(error.message);
+    } else {
+      // Redirect or update UI
+      window.location.href = "/dashboard";
+    }
+  }
+  
+  async function handleSignUp() {
+    const { data, error } = await authClient.signUp.email({
+      email,
+      password,
+      name: "User Name", // optional
+    });
+    
+    if (error) {
+      setError(error.message);
+    } else {
+      // Account created and signed in
+      window.location.href = "/dashboard";
+    }
+  }
+  
+  return (
+    <div>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+      />
+      {error && <p className="text-red-500">{error}</p>}
+      <button onClick={handleSignIn}>Sign In</button>
+      <button onClick={handleSignUp}>Sign Up</button>
+    </div>
+  );
+}
+```
+
+### Sign Out
+```typescript
+'use client';
+
+import { authClient } from "@/lib/auth/client";
+
+export function SignOutButton() {
+  async function handleSignOut() {
+    await authClient.signOut();
+    window.location.href = "/login";
+  }
+  
+  return <button onClick={handleSignOut}>Sign Out</button>;
+}
+```
+
+### Using Custom Hook for User Data
+```typescript
+'use client';
+
+import { useUser } from "@/hooks/use-user";
+
+export function UserDashboard() {
+  const { data: userData, isLoading, error } = useUser();
+  
+  if (isLoading) return <div>Loading user data...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return (
+    <div>
+      <h1>Welcome, {userData?.user.full_name || "Anonymous User"}!</h1>
+      <p>Team: {userData?.teamName || "No team"}</p>
+      {userData?.isAnonymous && (
+        <div className="bg-yellow-50 p-4 rounded">
+          <p>You're using an anonymous account.</p>
+          <a href="/login" className="text-blue-600">
+            Sign up to save your work permanently
+          </a>
+        </div>
+      )}
+    </div>
+  );
 }
 ```
 
@@ -218,3 +565,28 @@ function Form() {
 2. **Async request APIs**: `cookies()`, `headers()`, `draftMode()` are now async
 3. **React 19**: Use new hooks like `useActionState`, `useFormStatus`
 4. **Turbopack**: Default dev bundler, faster than Webpack
+
+## BetterAuth + Next.js 15 Integration Notes
+
+### Architecture
+- **Authentication**: BetterAuth handles all auth (sessions, users, anonymous)
+- **Database**: Supabase PostgreSQL accessed via admin client (no RLS)
+- **Authorization**: Team-based access control in API layer and Server Actions
+
+### Key Patterns
+1. **Server Actions**: Use `getCurrentUser()` from `@/app/actions/user`
+2. **API Routes**: Use `authenticateApiRequest()` from `@/lib/auth/api-utils`
+3. **Client Components**: Use `useSession()` from `@/lib/auth/client` or `useUser()` hook
+4. **Middleware**: BetterAuth middleware handles route protection and redirects
+
+### Anonymous User Flow
+1. User visits site → BetterAuth creates anonymous session automatically
+2. User creates content → Associated with anonymous user ID
+3. User signs up → `onLinkAccount` callback migrates data to authenticated account
+4. Database trigger creates team and team membership for new users
+
+### Best Practices
+- Always check `isAnonymous` flag for operations requiring authenticated users
+- Use `MOTION_ACCESS_DENIED_MESSAGE` constant for consistent error messages
+- Implement retry mechanism for database triggers (they run asynchronously)
+- Store user context (team ID, role) in database, not in session/JWT

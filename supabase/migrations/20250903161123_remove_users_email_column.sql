@@ -1,5 +1,5 @@
--- Remove email column from users table as it duplicates auth.users data
 -- Update trigger to generate team names without requiring email
+-- (Note: email is now in BetterAuth "user" table)
 
 -- First, drop the existing trigger
 DROP TRIGGER IF EXISTS create_team_on_user_signup ON users;
@@ -40,8 +40,8 @@ CREATE TRIGGER create_team_on_user_signup
     AFTER INSERT ON users
     FOR EACH ROW EXECUTE FUNCTION create_default_team_for_user();
 
--- Now drop the email column since it's no longer needed
-ALTER TABLE users DROP COLUMN email;
+-- Drop the email column if it exists (it may have been removed already)
+ALTER TABLE users DROP COLUMN IF EXISTS email;
 
 -- Add a comment explaining the design
-COMMENT ON TABLE users IS 'Profile data for users. Email is stored in auth.users and should be accessed from there. This table only stores additional profile information.';
+COMMENT ON TABLE users IS 'Profile data for users. Synced from BetterAuth "user" table via trigger. Email is stored in BetterAuth "user" table.';

@@ -34,34 +34,58 @@ export type Database = {
   };
   public: {
     Tables: {
-      anonymous_sessions: {
+      account: {
         Row: {
-          created_at: string;
-          data: Json | null;
-          expires_at: string | null;
+          accessToken: string | null;
+          accessTokenExpiresAt: string | null;
+          accountId: string;
+          createdAt: string;
           id: string;
-          team_id: string | null;
+          idToken: string | null;
+          password: string | null;
+          providerId: string;
+          refreshToken: string | null;
+          refreshTokenExpiresAt: string | null;
+          scope: string | null;
+          updatedAt: string;
+          userId: string;
         };
         Insert: {
-          created_at?: string;
-          data?: Json | null;
-          expires_at?: string | null;
+          accessToken?: string | null;
+          accessTokenExpiresAt?: string | null;
+          accountId: string;
+          createdAt?: string;
           id: string;
-          team_id?: string | null;
+          idToken?: string | null;
+          password?: string | null;
+          providerId: string;
+          refreshToken?: string | null;
+          refreshTokenExpiresAt?: string | null;
+          scope?: string | null;
+          updatedAt?: string;
+          userId: string;
         };
         Update: {
-          created_at?: string;
-          data?: Json | null;
-          expires_at?: string | null;
+          accessToken?: string | null;
+          accessTokenExpiresAt?: string | null;
+          accountId?: string;
+          createdAt?: string;
           id?: string;
-          team_id?: string | null;
+          idToken?: string | null;
+          password?: string | null;
+          providerId?: string;
+          refreshToken?: string | null;
+          refreshTokenExpiresAt?: string | null;
+          scope?: string | null;
+          updatedAt?: string;
+          userId?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "anonymous_sessions_team_id_fkey";
-            columns: ["team_id"];
+            foreignKeyName: "account_userId_fkey";
+            columns: ["userId"];
             isOneToOne: false;
-            referencedRelation: "teams";
+            referencedRelation: "user";
             referencedColumns: ["id"];
           },
         ];
@@ -504,6 +528,47 @@ export type Database = {
           },
         ];
       };
+      session: {
+        Row: {
+          createdAt: string;
+          expiresAt: string;
+          id: string;
+          ipAddress: string | null;
+          token: string;
+          updatedAt: string;
+          userAgent: string | null;
+          userId: string;
+        };
+        Insert: {
+          createdAt?: string;
+          expiresAt: string;
+          id: string;
+          ipAddress?: string | null;
+          token: string;
+          updatedAt?: string;
+          userAgent?: string | null;
+          userId: string;
+        };
+        Update: {
+          createdAt?: string;
+          expiresAt?: string;
+          id?: string;
+          ipAddress?: string | null;
+          token?: string;
+          updatedAt?: string;
+          userAgent?: string | null;
+          userId?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "session_userId_fkey";
+            columns: ["userId"];
+            isOneToOne: false;
+            referencedRelation: "user";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       style_adaptations: {
         Row: {
           adapted_config: Json;
@@ -618,6 +683,66 @@ export type Database = {
           },
         ];
       };
+      team_invitations: {
+        Row: {
+          accepted_at: string | null;
+          created_at: string;
+          declined_at: string | null;
+          email: string;
+          expires_at: string;
+          id: string;
+          invited_by: string;
+          role: Database["public"]["Enums"]["team_member_role"];
+          status: Database["public"]["Enums"]["invitation_status"];
+          team_id: string;
+          token: string;
+          updated_at: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          created_at?: string;
+          declined_at?: string | null;
+          email: string;
+          expires_at?: string;
+          id?: string;
+          invited_by: string;
+          role?: Database["public"]["Enums"]["team_member_role"];
+          status?: Database["public"]["Enums"]["invitation_status"];
+          team_id: string;
+          token: string;
+          updated_at?: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          created_at?: string;
+          declined_at?: string | null;
+          email?: string;
+          expires_at?: string;
+          id?: string;
+          invited_by?: string;
+          role?: Database["public"]["Enums"]["team_member_role"];
+          status?: Database["public"]["Enums"]["invitation_status"];
+          team_id?: string;
+          token?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "team_invitations_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       team_members: {
         Row: {
           joined_at: string;
@@ -719,33 +844,45 @@ export type Database = {
           },
         ];
       };
-      user_profiles: {
+      user: {
         Row: {
-          anonymous_id: string | null;
-          avatar_url: string | null;
-          created_at: string;
-          full_name: string | null;
+          avatarUrl: string | null;
+          createdAt: string;
+          email: string;
+          emailVerified: boolean;
+          fullName: string | null;
           id: string;
-          onboarding_completed: boolean | null;
-          updated_at: string;
+          image: string | null;
+          isAnonymous: boolean | null;
+          name: string | null;
+          onboardingCompleted: boolean | null;
+          updatedAt: string;
         };
         Insert: {
-          anonymous_id?: string | null;
-          avatar_url?: string | null;
-          created_at?: string;
-          full_name?: string | null;
-          id: string;
-          onboarding_completed?: boolean | null;
-          updated_at?: string;
+          avatarUrl?: string | null;
+          createdAt?: string;
+          email: string;
+          emailVerified?: boolean;
+          fullName?: string | null;
+          id?: string;
+          image?: string | null;
+          isAnonymous?: boolean | null;
+          name?: string | null;
+          onboardingCompleted?: boolean | null;
+          updatedAt?: string;
         };
         Update: {
-          anonymous_id?: string | null;
-          avatar_url?: string | null;
-          created_at?: string;
-          full_name?: string | null;
+          avatarUrl?: string | null;
+          createdAt?: string;
+          email?: string;
+          emailVerified?: boolean;
+          fullName?: string | null;
           id?: string;
-          onboarding_completed?: boolean | null;
-          updated_at?: string;
+          image?: string | null;
+          isAnonymous?: boolean | null;
+          name?: string | null;
+          onboardingCompleted?: boolean | null;
+          updatedAt?: string;
         };
         Relationships: [];
       };
@@ -770,6 +907,33 @@ export type Database = {
           full_name?: string | null;
           id?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      verification: {
+        Row: {
+          createdAt: string;
+          expiresAt: string;
+          id: string;
+          identifier: string;
+          updatedAt: string;
+          value: string;
+        };
+        Insert: {
+          createdAt?: string;
+          expiresAt: string;
+          id: string;
+          identifier: string;
+          updatedAt?: string;
+          value: string;
+        };
+        Update: {
+          createdAt?: string;
+          expiresAt?: string;
+          id?: string;
+          identifier?: string;
+          updatedAt?: string;
+          value?: string;
         };
         Relationships: [];
       };
@@ -826,7 +990,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      cleanup_expired_anonymous_sessions: {
+      cleanup_expired_auth_data: {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
@@ -839,6 +1003,10 @@ export type Database = {
           original_style_id: string;
         };
         Returns: string;
+      };
+      expire_old_invitations: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
       };
       gtrgm_compress: {
         Args: { "": unknown };
@@ -879,6 +1047,7 @@ export type Database = {
     };
     Enums: {
       fal_request_status: "pending" | "completed" | "failed";
+      invitation_status: "pending" | "accepted" | "declined" | "expired";
       letzai_request_status: "pending" | "in_progress" | "completed" | "failed";
       sequence_status:
         | "draft"
@@ -1026,6 +1195,7 @@ export const Constants = {
   public: {
     Enums: {
       fal_request_status: ["pending", "completed", "failed"],
+      invitation_status: ["pending", "accepted", "declined", "expired"],
       letzai_request_status: ["pending", "in_progress", "completed", "failed"],
       sequence_status: [
         "draft",

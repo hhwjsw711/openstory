@@ -5,9 +5,9 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth/config";
 import { handleApiError, ValidationError } from "@/lib/errors";
 import { getFalService } from "@/lib/fal/service";
-import { createServerClient } from "@/lib/supabase/server";
 
 // Query parameters schema
 const usageQuerySchema = z.object({
@@ -28,13 +28,12 @@ const usageQuerySchema = z.object({
  */
 export async function GET(request: Request) {
   try {
-    // Check authentication
-    const supabase = createServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Check authentication with BetterAuth
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json(
         {
           success: false,

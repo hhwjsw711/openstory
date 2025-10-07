@@ -1,5 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StyleStackConfig } from "@/lib/schemas/style-stack";
-import type { DatabaseClient, StyleInsert } from "@/types/database";
+import type { Database, StyleInsert } from "@/types/database";
 
 // Default style templates that can be imported into any team
 export const DEFAULT_STYLE_TEMPLATES: Array<
@@ -501,7 +502,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
  * This should be run during app initialization or migration
  */
 export async function seedDefaultTemplates(
-  supabaseClient: DatabaseClient,
+  supabaseClient: SupabaseClient<Database>,
 ): Promise<void> {
   try {
     // Create a system team for templates if it doesn't exist
