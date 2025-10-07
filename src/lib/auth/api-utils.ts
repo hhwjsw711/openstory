@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
+import { getUserRole } from "@/lib/auth/permissions";
 import type { Session, User } from "./config";
 import { auth } from "./config";
 
@@ -64,6 +65,9 @@ export async function authenticateApiRequest(
 
 /**
  * Check if user has access to a team resource
+ *
+ * SECURITY: Queries database to verify actual team membership
+ * instead of relying on optional user.teamId field
  */
 export async function checkTeamAccess(
   request: Request,
@@ -78,12 +82,14 @@ export async function checkTeamAccess(
 
   const { user } = authResult;
 
-  // Check if user has access to the team
-  if (user.teamId !== teamId) {
+  // Query database to verify actual team membership
+  const role = await getUserRole(user.id, teamId);
+
+  if (!role) {
     return NextResponse.json(
       {
         success: false,
-        message: "Access denied: insufficient permissions",
+        message: "Access denied",
         status: 403,
         timestamp: new Date().toISOString(),
       },

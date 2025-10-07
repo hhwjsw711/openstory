@@ -88,6 +88,11 @@ export async function createAnonymousSessionAction(): Promise<AuthResponse> {
         "[createAnonymousSessionAction] User creation error:",
         userError,
       );
+      // Return error instead of continuing with inconsistent state
+      return {
+        success: false,
+        error: "Failed to initialize user account",
+      };
     }
 
     return {

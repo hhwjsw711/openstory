@@ -9,7 +9,8 @@
 
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
 import type { User } from "@/lib/auth/config";
-import type { TeamRole } from "@/lib/auth/permissions";
+import type { TeamRole } from "@/lib/auth/constants";
+import { hasMinimumRole } from "@/lib/auth/constants";
 import { getUserRole } from "@/lib/auth/permissions";
 import { getUser } from "@/lib/auth/server";
 
@@ -89,18 +90,8 @@ export async function requireTeamMemberAccess(
     throw new Error("Access denied: not a member of this team");
   }
 
-  // Check if user has minimum required role
-  const roleHierarchy: Record<TeamRole, number> = {
-    viewer: 1,
-    member: 2,
-    admin: 3,
-    owner: 4,
-  };
-
-  const userRoleLevel = roleHierarchy[role];
-  const requiredRoleLevel = roleHierarchy[minRole];
-
-  if (userRoleLevel < requiredRoleLevel) {
+  // Check if user has minimum required role using shared constants
+  if (!hasMinimumRole(role, minRole)) {
     throw new Error(`Access denied: ${minRole} role or higher required`);
   }
 

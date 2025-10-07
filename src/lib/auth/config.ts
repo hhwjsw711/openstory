@@ -24,12 +24,10 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 }
 
 // Create database connection pool for BetterAuth internal operations
+// SSL is enabled automatically when DATABASE_URL includes sslmode=require
 const pool = new Pool({
   connectionString: requiredEnvVars.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false,
+  ssl: process.env.NODE_ENV === "production",
 });
 
 export const auth = betterAuth({
@@ -50,7 +48,8 @@ export const auth = betterAuth({
   // Email and password authentication
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // Set to true in production
+    requireEmailVerification: process.env.NODE_ENV === "production",
+    sendEmailVerificationOnSignUp: process.env.NODE_ENV === "production",
   },
 
   // Social providers
@@ -79,12 +78,36 @@ export const auth = betterAuth({
 
         try {
           // 1. Get the anonymous user's team (the one we want to keep)
-          const { data: anonymousTeam } = await supabase
-            .from("team_members")
-            .select("team_id")
-            .eq("user_id", anonymousUser.user.id)
-            .eq("role", "owner")
-            .single();
+          // Retry logic to handle race condition with database trigger
+          let anonymousTeam = null;
+          let retries = 0;
+          const maxRetries = 3;
+
+          while (!anonymousTeam && retries < maxRetries) {
+            const { data } = await supabase
+              .from("team_members")
+              .select("team_id")
+              .eq("user_id", anonymousUser.user.id)
+              .eq("role", "owner")
+              .single();
+
+            anonymousTeam = data;
+
+            if (!anonymousTeam && retries < maxRetries - 1) {
+              console.warn(
+                `[BetterAuth] Anonymous user team not found, retrying... (${retries + 1}/${maxRetries})`,
+              );
+              // Wait 100ms before retrying
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              retries++;
+            }
+          }
+
+          if (!anonymousTeam) {
+            throw new Error(
+              "Anonymous user team not found after retries. Database trigger may not have completed.",
+            );
+          }
 
           // 2. Get the new user's auto-created team (the one we'll delete)
           const { data: newUserTeam } = await supabase
@@ -208,18 +231,45 @@ export const auth = betterAuth({
           if (jobsError) throw jobsError;
 
           // 12. Clean up anonymous user data
-          await supabase
+          const { error: creditsDeleteError } = await supabase
             .from("credits")
             .delete()
             .eq("user_id", anonymousUser.user.id);
 
-          await supabase
+          if (creditsDeleteError) {
+            console.error(
+              "[BetterAuth] Failed to delete anonymous credits:",
+              creditsDeleteError,
+            );
+            // Continue cleanup even if this fails
+          }
+
+          const { error: teamMembersDeleteError } = await supabase
             .from("team_members")
             .delete()
             .eq("user_id", anonymousUser.user.id);
 
+          if (teamMembersDeleteError) {
+            console.error(
+              "[BetterAuth] Failed to delete anonymous team members:",
+              teamMembersDeleteError,
+            );
+            // Continue cleanup even if this fails
+          }
+
           // Delete anonymous user from Velro users table
-          await supabase.from("users").delete().eq("id", anonymousUser.user.id);
+          const { error: usersDeleteError } = await supabase
+            .from("users")
+            .delete()
+            .eq("id", anonymousUser.user.id);
+
+          if (usersDeleteError) {
+            console.error(
+              "[BetterAuth] Failed to delete anonymous user:",
+              usersDeleteError,
+            );
+            // Log but don't throw - BetterAuth will clean up its own tables
+          }
 
           // Note: BetterAuth will handle deleting the anonymous user from its 'user' table
           // We clean up our app-specific tables (users, credits, team_members)

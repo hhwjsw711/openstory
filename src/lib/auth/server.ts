@@ -6,6 +6,8 @@
 import { headers } from "next/headers";
 import type { Session, User } from "./config";
 import { auth } from "./config";
+import type { TeamRole } from "./constants";
+import { getHighestRole } from "./constants";
 
 /**
  * Get the current session from server context
@@ -68,24 +70,41 @@ export async function getUserWithTeam(): Promise<{
   const supabase = createAdminClient();
 
   try {
-    const { data: teamMember, error } = await supabase
+    // Fetch all team memberships for the user
+    const { data: teamMembers, error } = await supabase
       .from("team_members")
       .select("team_id, role")
       .eq("user_id", session.user.id)
-      .order("role", { ascending: false }) // 'owner' comes before 'member' alphabetically descending
-      .order("joined_at", { ascending: true })
-      .limit(1)
-      .single();
+      .order("joined_at", { ascending: true }); // Oldest team first
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 is "not found" - that's okay
       throw error;
     }
 
+    // If user has no teams, return null
+    if (!teamMembers || teamMembers.length === 0) {
+      return {
+        user: session.user,
+        teamId: null,
+        teamRole: null,
+      };
+    }
+
+    // If user has multiple teams, select the one with the highest role
+    let selectedTeam = teamMembers[0];
+    if (teamMembers.length > 1) {
+      const highestRole = getHighestRole(
+        teamMembers.map((tm) => tm.role as TeamRole),
+      );
+      selectedTeam =
+        teamMembers.find((tm) => tm.role === highestRole) || teamMembers[0];
+    }
+
     return {
       user: session.user,
-      teamId: teamMember?.team_id || null,
-      teamRole: teamMember?.role || null,
+      teamId: selectedTeam.team_id,
+      teamRole: selectedTeam.role,
     };
   } catch (error) {
     console.error("[Auth] Failed to fetch team info:", error);

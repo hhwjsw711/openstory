@@ -10,6 +10,7 @@
 
 import crypto from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { INVITATION_CONFIG } from "@/lib/auth/constants";
 import type { TeamRole } from "@/lib/auth/permissions";
 import { getUserRole } from "@/lib/auth/permissions";
 import { ValidationError } from "@/lib/errors";
@@ -32,7 +33,8 @@ export interface TeamInvitation {
   email: string;
   role: string;
   invitedBy: string;
-  token: string;
+  // SECURITY: Token should NOT be included in API responses
+  // It should only be sent via secure email channel
   status: string;
   expiresAt: string;
   createdAt: string;
@@ -121,8 +123,15 @@ export class TeamService {
       );
     }
 
-    // Generate unique invitation token
-    const token = crypto.randomBytes(32).toString("hex");
+    // Generate cryptographically secure, URL-safe invitation token
+    const token = crypto
+      .randomBytes(INVITATION_CONFIG.TOKEN_BYTES)
+      .toString(INVITATION_CONFIG.TOKEN_ENCODING);
+
+    // Calculate expiry date
+    const expiresAt = new Date(
+      Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     // Create invitation
     const { data: invitation, error } = await this.supabase
@@ -133,9 +142,7 @@ export class TeamService {
         role: params.role,
         invited_by: params.invitedBy,
         token,
-        expires_at: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ).toISOString(), // 7 days
+        expires_at: expiresAt,
       })
       .select()
       .single();
@@ -148,16 +155,21 @@ export class TeamService {
       throw new Error("No invitation returned from database");
     }
 
-    // TODO: Send invitation email
+    // TODO: Send invitation email with token
+    // SECURITY: Token should ONLY be sent via email, never in API response
     // await this.emailService.sendInvitation(params.email, token);
+    console.log(
+      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`,
+    );
 
+    // SECURITY: Do NOT return token in response
+    // Token should only be sent via secure email channel
     return {
       id: invitation.id,
       teamId: invitation.team_id,
       email: invitation.email,
       role: invitation.role,
       invitedBy: invitation.invited_by,
-      token: invitation.token,
       status: invitation.status,
       expiresAt: invitation.expires_at,
       createdAt: invitation.created_at,
