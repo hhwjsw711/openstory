@@ -1,5 +1,6 @@
 import {
   callOpenRouter,
+  type OpenRouterMessage,
   type OpenRouterResponse,
   RECOMMENDED_MODELS,
 } from "@/lib/ai/openrouter-client";
@@ -80,7 +81,7 @@ export async function DNADirectorProcessor(
     const directorTemplate = await DNADirectorTemplate(payload);
     llmResponse = await callOpenRouter({
       model: RECOMMENDED_MODELS.creative,
-      messages: directorTemplate as DNADirectorTemplateMessage[],
+      messages: directorTemplate as OpenRouterMessage[],
     });
 
     if (llmResponse?.choices && llmResponse?.choices.length > 0) {
@@ -111,6 +112,8 @@ export async function DNADirectorProcessor(
         result.error = "Empty response from LLM";
         result.status = false;
       }
+    } else {
+      result.error = "Empty response from LLM";
     }
   } catch (error) {
     result.error = error instanceof Error ? error.message : String(error);
@@ -253,6 +256,10 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
         signal: controller.signal,
         headers: { "User-Agent": "Velro/1.0" },
       });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
 
       const contentType = res.headers.get("content-type");
       if (!contentType?.startsWith("image/")) {

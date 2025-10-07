@@ -66,13 +66,23 @@ export async function generateFrameDescriptions(
 
   // Apply DNA Director if styleId exists
   if (styleId) {
-    const dnaPromises = scriptAnalysis.scenes.map((scene) =>
-      DNADirectorProcessor(styleId, scene.scriptContent || ""),
-    );
-    const dnaResults = await Promise.allSettled(dnaPromises);
+    const BATCH_SIZE = 5; // Process 5 scenes at a time to avoid rate limits
+    const allResults: PromiseSettledResult<
+      Awaited<ReturnType<typeof DNADirectorProcessor>>
+    >[] = [];
+
+    // Process scenes in batches
+    for (let i = 0; i < scriptAnalysis.scenes.length; i += BATCH_SIZE) {
+      const batch = scriptAnalysis.scenes.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map((scene) =>
+        DNADirectorProcessor(styleId, scene.scriptContent || ""),
+      );
+      const batchResults = await Promise.allSettled(batchPromises);
+      allResults.push(...batchResults);
+    }
 
     sceneScripts = scriptAnalysis.scenes.map((scene, index) => {
-      const dnaResult = dnaResults[index];
+      const dnaResult = allResults[index];
       if (dnaResult.status === "fulfilled" && dnaResult.value.status) {
         return dnaResult.value.data?.message || scene.scriptContent || "";
       }

@@ -31,6 +31,11 @@ export async function generateImageByAction(
       );
       if (dnaDirectorResponse.status) {
         params.prompt = dnaDirectorResponse.data?.message ?? params.prompt;
+      } else {
+        console.warn(
+          "[generateImageByAction] DNA Director failed:",
+          dnaDirectorResponse.error,
+        );
       }
     }
 

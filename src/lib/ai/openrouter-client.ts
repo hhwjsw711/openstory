@@ -32,16 +32,18 @@ const openRouterResponseSchema = z.object({
 
 export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
 
+export type OpenRouterMessageContent =
+  | string
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    >;
+
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant";
-  content:
-    | string
-    | { type: string; text: string }
-    | { type: string; image_url: { url: string } }
-    | Array<
-        | { type: string; text: string }
-        | { type: string; image_url: { url: string } }
-      >;
+  content: OpenRouterMessageContent;
 }
 
 export interface OpenRouterRequestParams {
