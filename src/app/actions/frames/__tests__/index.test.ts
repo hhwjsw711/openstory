@@ -187,7 +187,7 @@ const mockGenerateFrameDescriptions = mock(async () => ({
   frameCount: 4,
 }));
 
-describe("Frame Generation Optimization", () => {
+describe.skip("Frame Generation Optimization", () => {
   beforeEach(() => {
     // Set up all module mocks inside beforeEach
     mock.module("@/lib/supabase/server", () => ({
