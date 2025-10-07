@@ -54,15 +54,27 @@ export interface DNADirectorTemplateMessage {
 }
 
 export const DNAConfigSchema = z.object({
-  mood: z.string(),
-  artStyle: z.string(),
-  lighting: z.string(),
-  colorPalette: z.array(z.string()),
-  cameraWork: z.string(),
-  referenceFilms: z.array(z.string()),
-  aspectRatio: z.string(),
-  frameRate: z.string(),
-  colorGrading: z.string(),
+  mood: z
+    .string()
+    .describe(
+      "Emotional atmosphere (e.g., 'Dark and moody', 'Bright and cheerful')",
+    ),
+  artStyle: z.string().describe("Visual aesthetic style"),
+  lighting: z.string().describe("Lighting philosophy and approach"),
+  colorPalette: z
+    .array(z.string())
+    .min(1)
+    .describe("Array of color values or descriptions"),
+  cameraWork: z.string().describe("Camera movement and framing approach"),
+  referenceFilms: z
+    .array(z.string())
+    .describe("Cinematic influences and references"),
+  aspectRatio: z
+    .string()
+    .regex(/^\d+:\d+$/)
+    .describe("Aspect ratio (e.g., '16:9', '2.39:1')"),
+  frameRate: z.string().describe("Frame rate specification"),
+  colorGrading: z.string().describe("Color grading approach"),
 });
 
 export type DNAConfigType = z.infer<typeof DNAConfigSchema>;

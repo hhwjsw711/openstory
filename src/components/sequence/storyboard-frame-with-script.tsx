@@ -177,7 +177,7 @@ export const StoryboardFrameWithScript: React.FC<
         extra_params: {
           image_url: frame.thumbnail_url || "",
         },
-        ...(styleId && { style_id: styleId }),
+        ...(styleId && styleId.length > 0 ? { style_id: styleId } : {}),
       });
       if (result?.success && result?.jobId) {
         onFrameUpdate?.({

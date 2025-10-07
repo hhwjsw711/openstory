@@ -34,68 +34,87 @@ export async function DNADirectorProcessor(
     return result;
   }
 
-  if (style?.description && style?.config) {
-    const parsedConfig = DNAConfigSchema.safeParse(style.config);
-    if (!parsedConfig.success) {
-      result.error = "Invalid style config";
-      result.status = false;
-      return result;
-    }
+  if (!style) {
+    result.error = "Style not found";
+    return result;
+  }
 
-    const DNAConfig = parsedConfig.data;
-    const payload = {
-      prompt,
-      styleName: style?.name,
-      directorialIntent: style?.description,
-      mood: DNAConfig.mood,
-      visualStyle: DNAConfig.artStyle,
-      lighting: DNAConfig.lighting,
-      colorPalette: DNAConfig.colorPalette,
-      cameraLanguage: DNAConfig?.cameraWork,
-      cinematicReferences: DNAConfig?.referenceFilms,
-      aspectRatio: DNAConfig.aspectRatio,
-      frameLookAndExtras: [DNAConfig?.frameRate, DNAConfig?.colorGrading],
-      referenceImageUrl: null,
-    };
+  if (!style.description) {
+    result.error = "Style missing description";
+    return result;
+  }
 
-    let llmResponse: OpenRouterResponse;
-    try {
-      const directorTemplate = await DNADirectorTemplate(payload);
-      llmResponse = await callOpenRouter({
-        model: RECOMMENDED_MODELS.creative,
-        messages: directorTemplate as DNADirectorTemplateMessage[],
-      });
+  if (!style.config) {
+    result.error = "Style missing config";
+    return result;
+  }
 
-      if (llmResponse?.choices && llmResponse?.choices.length > 0) {
-        // Get the text content properly
-        const content = llmResponse.choices[0].message.content;
-        const messageText =
-          typeof content === "string"
-            ? content
-            : Array.isArray(content)
-              ? ((content as Array<{ type: string; text?: string }>).find(
-                  (c) => c.type === "text",
-                )?.text ?? "")
-              : typeof content === "object" &&
-                  content !== null &&
-                  "type" in content &&
-                  (content as { type: string }).type === "text"
-                ? ((content as { text?: string }).text ?? "")
-                : "";
+  const parsedConfig = DNAConfigSchema.safeParse(style.config);
+  if (!parsedConfig.success) {
+    result.error = "Invalid style config";
+    result.status = false;
+    return result;
+  }
 
+  const DNAConfig = parsedConfig.data;
+  const payload = {
+    prompt,
+    styleName: style?.name,
+    directorialIntent: style?.description,
+    mood: DNAConfig.mood,
+    visualStyle: DNAConfig.artStyle,
+    lighting: DNAConfig.lighting,
+    colorPalette: DNAConfig.colorPalette,
+    cameraLanguage: DNAConfig?.cameraWork,
+    cinematicReferences: DNAConfig?.referenceFilms,
+    aspectRatio: DNAConfig.aspectRatio,
+    frameLookAndExtras: [
+      DNAConfig.frameRate ?? "24fps",
+      DNAConfig.colorGrading ?? "Natural",
+    ].filter(Boolean),
+    referenceImageUrl: null,
+  };
+
+  let llmResponse: OpenRouterResponse;
+  try {
+    const directorTemplate = await DNADirectorTemplate(payload);
+    llmResponse = await callOpenRouter({
+      model: RECOMMENDED_MODELS.creative,
+      messages: directorTemplate as DNADirectorTemplateMessage[],
+    });
+
+    if (llmResponse?.choices && llmResponse?.choices.length > 0) {
+      const content = llmResponse.choices[0].message.content;
+      const messageText =
+        typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? ((content as Array<{ type: string; text?: string }>).find(
+                (c) => c.type === "text",
+              )?.text ?? "")
+            : typeof content === "object" &&
+                content !== null &&
+                "type" in content &&
+                (content as { type: string }).type === "text"
+              ? ((content as { text?: string }).text ?? "")
+              : "";
+
+      if (messageText && messageText.trim().length > 0) {
         result.data = {
           message: messageText,
           promptTokens: llmResponse?.usage?.prompt_tokens ?? 0,
           completionTokens: llmResponse?.usage?.completion_tokens ?? 0,
           totalTokens: llmResponse?.usage?.total_tokens ?? 0,
         };
+        result.status = true;
+      } else {
+        result.error = "Empty response from LLM";
+        result.status = false;
       }
-
-      result.status = true;
-    } catch (error) {
-      result.error = error instanceof Error ? error.message : String(error);
-      result.status = false;
     }
+  } catch (error) {
+    result.error = error instanceof Error ? error.message : String(error);
+    result.status = false;
   }
 
   return result;
@@ -208,24 +227,29 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     },
   ];
 
-  // If there is a reference image, add it to the messages
-  if (referenceImageUrl) {
-    // Validate URL
-    try {
-      const url = new URL(referenceImageUrl);
-      if (!["http:", "https:"].includes(url.protocol)) {
-        throw new Error("Invalid protocol");
-      }
-    } catch {
-      throw new Error("Invalid reference image URL");
+  // Validate URL
+  let imgUrl: string | null = referenceImageUrl;
+  try {
+    const url = new URL(referenceImageUrl || "");
+    if (!["http:", "https:"].includes(url.protocol)) {
+      console.warn(
+        "[DNADirector] Invalid protocol in reference URL, ignoring image",
+      );
+      imgUrl = null; // Fall back to no image
     }
+  } catch {
+    console.warn("[DNADirector] Invalid reference image URL, ignoring image");
+    imgUrl = null; // Fall back to no image
+  }
 
+  // If there is a reference image, add it to the messages
+  if (imgUrl) {
     // Fetch with size limit and timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
     try {
-      const res = await fetch(referenceImageUrl, {
+      const res = await fetch(imgUrl, {
         signal: controller.signal,
         headers: { "User-Agent": "Velro/1.0" },
       });
@@ -245,8 +269,9 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
       if (buffer.byteLength > 10 * 1024 * 1024) {
         throw new Error("Image too large");
       }
-
+      const mimeType = contentType || "image/jpeg";
       const base64Image = Buffer.from(buffer).toString("base64");
+
       messages = [
         ...messages,
         {
@@ -263,7 +288,7 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
             },
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+              image_url: { url: `data:${mimeType};base64,${base64Image}` },
             },
             {
               type: "text",
