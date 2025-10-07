@@ -82,7 +82,6 @@ For each marked section, include:
 - Everything between one section header and the next
 - Each small section will be a separate scene
 - Total scenes should be 6 scenes
-- Total duration should be 30 seconds
 
 Return JSON with this structure:
 {

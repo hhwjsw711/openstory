@@ -61,18 +61,28 @@ export async function generateFrameDescriptions(
     "wide shot",
   ];
 
-  // Create ONE frame per scene with the complete scene content
-  for (
-    let sceneIndex = 0;
-    sceneIndex < scriptAnalysis.scenes.length;
-    sceneIndex++
-  ) {
-    const scene = scriptAnalysis.scenes[sceneIndex];
-    let sceneScript = scene.scriptContent || "";
-    const sceneDuration = scene.duration || 10000; // Default 10 seconds per scene
+  // Apply DNA Director to the prompt
+  if (styleId) {
+    const dnaPromises = scriptAnalysis.scenes.map((scene) =>
+      DNADirectorProcessor(styleId, scene.scriptContent || ""),
+    );
+    const dnaResults = await Promise.allSettled(dnaPromises);
 
-    // Apply DNA Director to the prompt
-    if (styleId) {
+    // Then use results in the loop
+    for (
+      let sceneIndex = 0;
+      sceneIndex < scriptAnalysis.scenes.length;
+      sceneIndex++
+    ) {
+      const scene = scriptAnalysis.scenes[sceneIndex];
+      const dnaResult = dnaResults[sceneIndex];
+      const sceneDuration = scene.duration || 10000;
+
+      let sceneScript = scene.scriptContent || "";
+      if (dnaResult.status === "fulfilled" && dnaResult.value.status) {
+        sceneScript = dnaResult.value.data?.message || sceneScript;
+      }
+
       const dnaDirectorResponse = await DNADirectorProcessor(
         styleId,
         sceneScript,
@@ -80,30 +90,30 @@ export async function generateFrameDescriptions(
       if (dnaDirectorResponse.status) {
         sceneScript = dnaDirectorResponse.data?.message || sceneScript;
       }
+
+      // Skip empty scenes
+      if (!sceneScript || sceneScript.trim().length === 0) {
+        continue;
+      }
+
+      // Use the ENTIRE scene content for the frame
+      frames.push({
+        description: sceneScript, // Use complete scene text as description
+        orderIndex: orderIndex++,
+        durationMs: Math.round(sceneDuration),
+        metadata: {
+          scene: sceneIndex,
+          scriptChunk: sceneScript, // Store complete scene text
+          shotType: shotTypes[sceneIndex % shotTypes.length],
+          sceneType: scene.type,
+          sceneIntensity: scene.intensity,
+          characters: scriptAnalysis.characters?.slice(0, 2),
+          settings: scriptAnalysis.settings?.slice(0, 1),
+        },
+      });
+
+      totalDuration += sceneDuration;
     }
-
-    // Skip empty scenes
-    if (!sceneScript || sceneScript.trim().length === 0) {
-      continue;
-    }
-
-    // Use the ENTIRE scene content for the frame
-    frames.push({
-      description: sceneScript, // Use complete scene text as description
-      orderIndex: orderIndex++,
-      durationMs: Math.round(sceneDuration),
-      metadata: {
-        scene: sceneIndex,
-        scriptChunk: sceneScript, // Store complete scene text
-        shotType: shotTypes[sceneIndex % shotTypes.length],
-        sceneType: scene.type,
-        sceneIntensity: scene.intensity,
-        characters: scriptAnalysis.characters?.slice(0, 2),
-        settings: scriptAnalysis.settings?.slice(0, 1),
-      },
-    });
-
-    totalDuration += sceneDuration;
   }
 
   return {

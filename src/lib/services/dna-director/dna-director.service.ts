@@ -4,11 +4,11 @@ import {
   RECOMMENDED_MODELS,
 } from "@/lib/ai/openrouter-client";
 import { createServerClient } from "@/lib/supabase/server";
-import type {
-  DNAConfig,
-  DNADirectorParams,
-  DNADirectorResponse,
-  DNADirectorTemplateMessage,
+import {
+  DNAConfigSchema,
+  type DNADirectorParams,
+  type DNADirectorResponse,
+  type DNADirectorTemplateMessage,
 } from "./types";
 
 export async function DNADirectorProcessor(
@@ -22,17 +22,27 @@ export async function DNADirectorProcessor(
     .eq("id", styleId)
     .single();
 
-  if (styleError) {
-    throw new Error(styleError.message);
-  }
   const result: DNADirectorResponse = {
     status: false,
     error: undefined,
     data: undefined,
   };
 
+  if (styleError) {
+    result.error = styleError.message;
+    result.status = false;
+    return result;
+  }
+
   if (style?.description && style?.config) {
-    const DNAConfig = style.config as unknown as DNAConfig;
+    const parsedConfig = DNAConfigSchema.safeParse(style.config);
+    if (!parsedConfig.success) {
+      result.error = "Invalid style config";
+      result.status = false;
+      return result;
+    }
+
+    const DNAConfig = parsedConfig.data;
     const payload = {
       prompt,
       styleName: style?.name,
@@ -57,8 +67,24 @@ export async function DNADirectorProcessor(
       });
 
       if (llmResponse?.choices && llmResponse?.choices.length > 0) {
+        // Get the text content properly
+        const content = llmResponse.choices[0].message.content;
+        const messageText =
+          typeof content === "string"
+            ? content
+            : Array.isArray(content)
+              ? ((content as Array<{ type: string; text?: string }>).find(
+                  (c) => c.type === "text",
+                )?.text ?? "")
+              : typeof content === "object" &&
+                  content !== null &&
+                  "type" in content &&
+                  (content as { type: string }).type === "text"
+                ? ((content as { text?: string }).text ?? "")
+                : "";
+
         result.data = {
-          message: llmResponse?.choices[0].message.content,
+          message: messageText,
           promptTokens: llmResponse?.usage?.prompt_tokens ?? 0,
           completionTokens: llmResponse?.usage?.completion_tokens ?? 0,
           totalTokens: llmResponse?.usage?.total_tokens ?? 0,
@@ -67,7 +93,7 @@ export async function DNADirectorProcessor(
 
       result.status = true;
     } catch (error) {
-      result.error = error as string;
+      result.error = error instanceof Error ? error.message : String(error);
       result.status = false;
     }
   }
@@ -184,34 +210,71 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
 
   // If there is a reference image, add it to the messages
   if (referenceImageUrl) {
-    const base64Image = await fetch(referenceImageUrl)
-      .then((res) => res.arrayBuffer())
-      .then((buffer) => Buffer.from(buffer).toString("base64"));
-    messages = [
-      ...messages,
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
+    // Validate URL
+    try {
+      const url = new URL(referenceImageUrl);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        throw new Error("Invalid protocol");
+      }
+    } catch {
+      throw new Error("Invalid reference image URL");
+    }
 
-ORIGINAL SCENE TO ENHANCE:
-${prompt}
+    // Fetch with size limit and timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-Reference image for visual style:`,
-          },
-          {
-            type: "image_url",
-            image_url: { url: `data:image/jpeg;base64,${base64Image}` },
-          },
-          {
-            type: "text",
-            text: `Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
-          },
-        ],
-      },
-    ];
+    try {
+      const res = await fetch(referenceImageUrl, {
+        signal: controller.signal,
+        headers: { "User-Agent": "Velro/1.0" },
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType?.startsWith("image/")) {
+        throw new Error("URL does not point to an image");
+      }
+
+      const contentLength = res.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
+        // 10MB limit
+        throw new Error("Image too large");
+      }
+
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > 10 * 1024 * 1024) {
+        throw new Error("Image too large");
+      }
+
+      const base64Image = Buffer.from(buffer).toString("base64");
+      messages = [
+        ...messages,
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
+  
+  ORIGINAL SCENE TO ENHANCE:
+  ${prompt}
+  
+  Reference image for visual style:`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+            },
+            {
+              type: "text",
+              text: `Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
+            },
+          ],
+        },
+      ];
+    } finally {
+      clearTimeout(timeout);
+    }
   } else {
     messages = [
       ...messages,
@@ -232,6 +295,5 @@ Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
     ];
   }
 
-  console.log("[DNADirectorTemplate] Prompt Messages", messages);
   return messages;
 };

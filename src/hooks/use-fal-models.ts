@@ -76,7 +76,7 @@ export interface GenerateImageByFalRequest {
   frame_id: string;
   prompt: string;
   model: string;
-  style_id: string;
+  style_id?: string;
   extra_params: Record<string, unknown>;
 }
 

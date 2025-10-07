@@ -515,7 +515,10 @@ export async function generateFramesAction(
     // This just takes the analysis and structures it into frames
     const frameDescriptions = await generateFrameDescriptions({
       scriptAnalysis,
-      styleId: sequence.style_id || undefined,
+      styleId:
+        sequence.style_id && sequence.style_id.length > 0
+          ? sequence.style_id
+          : undefined,
       aiProvider: validated.options?.aiProvider,
     });
 

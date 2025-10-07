@@ -1,3 +1,5 @@
+import z from "zod";
+
 export interface DNADirectorParams {
   prompt: string;
   styleName: string;
@@ -50,3 +52,17 @@ export interface DNADirectorTemplateMessage {
         | { type: string; image_url: { url: string } }
       >;
 }
+
+export const DNAConfigSchema = z.object({
+  mood: z.string(),
+  artStyle: z.string(),
+  lighting: z.string(),
+  colorPalette: z.array(z.string()),
+  cameraWork: z.string(),
+  referenceFilms: z.array(z.string()),
+  aspectRatio: z.string(),
+  frameRate: z.string(),
+  colorGrading: z.string(),
+});
+
+export type DNAConfigType = z.infer<typeof DNAConfigSchema>;
