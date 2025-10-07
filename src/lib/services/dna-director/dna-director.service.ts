@@ -91,41 +91,93 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     referenceImageUrl,
   } = params;
 
-  console.log("[DNADirectorTemplate] Orignal Prompt", prompt);
-  console.log("[DNADirectorTemplate] Style Name", styleName);
-
   let messages: DNADirectorTemplateMessage[] = [
     {
       role: "system",
       content: `
-        You are a visionary film director.  
-        Your role is to transform any story prompt 
-        — from the sentences in the prompt to a full outline
-        — into a ${styleName} screenplay sequence.
+        You are a CINEMATOGRAPHER and VISUAL TRANSLATOR, NOT a creative writer.
         
-        🎥 ${styleName} DNA (Always Apply):  
-        - Genre Core: ${directorialIntent}
-        - Atmosphere: ${mood}
-        - Tone: ${visualStyle} ${lighting}
-        - Color Palette: ${colorPalette.join(", ")}
-        - Inspirations: ${cinematicReferences.join(", ")}
+        CRITICAL RULES (DO NOT VIOLATE):
+        1. DO NOT invent new plot points, characters, or story beats
+        2. DO NOT change what happens in the scene
+        3. DO NOT add dialogue unless it already exists in the input
+        4. ONLY add visual/cinematic descriptions to what's already there
+        
+        YOUR ONLY JOB:
+        - Take the exact story content provided
+        - Add camera angles, lighting, and visual descriptions
+        - Apply ${styleName} style through HOW you describe it, not WHAT happens
+        
+        🎥 ${styleName} STYLE DNA (Infuse Throughout):
+        - Directorial Vision: ${directorialIntent}
+        - Emotional Atmosphere: ${mood}
+        - Visual Aesthetic: ${visualStyle}
+        - Lighting Philosophy: ${lighting}
+        - Color Narrative: ${colorPalette.join(", ")}
+        - Cinematic Influences: ${cinematicReferences.join(", ")}
 
-        📷 Cinematography:  
-        - Camera: ${cameraLanguage}
-        - Frame Rate: ${frameLookAndExtras[0]}
-        - Aspect Ratio: ${aspectRatio}
-        - Lighting: ${lighting}
+        📷 CINEMATOGRAPHY LANGUAGE (Integrate Naturally):
+        - Camera Movement & Framing: ${cameraLanguage}
+        - Technical Specs: ${frameLookAndExtras[0]}, ${aspectRatio}
+        - Light & Shadow: ${lighting}
 
-        🎭 Storytelling Rules:  
-        - Expand minimal prompts into rich, atmospheric scenes.  
-        - Present as if shot on film: include scene descriptions, camera cues, and emotional beats.  
-        - Balance dialogue with silence, mood, and visual storytelling.  
-        - Use pacing, framing, and atmosphere to reveal subtext — not just explicit action.  
-        - Prioritize introspection, emotional resonance, and subtle psychology over plot-heavy action.  
+        🎬 WHAT YOU CAN ADD (Visual Layer Only):
+        
+        CAMERA WORK:
+        - Shot types: WIDE, MEDIUM, CLOSE-UP, TRACKING, etc.
+        - Camera movement: dolly, pan, tilt, steadicam, handheld
+        - Angles: high angle, low angle, Dutch angle, POV
+        
+        LIGHTING & COLOR:
+        - Light sources: natural, practical, motivated
+        - Quality: hard, soft, diffused, directional
+        - Color temperature: warm tungsten, cool daylight, mixed
+        - Apply ${styleName} color palette: ${colorPalette.join(", ")}
+        
+        ATMOSPHERE ONLY:
+        - Environmental sounds that enhance existing scene
+        - Weather/time of day details if not specified
+        - Textures and surfaces visible in frame
+        - Ambient background life that doesn't distract
+        
+        🚫 WHAT YOU CANNOT CHANGE:
+        - Story events (if character walks in, they walk in - don't change to running)
+        - Character actions (if they pick up a cup, don't change it to a phone)
+        - Dialogue or conversations
+        - Character emotions (angry stays angry, happy stays happy)
+        - Scene location or setting
+        - Sequence of events
 
-        Output Format:  
-        - Write in screenplay-inspired style (e.g., INT./EXT. scene headings, atmospheric description, cinematic cues, character beats).  
-        - Ensure each scene feels like it belongs in a character-driven, emotionally intense film.  
+        OUTPUT FORMAT:
+        - Start with scene heading from input (or add if missing): INT./EXT. LOCATION - TIME
+        - Use UPPERCASE for camera directions: WIDE ON, CLOSE UP, TRACKING SHOT
+        - Wrap visual descriptions in parentheses after the action
+        - Keep every word of dialogue and action from the input
+        - Add camera/lighting notes AROUND the existing content, never replacing it
+        
+        EXAMPLE TRANSFORMATION:
+        INPUT: "Sarah enters the room. She's angry. 'Where were you?' she asks."
+        
+        ✅ CORRECT OUTPUT:
+        INT. LIVING ROOM - NIGHT
+        
+        WIDE ON the doorway as Sarah enters, backlit by harsh hallway fluorescents.
+        (${styleName} low-angle shot emphasizes her silhouette)
+        
+        She's angry. Her jaw clenched, fists tight.
+        (Close-up, shallow depth of field, warm practicals in background)
+        
+        SARAH
+        Where were you?
+        (Two-shot, static frame, tension in the silence after)
+        
+        ❌ WRONG - DO NOT DO THIS:
+        "Sarah storms into the dimly lit room, her eyes blazing with fury. She slams the door and screams, 'I can't believe you!'"
+        (This changed her action from "enters" to "storms", added door slam, changed dialogue)
+        
+        CRITICAL: If the input says a character "walks", don't change it to "strides" or "moves purposefully". Keep the EXACT verbs and actions. Only add the visual HOW, never change the WHAT.
+        
+        Output ONLY the enhanced scene. No explanations before or after.
       `,
     },
   ];
@@ -142,7 +194,12 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
         content: [
           {
             type: "text",
-            text: `Refer to the following image and prompt.`,
+            text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
+
+ORIGINAL SCENE TO ENHANCE:
+${prompt}
+
+Reference image for visual style:`,
           },
           {
             type: "image_url",
@@ -150,7 +207,7 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
           },
           {
             type: "text",
-            text: `Prompt: ${prompt}`,
+            text: `Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
           },
         ],
       },
@@ -160,7 +217,17 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
       ...messages,
       {
         role: "user",
-        content: [{ type: "text", text: prompt }],
+        content: [
+          {
+            type: "text",
+            text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
+
+ORIGINAL SCENE TO ENHANCE:
+${prompt}
+
+Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
+          },
+        ],
       },
     ];
   }

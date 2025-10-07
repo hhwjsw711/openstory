@@ -3,7 +3,7 @@
  * Divides script into chunks for storyboard frames
  */
 
-import type { Json } from "@/types/database";
+import { DNADirectorProcessor } from "@/lib/services/dna-director/dna-director.service";
 
 export interface GenerateFrameDescriptionsParams {
   scriptAnalysis: {
@@ -17,7 +17,7 @@ export interface GenerateFrameDescriptionsParams {
     characters?: string[];
     settings?: string[];
   };
-  styleStack?: Json;
+  styleId?: string;
   aiProvider?: "openai" | "anthropic" | "openrouter";
 }
 
@@ -46,7 +46,7 @@ export interface FrameDescriptionResult {
 export async function generateFrameDescriptions(
   params: GenerateFrameDescriptionsParams,
 ): Promise<FrameDescriptionResult> {
-  const { scriptAnalysis } = params;
+  const { scriptAnalysis, styleId } = params;
 
   const frames: FrameDescriptionResult["frames"] = [];
   let orderIndex = 0;
@@ -68,8 +68,19 @@ export async function generateFrameDescriptions(
     sceneIndex++
   ) {
     const scene = scriptAnalysis.scenes[sceneIndex];
-    const sceneScript = scene.scriptContent || "";
+    let sceneScript = scene.scriptContent || "";
     const sceneDuration = scene.duration || 10000; // Default 10 seconds per scene
+
+    // Apply DNA Director to the prompt
+    if (styleId) {
+      const dnaDirectorResponse = await DNADirectorProcessor(
+        styleId,
+        sceneScript,
+      );
+      if (dnaDirectorResponse.status) {
+        sceneScript = dnaDirectorResponse.data?.message || sceneScript;
+      }
+    }
 
     // Skip empty scenes
     if (!sceneScript || sceneScript.trim().length === 0) {

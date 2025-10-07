@@ -515,7 +515,7 @@ export async function generateFramesAction(
     // This just takes the analysis and structures it into frames
     const frameDescriptions = await generateFrameDescriptions({
       scriptAnalysis,
-      styleStack: styleStack as Json | undefined,
+      styleId: sequence.style_id || undefined,
       aiProvider: validated.options?.aiProvider,
     });
 
