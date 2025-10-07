@@ -120,7 +120,7 @@ Respond with ONLY valid JSON.`,
   if (!parsed) {
     throw new Error("Failed to parse AI response - invalid or missing JSON");
   }
-  console.log("parsed", parsed);
+
   // Validate and return the parsed result
   return sceneAnalysisSchema.parse(parsed);
 }
