@@ -12,6 +12,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write  # Required for OIDC token authentication when github_token is not provided
 
 jobs:
   review:
@@ -30,7 +31,7 @@ jobs:
         with:
           # IMPORTANT: pass the direct API key (repo/org secret)
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Using OIDC authentication (id-token: write permission) - comments will appear as Claudebot
 
           # (Optional) custom instructions for the review
           prompt: |
