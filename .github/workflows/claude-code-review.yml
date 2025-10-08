@@ -42,6 +42,9 @@ jobs:
             - Do NOT discuss tests, unit tests, test coverage, or suggest adding tests.
             - Do NOT include any section titled "Test Coverage" or similar.
             - Keep feedback focused on code diffs only.
+            - Review ONLY the lines that were added, modified, or removed in this PR.
+            - Do NOT review unchanged lines or provide feedback on code that wasn't touched.
+            - Use `gh pr diff` to see exactly what changed and limit your review to those changes.
 
             Perform a comprehensive code review with the following focus areas:
 
@@ -76,6 +79,11 @@ jobs:
               - File: index.py, Line 5: synchronize trigger removal → Fixed (commit yyyyyy) - This is a synchronization trigger that was removed.
             4. Focus ONLY on new changes or previously unaddressed issues
             5. If no new issues are found, simply acknowledge the improvements made
+
+          Formatting Rules:
+            - Use collapsible sections for top-level comments (using <details> tags)
+            - Use code blocks for code snippets
+            - Prioritize clarity and actionable feedback
 
           # Tools for comprehensive PR review
           claude_args: |
