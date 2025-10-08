@@ -6,7 +6,7 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins";
-import { Pool } from "pg";
+import { pgPool } from "@/lib/db/pool";
 import { createAdminClient } from "@/lib/supabase/server";
 
 // Environment validation
@@ -23,28 +23,14 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
   }
 }
 
-// Create database connection pool for BetterAuth internal operations
-// Configure SSL for Supabase managed databases
-// connectionString is guaranteed to exist due to validation above
-const connectionString = requiredEnvVars.DATABASE_URL as string;
-const requiresSsl =
-  connectionString.includes("sslmode=require") ||
-  process.env.NODE_ENV === "production";
-
-const pool = new Pool({
-  connectionString,
-  // Supabase requires rejectUnauthorized: false due to certificate chain handling
-  // See: https://github.com/brianc/node-postgres/issues/2009
-  ssl: requiresSsl ? { rejectUnauthorized: false } : false,
-});
-
 export const auth = betterAuth({
-  database: pool,
+  database: pgPool,
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
   baseURL: requiredEnvVars.BETTER_AUTH_URL,
 
   // Session configuration optimized for anonymous users
-  // SECURITY: Reduced from 1 year to 90 days to mitigate:
+  // SECURITY: Reduced from 1 year to 90 days to
+  //  mitigate:
   // - Session fixation attacks
   // - Database bloat from long-lived anonymous sessions
   // - GDPR compliance concerns
