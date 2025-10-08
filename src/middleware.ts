@@ -60,7 +60,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route),
   );
   if (isAuthRequired && (!hasSession || isAnonymous)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Preserve the original URL for redirect after login
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Allow all other routes - anonymous users can create sequences

@@ -8,6 +8,7 @@ import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
+import { useAuthNavigation } from "@/hooks/use-auth-navigation";
 import {
   useEstimateImageCostByFal,
   useGenerateImageByFal,
@@ -53,6 +54,9 @@ export const StoryboardFrameWithScript: React.FC<
   const metadata = frame.metadata as Record<string, unknown> | null;
   const scriptChunk = metadata?.scriptChunk as string | undefined;
   const displayScript = scriptChunk || frame.description;
+
+  // Auth navigation for redirect preservation
+  const { loginUrl } = useAuthNavigation();
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -388,7 +392,7 @@ export const StoryboardFrameWithScript: React.FC<
             {motionError}
             {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
               <Link
-                href="/login"
+                href={loginUrl}
                 className="ml-2 underline text-primary hover:text-primary/80"
               >
                 Sign in

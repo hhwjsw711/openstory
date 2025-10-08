@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
+import { Header } from "./header";
 
 export interface AppLayoutProps extends React.HTMLAttributes<HTMLElement> {}
 
@@ -9,8 +10,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   ...props
 }) => {
   return (
-    <main className={cn("min-h-screen bg-background", className)} {...props}>
-      {children}
-    </main>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className={cn("", className)} {...props}>
+        {children}
+      </main>
+    </div>
   );
 };

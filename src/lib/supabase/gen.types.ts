@@ -90,6 +90,38 @@ export type Database = {
           },
         ];
       };
+      anonymous_sessions: {
+        Row: {
+          created_at: string;
+          data: Json | null;
+          expires_at: string | null;
+          id: string;
+          team_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          data?: Json | null;
+          expires_at?: string | null;
+          id: string;
+          team_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          data?: Json | null;
+          expires_at?: string | null;
+          id?: string;
+          team_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "anonymous_sessions_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       audio: {
         Row: {
           created_at: string;
@@ -453,6 +485,13 @@ export type Database = {
             columns: ["team_id"];
             isOneToOne: false;
             referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "letzai_requests_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -886,6 +925,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_profiles: {
+        Row: {
+          anonymous_id: string | null;
+          avatar_url: string | null;
+          created_at: string;
+          full_name: string | null;
+          id: string;
+          onboarding_completed: boolean | null;
+          updated_at: string;
+        };
+        Insert: {
+          anonymous_id?: string | null;
+          avatar_url?: string | null;
+          created_at?: string;
+          full_name?: string | null;
+          id: string;
+          onboarding_completed?: boolean | null;
+          updated_at?: string;
+        };
+        Update: {
+          anonymous_id?: string | null;
+          avatar_url?: string | null;
+          created_at?: string;
+          full_name?: string | null;
+          id?: string;
+          onboarding_completed?: boolean | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       users: {
         Row: {
           avatar_url: string | null;
@@ -990,6 +1059,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      cleanup_expired_anonymous_sessions: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       cleanup_expired_auth_data: {
         Args: Record<PropertyKey, never>;
         Returns: number;

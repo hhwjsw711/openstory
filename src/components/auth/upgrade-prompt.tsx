@@ -5,6 +5,7 @@
 
 "use client";
 
+import { usePathname } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export function UpgradePrompt({
   onUpgradeComplete,
 }: UpgradePromptProps) {
   const { data: userData } = useUser();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<"google" | "email">("google");
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -51,9 +53,10 @@ export function UpgradePrompt({
     onUpgradeStart?.();
 
     try {
+      // Stay on current page after upgrade
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: pathname,
       });
       onUpgradeComplete?.();
     } catch (err) {
