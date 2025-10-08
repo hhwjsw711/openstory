@@ -3,10 +3,15 @@
  * POST /api/v1/frames/[frameId]/motion
  */
 
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateMotionAction } from "@/app/actions/frames";
-import { handleApiError, ValidationError } from "@/lib/errors";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  requireAuth,
+  requireAuthenticatedUserForMotion,
+} from "@/lib/auth/api-utils";
+import { ValidationError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
 
 // Request body schema
@@ -18,6 +23,56 @@ const requestSchema = z.object({
 });
 
 export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ frameId: string }> },
+) {
+  try {
+    const { frameId } = await params;
+
+    // Validate UUID
+    const uuidSchema = z.string().uuid();
+    try {
+      uuidSchema.parse(frameId);
+    } catch {
+      throw new ValidationError("Invalid frame ID format");
+    }
+
+    // Check authentication - Motion generation requires authenticated (non-anonymous) users
+    await requireAuthenticatedUserForMotion(request);
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validatedData = requestSchema.parse(body);
+
+    // Generate motion for the frame
+    const result = await generateMotionAction({
+      frameId,
+      ...validatedData,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || "Motion generation failed");
+    }
+
+    return createSuccessResponse(
+      {
+        jobId: result.jobId,
+      },
+      result.message || "Motion generation started",
+    );
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return createErrorResponse(error.message, 400);
+    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Internal server error",
+      500,
+    );
+  }
+}
+
+// GET endpoint to check motion generation status
+export async function GET(
   request: Request,
   { params }: { params: Promise<{ frameId: string }> },
 ) {
@@ -34,70 +89,7 @@ export async function POST(
     }
 
     // Check authentication
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Parse and validate request body
-    const body = await request.json();
-    const validatedData = requestSchema.parse(body);
-
-    // Generate motion for the frame
-    const result = await generateMotionAction({
-      frameId,
-      ...validatedData,
-    });
-
-    if (!result.success) {
-      throw new Error(result.error || "Motion generation failed");
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        jobId: result.jobId,
-        message: result.message || "Motion generation started",
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode },
-    );
-  }
-}
-
-// GET endpoint to check motion generation status
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ frameId: string }> },
-) {
-  try {
-    const supabase = createServerClient();
-    const { frameId } = await params;
-
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
-    try {
-      uuidSchema.parse(frameId);
-    } catch {
-      throw new ValidationError("Invalid frame ID format");
-    }
-
-    // Check authentication
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireAuth(request);
 
     // Get frame with motion status
     const { data: frame, error } = await supabase
@@ -107,7 +99,7 @@ export async function GET(
       .single();
 
     if (error || !frame) {
-      return NextResponse.json({ error: "Frame not found" }, { status: 404 });
+      return createErrorResponse("Frame not found", 404);
     }
 
     const metadata = frame.metadata as Record<string, unknown> | null;
@@ -115,8 +107,7 @@ export async function GET(
     const motionJobId = metadata?.motionJobId as string | undefined;
     const motionModel = metadata?.motionModel as string | undefined;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse({
       frameId: frame.id,
       hasVideo: !!frame.video_url,
       videoUrl: frame.video_url,
@@ -126,10 +117,12 @@ export async function GET(
       motionModel,
     });
   } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode },
+    if (error instanceof ValidationError) {
+      return createErrorResponse(error.message, 400);
+    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Internal server error",
+      500,
     );
   }
 }

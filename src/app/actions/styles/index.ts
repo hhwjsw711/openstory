@@ -159,7 +159,7 @@ export async function updateStyle(
 }
 
 /**
- * Delete a style
+ * Delete a style (admin/owner only)
  */
 export async function deleteStyle(
   id: string,
@@ -167,17 +167,48 @@ export async function deleteStyle(
   try {
     const supabase = await createSessionAwareClient();
 
-    // Get the current user's team to verify ownership
-    const teamId = await getCurrentUserTeamId();
-    if (!teamId) {
-      return { success: false, error: "No team found for current user" };
+    // Get current user
+    const user = await getCurrentUser();
+    if (!user.success || !user.data) {
+      return { success: false, error: "Authentication required" };
+    }
+
+    // Get the style to verify team ownership
+    const { data: style, error: fetchError } = await supabase
+      .from("styles")
+      .select("team_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !style) {
+      return { success: false, error: "Style not found" };
+    }
+
+    // Check if user has admin/owner role for this team
+    const { data: membership, error: memberError } = await supabase
+      .from("team_members")
+      .select("role")
+      .eq("user_id", user.data.user.id)
+      .eq("team_id", style.team_id)
+      .single();
+
+    if (memberError || !membership) {
+      return { success: false, error: "Not a member of this team" };
+    }
+
+    // Only admin or owner can delete
+    if (membership.role !== "admin" && membership.role !== "owner") {
+      return {
+        success: false,
+        error: "Permission denied: admin or owner role required",
+      };
     }
 
     const { error } = await supabase
       .from("styles")
       .delete()
       .eq("id", id)
-      .eq("team_id", teamId); // Ensure user can only delete their team's styles
+      .eq("team_id", style.team_id);
 
     if (error) {
       return { success: false, error: error.message };

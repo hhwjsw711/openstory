@@ -1,16 +1,16 @@
 /**
  * QStash webhook handler for frame generation jobs
  *
- * NOTE: This webhook now delegates to generateFramesAction to avoid
- * code duplication. It's primarily used for async/background frame
- * generation triggered via QStash.
+ * NOTE: This webhook calls the frame generation service directly,
+ * using the userId from the job record for authorization tracking.
+ * It's primarily used for async/background frame generation triggered via QStash.
  */
 
-import { generateFramesAction } from "@/app/actions/frames";
 import type { JobPayload } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import type { FrameGenerationPayload } from "@/lib/qstash/types";
+import { frameGenerationService } from "@/lib/services/frame-generation.service";
 import { createAdminClient } from "@/lib/supabase/server";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
@@ -66,22 +66,26 @@ const processFrameGeneration: JobProcessor = async (
     throw new Error("Unauthorized: Team ID mismatch");
   }
 
-  // Call the server action to generate frames
-  const result = await generateFramesAction({
+  // Verify job has a user_id (required for frame generation)
+  if (!storedJob.user_id) {
+    throw new Error("Job missing user_id - cannot process frame generation");
+  }
+
+  // Call the frame generation service directly
+  // Use the userId from the job record (who created the job)
+  console.log("[Frames Webhook] Calling frameGenerationService.generateFrames");
+  const result = await frameGenerationService.generateFrames({
     sequenceId: data.sequenceId,
+    userId: storedJob.user_id, // Use job's user_id for tracking
     options: data.options,
   });
-
-  if (!result.success) {
-    throw new Error(result.error || "Frame generation failed");
-  }
 
   // Return a simple result object for job tracking
   return {
     sequenceId: data.sequenceId,
-    frameCount: result.frameCount || 0,
+    frameCount: result.frameCount,
     jobId: result.jobId,
-    message: result.message || "Frames generated successfully",
+    message: result.message,
   };
 };
 

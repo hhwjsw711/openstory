@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSequence, saveSequence } from "#actions/sequence";
+import { getSequence, listSequences, saveSequence } from "#actions/sequence";
 import type { Sequence } from "@/types/database";
 
 // Query keys
@@ -16,9 +16,11 @@ export function useSequences(teamId?: string) {
   return useQuery<Sequence[]>({
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
-      // For now, return empty array as we don't have a list endpoint yet
-      // This would be implemented when we have a list sequences API
-      return [] as Sequence[];
+      const result = await listSequences();
+      if (result.success && result.sequences) {
+        return result.sequences;
+      }
+      throw new Error(result.error || "Failed to load sequences");
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

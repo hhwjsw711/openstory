@@ -1,3 +1,4 @@
+import { getCurrentUser } from "#actions/user";
 import {
   type ApplyStyleToFramesInput,
   ApplyStyleToFramesSchema,
@@ -19,10 +20,7 @@ import {
   type UpdateStyleInput,
   UpdateStyleSchema,
 } from "@/lib/schemas/style-stack";
-import {
-  createAdminClient,
-  createSessionAwareClient,
-} from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import type { Json, Style, StyleInsert, StyleUpdate } from "@/types/database";
 
 export interface StyleWithAdaptations extends Style {
@@ -60,12 +58,8 @@ export class StyleStackService {
     // Get current user if userId provided
     let teamId: string;
     if (userId) {
-      const supabase = await createSessionAwareClient();
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-      if (error || !user || user.id !== userId) {
+      const user = await getCurrentUser();
+      if (!user.success || !user.data) {
         throw new Error("Unauthorized: Invalid user session");
       }
 

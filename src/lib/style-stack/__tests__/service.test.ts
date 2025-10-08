@@ -1,6 +1,29 @@
+// Set required environment variables BEFORE any imports
+process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+process.env.BETTER_AUTH_SECRET = "test-secret-key-for-testing-purposes-only";
+process.env.BETTER_AUTH_URL = "http://localhost:3000";
+
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+
+// Mock BetterAuth config BEFORE any imports that use it
+mock.module("@/lib/auth/config", () => ({
+  auth: {
+    api: {
+      getSession: mock(() => Promise.resolve({ user: null })),
+      signInAnonymous: mock(() =>
+        Promise.resolve({ user: null, token: "mock-token" }),
+      ),
+      signOut: mock(() => Promise.resolve({ success: true })),
+    },
+  },
+}));
+
+// Mock user actions that import auth config
+mock.module("#actions/user", () => ({
+  getCurrentUser: mock(() => Promise.resolve({ user: null })),
+}));
+
 import type { StyleStackConfig } from "../../schemas/style-stack";
-import { StyleStackService } from "../service";
 
 // Mock the dependencies
 mock.module("@/lib/supabase/server", () => ({
@@ -122,14 +145,15 @@ const mockStyle = {
 };
 
 describe.skip("StyleStackService", () => {
-  let styleService: StyleStackService;
+  let styleService: any; // Type will be inferred from dynamic import
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
 
     // Reset the mock query builder for each test
     resetMockQueryBuilder();
 
+    const { StyleStackService } = await import("../service");
     styleService = new StyleStackService();
   });
 

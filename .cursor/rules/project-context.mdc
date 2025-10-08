@@ -78,7 +78,7 @@ velro/
 
 ### Backend & Infrastructure
 - **Database**: Supabase PostgreSQL (backend-only access, no RLS)
-- **Auth**: Supabase Auth (anonymous + magic links + passkeys)
+- **Auth**: BetterAuth (anonymous)
 - **Storage**: Supabase Storage (generated images/videos)
 - **Real-time**: Supabase Realtime (generation status updates)
 - **Job Queue**: QStash (Upstash) for async AI generation
@@ -131,7 +131,7 @@ velro/
 ### 5. Anonymous-First Flow
 1. Users create without signup
 2. Generate frames with temporary session
-3. Prompted to save (magic link/passkey)
+3. Prompted to save (Email login)
 4. Session transfers to authenticated user
 
 ## Data Model
@@ -229,7 +229,7 @@ Consistent style across all frames
 
 ## Security Model
 
-- **Authentication**: Supabase Auth (magic links, passkeys, anonymous)
+- **Authentication**: Better Auth (anonymous)
 - **Authorization**: Team-based access control in API layer
 - **Database**: Backend-only access via service account
 - **API**: Rate limiting, Zod validation, sanitized errors

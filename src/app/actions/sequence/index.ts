@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCurrentUser } from "@/app/actions/user";
-import {
-  createServerClient,
-  createSessionAwareClient,
-} from "@/lib/supabase/server";
-import type { Frame, Json, Sequence, SequenceInsert } from "@/types/database";
+import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
+import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
+import { createActionErrorResponse } from "@/lib/errors";
+import { sequenceService } from "@/lib/services/sequence.service";
+import { createServerClient } from "@/lib/supabase/server";
+import type { Frame, Json, Sequence } from "@/types/database";
 
 // Helper function to revalidate all sequence-related pages
 function revalidateSequencePages(sequenceId: string): void {
@@ -43,47 +43,37 @@ export async function saveSequence(
   name?: string,
 ): Promise<{ success: boolean; sequence?: Sequence; error?: string }> {
   try {
-    // Ensure we have a user (create anonymous if needed)
-    const userResult = await getCurrentUser();
-    if (!userResult.success || !userResult.data) {
-      console.error("[saveSequence] getCurrentUser failed:", userResult.error);
-      throw new Error(userResult.error || "Failed to get or create user");
-    }
+    const user = await requireUser();
+    const supabase = createServerClient();
 
-    const supabase = await createSessionAwareClient();
-
-    let sequence: Sequence | null = null;
+    let sequence: Sequence;
 
     if (sequenceId) {
-      // Update existing sequence
-      const { data, error } = await supabase
+      // Update existing sequence - verify team access
+      const { data: existingSeq } = await supabase
         .from("sequences")
-        .update({
-          script,
-          style_id: styleId,
-          title: name || "Untitled Sequence",
-          updated_at: new Date().toISOString(),
-        })
+        .select("team_id")
         .eq("id", sequenceId)
-        .select()
         .single();
 
-      if (error) {
-        throw new Error(error.message);
+      if (existingSeq) {
+        await requireTeamMemberAccess(user.id, existingSeq.team_id);
       }
 
-      sequence = data;
+      sequence = await sequenceService.updateSequence({
+        id: sequenceId,
+        userId: user.id,
+        name: name || "Untitled Sequence",
+        script,
+        styleId,
+      });
     } else {
-      // TODO: TB Sep 2025 - At some point you'll want the user to be able to select a team
-      // That team id should then be passed to this function as the teamId parameter
-
-      // Create new sequence - get any team for the current user
-      // Prefer teams where user is owner, but accept any team
+      // Create new sequence - get user's team
       const { data: teamMemberships, error: teamError } = await supabase
         .from("team_members")
         .select("team_id, role")
-        .eq("user_id", userResult.data.user.id)
-        .order("role", { ascending: true }) // 'owner' comes before 'member' alphabetically
+        .eq("user_id", user.id)
+        .order("role", { ascending: true })
         .limit(1);
 
       if (teamError || !teamMemberships || teamMemberships.length === 0) {
@@ -94,40 +84,26 @@ export async function saveSequence(
 
       const teamId = teamMemberships[0].team_id;
 
-      const sequenceData: SequenceInsert = {
+      sequence = await sequenceService.createSequence({
+        teamId,
+        userId: user.id,
+        name: name || "Untitled Sequence",
         script,
-        style_id: styleId,
-        title: name || "Untitled Sequence",
-        team_id: teamId,
-        status: "draft",
-      };
-
-      const { data, error } = await supabase
-        .from("sequences")
-        .insert(sequenceData)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      sequence = data;
+        styleId: styleId || "",
+      });
     }
 
-    // The script and / or style may have changed, so we need to regenerate the frames
+    // The script and/or style may have changed, so regenerate frames
     await generateFrames(sequence.id);
+
+    revalidateSequencePages(sequence.id);
 
     return {
       success: true,
       sequence,
     };
   } catch (error) {
-    console.error("Error saving sequence:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to save sequence",
-    };
+    return createActionErrorResponse(error);
   }
 }
 
@@ -142,39 +118,22 @@ export async function generateFrames(sequenceId: string): Promise<{
   error?: string;
 }> {
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
 
-    // Get the current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     // Verify sequence exists and get team info
-    const { data: sequence, error: sequenceError } = await supabase
+    const { data: sequence } = await supabase
       .from("sequences")
       .select("id, team_id")
       .eq("id", sequenceId)
       .single();
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       throw new Error("Sequence not found");
     }
 
-    // Verify user has access to this sequence (through team membership)
-    if (user) {
-      const { data: member } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("team_id", sequence.team_id)
-        .eq("user_id", user.id)
-        .single();
-
-      if (!member) {
-        throw new Error(
-          "You don't have permission to generate frames for this sequence",
-        );
-      }
-    }
+    // Verify user has access to this sequence
+    await requireTeamMemberAccess(user.id, sequence.team_id);
 
     // Import QStash dependencies
     const { getJobManager } = await import("@/lib/qstash/job-manager");
@@ -241,7 +200,7 @@ export async function generateFrames(sequenceId: string): Promise<{
           regenerateAll: true, // Delete existing frames before generating new ones
         },
       },
-      userId: user?.id,
+      userId: user.id,
       teamId: sequence.team_id,
     });
 
@@ -250,8 +209,8 @@ export async function generateFrames(sequenceId: string): Promise<{
     await qstashClient.publishFrameGenerationJob({
       jobId: job.id,
       type: "frame_generation",
-      userId: user?.id || undefined,
-      teamId: sequence.team_id || undefined,
+      userId: user.id,
+      teamId: sequence.team_id,
       data: {
         sequenceId,
         options: {
@@ -299,6 +258,16 @@ export async function generateFrameMotion(
   error?: string;
 }> {
   try {
+    const user = await requireUser();
+
+    // Block anonymous users from motion generation
+    if (user.isAnonymous) {
+      return {
+        success: false,
+        error: MOTION_ACCESS_DENIED_MESSAGE,
+      };
+    }
+
     const supabase = createServerClient();
 
     // Get the frame with sequence info to get team_id
@@ -476,31 +445,68 @@ export async function getSequence(sequenceId: string): Promise<{
   error?: string;
 }> {
   try {
-    const supabase = createServerClient();
+    const user = await requireUser();
 
-    const { data, error } = await supabase
+    // Verify user has access to the sequence's team
+    const supabase = createServerClient();
+    const { data: seq } = await supabase
       .from("sequences")
-      .select(`
-        *,
-        frames (*)
-      `)
+      .select("team_id")
       .eq("id", sequenceId)
       .single();
 
-    if (error) {
-      throw new Error(error.message);
+    if (seq) {
+      await requireTeamMemberAccess(user.id, seq.team_id);
     }
+
+    const sequence = await sequenceService.getSequence(sequenceId, true);
 
     return {
       success: true,
-      sequence: data,
+      sequence: sequence as Sequence & { frames: Frame[] },
     };
   } catch (error) {
-    console.error("Error getting sequence:", error);
+    return createActionErrorResponse(error);
+  }
+}
+
+/**
+ * List all sequences for the current user's team
+ */
+export async function listSequences(): Promise<{
+  success: boolean;
+  sequences?: Sequence[];
+  error?: string;
+}> {
+  try {
+    const user = await requireUser();
+    const supabase = createServerClient();
+
+    // Get user's team
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership) {
+      // No team membership yet, return empty array
+      return {
+        success: true,
+        sequences: [],
+      };
+    }
+
+    const sequences = await sequenceService.getSequencesByTeam(
+      membership.team_id,
+    );
+
     return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to get sequence",
+      success: true,
+      sequences,
     };
+  } catch (error) {
+    return createActionErrorResponse(error);
   }
 }
 
@@ -525,12 +531,41 @@ export async function updateSequence(input: UpdateSequenceInput) {
   );
 }
 
-export async function deleteSequence(_id: string) {
-  throw new Error("Not implemented - use mock in Storybook");
-}
+/**
+ * Delete a sequence (admin/owner only)
+ */
+export async function deleteSequence(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await requireUser();
+    const supabase = createServerClient();
 
-export async function listSequences(_teamId?: string) {
-  throw new Error("Not implemented - use mock in Storybook");
+    // Get the sequence to verify team ownership
+    const { data: sequence } = await supabase
+      .from("sequences")
+      .select("team_id")
+      .eq("id", id)
+      .single();
+
+    if (!sequence) {
+      return { success: false, error: "Sequence not found" };
+    }
+
+    // Require admin access to delete
+    await requireTeamMemberAccess(user.id, sequence.team_id, "admin");
+
+    // Delete the sequence (frames will be cascade deleted)
+    await sequenceService.deleteSequence(id);
+
+    // Revalidate sequence pages
+    revalidatePath("/sequences");
+    revalidatePath(`/sequences/${id}`);
+
+    return { success: true };
+  } catch (error) {
+    return createActionErrorResponse(error);
+  }
 }
 
 export async function generateStoryboard(sequenceId: string) {

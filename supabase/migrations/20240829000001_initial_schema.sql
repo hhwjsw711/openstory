@@ -19,18 +19,14 @@ CREATE TABLE teams (
 -- Create index on slug for fast lookups
 CREATE INDEX idx_teams_slug ON teams(slug);
 
--- Users table (extends Supabase auth.users)
+-- Users table (independent, synced from BetterAuth)
 CREATE TABLE users (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    id UUID PRIMARY KEY,
     full_name VARCHAR(255),
     avatar_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
-
--- Create index on email for fast lookups
-CREATE INDEX idx_users_email ON users(email);
 
 -- Team members junction table
 CREATE TABLE team_members (

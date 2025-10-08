@@ -1,11 +1,13 @@
 import { Play, Video } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { generateFrameMotion } from "#actions/sequence";
 import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
 import {
   useEstimateImageCostByFal,
   useGenerateImageByFal,
@@ -382,7 +384,17 @@ export const StoryboardFrameWithScript: React.FC<
 
         {/* Motion error */}
         {motionError && (
-          <div className="text-xs text-destructive mt-1">{motionError}</div>
+          <div className="text-xs text-destructive mt-1">
+            {motionError}
+            {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
+              <Link
+                href="/login"
+                className="ml-2 underline text-primary hover:text-primary/80"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         )}
 
         {/* Action buttons - shown on hover */}
