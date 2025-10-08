@@ -6,7 +6,14 @@
 import { AuthForm } from "@/components/auth/auth-form";
 import { PageContainer } from "@/components/layout";
 
-export default function SignupPage() {
+type Props = {
+  searchParams: Promise<{ redirectTo?: string }>;
+};
+
+export default async function SignupPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const redirectTo = params.redirectTo || "/sequences";
+
   return (
     <PageContainer>
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
@@ -17,7 +24,7 @@ export default function SignupPage() {
               Start creating cinematic content with AI
             </p>
           </div>
-          <AuthForm mode="signup" />
+          <AuthForm mode="signup" redirectTo={redirectTo} />
         </div>
       </div>
     </PageContainer>

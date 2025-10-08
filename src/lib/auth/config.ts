@@ -125,45 +125,123 @@ export const auth = betterAuth({
             );
           }
 
-          // 2. Get the new user's auto-created team (the one we'll delete)
-          const { data: newUserTeam } = await supabase
+          // 2. Check if authenticated user already has existing teams (before this session)
+          // We need to check for teams that were created BEFORE this login attempt
+          const { data: existingUserTeams } = await supabase
             .from("team_members")
-            .select("team_id")
+            .select("team_id, joined_at, teams!inner(created_at)")
             .eq("user_id", newUser.user.id)
-            .eq("role", "owner")
-            .single();
-
-          // 3. Transfer team ownership from anonymous to authenticated user
-          const { error: teamError } = await supabase
-            .from("team_members")
-            .update({ user_id: newUser.user.id })
-            .eq("user_id", anonymousUser.user.id)
             .eq("role", "owner");
 
-          if (teamError) throw teamError;
+          // Filter out the auto-created team (created in the last few seconds)
+          const recentThreshold = new Date(Date.now() - 5000); // 5 seconds ago
+          const preExistingTeams =
+            existingUserTeams?.filter((tm) => {
+              const teamCreatedAt = (tm as { teams: { created_at: string } })
+                .teams.created_at;
+              return new Date(teamCreatedAt) < recentThreshold;
+            }) || [];
 
-          // 4. Delete the new user's auto-created empty team (if it exists and is different)
-          if (
-            newUserTeam &&
-            anonymousTeam &&
-            newUserTeam.team_id !== anonymousTeam.team_id
-          ) {
-            // First delete the team membership
+          let targetTeamId: string;
+
+          if (preExistingTeams.length > 0) {
+            // User has existing teams - this is a RETURNING USER signing in from a new device
+            console.log(
+              "[BetterAuth] User has existing teams, merging anonymous content",
+              { existingTeams: preExistingTeams.length },
+            );
+
+            // Use the user's existing team as the target
+            targetTeamId = preExistingTeams[0].team_id;
+
+            // Transfer all anonymous team content to the existing team
+            const { error: transferTeamError } = await supabase
+              .from("sequences")
+              .update({ team_id: targetTeamId })
+              .eq("team_id", anonymousTeam.team_id);
+
+            if (transferTeamError) {
+              console.error(
+                "[BetterAuth] Error transferring sequences to existing team:",
+                transferTeamError,
+              );
+            }
+
+            // Transfer styles to existing team
+            const { error: transferStylesError } = await supabase
+              .from("styles")
+              .update({ team_id: targetTeamId })
+              .eq("team_id", anonymousTeam.team_id);
+
+            if (transferStylesError) {
+              console.error(
+                "[BetterAuth] Error transferring styles to existing team:",
+                transferStylesError,
+              );
+            }
+
+            // Delete the anonymous team membership
             await supabase
               .from("team_members")
               .delete()
-              .eq("team_id", newUserTeam.team_id);
+              .eq("user_id", anonymousUser.user.id);
 
-            // Then delete the empty team
-            await supabase.from("teams").delete().eq("id", newUserTeam.team_id);
+            // Delete the anonymous team
+            await supabase
+              .from("teams")
+              .delete()
+              .eq("id", anonymousTeam.team_id);
 
             console.log(
-              "[BetterAuth] Deleted auto-created team:",
-              newUserTeam.team_id,
+              "[BetterAuth] Merged anonymous content into existing team:",
+              targetTeamId,
             );
+          } else {
+            // User is NEW or has no previous teams - transfer anonymous team ownership
+            console.log(
+              "[BetterAuth] New user, transferring anonymous team ownership",
+            );
+
+            targetTeamId = anonymousTeam.team_id;
+
+            // Transfer team ownership from anonymous to authenticated user
+            const { error: teamError } = await supabase
+              .from("team_members")
+              .update({ user_id: newUser.user.id })
+              .eq("user_id", anonymousUser.user.id)
+              .eq("role", "owner");
+
+            if (teamError) throw teamError;
+
+            // Get the auto-created team (created just now during signup trigger)
+            const { data: autoCreatedTeam } = await supabase
+              .from("team_members")
+              .select("team_id")
+              .eq("user_id", newUser.user.id)
+              .eq("role", "owner")
+              .neq("team_id", anonymousTeam.team_id)
+              .single();
+
+            // Delete the auto-created empty team if it exists
+            if (autoCreatedTeam) {
+              await supabase
+                .from("team_members")
+                .delete()
+                .eq("team_id", autoCreatedTeam.team_id);
+
+              await supabase
+                .from("teams")
+                .delete()
+                .eq("id", autoCreatedTeam.team_id);
+
+              console.log(
+                "[BetterAuth] Deleted auto-created team:",
+                autoCreatedTeam.team_id,
+              );
+            }
           }
 
-          // 5. Transfer sequences created by anonymous user
+          // 3. Transfer sequences created by anonymous user to authenticated user
           const { error: sequenceError } = await supabase
             .from("sequences")
             .update({
@@ -174,7 +252,7 @@ export const auth = betterAuth({
 
           if (sequenceError) throw sequenceError;
 
-          // 6. Transfer styles
+          // 4. Transfer styles
           const { error: stylesError } = await supabase
             .from("styles")
             .update({ created_by: newUser.user.id })
@@ -182,7 +260,7 @@ export const auth = betterAuth({
 
           if (stylesError) throw stylesError;
 
-          // 7. Transfer characters
+          // 5. Transfer characters
           const { error: charactersError } = await supabase
             .from("characters")
             .update({ created_by: newUser.user.id })
@@ -190,7 +268,7 @@ export const auth = betterAuth({
 
           if (charactersError) throw charactersError;
 
-          // 8. Transfer VFX
+          // 6. Transfer VFX
           const { error: vfxError } = await supabase
             .from("vfx")
             .update({ created_by: newUser.user.id })
@@ -198,7 +276,7 @@ export const auth = betterAuth({
 
           if (vfxError) throw vfxError;
 
-          // 9. Transfer audio
+          // 7. Transfer audio
           const { error: audioError } = await supabase
             .from("audio")
             .update({ created_by: newUser.user.id })
@@ -206,7 +284,7 @@ export const auth = betterAuth({
 
           if (audioError) throw audioError;
 
-          // 10. Transfer credits (if anonymous user has any)
+          // 8. Transfer credits (if anonymous user has any)
           const { data: anonymousCredits } = await supabase
             .from("credits")
             .select("balance")
@@ -238,7 +316,7 @@ export const auth = betterAuth({
             if (creditsError) throw creditsError;
           }
 
-          // 11. Transfer jobs
+          // 9. Transfer jobs
           const { error: jobsError } = await supabase
             .from("jobs")
             .update({ user_id: newUser.user.id })
@@ -246,7 +324,7 @@ export const auth = betterAuth({
 
           if (jobsError) throw jobsError;
 
-          // 12. Clean up anonymous user data
+          // 10. Clean up anonymous user data
           const { error: creditsDeleteError } = await supabase
             .from("credits")
             .delete()

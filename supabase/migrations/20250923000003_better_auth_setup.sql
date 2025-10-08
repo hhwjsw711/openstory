@@ -1,3 +1,5 @@
+create schema if not exists extensions;
+create extension if not exists "uuid-ossp" with schema extensions;
 -- BetterAuth database schema migration
 -- Creates standard BetterAuth tables using default names with UUID support
 --
@@ -199,22 +201,34 @@ CREATE INDEX IF NOT EXISTS idx_account_provider ON account("providerId", "accoun
 CREATE INDEX IF NOT EXISTS idx_verification_identifier ON verification(identifier);
 CREATE INDEX IF NOT EXISTS idx_verification_expires_at ON verification("expiresAt");
 
--- Add updated_at triggers
+-- Create trigger function for BetterAuth tables (uses camelCase updatedAt)
+CREATE OR REPLACE FUNCTION update_betterauth_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW."updatedAt" = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION update_betterauth_updated_at_column() IS 
+  'Updates the updatedAt column (camelCase) for BetterAuth tables. Separate from update_updated_at_column() which uses snake_case for Velro tables.';
+
+-- Add updated_at triggers using the BetterAuth-specific function
 CREATE TRIGGER update_user_updated_at 
     BEFORE UPDATE ON "user"
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_betterauth_updated_at_column();
 
 CREATE TRIGGER update_session_updated_at 
     BEFORE UPDATE ON session
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_betterauth_updated_at_column();
 
 CREATE TRIGGER update_account_updated_at 
     BEFORE UPDATE ON account
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_betterauth_updated_at_column();
 
 CREATE TRIGGER update_verification_updated_at 
     BEFORE UPDATE ON verification
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_betterauth_updated_at_column();
 
 -- Enable RLS on BetterAuth tables (backend-only access)
 ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
@@ -321,7 +335,7 @@ CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'declined', 'expir
 
 -- Create team_invitations table
 CREATE TABLE team_invitations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     role team_member_role NOT NULL DEFAULT 'member',

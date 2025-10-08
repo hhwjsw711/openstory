@@ -23,9 +23,10 @@ import { authClient } from "@/lib/auth/client";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
+  redirectTo?: string;
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +53,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           email,
           password,
           name: "",
-          callbackURL: "/sequences",
+          callbackURL: redirectTo,
         });
 
         if (result.error) {
@@ -62,13 +63,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
 
         setSuccess("Account created! Redirecting...");
-        setTimeout(() => router.push("/sequences"), 1500);
+        setTimeout(() => router.push(redirectTo), 1500);
       } else {
         // Sign in with email and password
         const result = await authClient.signIn.email({
           email,
           password,
-          callbackURL: "/sequences",
+          callbackURL: redirectTo,
         });
 
         if (result.error) {
@@ -78,7 +79,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
 
         setSuccess("Signed in! Redirecting...");
-        setTimeout(() => router.push("/sequences"), 1500);
+        setTimeout(() => router.push(redirectTo), 1500);
       }
     } catch (err) {
       console.error("[AuthForm] Error:", err);
@@ -94,7 +95,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/sequences",
+        callbackURL: redirectTo,
       });
     } catch (err) {
       console.error("[AuthForm] Google sign-in error:", err);
@@ -222,14 +223,28 @@ export function AuthForm({ mode }: AuthFormProps) {
           {isSignup ? (
             <p className="text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link
+                href={
+                  redirectTo !== "/sequences"
+                    ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
+                    : "/login"
+                }
+                className="text-primary hover:underline"
+              >
                 Sign in
               </Link>
             </p>
           ) : (
             <p className="text-muted-foreground">
               Don't have an account?{" "}
-              <Link href="/signup" className="text-primary hover:underline">
+              <Link
+                href={
+                  redirectTo !== "/sequences"
+                    ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}`
+                    : "/signup"
+                }
+                className="text-primary hover:underline"
+              >
                 Create one
               </Link>
             </p>
