@@ -5,12 +5,13 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authenticateApiRequest } from "@/lib/auth/api-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ sequenceId: string }> },
 ) {
   try {
@@ -25,13 +26,10 @@ export async function GET(
       throw new ValidationError("Invalid sequence ID format");
     }
 
-    // Check authentication
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check authentication with BetterAuth
+    const authResult = await authenticateApiRequest(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
 
     // Get all frames for the sequence

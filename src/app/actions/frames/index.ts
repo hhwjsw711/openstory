@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getCurrentUser } from "#actions/user";
 import type { Job } from "@/hooks/use-storyboard-status";
+import {
+  requireTeamMemberAccess,
+  requireUser,
+  validateMotionAccess,
+} from "@/lib/auth/action-utils";
+import { createActionErrorResponse } from "@/lib/errors";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
@@ -229,8 +236,27 @@ export async function getFramesBySequence(
   sequenceId: string,
 ): Promise<{ success: boolean; frames?: Frame[]; error?: string }> {
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
 
+    // First, verify the sequence exists and get its team_id
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("team_id")
+      .eq("id", sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      return {
+        success: false,
+        error: "Sequence not found",
+      };
+    }
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, sequence.team_id);
+
+    // Now fetch frames
     const { data, error } = await supabase
       .from("frames")
       .select("*")
@@ -247,10 +273,7 @@ export async function getFramesBySequence(
     };
   } catch (error) {
     console.error("Error getting frames:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to get frames",
-    };
+    return createActionErrorResponse(error);
   }
 }
 
@@ -405,6 +428,8 @@ export async function deleteFramesBySequence(
  * Generate frames for a sequence using AI
  * Phase 1: Quick frame creation (synchronous)
  * Phase 2: Async image generation (queued jobs)
+ *
+ * @param input - Generation parameters
  */
 export async function generateFramesAction(
   input: GenerateFramesInput,
@@ -418,12 +443,8 @@ export async function generateFramesAction(
   const validated = generateFramesSchema.parse(input);
 
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
-
-    // Get the current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
     // Verify sequence exists and get all required data
     const { data: sequence, error: sequenceError } = await supabase
@@ -445,20 +466,9 @@ export async function generateFramesAction(
     }
 
     // Verify user has access to this sequence (through team membership)
-    if (user) {
-      const { data: member } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("team_id", sequence.team_id)
-        .eq("user_id", user.id)
-        .single();
+    await requireTeamMemberAccess(user.id, sequence.team_id);
 
-      if (!member) {
-        throw new Error(
-          "You don't have permission to generate frames for this sequence",
-        );
-      }
-    }
+    const userId = user.id;
 
     // Set sequence status to processing and store generation metadata
     const generationMetadata = {
@@ -515,7 +525,7 @@ export async function generateFramesAction(
     // This just takes the analysis and structures it into frames
     const frameDescriptions = await generateFrameDescriptions({
       scriptAnalysis,
-      styleStack: styleStack as Json | undefined,
+      styleId: sequence.style_id?.trim() || undefined,
       aiProvider: validated.options?.aiProvider,
     });
 
@@ -611,6 +621,11 @@ export async function generateFramesAction(
       const defaultModel = "flux_krea_lora";
       const defaultImageSize = "landscape_16_9";
 
+      // Ensure userId exists for job tracking
+      if (!userId) {
+        throw new Error("User ID is required for frame generation");
+      }
+
       for (const frame of insertedFrames) {
         // Skip frames without descriptions
         if (!frame.description) {
@@ -628,7 +643,7 @@ export async function generateFramesAction(
             image_size: defaultImageSize,
             num_images: 1,
           },
-          userId: user?.id,
+          userId: userId,
           teamId: sequence.team_id,
         });
 
@@ -636,7 +651,7 @@ export async function generateFramesAction(
         const imagePayload = {
           jobId: imageJob.id,
           type: "image" as const,
-          userId: user?.id,
+          userId: userId,
           teamId: sequence.team_id,
           data: {
             frameId: frame.id,
@@ -810,17 +825,19 @@ export async function regenerateFrameAction(
     }
 
     // Get the current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
+
+    if (!user.success || !user.data) {
+      throw new Error("User not found");
+    }
 
     // Verify user has access (through team membership)
     if (user) {
       const { data: member } = await supabase
         .from("team_members")
-        .select("id")
+        .select("role")
         .eq("team_id", frame.sequences.team_id)
-        .eq("user_id", user.id)
+        .eq("user_id", user.data.user.id)
         .single();
 
       if (!member) {
@@ -838,7 +855,7 @@ export async function regenerateFrameAction(
         regenerateDescription: validated.regenerateDescription ?? true,
         regenerateThumbnail: validated.regenerateThumbnail ?? false,
       },
-      userId: user?.id,
+      userId: user.data.user.id,
       teamId: frame.sequences.team_id,
     });
 
@@ -880,7 +897,25 @@ export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
   error?: string;
 }> {
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
+
+    // First, verify the sequence exists and get its team_id
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("team_id")
+      .eq("id", sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      return {
+        success: false,
+        error: "Sequence not found",
+      };
+    }
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, sequence.team_id);
 
     // Query for the most recent frame_generation job for this sequence
     // where status is pending or running
@@ -945,11 +980,7 @@ export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
     };
   } catch (error) {
     console.error("Error getting active job for sequence:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to get active job",
-    };
+    return createActionErrorResponse(error);
   }
 }
 
@@ -966,6 +997,11 @@ export async function generateMotionAction(
 }> {
   try {
     const validated = generateMotionSchema.parse(input);
+    const user = await requireUser();
+
+    // Validate motion access (authenticated users only)
+    validateMotionAccess(user);
+
     const supabase = createServerClient();
 
     // Get the frame with sequence info
@@ -984,26 +1020,8 @@ export async function generateMotionAction(
       throw new Error("Frame must have a thumbnail before generating motion");
     }
 
-    // Get the current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // Verify user has access (through team membership)
-    if (user) {
-      const { data: member } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("team_id", frame.sequences.team_id)
-        .eq("user_id", user.id)
-        .single();
-
-      if (!member) {
-        throw new Error(
-          "You don't have permission to generate motion for this frame",
-        );
-      }
-    }
+    // Verify user has access to the frame's team
+    await requireTeamMemberAccess(user.id, frame.sequences.team_id);
 
     // Create a job for motion generation
     const jobManager = getJobManager();
@@ -1019,7 +1037,7 @@ export async function generateMotionAction(
         fps: validated.fps,
         motionBucket: validated.motionBucket,
       },
-      userId: user?.id,
+      userId: user.id,
       teamId: frame.sequences.team_id,
     });
 
@@ -1028,7 +1046,7 @@ export async function generateMotionAction(
     const motionPayload = {
       jobId: job.id,
       type: "motion" as const,
-      userId: user?.id,
+      userId: user.id,
       teamId: frame.sequences.team_id,
       data: {
         frameId: validated.frameId,
@@ -1074,12 +1092,7 @@ export async function generateMotionAction(
       message: "Motion generation started successfully",
     };
   } catch (error) {
-    console.error("Error generating motion:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to generate motion",
-    };
+    return createActionErrorResponse(error);
   }
 }
 
@@ -1121,19 +1134,21 @@ export async function getFrameGenerationJobStatus(jobId: string): Promise<{
     }
 
     const supabase = createServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
+
+    if (!user.success || !user.data) {
+      throw new Error("User not found");
+    }
 
     // Check if user has access to this job
-    if (user && job.user_id && job.user_id !== user.id) {
+    if (user && job.user_id && job.user_id !== user.data.user.id) {
       // Check if user is part of the same team
       if (job.team_id) {
         const { data: member } = await supabase
           .from("team_members")
-          .select("id")
+          .select("role")
           .eq("team_id", job.team_id)
-          .eq("user_id", user.id)
+          .eq("user_id", user.data.user.id)
           .single();
 
         if (!member) {

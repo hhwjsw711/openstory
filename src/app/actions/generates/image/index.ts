@@ -2,6 +2,7 @@ import {
   type GenerateImageInput,
   generateImageSchema,
 } from "@/lib/ai/models-validation";
+import { DNADirectorProcessor } from "@/lib/services/dna-director/dna-director.service";
 import type { GeneratedImageStatusResponse } from "./types";
 
 //  Generate image by Model
@@ -21,6 +22,23 @@ export async function generateImageByAction(
       prompt: validated.prompt,
       ...(validated.extra_params ?? {}),
     };
+
+    // Apply DNA Director to the prompt
+    if (validated.style_id) {
+      const dnaDirectorResponse = await DNADirectorProcessor(
+        validated.style_id,
+        params.prompt,
+      );
+      if (dnaDirectorResponse.status) {
+        params.prompt = dnaDirectorResponse.data?.message ?? params.prompt;
+      } else {
+        console.warn(
+          "[generateImageByAction] DNA Director failed:",
+          dnaDirectorResponse.error,
+        );
+      }
+    }
+
     if (process.env.NODE_ENV !== "production")
       console.log(
         "[actions/generates/image] Generating image with model",

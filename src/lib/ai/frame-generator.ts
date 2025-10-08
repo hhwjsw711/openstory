@@ -3,7 +3,7 @@
  * Divides script into chunks for storyboard frames
  */
 
-import type { Json } from "@/types/database";
+import { DNADirectorProcessor } from "@/lib/services/dna-director/dna-director.service";
 
 export interface GenerateFrameDescriptionsParams {
   scriptAnalysis: {
@@ -17,7 +17,7 @@ export interface GenerateFrameDescriptionsParams {
     characters?: string[];
     settings?: string[];
   };
-  styleStack?: Json;
+  styleId?: string;
   aiProvider?: "openai" | "anthropic" | "openrouter";
 }
 
@@ -46,7 +46,7 @@ export interface FrameDescriptionResult {
 export async function generateFrameDescriptions(
   params: GenerateFrameDescriptionsParams,
 ): Promise<FrameDescriptionResult> {
-  const { scriptAnalysis } = params;
+  const { scriptAnalysis, styleId } = params;
 
   const frames: FrameDescriptionResult["frames"] = [];
   let orderIndex = 0;
@@ -61,15 +61,46 @@ export async function generateFrameDescriptions(
     "wide shot",
   ];
 
-  // Create ONE frame per scene with the complete scene content
+  // Apply DNA Director to the prompt
+  let sceneScripts: string[] = [];
+
+  // Apply DNA Director if styleId exists
+  if (styleId) {
+    const BATCH_SIZE = 5; // Process 5 scenes at a time to avoid rate limits
+    const allResults: PromiseSettledResult<
+      Awaited<ReturnType<typeof DNADirectorProcessor>>
+    >[] = [];
+
+    // Process scenes in batches
+    for (let i = 0; i < scriptAnalysis.scenes.length; i += BATCH_SIZE) {
+      const batch = scriptAnalysis.scenes.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map((scene) =>
+        DNADirectorProcessor(styleId, scene.scriptContent || ""),
+      );
+      const batchResults = await Promise.allSettled(batchPromises);
+      allResults.push(...batchResults);
+    }
+
+    sceneScripts = scriptAnalysis.scenes.map((scene, index) => {
+      const dnaResult = allResults[index];
+      if (dnaResult.status === "fulfilled" && dnaResult.value.status) {
+        return dnaResult.value.data?.message || scene.scriptContent || "";
+      }
+      return scene.scriptContent || "";
+    });
+  } else {
+    sceneScripts = scriptAnalysis.scenes.map((s) => s.scriptContent || "");
+  }
+
+  // Then use results in the loop
   for (
     let sceneIndex = 0;
     sceneIndex < scriptAnalysis.scenes.length;
     sceneIndex++
   ) {
     const scene = scriptAnalysis.scenes[sceneIndex];
-    const sceneScript = scene.scriptContent || "";
-    const sceneDuration = scene.duration || 10000; // Default 10 seconds per scene
+    const sceneScript = sceneScripts[sceneIndex];
+    const sceneDuration = scene.duration || 10000;
 
     // Skip empty scenes
     if (!sceneScript || sceneScript.trim().length === 0) {
@@ -91,7 +122,6 @@ export async function generateFrameDescriptions(
         settings: scriptAnalysis.settings?.slice(0, 1),
       },
     });
-
     totalDuration += sceneDuration;
   }
 

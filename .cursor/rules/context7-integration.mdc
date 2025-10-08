@@ -46,7 +46,7 @@ Use these Context7 library IDs for Velro's tech stack:
 Automatically invoke Context7 when:
 - Setting up new components or features
 - Working with framework-specific APIs (Next.js 15 App Router, React Server Components)
-- Implementing authentication patterns (Supabase anonymous + magic links)
+- Implementing authentication patterns (Better Auth)
 - Configuring AI model integrations (Fal.ai models)
 - Working with async job queues (QStash patterns)
 - Implementing real-time features (Supabase Realtime)

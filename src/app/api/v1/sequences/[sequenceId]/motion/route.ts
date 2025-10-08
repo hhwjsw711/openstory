@@ -3,10 +3,14 @@
  * POST /api/v1/sequences/[sequenceId]/motion
  */
 
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateMotionAction } from "@/app/actions/frames";
-import { handleApiError, ValidationError } from "@/lib/errors";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  requireAuthenticatedUserForMotion,
+} from "@/lib/auth/api-utils";
+import { ValidationError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
 
 // Request body schema
@@ -35,13 +39,7 @@ export async function POST(
     }
 
     // Check authentication
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireAuthenticatedUserForMotion(request);
 
     // Parse and validate request body
     const body = await request.json();
@@ -62,20 +60,14 @@ export async function POST(
     const { data: frames, error: framesError } = await frameQuery;
 
     if (framesError || !frames || frames.length === 0) {
-      return NextResponse.json(
-        { error: "No frames found for sequence" },
-        { status: 404 },
-      );
+      return createErrorResponse("No frames found for sequence", 404);
     }
 
     // Filter frames that have thumbnails
     const framesWithThumbnails = frames.filter((f) => f.thumbnail_url);
 
     if (framesWithThumbnails.length === 0) {
-      return NextResponse.json(
-        { error: "No frames with thumbnails found" },
-        { status: 400 },
-      );
+      return createErrorResponse("No frames with thumbnails found", 400);
     }
 
     // Generate motion for each frame
@@ -105,21 +97,24 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      sequenceId,
-      totalFrames: frames.length,
-      framesWithThumbnails: framesWithThumbnails.length,
-      jobsStarted: jobs.length,
-      jobs,
-      errors: errors.length > 0 ? errors : undefined,
-      message: `Motion generation started for ${jobs.length} frames`,
-    });
+    return createSuccessResponse(
+      {
+        sequenceId,
+        totalFrames: frames.length,
+        framesWithThumbnails: framesWithThumbnails.length,
+        jobsStarted: jobs.length,
+        jobs,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+      `Motion generation started for ${jobs.length} frames`,
+    );
   } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode },
+    if (error instanceof ValidationError) {
+      return createErrorResponse(error.message, 400);
+    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Internal server error",
+      500,
     );
   }
 }

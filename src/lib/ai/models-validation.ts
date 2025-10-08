@@ -226,6 +226,7 @@ export const generateImageSchema = z
     frame_id: z.string(),
     model: z.enum(MODEL_KEYS),
     prompt: z.string(),
+    style_id: z.string().optional(),
     extra_params: z.record(z.string(), z.unknown()).optional(),
   })
   .refine((data) => extraParamsSchemaByModel(data), {

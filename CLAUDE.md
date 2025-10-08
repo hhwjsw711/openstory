@@ -88,7 +88,7 @@ This is a Next.js 15 headless API application for AI-powered video sequence crea
 
 ### Core Design Principles
 - **Backend-only database access**: All Supabase DB operations go through API routes. Never use Supabase client directly in components to avoid RLS complexity.
-- **Anonymous-first**: Users can start creating without signup, then upgrade to save work via magic link or passkeys.
+- **Anonymous-first**: Users can start creating without signup, then upgrade to save work via email login.
 - **Team-based**: All resources (sequences, styles, characters, vfx, audio) belong to teams for collaboration.
 - **Script-driven**: Everything generates from the script to maintain consistency.
 
@@ -109,7 +109,7 @@ teams
 1. **State Management**: Use TanStack Query for server state and reducers for complex UI state. Keep components pure.
 2. **UI Components**: Use shadcn/ui components exclusively. Apply styling through theme variables, not inline Tailwind.
 3. **Job Queue**: QStash handles all AI generation tasks asynchronously.
-4. **Authentication**: Supabase Auth with only magic links and passkeys (no passwords).
+4. **Authentication**: Better Auth with email/password login.
 5. **File Structure**: API routes handle all business logic and DB access. Components remain presentational.
 
 ### API Pattern
@@ -130,7 +130,7 @@ All API routes follow this structure:
 ### Technology Stack
 - **Runtime**: Bun (migrated from Node.js/pnpm)
 - **Framework**: Next.js 15 with App Router and Turbopack
-- **Database**: Supabase (PostgreSQL + Auth + Storage + Realtime)
+- **Database**: Supabase (PostgreSQL + Better Auth + Storage + Realtime)
 - **Queue**: QStash (Upstash) for AI job management
 - **Styling**: Tailwind CSS v4 with shadcn/ui
 - **Testing**: Bun test (migrated from Vitest)

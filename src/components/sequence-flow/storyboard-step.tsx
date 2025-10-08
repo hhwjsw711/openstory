@@ -86,6 +86,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
       if (!result.success) {
         setGenerationError(result.error || "Failed to generate storyboard");
+      } else {
+        // Refetch frames to get the job ID and start polling
+        await refetchFrames();
       }
     } catch (error) {
       const errorMessage =
@@ -95,7 +98,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
 
       setGenerationError(errorMessage);
     }
-  }, [canGenerateFromHook, sequenceId]);
+  }, [canGenerateFromHook, sequenceId, refetchFrames]);
 
   // Next button - now goes to the next sequence step (removed motion page)
   const handleNext = useCallback(() => {

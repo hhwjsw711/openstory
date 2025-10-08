@@ -1,11 +1,14 @@
 import { Play, Video } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { generateFrameMotion } from "#actions/sequence";
 import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
+import { useAuthNavigation } from "@/hooks/use-auth-navigation";
 import {
   useEstimateImageCostByFal,
   useGenerateImageByFal,
@@ -51,6 +54,9 @@ export const StoryboardFrameWithScript: React.FC<
   const metadata = frame.metadata as Record<string, unknown> | null;
   const scriptChunk = metadata?.scriptChunk as string | undefined;
   const displayScript = scriptChunk || frame.description;
+
+  // Auth navigation for redirect preservation
+  const { loginUrl } = useAuthNavigation();
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -177,6 +183,7 @@ export const StoryboardFrameWithScript: React.FC<
         extra_params: {
           image_url: frame.thumbnail_url || "",
         },
+        ...(styleId?.trim() && { style_id: styleId.trim() }),
       });
       if (result?.success && result?.jobId) {
         onFrameUpdate?.({
@@ -197,6 +204,7 @@ export const StoryboardFrameWithScript: React.FC<
     selectedModel,
     displayScript,
     onFrameUpdate,
+    styleId,
   ]);
 
   // check cost per frame with style
@@ -380,7 +388,17 @@ export const StoryboardFrameWithScript: React.FC<
 
         {/* Motion error */}
         {motionError && (
-          <div className="text-xs text-destructive mt-1">{motionError}</div>
+          <div className="text-xs text-destructive mt-1">
+            {motionError}
+            {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
+              <Link
+                href={loginUrl}
+                className="ml-2 underline text-primary hover:text-primary/80"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         )}
 
         {/* Action buttons - shown on hover */}
