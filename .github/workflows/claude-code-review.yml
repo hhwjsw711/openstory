@@ -80,7 +80,7 @@ jobs:
             4. Focus ONLY on new changes or previously unaddressed issues
             5. If no new issues are found, simply acknowledge the improvements made
 
-          Formatting Rules:
+            Formatting Rules:
             - Use collapsible sections for top-level comments (using <details> tags)
             - Use code blocks for code snippets
             - Prioritize clarity and actionable feedback
