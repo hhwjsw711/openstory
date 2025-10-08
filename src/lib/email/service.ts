@@ -10,7 +10,19 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = process.env.EMAIL_FROM || "noreply@velro.com";
+// Email sender configuration with strict validation
+// In production, EMAIL_FROM is REQUIRED and must be a verified domain in Resend
+// In development, falls back to Resend's test address
+const FROM_EMAIL =
+  process.env.EMAIL_FROM ||
+  (process.env.NODE_ENV === "development"
+    ? "onboarding@resend.dev" // Resend's official test address
+    : (() => {
+        throw new Error(
+          "EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.",
+        );
+      })());
+
 const FROM_NAME = process.env.EMAIL_FROM_NAME || "Velro";
 
 interface SendEmailParams {

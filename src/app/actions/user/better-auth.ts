@@ -151,41 +151,40 @@ async function ensureUserAndTeam(authUser: {
 
   try {
     // Retry logic: The BetterAuth trigger needs time to create user and team
-    // Try up to 5 times with exponential backoff
-    const maxRetries = 5;
-    const baseDelay = 100; // Start with 100ms
+    // Try up to 3 times with short delays (~300ms worst case)
+    const maxRetries = 3;
+    const baseDelay = 50; // Start with 50ms
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const { data: existingUser } = await supabase
+      // Single query with JOIN - more efficient than separate queries
+      const { data: userWithTeam } = await supabase
         .from("users")
-        .select("*")
+        .select(
+          `
+          *,
+          team_members!inner (
+            team_id,
+            role
+          )
+        `,
+        )
         .eq("id", authUser.id)
-        .single();
+        .maybeSingle();
 
-      if (existingUser) {
-        // Verify team membership exists
-        const { data: teamMember } = await supabase
-          .from("team_members")
-          .select("team_id")
-          .eq("user_id", authUser.id)
-          .single();
-
-        if (teamMember) {
-          return { success: true, data: existingUser };
-        }
-
-        console.log(
-          `[ensureUserAndTeam] User found but no team membership yet (attempt ${attempt + 1}/${maxRetries})`,
-        );
-      } else {
-        console.log(
-          `[ensureUserAndTeam] User not found yet (attempt ${attempt + 1}/${maxRetries})`,
-        );
+      // Early exit if user and team membership both exist
+      if (userWithTeam?.team_members) {
+        return { success: true, data: userWithTeam };
       }
 
-      // Wait before retrying (exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms)
+      console.log(
+        `[ensureUserAndTeam] User or team not ready yet (attempt ${attempt + 1}/${maxRetries})`,
+      );
+
+      // Only wait if we're going to retry
+      // Linear backoff with jitter: ~50ms, ~100ms, ~150ms
       if (attempt < maxRetries - 1) {
-        const delay = baseDelay * 2 ** attempt;
+        const jitter = Math.random() * 20; // 0-20ms random jitter
+        const delay = baseDelay * (attempt + 1) + jitter;
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

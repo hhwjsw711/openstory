@@ -1105,6 +1105,10 @@ export type Database = {
         Args: { style_uuid: string };
         Returns: undefined;
       };
+      migrate_anonymous_user_data: {
+        Args: { p_anonymous_user_id: string; p_new_user_id: string };
+        Returns: Json;
+      };
       set_limit: {
         Args: { "": number };
         Returns: number;

@@ -236,8 +236,27 @@ export async function getFramesBySequence(
   sequenceId: string,
 ): Promise<{ success: boolean; frames?: Frame[]; error?: string }> {
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
 
+    // First, verify the sequence exists and get its team_id
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("team_id")
+      .eq("id", sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      return {
+        success: false,
+        error: "Sequence not found",
+      };
+    }
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, sequence.team_id);
+
+    // Now fetch frames
     const { data, error } = await supabase
       .from("frames")
       .select("*")
@@ -254,10 +273,7 @@ export async function getFramesBySequence(
     };
   } catch (error) {
     console.error("Error getting frames:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to get frames",
-    };
+    return createActionErrorResponse(error);
   }
 }
 
@@ -881,7 +897,25 @@ export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
   error?: string;
 }> {
   try {
+    const user = await requireUser();
     const supabase = createServerClient();
+
+    // First, verify the sequence exists and get its team_id
+    const { data: sequence, error: sequenceError } = await supabase
+      .from("sequences")
+      .select("team_id")
+      .eq("id", sequenceId)
+      .single();
+
+    if (sequenceError || !sequence) {
+      return {
+        success: false,
+        error: "Sequence not found",
+      };
+    }
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, sequence.team_id);
 
     // Query for the most recent frame_generation job for this sequence
     // where status is pending or running
@@ -946,11 +980,7 @@ export async function getActiveFrameGenerationJob(sequenceId: string): Promise<{
     };
   } catch (error) {
     console.error("Error getting active job for sequence:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to get active job",
-    };
+    return createActionErrorResponse(error);
   }
 }
 

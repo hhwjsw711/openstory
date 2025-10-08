@@ -28,7 +28,6 @@ jobs:
         with:
           # ✅ Use direct API key auth (set this secret in repo/org secrets)
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
           additional_permissions: |
             actions: read
