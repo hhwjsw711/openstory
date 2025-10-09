@@ -60,7 +60,7 @@ export const DNAConfigSchema = z.object({
   colorPalette: z.array(z.string().min(1)).min(1).max(20),
   cameraWork: z.string().min(3).max(500),
   referenceFilms: z.array(z.string().min(1)).max(50),
-  aspectRatio: z.string().regex(/^\d+:\d+$/),
+  aspectRatio: z.string().regex(/^\d+(\.\d+)?:\d+(\.\d+)?$/), // 16:9, 4:3, 1:1, 23.5:1, etc.
   frameRate: z.string().regex(/^\d+(fps|FPS)$/),
   colorGrading: z.string().min(3).max(300),
 });
