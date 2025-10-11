@@ -7,7 +7,7 @@ export class LoggerService {
     console.log(`[${this.tag}] ${message}`);
   }
 
-  logError(message: string) {
+  logError(message: string): never {
     console.error(`[${this.tag}] ${message}`);
     throw new Error(message);
   }

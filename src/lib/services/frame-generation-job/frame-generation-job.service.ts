@@ -33,7 +33,6 @@ export class FrameGenerationJobService {
 
     if (!scene) {
       this.loggerService.logError("No scene provided");
-      return;
     }
 
     // Fetch the sequence record securely
@@ -55,22 +54,20 @@ export class FrameGenerationJobService {
       const { data: defaultStyle, error: defaultStyleError } =
         await this.supabase
           .from("styles")
-          .select("id, config, name, description")
-          .limit(1)
+          .select("id")
+          .eq("category", "cinematic")
           .single();
 
       if (defaultStyleError || !defaultStyle) {
         this.loggerService.logError("No styles available in database");
-        return;
       }
 
       styleId = defaultStyle.id;
-      this.loggerService.logInfo(`Using default style: ${defaultStyle.name}`);
+      this.loggerService.logInfo(`Using default style: ${defaultStyle.id}`);
     }
 
     if (!styleId) {
       this.loggerService.logError("No style ID found");
-      return;
     }
 
     const shotTypes = ShotTypes[orderIndex % ShotTypes.length];

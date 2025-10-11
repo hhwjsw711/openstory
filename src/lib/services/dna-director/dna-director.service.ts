@@ -63,7 +63,7 @@ export async function DNADirectorProcessor(
 
   const DNAConfig = parsedConfig.data;
   const dnaConfig = {
-    styleName: style?.category,
+    styleCategory: style?.category,
     directorialIntent: style?.description,
     mood: DNAConfig.mood,
     visualStyle: DNAConfig.artStyle,
@@ -137,7 +137,7 @@ export async function DNADirectorProcessor(
 const DNADirectorTemplate = async (params: DNADirectorParams) => {
   const {
     prompt,
-    styleName, // styleName is the category of the style
+    styleCategory,
     directorialIntent,
     mood,
     visualStyle,
@@ -159,7 +159,7 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     directorialIntent: directorialIntent,
     characters: [],
     styleConfig: {
-      styleName: styleName,
+      styleName: styleCategory,
       mood: mood,
       artStyle: visualStyle,
       lighting: lighting,
@@ -198,6 +198,21 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
 
   // If there is a reference image, add it to the messages
   if (imgUrl) {
+    const url = new URL(imgUrl);
+    const hostname = url.hostname.toLowerCase();
+    // Block private/internal addresses
+    if (
+      hostname === "localhost" ||
+      hostname.startsWith("127.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("169.254.") || // AWS metadata
+      hostname.startsWith("[::1]") || // IPv6 localhost
+      hostname.startsWith("metadata.google.internal") // GCP metadata
+    ) {
+      loggerService.logError("Blocked attempt to access internal URL");
+    }
+
     // Fetch with size limit and timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -209,26 +224,23 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
       });
 
       if (!res.ok) {
-        loggerService.logWarning(`HTTP ${res.status}: ${res.statusText}`);
-        return;
+        loggerService.logError(`HTTP ${res.status}: ${res.statusText}`);
       }
 
       const contentType = res.headers.get("content-type");
       if (!contentType?.startsWith("image/")) {
-        loggerService.logWarning("URL does not point to an image");
-        return;
+        loggerService.logError("URL does not point to an image");
       }
 
       const contentLength = res.headers.get("content-length");
       if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
         // 10MB limit
-        loggerService.logWarning("Image too large");
-        return;
+        loggerService.logError("Image too large");
       }
 
       const buffer = await res.arrayBuffer();
       if (buffer.byteLength > 10 * 1024 * 1024) {
-        loggerService.logWarning("Image too large");
+        loggerService.logError("Image too large");
       }
       const mimeType = contentType || "image/jpeg";
       const base64Image = Buffer.from(buffer).toString("base64");
@@ -242,8 +254,8 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
         },
       });
     } catch (error) {
-      loggerService.logWarning(`Error fetching reference image: ${error}`);
-      loggerService.logWarning("Ignoring reference image");
+      loggerService.logError(`Error fetching reference image: ${error}`);
+      loggerService.logError("Ignoring reference image");
     } finally {
       clearTimeout(timeout);
     }

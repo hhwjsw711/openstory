@@ -2,7 +2,6 @@ import z from "zod";
 
 export interface DNADirectorParams {
   prompt: string;
-  styleName: string;
   directorialIntent: string;
   mood: string;
   visualStyle: string;
@@ -13,6 +12,7 @@ export interface DNADirectorParams {
   aspectRatio: string;
   frameLookAndExtras: string[];
   referenceImageUrl: string | null;
+  styleCategory: string;
 }
 
 export interface DNAConfig {
