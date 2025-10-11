@@ -18,6 +18,7 @@ import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
 } from "@/lib/schemas/letzai-request";
+import { LoggerService } from "@/lib/services/logger.service";
 import { createAdminClient } from "@/lib/supabase/server";
 import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
@@ -41,7 +42,7 @@ const processImageGeneration: JobProcessor = async (
   _metadata,
 ): Promise<Record<string, unknown>> => {
   const { data } = payload;
-
+  const loggerService = new LoggerService("ImageWebhook");
   // Type assertion for image generation data
   const imageData = data as {
     prompt?: string;
@@ -62,28 +63,17 @@ const processImageGeneration: JobProcessor = async (
   };
 
   if (!imageData.prompt) {
-    throw new Error("Prompt is required for image generation");
+    loggerService.logError("Prompt is required for image generation");
   }
 
   try {
     // Determine model to use
     let model = imageData.model as keyof typeof IMAGE_MODELS | undefined;
-    if (!model) {
-      // Default to fast model
-      model = "flux_krea_lora";
-    }
+    if (!model) model = "flux_krea_lora"; // Default to fast model
 
-    if (process.env.NODE_ENV !== "production") {
-      const { prompt, image_url, ...rest } = imageData as Record<
-        string,
-        unknown
-      >;
-      console.debug("[ImageWebhook] Generating image", {
-        ...rest,
-        prompt: prompt ? "[redacted]" : undefined,
-        image_url: image_url ? "[redacted]" : undefined,
-      });
-    }
+    loggerService.logDebug(
+      `Generating image ${imageData.frameId} with model ${model}`,
+    );
 
     // Generate image using selected AI provider
     const resp = await selectedAiProvider({
@@ -100,6 +90,10 @@ const processImageGeneration: JobProcessor = async (
       | LetzAIImageResponse;
     const result = resultByProvider(model, imageData, respData);
 
+    loggerService.logDebug(
+      `Image generation result: ${JSON.stringify(result)}`,
+    );
+
     // If this is for a frame, update the frame with the generated image URL
     if (imageData.frameId && result?.imageUrls.length > 0) {
       const supabase = createAdminClient();
@@ -112,10 +106,9 @@ const processImageGeneration: JobProcessor = async (
         .eq("id", imageData.frameId);
 
       if (updateError) {
-        console.error("[ImageWebhook] Failed to update frame with image URL", {
-          frameId: imageData.frameId,
-          error: updateError.message,
-        });
+        loggerService.logError(
+          `Failed to update frame ${imageData.frameId} with image URL: ${updateError.message}`,
+        );
         return result;
       }
 
@@ -126,6 +119,9 @@ const processImageGeneration: JobProcessor = async (
         .single();
 
       if (frameData?.sequence_id) {
+        loggerService.logDebug(
+          `Updating sequence ${frameData.sequence_id} with completed status`,
+        );
         // Check if all frames for this sequence now have thumbnails
         const { data: allFrames } = await supabase
           .from("frames")
@@ -167,17 +163,14 @@ const processImageGeneration: JobProcessor = async (
                 .from("sequences")
                 .update({
                   metadata: updatedMetadata,
+                  status: "completed",
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", frameData.sequence_id);
 
               if (seqUpdateError) {
-                console.error(
-                  "[ImageWebhook] Failed to update sequence metadata",
-                  {
-                    sequenceId: frameData.sequence_id,
-                    error: seqUpdateError.message,
-                  },
+                loggerService.logError(
+                  `Failed to update sequence ${frameData.sequence_id} with completed status: ${seqUpdateError.message}`,
                 );
               }
             }

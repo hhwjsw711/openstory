@@ -4,12 +4,15 @@ import {
   type OpenRouterResponse,
   RECOMMENDED_MODELS,
 } from "@/lib/ai/openrouter-client";
+import { STYLE_CATEGORIES } from "@/lib/schemas/style-stack";
+import { LoggerService } from "@/lib/services/logger.service";
 import { createServerClient } from "@/lib/supabase/server";
 import {
   DNAConfigSchema,
   type DNADirectorParams,
   type DNADirectorResponse,
   type DNADirectorTemplateMessage,
+  type DNADirectorTemplateMessageContent,
 } from "./types";
 
 export async function DNADirectorProcessor(
@@ -19,7 +22,7 @@ export async function DNADirectorProcessor(
   const supabase = createServerClient();
   const { data: style, error: styleError } = await supabase
     .from("styles")
-    .select("*")
+    .select("id, name, description, config, category")
     .eq("id", styleId)
     .single();
 
@@ -27,6 +30,7 @@ export async function DNADirectorProcessor(
     status: false,
     error: undefined,
     data: undefined,
+    config: undefined,
   };
 
   if (styleError) {
@@ -58,9 +62,8 @@ export async function DNADirectorProcessor(
   }
 
   const DNAConfig = parsedConfig.data;
-  const payload = {
-    prompt,
-    styleName: style?.name,
+  const dnaConfig = {
+    styleName: style?.category,
     directorialIntent: style?.description,
     mood: DNAConfig.mood,
     visualStyle: DNAConfig.artStyle,
@@ -76,9 +79,17 @@ export async function DNADirectorProcessor(
     referenceImageUrl: null,
   };
 
+  result.config = dnaConfig;
+
+  const payload = {
+    prompt,
+    ...dnaConfig,
+  };
   let llmResponse: OpenRouterResponse | undefined;
   try {
-    const directorTemplate = await DNADirectorTemplate(payload);
+    const directorTemplate = await DNADirectorTemplate(
+      payload as DNADirectorParams,
+    );
     llmResponse = await callOpenRouter({
       model: RECOMMENDED_MODELS.creative,
       messages: directorTemplate as OpenRouterMessage[],
@@ -126,7 +137,7 @@ export async function DNADirectorProcessor(
 const DNADirectorTemplate = async (params: DNADirectorParams) => {
   const {
     prompt,
-    styleName,
+    styleName, // styleName is the category of the style
     directorialIntent,
     mood,
     visualStyle,
@@ -139,109 +150,49 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
     referenceImageUrl,
   } = params;
 
-  let messages: DNADirectorTemplateMessage[] = [
-    {
-      role: "system",
-      content: `
-        You are a CINEMATOGRAPHER and VISUAL TRANSLATOR, NOT a creative writer.
-        
-        CRITICAL RULES (DO NOT VIOLATE):
-        1. DO NOT invent new plot points, characters, or story beats
-        2. DO NOT change what happens in the scene
-        3. DO NOT add dialogue unless it already exists in the input
-        4. ONLY add visual/cinematic descriptions to what's already there
-        
-        YOUR ONLY JOB:
-        - Take the exact story content provided
-        - Add camera angles, lighting, and visual descriptions
-        - Apply ${styleName} style through HOW you describe it, not WHAT happens
-        
-        🎥 ${styleName} STYLE DNA (Infuse Throughout):
-        - Directorial Vision: ${directorialIntent}
-        - Emotional Atmosphere: ${mood}
-        - Visual Aesthetic: ${visualStyle}
-        - Lighting Philosophy: ${lighting}
-        - Color Narrative: ${colorPalette.join(", ")}
-        - Cinematic Influences: ${cinematicReferences.join(", ")}
+  const loggerService = new LoggerService("DNADirectorTemplate");
+  // Get all categories
+  const allCategories = STYLE_CATEGORIES; // Returns the array above
 
-        📷 CINEMATOGRAPHY LANGUAGE (Integrate Naturally):
-        - Camera Movement & Framing: ${cameraLanguage}
-        - Technical Specs: ${frameLookAndExtras[0]}, ${aspectRatio}
-        - Light & Shadow: ${lighting}
-
-        🎬 WHAT YOU CAN ADD (Visual Layer Only):
-        
-        CAMERA WORK:
-        - Shot types: WIDE, MEDIUM, CLOSE-UP, TRACKING, etc.
-        - Camera movement: dolly, pan, tilt, steadicam, handheld
-        - Angles: high angle, low angle, Dutch angle, POV
-        
-        LIGHTING & COLOR:
-        - Light sources: natural, practical, motivated
-        - Quality: hard, soft, diffused, directional
-        - Color temperature: warm tungsten, cool daylight, mixed
-        - Apply ${styleName} color palette: ${colorPalette.join(", ")}
-        
-        ATMOSPHERE ONLY:
-        - Environmental sounds that enhance existing scene
-        - Weather/time of day details if not specified
-        - Textures and surfaces visible in frame
-        - Ambient background life that doesn't distract
-        
-        🚫 WHAT YOU CANNOT CHANGE:
-        - Story events (if character walks in, they walk in - don't change to running)
-        - Character actions (if they pick up a cup, don't change it to a phone)
-        - Dialogue or conversations
-        - Character emotions (angry stays angry, happy stays happy)
-        - Scene location or setting
-        - Sequence of events
-
-        OUTPUT FORMAT:
-        - Start with scene heading from input (or add if missing): INT./EXT. LOCATION - TIME
-        - Use UPPERCASE for camera directions: WIDE ON, CLOSE UP, TRACKING SHOT
-        - Wrap visual descriptions in parentheses after the action
-        - Keep every word of dialogue and action from the input
-        - Add camera/lighting notes AROUND the existing content, never replacing it
-        
-        EXAMPLE TRANSFORMATION:
-        INPUT: "Sarah enters the room. She's angry. 'Where were you?' she asks."
-        
-        ✅ CORRECT OUTPUT:
-        INT. LIVING ROOM - NIGHT
-        
-        WIDE ON the doorway as Sarah enters, backlit by harsh hallway fluorescents.
-        (${styleName} low-angle shot emphasizes her silhouette)
-        
-        She's angry. Her jaw clenched, fists tight.
-        (Close-up, shallow depth of field, warm practicals in background)
-        
-        SARAH
-        Where were you?
-        (Two-shot, static frame, tension in the silence after)
-        
-        ❌ WRONG - DO NOT DO THIS:
-        "Sarah storms into the dimly lit room, her eyes blazing with fury. She slams the door and screams, 'I can't believe you!'"
-        (This changed her action from "enters" to "storms", added door slam, changed dialogue)
-        
-        CRITICAL: If the input says a character "walks", don't change it to "strides" or "moves purposefully". Keep the EXACT verbs and actions. Only add the visual HOW, never change the WHAT.
-        
-        Output ONLY the enhanced scene. No explanations before or after.
-      `,
+  const userContent: DNADirectorTemplateMessageContent = {
+    scene: prompt,
+    directorialIntent: directorialIntent,
+    characters: [],
+    styleConfig: {
+      styleName: styleName,
+      mood: mood,
+      artStyle: visualStyle,
+      lighting: lighting,
+      frameRate: frameLookAndExtras[0],
+      cameraWork: cameraLanguage,
+      aspectRatio: aspectRatio,
+      colorGrading: frameLookAndExtras[1],
+      colorPalette: colorPalette,
+      referenceFilms: cinematicReferences,
     },
-  ];
+  };
+
+  const referencedImages: {
+    type: string;
+    source: {
+      type: string;
+      media_type: string;
+      data: string;
+    };
+  }[] = [];
 
   // Validate URL
   let imgUrl: string | null = referenceImageUrl;
   try {
     const url = new URL(referenceImageUrl || "");
     if (!["http:", "https:"].includes(url.protocol)) {
-      console.warn(
-        "[DNADirector] Invalid protocol in reference URL, ignoring image",
+      loggerService.logWarning(
+        "Invalid protocol in reference URL, ignoring image",
       );
       imgUrl = null; // Fall back to no image
     }
   } catch {
-    console.warn("[DNADirector] Invalid reference image URL, ignoring image");
+    loggerService.logWarning("Invalid reference image URL, ignoring image");
     imgUrl = null; // Fall back to no image
   }
 
@@ -258,79 +209,69 @@ const DNADirectorTemplate = async (params: DNADirectorParams) => {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        loggerService.logWarning(`HTTP ${res.status}: ${res.statusText}`);
+        return;
       }
 
       const contentType = res.headers.get("content-type");
       if (!contentType?.startsWith("image/")) {
-        throw new Error("URL does not point to an image");
+        loggerService.logWarning("URL does not point to an image");
+        return;
       }
 
       const contentLength = res.headers.get("content-length");
       if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
         // 10MB limit
-        throw new Error("Image too large");
+        loggerService.logWarning("Image too large");
+        return;
       }
 
       const buffer = await res.arrayBuffer();
       if (buffer.byteLength > 10 * 1024 * 1024) {
-        throw new Error("Image too large");
+        loggerService.logWarning("Image too large");
       }
       const mimeType = contentType || "image/jpeg";
       const base64Image = Buffer.from(buffer).toString("base64");
 
-      messages = [
-        ...messages,
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
-  
-  ORIGINAL SCENE TO ENHANCE:
-  ${prompt}
-  
-  Reference image for visual style:`,
-            },
-            {
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${base64Image}` },
-            },
-            {
-              type: "text",
-              text: `Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
-            },
-          ],
+      referencedImages.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mimeType,
+          data: base64Image,
         },
-      ];
-    } catch (fetchError) {
-      console.warn(
-        "[DNADirector] Failed to fetch reference image:",
-        fetchError,
-      );
+      });
+    } catch (error) {
+      loggerService.logWarning(`Error fetching reference image: ${error}`);
+      loggerService.logWarning("Ignoring reference image");
     } finally {
       clearTimeout(timeout);
     }
-  } else {
-    messages = [
-      ...messages,
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Add ONLY cinematic descriptions (camera, lighting, atmosphere) to this scene. DO NOT change any story events, dialogue, or actions.
-
-ORIGINAL SCENE TO ENHANCE:
-${prompt}
-
-Remember: Keep ALL story content identical. Only add visual/cinematic layer.`,
-          },
-        ],
-      },
-    ];
   }
+
+  const messages: DNADirectorTemplateMessage[] = [
+    {
+      role: "system",
+      content: `You are an experienced film director and screenwriter AI capable of translating scene descriptions into rich, immersive storytelling. You understand visual storytelling, lighting, pacing, and tone. Adapt the story based on the given style configuration (${allCategories.join(", ")}).`,
+    },
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: `Scene: ${userContent.scene}\nDirectorial Intent: ${userContent.directorialIntent}\nStyle Config:\n${Object.entries(
+            userContent.styleConfig,
+          )
+            .map(([key, value]) => `- ${key.toUpperCase()}: ${value}`)
+            .join("\n")}`,
+        },
+        ...referencedImages.map((image) => ({
+          type: "image_url",
+          image_url: { url: image.source.data },
+        })),
+      ],
+    },
+  ];
 
   return messages;
 };

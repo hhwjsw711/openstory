@@ -9,14 +9,15 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateFrameDescriptions } from "@/lib/ai/frame-generator";
 import { analyzeScriptForFrames } from "@/lib/ai/script-analyzer";
 import { ValidationError } from "@/lib/errors";
 import { getQStashClient } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
+import { LoggerService } from "@/lib/services/logger.service";
 import { createServerClient } from "@/lib/supabase/server";
-import type { Database, FrameInsert, Json } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 import { type FrameService, frameService } from "./frame.service";
+import { FrameGenerationJobService } from "./frame-generation-job/frame-generation-job.service";
 
 export interface GenerateFramesParams {
   sequenceId: string;
@@ -67,6 +68,7 @@ export class FrameGenerationService {
     params: GenerateFramesParams,
   ): Promise<FrameGenerationResult> {
     // Verify sequence exists and get all required data
+    const loggerService = new LoggerService("FrameGenerationService");
     const { data: sequence, error: sequenceError } = await this.supabase
       .from("sequences")
       .select("*, styles(*)")
@@ -74,15 +76,27 @@ export class FrameGenerationService {
       .single();
 
     if (sequenceError || !sequence) {
-      throw new ValidationError("Sequence not found");
+      loggerService.logError("Sequence not found");
+      return {
+        frameCount: 0,
+        message: "Sequence not found",
+      };
     }
 
     if (!sequence.script) {
-      throw new ValidationError("Sequence has no script");
+      loggerService.logError("Sequence has no script");
+      return {
+        frameCount: 0,
+        message: "Sequence has no script",
+      };
     }
 
     if (!sequence.style_id) {
-      throw new ValidationError("Sequence has no style selected");
+      loggerService.logError("Sequence has no style selected");
+      return {
+        frameCount: 0,
+        message: "Sequence has no style selected",
+      };
     }
 
     // Set sequence status to processing
@@ -98,195 +112,81 @@ export class FrameGenerationService {
       },
     });
 
-    // PHASE 1: Quick frame creation (synchronous)
-    console.log(
-      "[FrameGenerationService] Phase 1: Analyzing script and creating frames",
-    );
+    // Check if the sequence already has frames
+    const { data: frames, error: framesError } = await this.supabase
+      .from("frames")
+      .select("*")
+      .eq("sequence_id", params.sequenceId);
+
+    if (framesError) {
+      loggerService.logError("Failed to get frames");
+      return {
+        frameCount: 0,
+        message: "Failed to get frames",
+      };
+    }
+
+    // Delete existing frames
+    if (frames && frames.length > 0) {
+      await Promise.all(
+        frames.map((frame) => {
+          return this.frameService.deleteFrame(frame.id);
+        }),
+      );
+    }
 
     // Step 1: Analyze script to determine frame boundaries
     const scriptAnalysis = await analyzeScriptForFrames(
       sequence.script,
       params.options?.aiProvider,
     );
+    const frameCount = scriptAnalysis.scenes.length;
 
-    if (!scriptAnalysis?.scenes || scriptAnalysis.scenes.length === 0) {
-      throw new Error("Failed to analyze script or no scenes found");
+    if (!scriptAnalysis?.scenes || frameCount === 0) {
+      loggerService.logError("Failed to analyze script or no scenes found");
+      return {
+        frameCount: 0,
+        message: "Failed to analyze script or no scenes found",
+      };
     }
 
-    // Step 2: Generate frame descriptions for each scene
-    const styleStack =
-      sequence.styles && typeof sequence.styles === "object"
-        ? (sequence.styles as { metadata?: unknown }).metadata
-        : undefined;
+    const frameGenerationService = new FrameGenerationJobService();
 
-    const frameDescriptions = await generateFrameDescriptions({
-      scriptAnalysis,
-      styleId: sequence.style_id,
-      aiProvider: params.options?.aiProvider,
+    // Step 2: Process each scene and generate frames with async jobs
+    scriptAnalysis.scenes.forEach(async (scene, index) => {
+      await frameGenerationService.processScene({
+        sequenceId: params.sequenceId,
+        userId: params.userId,
+        teamId: sequence.team_id,
+        scene: {
+          ...scene,
+          orderIndex: index,
+        },
+        aiProvider: params.options?.aiProvider,
+        generateThumbnails: params.options?.generateThumbnails,
+      });
     });
 
-    if (!frameDescriptions?.frames || frameDescriptions.frames.length === 0) {
-      throw new Error("Failed to generate frame descriptions");
-    }
-
-    // Step 3: Handle existing frames
-    const regenerateAll = params.options?.regenerateAll !== false; // Default to true
-
-    if (regenerateAll) {
-      await this.frameService.deleteFramesBySequence(params.sequenceId);
-    }
-
-    // Step 4: Insert the generated frames
-    const framesToInsert: FrameInsert[] = frameDescriptions.frames.map(
-      (frame) => ({
-        sequence_id: params.sequenceId,
-        description: frame.description,
-        order_index: frame.orderIndex,
-        duration_ms: frame.durationMs,
-        metadata: {
-          ...frame.metadata,
-          generatedAt: new Date().toISOString(),
-          aiProvider: params.options?.aiProvider || "openai",
-        } as Json,
-      }),
-    );
-
-    const insertedFrames =
-      await this.frameService.bulkInsertFrames(framesToInsert);
-
-    // Update sequence metadata with frame count
+    // Step 3: Update sequence metadata
     await this.updateSequenceStatus(params.sequenceId, "processing", {
       frameGeneration: {
-        status: "processing",
+        status: "generating_thumbnails",
         startedAt: new Date().toISOString(),
-        expectedFrameCount: insertedFrames.length,
+        expectedFrameCount: frameCount,
         completedFrameCount: 0,
         options: params.options,
         error: null,
         failedAt: null,
+        thumbnailsGenerating: true,
       },
     });
 
-    // PHASE 2: Queue individual image generation jobs for each frame
-    if (params.options?.generateThumbnails !== false) {
-      console.log(
-        "[FrameGenerationService] Phase 2: Queueing image generation for frames",
-      );
-
-      const qstashClient = getQStashClient();
-      const jobManager = getJobManager();
-      const imageGenerationPromises = [];
-      const defaultModel = "flux_krea_lora";
-      const defaultImageSize = "landscape_16_9";
-
-      for (const frame of insertedFrames) {
-        // Skip frames without descriptions
-        if (!frame.description) {
-          continue;
-        }
-
-        // Create an image generation job for each frame
-        const imageJob = await jobManager.createJob({
-          type: "image",
-          payload: {
-            frameId: frame.id,
-            sequenceId: params.sequenceId,
-            prompt: frame.description,
-            model: defaultModel,
-            image_size: defaultImageSize,
-            num_images: 1,
-          },
-          userId: params.userId,
-          teamId: sequence.team_id,
-        });
-
-        // Queue the image generation job
-        const imagePayload = {
-          jobId: imageJob.id,
-          type: "image" as const,
-          userId: params.userId,
-          teamId: sequence.team_id,
-          data: {
-            frameId: frame.id,
-            sequenceId: params.sequenceId,
-            prompt: frame.description,
-            model: defaultModel,
-            image_size: defaultImageSize,
-            num_images: 1,
-            // Add style information if available
-            style: styleStack as Json | undefined,
-          },
-        };
-
-        imageGenerationPromises.push(
-          qstashClient
-            .publishImageJob(imagePayload, {
-              delay: 0, // Process immediately
-            })
-            .then((response) => {
-              console.log("[FrameGenerationService] Image job queued", {
-                frameId: frame.id,
-                imageJobId: imageJob.id,
-                messageId: response.messageId,
-              });
-              return { frameId: frame.id, imageJobId: imageJob.id };
-            }),
-        );
-      }
-
-      // Wait for all image jobs to be queued
-      try {
-        await Promise.all(imageGenerationPromises);
-        console.log(
-          "[FrameGenerationService] All image generation jobs queued",
-          {
-            count: imageGenerationPromises.length,
-          },
-        );
-      } catch (error) {
-        console.error(
-          "[FrameGenerationService] Failed to queue some image jobs",
-          error,
-        );
-        // Don't fail the entire operation if image queueing fails
-      }
-
-      // Update sequence status - frames created, images generating
-      // Set status to "draft" to stop polling, but mark thumbnails as generating
-      await this.updateSequenceStatus(params.sequenceId, "draft", {
-        frameGeneration: {
-          status: "generating_thumbnails",
-          startedAt: new Date().toISOString(),
-          expectedFrameCount: insertedFrames.length,
-          completedFrameCount: insertedFrames.length,
-          thumbnailsGenerating: true,
-          options: params.options,
-          error: null,
-          failedAt: null,
-        },
-      });
-    } else {
-      // If not generating thumbnails, mark sequence as complete
-      await this.updateSequenceStatus(params.sequenceId, "draft", {
-        frameGeneration: {
-          status: "completed",
-          startedAt: new Date().toISOString(),
-          expectedFrameCount: insertedFrames.length,
-          completedFrameCount: insertedFrames.length,
-          thumbnailsGenerating: false,
-          options: params.options,
-          error: null,
-          failedAt: null,
-        },
-      });
-    }
-
     return {
-      frameCount: insertedFrames.length,
+      frameCount: frameCount,
       message:
         params.options?.generateThumbnails !== false
-          ? `Created ${insertedFrames.length} frames. Thumbnail generation is in progress.`
-          : `Created ${insertedFrames.length} frames.`,
+          ? `Created ${frameCount} frames. Thumbnail generation is in progress.`
+          : `Created ${frameCount} frames.`,
     };
   }
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
 import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
 import { createActionErrorResponse } from "@/lib/errors";
+import { JobType } from "@/lib/qstash/job-manager";
 import { sequenceService } from "@/lib/services/sequence.service";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Frame, Json, Sequence } from "@/types/database";
@@ -189,7 +190,7 @@ export async function generateFrames(sequenceId: string): Promise<{
 
     // Create a job for frame generation
     const job = await jobManager.createJob({
-      type: "frame_generation",
+      type: JobType.FRAME_GENERATION,
       payload: {
         sequenceId,
         options: {
@@ -208,7 +209,7 @@ export async function generateFrames(sequenceId: string): Promise<{
     const qstashClient = getQStashClient();
     await qstashClient.publishFrameGenerationJob({
       jobId: job.id,
-      type: "frame_generation",
+      type: JobType.FRAME_GENERATION,
       userId: user.id,
       teamId: sequence.team_id,
       data: {
