@@ -2,7 +2,6 @@ import z from "zod";
 
 export interface DNADirectorParams {
   prompt: string;
-  styleName: string;
   directorialIntent: string;
   mood: string;
   visualStyle: string;
@@ -13,10 +12,11 @@ export interface DNADirectorParams {
   aspectRatio: string;
   frameLookAndExtras: string[];
   referenceImageUrl: string | null;
+  styleCategory: string;
 }
 
 export interface DNAConfig {
-  name: string;
+  name?: string; // optional
   mood: string;
   artStyle: string;
   lighting: string;
@@ -26,6 +26,7 @@ export interface DNAConfig {
   colorGrading: string;
   colorPalette: string[];
   referenceFilms: string[];
+  styleName?: string; // optional
 }
 
 export interface DNADirectorResponseData {
@@ -39,6 +40,7 @@ export interface DNADirectorResponse {
   status: boolean;
   error?: string;
   data?: DNADirectorResponseData;
+  config?: Record<string, unknown>;
 }
 
 export interface DNADirectorTemplateMessage {
@@ -51,6 +53,13 @@ export interface DNADirectorTemplateMessage {
         | { type: string; text: string }
         | { type: string; image_url: { url: string } }
       >;
+}
+
+export interface DNADirectorTemplateMessageContent {
+  scene: string;
+  directorialIntent: string;
+  characters: string[];
+  styleConfig: DNAConfig;
 }
 
 export const DNAConfigSchema = z.object({

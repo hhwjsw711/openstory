@@ -5,6 +5,7 @@
 
 import { Client } from "@upstash/qstash";
 import { ConfigurationError, VelroError } from "@/lib/errors";
+import { LoggerService } from "@/lib/services/logger.service";
 import { getQStashWebhookUrl } from "@/lib/utils/get-base-url";
 import type { JobPayload as TypedJobPayload } from "./types";
 
@@ -32,6 +33,7 @@ export type JobPayload = TypedJobPayload;
 class QStashClient {
   private client: Client;
   private baseWebhookUrl: string;
+  private loggerService: LoggerService;
 
   constructor() {
     const token = process.env.QSTASH_TOKEN;
@@ -45,7 +47,7 @@ class QStashClient {
     const apiUrl = getQStashWebhookUrl();
     this.client = new Client({ token });
     this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
-
+    this.loggerService = new LoggerService("QStashClient");
     // Client initialized successfully
   }
 
@@ -110,12 +112,7 @@ class QStashClient {
       deduplicationId?: string;
     },
   ): Promise<QStashResponse> {
-    if (process.env.NODE_ENV !== "production") {
-      console.debug("[QStashClient] Publishing image job", {
-        jobId: payload.jobId,
-        type: payload.type,
-      });
-    }
+    this.loggerService.logDebug(`Publishing image job ${payload.jobId}`);
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/image`,
       body: payload,
