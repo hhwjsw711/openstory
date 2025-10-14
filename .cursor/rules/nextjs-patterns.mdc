@@ -60,479 +60,217 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 - `loading.tsx` - Loading UI
 - `error.tsx` - Error UI (must be Client Component)
 - `not-found.tsx` - 404 UI
-- `route.ts` - API routes
+- `route.ts` - API routes (DEPRECATED: Use Elysia backend instead)
 
-## API Routes Pattern (Velro Standard)
+## Frontend Data Fetching with TanStack Query
 
-### Standard API Structure with BetterAuth
-```typescript
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { z } from "zod";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { authenticateApiRequest } from "@/lib/auth/api-utils";
-
-// 1. Define request schema with Zod
-const requestSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-});
-
-// 2. API handler with async params
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // 3. Await params (Next.js 15 requirement)
-    const { id } = await params;
-    
-    // 4. Validate UUID if needed
-    const uuidSchema = z.string().uuid();
-    uuidSchema.parse(id);
-    
-    // 5. Check authentication with BetterAuth
-    const authResult = await authenticateApiRequest(request);
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error || "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    
-    const { user, session } = authResult;
-    
-    // 6. Parse and validate request body
-    const body = await request.json();
-    const validatedData = requestSchema.parse(body);
-    
-    // 7. Execute business logic (via server actions)
-    const result = await someAction(validatedData);
-    
-    // 8. Return standardized response
-    return NextResponse.json(
-      { success: true, data: result },
-      { status: 200 }
-    );
-  } catch (error) {
-    // 9. Use centralized error handler
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode }
-    );
-  }
-}
-```
-
-### GET Endpoint Pattern
-```typescript
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    // Authenticate with BetterAuth
-    const authResult = await authenticateApiRequest(request);
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error || "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    
-    const data = await fetchData(id);
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode }
-    );
-  }
-}
-```
-
-### Optional Authentication Pattern
-For endpoints that allow both authenticated and anonymous users:
-
-```typescript
-export async function GET(request: NextRequest) {
-  try {
-    // Optional authentication
-    const authResult = await authenticateApiRequest(request);
-    const userId = authResult.authenticated ? authResult.user.id : null;
-    const isAnonymous = authResult.user?.isAnonymous ?? true;
-    
-    // Adjust behavior based on auth status
-    const data = await fetchData(userId, { includePrivate: !isAnonymous });
-    
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode }
-    );
-  }
-}
-```
-
-### Blocking Anonymous Users
-For operations that require a full authenticated account:
-
-```typescript
-import { requireAuthenticatedUserForMotion } from "@/lib/auth/api-utils";
-
-export async function POST(request: NextRequest) {
-  try {
-    // Blocks anonymous users
-    const authResult = await requireAuthenticatedUserForMotion(request);
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error || "Account required" },
-        { status: 403 }
-      );
-    }
-    
-    const { user } = authResult;
-    
-    // Execute authenticated-only operation
-    const result = await performOperation(user.id);
-    
-    return NextResponse.json({ success: true, data: result });
-  } catch (error) {
-    const velroError = handleApiError(error);
-    return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode }
-    );
-  }
-}
-```
-
-## Server Actions Pattern
-
-Located in `src/app/actions/*/index.ts`:
-
-```typescript
-"use server";
-
-import { z } from "zod";
-import { getCurrentUser } from "@/app/actions/user";
-import { createServerClient } from "@/lib/supabase/server";
-
-const inputSchema = z.object({
-  name: z.string().min(1),
-});
-
-export type CreateInput = z.infer<typeof inputSchema>;
-
-export async function createAction(input: CreateInput) {
-  try {
-    // 1. Authenticate with BetterAuth
-    const userResult = await getCurrentUser();
-    if (!userResult.success || !userResult.data) {
-      return {
-        success: false,
-        error: "Authentication required",
-      };
-    }
-    
-    const { user } = userResult.data;
-    
-    // 2. Validate input
-    const validatedInput = inputSchema.parse(input);
-    
-    // 3. Get Supabase client for database operations
-    const supabase = createServerClient();
-    
-    // 4. Database operations here
-    const { data, error } = await supabase
-      .from('table')
-      .insert({
-        ...validatedInput,
-        user_id: user.id,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    return { success: true, data };
-  } catch (error) {
-    console.error("[createAction] Error:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    };
-  }
-}
-```
-
-### Server Action with Anonymous Check
-For actions that require authenticated (non-anonymous) users:
-
-```typescript
-"use server";
-
-import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
-import { getCurrentUser } from "@/app/actions/user";
-
-export async function authenticatedOnlyAction(input: ActionInput) {
-  try {
-    // Check authentication
-    const userResult = await getCurrentUser();
-    if (!userResult.success || !userResult.data) {
-      return {
-        success: false,
-        error: "Authentication required",
-      };
-    }
-    
-    // Block anonymous users
-    if (userResult.data.isAnonymous) {
-      return {
-        success: false,
-        error: MOTION_ACCESS_DENIED_MESSAGE,
-      };
-    }
-    
-    const { user } = userResult.data;
-    
-    // Execute authenticated-only operation
-    const result = await performOperation(user.id);
-    
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("[authenticatedOnlyAction] Error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-```
-
-### Server Action with System Context
-For actions called by webhooks or background jobs:
-
-```typescript
-"use server";
-
-import { getCurrentUser } from "@/app/actions/user";
-import { createServerClient } from "@/lib/supabase/server";
-
-export async function webhookAction(
-  input: ActionInput,
-  systemContext: boolean = false
-) {
-  try {
-    const supabase = createServerClient();
-    let userId: string;
-    
-    if (systemContext) {
-      // For webhook calls, derive userId from related data
-      const { data: relatedRecord } = await supabase
-        .from('related_table')
-        .select('created_by')
-        .eq('id', input.relatedId)
-        .single();
-      
-      if (!relatedRecord?.created_by) {
-        return {
-          success: false,
-          error: "Cannot determine user for system context",
-        };
-      }
-      
-      userId = relatedRecord.created_by;
-    } else {
-      // For user calls, get from session
-      const userResult = await getCurrentUser();
-      if (!userResult.success || !userResult.data) {
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-      userId = userResult.data.user.id;
-    }
-    
-    // Execute operation with userId
-    const result = await performOperation(userId, input);
-    
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("[webhookAction] Error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-```
-
-## Client-Side Authentication (BetterAuth)
-
-### Using BetterAuth Hooks
+### Fetching Data from Backend API
 ```typescript
 'use client';
 
-import { authClient, useSession } from "@/lib/auth/client";
+import { useQuery } from '@tanstack/react-query';
 
-export function UserProfile() {
-  // Get current session with BetterAuth
-  const { data: session, isPending, error } = useSession();
+export function useSequence(id: string) {
+  return useQuery({
+    queryKey: ['sequences', id],
+    queryFn: async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sequences/${id}`, {
+        credentials: 'include', // Include cookies for BetterAuth
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch sequence');
+      }
+      
+      const data = await response.json();
+      return data.data; // Backend returns { success: true, data: ... }
+    },
+  });
+}
+```
+
+### Mutations with TanStack Query
+```typescript
+'use client';
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useCreateSequence() {
+  const queryClient = useQueryClient();
   
-  if (isPending) return <div>Loading...</div>;
+  return useMutation({
+    mutationFn: async (input: { name: string; description?: string }) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sequences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(input),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create sequence');
+      }
+      
+      const data = await response.json();
+      return data.data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch sequences list
+      queryClient.invalidateQueries({ queryKey: ['sequences'] });
+    },
+  });
+}
+```
+
+## Server Actions Pattern (Frontend Only - Calls Backend API)
+
+**IMPORTANT:** Server Actions in the frontend should ONLY call backend APIs, not access the database directly.
+
+```typescript
+"use server";
+
+import { cookies } from 'next/headers';
+
+export type CreateSequenceInput = {
+  name: string;
+  description?: string;
+};
+
+export async function createSequenceAction(input: CreateSequenceInput) {
+  try {
+    // Get auth cookie to pass to backend
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get('better-auth.session_token');
+    
+    // Call backend API
+    const response = await fetch(`${process.env.API_URL}/api/sequences`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `better-auth.session_token=${authCookie?.value}`,
+      },
+      body: JSON.stringify(input),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      return { 
+        success: false, 
+        error: error.message || 'Failed to create sequence' 
+      };
+    }
+    
+    const data = await response.json();
+    return { success: true, data: data.data };
+  } catch (error) {
+    console.error('[createSequenceAction] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+```
+
+### Server Action for Data Fetching
+```typescript
+"use server";
+
+import { cookies } from 'next/headers';
+
+export async function getSequenceAction(id: string) {
+  try {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get('better-auth.session_token');
+    
+    const response = await fetch(`${process.env.API_URL}/api/sequences/${id}`, {
+      headers: {
+        'Cookie': `better-auth.session_token=${authCookie?.value}`,
+      },
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      return { 
+        success: false, 
+        error: error.message || 'Failed to fetch sequence' 
+      };
+    }
+    
+    const data = await response.json();
+    return { success: true, data: data.data };
+  } catch (error) {
+    console.error('[getSequenceAction] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+```
+
+## Client-Side Data Fetching with TanStack Query
+
+### Using TanStack Query in Components
+```typescript
+'use client';
+
+import { useSequence } from '@/hooks/use-sequences';
+
+export function SequenceView({ id }: { id: string }) {
+  const { data: sequence, isLoading, error } = useSequence(id);
+  
+  if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   
   return (
     <div>
-      <p>User ID: {session?.user.id}</p>
-      <p>Anonymous: {session?.user.isAnonymous ? "Yes" : "No"}</p>
+      <h1>{sequence.name}</h1>
+      <p>{sequence.description}</p>
     </div>
   );
 }
 ```
 
-### Anonymous Session Creation
+### Using Mutations in Forms
 ```typescript
 'use client';
 
-import { authClient } from "@/lib/auth/client";
-import { useEffect } from "react";
+import { useCreateSequence } from '@/hooks/use-sequences';
+import { useState } from 'react';
 
-export function AnonymousSessionManager() {
-  useEffect(() => {
-    async function initAnonymousSession() {
-      const { data: session } = await authClient.getSession();
-      
-      if (!session) {
-        // Create anonymous session
-        const { data, error } = await authClient.signIn.anonymous();
-        
-        if (error) {
-          console.error("Failed to create anonymous session:", error);
-        }
-      }
-    }
-    
-    initAnonymousSession();
-  }, []);
+export function CreateSequenceForm() {
+  const [name, setName] = useState('');
+  const createSequence = useCreateSequence();
   
-  return null;
-}
-```
-
-### Sign In/Sign Up with BetterAuth
-```typescript
-'use client';
-
-import { authClient } from "@/lib/auth/client";
-import { useState } from "react";
-
-export function AuthForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  
-  async function handleSignIn() {
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-    });
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     
-    if (error) {
-      setError(error.message);
-    } else {
-      // Redirect or update UI
-      window.location.href = "/dashboard";
-    }
-  }
-  
-  async function handleSignUp() {
-    const { data, error } = await authClient.signUp.email({
-      email,
-      password,
-      name: "User Name", // optional
-    });
-    
-    if (error) {
-      setError(error.message);
-    } else {
-      // Account created and signed in
-      window.location.href = "/dashboard";
+    try {
+      await createSequence.mutateAsync({ name });
+      setName('');
+      // Optionally redirect or show success message
+    } catch (error) {
+      console.error('Failed to create sequence:', error);
     }
   }
   
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Sequence name"
       />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-      />
-      {error && <p className="text-red-500">{error}</p>}
-      <button onClick={handleSignIn}>Sign In</button>
-      <button onClick={handleSignUp}>Sign Up</button>
-    </div>
-  );
-}
-```
-
-### Sign Out
-```typescript
-'use client';
-
-import { authClient } from "@/lib/auth/client";
-
-export function SignOutButton() {
-  async function handleSignOut() {
-    await authClient.signOut();
-    window.location.href = "/login";
-  }
-  
-  return <button onClick={handleSignOut}>Sign Out</button>;
-}
-```
-
-### Using Custom Hook for User Data
-```typescript
-'use client';
-
-import { useUser } from "@/hooks/use-user";
-
-export function UserDashboard() {
-  const { data: userData, isLoading, error } = useUser();
-  
-  if (isLoading) return <div>Loading user data...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  
-  return (
-    <div>
-      <h1>Welcome, {userData?.user.full_name || "Anonymous User"}!</h1>
-      <p>Team: {userData?.teamName || "No team"}</p>
-      {userData?.isAnonymous && (
-        <div className="bg-yellow-50 p-4 rounded">
-          <p>You're using an anonymous account.</p>
-          <a href="/login" className="text-blue-600">
-            Sign up to save your work permanently
-          </a>
-        </div>
+      <button type="submit" disabled={createSequence.isPending}>
+        {createSequence.isPending ? 'Creating...' : 'Create'}
+      </button>
+      {createSequence.error && (
+        <p className="text-red-500">{createSequence.error.message}</p>
       )}
-    </div>
+    </form>
   );
 }
 ```
@@ -566,27 +304,34 @@ function Form() {
 3. **React 19**: Use new hooks like `useActionState`, `useFormStatus`
 4. **Turbopack**: Default dev bundler, faster than Webpack
 
-## BetterAuth + Next.js 15 Integration Notes
+## Frontend + Elysia Backend Integration Notes
 
 ### Architecture
-- **Authentication**: BetterAuth handles all auth (sessions, users, anonymous)
-- **Database**: Supabase PostgreSQL accessed via admin client (no RLS)
-- **Authorization**: Team-based access control in API layer and Server Actions
+- **Frontend**: Next.js 15 (UI only, no database access)
+- **Backend**: Elysia API server (all business logic and database operations)
+- **Authentication**: BetterAuth (sessions stored in Redis, cookies for session tokens)
+- **Database**: PostgreSQL via Drizzle ORM (backend only)
+- **Communication**: REST API with fetch or TanStack Query
 
 ### Key Patterns
-1. **Server Actions**: Use `getCurrentUser()` from `@/app/actions/user`
-2. **API Routes**: Use `authenticateApiRequest()` from `@/lib/auth/api-utils`
-3. **Client Components**: Use `useSession()` from `@/lib/auth/client` or `useUser()` hook
-4. **Middleware**: BetterAuth middleware handles route protection and redirects
+1. **Data Fetching**: Use TanStack Query hooks in `apps/frontend/src/hooks/`
+2. **Server Actions**: Only for proxying requests to backend API (optional, can use TanStack Query directly)
+3. **Authentication**: BetterAuth session cookie automatically sent with `credentials: 'include'`
+4. **Real-time Updates**: WebSocket connection to Elysia backend (optional)
 
-### Anonymous User Flow
-1. User visits site → BetterAuth creates anonymous session automatically
-2. User creates content → Associated with anonymous user ID
-3. User signs up → `onLinkAccount` callback migrates data to authenticated account
-4. Database trigger creates team and team membership for new users
+### Request Flow
+1. User interacts with Next.js frontend
+2. Frontend calls Elysia backend API via fetch/TanStack Query
+3. Backend validates auth via BetterAuth session token (from cookie)
+4. Backend performs DB operations via Drizzle ORM
+5. Backend queues async work via Temporal workflows
+6. Backend returns response to frontend
+7. Frontend updates UI with response data
 
 ### Best Practices
-- Always check `isAnonymous` flag for operations requiring authenticated users
-- Use `MOTION_ACCESS_DENIED_MESSAGE` constant for consistent error messages
-- Implement retry mechanism for database triggers (they run asynchronously)
-- Store user context (team ID, role) in database, not in session/JWT
+- Always use `credentials: 'include'` in fetch requests to send cookies
+- Use TanStack Query for caching and optimistic updates
+- Handle loading and error states in UI components
+- Use environment variables for API URL (`NEXT_PUBLIC_API_URL` for client, `API_URL` for server)
+- Backend handles all validation, auth, and business logic
+- Frontend focuses purely on UI and user interaction
