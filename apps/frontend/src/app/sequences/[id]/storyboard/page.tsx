@@ -39,7 +39,7 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   }, [sequenceId, router]);
 
   return (
-    <PageContainer maxWidth="narrow" data-testid="storyboard-page">
+    <PageContainer data-testid="storyboard-page">
       <PageHeader>
         {isLoading && <PageHeading>Loading storyboard...</PageHeading>}
         {error && <PageHeading>Error loading storyboard</PageHeading>}
@@ -52,14 +52,6 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
           </>
         )}
       </PageHeader>
-
-      {!isLoading && !error && (
-        <StepNavigation
-          sequenceId={sequenceId}
-          currentStep={2}
-          completedSteps={completedSteps}
-        />
-      )}
 
       <StoryboardStep sequenceId={sequenceId} onPrevious={handlePrevious} />
     </PageContainer>
