@@ -17,5 +17,9 @@
     "qstash:dev": "echo \"you need to use npx\" && npx @upstash/qstash-cli dev",
     "workflow:assign": "./workflow/scripts/workflow-manager.sh assign",
     "workflow:orchestrator": "./workflow/scripts/orchestrator.sh"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.3.0"
   }
 }
