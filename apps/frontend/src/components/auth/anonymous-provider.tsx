@@ -8,7 +8,6 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { createAnonymousSessionAction } from "#actions/auth";
 import { useUser } from "@/hooks/use-user";
 
 interface AnonymousProviderProps {
@@ -21,7 +20,6 @@ interface AnonymousProviderProps {
  */
 export function AnonymousProvider({ children }: AnonymousProviderProps) {
   const { data: userData, isLoading } = useUser();
-  const createAnonymousSession = createAnonymousSessionAction;
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -39,7 +37,14 @@ export function AnonymousProvider({ children }: AnonymousProviderProps) {
 
       // No session exists, create an anonymous one
       try {
-        await createAnonymousSession();
+        const response = await fetch("/api/v1/auth/anonymous", {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create anonymous session");
+        }
+
         setIsInitialized(true);
       } catch (error) {
         console.error(
@@ -52,7 +57,7 @@ export function AnonymousProvider({ children }: AnonymousProviderProps) {
     };
 
     initializeUser();
-  }, [isLoading, userData?.user, createAnonymousSession]);
+  }, [isLoading, userData?.user]);
 
   // Show loading state while initializing
   if (!isInitialized) {

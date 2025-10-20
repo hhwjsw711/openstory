@@ -4,7 +4,6 @@
  */
 
 import { z } from "zod";
-import { generateMotionAction } from "@/app/actions/frames";
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -12,6 +11,8 @@ import {
 } from "@/lib/auth/api-utils";
 import { ValidationError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
 
 // Request body schema
 const requestSchema = z.object({
@@ -38,8 +39,20 @@ export async function POST(
       throw new ValidationError("Invalid sequence ID format");
     }
 
-    // Check authentication
-    await requireAuthenticatedUserForMotion(request);
+    // Check authentication and get user
+    const authResult = await requireAuthenticatedUserForMotion(request);
+    const user = authResult.user;
+
+    // Get user's team
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership) {
+      return createErrorResponse("No team found for user", 404);
+    }
 
     // Parse and validate request body
     const body = await request.json();
@@ -71,28 +84,71 @@ export async function POST(
     }
 
     // Generate motion for each frame
+    const jobManager = getJobManager();
+    const qstashClient = getQStashClient();
     const jobs = [];
     const errors = [];
 
     for (const frame of framesWithThumbnails) {
-      const result = await generateMotionAction({
-        frameId: frame.id,
-        model: validatedData.model,
-        duration: validatedData.duration,
-        fps: validatedData.fps,
-        motionBucket: validatedData.motionBucket,
-      });
+      try {
+        // TypeScript guard - we already filtered for frames with thumbnails
+        if (!frame.thumbnail_url) continue;
 
-      if (result.success && result.jobId) {
+        // Use description or empty string as fallback
+        const prompt = frame.description || "";
+
+        // Create job record
+        const job = await jobManager.createJob({
+          type: "motion",
+          payload: {
+            frameId: frame.id,
+            sequenceId,
+            thumbnailUrl: frame.thumbnail_url,
+            prompt,
+            model: validatedData.model,
+            duration: validatedData.duration,
+            fps: validatedData.fps,
+            motionBucket: validatedData.motionBucket,
+          },
+          userId: user.id,
+          teamId: membership.team_id,
+        });
+
+        // Queue the job via QStash
+        await qstashClient.publishMotionJob(
+          {
+            jobId: job.id,
+            type: "motion",
+            userId: user.id,
+            teamId: membership.team_id,
+            data: {
+              frameId: frame.id,
+              sequenceId,
+              thumbnailUrl: frame.thumbnail_url,
+              prompt,
+              model: validatedData.model,
+              duration: validatedData.duration,
+              fps: validatedData.fps,
+              motionBucket: validatedData.motionBucket,
+            },
+          },
+          {
+            deduplicationId: job.id,
+          },
+        );
+
         jobs.push({
           frameId: frame.id,
-          jobId: result.jobId,
+          jobId: job.id,
           orderIndex: frame.order_index,
         });
-      } else {
+      } catch (error) {
         errors.push({
           frameId: frame.id,
-          error: result.error || "Failed to start motion generation",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to start motion generation",
         });
       }
     }

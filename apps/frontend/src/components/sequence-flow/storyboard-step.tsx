@@ -1,6 +1,5 @@
 import type * as React from "react";
 import { useCallback, useState } from "react";
-import { generateFrames } from "#actions/sequence";
 import { StoryboardFrameSkeletonWithScript } from "@/components/sequence/storyboard-frame-skeleton-with-script";
 import { StoryboardFrameWithScript } from "@/components/sequence/storyboard-frame-with-script";
 import { SectionHeading } from "@/components/typography";
@@ -82,10 +81,19 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     setGenerationError(null);
 
     try {
-      const result = await generateFrames(sequenceId);
+      const response = await fetch(`/api/v1/sequences/${sequenceId}/frames/generate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate storyboard");
+      }
+
+      const result = await response.json();
 
       if (!result.success) {
-        setGenerationError(result.error || "Failed to generate storyboard");
+        setGenerationError(result.message || "Failed to generate storyboard");
       } else {
         // Refetch frames to get the job ID and start polling
         await refetchFrames();

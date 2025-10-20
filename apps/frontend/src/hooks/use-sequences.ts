@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSequence, listSequences, saveSequence } from "#actions/sequence";
 import type { Sequence } from "@/types/database";
 
 // Query keys
@@ -16,11 +15,14 @@ export function useSequences(teamId?: string) {
   return useQuery<Sequence[]>({
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
-      const result = await listSequences();
-      if (result.success && result.sequences) {
-        return result.sequences;
+      const response = await fetch("/api/v1/sequences");
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Failed to load sequences");
       }
-      throw new Error(result.error || "Failed to load sequences");
+
+      return result.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -37,13 +39,14 @@ export function useSequence(
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
-      const result = await getSequence(id);
-      if (result.success && result.sequence) {
-        // Note: getSequence returns sequence with frames, but we only want the sequence data
-        // The frames should be fetched separately using useFramesBySequence
-        return result.sequence as unknown as Sequence;
+      const response = await fetch(`/api/v1/sequences/${id}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Failed to load sequence");
       }
-      throw new Error(result.error || "Failed to load sequence");
+
+      return result.data;
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
@@ -71,19 +74,27 @@ export function useCreateSequence() {
       styleId: string | null;
       name?: string;
     }) => {
-      const result = await saveSequence(
-        input.script,
-        input.styleId,
-        undefined,
-        input.name,
-      );
-      if (result.success && result.sequence) {
-        return result.sequence;
+      const response = await fetch("/api/v1/sequences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          script: input.script,
+          styleId: input.styleId,
+          name: input.name || "Untitled Sequence",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Failed to create sequence");
       }
-      throw new Error(result.error || "Failed to create sequence");
+
+      return result.data;
     },
     onSuccess: () => {
-      // Invalidate and refetch sequences list
       queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });
@@ -109,23 +120,31 @@ export function useUpdateSequence() {
       script?: string;
       styleId?: string | null;
     }) => {
-      const result = await saveSequence(
-        input.script || "",
-        input.styleId !== undefined ? input.styleId : null,
-        input.id,
-        input.name,
-      );
-      if (result.success && result.sequence) {
-        return result.sequence;
+      const body: Record<string, unknown> = {};
+      if (input.name !== undefined) body.name = input.name;
+      if (input.script !== undefined) body.script = input.script;
+      if (input.styleId !== undefined) body.styleId = input.styleId;
+
+      const response = await fetch(`/api/v1/sequences/${input.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Failed to update sequence");
       }
-      throw new Error(result.error || "Failed to update sequence");
+
+      return result.data;
     },
     onSuccess: (data) => {
-      // Update the specific sequence in cache
       if (data?.id) {
         queryClient.setQueryData(sequenceKeys.detail(data.id), data);
       }
-      // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });
@@ -136,14 +155,19 @@ export function useDeleteSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({
-    mutationFn: async (_id: string) => {
-      // Delete sequence API to be implemented
-      throw new Error("Delete sequence not yet implemented");
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/v1/sequences/${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Failed to delete sequence");
+      }
     },
     onSuccess: (_, id) => {
-      // Remove from cache
       queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
-      // Invalidate lists
       queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });

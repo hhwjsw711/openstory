@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { generateImageByAction } from "@/app/actions/generates/image";
 import { generateImageSchema } from "@/lib/ai/models-validation";
 import { handleApiError } from "@/lib/errors";
+import { requireUser } from "@/lib/auth/action-utils";
+import { createServerClient } from "@/lib/supabase/server";
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
 
 export async function POST(request: Request) {
   try {
-    // Parse and validate request body
+    // 1. Authenticate user
+    const user = await requireUser();
+
+    // 2. Parse and validate request body
     const body = await request.json();
     const validatedData = generateImageSchema.safeParse(body);
     if (!validatedData.success) {
@@ -18,19 +24,52 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate image with prompt
-    const result = await generateImageByAction(validatedData.data);
+    // 3. Get user's team
+    const supabase = createServerClient();
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .single();
 
-    if (!result.success) {
-      throw new Error(
-        result.error || "[api/v1/generates/image] Generation failed",
+    if (!membership) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No team found for user",
+        },
+        { status: 404 },
       );
     }
+
+    // 4. Create job record
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "image",
+      payload: validatedData.data,
+      userId: user.id,
+      teamId: membership.team_id,
+    });
+
+    // 5. Queue the job via QStash
+    const qstashClient = getQStashClient();
+    await qstashClient.publishImageJob(
+      {
+        jobId: job.id,
+        type: "image",
+        userId: user.id,
+        teamId: membership.team_id,
+        data: validatedData.data,
+      },
+      {
+        deduplicationId: job.id,
+      },
+    );
 
     return NextResponse.json(
       {
         success: true,
-        jobId: result.jobId,
+        jobId: job.id,
       },
       { status: 200 },
     );

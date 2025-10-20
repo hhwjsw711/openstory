@@ -1,0 +1,78 @@
+/**
+ * Anonymous Session API Endpoint
+ * POST /api/v1/auth/anonymous - Create anonymous session
+ */
+
+import { NextResponse } from "next/server";
+import { createAnonymousSession } from "@/lib/auth/server";
+import { createServerClient } from "@/lib/supabase/server";
+import { handleApiError } from "@/lib/errors";
+
+export async function POST() {
+  try {
+    const session = await createAnonymousSession();
+
+    if (!session) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to create anonymous session",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      );
+    }
+
+    // Ensure user has a record in our users table and a team
+    const supabase = createServerClient();
+
+    // Create user record if it doesn't exist
+    const { error: userError } = await supabase.from("users").upsert({
+      id: session.user.id,
+      full_name: session.user.name || null,
+    });
+
+    if (userError) {
+      console.error(
+        "[POST /api/v1/auth/anonymous] User creation error:",
+        userError,
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to initialize user account",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          user: session.user,
+          session: session.session,
+          isAuthenticated: false,
+          isAnonymous: true,
+        },
+        message: "Anonymous session created successfully",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("[POST /api/v1/auth/anonymous] Error:", error);
+
+    const handledError = handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to create anonymous session",
+        error: handledError.toJSON(),
+        timestamp: new Date().toISOString(),
+      },
+      { status: handledError.statusCode },
+    );
+  }
+}

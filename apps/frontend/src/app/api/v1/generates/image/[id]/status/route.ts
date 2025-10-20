@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { fetchGeneratedImageStatusAction } from "@/app/actions/generates/image";
 import { handleApiError } from "@/lib/errors";
+import { getJobManager } from "@/lib/qstash/job-manager";
 
 export async function GET(
   _request: Request,
@@ -14,26 +14,42 @@ export async function GET(
         id,
       },
     );
-    const result = await fetchGeneratedImageStatusAction(id);
+
+    // Get job status from database
+    const jobManager = getJobManager();
+    const job = await jobManager.getJob(id);
+
+    if (!job) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Job not found",
+        },
+        { status: 404 },
+      );
+    }
+
     console.log(
       "[api/v1/generates/image/[id]/status] Image generation status result",
       {
-        result,
+        status: job.status,
+        jobId: job.id,
       },
     );
-    if (!result.success) {
-      throw new Error(
-        result.error ||
-          "[api/v1/generates/image/[id]/status] FAL Generation status retrieval failed",
-      );
-    }
 
     return NextResponse.json(
       {
         success: true,
         message:
-          "[api/v1/generates/image/[id]/status] FAL Generation status retrieved",
-        data: result.data,
+          "[api/v1/generates/image/[id]/status] Generation status retrieved",
+        data: {
+          status: job.status,
+          result: job.result,
+          error: job.error,
+          createdAt: job.created_at,
+          startedAt: job.started_at,
+          completedAt: job.completed_at,
+        },
       },
       { status: 200 },
     );

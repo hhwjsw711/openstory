@@ -1,10 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  getActiveFrameGenerationJob,
-  getFramesBySequence,
-} from "#actions/frames";
-import { getSequence } from "#actions/sequence";
 import type { Frame, Sequence } from "@/types/database";
 import { frameKeys } from "./use-frames";
 import { sequenceKeys } from "./use-sequences";
@@ -67,18 +62,31 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
   } = useQuery({
     queryKey: ["storyboard-status", sequenceId],
     queryFn: async () => {
+      const [sequenceResponse, framesResponse, activeJobResponse] =
+        await Promise.all([
+          fetch(`/api/v1/sequences/${sequenceId}`),
+          fetch(`/api/v1/frames/sequences/${sequenceId}/frames`),
+          fetch(`/api/v1/frames/sequences/${sequenceId}/generation/active`),
+        ]);
+
       const [sequenceResult, framesResult, activeJobResult] = await Promise.all(
         [
-          getSequence(sequenceId),
-          getFramesBySequence(sequenceId),
-          getActiveFrameGenerationJob(sequenceId),
+          sequenceResponse.json(),
+          framesResponse.json(),
+          activeJobResponse.json(),
         ],
       );
 
-      // Extract data from results
-      const sequence = sequenceResult.success ? sequenceResult.sequence : null;
-      const frames = framesResult.success ? framesResult.frames || [] : [];
-      const activeJob = activeJobResult.success ? activeJobResult.job : null;
+      const sequence =
+        sequenceResponse.ok && sequenceResult.success
+          ? sequenceResult.data
+          : null;
+      const frames =
+        framesResponse.ok && framesResult.success ? framesResult.data || [] : [];
+      const activeJob =
+        activeJobResponse.ok && activeJobResult.success
+          ? activeJobResult.data
+          : null;
 
       return {
         sequence: sequence as Sequence | null,

@@ -5,8 +5,9 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getTeamMembers } from "@/app/actions/team";
+import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
+import { teamService } from "@/lib/services/team.service";
 
 export async function GET(
   _request: Request,
@@ -23,24 +24,17 @@ export async function GET(
       throw new ValidationError("Invalid team ID format");
     }
 
-    // Get team members
-    const result = await getTeamMembers(teamId);
+    // Check authentication and authorization
+    const user = await requireUser();
+    await requireTeamMemberAccess(user.id, teamId);
 
-    if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.error || "Failed to fetch team members",
-          timestamp: new Date().toISOString(),
-        },
-        { status: result.error?.includes("Authentication") ? 401 : 403 },
-      );
-    }
+    // Get team members
+    const members = await teamService.getMembers(teamId);
 
     return NextResponse.json(
       {
         success: true,
-        data: result.data,
+        data: members,
         timestamp: new Date().toISOString(),
       },
       { status: 200 },

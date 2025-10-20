@@ -3,8 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 import { useCallback, useRef, useState } from "react";
-import { generateFrameMotion } from "#actions/sequence";
-import type { GeneratedImageStatusResponse } from "@/app/actions/generates/image/types";
+import type { GeneratedImageStatusResponse } from "@/types/generation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
@@ -137,24 +136,35 @@ export const StoryboardFrameWithScript: React.FC<
     setMotionError(null);
 
     try {
-      const result = await generateFrameMotion(
-        frame.id,
-        displayScript || `Frame ${frame.order_index + 1}`,
-        styleId,
-      );
+      const response = await fetch(`/api/v1/frames/${frame.id}/motion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "seedance_v1_pro",
+          duration: 3,
+          fps: 14,
+          motionBucket: 127,
+        }),
+      });
 
-      if (result.success && result.videoUrl) {
-        // Update the frame with the new video URL
-        const updatedFrame = {
-          ...frame,
-          video_url: result.videoUrl,
-          duration_ms: result.duration
-            ? result.duration * 1000
-            : frame.duration_ms,
-        };
-        onFrameUpdate?.(updatedFrame);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate motion");
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.jobId) {
+        // Motion generation started - the frame will be updated via webhook
+        // For now, we can't update the frame immediately since it's async
+        // The UI should poll or use realtime updates to get the video URL
+        console.log("[handleGenerateMotion] Motion generation started", {
+          jobId: result.data.jobId,
+        });
       } else {
-        setMotionError(result.error || "Failed to generate motion");
+        setMotionError("Failed to generate motion");
       }
     } catch (error) {
       const errorMessage =
@@ -165,7 +175,7 @@ export const StoryboardFrameWithScript: React.FC<
     } finally {
       setIsGeneratingMotion(false);
     }
-  }, [frame, displayScript, styleId, onFrameUpdate]);
+  }, [frame.id, styleId]);
 
   // Handle FAL generation with style and script
   const handleGenerateWithSelectedModel = useCallback(async () => {

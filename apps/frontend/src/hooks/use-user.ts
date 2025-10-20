@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getCurrentUser, getUserTeam } from "#actions/user";
 import { authClient } from "@/lib/auth/client";
 import type { UserProfile } from "@/types/database";
 
@@ -15,21 +14,21 @@ interface UserData {
 }
 
 async function fetchUser(): Promise<UserData> {
-  // Call the server action to get or create user
-  const result = await getCurrentUser();
+  const response = await fetch("/api/v1/user/me");
+  const result = await response.json();
 
-  if (!result.success) {
-    // Handle case where server needs client to create session first
-    if (result.error === "REQUIRES_CLIENT_AUTH") {
-      // Create anonymous session with BetterAuth
+  if (!response.ok || !result.success) {
+    if (result.message === "REQUIRES_CLIENT_AUTH") {
       const { data, error } = await authClient.signIn.anonymous();
 
       if (!error && data) {
-        // Retry the server action with the new session
-        const retryResult = await getCurrentUser();
-        if (retryResult.success && retryResult.data) {
-          // Fetch team info for authenticated users
-          const teamResult = await getUserTeam();
+        const retryResponse = await fetch("/api/v1/user/me");
+        const retryResult = await retryResponse.json();
+
+        if (retryResponse.ok && retryResult.success && retryResult.data) {
+          const teamResponse = await fetch("/api/v1/user/team");
+          const teamResult = await teamResponse.json();
+
           return {
             ...retryResult.data,
             teamId: teamResult.data?.teamId,
@@ -39,19 +38,18 @@ async function fetchUser(): Promise<UserData> {
         }
       }
 
-      // If we still can't authenticate, throw error
       throw new Error(error?.message || "Failed to create anonymous session");
     }
 
-    throw new Error(result.error || "Failed to fetch user");
+    throw new Error(result.message || "Failed to fetch user");
   }
 
   if (!result.data) {
     throw new Error("No user data returned");
   }
 
-  // Fetch team info for authenticated users
-  const teamResult = await getUserTeam();
+  const teamResponse = await fetch("/api/v1/user/team");
+  const teamResult = await teamResponse.json();
 
   return {
     ...result.data,

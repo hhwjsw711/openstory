@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { enhanceScript, validateScript } from "#actions/script";
-import { listStyles } from "#actions/styles";
+import { validateScript } from "@/lib/validation/script";
 import { ScriptEditor } from "@/components/sequence/script-editor";
 import { StyleSelector } from "@/components/sequence/style-selector";
 import { SectionHeading } from "@/components/typography";
@@ -12,6 +11,7 @@ import {
   useSequence,
   useUpdateSequence,
 } from "@/hooks/use-sequences";
+import { useStyles } from "@/hooks/use-styles";
 import type { Style } from "@/types/database";
 
 // Zod validation schema for script form
@@ -49,14 +49,18 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   const [validationResult, setValidationResult] = useState<Awaited<
     ReturnType<typeof validateScript>
   > | null>(null);
-  const [enhancementResult, setEnhancementResult] = useState<Awaited<
-    ReturnType<typeof enhanceScript>
-  > | null>(null);
+  const [enhancementResult, setEnhancementResult] = useState<{
+    success: boolean;
+    originalScript: string;
+    enhancedScript: string;
+    improvements: string[];
+    error?: string;
+  } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Styles state
-  const [availableStyles, setAvailableStyles] = useState<Style[]>([]);
+  // Load styles using hook
+  const { data: availableStyles = [] } = useStyles();
 
   // Load existing sequence data if editing
   const { data: existingSequence, isLoading: isLoadingSequence } = useSequence(
@@ -84,16 +88,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     }
   }, [existingSequence, isEditMode]);
 
-  // Load styles from database
-  useEffect(() => {
-    const loadStyles = async () => {
-      const result = await listStyles();
-      if (result.success && result.styles) {
-        setAvailableStyles(result.styles);
-      }
-    };
-    loadStyles();
-  }, []);
 
   // Auto-validate script on changes (debounced)
   useEffect(() => {
@@ -158,7 +152,41 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
     setIsEnhancing(true);
     try {
-      const result = await enhanceScript(formData.script);
+      const response = await fetch("/api/v1/script/enhance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          script: formData.script,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to enhance script");
+      }
+
+      const apiResult = await response.json();
+
+      // Convert API response to component format
+      const improvements: string[] = [];
+      if (apiResult.data?.styleStackRecommendation) {
+        improvements.push(
+          `Style Stack: ${apiResult.data.styleStackRecommendation.recommended_style_stack}`,
+        );
+        improvements.push(
+          `Reasoning: ${apiResult.data.styleStackRecommendation.reasoning}`,
+        );
+      }
+
+      const result = {
+        success: apiResult.success,
+        originalScript: apiResult.data?.originalScript || formData.script,
+        enhancedScript: apiResult.data?.enhancedScript || formData.script,
+        improvements,
+      };
+
       setEnhancementResult(result);
 
       if (result.success) {
@@ -166,6 +194,13 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       }
     } catch (error) {
       console.error("Script enhancement failed:", error);
+      setEnhancementResult({
+        success: false,
+        originalScript: formData.script,
+        enhancedScript: formData.script,
+        improvements: [],
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setIsEnhancing(false);
     }

@@ -6,8 +6,13 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { removeTeamMember, updateMemberRole } from "@/app/actions/team";
+import {
+  requireTeamAdminAccess,
+  requireTeamOwnerAccess,
+  requireUser,
+} from "@/lib/auth/action-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
+import { teamService } from "@/lib/services/team.service";
 
 const updateRoleSchema = z.object({
   role: z.enum(["owner", "admin", "member", "viewer"]),
@@ -29,19 +34,16 @@ export async function DELETE(
       throw new ValidationError("Invalid team ID or user ID format");
     }
 
-    // Remove member
-    const result = await removeTeamMember({ teamId, userId });
+    // Check authentication and authorization
+    const user = await requireUser();
+    await requireTeamAdminAccess(user.id, teamId);
 
-    if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.error || "Failed to remove member",
-          timestamp: new Date().toISOString(),
-        },
-        { status: result.error?.includes("Authentication") ? 401 : 403 },
-      );
-    }
+    // Remove member
+    await teamService.removeMember({
+      teamId,
+      userId,
+      requestingUserId: user.id,
+    });
 
     return NextResponse.json(
       {
@@ -89,23 +91,17 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateRoleSchema.parse(body);
 
+    // Check authentication and authorization
+    const user = await requireUser();
+    await requireTeamOwnerAccess(user.id, teamId);
+
     // Update role
-    const result = await updateMemberRole({
+    await teamService.updateMemberRole({
       teamId,
       userId,
       newRole: validated.role,
+      requestingUserId: user.id,
     });
-
-    if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.error || "Failed to update role",
-          timestamp: new Date().toISOString(),
-        },
-        { status: result.error?.includes("Authentication") ? 401 : 403 },
-      );
-    }
 
     return NextResponse.json(
       {

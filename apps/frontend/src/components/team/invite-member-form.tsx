@@ -7,7 +7,6 @@
 
 import type React from "react";
 import { useState } from "react";
-import { inviteTeamMember } from "@/app/actions/team";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,14 +70,20 @@ export function InviteMemberForm({
     }
 
     try {
-      const result = await inviteTeamMember({
-        teamId,
-        email,
-        role,
+      const response = await fetch(`/api/v1/teams/${teamId}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          role,
+        }),
       });
 
-      if (!result.success) {
-        setError(result.error || "Failed to send invitation");
+      if (!response.ok) {
+        const error = await response.json();
+        setError(error.error || "Failed to send invitation");
         setIsLoading(false);
         return;
       }

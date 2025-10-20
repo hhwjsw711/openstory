@@ -1,4 +1,3 @@
-import { getCurrentUser } from "#actions/user";
 import {
   type ApplyStyleToFramesInput,
   ApplyStyleToFramesSchema,
@@ -52,33 +51,26 @@ export class StyleStackService {
   /**
    * Create a new style for a team
    */
-  async createStyle(input: CreateStyleInput, userId?: string): Promise<Style> {
+  async createStyle(input: CreateStyleInput, userId: string): Promise<Style> {
     const validatedInput = CreateStyleSchema.parse(input);
 
-    // Get current user if userId provided
-    let teamId: string;
-    if (userId) {
-      const user = await getCurrentUser();
-      if (!user.success || !user.data) {
-        throw new Error("Unauthorized: Invalid user session");
-      }
-
-      // Get user's default team (for now, using first team they're a member of)
-      const { data: teamMember, error: teamError } = await this.supabase
-        .from("team_members")
-        .select("team_id")
-        .eq("user_id", userId)
-        .limit(1)
-        .single();
-
-      if (teamError || !teamMember) {
-        throw new Error("No team found for user");
-      }
-
-      teamId = teamMember.team_id;
-    } else {
+    if (!userId) {
       throw new Error("User ID is required to create a style");
     }
+
+    // Get user's default team (for now, using first team they're a member of)
+    const { data: teamMember, error: teamError } = await this.supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .single();
+
+    if (teamError || !teamMember) {
+      throw new Error("No team found for user");
+    }
+
+    const teamId = teamMember.team_id;
 
     const styleData: StyleInsert = {
       team_id: teamId,

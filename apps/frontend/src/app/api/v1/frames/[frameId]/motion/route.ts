@@ -4,23 +4,22 @@
  */
 
 import { z } from "zod";
-import { generateMotionAction } from "@/app/actions/frames";
+import {
+  requireTeamMemberAccess,
+  requireUser,
+  validateMotionAccess,
+} from "@/lib/auth/action-utils";
 import {
   createErrorResponse,
   createSuccessResponse,
   requireAuth,
-  requireAuthenticatedUserForMotion,
 } from "@/lib/auth/api-utils";
 import { ValidationError } from "@/lib/errors";
+import { getQStashClient } from "@/lib/qstash/client";
+import { getJobManager } from "@/lib/qstash/job-manager";
+import { generateMotionSchema } from "@/lib/schemas/frame.schemas";
 import { createServerClient } from "@/lib/supabase/server";
-
-// Request body schema
-const requestSchema = z.object({
-  model: z.enum(["svd-lcm", "stable-video", "animatediff"]).optional(),
-  duration: z.number().min(1).max(10).optional(),
-  fps: z.number().min(7).max(30).optional(),
-  motionBucket: z.number().min(1).max(255).optional(),
-});
+import type { Json } from "@/types/database";
 
 export async function POST(
   request: Request,
@@ -37,32 +36,110 @@ export async function POST(
       throw new ValidationError("Invalid frame ID format");
     }
 
-    // Check authentication - Motion generation requires authenticated (non-anonymous) users
-    await requireAuthenticatedUserForMotion(request);
-
     // Parse and validate request body
     const body = await request.json();
-    const validatedData = requestSchema.parse(body);
+    const validated = generateMotionSchema.parse(body);
 
-    // Generate motion for the frame
-    const result = await generateMotionAction({
-      frameId,
-      ...validatedData,
+    // Authenticate user (motion requires authenticated users)
+    const user = await requireUser();
+    validateMotionAccess(user);
+
+    const supabase = createServerClient();
+
+    // Get frame with sequence info
+    const { data: frame, error: frameError } = await supabase
+      .from("frames")
+      .select("*, sequences!inner(id, team_id, script, style_id, styles(*))")
+      .eq("id", frameId)
+      .single();
+
+    if (frameError || !frame) {
+      throw new ValidationError("Frame not found");
+    }
+
+    // Validate frame has thumbnail
+    if (!frame.thumbnail_url) {
+      throw new ValidationError(
+        "Frame must have a thumbnail before generating motion",
+      );
+    }
+
+    // Verify user has access to the frame's team
+    await requireTeamMemberAccess(user.id, frame.sequences.team_id);
+
+    // Create a job for motion generation
+    const jobManager = getJobManager();
+    const job = await jobManager.createJob({
+      type: "motion",
+      payload: {
+        frameId,
+        sequenceId: frame.sequence_id,
+        thumbnailUrl: frame.thumbnail_url,
+        prompt: frame.description,
+        model: validated.model,
+        duration: validated.duration,
+        fps: validated.fps,
+        motionBucket: validated.motionBucket,
+      },
+      userId: user.id,
+      teamId: frame.sequences.team_id,
     });
 
-    if (!result.success) {
-      throw new Error(result.error || "Motion generation failed");
-    }
+    // Queue the motion generation job
+    const qstashClient = getQStashClient();
+    const motionPayload = {
+      jobId: job.id,
+      type: "motion" as const,
+      userId: user.id,
+      teamId: frame.sequences.team_id,
+      data: {
+        frameId,
+        sequenceId: frame.sequence_id,
+        thumbnailUrl: frame.thumbnail_url,
+        prompt: frame.description || undefined,
+        model: validated.model || "svd-lcm",
+        duration: validated.duration || 2,
+        fps: validated.fps || 7,
+        motionBucket: validated.motionBucket || 127,
+      },
+    };
+
+    const response = await qstashClient.publishMotionJob(motionPayload, {
+      delay: 0,
+    });
+
+    console.log("[POST /api/v1/frames/[frameId]/motion] Motion job queued", {
+      frameId,
+      jobId: job.id,
+      messageId: response.messageId,
+    });
+
+    // Update frame metadata with motion generation status
+    await supabase
+      .from("frames")
+      .update({
+        metadata: {
+          ...(frame.metadata as Record<string, unknown>),
+          motionJobId: job.id,
+          motionStatus: "generating",
+          motionModel: validated.model || "svd-lcm",
+        } as Json,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", frameId);
 
     return createSuccessResponse(
       {
-        jobId: result.jobId,
+        jobId: job.id,
       },
-      result.message || "Motion generation started",
+      "Motion generation started successfully",
     );
   } catch (error) {
     if (error instanceof ValidationError) {
       return createErrorResponse(error.message, 400);
+    }
+    if (error instanceof z.ZodError) {
+      return createErrorResponse("Invalid request data", 400);
     }
     return createErrorResponse(
       error instanceof Error ? error.message : "Internal server error",

@@ -7,11 +7,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  getTeamMembers,
-  removeTeamMember,
-  updateMemberRole,
-} from "@/app/actions/team";
 import { AdminOnly } from "@/components/auth/admin-only";
 import { OwnerOnly } from "@/components/auth/owner-only";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -50,10 +45,12 @@ export function MemberList({ teamId }: MemberListProps) {
   const { data: membersResult, isLoading } = useQuery({
     queryKey: ["team-members", teamId],
     queryFn: async () => {
-      const result = await getTeamMembers(teamId);
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch members");
+      const response = await fetch(`/api/v1/teams/${teamId}/members`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fetch members");
       }
+      const result = await response.json();
       return result.data || [];
     },
   });
@@ -61,9 +58,12 @@ export function MemberList({ teamId }: MemberListProps) {
   // Remove member mutation
   const removeMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const result = await removeTeamMember({ teamId, userId });
-      if (!result.success) {
-        throw new Error(result.error || "Failed to remove member");
+      const response = await fetch(`/api/v1/teams/${teamId}/members/${userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to remove member");
       }
     },
     onSuccess: () => {
@@ -84,9 +84,19 @@ export function MemberList({ teamId }: MemberListProps) {
       userId: string;
       newRole: TeamRole;
     }) => {
-      const result = await updateMemberRole({ teamId, userId, newRole });
-      if (!result.success) {
-        throw new Error(result.error || "Failed to update role");
+      const response = await fetch(
+        `/api/v1/teams/${teamId}/members/${userId}/role`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ role: newRole }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update role");
       }
     },
     onSuccess: () => {
@@ -133,7 +143,12 @@ export function MemberList({ teamId }: MemberListProps) {
         )}
 
         <div className="space-y-4">
-          {members.map((member) => {
+          {members.map((member: {
+            userId: string;
+            email: string;
+            fullName?: string | null;
+            role: string;
+          }) => {
             const isCurrentUser = member.userId === userData?.user?.id;
             const isOwner = member.role === "owner";
 
