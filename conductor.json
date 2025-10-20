@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "setup": "# Copy configuration files\n# cp \"$CONDUCTOR_ROOT_PATH/.env\" .\n\ncp \"$CONDUCTOR_ROOT_PATH/.env.local\" .\ncp \"$CONDUCTOR_ROOT_PATH/.env.development.local\" .\ncp \"$CONDUCTOR_ROOT_PATH/.claude/settings.local.json\" ./.claude/\n \n# Install dependencies\nbun install",
+    "run": "# Run tests or a dev server, for example:\nbun run dev\n\n"
+  },
+  "runScriptMode": "nonconcurrent"
+}
