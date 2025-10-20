@@ -71,7 +71,7 @@ export const RECOMMENDED_MODELS = {
   fast: "anthropic/claude-haiku-4.5",
 
   // For highest quality (more expensive)
-  premium: "anthropic/claude-haiku-4.5",
+  premium: "anthropic/claude-sonnet-4.5",
 } as const;
 
 /**
