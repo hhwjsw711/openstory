@@ -159,10 +159,7 @@ export function useGenerateImageStatusByJobId(
 async function fetchEstimateImageCostByFal(
   params: EstimateImageCostByFalRequest,
 ) {
-  const url = new URL(
-    "/api/generation/image/estimate",
-    window.location.origin,
-  );
+  const url = new URL("/api/generation/image/estimate", window.location.origin);
   const response = await fetch(url, {
     method: "POST",
     headers: {

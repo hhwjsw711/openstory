@@ -92,7 +92,7 @@ export function MemberList({ teamId }: MemberListProps) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ role: newRole }),
-        }
+        },
       );
       if (!response.ok) {
         const error = await response.json();
@@ -143,83 +143,85 @@ export function MemberList({ teamId }: MemberListProps) {
         )}
 
         <div className="space-y-4">
-          {members.map((member: {
-            userId: string;
-            email: string;
-            fullName?: string | null;
-            role: string;
-          }) => {
-            const isCurrentUser = member.userId === userData?.user?.id;
-            const isOwner = member.role === "owner";
+          {members.map(
+            (member: {
+              userId: string;
+              email: string;
+              fullName?: string | null;
+              role: string;
+            }) => {
+              const isCurrentUser = member.userId === userData?.user?.id;
+              const isOwner = member.role === "owner";
 
-            return (
-              <div
-                key={member.userId}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {member.fullName || member.email}
-                      </span>
-                      {isCurrentUser && (
+              return (
+                <div
+                  key={member.userId}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {member.fullName || member.email}
+                        </span>
+                        {isCurrentUser && (
+                          <span className="text-sm text-muted-foreground">
+                            (You)
+                          </span>
+                        )}
+                      </div>
+                      {member.fullName && (
                         <span className="text-sm text-muted-foreground">
-                          (You)
+                          {member.email}
                         </span>
                       )}
                     </div>
-                    {member.fullName && (
-                      <span className="text-sm text-muted-foreground">
-                        {member.email}
-                      </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Role badge or selector */}
+                    {canChangeRoles && !isOwner && !isCurrentUser ? (
+                      <OwnerOnly
+                        fallback={
+                          <MemberRoleBadge role={member.role as TeamRole} />
+                        }
+                      >
+                        <Select
+                          options={roleOptions}
+                          value={member.role}
+                          onChange={(newRole) =>
+                            updateRoleMutation.mutate({
+                              userId: member.userId,
+                              newRole: newRole as TeamRole,
+                            })
+                          }
+                          disabled={updateRoleMutation.isPending}
+                          size="sm"
+                          className="w-32"
+                        />
+                      </OwnerOnly>
+                    ) : (
+                      <MemberRoleBadge role={member.role as TeamRole} />
+                    )}
+
+                    {/* Remove button */}
+                    {canRemoveMembers && !isOwner && !isCurrentUser && (
+                      <AdminOnly>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeMutation.mutate(member.userId)}
+                          disabled={removeMutation.isPending}
+                        >
+                          {removeMutation.isPending ? "Removing..." : "Remove"}
+                        </Button>
+                      </AdminOnly>
                     )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Role badge or selector */}
-                  {canChangeRoles && !isOwner && !isCurrentUser ? (
-                    <OwnerOnly
-                      fallback={
-                        <MemberRoleBadge role={member.role as TeamRole} />
-                      }
-                    >
-                      <Select
-                        options={roleOptions}
-                        value={member.role}
-                        onChange={(newRole) =>
-                          updateRoleMutation.mutate({
-                            userId: member.userId,
-                            newRole: newRole as TeamRole,
-                          })
-                        }
-                        disabled={updateRoleMutation.isPending}
-                        size="sm"
-                        className="w-32"
-                      />
-                    </OwnerOnly>
-                  ) : (
-                    <MemberRoleBadge role={member.role as TeamRole} />
-                  )}
-
-                  {/* Remove button */}
-                  {canRemoveMembers && !isOwner && !isCurrentUser && (
-                    <AdminOnly>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeMutation.mutate(member.userId)}
-                        disabled={removeMutation.isPending}
-                      >
-                        {removeMutation.isPending ? "Removing..." : "Remove"}
-                      </Button>
-                    </AdminOnly>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            },
+          )}
         </div>
       </CardContent>
     </Card>

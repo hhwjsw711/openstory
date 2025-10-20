@@ -1,4 +1,3 @@
-import type OpenAI from "openai";
 import { z } from "zod";
 import {
   callOpenRouter,

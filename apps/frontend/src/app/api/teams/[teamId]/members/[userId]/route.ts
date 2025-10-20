@@ -112,10 +112,7 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error) {
-    console.error(
-      "[PATCH /api/teams/[teamId]/members/[userId]] Error:",
-      error,
-    );
+    console.error("[PATCH /api/teams/[teamId]/members/[userId]] Error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

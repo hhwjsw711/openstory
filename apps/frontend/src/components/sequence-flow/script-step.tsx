@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { validateScript } from "@/lib/validation/script";
 import { ScriptEditor } from "@/components/sequence/script-editor";
 import { StyleSelector } from "@/components/sequence/style-selector";
 import { SectionHeading } from "@/components/typography";
@@ -12,6 +11,7 @@ import {
   useUpdateSequence,
 } from "@/hooks/use-sequences";
 import { useStyles } from "@/hooks/use-styles";
+import { validateScript } from "@/lib/validation/script";
 import type { Style } from "@/types/database";
 
 // Zod validation schema for script form
@@ -87,7 +87,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       });
     }
   }, [existingSequence, isEditMode]);
-
 
   // Auto-validate script on changes (debounced)
   useEffect(() => {

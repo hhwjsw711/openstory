@@ -82,7 +82,9 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
           ? sequenceResult.data
           : null;
       const frames =
-        framesResponse.ok && framesResult.success ? framesResult.data || [] : [];
+        framesResponse.ok && framesResult.success
+          ? framesResult.data || []
+          : [];
       const activeJob =
         activeJobResponse.ok && activeJobResult.success
           ? activeJobResult.data

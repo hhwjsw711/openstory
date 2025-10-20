@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 import { useCallback, useRef, useState } from "react";
-import type { GeneratedImageStatusResponse } from "@/types/generation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
@@ -15,6 +14,7 @@ import {
 } from "@/hooks/use-fal-models";
 import { cn } from "@/lib/utils";
 import type { Frame, Style } from "@/types/database";
+import type { GeneratedImageStatusResponse } from "@/types/generation";
 
 interface ModelInfo {
   id: string;

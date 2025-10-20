@@ -514,10 +514,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
 
       const job = result.data;
 
-      if (
-        job &&
-        (job.status === "running" || job.status === "completed")
-      ) {
+      if (job && (job.status === "running" || job.status === "completed")) {
         queryClient.invalidateQueries({
           queryKey: frameKeys.list(sequenceId),
         });
