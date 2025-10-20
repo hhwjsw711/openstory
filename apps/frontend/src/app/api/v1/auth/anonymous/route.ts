@@ -5,8 +5,8 @@
 
 import { NextResponse } from "next/server";
 import { createAnonymousSession } from "@/lib/auth/server";
-import { createServerClient } from "@/lib/supabase/server";
 import { handleApiError } from "@/lib/errors";
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function POST() {
   try {
