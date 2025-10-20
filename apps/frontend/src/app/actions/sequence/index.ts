@@ -313,59 +313,9 @@ export async function generateFrameMotion(
       motionBucket: 127, // Medium motion
     });
 
-    let finalVideoUrl: string;
-    let videoStoragePath: string | undefined;
-
     if (!result.success || !result.videoUrl) {
       // Fallback to mock for development if Fal.ai fails
-      console.warn(
-        "[generateFrameMotion] Real motion generation failed, using mock",
-        result.error,
-      );
-      const { generateFrameMotion: generateMockMotion } = await import(
-        "#actions/anonymous-flow"
-      );
-      const mockResult = await generateMockMotion(
-        frameId,
-        frameDescription,
-        styleId,
-      );
-
-      if (!mockResult.success) {
-        throw new Error(mockResult.error || "Failed to generate motion");
-      }
-
-      finalVideoUrl = mockResult.videoUrl;
-
-      // Update frame with mock video URL
-      const { data, error } = await supabase
-        .from("frames")
-        .update({
-          video_url: mockResult.videoUrl,
-          duration_ms: mockResult.duration,
-          metadata: {
-            ...(frame.metadata as object),
-            motionGenerated: true,
-            motionModel: "mock",
-            motionDuration: mockResult.duration,
-            videoStoragePath: null, // Mock videos aren't stored
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", frameId)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      revalidateSequencePages(data.sequence_id);
-      return {
-        success: true,
-        videoUrl: mockResult.videoUrl,
-        duration: mockResult.duration,
-      };
+      throw new Error("Failed to generate motion");
     }
 
     // Store the FAL video in Supabase Storage for permanent access
@@ -380,35 +330,23 @@ export async function generateFrameMotion(
       frameId,
     });
 
-    if (storageResult.success && storageResult.url) {
-      finalVideoUrl = storageResult.url;
-      videoStoragePath = storageResult.path;
-      console.log(
-        "[generateFrameMotion] Video stored in Supabase:",
-        videoStoragePath,
-      );
-    } else {
-      // If storage fails, use the temporary FAL URL
-      console.warn(
-        "[generateFrameMotion] Failed to store video, using FAL URL:",
-        storageResult.error,
-      );
-      finalVideoUrl = result.videoUrl;
+    if (!storageResult.success || !storageResult.url) {
+      throw new Error("Failed to store video");
     }
 
     // Update frame with the stored video URL
     const { data, error } = await supabase
       .from("frames")
       .update({
-        video_url: finalVideoUrl,
+        video_url: storageResult.url,
         duration_ms: ((result.metadata?.duration as number) || 3) * 1000,
         metadata: {
           ...(frame.metadata as object),
           motionGenerated: true,
           motionModel: (result.metadata?.model as string) || "svd-lcm",
           motionMetadata: result.metadata as Json | undefined,
-          videoStoragePath,
-          videoStoredAt: videoStoragePath ? new Date().toISOString() : null,
+          videoStoragePath: storageResult.path,
+          videoStoredAt: storageResult.path ? new Date().toISOString() : null,
           falVideoUrl: result.videoUrl, // Keep original FAL URL for reference
         } as Json,
         updated_at: new Date().toISOString(),
@@ -424,7 +362,7 @@ export async function generateFrameMotion(
     revalidateSequencePages(data.sequence_id);
     return {
       success: true,
-      videoUrl: finalVideoUrl,
+      videoUrl: storageResult.url,
       duration: ((result.metadata?.duration as number) || 3) * 1000,
     };
   } catch (error) {
