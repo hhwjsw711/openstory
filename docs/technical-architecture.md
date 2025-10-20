@@ -82,7 +82,7 @@ erDiagram
 ### Backend Architecture
 ```typescript
 // API Layer (Next.js API Routes)
-/api/v1
+
   /auth         // Supabase auth wrapper
   /sequences    // CRUD + generation
   /frames       // Frame management

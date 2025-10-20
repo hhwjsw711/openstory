@@ -53,7 +53,7 @@ export function useFramesBySequence(
     queryKey: frameKeys.list(sequenceId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/v1/frames/sequences/${sequenceId}/frames`,
+        `/api/frames/sequences/${sequenceId}/frames`,
       );
       const result = await response.json();
 
@@ -76,7 +76,7 @@ export function useFrame(frameId: string) {
   return useQuery<Frame>({
     queryKey: frameKeys.detail(frameId),
     queryFn: async () => {
-      const response = await fetch(`/api/v1/frames/${frameId}`);
+      const response = await fetch(`/api/frames/${frameId}`);
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -96,7 +96,7 @@ export function useCreateFrame() {
 
   return useMutation<Frame, Error, CreateFrameInput>({
     mutationFn: async (input: CreateFrameInput) => {
-      const response = await fetch("/api/v1/frames", {
+      const response = await fetch("/api/frames", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,7 +130,7 @@ export function useUpdateFrame() {
     mutationFn: async (input: UpdateFrameInput) => {
       const { id, ...updateData } = input;
 
-      const response = await fetch(`/api/v1/frames/${id}`, {
+      const response = await fetch(`/api/frames/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -169,7 +169,7 @@ export function useDeleteFrame() {
         frameKeys.detail(frameId),
       );
 
-      const response = await fetch(`/api/v1/frames/${frameId}`, {
+      const response = await fetch(`/api/frames/${frameId}`, {
         method: "DELETE",
       });
 
@@ -213,7 +213,7 @@ export function useReorderFrames() {
       frameOrders: Array<{ id: string; order_index: number }>;
     }) => {
       const response = await fetch(
-        `/api/v1/frames/sequences/${sequenceId}/frames/reorder`,
+        `/api/frames/sequences/${sequenceId}/frames/reorder`,
         {
           method: "PATCH",
           headers: {
@@ -290,7 +290,7 @@ export function useBulkCreateFrames() {
       sequenceId: string;
       frames: Omit<CreateFrameInput, "sequence_id">[];
     }) => {
-      const response = await fetch("/api/v1/frames/bulk", {
+      const response = await fetch("/api/frames/bulk", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -321,7 +321,7 @@ export function useDeleteFramesBySequence() {
   return useMutation<string, Error, string>({
     mutationFn: async (sequenceId: string) => {
       const response = await fetch(
-        `/api/v1/frames/sequences/${sequenceId}/frames`,
+        `/api/frames/sequences/${sequenceId}/frames`,
         {
           method: "DELETE",
         },
@@ -356,7 +356,7 @@ export function useGenerateFrames() {
   >({
     mutationFn: async (input: GenerateFramesInput) => {
       const response = await fetch(
-        `/api/v1/sequences/${input.sequenceId}/frames/generate`,
+        `/api/sequences/${input.sequenceId}/frames/generate`,
         {
           method: "POST",
         },
@@ -412,7 +412,7 @@ export function useRegenerateFrame() {
     mutationFn: async (input: RegenerateFrameInput) => {
       const { frameId, ...body } = input;
 
-      const response = await fetch(`/api/v1/frames/${frameId}/regenerate`, {
+      const response = await fetch(`/api/frames/${frameId}/regenerate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -460,7 +460,7 @@ export function useFrameGenerationStatus(
     queryFn: async () => {
       if (!jobId) return null;
 
-      const response = await fetch(`/api/v1/frames/jobs/${jobId}/status`);
+      const response = await fetch(`/api/frames/jobs/${jobId}/status`);
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -501,7 +501,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
     queryKey: ["active-job", sequenceId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/v1/frames/sequences/${sequenceId}/generation/active`,
+        `/api/frames/sequences/${sequenceId}/generation/active`,
       );
       const result = await response.json();
 

@@ -98,7 +98,7 @@ export async function generateMotionAction(
 ```
 
 #### Task 1.2: Create Motion Generation Webhook
-**File**: `/src/app/api/v1/webhooks/qstash/motion/route.ts`
+**File**: `/src/app/webhooks/qstash/motion/route.ts`
 ```typescript
 // New webhook specifically for frame motion generation
 // Differs from generic video webhook by:
@@ -272,23 +272,23 @@ export function BatchMotionControls({
 ### New Endpoints
 ```typescript
 // Single frame motion
-POST /api/v1/frames/{frameId}/generate-motion
-GET  /api/v1/frames/{frameId}/motion-status
+POST /api/frames/{frameId}/generate-motion
+GET  /api/frames/{frameId}/motion-status
 
 // Batch operations
-POST /api/v1/sequences/{sequenceId}/generate-all-motion
-GET  /api/v1/sequences/{sequenceId}/motion-progress
+POST /api/sequences/{sequenceId}/generate-all-motion
+GET  /api/sequences/{sequenceId}/motion-progress
 
 // Motion management
-DELETE /api/v1/frames/{frameId}/motion
-POST   /api/v1/frames/{frameId}/regenerate-motion
+DELETE /api/frames/{frameId}/motion
+POST   /api/frames/{frameId}/regenerate-motion
 ```
 
 ### Modified Endpoints
 ```typescript
 // Extended to include motion data
-GET /api/v1/sequences/{sequenceId}/frames
-GET /api/v1/frames/{frameId}
+GET /api/sequences/{sequenceId}/frames
+GET /api/frames/{frameId}
 ```
 
 ## Database Schema Updates

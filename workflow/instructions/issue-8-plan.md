@@ -26,7 +26,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 - Returns job ID and optimistic frame placeholders
 
 #### 1.3 Implement QStash Webhook Handler
-- **File:** `src/app/api/v1/webhooks/qstash/frames/route.ts`
+- **File:** `src/app/webhooks/qstash/frames/route.ts`
 - Processes frame generation jobs
 - Calls AI service for frame description generation
 - Updates database with generated frame data

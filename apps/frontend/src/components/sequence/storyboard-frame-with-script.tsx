@@ -136,7 +136,7 @@ export const StoryboardFrameWithScript: React.FC<
     setMotionError(null);
 
     try {
-      const response = await fetch(`/api/v1/frames/${frame.id}/motion`, {
+      const response = await fetch(`/api/frames/${frame.id}/motion`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

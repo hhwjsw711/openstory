@@ -45,7 +45,7 @@ export function MemberList({ teamId }: MemberListProps) {
   const { data: membersResult, isLoading } = useQuery({
     queryKey: ["team-members", teamId],
     queryFn: async () => {
-      const response = await fetch(`/api/v1/teams/${teamId}/members`);
+      const response = await fetch(`/api/teams/${teamId}/members`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to fetch members");
@@ -58,7 +58,7 @@ export function MemberList({ teamId }: MemberListProps) {
   // Remove member mutation
   const removeMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const response = await fetch(`/api/v1/teams/${teamId}/members/${userId}`, {
+      const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
         method: "DELETE",
       });
       if (!response.ok) {
@@ -85,7 +85,7 @@ export function MemberList({ teamId }: MemberListProps) {
       newRole: TeamRole;
     }) => {
       const response = await fetch(
-        `/api/v1/teams/${teamId}/members/${userId}/role`,
+        `/api/teams/${teamId}/members/${userId}/role`,
         {
           method: "PATCH",
           headers: {

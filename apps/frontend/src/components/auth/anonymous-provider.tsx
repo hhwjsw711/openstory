@@ -37,7 +37,7 @@ export function AnonymousProvider({ children }: AnonymousProviderProps) {
 
       // No session exists, create an anonymous one
       try {
-        const response = await fetch("/api/v1/auth/anonymous", {
+        const response = await fetch("/api/auth/anonymous", {
           method: "POST",
         });
 

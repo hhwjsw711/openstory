@@ -37,14 +37,14 @@ The codebase is already well-prepared for motion generation:
 ```
 
 **API Endpoints**:
-- `POST /api/v1/frames/:id/motion` - Generate motion for single frame
-- `POST /api/v1/sequences/:id/motion` - Generate motion for all frames
-- `GET /api/v1/sequences/:id/motion-status` - Get motion generation status
+- `POST /api/frames/:id/motion` - Generate motion for single frame
+- `POST /api/sequences/:id/motion` - Generate motion for all frames
+- `GET /api/sequences/:id/motion-status` - Get motion generation status
 
 ## Implementation Tasks
 
 ### Phase 1: Backend Infrastructure (Priority: HIGH)
-1. **Extend Frame Actions** (`/app/api/v1/frames/[frameId]/actions.ts`)
+1. **Extend Frame Actions** (`/app/frames/[frameId]/actions.ts`)
    - Add `generateMotionAction` function
    - Validate frame has thumbnail before motion generation
    - Return job ID for tracking
@@ -106,7 +106,7 @@ The codebase is already well-prepared for motion generation:
 
 ### Motion Generation Action
 ```typescript
-// /app/api/v1/frames/[frameId]/actions.ts
+// /app/frames/[frameId]/actions.ts
 export async function generateMotionAction(
   frameId: string,
   params: { quality?: 'fast' | 'balanced' | 'premium' }

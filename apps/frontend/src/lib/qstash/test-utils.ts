@@ -204,7 +204,7 @@ export const createTestWebhookRequest = (
     text: mock().mockResolvedValue(
       JSON.stringify(overrides?.body || defaultBody),
     ),
-    url: overrides?.url || "https://example.com/api/v1/webhooks/qstash/image",
+    url: overrides?.url || "https://example.com/api/webhooks/qstash/image",
     method: overrides?.method || "POST",
   };
 };

@@ -214,7 +214,7 @@ export async function createAction(input: CreateInput) {
 ```
 
 ### API Route Pattern
-Located in `apps/frontend/src/app/api/v1/*/route.ts`:
+Located in `apps/frontend/src/app/*/route.ts`:
 
 ```typescript
 import { NextResponse } from "next/server";

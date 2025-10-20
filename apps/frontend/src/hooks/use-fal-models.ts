@@ -55,7 +55,7 @@ export const falModelKeys = {
 
 // Fetch all FAL models function
 async function fetchFalModels(params: FalModelsRequest) {
-  const url = new URL("/api/v1/fal/models", window.location.origin);
+  const url = new URL("/api/fal/models", window.location.origin);
   url.searchParams.set("type", params.type);
   if (typeof params.includeCosts === "boolean") {
     url.searchParams.set("includeCosts", String(params.includeCosts));
@@ -81,7 +81,7 @@ export interface GenerateImageByFalRequest {
 }
 
 async function generateImageByFal(params: GenerateImageByFalRequest) {
-  const url = new URL("/api/v1/generates/image", window.location.origin);
+  const url = new URL("/api/generates/image", window.location.origin);
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -111,7 +111,7 @@ export function useGenerateImageByFal() {
 
 async function fetchGeneratedImageByJobId(id: string) {
   const url = new URL(
-    `/api/v1/generates/image/${id}/status`,
+    `/api/generates/image/${id}/status`,
     window.location.origin,
   );
   const response = await fetch(url);
@@ -160,7 +160,7 @@ async function fetchEstimateImageCostByFal(
   params: EstimateImageCostByFalRequest,
 ) {
   const url = new URL(
-    "/api/v1/generation/image/estimate",
+    "/api/generation/image/estimate",
     window.location.origin,
   );
   const response = await fetch(url, {

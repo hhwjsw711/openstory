@@ -146,7 +146,7 @@ import { something } from '@/app/api/utils'
 ## Backend Development Guidelines
 
 ### When creating new features:
-1. Start with API route in `/app/api/v1/[feature]`
+1. Start with API route in `/app/[feature]`
 2. All DB operations in API routes only
 3. Use QStash for any AI generation or long-running tasks
 4. Create TanStack Query hooks for data fetching

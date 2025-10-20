@@ -152,7 +152,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
     setIsEnhancing(true);
     try {
-      const response = await fetch("/api/v1/script/enhance", {
+      const response = await fetch("/api/script/enhance", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

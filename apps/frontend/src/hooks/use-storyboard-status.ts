@@ -64,9 +64,9 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
     queryFn: async () => {
       const [sequenceResponse, framesResponse, activeJobResponse] =
         await Promise.all([
-          fetch(`/api/v1/sequences/${sequenceId}`),
-          fetch(`/api/v1/frames/sequences/${sequenceId}/frames`),
-          fetch(`/api/v1/frames/sequences/${sequenceId}/generation/active`),
+          fetch(`/api/sequences/${sequenceId}`),
+          fetch(`/api/frames/sequences/${sequenceId}/frames`),
+          fetch(`/api/frames/sequences/${sequenceId}/generation/active`),
         ]);
 
       const [sequenceResult, framesResult, activeJobResult] = await Promise.all(

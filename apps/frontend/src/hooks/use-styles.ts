@@ -25,7 +25,7 @@ export function useStyles(teamId?: string) {
   return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
-      const response = await fetch("/api/v1/styles");
+      const response = await fetch("/api/styles");
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -43,7 +43,7 @@ export function useStyle(id: string) {
   return useQuery<Style>({
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
-      const response = await fetch(`/api/v1/styles/${id}`);
+      const response = await fetch(`/api/styles/${id}`);
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -63,7 +63,7 @@ export function useCreateStyle() {
 
   return useMutation<Style, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
-      const response = await fetch("/api/v1/styles", {
+      const response = await fetch("/api/styles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export function useUpdateStyle() {
       id: string;
       input: Partial<CreateStyleInput>;
     }) => {
-      const response = await fetch(`/api/v1/styles/${id}`, {
+      const response = await fetch(`/api/styles/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export function useDeleteStyle() {
 
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/v1/styles/${id}`, {
+      const response = await fetch(`/api/styles/${id}`, {
         method: "DELETE",
       });
 

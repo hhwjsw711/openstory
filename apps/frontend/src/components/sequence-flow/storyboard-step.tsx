@@ -81,7 +81,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     setGenerationError(null);
 
     try {
-      const response = await fetch(`/api/v1/sequences/${sequenceId}/frames/generate`, {
+      const response = await fetch(`/api/sequences/${sequenceId}/frames/generate`, {
         method: "POST",
       });
 

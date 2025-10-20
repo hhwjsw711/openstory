@@ -311,7 +311,7 @@ EOF
     case "$agent_type" in
         backend-engineer|backend-tech-lead)
             cat >> "$instructions_file" << 'EOF'
-- Review existing API patterns in /app/api/v1/
+- Review existing API patterns in /app/
 - Implement the required endpoint following REST principles
 - Use Zod for input validation
 - Ensure all DB operations go through API routes

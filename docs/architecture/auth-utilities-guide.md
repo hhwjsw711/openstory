@@ -132,7 +132,7 @@ export function isAuthenticatedUser(user: User): boolean
 **Example Usage:**
 
 ```typescript
-// src/app/api/v1/sequences/[sequenceId]/route.ts
+// src/app/sequences/[sequenceId]/route.ts
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ sequenceId: string }> }

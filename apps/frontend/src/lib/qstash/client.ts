@@ -46,7 +46,7 @@ class QStashClient {
 
     const apiUrl = getQStashWebhookUrl();
     this.client = new Client({ token });
-    this.baseWebhookUrl = `${apiUrl}/api/v1/webhooks/qstash`;
+    this.baseWebhookUrl = `${apiUrl}/api/webhooks/qstash`;
     this.loggerService = new LoggerService("QStashClient");
     // Client initialized successfully
   }

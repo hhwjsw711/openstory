@@ -15,7 +15,7 @@ export function useSequences(teamId?: string) {
   return useQuery<Sequence[]>({
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
-      const response = await fetch("/api/v1/sequences");
+      const response = await fetch("/api/sequences");
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -39,7 +39,7 @@ export function useSequence(
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
-      const response = await fetch(`/api/v1/sequences/${id}`);
+      const response = await fetch(`/api/sequences/${id}`);
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -74,7 +74,7 @@ export function useCreateSequence() {
       styleId: string | null;
       name?: string;
     }) => {
-      const response = await fetch("/api/v1/sequences", {
+      const response = await fetch("/api/sequences", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,7 +125,7 @@ export function useUpdateSequence() {
       if (input.script !== undefined) body.script = input.script;
       if (input.styleId !== undefined) body.styleId = input.styleId;
 
-      const response = await fetch(`/api/v1/sequences/${input.id}`, {
+      const response = await fetch(`/api/sequences/${input.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -156,7 +156,7 @@ export function useDeleteSequence() {
 
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/v1/sequences/${id}`, {
+      const response = await fetch(`/api/sequences/${id}`, {
         method: "DELETE",
       });
 

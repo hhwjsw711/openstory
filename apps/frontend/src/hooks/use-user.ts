@@ -14,7 +14,7 @@ interface UserData {
 }
 
 async function fetchUser(): Promise<UserData> {
-  const response = await fetch("/api/v1/user/me");
+  const response = await fetch("/api/user/me");
   const result = await response.json();
 
   if (!response.ok || !result.success) {
@@ -22,11 +22,11 @@ async function fetchUser(): Promise<UserData> {
       const { data, error } = await authClient.signIn.anonymous();
 
       if (!error && data) {
-        const retryResponse = await fetch("/api/v1/user/me");
+        const retryResponse = await fetch("/api/user/me");
         const retryResult = await retryResponse.json();
 
         if (retryResponse.ok && retryResult.success && retryResult.data) {
-          const teamResponse = await fetch("/api/v1/user/team");
+          const teamResponse = await fetch("/api/user/team");
           const teamResult = await teamResponse.json();
 
           return {
@@ -48,7 +48,7 @@ async function fetchUser(): Promise<UserData> {
     throw new Error("No user data returned");
   }
 
-  const teamResponse = await fetch("/api/v1/user/team");
+  const teamResponse = await fetch("/api/user/team");
   const teamResult = await teamResponse.json();
 
   return {

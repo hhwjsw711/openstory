@@ -149,7 +149,7 @@ describe.skip("QStashClient", () => {
       const result = await client.publishImageJob(payload, options);
 
       expect(mockClient.publishJSON).toHaveBeenCalledWith({
-        url: "https://test-api.example.com/api/v1/webhooks/qstash/image",
+        url: "https://test-api.example.com/api/webhooks/qstash/image",
         body: payload,
         headers: {
           "Content-Type": "application/json",
@@ -198,7 +198,7 @@ describe.skip("QStashClient", () => {
       const result = await client.publishVideoJob(payload);
 
       expect(mockClient.publishJSON).toHaveBeenCalledWith({
-        url: "https://test-api.example.com/api/v1/webhooks/qstash/video",
+        url: "https://test-api.example.com/api/webhooks/qstash/video",
         body: payload,
         headers: {
           "Content-Type": "application/json",
@@ -232,7 +232,7 @@ describe.skip("QStashClient", () => {
       const result = await client.publishScriptJob(payload);
 
       expect(mockClient.publishJSON).toHaveBeenCalledWith({
-        url: "https://test-api.example.com/api/v1/webhooks/qstash/script",
+        url: "https://test-api.example.com/api/webhooks/qstash/script",
         body: payload,
         headers: {
           "Content-Type": "application/json",
