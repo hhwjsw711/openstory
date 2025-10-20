@@ -3,6 +3,7 @@
     "allow": [
       "Bash(bun biome:*)",
       "Bash(bun biome check --write .)",
+      "Bash(bun tsc --noEmit --skipLibCheck)",
       "Bash(bun test)",
       "Bash(bun test --watch)",
       "Bash(bun test --coverage)",

@@ -81,7 +81,7 @@ export function useCreateSequence() {
         },
         body: JSON.stringify({
           script: input.script,
-          styleId: input.styleId,
+          style_id: input.styleId,
           name: input.name || "Untitled Sequence",
         }),
       });

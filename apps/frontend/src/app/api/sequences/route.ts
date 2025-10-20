@@ -21,7 +21,9 @@ export async function POST(request: Request) {
 
     // Parse and validate request body
     const body = await request.json();
+    console.log("[POST /api/sequences] Request body:", body);
     const validated = createSequenceSchema.parse(body);
+    console.log("[POST /api/sequences] Validated data:", validated);
 
     const supabase = createServerClient();
 
@@ -48,12 +50,21 @@ export async function POST(request: Request) {
     const teamId = teamMemberships[0].team_id;
 
     // Create sequence
-    const sequence = await sequenceService.createSequence({
+    const createParams = {
       teamId,
       userId: user.id,
       name: validated.name,
       script: validated.script,
       styleId: validated.style_id || undefined,
+    };
+    console.log(
+      "[POST /api/sequences] Creating sequence with params:",
+      createParams,
+    );
+    const sequence = await sequenceService.createSequence(createParams);
+    console.log("[POST /api/sequences] Created sequence:", {
+      id: sequence.id,
+      style_id: sequence.style_id,
     });
 
     // Generate frames asynchronously
