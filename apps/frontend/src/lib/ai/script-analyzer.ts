@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { VELRO_UNIVERSAL_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import {
   callOpenRouter,
   extractJSON,
@@ -63,9 +64,7 @@ export async function analyzeScriptForFrames(
   const response = await callOpenRouter({
     model: RECOMMENDED_MODELS.structured,
     messages: [
-      systemMessage(
-        "You are a professional script analyst. Divide scripts into logical scenes for storyboard generation. You must respond with ONLY valid JSON data - no additional text, explanations, or markdown formatting. All numeric values must be actual numbers, not strings.",
-      ),
+      systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
       userMessage(
         `Analyze this script and divide it into logical scenes for storyboard generation.
 

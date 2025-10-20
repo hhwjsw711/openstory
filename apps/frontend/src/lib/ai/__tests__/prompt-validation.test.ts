@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it, type Mock, mock } from "bun:test";
 import {
-  _testExports,
-  enhanceScript,
-  resetOpenRouterClient,
-} from "./script-enhancer";
-
-const { sanitizeScriptContent, validateAIResponse, INJECTION_PATTERNS } =
-  _testExports;
+  INJECTION_PATTERNS,
+  sanitizeScriptContent,
+  validateAIResponse,
+} from "../prompt-validation";
+import { enhanceScript } from "../script-enhancer";
 
 // Mock OpenAI for security tests
 const mockChatCompletionsCreate = mock() as Mock<() => Promise<any>>;
@@ -27,7 +25,6 @@ describe("Script Enhancer Security Tests", () => {
   beforeEach(() => {
     mockChatCompletionsCreate.mockClear();
     process.env.OPENROUTER_KEY = "test-api-key";
-    resetOpenRouterClient();
   });
 
   describe("Input Sanitization", () => {
