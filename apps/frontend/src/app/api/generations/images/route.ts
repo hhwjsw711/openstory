@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("[api/v1/generates/image] Error generating image", error);
+    console.error("[api/generations/images] Error generating image", error);
     const velroError = handleApiError(error);
     return NextResponse.json(
       { error: velroError.message },

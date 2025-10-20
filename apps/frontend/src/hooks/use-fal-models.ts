@@ -81,7 +81,7 @@ export interface GenerateImageByFalRequest {
 }
 
 async function generateImageByFal(params: GenerateImageByFalRequest) {
-  const url = new URL("/api/generates/image", window.location.origin);
+  const url = new URL("/api/generations/images", window.location.origin);
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -110,10 +110,7 @@ export function useGenerateImageByFal() {
 }
 
 async function fetchGeneratedImageByJobId(id: string) {
-  const url = new URL(
-    `/api/generates/image/${id}/status`,
-    window.location.origin,
-  );
+  const url = new URL(`/api/generations/images/${id}`, window.location.origin);
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
@@ -159,7 +156,7 @@ export function useGenerateImageStatusByJobId(
 async function fetchEstimateImageCostByFal(
   params: EstimateImageCostByFalRequest,
 ) {
-  const url = new URL("/api/generation/image/estimate", window.location.origin);
+  const url = new URL("/api/estimates/images", window.location.origin);
   const response = await fetch(url, {
     method: "POST",
     headers: {

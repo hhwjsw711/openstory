@@ -1,5 +1,5 @@
 /**
- * Image generation webhook handler
+ * Image generation processor
  * Processes image generation jobs from QStash using FAL AI
  */
 
@@ -12,6 +12,10 @@ import {
 import type { LetzAIMode } from "@/lib/ai/letzai-client";
 import { generateImage as generateImageLetzAI } from "@/lib/ai/letzai-client";
 import { AI_PROVIDER_MAPPINGS } from "@/lib/ai/models";
+import {
+  BaseProcessorHandler,
+  type JobProcessor,
+} from "@/lib/qstash/base-handler";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import type {
@@ -20,7 +24,6 @@ import type {
 } from "@/lib/schemas/letzai-request";
 import { LoggerService } from "@/lib/services/logger.service";
 import { createAdminClient } from "@/lib/supabase/server";
-import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 const LETZAI_PRESET_DIMENSIONS: Record<
   string,
@@ -42,7 +45,7 @@ const processImageGeneration: JobProcessor = async (
   _metadata,
 ): Promise<Record<string, unknown>> => {
   const { data } = payload;
-  const loggerService = new LoggerService("ImageWebhook");
+  const loggerService = new LoggerService("ImageProcessor");
   // Type assertion for image generation data
   const imageData = data as {
     prompt?: string;
@@ -181,7 +184,7 @@ const processImageGeneration: JobProcessor = async (
 
     return result;
   } catch (error) {
-    console.error("[ImageWebhook] Image generation failed", error);
+    console.error("[ImageProcessor] Image generation failed", error);
 
     // Return mock fallback on error
     const fallbackResult = {
@@ -212,7 +215,7 @@ const processImageGeneration: JobProcessor = async (
 
       if (updateError) {
         console.error(
-          "[ImageWebhook] Failed to update frame with fallback image URL",
+          "[ImageProcessor] Failed to update frame with fallback image URL",
           {
             frameId: imageData.frameId,
             error: updateError.message,
@@ -226,23 +229,23 @@ const processImageGeneration: JobProcessor = async (
 };
 
 /**
- * Image webhook handler
+ * Image processor handler
  */
-const imageWebhookHandler = new BaseWebhookHandler();
+const imageProcessorHandler = new BaseProcessorHandler();
 
 /**
- * POST handler for image generation webhooks
+ * POST handler for image generation processor
  */
 export const POST = withQStashVerification(async (request) => {
-  return imageWebhookHandler.processWebhook(request, processImageGeneration);
+  return imageProcessorHandler.processJob(request, processImageGeneration);
 });
 
 /**
- * GET handler for webhook testing
+ * GET handler for processor testing
  */
 export async function GET() {
   return Response.json({
-    message: "Image generation webhook endpoint",
+    message: "Image generation processor endpoint",
     timestamp: new Date().toISOString(),
     status: "active",
   });

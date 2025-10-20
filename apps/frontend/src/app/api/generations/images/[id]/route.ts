@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id } = await params;
     console.log(
-      "[api/v1/generates/image/[id]/status] Image generation status request",
+      "[api/generations/images/[id]] Image generation status request",
       {
         id,
       },
@@ -30,7 +30,7 @@ export async function GET(
     }
 
     console.log(
-      "[api/v1/generates/image/[id]/status] Image generation status result",
+      "[api/generations/images/[id]] Image generation status result",
       {
         status: job.status,
         jobId: job.id,
@@ -40,8 +40,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: true,
-        message:
-          "[api/v1/generates/image/[id]/status] Generation status retrieved",
+        message: "[api/generations/images/[id]] Generation status retrieved",
         data: {
           status: job.status,
           result: job.result,
@@ -55,7 +54,7 @@ export async function GET(
     );
   } catch (error) {
     console.error(
-      "[api/v1/generates/image/[id]/status] Error getting the generated image status",
+      "[api/generations/images/[id]] Error getting the generated image status",
       error,
     );
     const velroError = handleApiError(error);

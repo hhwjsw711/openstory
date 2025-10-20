@@ -46,7 +46,7 @@ class QStashClient {
 
     const apiUrl = getQStashWebhookUrl();
     this.client = new Client({ token });
-    this.baseWebhookUrl = `${apiUrl}/api/webhooks/qstash`;
+    this.baseWebhookUrl = `${apiUrl}/api`;
     this.loggerService = new LoggerService("QStashClient");
     // Client initialized successfully
   }
@@ -114,7 +114,7 @@ class QStashClient {
   ): Promise<QStashResponse> {
     this.loggerService.logDebug(`Publishing image job ${payload.jobId}`);
     return this.publishMessage({
-      url: `${this.baseWebhookUrl}/image`,
+      url: `${this.baseWebhookUrl}/generations/images/processor`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,
@@ -134,7 +134,7 @@ class QStashClient {
     },
   ): Promise<QStashResponse> {
     return this.publishMessage({
-      url: `${this.baseWebhookUrl}/video`,
+      url: `${this.baseWebhookUrl}/generations/videos/processor`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,
@@ -154,7 +154,7 @@ class QStashClient {
     },
   ): Promise<QStashResponse> {
     return this.publishMessage({
-      url: `${this.baseWebhookUrl}/script`,
+      url: `${this.baseWebhookUrl}/script/processor`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,
@@ -174,7 +174,7 @@ class QStashClient {
     },
   ): Promise<QStashResponse> {
     return this.publishMessage({
-      url: `${this.baseWebhookUrl}/frames`,
+      url: `${this.baseWebhookUrl}/frames/processor`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,
@@ -194,7 +194,7 @@ class QStashClient {
     },
   ): Promise<QStashResponse> {
     return this.publishMessage({
-      url: `${this.baseWebhookUrl}/frames-motion`,
+      url: `${this.baseWebhookUrl}/frames/motion/processor`,
       body: payload,
       delay: options?.delay,
       deduplicationId: options?.deduplicationId ?? payload.jobId,

@@ -1,5 +1,5 @@
 /**
- * Base webhook handler for QStash webhooks
+ * Base processor handler for QStash job processors
  * Provides common functionality for signature verification, request parsing, and error handling
  */
 
@@ -10,8 +10,8 @@ import type { JobPayload } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import type { QStashVerifiedRequest } from "@/lib/qstash/middleware";
 
-// Base webhook request schema
-export const webhookRequestSchema = z.object({
+// Base processor request schema
+export const processorRequestSchema = z.object({
   jobId: z.uuid(),
   type: z
     .literal("image")
@@ -24,10 +24,10 @@ export const webhookRequestSchema = z.object({
   teamId: z.uuid().optional(),
 });
 
-export type WebhookRequest = z.infer<typeof webhookRequestSchema>;
+export type ProcessorRequest = z.infer<typeof processorRequestSchema>;
 
-// Base webhook response interface
-export interface WebhookResponse {
+// Base processor response interface
+export interface ProcessorResponse {
   success: boolean;
   jobId: string;
   status: string;
@@ -47,30 +47,32 @@ export type JobProcessor = (
 ) => Promise<Record<string, unknown>>;
 
 /**
- * Base webhook handler class
+ * Base processor handler class
  */
-export class BaseWebhookHandler {
+export class BaseProcessorHandler {
   protected jobManager = getJobManager();
 
   /**
-   * Parse and validate incoming webhook request
+   * Parse and validate incoming processor request
    */
-  async parseRequest(request: QStashVerifiedRequest): Promise<WebhookRequest> {
+  async parseRequest(
+    request: QStashVerifiedRequest,
+  ): Promise<ProcessorRequest> {
     try {
       const body = await request.json();
 
-      const parsedBody = webhookRequestSchema.parse(body);
+      const parsedBody = processorRequestSchema.parse(body);
 
       return parsedBody;
     } catch (error) {
-      console.error("[BaseWebhookHandler] Failed to parse request", {
+      console.error("[BaseProcessorHandler] Failed to parse request", {
         error: error instanceof Error ? error.message : "Unknown error",
         url: request.url,
         messageId: request.qstashMessageId,
       });
 
       if (error instanceof z.ZodError) {
-        throw new ValidationError("Invalid webhook request format", {
+        throw new ValidationError("Invalid processor request format", {
           validationErrors: error.issues,
           url: request.url,
         });
@@ -84,8 +86,8 @@ export class BaseWebhookHandler {
       }
 
       throw new VelroError(
-        "Failed to parse webhook request",
-        "WEBHOOK_PARSE_ERROR",
+        "Failed to parse processor request",
+        "PROCESSOR_PARSE_ERROR",
         400,
         {
           originalError:
@@ -97,25 +99,25 @@ export class BaseWebhookHandler {
   }
 
   /**
-   * Process webhook request with job lifecycle management
+   * Process job request with job lifecycle management
    */
-  async processWebhook(
+  async processJob(
     request: QStashVerifiedRequest,
     processor: JobProcessor,
   ): Promise<NextResponse> {
     const startTime = Date.now();
-    let webhookRequest: WebhookRequest | null = null;
+    let processorRequest: ProcessorRequest | null = null;
 
     try {
       // Parse the request
-      webhookRequest = await this.parseRequest(request);
-      const { jobId, type, data, userId, teamId } = webhookRequest;
+      processorRequest = await this.parseRequest(request);
+      const { jobId, type, data, userId, teamId } = processorRequest;
 
       // Check if job exists and get current status
       const existingJob = await this.jobManager.getJob(jobId);
 
       if (!existingJob) {
-        console.warn("[BaseWebhookHandler] Job not found in database", {
+        console.warn("[BaseProcessorHandler] Job not found in database", {
           jobId,
         });
 
@@ -170,7 +172,7 @@ export class BaseWebhookHandler {
       // Mark job as completed
       await this.jobManager.completeJob(jobId, result);
 
-      const response: WebhookResponse = {
+      const response: ProcessorResponse = {
         success: true,
         jobId,
         status: "completed",
@@ -183,9 +185,9 @@ export class BaseWebhookHandler {
     } catch (error) {
       const processingTime = Date.now() - startTime;
 
-      console.error("[BaseWebhookHandler] Job processing failed", {
-        jobId: webhookRequest?.jobId,
-        type: webhookRequest?.type,
+      console.error("[BaseProcessorHandler] Job processing failed", {
+        jobId: processorRequest?.jobId,
+        type: processorRequest?.type,
         error: error instanceof Error ? error.message : "Unknown error",
         processingTimeMs: processingTime,
         messageId: request.qstashMessageId,
@@ -193,16 +195,16 @@ export class BaseWebhookHandler {
       });
 
       // Mark job as failed if we have a job ID
-      if (webhookRequest?.jobId) {
+      if (processorRequest?.jobId) {
         try {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error occurred";
-          await this.jobManager.failJob(webhookRequest.jobId, errorMessage);
+          await this.jobManager.failJob(processorRequest.jobId, errorMessage);
         } catch (updateError) {
           console.error(
-            "[BaseWebhookHandler] Failed to update job status to failed",
+            "[BaseProcessorHandler] Failed to update job status to failed",
             {
-              jobId: webhookRequest.jobId,
+              jobId: processorRequest.jobId,
               updateError:
                 updateError instanceof Error
                   ? updateError.message
@@ -215,9 +217,9 @@ export class BaseWebhookHandler {
       // Handle the error and return appropriate response
       const handledError = handleApiError(error);
 
-      const response: WebhookResponse = {
+      const response: ProcessorResponse = {
         success: false,
-        jobId: webhookRequest?.jobId || "unknown",
+        jobId: processorRequest?.jobId || "unknown",
         status: "failed",
         message: handledError.message,
         timestamp: new Date().toISOString(),
@@ -242,7 +244,7 @@ export class BaseWebhookHandler {
     error: VelroError,
     jobId?: string,
   ): NextResponse {
-    const response: WebhookResponse = {
+    const response: ProcessorResponse = {
       success: false,
       jobId: jobId || "unknown",
       status: "error",
@@ -263,7 +265,7 @@ export class BaseWebhookHandler {
     message: string,
     result?: Record<string, unknown>,
   ): NextResponse {
-    const response: WebhookResponse = {
+    const response: ProcessorResponse = {
       success: true,
       jobId,
       status,

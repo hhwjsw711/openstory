@@ -1,15 +1,18 @@
 /**
- * QStash webhook handler for frame motion generation jobs
+ * QStash processor for frame motion generation jobs
  * Handles image-to-video generation using Fal.ai models
  */
 
+import {
+  BaseProcessorHandler,
+  type JobProcessor,
+} from "@/lib/qstash/base-handler";
 import type { JobPayload } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import type { MotionGenerationPayload } from "@/lib/qstash/types";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
-import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
  * Frame motion generation processor
@@ -45,7 +48,7 @@ const processMotionGeneration: JobProcessor = async (
 
   // Verify team authorization
   if (storedJob.team_id && frame.sequences.team_id !== storedJob.team_id) {
-    console.error("[Motion Webhook] Team ID mismatch - unauthorized access", {
+    console.error("[Motion Processor] Team ID mismatch - unauthorized access", {
       jobTeamId: storedJob.team_id,
       frameTeamId: frame.sequences.team_id,
       jobId,
@@ -141,10 +144,10 @@ const processMotionGeneration: JobProcessor = async (
   }
 };
 
-// Create the webhook handler
-const handler = new BaseWebhookHandler();
+// Create the processor handler
+const handler = new BaseProcessorHandler();
 
 // Export the HTTP route handler
 export const POST = withQStashVerification(async (request) =>
-  handler.processWebhook(request, processMotionGeneration),
+  handler.processJob(request, processMotionGeneration),
 );

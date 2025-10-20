@@ -1,5 +1,5 @@
 /**
- * Video generation webhook handler
+ * Video generation processor
  * Processes video generation jobs from QStash using FAL AI
  */
 
@@ -9,9 +9,12 @@ import {
   uploadToFal,
   VIDEO_MODELS,
 } from "@/lib/ai/fal-client";
+import {
+  BaseProcessorHandler,
+  type JobProcessor,
+} from "@/lib/qstash/base-handler";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
-import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
  * Video generation processor using FAL AI
@@ -106,7 +109,7 @@ const processVideoGeneration: JobProcessor = async (
 
     return result;
   } catch (error) {
-    console.error("[VideoWebhook] Video generation failed", error);
+    console.error("[VideoProcessor] Video generation failed", error);
 
     // Return mock fallback on error
     const fallbackResult = {
@@ -131,23 +134,23 @@ const processVideoGeneration: JobProcessor = async (
 };
 
 /**
- * Video webhook handler
+ * Video processor handler
  */
-const videoWebhookHandler = new BaseWebhookHandler();
+const videoProcessorHandler = new BaseProcessorHandler();
 
 /**
- * POST handler for video generation webhooks
+ * POST handler for video generation processor
  */
 export const POST = withQStashVerification(async (request) => {
-  return videoWebhookHandler.processWebhook(request, processVideoGeneration);
+  return videoProcessorHandler.processJob(request, processVideoGeneration);
 });
 
 /**
- * GET handler for webhook testing
+ * GET handler for processor testing
  */
 export async function GET() {
   return Response.json({
-    message: "Video generation webhook endpoint",
+    message: "Video generation processor endpoint",
     timestamp: new Date().toISOString(),
     status: "active",
   });

@@ -1,18 +1,21 @@
 /**
- * QStash webhook handler for frame generation jobs
+ * QStash processor for frame generation jobs
  *
- * NOTE: This webhook calls the frame generation service directly,
+ * NOTE: This processor calls the frame generation service directly,
  * using the userId from the job record for authorization tracking.
  * It's primarily used for async/background frame generation triggered via QStash.
  */
 
+import {
+  BaseProcessorHandler,
+  type JobProcessor,
+} from "@/lib/qstash/base-handler";
 import type { JobPayload } from "@/lib/qstash/client";
 import { getJobManager } from "@/lib/qstash/job-manager";
 import { withQStashVerification } from "@/lib/qstash/middleware";
 import type { FrameGenerationPayload } from "@/lib/qstash/types";
 import { frameGenerationService } from "@/lib/services/frame-generation.service";
 import { createAdminClient } from "@/lib/supabase/server";
-import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
  * Frame generation processor
@@ -29,7 +32,7 @@ const processFrameGeneration: JobProcessor = async (
   const framePayload = payload as FrameGenerationPayload;
   const { jobId, data } = framePayload;
 
-  console.log("[Frames Webhook] Processing job:", {
+  console.log("[Frames Processor] Processing job:", {
     jobId,
     sequenceId: data.sequenceId,
     options: data.options,
@@ -57,7 +60,7 @@ const processFrameGeneration: JobProcessor = async (
 
   // Verify team authorization
   if (storedJob.team_id && sequence.team_id !== storedJob.team_id) {
-    console.error("[Frames Webhook] Team ID mismatch - unauthorized access", {
+    console.error("[Frames Processor] Team ID mismatch - unauthorized access", {
       jobTeamId: storedJob.team_id,
       sequenceTeamId: sequence.team_id,
       jobId,
@@ -73,7 +76,9 @@ const processFrameGeneration: JobProcessor = async (
 
   // Call the frame generation service directly
   // Use the userId from the job record (who created the job)
-  console.log("[Frames Webhook] Calling frameGenerationService.generateFrames");
+  console.log(
+    "[Frames Processor] Calling frameGenerationService.generateFrames",
+  );
   const result = await frameGenerationService.generateFrames({
     sequenceId: data.sequenceId,
     userId: storedJob.user_id, // Use job's user_id for tracking
@@ -89,10 +94,10 @@ const processFrameGeneration: JobProcessor = async (
   };
 };
 
-// Create the webhook handler
-const handler = new BaseWebhookHandler();
+// Create the processor handler
+const handler = new BaseProcessorHandler();
 
 // Export the HTTP route handler
 export const POST = withQStashVerification(async (request) =>
-  handler.processWebhook(request, processFrameGeneration),
+  handler.processJob(request, processFrameGeneration),
 );

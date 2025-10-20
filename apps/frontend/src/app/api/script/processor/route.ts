@@ -1,11 +1,14 @@
 /**
- * Script analysis webhook handler
+ * Script analysis processor
  * Processes script analysis jobs from QStash
  */
 
+import {
+  BaseProcessorHandler,
+  type JobProcessor,
+} from "@/lib/qstash/base-handler";
 import type { JobPayload } from "@/lib/qstash/client";
 import { withQStashVerification } from "@/lib/qstash/middleware";
-import { BaseWebhookHandler, type JobProcessor } from "../base-handler";
 
 /**
  * Script analysis processor
@@ -107,23 +110,23 @@ const processScriptAnalysis: JobProcessor = async (
 };
 
 /**
- * Script webhook handler
+ * Script processor handler
  */
-const scriptWebhookHandler = new BaseWebhookHandler();
+const scriptProcessorHandler = new BaseProcessorHandler();
 
 /**
- * POST handler for script analysis webhooks
+ * POST handler for script analysis processor
  */
 export const POST = withQStashVerification(async (request) => {
-  return scriptWebhookHandler.processWebhook(request, processScriptAnalysis);
+  return scriptProcessorHandler.processJob(request, processScriptAnalysis);
 });
 
 /**
- * GET handler for webhook testing
+ * GET handler for processor testing
  */
 export async function GET() {
   return Response.json({
-    message: "Script analysis webhook endpoint",
+    message: "Script analysis processor endpoint",
     timestamp: new Date().toISOString(),
     status: "active",
   });
