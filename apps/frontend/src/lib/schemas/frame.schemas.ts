@@ -49,8 +49,7 @@ export const regenerateFrameSchema = z.object({
 });
 
 export const generateMotionSchema = z.object({
-  frameId: z.string().uuid(),
-  model: z.enum(["svd-lcm", "stable-video", "animatediff"]).optional(),
+  model: z.string().optional(),
   duration: z.number().min(1).max(10).optional(),
   fps: z.number().min(7).max(30).optional(),
   motionBucket: z.number().min(1).max(255).optional(),
