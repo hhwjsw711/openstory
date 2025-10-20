@@ -62,16 +62,16 @@ export interface OpenRouterRequestParams {
  */
 export const RECOMMENDED_MODELS = {
   // For creative writing and scene descriptions
-  creative: "anthropic/claude-3-haiku",
+  creative: "anthropic/claude-sonnet-4.5",
 
   // For structured data extraction
-  structured: "openai/gpt-4o-mini",
+  structured: "anthropic/claude-sonnet-4.5",
 
   // For fast responses with good quality
-  fast: "anthropic/claude-3-haiku",
+  fast: "anthropic/claude-haiku-4.5",
 
   // For highest quality (more expensive)
-  premium: "anthropic/claude-3-opus",
+  premium: "anthropic/claude-haiku-4.5",
 } as const;
 
 /**
