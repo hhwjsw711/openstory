@@ -158,7 +158,7 @@ describe("Motion Generation Webhook", () => {
     // Verify motion generation was called
     expect(generateMotionForFrame).toHaveBeenCalledWith({
       imageUrl: "https://example.com/thumbnail.jpg",
-      model: "svd-lcm",
+      model: "veo3",
       duration: 2,
       fps: 7,
       motionBucket: 127,
