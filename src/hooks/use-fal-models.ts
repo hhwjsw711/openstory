@@ -58,7 +58,7 @@ export function useFalModels(params: FalModelsRequest) {
 async function fetchEstimateImageCostByFal(
   params: EstimateImageCostByFalRequest,
 ) {
-  const url = new URL("/api/estimates/images", window.location.origin);
+  const url = new URL("/api/fal/estimates", window.location.origin);
   const response = await fetch(url, {
     method: "POST",
     headers: {

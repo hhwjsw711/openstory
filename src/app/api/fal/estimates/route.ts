@@ -25,7 +25,7 @@ const estimateImageCostSchema = z
     },
     {
       message:
-        "[api/estimates/images] Generating image | extra_params validation failed for the selected model",
+        "[api/fal/estimates] Generating image | extra_params validation failed for the selected model",
     },
   );
 
