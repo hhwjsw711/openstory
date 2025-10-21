@@ -47,6 +47,58 @@ export async function POST() {
       );
     }
 
+    // Create default team for anonymous user
+    const teamName = `Anonymous Team ${session.user.id.slice(0, 8)}`;
+    const teamSlug = `anon-${session.user.id.slice(0, 8)}`;
+
+    const { data: team, error: teamError } = await supabase
+      .from("teams")
+      .insert({
+        name: teamName,
+        slug: teamSlug,
+      })
+      .select()
+      .single();
+
+    if (teamError || !team) {
+      console.error(
+        "[POST /api/auth/anonymous] Team creation error:",
+        teamError,
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to create team",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      );
+    }
+
+    // Create team membership for anonymous user
+    const { error: membershipError } = await supabase
+      .from("team_members")
+      .insert({
+        team_id: team.id,
+        user_id: session.user.id,
+        role: "owner",
+      });
+
+    if (membershipError) {
+      console.error(
+        "[POST /api/auth/anonymous] Team membership creation error:",
+        membershipError,
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to create team membership",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
       {
         success: true,
