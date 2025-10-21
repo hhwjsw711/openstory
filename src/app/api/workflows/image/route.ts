@@ -1,8 +1,9 @@
 /**
- * Image generation processor
- * Processes image generation jobs from QStash using FAL AI
+ * Image generation workflow
+ * Generates images using AI models and optionally updates frame thumbnails
  */
 
+import { serve } from "@upstash/workflow/nextjs";
 import {
   type FalImageGenerationParams,
   type FalImageResponse,
@@ -12,18 +13,16 @@ import {
 import type { LetzAIMode } from "@/lib/ai/letzai-client";
 import { generateImage as generateImageLetzAI } from "@/lib/ai/letzai-client";
 import { AI_PROVIDER_MAPPINGS } from "@/lib/ai/models";
-import {
-  BaseProcessorHandler,
-  type JobProcessor,
-} from "@/lib/qstash/base-handler";
-import type { JobPayload } from "@/lib/qstash/client";
-import { withQStashVerification } from "@/lib/qstash/middleware";
 import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
 } from "@/lib/schemas/letzai-request";
 import { LoggerService } from "@/lib/services/logger.service";
 import { createAdminClient } from "@/lib/supabase/server";
+import type { ImageWorkflowInput, ImageWorkflowResult } from "@/lib/workflow";
+import { validateWorkflowAuth } from "@/lib/workflow";
+
+const loggerService = new LoggerService("ImageWorkflow");
 
 const LETZAI_PRESET_DIMENSIONS: Record<
   string,
@@ -37,99 +36,115 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
-/**
- * Image generation processor using FAL AI
- */
-const processImageGeneration: JobProcessor = async (
-  payload: JobPayload,
-  _metadata,
-): Promise<Record<string, unknown>> => {
-  const { data } = payload;
-  const loggerService = new LoggerService("ImageProcessor");
-  // Type assertion for image generation data
-  const imageData = data as {
-    prompt?: string;
-    model?: string;
-    image_size?:
-      | "square_hd"
-      | "square"
-      | "portrait_4_3"
-      | "portrait_16_9"
-      | "landscape_4_3"
-      | "landscape_16_9";
-    num_images?: number;
-    style?: unknown;
-    seed?: number;
-    frameId?: string;
-    sequenceId?: string;
-    [key: string]: unknown;
-  };
+export const { POST } = serve<ImageWorkflowInput>(async (context) => {
+  const input = context.requestPayload;
 
-  if (!imageData.prompt) {
-    loggerService.logError("Prompt is required for image generation");
-  }
+  // Validate authentication
+  validateWorkflowAuth(input);
 
-  try {
-    // Determine model to use
-    let model = imageData.model as keyof typeof IMAGE_MODELS | undefined;
-    if (!model) model = "flux_krea_lora"; // Default to fast model
+  loggerService.logDebug(
+    `Starting image generation workflow for user ${input.userId}`,
+  );
 
-    loggerService.logDebug(
-      `Generating image ${imageData.frameId} with model ${model}`,
-    );
+  // Step 1: Generate image
+  const imageResult = await context.run("generate-image", async () => {
+    if (!input.prompt) {
+      throw new Error("Prompt is required for image generation");
+    }
 
-    // Generate image using selected AI provider
-    const resp = await selectedAiProvider({
-      model: IMAGE_MODELS[model],
-      prompt: imageData.prompt,
-      image_size: imageData.image_size,
-      num_images: imageData.num_images || 1,
-      seed: imageData.seed,
-      image_url: imageData.image_url as string,
-    });
+    try {
+      // Determine model to use
+      let model = input.model as keyof typeof IMAGE_MODELS | undefined;
+      if (!model) model = "flux_krea_lora"; // Default to fast model
 
-    const respData = resp.data as unknown as
-      | FalImageResponse
-      | LetzAIImageResponse;
-    const result = resultByProvider(model, imageData, respData);
+      loggerService.logDebug(
+        `Generating image ${input.frameId} with model ${model}`,
+      );
 
-    loggerService.logDebug(
-      `Image generation result: ${JSON.stringify(result)}`,
-    );
+      // Generate image using selected AI provider
+      const resp = await selectedAiProvider({
+        model: IMAGE_MODELS[model],
+        prompt: input.prompt,
+        image_size: input.imageSize,
+        num_images: input.numImages || 1,
+        seed: input.seed,
+      });
 
-    // If this is for a frame, update the frame with the generated image URL
-    if (imageData.frameId && result?.imageUrls.length > 0) {
+      const respData = resp.data as unknown as
+        | FalImageResponse
+        | LetzAIImageResponse;
+      const result = resultByProvider(
+        model,
+        input as unknown as Record<string, unknown>,
+        respData,
+      );
+
+      return result;
+    } catch (error) {
+      loggerService.logError(
+        `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+
+      // Return fallback on error
+      return {
+        imageUrls: [
+          `https://picsum.photos/seed/1/1024/1024`,
+          `https://picsum.photos/seed/2/1024/1024`,
+        ],
+        parameters: input,
+        generatedAt: new Date().toISOString(),
+        processingTimeMs: 1000,
+        provider: "mock-fallback",
+        metadata: {
+          prompt: input.prompt || "Fallback image due to generation error",
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      };
+    }
+  });
+
+  // Step 2: Update frame if frameId is provided
+  if (input.frameId && imageResult.imageUrls.length > 0) {
+    await context.run("update-frame", async () => {
+      if (!input.frameId) {
+        throw new Error("frameId is required for update-frame step");
+      }
+
       const supabase = createAdminClient();
       const { error: updateError } = await supabase
         .from("frames")
         .update({
-          thumbnail_url: result.imageUrls[0],
+          thumbnail_url: imageResult.imageUrls[0],
           updated_at: new Date().toISOString(),
         })
-        .eq("id", imageData.frameId);
+        .eq("id", input.frameId);
 
       if (updateError) {
         loggerService.logError(
-          `Failed to update frame ${imageData.frameId} with image URL: ${updateError.message}`,
+          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`,
         );
-        return result;
+        throw updateError;
       }
 
-      const { data: frameData } = await supabase
-        .from("frames")
-        .select("sequence_id")
-        .eq("id", imageData.frameId)
-        .single();
+      return { updated: true };
+    });
 
-      if (frameData?.sequence_id) {
-        loggerService.logDebug(
-          `Updating sequence ${frameData.sequence_id} with completed status`,
-        );
+    // Step 3: Check if all frames are complete and update sequence
+    if (input.sequenceId) {
+      await context.run("update-sequence-status", async () => {
+        if (!input.sequenceId) {
+          throw new Error(
+            "sequenceId is required for update-sequence-status step",
+          );
+        }
+
+        const supabase = createAdminClient();
+
         // Check if all frames for this sequence now have thumbnails
         const { data: allFrames } = await supabase
           .from("frames")
           .select("id, thumbnail_url")
-          .eq("sequence_id", frameData.sequence_id);
+          .eq("sequence_id", input.sequenceId);
 
         if (allFrames) {
           const framesWithThumbnails = allFrames.filter(
@@ -142,7 +157,7 @@ const processImageGeneration: JobProcessor = async (
             const { data: sequence } = await supabase
               .from("sequences")
               .select("metadata")
-              .eq("id", frameData.sequence_id)
+              .eq("id", input.sequenceId)
               .single();
 
             if (sequence) {
@@ -169,90 +184,37 @@ const processImageGeneration: JobProcessor = async (
                   status: "completed",
                   updated_at: new Date().toISOString(),
                 })
-                .eq("id", frameData.sequence_id);
+                .eq("id", input.sequenceId);
 
               if (seqUpdateError) {
                 loggerService.logError(
-                  `Failed to update sequence ${frameData.sequence_id} with completed status: ${seqUpdateError.message}`,
+                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`,
                 );
               }
             }
           }
         }
-      }
+
+        return { updated: true };
+      });
     }
-
-    return result;
-  } catch (error) {
-    console.error("[ImageProcessor] Image generation failed", error);
-
-    // Return mock fallback on error
-    const fallbackResult = {
-      imageUrls: [
-        `https://picsum.photos/seed/1/1024/1024`,
-        `https://picsum.photos/seed/2/1024/1024`,
-      ],
-      parameters: data,
-      generatedAt: new Date().toISOString(),
-      processingTimeMs: 1000,
-      provider: "mock-fallback",
-      metadata: {
-        prompt: imageData.prompt || "Fallback image due to generation error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-    };
-
-    // If this is for a frame, update the frame with the fallback image URL
-    if (imageData.frameId && fallbackResult.imageUrls.length > 0) {
-      const supabase = createAdminClient();
-      const { error: updateError } = await supabase
-        .from("frames")
-        .update({
-          thumbnail_url: fallbackResult.imageUrls[0],
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", imageData.frameId);
-
-      if (updateError) {
-        console.error(
-          "[ImageProcessor] Failed to update frame with fallback image URL",
-          {
-            frameId: imageData.frameId,
-            error: updateError.message,
-          },
-        );
-      }
-    }
-
-    return fallbackResult;
   }
-};
 
-/**
- * Image processor handler
- */
-const imageProcessorHandler = new BaseProcessorHandler();
+  loggerService.logDebug("Image generation workflow completed");
 
-/**
- * POST handler for image generation processor
- */
-export const POST = withQStashVerification(async (request) => {
-  return imageProcessorHandler.processJob(request, processImageGeneration);
+  // Return workflow result
+  const result: ImageWorkflowResult = {
+    imageUrl: imageResult.imageUrls[0],
+    thumbnailUrl: imageResult.imageUrls[0],
+    frameId: input.frameId,
+    sequenceId: input.sequenceId,
+  };
+
+  return result;
 });
 
 /**
- * GET handler for processor testing
- */
-export async function GET() {
-  return Response.json({
-    message: "Image generation processor endpoint",
-    timestamp: new Date().toISOString(),
-    status: "active",
-  });
-}
-
-/**
- * private function to select AI provider based on model
+ * Select AI provider based on model
  */
 function selectedAiProvider(payload: Record<string, unknown>) {
   switch (payload.model) {
@@ -281,6 +243,9 @@ function selectedAiProvider(payload: Record<string, unknown>) {
   }
 }
 
+/**
+ * Parse result by provider
+ */
 function resultByProvider(
   model: string,
   data: Record<string, unknown>,

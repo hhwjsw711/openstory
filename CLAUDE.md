@@ -108,7 +108,7 @@ teams
 ### Key Technical Decisions
 1. **State Management**: Use TanStack Query for server state and reducers for complex UI state. Keep components pure.
 2. **UI Components**: Use shadcn/ui components exclusively. Apply styling through theme variables, not inline Tailwind.
-3. **Job Queue**: QStash handles all AI generation tasks asynchronously.
+3. **Async Processing**: QStash Workflow handles all AI generation tasks with durable execution and automatic retries.
 4. **Authentication**: Better Auth with email/password login.
 5. **File Structure**: API routes handle all business logic and DB access. Components remain presentational.
 
@@ -117,8 +117,8 @@ All API routes follow this structure:
 1. Validate input (Zod schemas)
 2. Check auth/team permissions
 3. Execute business logic (DB operations only here)
-4. Queue async work via QStash if needed
-5. Return standardized response
+4. Trigger workflows for async AI generation tasks
+5. Return standardized response with workflow run ID
 
 ### Generation Pipeline
 1. User uploads/edits script
@@ -131,7 +131,7 @@ All API routes follow this structure:
 - **Runtime**: Bun (migrated from Node.js/pnpm)
 - **Framework**: Next.js 15 with App Router and Turbopack
 - **Database**: Supabase (PostgreSQL + Better Auth + Storage + Realtime)
-- **Queue**: QStash (Upstash) for AI job management
+- **Workflows**: QStash Workflow (Upstash) for durable, serverless AI task orchestration
 - **Styling**: Tailwind CSS v4 with shadcn/ui
 - **Testing**: Bun test (migrated from Vitest)
 - **Formatting**: Biome for linting and formatting
@@ -146,12 +146,13 @@ import { something } from '@/app/api/utils'
 ## Backend Development Guidelines
 
 ### When creating new features:
-1. Start with API route in `/app/[feature]`
+1. Start with API route in `/app/api/[feature]`
 2. All DB operations in API routes only
-3. Use QStash for any AI generation or long-running tasks
-4. Create TanStack Query hooks for data fetching
-5. Build components with shadcn/ui only
-6. Apply theme variables for styling, avoid inline Tailwind
+3. Create workflows in `/app/api/workflows/[workflow-name]` for AI generation or long-running tasks
+4. API routes trigger workflows and return workflow run IDs
+5. Create TanStack Query hooks for data fetching
+6. Build components with shadcn/ui only
+7. Apply theme variables for styling, avoid inline Tailwind
 
 ### Style Stacks
 The core innovation - JSON presets that maintain consistent style across different AI models:
@@ -167,6 +168,50 @@ Frames are the building blocks of sequences:
 - Can include characters, audio, and VFX from team libraries
 - AI adjusts frame boundaries when script changes
 
+### Workflow Architecture
+All async AI operations use QStash Workflow for durable execution:
+
+**Available Workflows** (`/app/api/workflows/`):
+- `image` - Image generation with FAL/LetzAI
+- `video` - Video generation from text
+- `motion` - Image-to-video generation
+- `frame-generation` - Complex orchestration for script analysis and frame creation
+- `script` - Script enhancement and analysis
+
+**Workflow Pattern**:
+```typescript
+// 1. API route triggers workflow
+const workflowInput: ImageWorkflowInput = {
+  userId: user.id,
+  teamId: team.id,
+  prompt: "...",
+  // ...
+};
+
+const response = await fetch(`${workflowConfig.baseUrl}/image`, {
+  method: "POST",
+  body: JSON.stringify(workflowInput),
+});
+
+const workflowRunId = response.headers.get("Upstash-Workflow-RunId");
+
+// 2. Workflow executes with durable steps
+export const { POST } = serve<ImageWorkflowInput>(async (context) => {
+  const input = context.requestPayload;
+  validateWorkflowAuth(input); // Check userId/teamId
+
+  const result = await context.run("step-name", async () => {
+    // Step logic - automatically retried on failure
+  });
+});
+```
+
+**Key Principles**:
+- Workflows handle their own state - no database job tracking needed
+- Pass auth (userId/teamId) through workflow context
+- Use `context.run()` for each logical step
+- Workflows update database records directly (e.g., frame.thumbnail_url)
+- Steps are durable - execution continues even if server restarts
 
 ## Frontend Development Guidelines
 ### 1. Use as little React as possible
@@ -322,7 +367,9 @@ beforeEach(async () => {
 - Always use the Supabase CLI to create migrations
 - Use `z.uuid()` for UUID validation in schemas
 
-### QStash Integration Testing
-- QStash job tests mock the job manager and database operations
-- Test job lifecycle: creation → running → completed/failed
+### Workflow Integration Testing
+- Workflow tests mock the workflow context and database operations
+- Test workflow steps: step execution → state management → error handling
 - Mock external AI service calls to avoid real API usage during testing
+- Workflows use durable execution - steps are retried automatically on failure
+- Pass authentication (userId/teamId) through workflow context, not database lookups

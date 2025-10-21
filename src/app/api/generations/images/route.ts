@@ -1,10 +1,15 @@
+/**
+ * Standalone Image Generation API
+ * POST /api/generations/images - Generate images without frame association
+ */
+
 import { NextResponse } from "next/server";
 import { generateImageSchema } from "@/lib/ai/models-validation";
 import { requireUser } from "@/lib/auth/action-utils";
 import { handleApiError } from "@/lib/errors";
-import { getQStashClient } from "@/lib/qstash/client";
-import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
+import type { ImageWorkflowInput } from "@/lib/workflow";
+import { workflowConfig } from "@/lib/workflow";
 
 export async function POST(request: Request) {
   try {
@@ -42,43 +47,51 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Create job record
-    const jobManager = getJobManager();
-    const job = await jobManager.createJob({
-      type: "image",
-      payload: validatedData.data,
+    // 4. Trigger image generation workflow
+    const workflowInput: ImageWorkflowInput = {
       userId: user.id,
       teamId: membership.team_id,
+      ...validatedData.data,
+    };
+
+    const workflowResponse = await fetch(`${workflowConfig.baseUrl}/image`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(workflowInput),
     });
 
-    // 5. Queue the job via QStash
-    const qstashClient = getQStashClient();
-    await qstashClient.publishImageJob(
-      {
-        jobId: job.id,
-        type: "image",
-        userId: user.id,
-        teamId: membership.team_id,
-        data: validatedData.data,
-      },
-      {
-        deduplicationId: job.id,
-      },
+    if (!workflowResponse.ok) {
+      throw new Error(
+        `Failed to trigger workflow: ${workflowResponse.statusText}`,
+      );
+    }
+
+    const workflowRunId = workflowResponse.headers.get(
+      "Upstash-Workflow-RunId",
     );
 
     return NextResponse.json(
       {
         success: true,
-        jobId: job.id,
+        data: {
+          workflowRunId,
+          message: "Image generation started",
+        },
       },
       { status: 200 },
     );
   } catch (error) {
-    console.error("[api/generations/images] Error generating image", error);
-    const velroError = handleApiError(error);
+    console.error("[POST /api/generations/images] Error:", error);
+
+    const handledError = handleApiError(error);
     return NextResponse.json(
-      { error: velroError.message },
-      { status: velroError.statusCode },
+      {
+        success: false,
+        error: handledError.message,
+      },
+      { status: handledError.statusCode },
     );
   }
 }

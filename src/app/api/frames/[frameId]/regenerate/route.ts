@@ -1,16 +1,16 @@
 /**
  * Regenerate Frame API Endpoint
- * POST /api/frames/[frameId]/regenerate - Regenerate a single frame
+ * POST /api/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
-import { getJobManager } from "@/lib/qstash/job-manager";
 import { regenerateFrameSchema } from "@/lib/schemas/frame.schemas";
 import { createServerClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database";
+import type { ImageWorkflowInput } from "@/lib/workflow";
+import { workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
@@ -29,7 +29,7 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    const validated = regenerateFrameSchema.parse(body);
+    regenerateFrameSchema.parse(body); // Validate schema only
 
     // Authenticate user
     const user = await requireUser();
@@ -53,61 +53,64 @@ export async function POST(
       );
     }
 
-    // Verify team access
+    // Verify user has access to this frame
     await requireTeamMemberAccess(user.id, frame.sequences.team_id);
 
-    // Create a job for regeneration
-    const jobManager = getJobManager();
-    const job = await jobManager.createJob({
-      type: "frame_generation",
-      payload: {
-        frameId,
-        sequenceId: frame.sequence_id,
-        regenerateDescription: validated.regenerateDescription ?? true,
-        regenerateThumbnail: validated.regenerateThumbnail ?? false,
-      },
+    if (!frame.description) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Frame has no description to regenerate from",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      );
+    }
+
+    // Trigger image generation workflow
+    const workflowInput: ImageWorkflowInput = {
       userId: user.id,
       teamId: frame.sequences.team_id,
+      prompt: frame.description,
+      model: "flux_krea_lora",
+      imageSize: "landscape_16_9",
+      numImages: 1,
+      frameId,
+      sequenceId: frame.sequence_id,
+    };
+
+    const workflowResponse = await fetch(`${workflowConfig.baseUrl}/image`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(workflowInput),
     });
 
-    // Update frame metadata with regeneration status
-    await supabase
-      .from("frames")
-      .update({
-        metadata: {
-          ...(frame.metadata as Record<string, unknown>),
-          regenerationJobId: job.id,
-          status: "regenerating",
-        } as Json,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", frameId);
+    if (!workflowResponse.ok) {
+      throw new Error(
+        `Failed to trigger workflow: ${workflowResponse.statusText}`,
+      );
+    }
+
+    const workflowRunId = workflowResponse.headers.get(
+      "Upstash-Workflow-RunId",
+    );
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          jobId: job.id,
+          workflowRunId,
+          frameId,
+          message: "Frame regeneration started",
         },
-        message: "Frame regeneration started successfully",
         timestamp: new Date().toISOString(),
       },
       { status: 200 },
     );
   } catch (error) {
     console.error("[POST /api/frames/[frameId]/regenerate] Error:", error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Invalid request data",
-          errors: error.issues,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 },
-      );
-    }
 
     const handledError = handleApiError(error);
     return NextResponse.json(
