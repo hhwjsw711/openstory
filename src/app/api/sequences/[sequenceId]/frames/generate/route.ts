@@ -89,7 +89,7 @@ export async function POST(
     // Publish to QStash to trigger the workflow
     const qstash = getQStashClient();
     const { messageId } = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/frame-generation`,
+      url: `${workflowConfig.baseUrl}/storyboard`,
       body: workflowInput,
     });
 

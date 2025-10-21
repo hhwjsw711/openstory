@@ -159,7 +159,7 @@ export async function PATCH(
         // Publish to QStash to trigger the workflow
         const qstash = getQStashClient();
         await qstash.publishJSON({
-          url: `${workflowConfig.baseUrl}/frame-generation`,
+          url: `${workflowConfig.baseUrl}/storyboard`,
           body: workflowInput,
         });
       }
