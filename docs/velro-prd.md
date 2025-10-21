@@ -487,33 +487,33 @@ CREATE TABLE marketplace_transactions (
 // Core API Endpoints
 interface VelroAPI {
   // Style Stack Operations
-  "/api/v1/stacks": {
+  "/stacks": {
     POST: CreateStack;
     GET: ListUserStacks;
   };
-  "/api/v1/stacks/:id": {
+  "/stacks/:id": {
     GET: GetStack;
     PUT: UpdateStack;
     DELETE: DeleteStack;
   };
-  "/api/v1/stacks/:id/adapt": {
+  "/stacks/:id/adapt": {
     POST: AdaptStackForModel;
   };
   
   // Generation Operations
-  "/api/v1/generate": {
+  "/generate": {
     POST: StartGeneration;
   };
-  "/api/v1/generate/:id": {
+  "/generate/:id": {
     GET: GetGenerationStatus;
   };
   
   // Marketplace
-  "/api/v1/marketplace": {
+  "/marketplace": {
     GET: BrowseStacks;
     POST: ListStackForSale;
   };
-  "/api/v1/marketplace/:id/purchase": {
+  "/marketplace/:id/purchase": {
     POST: PurchaseStack;
   };
 }

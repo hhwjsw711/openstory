@@ -42,7 +42,7 @@ This document outlines the comprehensive implementation plan for the frame gener
 
 ### New API Endpoints
 
-#### `/api/v1/frames/generate` - POST
+#### `/frames/generate` - POST
 ```typescript
 interface GenerateFramesRequest {
   sequenceId: string;
@@ -63,7 +63,7 @@ interface GenerateFramesResponse {
 }
 ```
 
-#### `/api/v1/frames/[id]` - CRUD Operations
+#### `/frames/[id]` - CRUD Operations
 ```typescript
 // GET - Get single frame with relationships
 interface GetFrameResponse {
@@ -85,7 +85,7 @@ interface UpdateFrameRequest {
 }
 ```
 
-#### `/api/v1/frames/regenerate` - POST
+#### `/frames/regenerate` - POST
 ```typescript
 interface RegenerateFrameRequest {
   frameId: string;
@@ -128,7 +128,7 @@ interface FrameGenerationPayload {
 }
 ```
 
-### Webhook Handler: `/api/v1/webhooks/qstash/frames/route.ts`
+### Webhook Handler: `/webhooks/qstash/frames/route.ts`
 ```typescript
 const processFrameGeneration: JobProcessor = async (
   payload: JobPayload,
@@ -291,12 +291,12 @@ export class AnthropicProvider implements AIProvider {
    - Add publishFrameGenerationJob method to QStash client
    
 2. **Create Frame Generation API Route**
-   - Implement `/api/v1/frames/generate/route.ts`
+   - Implement `/frames/generate/route.ts`
    - Add validation schemas with Zod
    - Integrate with job manager
    
 3. **Implement Webhook Handler**
-   - Create `/api/v1/webhooks/qstash/frames/route.ts`
+   - Create `/webhooks/qstash/frames/route.ts`
    - Implement basic frame generation flow with mock AI
    - Add proper error handling and logging
    
@@ -490,7 +490,7 @@ describe('FrameGenerator', () => {
 
 ### Integration Tests
 ```typescript
-// /src/app/api/v1/frames/generate/__tests__/route.test.ts
+// /src/app/frames/generate/__tests__/route.test.ts
 describe('Frame Generation API', () => {
   test('creates job and returns jobId', async () => {
     const response = await POST(mockRequest);
