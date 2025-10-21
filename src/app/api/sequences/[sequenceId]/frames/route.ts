@@ -1,7 +1,7 @@
 /**
  * Sequence Frames API Endpoint
- * GET /api/frames/sequences/[sequenceId]/frames - Get all frames for a sequence
- * DELETE /api/frames/sequences/[sequenceId]/frames - Delete all frames for a sequence
+ * GET /api/sequences/[sequenceId]/frames - Get all frames for a sequence
+ * DELETE /api/sequences/[sequenceId]/frames - Delete all frames for a sequence
  */
 
 import { NextResponse } from "next/server";
@@ -63,10 +63,7 @@ export async function GET(
       { status: 200 },
     );
   } catch (error) {
-    console.error(
-      "[GET /api/frames/sequences/[sequenceId]/frames] Error:",
-      error,
-    );
+    console.error("[GET /api/sequences/[sequenceId]/frames] Error:", error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
@@ -133,10 +130,7 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
-    console.error(
-      "[DELETE /api/frames/sequences/[sequenceId]/frames] Error:",
-      error,
-    );
+    console.error("[DELETE /api/sequences/[sequenceId]/frames] Error:", error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(

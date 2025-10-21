@@ -29,7 +29,7 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    regenerateFrameSchema.parse(body); // Validate schema only
+    const validatedBody = regenerateFrameSchema.parse(body);
 
     // Authenticate user
     const user = await requireUser();
@@ -72,7 +72,7 @@ export async function POST(
       userId: user.id,
       teamId: frame.sequences.team_id,
       prompt: frame.description,
-      model: "flux_krea_lora",
+      model: validatedBody.model || "flux_krea_lora", // Use provided model or default
       imageSize: "landscape_16_9",
       numImages: 1,
       frameId,

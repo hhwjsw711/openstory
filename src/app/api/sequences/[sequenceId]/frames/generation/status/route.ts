@@ -1,6 +1,6 @@
 /**
- * Active Frame Generation Job API Endpoint
- * GET /api/frames/sequences/[sequenceId]/generation/active - Get active frame generation job for a sequence
+ * Frame Generation Status API Endpoint
+ * GET /api/sequences/[sequenceId]/frames/generation/status - Get frame generation status for a sequence
  */
 
 import { NextResponse } from "next/server";
@@ -28,10 +28,10 @@ export async function GET(
     const user = await requireUser();
     const supabase = createServerClient();
 
-    // Verify sequence exists and get team_id
+    // Verify sequence exists and get team_id + status
     const { data: sequence, error: sequenceError } = await supabase
       .from("sequences")
-      .select("team_id")
+      .select("team_id, status, metadata")
       .eq("id", sequenceId)
       .single();
 
@@ -49,37 +49,8 @@ export async function GET(
     // Verify team access
     await requireTeamMemberAccess(user.id, sequence.team_id);
 
-    // Query for the most recent frame_generation job for this sequence
-    // where status is pending or running
-    const { data: jobs, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("type", "frame_generation")
-      .in("status", ["pending", "running"])
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    if (!jobs || jobs.length === 0) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: null,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 200 },
-      );
-    }
-
-    // Check if this job is for the requested sequence
-    const job = jobs[0];
-    const payload = job.payload as Record<string, unknown> | null;
-    const jobSequenceId = payload?.sequenceId as string | undefined;
-
-    if (jobSequenceId !== sequenceId) {
+    // If sequence is not processing, return null (no active generation)
+    if (sequence.status !== "processing") {
       return NextResponse.json(
         {
           success: true,
@@ -97,22 +68,21 @@ export async function GET(
       .eq("sequence_id", sequenceId)
       .order("order_index", { ascending: true });
 
-    const options = payload?.options as Record<string, unknown> | undefined;
-    const framesPerScene = (options?.framesPerScene as number) || 3;
+    // Get expected frame count from metadata
+    const metadata = sequence.metadata as Record<string, unknown> | null;
+    const frameGenMetadata = metadata?.frameGeneration as
+      | Record<string, unknown>
+      | undefined;
+    const expectedFrameCount =
+      (frameGenMetadata?.expectedFrameCount as number) || 3;
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          id: job.id,
-          type: job.type,
-          status: job.status,
-          result: job.result,
-          error: job.error || undefined,
-          created_at: job.created_at,
-          updated_at: job.updated_at,
+          status: sequence.status,
           framesProgress: {
-            total: framesPerScene,
+            total: expectedFrameCount,
             completed: frames?.filter((f) => f.thumbnail_url).length || 0,
             frames: frames || [],
           },
@@ -123,7 +93,7 @@ export async function GET(
     );
   } catch (error) {
     console.error(
-      "[GET /api/frames/sequences/[sequenceId]/generation/active] Error:",
+      "[GET /api/sequences/[sequenceId]/frames/generation/status] Error:",
       error,
     );
 
@@ -131,7 +101,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get active generation job",
+        message: "Failed to get generation status",
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

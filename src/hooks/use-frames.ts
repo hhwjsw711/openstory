@@ -52,9 +52,7 @@ export function useFramesBySequence(
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId),
     queryFn: async () => {
-      const response = await fetch(
-        `/api/frames/sequences/${sequenceId}/frames`,
-      );
+      const response = await fetch(`/api/sequences/${sequenceId}/frames`);
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -213,7 +211,7 @@ export function useReorderFrames() {
       frameOrders: Array<{ id: string; order_index: number }>;
     }) => {
       const response = await fetch(
-        `/api/frames/sequences/${sequenceId}/frames/reorder`,
+        `/api/sequences/${sequenceId}/frames/reorder`,
         {
           method: "PATCH",
           headers: {
@@ -501,7 +499,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
     queryKey: ["active-job", sequenceId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/frames/sequences/${sequenceId}/generation/active`,
+        `/api/sequences/${sequenceId}/frames/generation/status`,
       );
       const result = await response.json();
 

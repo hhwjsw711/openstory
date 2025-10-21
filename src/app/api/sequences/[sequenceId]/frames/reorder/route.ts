@@ -1,6 +1,6 @@
 /**
  * Reorder Frames API Endpoint
- * PATCH /api/frames/sequences/[sequenceId]/frames/reorder - Reorder frames in a sequence
+ * PATCH /api/sequences/[sequenceId]/frames/reorder - Reorder frames in a sequence
  */
 
 import { NextResponse } from "next/server";
@@ -76,7 +76,7 @@ export async function PATCH(
     );
   } catch (error) {
     console.error(
-      "[PATCH /api/frames/sequences/[sequenceId]/frames/reorder] Error:",
+      "[PATCH /api/sequences/[sequenceId]/frames/reorder] Error:",
       error,
     );
 

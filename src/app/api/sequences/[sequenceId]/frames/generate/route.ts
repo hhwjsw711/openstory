@@ -66,6 +66,12 @@ export async function POST(
       );
     }
 
+    // Update sequence status to processing
+    await supabase
+      .from("sequences")
+      .update({ status: "processing" })
+      .eq("id", sequenceId);
+
     // Trigger frame generation workflow
     const workflowInput: FrameGenerationWorkflowInput = {
       userId: user.id,

@@ -269,6 +269,25 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
     });
   }
 
+  // Step N: Update sequence status to completed
+  await context.run("update-sequence-status", async () => {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("sequences")
+      .update({ status: "completed" })
+      .eq("id", input.sequenceId);
+
+    if (error) {
+      loggerService.logError(
+        `Failed to update sequence status: ${error.message}`,
+      );
+      throw new Error(`Failed to update sequence status: ${error.message}`);
+    }
+
+    loggerService.logDebug("Sequence status updated to completed");
+    return { success: true };
+  });
+
   loggerService.logDebug("Frame generation workflow completed");
 
   return {

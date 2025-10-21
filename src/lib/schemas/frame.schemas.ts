@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IMAGE_TO_VIDEO_MODELS } from "@/lib/ai/models";
+import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from "@/lib/ai/models";
 import type { Json } from "@/types/database";
 
 /**
@@ -47,6 +47,9 @@ export const regenerateFrameSchema = z.object({
   frameId: z.string().uuid(),
   regenerateDescription: z.boolean().optional(),
   regenerateThumbnail: z.boolean().optional(),
+  model: z
+    .enum(Object.keys(IMAGE_MODELS) as [keyof typeof IMAGE_MODELS])
+    .optional(),
 });
 
 export const generateMotionSchema = z.object({

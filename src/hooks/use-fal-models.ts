@@ -14,11 +14,6 @@ const falModelsResponseSchema = z.object({
   ),
 });
 
-const generateImageByFalResponseSchema = z.object({
-  jobId: z.string(),
-  success: z.boolean(),
-});
-
 const estimateImageCostByFalResponseSchema = z.object({
   success: z.boolean(),
   data: z.object({
@@ -27,29 +22,10 @@ const estimateImageCostByFalResponseSchema = z.object({
   }),
 });
 
-const generatedImageByJobIdResponseSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-  data: z.object({
-    team_id: z.string().nullable(),
-    user_id: z.string().nullable(),
-    type: z.enum(["image", "video"]),
-    status: z.enum(["pending", "completed", "failed"]),
-    payload: z.record(z.string(), z.unknown()),
-    result: z.record(z.string(), z.unknown()),
-    error: z.string().nullable(),
-    created_at: z.string(),
-    updated_at: z.string(),
-  }),
-});
-
 // Query keys
 export const falModelKeys = {
   all: ["fal-models"] as const,
   lists: () => [...falModelKeys.all, "list"] as const,
-  generate: () => [...falModelKeys.all, "generate"] as const,
-  generateStatus: (jobId: string) =>
-    [...falModelKeys.all, "generate", jobId] as const,
   estimate: () => [...falModelKeys.all, "estimate"] as const,
 };
 
@@ -70,85 +46,11 @@ async function fetchFalModels(params: FalModelsRequest) {
   return falModelsResponseSchema.parse(data);
 }
 
-// Hook for generating image by FAL
-export interface GenerateImageByFalRequest {
-  sequence_id: string;
-  frame_id: string;
-  prompt: string;
-  model: string;
-  style_id?: string;
-  extra_params: Record<string, unknown>;
-}
-
-async function generateImageByFal(params: GenerateImageByFalRequest) {
-  const url = new URL("/api/generations/images", window.location.origin);
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(params),
-  });
-  if (!response.ok) {
-    throw new Error(
-      "[hooks/use-fal-models/generateImageByFal] Failed to generate image",
-    );
-  }
-  const data = await response.json();
-  return generateImageByFalResponseSchema.parse(data);
-}
-
-export function useGenerateImageByFal() {
-  return useMutation<
-    { jobId: string; success: boolean },
-    Error,
-    GenerateImageByFalRequest
-  >({
-    mutationFn: (params: GenerateImageByFalRequest) =>
-      generateImageByFal(params),
-  });
-}
-
-async function fetchGeneratedImageByJobId(id: string) {
-  const url = new URL(`/api/generations/images/${id}`, window.location.origin);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      "[hooks/use-fal-models/fetchGeneratedImageByJobId] Failed to fetch generated image by job ID",
-    );
-  }
-  const data = await response.json();
-  return generatedImageByJobIdResponseSchema.parse(data);
-}
-
 // Hook for listing FAL models
 export function useFalModels(params: FalModelsRequest) {
   return useQuery({
     queryKey: [...falModelKeys.lists(), params.type, params.includeCosts],
     queryFn: () => fetchFalModels(params),
-  });
-}
-
-// Hook for generating image by FAL
-export function useGenerateImageStatusByJobId(
-  id: string,
-  options?: { enabled?: boolean },
-) {
-  return useQuery({
-    queryKey: falModelKeys.generateStatus(id),
-    queryFn: () => fetchGeneratedImageByJobId(id),
-    refetchInterval: (query) => {
-      if (
-        query.state.data?.data?.status === "completed" ||
-        query.state.data?.data?.status === "failed"
-      ) {
-        return false;
-      }
-      return 2000;
-    },
-    enabled: options?.enabled ?? true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false, // Prevent refetch on focus to avoid refresh token errors
   });
 }
 
