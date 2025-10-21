@@ -65,6 +65,6 @@ export function getQStashWebhookUrl(): string {
   }
 
   // Local development with local QStash server (default)
-  // The local QStash server at localhost:8080 can reach localhost:3000
-  return "http://localhost:3000";
+  // The local QStash server now runs on docker. This is the correct URL to use for the QStash webhook.
+  return "http://host.docker.internal:3000";
 }
