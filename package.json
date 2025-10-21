@@ -58,16 +58,6 @@
     "tailwind-merge": "^3.3.1",
     "zod": "^4.1.5"
   },
-  "exports": {
-    "./actions/*": {
-      "storybook": "./src/app/actions/*/index.mock.ts",
-      "default": "./src/app/actions/*/index.ts"
-    },
-    "./actions": {
-      "storybook": "./src/app/actions/index.mock.ts",
-      "default": "./src/app/actions/index.ts"
-    }
-  },
   "imports": {
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
