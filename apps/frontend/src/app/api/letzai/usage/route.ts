@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/errors";
-import { getLetzAIService } from "@/lib/letzai/service";
+import { getLetzAIService } from "@/lib/services/letzai-service";
 
 // Query parameters schema
 const usageQuerySchema = z.object({

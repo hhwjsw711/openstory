@@ -67,6 +67,10 @@ export const StoryboardFrameWithScript: React.FC<
   const hasVideo = Boolean(frame.video_url);
   const hasThumbnail = Boolean(frame.thumbnail_url);
 
+  // Check if motion is being generated in the background (via QStash)
+  const motionStatus = metadata?.motionStatus as string | undefined;
+  const isMotionGenerating = motionStatus === "generating" || isGeneratingMotion;
+
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>("");
   const generateImageMutation = useGenerateImageByFal();
@@ -157,11 +161,20 @@ export const StoryboardFrameWithScript: React.FC<
       const result = await response.json();
 
       if (result.success && result.data?.jobId) {
-        // Motion generation started - the frame will be updated via webhook
-        // For now, we can't update the frame immediately since it's async
-        // The UI should poll or use realtime updates to get the video URL
+        // Motion generation started - optimistically update UI
         console.log("[handleGenerateMotion] Motion generation started", {
           jobId: result.data.jobId,
+        });
+
+        // Optimistically update frame metadata to show generating state
+        onFrameUpdate?.({
+          ...frame,
+          metadata: {
+            ...(frame.metadata as Record<string, unknown>),
+            motionJobId: result.data.jobId,
+            motionStatus: "generating",
+            motionModel: "seedance_v1_pro",
+          },
         });
       } else {
         setMotionError("Failed to generate motion");
@@ -376,7 +389,7 @@ export const StoryboardFrameWithScript: React.FC<
           )}
 
           {/* Motion generation status */}
-          {isGeneratingMotion && (
+          {isMotionGenerating && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
               <div className="flex flex-col items-center gap-2 text-white">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
@@ -418,10 +431,10 @@ export const StoryboardFrameWithScript: React.FC<
               size="sm"
               variant="outline"
               onClick={handleGenerateMotion}
-              disabled={isGeneratingMotion}
+              disabled={isMotionGenerating}
               className="flex-1"
             >
-              {isGeneratingMotion ? "Generating..." : "Generate Motion"}
+              {isMotionGenerating ? "Generating..." : "Generate Motion"}
             </Button>
           )}
           {hasVideo && (

@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
 import { handleApiError, ValidationError } from "@/lib/errors";
-import { getFalService } from "@/lib/fal/service";
+import { getFalService } from "@/lib/services/fal-service";
 
 // Query parameters schema
 const usageQuerySchema = z.object({

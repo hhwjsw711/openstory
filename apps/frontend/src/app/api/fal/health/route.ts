@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/errors";
-import { getFalService } from "@/lib/fal/service";
+import { getFalService } from "@/lib/services/fal-service";
 
 /**
  * GET handler for basic health check (no body required)

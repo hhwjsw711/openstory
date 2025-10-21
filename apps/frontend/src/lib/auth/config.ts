@@ -53,7 +53,9 @@ export const auth = betterAuth({
       });
 
       // Import dynamically to avoid issues during build
-      const { sendPasswordResetEmail } = await import("@/lib/email/service");
+      const { sendPasswordResetEmail } = await import(
+        "@/lib/services/email-service"
+      );
       const result = await sendPasswordResetEmail(user.email, url);
 
       if (!result.success) {

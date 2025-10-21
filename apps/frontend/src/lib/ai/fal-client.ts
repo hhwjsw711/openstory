@@ -13,8 +13,8 @@ import {
   IMAGE_MODELS,
   VIDEO_MODELS,
 } from "@/lib/ai/models";
-import type { FalServiceResponse } from "@/lib/fal/service";
-import { getFalService } from "@/lib/fal/service";
+import type { FalServiceResponse } from "@/lib/services/fal-service";
+import { getFalService } from "@/lib/services/fal-service";
 
 // Response schema for FAL video generation
 const falVideoResponseSchema = z.object({

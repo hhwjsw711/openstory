@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/errors";
-import { getLetzAIService } from "@/lib/letzai/service";
+import { getLetzAIService } from "@/lib/services/letzai-service";
 
 /**
  * GET handler for LetzAI health check

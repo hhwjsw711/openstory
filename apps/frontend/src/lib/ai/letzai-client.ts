@@ -3,8 +3,6 @@
  * Provides integration with LetzAI's generative media models
  */
 
-import type { LetzAIServiceResponse } from "@/lib/letzai/service";
-import { getLetzAIService } from "@/lib/letzai/service";
 import type {
   LetzAIImageEditRequest,
   LetzAIImageEditResponse,
@@ -13,6 +11,8 @@ import type {
   LetzAIModelResponse,
   LetzAIUpscaleRequest,
 } from "@/lib/schemas/letzai-request";
+import type { LetzAIServiceResponse } from "@/lib/services/letzai-service";
+import { getLetzAIService } from "@/lib/services/letzai-service";
 
 // LetzAI model constants
 export const LETZAI_MODES = {

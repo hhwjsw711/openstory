@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/errors";
-import { getFalService } from "@/lib/fal/service";
+import { getFalService } from "@/lib/services/fal-service";
 
 // Query parameters schema
 const modelsQuerySchema = z.object({
