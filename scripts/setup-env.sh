@@ -28,9 +28,17 @@ else
     exit 1
 fi
 
-# Setup QStash for local development (using hardcoded user 1)
+# Setup QStash for local development
 echo -e "${BLUE}Setting up QStash for local development...${NC}"
 echo -e "${YELLOW}Make sure 'bun qstash:dev' is running in another terminal!${NC}"
+
+# QStash local development credentials (use environment variables if set, otherwise use defaults)
+QSTASH_URL="${QSTASH_URL:-http://127.0.0.1:8080}"
+QSTASH_TOKEN="${QSTASH_TOKEN:-eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=}"
+QSTASH_CURRENT_SIGNING_KEY="${QSTASH_CURRENT_SIGNING_KEY:-sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r}"
+QSTASH_NEXT_SIGNING_KEY="${QSTASH_NEXT_SIGNING_KEY:-sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs}"
+UPSTASH_WORKFLOW_URL="${UPSTASH_WORKFLOW_URL:-http://host.docker.internal:3000}"
+NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
 
 # Get the tunnel URL if needed
 echo -e "${BLUE}Setting up tunnel for QStash callbacks...${NC}"
@@ -49,12 +57,18 @@ SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_KEY
 DATABASE_URL=$DATABASE_URL
 
 # QStash
-QSTASH_TOKEN=$QSTASH_TOKEN
 QSTASH_URL=$QSTASH_URL
+QSTASH_TOKEN=$QSTASH_TOKEN
 QSTASH_CURRENT_SIGNING_KEY=$QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 
-# QStash tunnel URL (when using qstash:dev)
+# Upstash Workflow - URL that QStash can reach (from inside Docker)
+UPSTASH_WORKFLOW_URL=$UPSTASH_WORKFLOW_URL
+
+# App URL (for QStash callbacks)
+NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
+# QStash tunnel URL (when using cloud QStash)
 EOF
 
 if [ -n "$QSTASH_TUNNEL_URL" ]; then
@@ -90,11 +104,14 @@ echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Supabase URL: $SUPABASE_URL"
 echo "  Database URL: $DATABASE_URL"
-echo "  QStash URL: $QSTASH_URL (local dev)"
-echo "  QStash User: user1"
+echo "  QStash URL: $QSTASH_URL"
+echo "  QStash Token: defaultUser (local dev defaults)"
+echo "  Upstash Workflow URL: $UPSTASH_WORKFLOW_URL"
+echo "  App URL: $NEXT_PUBLIC_APP_URL"
 if [ -n "$QSTASH_TUNNEL_URL" ]; then
     echo "  QStash Tunnel URL: $QSTASH_TUNNEL_URL"
 fi
 echo ""
+echo -e "${YELLOW}💡 Tip: You can override QStash values by setting them as environment variables before running this script${NC}"
 echo -e "${YELLOW}Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
 echo -e "${GREEN}Setup complete! You can now run 'bun dev'${NC}"

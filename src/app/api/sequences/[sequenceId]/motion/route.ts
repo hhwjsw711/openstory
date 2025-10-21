@@ -13,7 +13,7 @@ import {
 import { ValidationError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
 import type { MotionWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 // Request body schema
 const requestSchema = z.object({
@@ -116,30 +116,16 @@ export async function POST(
           motionBucket: validatedData.motionBucket,
         };
 
-        const workflowResponse = await fetch(
-          `${workflowConfig.baseUrl}/motion`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(workflowInput),
-          },
-        );
-
-        if (!workflowResponse.ok) {
-          throw new Error(
-            `Failed to trigger workflow: ${workflowResponse.statusText}`,
-          );
-        }
-
-        const workflowRunId = workflowResponse.headers.get(
-          "Upstash-Workflow-RunId",
-        );
+        // Publish to QStash to trigger the workflow
+        const qstash = getQStashClient();
+        const { messageId } = await qstash.publishJSON({
+          url: `${workflowConfig.baseUrl}/motion`,
+          body: workflowInput,
+        });
 
         workflows.push({
           frameId: frame.id,
-          workflowRunId,
+          workflowRunId: messageId,
           orderIndex: frame.order_index,
         });
       } catch (error) {

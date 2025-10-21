@@ -4,7 +4,10 @@
 
 import { Client } from "@upstash/qstash";
 import { ConfigurationError } from "@/lib/errors";
-import { getQStashWebhookUrl } from "@/lib/utils/get-base-url";
+import {
+  getInternalAppUrl,
+  getQStashWebhookUrl,
+} from "@/lib/utils/get-base-url";
 
 /**
  * Gets the QStash client for direct API operations
@@ -23,8 +26,8 @@ export function getQStashClient(): Client {
 }
 
 /**
- * Gets the base URL for workflow endpoints
- * Workflow serve() functions use this to construct their URLs
+ * Gets the external webhook base URL for workflow endpoints
+ * Used by QStash to call back to workflows
  */
 export function getWorkflowBaseUrl(): string {
   const apiUrl = getQStashWebhookUrl();
@@ -32,13 +35,27 @@ export function getWorkflowBaseUrl(): string {
 }
 
 /**
+ * Gets the internal base URL for workflow endpoints
+ * Used when API routes need to trigger workflows within the same app
+ */
+export function getInternalWorkflowBaseUrl(): string {
+  const appUrl = getInternalAppUrl();
+  return `${appUrl}/api/workflows`;
+}
+
+/**
  * Configuration for workflow runtime
  */
 export const workflowConfig = {
   /**
-   * Base URL for all workflow endpoints
+   * External webhook base URL (for QStash callbacks)
    */
   baseUrl: getWorkflowBaseUrl(),
+
+  /**
+   * Internal base URL (for API route → workflow calls)
+   */
+  internalBaseUrl: getInternalWorkflowBaseUrl(),
 
   /**
    * Default retry configuration

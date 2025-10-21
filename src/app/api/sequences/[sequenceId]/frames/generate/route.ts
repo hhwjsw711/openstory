@@ -9,7 +9,7 @@ import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
 import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   _request: Request,
@@ -80,29 +80,14 @@ export async function POST(
       },
     };
 
-    const workflowResponse = await fetch(
-      `${workflowConfig.baseUrl}/frame-generation`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(workflowInput),
-      },
-    );
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    const { messageId } = await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/frame-generation`,
+      body: workflowInput,
+    });
 
-    if (!workflowResponse.ok) {
-      throw new Error(
-        `Failed to trigger workflow: ${workflowResponse.statusText}`,
-      );
-    }
-
-    // Read response body to consume the stream
-    await workflowResponse.text();
-
-    const workflowRunId = workflowResponse.headers.get(
-      "Upstash-Workflow-RunId",
-    );
+    const workflowRunId = messageId;
 
     console.log("[generateFrames] Frame generation workflow triggered", {
       sequenceId,

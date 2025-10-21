@@ -12,7 +12,7 @@ import { createSequenceSchema } from "@/lib/schemas/sequence.schemas";
 import { sequenceService } from "@/lib/services/sequence.service";
 import { createServerClient } from "@/lib/supabase/server";
 import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(request: Request) {
   try {
@@ -81,12 +81,11 @@ export async function POST(request: Request) {
       },
     };
 
-    await fetch(`${workflowConfig.baseUrl}/frame-generation`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(workflowInput),
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/frame-generation`,
+      body: workflowInput,
     });
 
     // Revalidate paths

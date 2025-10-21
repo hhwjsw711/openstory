@@ -14,7 +14,11 @@ import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
 } from "@/lib/workflow";
-import { validateWorkflowAuth, workflowConfig } from "@/lib/workflow";
+import {
+  getQStashClient,
+  validateWorkflowAuth,
+  workflowConfig,
+} from "@/lib/workflow";
 import type { Json } from "@/types/database";
 
 // Common cinematography shot types for variety
@@ -223,7 +227,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   // Step 7: Generate thumbnails in parallel if enabled
   if (input.options?.generateThumbnails !== false) {
     await context.run("generate-thumbnails", async () => {
-      const imageWorkflowUrl = `${workflowConfig.baseUrl}/image`;
+      const qstash = getQStashClient();
 
       // Trigger image generation for all frames in parallel
       const promises = frameIds.map(async ({ frameId, prompt }) => {
@@ -245,12 +249,11 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
           sequenceId: input.sequenceId,
         };
 
-        // Trigger image workflow (fire and forget - it will update the frame when complete)
+        // Publish to QStash to trigger image workflow (fire and forget)
         try {
-          await fetch(imageWorkflowUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(imageInput),
+          await qstash.publishJSON({
+            url: `${workflowConfig.baseUrl}/image`,
+            body: imageInput,
           });
           return frameId;
         } catch (error) {

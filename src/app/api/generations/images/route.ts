@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth/action-utils";
 import { handleApiError } from "@/lib/errors";
 import { createServerClient } from "@/lib/supabase/server";
 import type { ImageWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(request: Request) {
   try {
@@ -54,23 +54,14 @@ export async function POST(request: Request) {
       ...validatedData.data,
     };
 
-    const workflowResponse = await fetch(`${workflowConfig.baseUrl}/image`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(workflowInput),
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    const { messageId } = await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/image`,
+      body: workflowInput,
     });
 
-    if (!workflowResponse.ok) {
-      throw new Error(
-        `Failed to trigger workflow: ${workflowResponse.statusText}`,
-      );
-    }
-
-    const workflowRunId = workflowResponse.headers.get(
-      "Upstash-Workflow-RunId",
-    );
+    const workflowRunId = messageId;
 
     return NextResponse.json(
       {

@@ -13,7 +13,7 @@ import { handleApiError, ValidationError } from "@/lib/errors";
 import { sequenceService } from "@/lib/services/sequence.service";
 import { createServerClient } from "@/lib/supabase/server";
 import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -156,12 +156,11 @@ export async function PATCH(
           },
         };
 
-        await fetch(`${workflowConfig.baseUrl}/frame-generation`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(workflowInput),
+        // Publish to QStash to trigger the workflow
+        const qstash = getQStashClient();
+        await qstash.publishJSON({
+          url: `${workflowConfig.baseUrl}/frame-generation`,
+          body: workflowInput,
         });
       }
     }

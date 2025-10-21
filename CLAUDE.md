@@ -32,6 +32,8 @@ bun supabase:types     # Generate TypeScript types from database
 bun qstash:dev         # Start QStash tunnel for local webhooks
 ```
 
+**Note**: Local development uses hardcoded QStash credentials (user: `defaultUser`) configured in `setup-env.sh`. The workflow URL is set to `http://host.docker.internal:3000` so QStash (running in Docker) can reach your local Next.js app.
+
 ### Environment Setup
 ```bash
 bun setup:env          # Create .env.development.local with Supabase credentials
@@ -59,8 +61,8 @@ bun build-storybook   # Build Storybook for production
 
 ### First Time Setup
 1. **Install dependencies**: `bun install`
-2. **Setup environment**: `bun setup:env` (requires QStash token from Upstash)
-3. **Start Supabase**: `bun supabase:start`
+2. **Start Supabase**: `bun supabase:start`
+3. **Setup environment**: `bun setup:env` (automatically configures Supabase + QStash with local dev credentials)
 
 ### Daily Development (3 Terminal Setup)
 1. **Terminal 1 - Supabase**: `bun supabase:start` (if not already running)
@@ -180,7 +182,7 @@ All async AI operations use QStash Workflow for durable execution:
 
 **Workflow Pattern**:
 ```typescript
-// 1. API route triggers workflow
+// 1. API route triggers workflow via QStash publish
 const workflowInput: ImageWorkflowInput = {
   userId: user.id,
   teamId: team.id,
@@ -188,12 +190,14 @@ const workflowInput: ImageWorkflowInput = {
   // ...
 };
 
-const response = await fetch(`${workflowConfig.baseUrl}/image`, {
-  method: "POST",
-  body: JSON.stringify(workflowInput),
+// Publish to QStash to trigger the workflow
+const qstash = getQStashClient();
+const { messageId } = await qstash.publishJSON({
+  url: `${workflowConfig.baseUrl}/image`, // Use baseUrl for QStash webhooks
+  body: workflowInput,
 });
 
-const workflowRunId = response.headers.get("Upstash-Workflow-RunId");
+const workflowRunId = messageId;
 
 // 2. Workflow executes with durable steps
 export const { POST } = serve<ImageWorkflowInput>(async (context) => {
@@ -205,6 +209,11 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
   });
 });
 ```
+
+**Important**:
+- Always use `qstash.publishJSON()` to trigger workflows, not direct `fetch()` calls
+- QStash requires proper signatures which are only added through the publish API
+- Use `workflowConfig.baseUrl` for QStash webhook URLs (external URL that QStash can reach)
 
 **Key Principles**:
 - Workflows handle their own state - no database job tracking needed

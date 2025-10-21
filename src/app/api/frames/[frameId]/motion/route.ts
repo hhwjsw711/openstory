@@ -17,7 +17,7 @@ import { ValidationError } from "@/lib/errors";
 import { generateMotionSchema } from "@/lib/schemas/frame.schemas";
 import { createServerClient } from "@/lib/supabase/server";
 import type { MotionWorkflowInput } from "@/lib/workflow";
-import { workflowConfig } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
@@ -79,23 +79,14 @@ export async function POST(
       motionBucket: validated.motionBucket,
     };
 
-    const workflowResponse = await fetch(`${workflowConfig.baseUrl}/motion`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(workflowInput),
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    const { messageId } = await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/motion`,
+      body: workflowInput,
     });
 
-    if (!workflowResponse.ok) {
-      throw new Error(
-        `Failed to trigger workflow: ${workflowResponse.statusText}`,
-      );
-    }
-
-    const workflowRunId = workflowResponse.headers.get(
-      "Upstash-Workflow-RunId",
-    );
+    const workflowRunId = messageId;
 
     return createSuccessResponse(
       {
