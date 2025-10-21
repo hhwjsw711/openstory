@@ -131,18 +131,21 @@ export const StoryboardFrameWithScript: React.FC<
     setMotionError(null);
 
     try {
-      const response = await fetch(`/api/frames/${frame.id}/motion`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/motion`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "seedance_v1_pro",
+            duration: 3,
+            fps: 14,
+            motionBucket: 127,
+          }),
         },
-        body: JSON.stringify({
-          model: "seedance_v1_pro",
-          duration: 3,
-          fps: 14,
-          motionBucket: 127,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -193,15 +196,18 @@ export const StoryboardFrameWithScript: React.FC<
 
     setIsRegenerating(true);
     try {
-      const response = await fetch(`/api/frames/${frame.id}/regenerate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/regenerate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+          }),
         },
-        body: JSON.stringify({
-          model: selectedModel,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const error = await response.json();

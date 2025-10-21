@@ -1,6 +1,6 @@
 /**
  * Regenerate Frame API Endpoint
- * POST /api/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
  */
 
 import { NextResponse } from "next/server";
@@ -14,17 +14,18 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
 ) {
   try {
-    const { frameId } = await params;
+    const { sequenceId, frameId } = await params;
 
-    // Validate UUID
+    // Validate UUIDs
     const uuidSchema = z.string().uuid();
     try {
+      uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid frame ID format");
+      throw new ValidationError("Invalid sequence or frame ID format");
     }
 
     // Parse and validate request body
@@ -40,13 +41,14 @@ export async function POST(
       .from("frames")
       .select("*, sequences!inner(id, team_id, script)")
       .eq("id", frameId)
+      .eq("sequence_id", sequenceId)
       .single();
 
     if (frameError || !frame) {
       return NextResponse.json(
         {
           success: false,
-          message: "Frame not found",
+          message: "Frame not found in this sequence",
           timestamp: new Date().toISOString(),
         },
         { status: 404 },
@@ -101,7 +103,10 @@ export async function POST(
       { status: 200 },
     );
   } catch (error) {
-    console.error("[POST /api/frames/[frameId]/regenerate] Error:", error);
+    console.error(
+      "[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:",
+      error,
+    );
 
     const handledError = handleApiError(error);
     return NextResponse.json(

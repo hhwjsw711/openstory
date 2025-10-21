@@ -27,6 +27,7 @@ export interface GenerateFramesInput {
 }
 
 export interface RegenerateFrameInput {
+  sequenceId: string;
   frameId: string;
   regenerateDescription?: boolean;
   regenerateThumbnail?: boolean;
@@ -70,11 +71,13 @@ export function useFramesBySequence(
 }
 
 // Hook for getting single frame
-export function useFrame(frameId: string) {
+export function useFrame(sequenceId: string, frameId: string) {
   return useQuery<Frame>({
     queryKey: frameKeys.detail(frameId),
     queryFn: async () => {
-      const response = await fetch(`/api/frames/${frameId}`);
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}`,
+      );
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -84,7 +87,7 @@ export function useFrame(frameId: string) {
       return result.data;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!frameId,
+    enabled: !!sequenceId && !!frameId,
   });
 }
 
@@ -94,12 +97,13 @@ export function useCreateFrame() {
 
   return useMutation<Frame, Error, CreateFrameInput>({
     mutationFn: async (input: CreateFrameInput) => {
-      const response = await fetch("/api/frames", {
+      const { sequence_id, ...frameData } = input;
+      const response = await fetch(`/api/sequences/${sequence_id}/frames`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify(frameData),
       });
 
       const result = await response.json();
@@ -124,17 +128,20 @@ export function useCreateFrame() {
 export function useUpdateFrame() {
   const queryClient = useQueryClient();
 
-  return useMutation<Frame, Error, UpdateFrameInput>({
-    mutationFn: async (input: UpdateFrameInput) => {
-      const { id, ...updateData } = input;
+  return useMutation<Frame, Error, UpdateFrameInput & { sequence_id: string }>({
+    mutationFn: async (input) => {
+      const { id, sequence_id, ...updateData } = input;
 
-      const response = await fetch(`/api/frames/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/sequences/${sequence_id}/frames/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
         },
-        body: JSON.stringify(updateData),
-      });
+      );
 
       const result = await response.json();
 
@@ -161,15 +168,22 @@ export function useUpdateFrame() {
 export function useDeleteFrame() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ frameId: string; sequenceId?: string }, Error, string>({
-    mutationFn: async (frameId: string) => {
+  return useMutation<
+    { frameId: string; sequenceId?: string },
+    Error,
+    { sequenceId: string; frameId: string }
+  >({
+    mutationFn: async ({ sequenceId, frameId }) => {
       const frameData = queryClient.getQueryData<Frame>(
         frameKeys.detail(frameId),
       );
 
-      const response = await fetch(`/api/frames/${frameId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const result = await response.json();
 
@@ -288,12 +302,12 @@ export function useBulkCreateFrames() {
       sequenceId: string;
       frames: Omit<CreateFrameInput, "sequence_id">[];
     }) => {
-      const response = await fetch("/api/frames/bulk", {
+      const response = await fetch(`/api/sequences/${sequenceId}/frames`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sequenceId, frames }),
+        body: JSON.stringify({ frames }),
       });
 
       const result = await response.json();
@@ -318,12 +332,9 @@ export function useDeleteFramesBySequence() {
 
   return useMutation<string, Error, string>({
     mutationFn: async (sequenceId: string) => {
-      const response = await fetch(
-        `/api/frames/sequences/${sequenceId}/frames`,
-        {
-          method: "DELETE",
-        },
-      );
+      const response = await fetch(`/api/sequences/${sequenceId}/frames`, {
+        method: "DELETE",
+      });
 
       const result = await response.json();
 
@@ -408,15 +419,18 @@ export function useRegenerateFrame() {
 
   return useMutation<{ jobId: string }, Error, RegenerateFrameInput>({
     mutationFn: async (input: RegenerateFrameInput) => {
-      const { frameId, ...body } = input;
+      const { sequenceId, frameId, ...body } = input;
 
-      const response = await fetch(`/api/frames/${frameId}/regenerate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}/regenerate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+      );
 
       const result = await response.json();
 
@@ -426,67 +440,14 @@ export function useRegenerateFrame() {
 
       return { jobId: result.data.jobId };
     },
-    onSuccess: (_, { frameId }) => {
+    onSuccess: (_, { sequenceId, frameId }) => {
       queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
       });
 
-      const frameData = queryClient.getQueryData<Frame>(
-        frameKeys.detail(frameId),
-      );
-      if (frameData?.sequence_id) {
-        queryClient.invalidateQueries({
-          queryKey: frameKeys.list(frameData.sequence_id),
-        });
-      }
-    },
-  });
-}
-
-// Hook for polling frame generation status
-export function useFrameGenerationStatus(
-  jobId: string | null,
-  options?: {
-    enabled?: boolean;
-    refetchInterval?: number;
-  },
-) {
-  const queryClient = useQueryClient();
-
-  return useQuery({
-    queryKey: ["jobs", jobId],
-    queryFn: async () => {
-      if (!jobId) return null;
-
-      const response = await fetch(`/api/frames/jobs/${jobId}/status`);
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to fetch job status");
-      }
-
-      const job = result.data;
-
-      if (job?.framesProgress && job.status === "running") {
-        const sequenceId = job.framesProgress.frames[0]?.id?.split("-")[0];
-        if (sequenceId) {
-          queryClient.invalidateQueries({
-            queryKey: frameKeys.list(sequenceId),
-          });
-        }
-      }
-
-      return job;
-    },
-    enabled: !!jobId && (options?.enabled ?? true),
-    refetchInterval: (query) => {
-      if (
-        query.state.data?.status === "completed" ||
-        query.state.data?.status === "failed"
-      ) {
-        return false;
-      }
-      return options?.refetchInterval ?? 2000;
+      queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
     },
   });
 }

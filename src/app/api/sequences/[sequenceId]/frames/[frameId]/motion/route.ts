@@ -1,6 +1,6 @@
 /**
  * API endpoint for generating motion (video) from a frame's thumbnail
- * POST /api/frames/[frameId]/motion
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/motion
  */
 
 import { z } from "zod";
@@ -21,17 +21,18 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
 ) {
   try {
-    const { frameId } = await params;
+    const { sequenceId, frameId } = await params;
 
-    // Validate UUID
+    // Validate UUIDs
     const uuidSchema = z.string().uuid();
     try {
+      uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid frame ID format");
+      throw new ValidationError("Invalid sequence or frame ID format");
     }
 
     // Parse and validate request body
@@ -49,10 +50,11 @@ export async function POST(
       .from("frames")
       .select("*, sequences!inner(id, team_id, script, style_id, styles(*))")
       .eq("id", frameId)
+      .eq("sequence_id", sequenceId)
       .single();
 
     if (frameError || !frame) {
-      throw new ValidationError("Frame not found");
+      throw new ValidationError("Frame not found in this sequence");
     }
 
     // Verify user has access to this frame
