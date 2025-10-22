@@ -406,16 +406,35 @@ export class StyleStackService {
 
   /**
    * Increment usage count when style is applied
+   *
+   * Note: Uses read-then-write pattern. There's a small race condition where
+   * concurrent updates might lose counts, but this is acceptable for non-critical
+   * usage statistics.
    */
   async incrementUsageCount(styleId: string): Promise<void> {
-    const { error } = await this.adminClient.rpc("increment_style_usage", {
-      style_uuid: styleId,
-    });
+    // Read current usage count
+    const { data: style, error: readError } = await this.adminClient
+      .from("styles")
+      .select("usage_count")
+      .eq("id", styleId)
+      .single();
 
-    if (error) {
-      // Don't throw error for usage count failures, just log
+    if (readError || !style) {
       console.warn(
-        `Failed to increment usage count for style ${styleId}: ${error.message}`,
+        `Failed to read usage count for style ${styleId}: ${readError?.message}`,
+      );
+      return;
+    }
+
+    // Increment and write back
+    const { error: writeError } = await this.adminClient
+      .from("styles")
+      .update({ usage_count: (style.usage_count ?? 0) + 1 })
+      .eq("id", styleId);
+
+    if (writeError) {
+      console.warn(
+        `Failed to increment usage count for style ${styleId}: ${writeError.message}`,
       );
     }
   }

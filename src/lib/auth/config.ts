@@ -8,6 +8,7 @@ import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins";
 import { pgPool } from "@/lib/db/pool";
 import { createAdminClient } from "@/lib/supabase/server";
+import { migrateAnonymousUserData } from "./migrate-user-data";
 
 // Environment validation
 const requiredEnvVars = {
@@ -89,47 +90,25 @@ export const auth = betterAuth({
           newUserId: newUser.user.id,
         });
 
-        // Transfer anonymous user data to authenticated account using Supabase client
+        // Transfer anonymous user data to authenticated account
         const supabase = createAdminClient();
 
         try {
-          // Call the transactional migration function
-          // All data transfer happens atomically - either all succeeds or all rolls back
-          const { data, error: migrationError } = await supabase.rpc(
-            "migrate_anonymous_user_data" as unknown as never,
-            {
-              p_anonymous_user_id: anonymousUser.user.id,
-              p_new_user_id: newUser.user.id,
-            } as never,
+          // Migrate all anonymous user data to the authenticated account
+          // All data transfer happens atomically - either all succeeds or all fails
+          const result = await migrateAnonymousUserData(
+            supabase,
+            anonymousUser.user.id,
+            newUser.user.id,
           );
-
-          if (migrationError) {
-            console.error(
-              "[BetterAuth] Migration transaction failed:",
-              migrationError,
-            );
-            throw new Error(
-              `Failed to migrate user data - transaction rolled back: ${migrationError.message}`,
-            );
-          }
-
-          // Type the migration result
-          const result = data as {
-            success: boolean;
-            target_team_id: string;
-            migration_type: "merge" | "transfer";
-            sequences_transferred: number;
-            styles_transferred: number;
-            credits_merged: number;
-          };
 
           // Log successful migration with details
           console.log("[BetterAuth] Successfully linked anonymous account", {
-            migrationType: result.migration_type,
-            targetTeamId: result.target_team_id,
-            sequencesTransferred: result.sequences_transferred,
-            stylesTransferred: result.styles_transferred,
-            creditsMerged: result.credits_merged,
+            migrationType: result.migrationType,
+            targetTeamId: result.targetTeamId,
+            sequencesTransferred: result.sequencesTransferred,
+            stylesTransferred: result.stylesTransferred,
+            creditsMerged: result.creditsMerged,
           });
         } catch (error) {
           console.error(
