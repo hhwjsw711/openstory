@@ -992,28 +992,6 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      cleanup_expired_anonymous_sessions: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
-      };
-      cleanup_expired_auth_data: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
-      };
-      create_style_version: {
-        Args: {
-          creator_id: string;
-          new_config: Json;
-          new_description: string;
-          new_name: string;
-          original_style_id: string;
-        };
-        Returns: string;
-      };
-      expire_old_invitations: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
       gtrgm_compress: {
         Args: { "": unknown };
         Returns: unknown;
@@ -1033,14 +1011,6 @@ export type Database = {
       gtrgm_out: {
         Args: { "": unknown };
         Returns: unknown;
-      };
-      increment_style_usage: {
-        Args: { style_uuid: string };
-        Returns: undefined;
-      };
-      migrate_anonymous_user_data: {
-        Args: { p_anonymous_user_id: string; p_new_user_id: string };
-        Returns: Json;
       };
       set_limit: {
         Args: { "": number };

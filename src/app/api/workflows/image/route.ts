@@ -52,55 +52,33 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
       throw new Error("Prompt is required for image generation");
     }
 
-    try {
-      // Determine model to use
-      let model = input.model as keyof typeof IMAGE_MODELS | undefined;
-      if (!model) model = "flux_krea_lora"; // Default to fast model
+    // Determine model to use
+    let model = input.model as keyof typeof IMAGE_MODELS | undefined;
+    if (!model) model = "flux_krea_lora"; // Default to fast model
 
-      loggerService.logDebug(
-        `Generating image ${input.frameId} with model ${model}`,
-      );
+    loggerService.logDebug(
+      `Generating image ${input.frameId} with model ${model}`,
+    );
 
-      // Generate image using selected AI provider
-      const resp = await selectedAiProvider({
-        model: IMAGE_MODELS[model],
-        prompt: input.prompt,
-        image_size: input.imageSize,
-        num_images: input.numImages || 1,
-        seed: input.seed,
-      });
+    // Generate image using selected AI provider
+    const resp = await generateImageWithProvider({
+      model: IMAGE_MODELS[model],
+      prompt: input.prompt,
+      image_size: input.imageSize,
+      num_images: input.numImages || 1,
+      seed: input.seed,
+    });
 
-      const respData = resp.data as unknown as
-        | FalImageResponse
-        | LetzAIImageResponse;
-      const result = resultByProvider(
-        model,
-        input as unknown as Record<string, unknown>,
-        respData,
-      );
+    const respData = resp.data as unknown as
+      | FalImageResponse
+      | LetzAIImageResponse;
+    const result = resultByProvider(
+      model,
+      input as unknown as Record<string, unknown>,
+      respData,
+    );
 
-      return result;
-    } catch (error) {
-      loggerService.logError(
-        `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-
-      // Return fallback on error
-      return {
-        imageUrls: [
-          `https://picsum.photos/seed/1/1024/1024`,
-          `https://picsum.photos/seed/2/1024/1024`,
-        ],
-        parameters: input,
-        generatedAt: new Date().toISOString(),
-        processingTimeMs: 1000,
-        provider: "mock-fallback",
-        metadata: {
-          prompt: input.prompt || "Fallback image due to generation error",
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-      };
-    }
+    return result;
   });
 
   // Step 2: Update frame if frameId is provided
@@ -216,7 +194,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 /**
  * Select AI provider based on model
  */
-function selectedAiProvider(payload: Record<string, unknown>) {
+function generateImageWithProvider(payload: Record<string, unknown>) {
   switch (payload.model) {
     case "letzai/image": {
       const sizePreset = payload.image_size as string | undefined;

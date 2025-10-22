@@ -405,22 +405,6 @@ export class StyleStackService {
   }
 
   /**
-   * Increment usage count when style is applied
-   */
-  async incrementUsageCount(styleId: string): Promise<void> {
-    const { error } = await this.adminClient.rpc("increment_style_usage", {
-      style_uuid: styleId,
-    });
-
-    if (error) {
-      // Don't throw error for usage count failures, just log
-      console.warn(
-        `Failed to increment usage count for style ${styleId}: ${error.message}`,
-      );
-    }
-  }
-
-  /**
    * Create a style adaptation for a specific model
    */
   async createStyleAdaptation(
@@ -589,9 +573,6 @@ export class StyleStackService {
         );
       }
     }
-
-    // Increment usage count
-    await this.incrementUsageCount(validatedInput.style_id);
   }
 
   /**
