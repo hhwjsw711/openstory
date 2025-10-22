@@ -1,7 +1,6 @@
 import { faker } from "@faker-js/faker";
 import type {
   Frame,
-  Job,
   Sequence,
   Style,
   Team,
@@ -188,39 +187,6 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
   };
 };
 
-export const generateMockJob = (overrides?: Partial<Job>): Job => {
-  return {
-    id: faker.string.uuid(),
-    type: faker.helpers.arrayElement([
-      "script_analysis",
-      "frame_generation",
-      "motion_generation",
-      "video_export",
-    ]),
-    status: faker.helpers.arrayElement([
-      "queued",
-      "running",
-      "completed",
-      "failed",
-    ]),
-    payload: {
-      resourceId: faker.string.uuid(),
-      resourceType: faker.helpers.arrayElement(["sequence", "frame"]),
-    },
-    result: null,
-    error: faker.datatype.boolean() ? faker.lorem.sentence() : null,
-    team_id: faker.string.uuid(),
-    user_id: faker.string.uuid(),
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
-    started_at: faker.date.recent().toISOString(),
-    completed_at: faker.datatype.boolean()
-      ? faker.date.recent().toISOString()
-      : null,
-    ...overrides,
-  };
-};
-
 export const generateMockTeam = (overrides?: Partial<Team>): Team => {
   const name = faker.company.name();
   return {
@@ -265,10 +231,6 @@ export const generateMockFrames = (
 
 export const generateMockStyles = (count: number = 8): Style[] => {
   return Array.from({ length: count }, () => generateMockStyle());
-};
-
-export const generateMockJobs = (count: number = 5): Job[] => {
-  return Array.from({ length: count }, () => generateMockJob());
 };
 
 export const generateMockTeams = (count: number = 3): Team[] => {
