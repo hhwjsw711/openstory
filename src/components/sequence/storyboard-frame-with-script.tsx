@@ -48,7 +48,6 @@ export const StoryboardFrameWithScript: React.FC<
   const metadata = frame.metadata as Record<string, unknown> | null;
   const scriptChunk = metadata?.scriptChunk as string | undefined;
   const displayScript = scriptChunk || frame.description;
-
   // Auth navigation for redirect preservation
   const { loginUrl } = useAuthNavigation();
 
@@ -148,16 +147,18 @@ export const StoryboardFrameWithScript: React.FC<
       );
 
       if (!response.ok) {
+        console.log("response", response);
+
         const error = await response.json();
         throw new Error(error.error || "Failed to generate motion");
       }
 
       const result = await response.json();
 
-      if (result.success && result.data?.jobId) {
+      if (result.success && result.data?.workflowRunId) {
         // Motion generation started - optimistically update UI
         console.log("[handleGenerateMotion] Motion generation started", {
-          jobId: result.data.jobId,
+          workflowRunId: result.data.workflowRunId,
         });
 
         // Optimistically update frame metadata to show generating state
@@ -165,12 +166,13 @@ export const StoryboardFrameWithScript: React.FC<
           ...frame,
           metadata: {
             ...(frame.metadata as Record<string, unknown>),
-            motionJobId: result.data.jobId,
+            motionWorkflowRunId: result.data.workflowRunId,
             motionStatus: "generating",
             motionModel: "seedance_v1_pro",
           },
         });
       } else {
+        console.log("result", result);
         setMotionError("Failed to generate motion");
       }
     } catch (error) {
@@ -210,6 +212,7 @@ export const StoryboardFrameWithScript: React.FC<
       );
 
       if (!response.ok) {
+        console.log("response", response);
         const error = await response.json();
         throw new Error(error.message || "Failed to regenerate frame");
       }
@@ -273,11 +276,13 @@ export const StoryboardFrameWithScript: React.FC<
             {displayScript}
           </p>
         </div>
-        {frame.duration_ms && (
-          <div className="text-xs text-muted-foreground">
-            Duration: {(frame.duration_ms / 1000).toFixed(1)}s
-          </div>
-        )}
+        {frame.duration_ms !== undefined &&
+          frame.duration_ms !== null &&
+          frame.duration_ms > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Duration: {(frame.duration_ms / 1000).toFixed(1)}s
+            </div>
+          )}
       </div>
 
       {/* Divider */}

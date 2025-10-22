@@ -44,7 +44,6 @@ export const generateFramesSchema = z.object({
 });
 
 export const regenerateFrameSchema = z.object({
-  frameId: z.string().uuid(),
   regenerateDescription: z.boolean().optional(),
   regenerateThumbnail: z.boolean().optional(),
   model: z
