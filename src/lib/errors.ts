@@ -66,6 +66,12 @@ export class StorageError extends VelroError {
   }
 }
 
+export class AuthenticationError extends VelroError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(message, "AUTHENTICATION_ERROR", 401, details);
+  }
+}
+
 /**
  * Utility function to handle and format errors consistently for API routes
  */

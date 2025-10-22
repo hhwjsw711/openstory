@@ -7,9 +7,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
 import { handleApiError, ValidationError } from "@/lib/errors";
-import { getQStashClient } from "@/lib/qstash/client";
-import { getJobManager, JobType } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
+import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   _request: Request,
@@ -33,7 +33,7 @@ export async function POST(
     // Verify sequence exists and get team info
     const { data: sequence } = await supabase
       .from("sequences")
-      .select("id, team_id")
+      .select("id, team_id, status")
       .eq("id", sequenceId)
       .single();
 
@@ -51,113 +51,60 @@ export async function POST(
     // Verify user has access to this sequence
     await requireTeamMemberAccess(user.id, sequence.team_id);
 
-    // Check for existing active jobs to prevent duplicates
-    const jobManager = getJobManager();
-    const existingJobs = await jobManager.getJobsByStatus("running", {
-      teamId: sequence.team_id,
-    });
-
-    const existingFrameJob = existingJobs.find((job) => {
-      if (job.type !== "frame_generation") return false;
-      const payload = job.payload as { sequenceId?: string };
-      return payload?.sequenceId === sequenceId;
-    });
-
-    if (existingFrameJob) {
-      console.log("[generateFrames] Found existing active job, returning it", {
+    // Check if sequence is already processing
+    if (sequence.status === "processing") {
+      console.log("[generateFrames] Sequence already processing", {
         sequenceId,
-        existingJobId: existingFrameJob.id,
       });
       return NextResponse.json(
         {
           success: true,
-          data: {
-            jobId: existingFrameJob.id,
-            frames: [],
-          },
-          message: "Frame generation job already running",
+          message: "Frame generation already in progress",
           timestamp: new Date().toISOString(),
         },
         { status: 200 },
       );
     }
 
-    // Also check for pending jobs
-    const pendingJobs = await jobManager.getJobsByStatus("pending", {
-      teamId: sequence.team_id,
-    });
+    // Update sequence status to processing
+    await supabase
+      .from("sequences")
+      .update({ status: "processing" })
+      .eq("id", sequenceId);
 
-    const existingPendingJob = pendingJobs.find((job) => {
-      if (job.type !== "frame_generation") return false;
-      const payload = job.payload as { sequenceId?: string };
-      return payload?.sequenceId === sequenceId;
-    });
-
-    if (existingPendingJob) {
-      console.log("[generateFrames] Found existing pending job, returning it", {
-        sequenceId,
-        existingJobId: existingPendingJob.id,
-      });
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            jobId: existingPendingJob.id,
-            frames: [],
-          },
-          message: "Frame generation job already queued",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 200 },
-      );
-    }
-
-    // Create a job for frame generation
-    const job = await jobManager.createJob({
-      type: JobType.FRAME_GENERATION,
-      payload: {
-        sequenceId,
-        options: {
-          framesPerScene: 3,
-          generateThumbnails: true,
-          generateDescriptions: true,
-          aiProvider: "openrouter",
-          regenerateAll: true,
-        },
-      },
+    // Trigger frame generation workflow
+    const workflowInput: FrameGenerationWorkflowInput = {
       userId: user.id,
       teamId: sequence.team_id,
-    });
-
-    // Queue the frame generation job via QStash
-    const qstashClient = getQStashClient();
-    await qstashClient.publishFrameGenerationJob({
-      jobId: job.id,
-      type: JobType.FRAME_GENERATION,
-      userId: user.id,
-      teamId: sequence.team_id,
-      data: {
-        sequenceId,
-        options: {
-          framesPerScene: 3,
-          generateThumbnails: true,
-          generateDescriptions: true,
-          aiProvider: "openrouter",
-          regenerateAll: true,
-        },
-      },
-    });
-
-    console.log("[generateFrames] Frame generation job queued", {
       sequenceId,
-      jobId: job.id,
+      options: {
+        framesPerScene: 3,
+        generateThumbnails: true,
+        generateDescriptions: true,
+        aiProvider: "openrouter",
+        regenerateAll: true,
+      },
+    };
+
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    const { messageId } = await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/storyboard`,
+      body: workflowInput,
+    });
+
+    const workflowRunId = messageId;
+
+    console.log("[generateFrames] Frame generation workflow triggered", {
+      sequenceId,
+      workflowRunId,
     });
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          jobId: job.id,
+          workflowRunId,
           frames: [],
         },
         message: "Frame generation started successfully",

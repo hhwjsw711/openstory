@@ -5,7 +5,6 @@
 
 import { expect, mock } from "bun:test";
 import type { VelroError } from "@/lib/errors";
-import type { Job } from "@/types/database";
 import type { JobPayload, QStashResponse } from "./client";
 import type { MotionGenerationPayload } from "./types";
 
@@ -148,30 +147,6 @@ export const createTestJobPayload = (
 };
 
 /**
- * Test job record fixtures
- */
-export const createTestJobRow = (overrides?: Partial<Job>): Job => ({
-  id: "550e8400-e29b-41d4-a716-446655440000",
-  type: "image",
-  status: "pending",
-  payload: {
-    prompt: "A beautiful landscape with mountains",
-    style: "photographic",
-    width: 1024,
-    height: 1024,
-  },
-  result: null,
-  error: null,
-  user_id: "550e8400-e29b-41d4-a716-446655440011",
-  team_id: "550e8400-e29b-41d4-a716-446655440021",
-  created_at: "2024-01-01T00:00:00.000Z",
-  updated_at: "2024-01-01T00:00:00.000Z",
-  started_at: null,
-  completed_at: null,
-  ...overrides,
-});
-
-/**
  * Test QStash webhook request fixtures
  */
 export const createTestWebhookRequest = (
@@ -248,15 +223,6 @@ export const cleanupTestEnv = () => {
   delete process.env.VERCEL_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-};
-
-/**
- * Assert helpers for testing
- */
-export const assertJobMatches = (actualJob: Job, expectedJob: Partial<Job>) => {
-  Object.entries(expectedJob).forEach(([key, value]) => {
-    expect(actualJob[key as keyof Job]).toEqual(value);
-  });
 };
 
 /**

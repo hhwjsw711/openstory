@@ -298,13 +298,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "fal_requests_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "fal_requests_team_id_fkey";
             columns: ["team_id"];
             isOneToOne: false;
@@ -363,66 +356,6 @@ export type Database = {
             columns: ["sequence_id"];
             isOneToOne: false;
             referencedRelation: "sequences";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      jobs: {
-        Row: {
-          completed_at: string | null;
-          created_at: string;
-          error: string | null;
-          id: string;
-          payload: Json | null;
-          result: Json | null;
-          started_at: string | null;
-          status: string;
-          team_id: string | null;
-          type: string;
-          updated_at: string;
-          user_id: string | null;
-        };
-        Insert: {
-          completed_at?: string | null;
-          created_at?: string;
-          error?: string | null;
-          id?: string;
-          payload?: Json | null;
-          result?: Json | null;
-          started_at?: string | null;
-          status?: string;
-          team_id?: string | null;
-          type: string;
-          updated_at?: string;
-          user_id?: string | null;
-        };
-        Update: {
-          completed_at?: string | null;
-          created_at?: string;
-          error?: string | null;
-          id?: string;
-          payload?: Json | null;
-          result?: Json | null;
-          started_at?: string | null;
-          status?: string;
-          team_id?: string | null;
-          type?: string;
-          updated_at?: string;
-          user_id?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "jobs_team_id_fkey";
-            columns: ["team_id"];
-            isOneToOne: false;
-            referencedRelation: "teams";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "jobs_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];

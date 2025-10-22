@@ -1,20 +1,15 @@
 import { Play, Video } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import * as React from "react";
+import type * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
 import { useAuthNavigation } from "@/hooks/use-auth-navigation";
-import {
-  useEstimateImageCostByFal,
-  useGenerateImageByFal,
-  useGenerateImageStatusByJobId,
-} from "@/hooks/use-fal-models";
+import { useEstimateImageCostByFal } from "@/hooks/use-fal-models";
 import { cn } from "@/lib/utils";
 import type { Frame, Style } from "@/types/database";
-import type { GeneratedImageStatusResponse } from "@/types/generation";
 
 interface ModelInfo {
   id: string;
@@ -74,13 +69,8 @@ export const StoryboardFrameWithScript: React.FC<
 
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>("");
-  const generateImageMutation = useGenerateImageByFal();
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const estimateImageCostMutation = useEstimateImageCostByFal();
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [processedJobId, setProcessedJobId] = useState<string | null>(null);
-  const { data: activeJob } = useGenerateImageStatusByJobId(jobId || "", {
-    enabled: !!jobId,
-  });
 
   // Handle video playback
   const handlePlay = useCallback(() => {
@@ -141,18 +131,21 @@ export const StoryboardFrameWithScript: React.FC<
     setMotionError(null);
 
     try {
-      const response = await fetch(`/api/frames/${frame.id}/motion`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/motion`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "seedance_v1_pro",
+            duration: 3,
+            fps: 14,
+            motionBucket: 127,
+          }),
         },
-        body: JSON.stringify({
-          model: "seedance_v1_pro",
-          duration: 3,
-          fps: 14,
-          motionBucket: 127,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -197,45 +190,52 @@ export const StoryboardFrameWithScript: React.FC<
     onFrameUpdate,
   ]);
 
-  // Handle FAL generation with style and script
+  // Handle regeneration with selected model
   const handleGenerateWithSelectedModel = useCallback(async () => {
     if (!selectedModel) return;
-    console.log(
-      "[handleGenerateWithSelectedModel] displayScript:",
-      displayScript,
-    );
+
+    setIsRegenerating(true);
     try {
-      const result = await generateImageMutation.mutateAsync({
-        frame_id: frame.id,
-        sequence_id: frame.sequence_id,
-        model: selectedModel as string,
-        prompt: displayScript || "",
-        extra_params: {
-          image_url: frame.thumbnail_url || "",
+      const response = await fetch(
+        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/regenerate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+          }),
         },
-        ...(styleId?.trim() && { style_id: styleId.trim() }),
-      });
-      if (result?.success && result?.jobId) {
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to regenerate frame");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Optimistically clear thumbnail to show loading state
         onFrameUpdate?.({
           ...frame,
           thumbnail_url: null,
         });
-        setJobId(result.jobId);
+
+        console.log("[handleGenerateWithSelectedModel] Regeneration started", {
+          workflowRunId: result.data.workflowRunId,
+        });
       }
     } catch (error) {
       console.error(
-        "[handleGenerateWithSelectedModel] FAL generation failed",
+        "[handleGenerateWithSelectedModel] Regeneration failed",
         error,
       );
+    } finally {
+      setIsRegenerating(false);
     }
-  }, [
-    frame,
-    generateImageMutation,
-    selectedModel,
-    displayScript,
-    onFrameUpdate,
-    styleId,
-  ]);
+  }, [frame, selectedModel, onFrameUpdate]);
 
   // check cost per frame with style
   const handleCheckCost = useCallback(async () => {
@@ -252,36 +252,6 @@ export const StoryboardFrameWithScript: React.FC<
 
     console.log("[handleCheckCost] Cost result:", result);
   }, [frame, selectedModel, displayScript, estimateImageCostMutation]);
-
-  React.useEffect(() => {
-    if (
-      jobId &&
-      activeJob?.data?.status === "completed" &&
-      jobId !== processedJobId
-    ) {
-      const imageProcessed =
-        activeJob?.data as unknown as GeneratedImageStatusResponse;
-      const imageUrls =
-        (imageProcessed?.result as unknown as { imageUrls?: string[] })
-          ?.imageUrls ?? [];
-      const imageUrl = imageUrls.at(-1) ?? "";
-
-      if (imageUrl && imageUrl !== frame.thumbnail_url) {
-        onFrameUpdate?.({
-          ...frame,
-          thumbnail_url: imageUrl,
-        });
-        setProcessedJobId(jobId);
-      }
-    }
-  }, [
-    jobId,
-    activeJob?.data,
-    processedJobId,
-    frame.thumbnail_url,
-    frame,
-    onFrameUpdate,
-  ]);
 
   return (
     <div
@@ -460,9 +430,11 @@ export const StoryboardFrameWithScript: React.FC<
               variant="outline"
               onClick={() => handleGenerateWithSelectedModel()}
               className="flex-1"
-              disabled={!selectedModel}
+              disabled={!selectedModel || isRegenerating}
             >
-              {isGeneratingPreview ? "Generating..." : "Regenerate Frame"}
+              {isRegenerating || isGeneratingPreview
+                ? "Generating..."
+                : "Regenerate Frame"}
             </Button>
           )}
           {onEdit && (

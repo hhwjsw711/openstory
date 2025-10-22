@@ -11,9 +11,9 @@ import {
   requireAuthenticatedUserForMotion,
 } from "@/lib/auth/api-utils";
 import { ValidationError } from "@/lib/errors";
-import { getQStashClient } from "@/lib/qstash/client";
-import { getJobManager } from "@/lib/qstash/job-manager";
 import { createServerClient } from "@/lib/supabase/server";
+import type { MotionWorkflowInput } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 // Request body schema
 const requestSchema = z.object({
@@ -90,10 +90,8 @@ export async function POST(
       return createErrorResponse("No frames with thumbnails found", 400);
     }
 
-    // Generate motion for each frame
-    const jobManager = getJobManager();
-    const qstashClient = getQStashClient();
-    const jobs = [];
+    // Generate motion for each frame using workflows
+    const workflows = [];
     const errors = [];
 
     for (const frame of framesWithThumbnails) {
@@ -104,49 +102,30 @@ export async function POST(
         // Use description or empty string as fallback
         const prompt = frame.description || "";
 
-        // Create job record
-        const job = await jobManager.createJob({
-          type: "motion",
-          payload: {
-            frameId: frame.id,
-            sequenceId,
-            thumbnailUrl: frame.thumbnail_url,
-            prompt,
-            model: validatedData.model,
-            duration: validatedData.duration,
-            fps: validatedData.fps,
-            motionBucket: validatedData.motionBucket,
-          },
+        // Trigger motion workflow
+        const workflowInput: MotionWorkflowInput = {
           userId: user.id,
           teamId: membership.team_id,
+          frameId: frame.id,
+          sequenceId,
+          thumbnailUrl: frame.thumbnail_url,
+          prompt,
+          model: validatedData.model,
+          duration: validatedData.duration,
+          fps: validatedData.fps,
+          motionBucket: validatedData.motionBucket,
+        };
+
+        // Publish to QStash to trigger the workflow
+        const qstash = getQStashClient();
+        const { messageId } = await qstash.publishJSON({
+          url: `${workflowConfig.baseUrl}/motion`,
+          body: workflowInput,
         });
 
-        // Queue the job via QStash
-        await qstashClient.publishMotionJob(
-          {
-            jobId: job.id,
-            type: "motion",
-            userId: user.id,
-            teamId: membership.team_id,
-            data: {
-              frameId: frame.id,
-              sequenceId,
-              thumbnailUrl: frame.thumbnail_url,
-              prompt,
-              model: validatedData.model,
-              duration: validatedData.duration,
-              fps: validatedData.fps,
-              motionBucket: validatedData.motionBucket,
-            },
-          },
-          {
-            deduplicationId: job.id,
-          },
-        );
-
-        jobs.push({
+        workflows.push({
           frameId: frame.id,
-          jobId: job.id,
+          workflowRunId: messageId,
           orderIndex: frame.order_index,
         });
       } catch (error) {
@@ -165,11 +144,11 @@ export async function POST(
         sequenceId,
         totalFrames: frames.length,
         framesWithThumbnails: framesWithThumbnails.length,
-        jobsStarted: jobs.length,
-        jobs,
+        workflowsStarted: workflows.length,
+        workflows,
         errors: errors.length > 0 ? errors : undefined,
       },
-      `Motion generation started for ${jobs.length} frames`,
+      `Motion generation started for ${workflows.length} frames`,
     );
   } catch (error) {
     if (error instanceof ValidationError) {

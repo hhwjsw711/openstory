@@ -1,0 +1,122 @@
+/**
+ * Regenerate Frame API Endpoint
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
+ */
+
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
+import { handleApiError, ValidationError } from "@/lib/errors";
+import { regenerateFrameSchema } from "@/lib/schemas/frame.schemas";
+import { createServerClient } from "@/lib/supabase/server";
+import type { ImageWorkflowInput } from "@/lib/workflow";
+import { getQStashClient, workflowConfig } from "@/lib/workflow";
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+) {
+  try {
+    const { sequenceId, frameId } = await params;
+
+    // Validate UUIDs
+    const uuidSchema = z.string().uuid();
+    try {
+      uuidSchema.parse(sequenceId);
+      uuidSchema.parse(frameId);
+    } catch {
+      throw new ValidationError("Invalid sequence or frame ID format");
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validatedBody = regenerateFrameSchema.parse(body);
+
+    // Authenticate user
+    const user = await requireUser();
+    const supabase = createServerClient();
+
+    // Get frame with sequence info
+    const { data: frame, error: frameError } = await supabase
+      .from("frames")
+      .select("*, sequences!inner(id, team_id, script)")
+      .eq("id", frameId)
+      .eq("sequence_id", sequenceId)
+      .single();
+
+    if (frameError || !frame) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Frame not found in this sequence",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 },
+      );
+    }
+
+    // Verify user has access to this frame
+    await requireTeamMemberAccess(user.id, frame.sequences.team_id);
+
+    if (!frame.description) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Frame has no description to regenerate from",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      );
+    }
+
+    // Trigger image generation workflow
+    const workflowInput: ImageWorkflowInput = {
+      userId: user.id,
+      teamId: frame.sequences.team_id,
+      prompt: frame.description,
+      model: validatedBody.model || "flux_krea_lora", // Use provided model or default
+      imageSize: "landscape_16_9",
+      numImages: 1,
+      frameId,
+      sequenceId: frame.sequence_id,
+    };
+
+    // Publish to QStash to trigger the workflow
+    const qstash = getQStashClient();
+    const { messageId } = await qstash.publishJSON({
+      url: `${workflowConfig.baseUrl}/image`,
+      body: workflowInput,
+    });
+
+    const workflowRunId = messageId;
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          workflowRunId,
+          frameId,
+          message: "Frame regeneration started",
+        },
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error(
+      "[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:",
+      error,
+    );
+
+    const handledError = handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to regenerate frame",
+        error: handledError.toJSON(),
+        timestamp: new Date().toISOString(),
+      },
+      { status: handledError.statusCode },
+    );
+  }
+}
