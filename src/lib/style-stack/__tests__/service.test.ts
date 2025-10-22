@@ -777,26 +777,79 @@ describe.skip("StyleStackService", () => {
   });
 
   describe("incrementUsageCount", () => {
-    it("should increment usage count via RPC", async () => {
-      mockAdminClient.rpc.mockResolvedValue({ error: null });
+    it("should increment usage count via direct UPDATE", async () => {
+      const mockFrom = {
+        select: mock(() => ({
+          eq: mock(() => ({
+            single: mock(() =>
+              Promise.resolve({
+                data: { usage_count: 5 },
+                error: null,
+              }),
+            ),
+          })),
+        })),
+        update: mock(() => ({
+          eq: mock(() => Promise.resolve({ error: null })),
+        })),
+      };
+
+      mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
         "6de92947-647b-4c33-a6b8-1f8fed2787d1",
       );
       expect(result).toBeUndefined();
 
-      expect(mockAdminClient.rpc).toHaveBeenCalledWith(
-        "increment_style_usage",
-        {
-          style_uuid: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        },
-      );
+      expect(mockAdminClient.from).toHaveBeenCalledWith("styles");
+      expect(mockFrom.select).toHaveBeenCalledWith("usage_count");
+      expect(mockFrom.update).toHaveBeenCalledWith({ usage_count: 6 });
     });
 
-    it("should not throw on RPC error", async () => {
-      mockAdminClient.rpc.mockResolvedValue({
-        error: { message: "RPC failed" },
-      });
+    it("should not throw on read error", async () => {
+      const mockFrom = {
+        select: mock(() => ({
+          eq: mock(() => ({
+            single: mock(() =>
+              Promise.resolve({
+                data: null,
+                error: { message: "Read failed" },
+              }),
+            ),
+          })),
+        })),
+      };
+
+      mockAdminClient.from.mockReturnValue(mockFrom as never);
+
+      const result = await styleService.incrementUsageCount(
+        "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+      );
+      expect(result).toBeUndefined();
+    });
+
+    it("should not throw on write error", async () => {
+      const mockFrom = {
+        select: mock(() => ({
+          eq: mock(() => ({
+            single: mock(() =>
+              Promise.resolve({
+                data: { usage_count: 5 },
+                error: null,
+              }),
+            ),
+          })),
+        })),
+        update: mock(() => ({
+          eq: mock(() =>
+            Promise.resolve({
+              error: { message: "Write failed" },
+            }),
+          ),
+        })),
+      };
+
+      mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
         "6de92947-647b-4c33-a6b8-1f8fed2787d1",
