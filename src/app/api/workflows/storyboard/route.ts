@@ -5,7 +5,7 @@
 
 import { serve } from "@upstash/workflow/nextjs";
 import { analyzeScriptForFrames } from "@/lib/ai/script-analyzer";
-import { DNADirectorProcessor } from "@/lib/services/dna-director/dna-director.service";
+import { DirectorDnaConfigSchema } from "@/lib/services/director-dna-types";
 import type { CreateFrameParams } from "@/lib/services/frame.service";
 import { frameService } from "@/lib/services/frame.service";
 import { LoggerService } from "@/lib/services/logger.service";
@@ -108,9 +108,28 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
   // Step 4: Analyze script to determine frame boundaries
   const scriptAnalysis = await context.run("analyze-script", async () => {
+    // Get or use default style
+    const styleId = sequence.style_id;
+    if (!styleId) {
+      throw new Error("No style ID found");
+    }
+
+    const supabase = createAdminClient();
+    const { data: style } = await supabase
+      .from("styles")
+      .select("config")
+      .eq("id", styleId)
+      .single();
+
+    if (!style) {
+      throw new Error("No style found");
+    }
+
+    const styleConfig = DirectorDnaConfigSchema.parse(style.config);
+
     const analysis = await analyzeScriptForFrames(
       sequence.script || "",
-      input.options?.aiProvider,
+      styleConfig,
     );
 
     if (!analysis?.scenes || analysis.scenes.length === 0) {
@@ -152,17 +171,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       const orderIndex = index;
 
       // Get or use default style
-      let styleId = sequence.style_id;
-      if (!styleId) {
-        const supabase = createAdminClient();
-        const { data: defaultStyle } = await supabase
-          .from("styles")
-          .select("id")
-          .eq("category", "cinematic")
-          .single();
-        styleId = defaultStyle?.id ?? null;
-      }
-
+      const styleId = sequence.style_id;
       if (!styleId) {
         throw new Error("No style ID found");
       }
@@ -170,36 +179,18 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       const shotTypes = ShotTypes[orderIndex % ShotTypes.length];
       const originalSceneScript = scene.scriptContent;
 
-      // Process through DNA Director
-      let enhancedScript = scene.scriptContent;
-      let dnaConfig = {};
-      try {
-        const dnaResult = await DNADirectorProcessor(
-          styleId,
-          scene.scriptContent || "",
-        );
-        if (dnaResult.status && dnaResult.data?.message) {
-          enhancedScript = dnaResult.data.message;
-          dnaConfig = dnaResult.config || {};
-        }
-      } catch (error) {
-        loggerService.logError(
-          `DNA Director error: ${error instanceof Error ? error.message : "Unknown"}`,
-        );
-      }
-
       const serviceEndTime = Date.now();
       const serviceDurationMs = serviceEndTime - serviceStartTime;
 
       // Create frame record
       const frameData: CreateFrameParams = {
-        description: enhancedScript,
+        description: scene.scriptContent,
         orderIndex,
         durationMs: serviceDurationMs,
         sequenceId: input.sequenceId,
         metadata: {
           scene: orderIndex,
-          scriptChunk: enhancedScript,
+          scriptChunk: scene.scriptContent,
           shotType: shotTypes,
           sceneType: scene.type,
           sceneIntensity: scene.intensity,
@@ -212,13 +203,11 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
           teamId: input.teamId,
           shouldGenerateImage: input.options?.generateThumbnails !== false,
           originalSceneScript,
-          dnaSceneScript: enhancedScript,
-          dnaConfig: dnaConfig as Json,
         },
       };
 
       const frame = await frameService.createFrame(frameData);
-      return { frameId: frame.id, prompt: enhancedScript };
+      return { frameId: frame.id, prompt: scene.scriptContent };
     });
 
     return await Promise.all(promises);

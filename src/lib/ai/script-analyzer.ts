@@ -4,7 +4,12 @@
  */
 
 import { z } from "zod";
-import { VELRO_UNIVERSAL_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
+import { sanitizeScriptContent } from "@/lib/ai/prompt-validation";
+import {
+  storyboardPrompt,
+  VELRO_UNIVERSAL_SYSTEM_PROMPT,
+} from "@/lib/ai/prompts";
+import type { DirectorDnaConfig } from "@/lib/services/director-dna-types";
 import {
   callOpenRouter,
   extractJSON,
@@ -54,7 +59,7 @@ export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
  */
 export async function analyzeScriptForFrames(
   script: string,
-  _aiProvider?: "openai" | "anthropic" | "openrouter",
+  styleConfig: DirectorDnaConfig,
 ): Promise<SceneAnalysis> {
   if (!process.env.OPENROUTER_KEY) {
     throw new Error("OPENROUTER_KEY is not set");
@@ -65,49 +70,7 @@ export async function analyzeScriptForFrames(
     model: RECOMMENDED_MODELS.structured,
     messages: [
       systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
-      userMessage(
-        `Analyze this script and divide it into logical scenes for storyboard generation.
-
-Script:
-${script}
-
-Your task: Extract complete sections from the script, preserving ALL content.
-
-For video scripts with marked sections (like ### [0-3s] Hook), use those EXACT sections as scenes.
-For each marked section, include:
-- The section header (if present)
-- ALL stage directions (text in parentheses/italics)
-- ALL dialogue
-- Everything between one section header and the next
-- Each small section will be a separate scene
-- Total scenes should be 6 scenes
-
-Return JSON with this structure:
-{
-  "scenes": [
-    {
-      "scriptContent": "*(Stage direction)* Complete dialogue and all text from this section",
-      "description": "Brief summary",
-      "duration": 3000,
-      "type": "dialogue",
-      "intensity": 5
-    }
-  ],
-  "characters": ["Character names"],
-  "settings": ["Locations"],
-  "themes": ["Main themes"],
-  "totalDuration": 30000
-}
-
-CRITICAL: 
-- Extract EVERYTHING between section markers, including stage directions like *(Playful tone, pet visible)*
-- Ignore any screenwriting transition directions such as "FADE IN", "CUT TO", "SMASH CUT TO BLACK", "DISSOLVE TO", "FADE OUT", or similar at the end of the section.
-- scriptContent must include both the stage directions AND the dialogue
-- Don't just extract dialogue - get the FULL section content
-- If you see "*(Animated, gesturing to pet)*" followed by dialogue, include BOTH
-
-Respond with ONLY valid JSON.`,
-      ),
+      userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),
     ],
     temperature: 0.1, // Very low temperature for consistent structured output
     max_tokens: 2000, // Increased to handle full script analysis
