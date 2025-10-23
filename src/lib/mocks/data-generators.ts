@@ -12,7 +12,7 @@ faker.seed(123);
 
 // Mock data generators
 export const generateMockSequence = (
-  overrides?: Partial<Sequence>,
+  overrides?: Partial<Sequence>
 ): Sequence => {
   const genres = [
     "Action",
@@ -165,7 +165,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
           "#98D8C8",
           "#F7DC6F",
         ],
-        { min: 3, max: 5 },
+        { min: 3, max: 5 }
       ),
       artStyle: faker.helpers.arrayElement(artStyles),
       lighting: faker.helpers.arrayElement(lightings),
@@ -200,7 +200,7 @@ export const generateMockTeam = (overrides?: Partial<Team>): Team => {
 };
 
 export const generateMockUser = (
-  overrides?: Partial<UserProfile>,
+  overrides?: Partial<UserProfile>
 ): UserProfile => {
   return {
     id: faker.string.uuid(),
@@ -219,13 +219,13 @@ export const generateMockSequences = (count: number = 5): Sequence[] => {
 
 export const generateMockFrames = (
   count: number = 6,
-  sequenceId?: string,
+  sequenceId?: string
 ): Frame[] => {
   return Array.from({ length: count }, (_, index) =>
     generateMockFrame({
       order_index: index + 1,
       ...(sequenceId && { sequence_id: sequenceId }),
-    }),
+    })
   );
 };
 

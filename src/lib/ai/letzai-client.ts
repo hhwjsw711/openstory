@@ -176,7 +176,7 @@ export async function getModels(params?: {
  */
 export async function checkJobStatus(
   jobId: string,
-  endpoint: "/images" | "/image-edits" | "/upscale" = "/images",
+  endpoint: "/images" | "/image-edits" | "/upscale" = "/images"
 ): Promise<LetzAIServiceResponse> {
   const letzaiService = getLetzAIService();
   return letzaiService.checkStatus(jobId, endpoint);
@@ -219,7 +219,7 @@ export async function getUsageStats(params: {
  */
 export function calculateCost(
   endpoint: "/images" | "/image-edits" | "/upscale" | "/models",
-  parameters: Record<string, unknown>,
+  parameters: Record<string, unknown>
 ): number {
   const letzaiService = getLetzAIService();
   return letzaiService.calculateCost(endpoint, parameters);

@@ -78,7 +78,7 @@ export async function GET(request: Request) {
           error: result.error,
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

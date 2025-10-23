@@ -140,7 +140,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           break;
       }
     },
-    [toggleFullscreen, toggleMute, togglePlay],
+    [toggleFullscreen, toggleMute, togglePlay]
   );
 
   // Keyboard shortcuts
@@ -205,7 +205,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                   alt={`Frame ${frame.order_index} preview`}
                   className={cn(
                     "h-full w-full object-cover transition-opacity duration-300",
-                    imageLoading ? "opacity-0" : "opacity-100",
+                    imageLoading ? "opacity-0" : "opacity-100"
                   )}
                   onLoad={handleImageLoad}
                   onError={handleImageError}
@@ -280,7 +280,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                 "h-12 w-12 rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity hover:bg-black/70",
                 isPlaying || showControls
                   ? "opacity-100"
-                  : "opacity-0 group-hover:opacity-100",
+                  : "opacity-0 group-hover:opacity-100"
               )}
               onClick={togglePlay}
             >
@@ -296,7 +296,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           <div
             className={cn(
               "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 transition-opacity",
-              showControls || isPlaying ? "opacity-100" : "opacity-0",
+              showControls || isPlaying ? "opacity-100" : "opacity-0"
             )}
           >
             {/* Progress bar */}

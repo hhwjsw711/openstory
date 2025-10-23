@@ -48,7 +48,7 @@ export function useFramesBySequence(
   options?: {
     refetchInterval?: number | false;
     staleTime?: number;
-  },
+  }
 ) {
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId),
@@ -76,7 +76,7 @@ export function useFrame(sequenceId: string, frameId: string) {
     queryKey: frameKeys.detail(frameId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}`,
+        `/api/sequences/${sequenceId}/frames/${frameId}`
       );
       const result = await response.json();
 
@@ -140,7 +140,7 @@ export function useUpdateFrame() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(updateData),
-        },
+        }
       );
 
       const result = await response.json();
@@ -175,14 +175,14 @@ export function useDeleteFrame() {
   >({
     mutationFn: async ({ sequenceId, frameId }) => {
       const frameData = queryClient.getQueryData<Frame>(
-        frameKeys.detail(frameId),
+        frameKeys.detail(frameId)
       );
 
       const response = await fetch(
         `/api/sequences/${sequenceId}/frames/${frameId}`,
         {
           method: "DELETE",
-        },
+        }
       );
 
       const result = await response.json();
@@ -232,7 +232,7 @@ export function useReorderFrames() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ frameOrders }),
-        },
+        }
       );
 
       const result = await response.json();
@@ -249,7 +249,7 @@ export function useReorderFrames() {
       });
 
       const previousFrames = queryClient.getQueryData<Frame[]>(
-        frameKeys.list(sequenceId),
+        frameKeys.list(sequenceId)
       );
 
       if (previousFrames) {
@@ -271,7 +271,7 @@ export function useReorderFrames() {
       if (context?.previousFrames && context.sequenceId) {
         queryClient.setQueryData(
           frameKeys.list(context.sequenceId),
-          context.previousFrames,
+          context.previousFrames
         );
       }
     },
@@ -368,7 +368,7 @@ export function useGenerateFrames() {
         `/api/sequences/${input.sequenceId}/frames/generate`,
         {
           method: "POST",
-        },
+        }
       );
 
       const result = await response.json();
@@ -388,7 +388,7 @@ export function useGenerateFrames() {
       });
 
       const previousFrames = queryClient.getQueryData<Frame[]>(
-        frameKeys.list(sequenceId),
+        frameKeys.list(sequenceId)
       );
 
       return { previousFrames, sequenceId };
@@ -406,7 +406,7 @@ export function useGenerateFrames() {
       if (context?.previousFrames && context.sequenceId) {
         queryClient.setQueryData(
           frameKeys.list(context.sequenceId),
-          context.previousFrames,
+          context.previousFrames
         );
       }
     },
@@ -429,7 +429,7 @@ export function useRegenerateFrame() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(body),
-        },
+        }
       );
 
       const result = await response.json();
@@ -460,7 +460,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
     queryKey: ["active-job", sequenceId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/generation/status`,
+        `/api/sequences/${sequenceId}/frames/generation/status`
       );
       const result = await response.json();
 
@@ -522,7 +522,7 @@ export function useFramePreviewStatus(frames: Frame[]) {
     {
       refetchInterval: framesNeedingPreviews.length > 0 ? 2000 : false, // Faster refresh
       staleTime: 500, // Shorter stale time for preview updates
-    },
+    }
   );
 
   // Return status map for each frame

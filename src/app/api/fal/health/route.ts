@@ -35,7 +35,7 @@ export async function GET() {
         message: handledError.message,
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

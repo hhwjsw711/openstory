@@ -5,9 +5,11 @@ This directory contains scripts for automating development workflows with Claude
 ## Scripts
 
 ### agent-launcher.sh
+
 Launches Claude CLI with specific agent contexts for implementing issues or reviewing PRs.
 
 **Usage:**
+
 ```bash
 # For implementing an issue
 ./agent-launcher.sh implement <worktree_path> <issue_num> <agent_type>
@@ -17,11 +19,13 @@ Launches Claude CLI with specific agent contexts for implementing issues or revi
 ```
 
 **Environment Variables:**
+
 - `CLAUDE_MODE`: Set to `print` for non-interactive mode or `repl` for interactive (default: `repl`)
 - `CLAUDE_MODEL`: Specify a Claude model (optional)
 - `CLAUDE_MAX_TURNS`: Maximum turns for print mode (default: 20)
 
 **Examples:**
+
 ```bash
 # Interactive implementation
 ./agent-launcher.sh implement /path/to/worktree 123 backend-engineer
@@ -35,18 +39,22 @@ CLAUDE_MODE=print CLAUDE_MODEL=claude-3-5-sonnet-20241022 \
 ```
 
 ### orchestrator.sh
+
 Main workflow orchestrator that manages issue assignment, worktree creation, and agent coordination.
 
 **Usage:**
+
 ```bash
 ./orchestrator.sh
 ```
 
 **Environment Variables:**
+
 - `LAUNCH_METHOD`: Set to `claude-cli` to use Claude CLI or `cursor` for Cursor IDE (default: `cursor`)
 - All `CLAUDE_*` variables from agent-launcher.sh are also respected when using `claude-cli`
 
 **Examples:**
+
 ```bash
 # Use Cursor IDE (default)
 ./orchestrator.sh
@@ -59,6 +67,7 @@ LAUNCH_METHOD=claude-cli CLAUDE_MODE=print CLAUDE_MAX_TURNS=30 ./orchestrator.sh
 ```
 
 ### workflow-manager.sh
+
 Comprehensive workflow management including issue routing, PR monitoring, and agent coordination.
 
 ## Claude CLI Integration
@@ -69,6 +78,7 @@ The scripts now properly integrate with Claude CLI using the correct command syn
 2. **Print Mode (Non-interactive)**: `claude -p "<prompt>" --max-turns N` - Executes the prompt and exits
 
 The agent-launcher script automatically:
+
 - Checks if Claude CLI is installed
 - Provides context about the issue or PR
 - Configures the appropriate mode based on environment variables
@@ -95,6 +105,7 @@ The agent-launcher script automatically:
 ## Agent Types
 
 The following agent types are supported:
+
 - `backend-engineer`: Backend development tasks
 - `frontend-react-engineer`: Frontend React development
 - `qa-lead-tester`: Testing and QA tasks
@@ -105,11 +116,13 @@ The following agent types are supported:
 ## Troubleshooting
 
 If Claude CLI is not found:
+
 1. Install Claude Code: https://docs.anthropic.com/en/docs/claude-code/getting-started
 2. Ensure `claude` is in your PATH
 3. Verify with: `which claude`
 
 For issues with prompts:
+
 - Check that quotes are properly escaped in the prompts
 - Use `CLAUDE_MODE=print` for debugging to see the full output
 - Review the generated `.claude-context.md` file in the worktree

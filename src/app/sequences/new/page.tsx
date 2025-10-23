@@ -22,7 +22,7 @@ export default function NewSequencePage() {
       // Navigate to storyboard page after successful generation
       router.push(`/sequences/${sequenceId}/storyboard`);
     },
-    [router],
+    [router]
   );
 
   return (

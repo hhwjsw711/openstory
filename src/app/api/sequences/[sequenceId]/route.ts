@@ -23,7 +23,7 @@ const updateSequenceRequestSchema = z.object({
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -59,7 +59,7 @@ export async function GET(
         data: sequence,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/sequences/[sequenceId]] Error:", error);
@@ -72,14 +72,14 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -114,7 +114,7 @@ export async function PATCH(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -177,7 +177,7 @@ export async function PATCH(
         message: "Sequence updated successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[PATCH /api/sequences/[sequenceId]] Error:", error);
@@ -189,14 +189,14 @@ export async function PATCH(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -227,7 +227,7 @@ export async function DELETE(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -247,7 +247,7 @@ export async function DELETE(
         message: "Sequence deleted successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[DELETE /api/sequences/[sequenceId]] Error:", error);
@@ -259,7 +259,7 @@ export async function DELETE(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

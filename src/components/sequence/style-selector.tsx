@@ -41,7 +41,7 @@ const StyleCard: React.FC<StyleCardProps> = ({
         handleClick();
       }
     },
-    [handleClick],
+    [handleClick]
   );
 
   return (
@@ -50,7 +50,7 @@ const StyleCard: React.FC<StyleCardProps> = ({
         "cursor-pointer transition-all duration-200 hover:shadow-md",
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         selected && "ring-2 ring-primary ring-offset-2",
-        disabled && "cursor-not-allowed opacity-50",
+        disabled && "cursor-not-allowed opacity-50"
       )}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -73,7 +73,7 @@ const StyleCard: React.FC<StyleCardProps> = ({
                 onError={(e) => {
                   console.warn(
                     `Failed to load image for style ${style.name}:`,
-                    style.preview_url,
+                    style.preview_url
                   );
                   e.currentTarget.style.display = "none";
                 }}

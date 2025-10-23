@@ -34,7 +34,7 @@ export function useSequence(
   options?: {
     refetchInterval?: number | false;
     staleTime?: number;
-  },
+  }
 ) {
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),

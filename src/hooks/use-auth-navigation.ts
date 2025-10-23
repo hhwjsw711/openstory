@@ -26,7 +26,7 @@ export function useAuthNavigation() {
       const loginUrl = getLoginUrl(customPath || pathname);
       router.push(loginUrl);
     },
-    [router, pathname],
+    [router, pathname]
   );
 
   /**
@@ -38,7 +38,7 @@ export function useAuthNavigation() {
       const signupUrl = getSignupUrl(customPath || pathname);
       router.push(signupUrl);
     },
-    [router, pathname],
+    [router, pathname]
   );
 
   /**

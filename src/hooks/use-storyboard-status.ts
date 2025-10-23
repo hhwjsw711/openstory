@@ -74,7 +74,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
           sequenceResponse.json(),
           framesResponse.json(),
           activeJobResponse.json(),
-        ],
+        ]
       );
 
       const sequence =
@@ -164,7 +164,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
       sequence?.script &&
         sequence.script.trim().length >= 10 &&
         styleId &&
-        !isGenerating,
+        !isGenerating
     );
 
     return {

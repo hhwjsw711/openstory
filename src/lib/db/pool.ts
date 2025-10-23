@@ -9,7 +9,7 @@ if (!conn) {
 const u = new URL(conn);
 
 const isSupabaseHost = /(\.supabase\.co|\.pooler\.supabase\.com)$/i.test(
-  u.hostname,
+  u.hostname
 );
 const isPoolerPort = u.port === "6543";
 

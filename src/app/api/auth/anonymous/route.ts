@@ -19,7 +19,7 @@ export async function POST() {
           message: "Failed to create anonymous session",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -35,7 +35,7 @@ export async function POST() {
     if (userError) {
       console.error(
         "[POST /api/auth/anonymous] User creation error:",
-        userError,
+        userError
       );
       return NextResponse.json(
         {
@@ -43,7 +43,7 @@ export async function POST() {
           message: "Failed to initialize user account",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -63,7 +63,7 @@ export async function POST() {
     if (teamError || !team) {
       console.error(
         "[POST /api/auth/anonymous] Team creation error:",
-        teamError,
+        teamError
       );
       return NextResponse.json(
         {
@@ -71,7 +71,7 @@ export async function POST() {
           message: "Failed to create team",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -87,7 +87,7 @@ export async function POST() {
     if (membershipError) {
       console.error(
         "[POST /api/auth/anonymous] Team membership creation error:",
-        membershipError,
+        membershipError
       );
       return NextResponse.json(
         {
@@ -95,7 +95,7 @@ export async function POST() {
           message: "Failed to create team membership",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -111,7 +111,7 @@ export async function POST() {
         message: "Anonymous session created successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/auth/anonymous] Error:", error);
@@ -124,7 +124,7 @@ export async function POST() {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

@@ -11,7 +11,7 @@ mock.module("@/lib/auth/config", () => ({
     api: {
       getSession: mock(() => Promise.resolve({ user: null })),
       signInAnonymous: mock(() =>
-        Promise.resolve({ user: null, token: "mock-token" }),
+        Promise.resolve({ user: null, token: "mock-token" })
       ),
       signOut: mock(() => Promise.resolve({ success: true })),
     },
@@ -84,7 +84,7 @@ const mockSessionAwareClient = {
           },
         },
         error: null,
-      }),
+      })
     ),
   },
   from: mock(() => mockQueryBuilder),
@@ -190,7 +190,7 @@ describe.skip("StyleStackService", () => {
 
       const result = await styleService.createStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec",
+        "1359a1a3-e189-448d-8451-734b4be680ec"
       );
 
       expect(result).toEqual(mockStyle);
@@ -216,7 +216,7 @@ describe.skip("StyleStackService", () => {
       };
 
       await expect(
-        styleService.createStyle(input, "1359a1a3-e189-448d-8451-734b4be680ec"),
+        styleService.createStyle(input, "1359a1a3-e189-448d-8451-734b4be680ec")
       ).rejects.toThrow("No team found for user");
     });
 
@@ -229,8 +229,8 @@ describe.skip("StyleStackService", () => {
       await expect(
         styleService.createStyle(
           invalidInput as any,
-          "1359a1a3-e189-448d-8451-734b4be680ec",
-        ),
+          "1359a1a3-e189-448d-8451-734b4be680ec"
+        )
       ).rejects.toThrow();
     });
   });
@@ -377,7 +377,7 @@ describe.skip("StyleStackService", () => {
 
       const result = await styleService.updateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec",
+        "1359a1a3-e189-448d-8451-734b4be680ec"
       );
 
       expect(result).toEqual(updatedStyle);
@@ -415,7 +415,7 @@ describe.skip("StyleStackService", () => {
       };
 
       await expect(
-        styleService.updateStyle(input, "bf4ca47e-ab95-4c46-9035-8f75daa93029"),
+        styleService.updateStyle(input, "bf4ca47e-ab95-4c46-9035-8f75daa93029")
       ).rejects.toThrow("Unauthorized: Not a member of the owning team");
     });
   });
@@ -457,7 +457,7 @@ describe.skip("StyleStackService", () => {
 
       const result = await styleService.deleteStyle(
         "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        "1359a1a3-e189-448d-8451-734b4be680ec",
+        "1359a1a3-e189-448d-8451-734b4be680ec"
       );
       expect(result).toBeUndefined();
     });
@@ -493,8 +493,8 @@ describe.skip("StyleStackService", () => {
       await expect(
         styleService.deleteStyle(
           "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-          "1359a1a3-e189-448d-8451-734b4be680ec",
-        ),
+          "1359a1a3-e189-448d-8451-734b4be680ec"
+        )
       ).rejects.toThrow("Cannot delete template styles");
     });
   });
@@ -551,7 +551,7 @@ describe.skip("StyleStackService", () => {
             error: { message: "Unexpected call" },
           });
           return defaultMock;
-        },
+        }
       );
 
       const duplicatedStyle = {
@@ -580,7 +580,7 @@ describe.skip("StyleStackService", () => {
 
       const result = await styleService.duplicateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec",
+        "1359a1a3-e189-448d-8451-734b4be680ec"
       );
 
       expect(result).toEqual(duplicatedStyle);
@@ -636,7 +636,7 @@ describe.skip("StyleStackService", () => {
             error: { message: "Unexpected call" },
           });
           return defaultMock;
-        },
+        }
       );
 
       const input = {
@@ -647,8 +647,8 @@ describe.skip("StyleStackService", () => {
       await expect(
         styleService.duplicateStyle(
           input,
-          "bf4ca47e-ab95-4c46-9035-8f75daa93029",
-        ),
+          "bf4ca47e-ab95-4c46-9035-8f75daa93029"
+        )
       ).rejects.toThrow("Unauthorized: Cannot duplicate private style");
     });
 
@@ -713,7 +713,7 @@ describe.skip("StyleStackService", () => {
             error: { message: "Unexpected call" },
           });
           return defaultMock;
-        },
+        }
       );
 
       const duplicatedStyle = {
@@ -742,7 +742,7 @@ describe.skip("StyleStackService", () => {
 
       const result = await styleService.duplicateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec",
+        "1359a1a3-e189-448d-8451-734b4be680ec"
       );
 
       expect(result).toEqual(duplicatedStyle);
@@ -785,7 +785,7 @@ describe.skip("StyleStackService", () => {
               Promise.resolve({
                 data: { usage_count: 5 },
                 error: null,
-              }),
+              })
             ),
           })),
         })),
@@ -797,7 +797,7 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
       );
       expect(result).toBeUndefined();
 
@@ -814,7 +814,7 @@ describe.skip("StyleStackService", () => {
               Promise.resolve({
                 data: null,
                 error: { message: "Read failed" },
-              }),
+              })
             ),
           })),
         })),
@@ -823,7 +823,7 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
       );
       expect(result).toBeUndefined();
     });
@@ -836,7 +836,7 @@ describe.skip("StyleStackService", () => {
               Promise.resolve({
                 data: { usage_count: 5 },
                 error: null,
-              }),
+              })
             ),
           })),
         })),
@@ -844,7 +844,7 @@ describe.skip("StyleStackService", () => {
           eq: mock(() =>
             Promise.resolve({
               error: { message: "Write failed" },
-            }),
+            })
           ),
         })),
       };
@@ -852,7 +852,7 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
       );
       expect(result).toBeUndefined();
     });

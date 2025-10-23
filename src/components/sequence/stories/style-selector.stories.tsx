@@ -52,11 +52,11 @@ function InteractiveStyleSelector(
     "selectedStyleId" | "onStyleSelect"
   > & {
     initialSelectedId?: string | null;
-  },
+  }
 ) {
   const { initialSelectedId = null, ...otherProps } = props;
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
-    initialSelectedId,
+    initialSelectedId
   );
 
   return (
@@ -217,7 +217,7 @@ export const StyleCategories: Story = {
               "style-noir",
               "style-documentary",
               "style-horror",
-            ].includes(s.id),
+            ].includes(s.id)
           )}
         />
       </div>
@@ -230,7 +230,7 @@ export const StyleCategories: Story = {
               "style-watercolor",
               "style-oil-painting",
               "style-minimalist",
-            ].includes(s.id),
+            ].includes(s.id)
           )}
         />
       </div>
@@ -245,7 +245,7 @@ export const StyleCategories: Story = {
               "style-retro",
               "style-comic",
               "style-fantasy",
-            ].includes(s.id),
+            ].includes(s.id)
           )}
         />
       </div>

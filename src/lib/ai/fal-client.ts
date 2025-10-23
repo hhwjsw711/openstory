@@ -42,7 +42,7 @@ const falImageResponseSchema = z.object({
       file_size: z.number().nullable().optional(),
       width: z.number().optional(),
       height: z.number().optional(),
-    }),
+    })
   ),
   timings: z
     .object({
@@ -110,13 +110,13 @@ export interface FalImageGenerationParams {
  * Returns FalServiceResponse with usage tracking, cost info, and error handling
  */
 export async function generateVideo(
-  params: FalVideoGenerationParams,
+  params: FalVideoGenerationParams
 ): Promise<FalServiceResponse<FalVideoResponse>> {
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
     console.warn(
-      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable.",
+      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable."
     );
     return {
       success: true,
@@ -164,7 +164,7 @@ export async function generateVideo(
       console.error("[FAL] Response validation failed:", validationError);
       console.error(
         "[FAL] Actual response structure:",
-        JSON.stringify(result.data, null, 2),
+        JSON.stringify(result.data, null, 2)
       );
       return {
         success: false,
@@ -183,13 +183,13 @@ export async function generateVideo(
  * Returns FalServiceResponse with usage tracking, cost info, and error handling
  */
 export async function generateImage(
-  params: FalImageGenerationParams,
+  params: FalImageGenerationParams
 ): Promise<FalServiceResponse<FalImageResponse>> {
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
     console.warn(
-      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable.",
+      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable."
     );
     return {
       success: true,
@@ -246,7 +246,7 @@ export async function generateImage(
       console.error("[FAL] Response validation failed:", validationError);
       console.error(
         "[FAL] Actual response structure:",
-        JSON.stringify(result.data, null, 2),
+        JSON.stringify(result.data, null, 2)
       );
       return {
         success: false,
@@ -264,7 +264,7 @@ export async function generateImage(
  * Generate mock video response for testing
  */
 function getMockVideoResponse(
-  params: FalVideoGenerationParams,
+  params: FalVideoGenerationParams
 ): FalVideoResponse {
   // Use different sample videos based on a simple hash of the prompt/image
   const sampleVideos = [
@@ -302,7 +302,7 @@ function getMockVideoResponse(
  * Generate mock image response for testing
  */
 function getMockImageResponse(
-  params: FalImageGenerationParams,
+  params: FalImageGenerationParams
 ): FalImageResponse {
   return {
     images: [
@@ -333,7 +333,7 @@ function getMockImageResponse(
 export const fal = {
   async run(
     model: string,
-    params: { input: Record<string, unknown> },
+    params: { input: Record<string, unknown> }
   ): Promise<unknown> {
     const apiKey = process.env.FAL_KEY;
 
@@ -344,10 +344,10 @@ export const fal = {
 
     // Determine route based on known model lists first, then simple heuristics
     const isKnownImage = Object.values(IMAGE_MODELS).includes(
-      model as FalImageModel,
+      model as FalImageModel
     );
     const isKnownVideo = Object.values(VIDEO_MODELS).includes(
-      model as FalVideoModel,
+      model as FalVideoModel
     );
     const isImageHeuristic =
       !isKnownVideo && (model.includes("flux") || model.includes("sdxl"));
@@ -381,7 +381,7 @@ export const fal = {
  */
 export async function uploadToFal(
   file: Buffer | Blob,
-  filename: string,
+  filename: string
 ): Promise<string> {
   const apiKey = process.env.FAL_KEY;
 
@@ -435,7 +435,7 @@ export async function checkFalStatus(): Promise<FalServiceResponse> {
  */
 export function calculateFalCost(
   model: FalImageModel | FalVideoModel,
-  params: Record<string, unknown>,
+  params: Record<string, unknown>
 ): number {
   const falService = getFalService();
   return falService.calculateCost(model, params);
@@ -446,7 +446,7 @@ export function calculateFalCost(
  */
 export function calculateFalTime(
   model: FalImageModel | FalVideoModel,
-  params: Record<string, unknown>,
+  params: Record<string, unknown>
 ): number {
   const falService = getFalService();
   return falService.calculateTime(model, params);

@@ -10,7 +10,7 @@ import { teamService } from "@/lib/services/team.service";
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ invitationId: string }> },
+  { params }: { params: Promise<{ invitationId: string }> }
 ) {
   try {
     const { invitationId } = await params;
@@ -36,12 +36,12 @@ export async function POST(
         message: "Invitation accepted successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[POST /api/teams/invitations/[invitationId]/accept] Error:",
-      error,
+      error
     );
 
     const handledError = handleApiError(error);
@@ -52,7 +52,7 @@ export async function POST(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

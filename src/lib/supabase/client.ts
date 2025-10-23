@@ -23,7 +23,7 @@ const validateBrowserEnvironmentVariables = (): BrowserEnvironmentVariables => {
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missingVars.join(", ")}. ` +
-        `Please check your .env file and ensure all Supabase variables are set.`,
+        `Please check your .env file and ensure all Supabase variables are set.`
     );
   }
 
@@ -46,7 +46,7 @@ export const createBrowserClient = () => {
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
-    },
+    }
   );
 
   return client;

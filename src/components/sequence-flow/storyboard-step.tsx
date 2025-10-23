@@ -85,7 +85,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
         `/api/sequences/${sequenceId}/frames/generate`,
         {
           method: "POST",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -129,7 +129,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
       });
       await refetchFrames();
     },
-    [refetchFrames, updateFrame],
+    [refetchFrames, updateFrame]
   );
 
   const canProceed = hasFrames && !isBackgroundGenerating;
@@ -269,7 +269,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                     index={frames.length + index}
                     isGenerating={true}
                   />
-                ),
+                )
               )}
           </div>
 
@@ -283,7 +283,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                   <div className="text-xs text-muted-foreground">
                     Failed at:{" "}
                     {new Date(
-                      metadata.frameGeneration.failedAt,
+                      metadata.frameGeneration.failedAt
                     ).toLocaleString()}
                   </div>
                 )}

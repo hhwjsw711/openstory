@@ -74,7 +74,7 @@ export interface UpdateMemberRoleParams {
  */
 export class TeamService {
   constructor(
-    private supabase: SupabaseClient<Database> = createServerClient(),
+    private supabase: SupabaseClient<Database> = createServerClient()
   ) {}
 
   /**
@@ -86,7 +86,7 @@ export class TeamService {
    * @returns The created invitation
    */
   async createInvitation(
-    params: CreateInvitationParams,
+    params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
     const { data: betterAuthUser } = await this.supabase
@@ -119,7 +119,7 @@ export class TeamService {
 
     if (existingInvitation) {
       throw new ValidationError(
-        "An invitation has already been sent to this email",
+        "An invitation has already been sent to this email"
       );
     }
 
@@ -130,7 +130,7 @@ export class TeamService {
 
     // Calculate expiry date
     const expiresAt = new Date(
-      Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000
     ).toISOString();
 
     // Create invitation
@@ -159,7 +159,7 @@ export class TeamService {
     // SECURITY: Token should ONLY be sent via email, never in API response
     // await this.emailService.sendInvitation(params.email, token);
     console.log(
-      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`,
+      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`
     );
 
     // SECURITY: Do NOT return token in response
@@ -249,7 +249,7 @@ export class TeamService {
     if (updateError) {
       console.error(
         "[TeamService] Failed to update invitation status:",
-        updateError,
+        updateError
       );
       // Don't throw - user is already added to team
     }
@@ -315,7 +315,7 @@ export class TeamService {
     // Prevent changing from owner role (there should only be one owner)
     if (currentRole === "owner") {
       throw new ValidationError(
-        "Cannot change the owner's role. Transfer ownership first.",
+        "Cannot change the owner's role. Transfer ownership first."
       );
     }
 
@@ -351,7 +351,7 @@ export class TeamService {
           full_name,
           avatar_url
         )
-      `,
+      `
       )
       .eq("team_id", teamId)
       .order("joined_at", { ascending: true });
@@ -369,7 +369,7 @@ export class TeamService {
 
     // Create email lookup map
     const emailMap = new Map(
-      betterAuthUsers?.map((u) => [u.id, u.email]) || [],
+      betterAuthUsers?.map((u) => [u.id, u.email]) || []
     );
 
     return (members || []).map((m) => ({
@@ -392,7 +392,7 @@ export class TeamService {
    * @returns Array of team invitations
    */
   async getInvitations(
-    teamId: string,
+    teamId: string
   ): Promise<Omit<TeamInvitation, "token">[]> {
     const { data: invitations, error } = await this.supabase
       .from("team_invitations")

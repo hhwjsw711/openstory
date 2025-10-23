@@ -19,7 +19,7 @@ const FROM_EMAIL =
     ? "onboarding@resend.dev" // Resend's official test address
     : (() => {
         throw new Error(
-          "EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.",
+          "EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend."
         );
       })());
 
@@ -80,7 +80,7 @@ export async function sendEmail({
  */
 export async function sendPasswordResetEmail(
   email: string,
-  resetUrl: string,
+  resetUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   const subject = "Reset your Velro password";
 

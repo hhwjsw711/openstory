@@ -20,7 +20,7 @@ const updateRoleSchema = z.object({
 
 export async function DELETE(
   _: Request,
-  { params }: { params: Promise<{ teamId: string; userId: string }> },
+  { params }: { params: Promise<{ teamId: string; userId: string }> }
 ) {
   try {
     const { teamId, userId } = await params;
@@ -51,12 +51,12 @@ export async function DELETE(
         message: "Member removed successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[DELETE /api/teams/[teamId]/members/[userId]] Error:",
-      error,
+      error
     );
     const handledError = handleApiError(error);
     return NextResponse.json(
@@ -66,14 +66,14 @@ export async function DELETE(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ teamId: string; userId: string }> },
+  { params }: { params: Promise<{ teamId: string; userId: string }> }
 ) {
   try {
     const { teamId, userId } = await params;
@@ -109,7 +109,7 @@ export async function PATCH(
         message: "Role updated successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[PATCH /api/teams/[teamId]/members/[userId]] Error:", error);
@@ -122,7 +122,7 @@ export async function PATCH(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -134,7 +134,7 @@ export async function PATCH(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

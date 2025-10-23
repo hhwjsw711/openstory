@@ -123,7 +123,7 @@ describe("Motion Service", () => {
             aspect_ratio: "16:9",
             resolution: "1080p",
           }),
-        },
+        }
       );
     });
 
@@ -157,14 +157,14 @@ describe("Motion Service", () => {
 
       const seedanceCall = (fal.run as any).mock.calls.find(
         (call: any[]) =>
-          call[0] === "fal-ai/bytedance/seedance/v1/pro/image-to-video",
+          call[0] === "fal-ai/bytedance/seedance/v1/pro/image-to-video"
       );
 
       expect(seedanceCall).toBeDefined();
       const prompt = seedanceCall[1].input.prompt;
       // The enhanced prompt should be a complete concatenation
       expect(prompt).toBe(
-        "Character movement, dynamic camera movement, fast-paced action, energetic motion, quick cuts, maintain visual consistency, smooth transitions, professional cinematography",
+        "Character movement, dynamic camera movement, fast-paced action, energetic motion, quick cuts, maintain visual consistency, smooth transitions, professional cinematography"
       );
     });
 

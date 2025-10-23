@@ -31,7 +31,7 @@ const validateEnvironmentVariables = (): EnvironmentVariables => {
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missingVars.join(", ")}. ` +
-        `Please check your .env file and ensure all Supabase variables are set.`,
+        `Please check your .env file and ensure all Supabase variables are set.`
     );
   }
 
@@ -57,7 +57,7 @@ export const createServerClient = () => {
       db: {
         schema: "public",
       },
-    },
+    }
   );
 };
 
@@ -87,7 +87,7 @@ export const createSessionAwareClient = async () => {
           }
         },
       },
-    },
+    }
   );
 };
 
@@ -106,6 +106,6 @@ export const createAdminClient = () => {
       db: {
         schema: "public",
       },
-    },
+    }
   );
 };

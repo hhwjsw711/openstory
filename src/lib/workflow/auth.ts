@@ -10,7 +10,7 @@ import type { WorkflowContext } from "./types";
  * @throws AuthenticationError if userId or teamId is missing
  */
 export function validateWorkflowAuth(
-  context: unknown,
+  context: unknown
 ): asserts context is WorkflowContext {
   const ctx = context as Partial<WorkflowContext>;
 

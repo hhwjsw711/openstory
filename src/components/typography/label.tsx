@@ -15,7 +15,7 @@ const labelVariants = cva(
     defaultVariants: {
       size: "medium",
     },
-  },
+  }
 );
 
 export interface LabelProps

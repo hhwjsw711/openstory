@@ -57,7 +57,7 @@ export interface SequenceWithDetails extends Sequence {
  */
 export class SequenceService {
   constructor(
-    private supabase: SupabaseClient<Database> = createServerClient(),
+    private supabase: SupabaseClient<Database> = createServerClient()
   ) {}
 
   /**
@@ -160,14 +160,14 @@ export class SequenceService {
    */
   async getSequence(
     sequenceId: string,
-    includeFrames = false,
+    includeFrames = false
   ): Promise<SequenceWithDetails> {
     const query = this.supabase
       .from("sequences")
       .select(
         includeFrames
           ? "*, frames(id, order_index, description, thumbnail_url, video_url)"
-          : "*",
+          : "*"
       )
       .eq("id", sequenceId)
       .single();
@@ -236,7 +236,7 @@ export class SequenceService {
    */
   async updateSequenceStatus(
     sequenceId: string,
-    status: SequenceStatus,
+    status: SequenceStatus
   ): Promise<void> {
     const { error } = await this.supabase
       .from("sequences")
@@ -260,7 +260,7 @@ export class SequenceService {
    */
   async updateSequenceMetadata(
     sequenceId: string,
-    metadata: Record<string, unknown>,
+    metadata: Record<string, unknown>
   ): Promise<void> {
     // Get current metadata
     const { data: sequence } = await this.supabase
@@ -301,7 +301,7 @@ export class SequenceService {
   async duplicateSequence(
     sequenceId: string,
     userId: string,
-    newName?: string,
+    newName?: string
   ): Promise<Sequence> {
     // Get the original sequence
     const original = await this.getSequence(sequenceId);

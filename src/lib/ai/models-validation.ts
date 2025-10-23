@@ -83,7 +83,7 @@ export const fluxKreaLoraSchema = z.object({
       z.object({
         path: z.string(),
         scale: z.number().positive().optional(),
-      }),
+      })
     )
     .optional(),
   guidance_scale: z.number().positive().optional(),
@@ -144,7 +144,7 @@ interface ExtraParamsSchemaByModelData {
 
 // extra_params schema by model
 export const extraParamsSchemaByModel = (
-  data: ExtraParamsSchemaByModelData,
+  data: ExtraParamsSchemaByModelData
 ) => {
   // Validate extra_params based on the selected model
   const modelSchemas = {
@@ -166,7 +166,7 @@ export const extraParamsSchemaByModel = (
 
   if (!schema) {
     throw new Error(
-      `[model-validations] No validation schema found for model: ${data.model}`,
+      `[model-validations] No validation schema found for model: ${data.model}`
     );
   }
 
@@ -174,7 +174,7 @@ export const extraParamsSchemaByModel = (
   const result = schema.safeParse(params);
   if (!result.success) {
     throw new Error(
-      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`
     );
   }
 
@@ -183,7 +183,7 @@ export const extraParamsSchemaByModel = (
 
 // Parser that returns normalized extra_params with defaults
 export const parseExtraParamsByModel = (
-  data: ExtraParamsSchemaByModelData,
+  data: ExtraParamsSchemaByModelData
 ): Record<string, unknown> => {
   const modelSchemas = {
     // Advanced models with specific schemas
@@ -204,7 +204,7 @@ export const parseExtraParamsByModel = (
 
   if (!schema) {
     throw new Error(
-      `[model-validations] No validation schema found for model: ${data.model}`,
+      `[model-validations] No validation schema found for model: ${data.model}`
     );
   }
 
@@ -212,7 +212,7 @@ export const parseExtraParamsByModel = (
   const result = schema.safeParse(params);
   if (!result.success) {
     throw new Error(
-      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`
     );
   }
 

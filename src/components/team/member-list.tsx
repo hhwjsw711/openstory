@@ -92,7 +92,7 @@ export function MemberList({ teamId }: MemberListProps) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ role: newRole }),
-        },
+        }
       );
       if (!response.ok) {
         const error = await response.json();
@@ -220,7 +220,7 @@ export function MemberList({ teamId }: MemberListProps) {
                   </div>
                 </div>
               );
-            },
+            }
           )}
         </div>
       </CardContent>

@@ -41,7 +41,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   validateWorkflowAuth(input);
 
   loggerService.logDebug(
-    `Starting frame generation workflow for sequence ${input.sequenceId}`,
+    `Starting frame generation workflow for sequence ${input.sequenceId}`
   );
 
   // Step 1: Verify sequence and get data
@@ -101,7 +101,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
     if (existingFrames && existingFrames.length > 0) {
       await Promise.all(
-        existingFrames.map((frame) => frameService.deleteFrame(frame.id)),
+        existingFrames.map((frame) => frameService.deleteFrame(frame.id))
       );
     }
   });
@@ -129,7 +129,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
     const analysis = await analyzeScriptForFrames(
       sequence.script || "",
-      styleConfig,
+      styleConfig
     );
 
     if (!analysis?.scenes || analysis.scenes.length === 0) {
@@ -222,7 +222,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       const promises = frameIds.map(async ({ frameId, prompt }) => {
         if (!prompt) {
           loggerService.logWarning(
-            `Frame ${frameId} has no description, skipping`,
+            `Frame ${frameId} has no description, skipping`
           );
           return null;
         }
@@ -247,7 +247,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
           return frameId;
         } catch (error) {
           loggerService.logError(
-            `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : "Unknown"}`,
+            `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : "Unknown"}`
           );
           return null;
         }
@@ -268,7 +268,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
     if (error) {
       loggerService.logError(
-        `Failed to update sequence status: ${error.message}`,
+        `Failed to update sequence status: ${error.message}`
       );
       throw new Error(`Failed to update sequence status: ${error.message}`);
     }

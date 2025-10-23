@@ -86,7 +86,7 @@ export class FalService {
       throw new VelroError(
         "FAL_KEY environment variable is required",
         "FAL_CONFIG_ERROR",
-        500,
+        500
       );
     }
     this.fal = createFalClient({
@@ -105,7 +105,7 @@ export class FalService {
       teamId?: string;
       jobId?: string;
       timeout?: number;
-    },
+    }
   ): Promise<FalServiceResponse> {
     return this.executeRequest({
       model,
@@ -127,7 +127,7 @@ export class FalService {
       teamId?: string;
       jobId?: string;
       timeout?: number;
-    },
+    }
   ): Promise<FalServiceResponse> {
     return this.executeRequest({
       model,
@@ -245,21 +245,21 @@ export class FalService {
         "Failed to fetch usage statistics",
         "FAL_USAGE_ERROR",
         500,
-        { supabaseError: error?.message },
+        { supabaseError: error?.message }
       );
     }
 
     const totalRequests = requests.length;
     const totalCost = requests.reduce(
       (sum, req) => sum + (req.cost_credits || 0),
-      0,
+      0
     );
     const totalLatency = requests.reduce(
       (sum, req) => sum + (req.latency_ms || 0),
-      0,
+      0
     );
     const successfulRequests = requests.filter(
-      (req) => req.status === "completed",
+      (req) => req.status === "completed"
     ).length;
 
     const modelBreakdown: Record<string, { requests: number; cost: number }> =
@@ -285,7 +285,7 @@ export class FalService {
    * Core request execution with all service layer features
    */
   private async executeRequest(
-    request: FalServiceRequest,
+    request: FalServiceRequest
   ): Promise<FalServiceResponse> {
     const startTime = Date.now();
 
@@ -324,7 +324,7 @@ export class FalService {
             if (status && status >= 400 && status < 500) return false; // don't retry on 4xx
             return true;
           },
-        },
+        }
       );
 
       const latencyMs = Date.now() - startTime;
@@ -386,7 +386,7 @@ export class FalService {
    */
   private async makeApiRequest(
     model: string,
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ): Promise<unknown> {
     try {
       // Use the official FAL client with subscribe for real-time updates
@@ -411,7 +411,7 @@ export class FalService {
     } catch (error) {
       // Re-throw with more context while preserving status for retry logic
       throw new Error(
-        `FAL API request failed: ${error instanceof Error ? error.message : String(error)}`,
+        `FAL API request failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

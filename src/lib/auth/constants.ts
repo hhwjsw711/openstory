@@ -33,7 +33,7 @@ export function getRoleLevel(role: TeamRole): number {
  */
 export function hasMinimumRole(
   userRole: TeamRole,
-  requiredRole: TeamRole,
+  requiredRole: TeamRole
 ): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }

@@ -11,7 +11,7 @@ import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -42,7 +42,7 @@ export async function GET(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -57,7 +57,7 @@ export async function GET(
           data: null,
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -89,12 +89,12 @@ export async function GET(
         },
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[GET /api/sequences/[sequenceId]/frames/generation/status] Error:",
-      error,
+      error
     );
 
     const handledError = handleApiError(error);
@@ -105,7 +105,7 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

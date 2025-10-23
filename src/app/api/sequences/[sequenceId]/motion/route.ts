@@ -19,9 +19,7 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 const requestSchema = z.object({
   model: z
     .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [
-        keyof typeof IMAGE_TO_VIDEO_MODELS,
-      ],
+      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
     )
     .optional(),
   duration: z.number().min(1).max(10).optional(),
@@ -32,7 +30,7 @@ const requestSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const supabase = createServerClient();
@@ -148,7 +146,7 @@ export async function POST(
         workflows,
         errors: errors.length > 0 ? errors : undefined,
       },
-      `Motion generation started for ${workflows.length} frames`,
+      `Motion generation started for ${workflows.length} frames`
     );
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -156,7 +154,7 @@ export async function POST(
     }
     return createErrorResponse(
       error instanceof Error ? error.message : "Internal server error",
-      500,
+      500
     );
   }
 }

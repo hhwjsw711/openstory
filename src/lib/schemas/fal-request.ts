@@ -137,7 +137,7 @@ export const falUsageStatsResponseSchema = z.object({
     z.object({
       requests: z.number().int().min(0),
       cost: z.number().min(0),
-    }),
+    })
   ),
 });
 

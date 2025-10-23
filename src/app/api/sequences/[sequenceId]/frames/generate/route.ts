@@ -13,7 +13,7 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -44,7 +44,7 @@ export async function POST(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -62,7 +62,7 @@ export async function POST(
           message: "Frame generation already in progress",
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -110,12 +110,12 @@ export async function POST(
         message: "Frame generation started successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[POST /api/sequences/[sequenceId]/frames/generate] Error:",
-      error,
+      error
     );
     const handledError = handleApiError(error);
     return NextResponse.json(
@@ -125,7 +125,7 @@ export async function POST(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

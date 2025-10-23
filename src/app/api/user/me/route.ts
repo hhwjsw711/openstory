@@ -38,7 +38,7 @@ async function ensureUserAndTeam(authUser: {
             team_id,
             role
           )
-        `,
+        `
         )
         .eq("id", authUser.id)
         .maybeSingle();
@@ -84,7 +84,7 @@ export async function GET() {
             message: "Failed to create anonymous session",
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -100,7 +100,7 @@ export async function GET() {
               createResult.error || "Failed to create anonymous user profile",
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -114,7 +114,7 @@ export async function GET() {
           },
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -139,7 +139,7 @@ export async function GET() {
             message: createResult.error || "Failed to create user profile",
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -153,7 +153,7 @@ export async function GET() {
           },
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -167,7 +167,7 @@ export async function GET() {
         },
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/user/me] Error:", error);
@@ -180,7 +180,7 @@ export async function GET() {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

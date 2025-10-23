@@ -44,7 +44,7 @@ export async function POST(request: Request) {
             remainingTimeMs,
           },
         },
-        { status: 429 },
+        { status: 429 }
       );
     }
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
           message: result.error || "Failed to enhance script",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
           message: "No enhanced script data received",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
         message: "Script enhanced successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[POST /api/script/enhance] Error:", error);
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

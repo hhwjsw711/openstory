@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
       headers: {
         cookie: request.headers.get("cookie") || "",
       },
-    },
+    }
   );
 
   // SECURITY: Fail closed if auth service is unavailable
@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
     // Check if this is a protected route
     const isAuthRequired = authRequiredRoutes.some((route) =>
-      pathname.startsWith(route),
+      pathname.startsWith(route)
     );
 
     if (isAuthRequired) {
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
           error: "Authentication service unavailable",
           message: "Unable to verify authentication. Please try again.",
         },
-        { status: 503 },
+        { status: 503 }
       );
     }
 
@@ -75,7 +75,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated (non-anonymous) users away from auth pages
   const isAuthOnlyRoute = authOnlyRoutes.some((route) =>
-    pathname.startsWith(route),
+    pathname.startsWith(route)
   );
   if (hasSession && !isAnonymous && isAuthOnlyRoute) {
     return NextResponse.redirect(new URL("/", request.url));
@@ -83,7 +83,7 @@ export async function middleware(request: NextRequest) {
 
   // Protect sensitive routes that require full authentication (not anonymous)
   const isAuthRequired = authRequiredRoutes.some((route) =>
-    pathname.startsWith(route),
+    pathname.startsWith(route)
   );
   if (isAuthRequired && (!hasSession || isAnonymous)) {
     // Preserve the original URL for redirect after login

@@ -54,9 +54,7 @@ export const regenerateFrameSchema = z.object({
 export const generateMotionSchema = z.object({
   model: z
     .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [
-        keyof typeof IMAGE_TO_VIDEO_MODELS,
-      ],
+      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
     )
     .optional(),
   duration: z.number().min(1).max(10).optional(),

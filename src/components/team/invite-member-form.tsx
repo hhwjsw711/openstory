@@ -99,7 +99,7 @@ export function InviteMemberForm({
     } catch (err) {
       console.error("[InviteMemberForm] Error:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to send invitation",
+        err instanceof Error ? err.message : "Failed to send invitation"
       );
     } finally {
       setIsLoading(false);

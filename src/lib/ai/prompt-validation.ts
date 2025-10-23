@@ -29,89 +29,89 @@ export const sanitizeScriptContent = (input: string): string => {
   sanitized = sanitized.replace(/```[\s\S]*?```/gi, "[technical content]");
   sanitized = sanitized.replace(
     /{\s*"[\s\S]*?"[\s\S]*?}/g,
-    "[structured data]",
+    "[structured data]"
   );
 
   // Remove XML-like tags and their content to prevent complex injection
   sanitized = sanitized.replace(
     /<[^>]*>[\s\S]*?<\/[^>]*>/gi,
-    "[markup removed]",
+    "[markup removed]"
   );
   sanitized = sanitized.replace(/<[^>]*>/g, "[markup removed]");
 
   // Handle instruction injection patterns
   sanitized = sanitized.replace(
     /ignore\s+(all\s+)?previous\s+instructions?[\s\S]*$/gi,
-    "[character dismisses something]",
+    "[character dismisses something]"
   );
   sanitized = sanitized.replace(
     /forget\s+(all\s+)?previous\s+instructions?[\s\S]*$/gi,
-    "[character dismisses something]",
+    "[character dismisses something]"
   );
 
   // Handle role manipulation
   sanitized = sanitized.replace(
     /you\s+are\s+now\s+[\s\S]*$/gi,
-    "[character takes on a role]",
+    "[character takes on a role]"
   );
   sanitized = sanitized.replace(
     /act\s+as\s+[\s\S]*$/gi,
-    "[character takes on a role]",
+    "[character takes on a role]"
   );
   sanitized = sanitized.replace(
     /pretend\s+to\s+be[\s\S]*$/gi,
-    "[character takes on a role]",
+    "[character takes on a role]"
   );
   sanitized = sanitized.replace(
     /roleplay\s+as[\s\S]*$/gi,
-    "[character takes on a role]",
+    "[character takes on a role]"
   );
   sanitized = sanitized.replace(
     /simulate\s+(being\s+)?[\s\S]*$/gi,
-    "[character takes on a role]",
+    "[character takes on a role]"
   );
 
   // Handle prompt extraction attempts
   sanitized = sanitized.replace(
     /output\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(
     /what\s+(is\s+)?your\s+(system\s+)?prompt[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(
     /reveal\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(
     /show\s+(me\s+)?(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
 
   // Handle role indicators
   sanitized = sanitized.replace(
     /system\s*:[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(
     /assistant\s*:[\s\S]*$/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(/user\s*:[\s\S]*$/gi, "[technical discussion]");
 
   // Clean up any remaining suspicious fragments
   sanitized = sanitized.replace(
     /\bsystem\s+prompt\b/gi,
-    "[technical discussion]",
+    "[technical discussion]"
   );
   sanitized = sanitized.replace(
     /\bprevious\s+instructions?\b/gi,
-    "[earlier guidance]",
+    "[earlier guidance]"
   );
   sanitized = sanitized.replace(
     /\bcomplete\s+instructions?\b/gi,
-    "[full guidance]",
+    "[full guidance]"
   );
 
   // Limit length to prevent abuse
@@ -124,7 +124,7 @@ export const sanitizeScriptContent = (input: string): string => {
 
 export const checkForInjectionAttempts = (script: string): boolean => {
   const containsSuspiciousContent = INJECTION_PATTERNS.some((pattern) =>
-    pattern.test(script),
+    pattern.test(script)
   );
 
   if (containsSuspiciousContent) {
@@ -132,7 +132,7 @@ export const checkForInjectionAttempts = (script: string): boolean => {
       timestamp: new Date().toISOString(),
       scriptLength: script.length,
       suspiciousPatterns: INJECTION_PATTERNS.filter((pattern) =>
-        pattern.test(script),
+        pattern.test(script)
       ).map((pattern) => pattern.source),
     });
   }

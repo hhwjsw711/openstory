@@ -40,7 +40,7 @@ export const Select: React.FC<SelectProps> = ({
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const selectedOption = options.find(
-    (option) => option.value === selectedValue,
+    (option) => option.value === selectedValue
   );
 
   const handleSelect = (optionValue: string) => {
@@ -136,7 +136,7 @@ export const Select: React.FC<SelectProps> = ({
             "cursor-not-allowed opacity-50": disabled,
             "hover:bg-accent hover:text-accent-foreground":
               !disabled && variant !== "ghost",
-          },
+          }
         )}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -190,7 +190,7 @@ export const Select: React.FC<SelectProps> = ({
                   "bg-accent text-accent-foreground":
                     selectedValue === option.value,
                   "cursor-not-allowed opacity-50": option.disabled,
-                },
+                }
               )}
               onClick={() => !option.disabled && handleSelect(option.value)}
               disabled={option.disabled}

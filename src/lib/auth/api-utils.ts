@@ -25,7 +25,7 @@ interface AuthError {
  * Authenticate API request and return user/session or error response
  */
 export async function authenticateApiRequest(
-  request: Request,
+  request: Request
 ): Promise<AuthResult | NextResponse<AuthError>> {
   try {
     const session = await auth.api.getSession({
@@ -40,7 +40,7 @@ export async function authenticateApiRequest(
           status: 401,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -58,7 +58,7 @@ export async function authenticateApiRequest(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 }
@@ -71,7 +71,7 @@ export async function authenticateApiRequest(
  */
 export async function checkTeamAccess(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<AuthResult | NextResponse<AuthError>> {
   const authResult = await authenticateApiRequest(request);
 
@@ -93,7 +93,7 @@ export async function checkTeamAccess(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -119,7 +119,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
  * Returns user data or null if not authenticated
  */
 export async function getOptionalUser(
-  request: Request,
+  request: Request
 ): Promise<AuthResult | null> {
   try {
     const session = await auth.api.getSession({
@@ -169,7 +169,7 @@ export function validateMotionAccess(user: User): void {
  * Require authenticated (non-anonymous) user
  */
 export async function requireAuthenticatedUser(
-  request: Request,
+  request: Request
 ): Promise<AuthResult> {
   const authResult = await requireAuth(request);
 
@@ -181,7 +181,7 @@ export async function requireAuthenticatedUser(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -193,7 +193,7 @@ export async function requireAuthenticatedUser(
  * Returns specific error message for motion generation
  */
 export async function requireAuthenticatedUserForMotion(
-  request: Request,
+  request: Request
 ): Promise<AuthResult> {
   const authResult = await requireAuth(request);
 
@@ -207,7 +207,7 @@ export async function requireAuthenticatedUserForMotion(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -220,7 +220,7 @@ export async function requireAuthenticatedUserForMotion(
 export function createErrorResponse(
   message: string,
   status: number = 400,
-  details?: Record<string, unknown>,
+  details?: Record<string, unknown>
 ): NextResponse<AuthError> {
   return NextResponse.json(
     {
@@ -230,7 +230,7 @@ export function createErrorResponse(
       timestamp: new Date().toISOString(),
       ...(details && { details }),
     },
-    { status },
+    { status }
   );
 }
 
@@ -240,7 +240,7 @@ export function createErrorResponse(
 export function createSuccessResponse<T>(
   data: T,
   message?: string,
-  status: number = 200,
+  status: number = 200
 ): NextResponse<{
   success: true;
   data: T;
@@ -254,6 +254,6 @@ export function createSuccessResponse<T>(
       ...(message && { message }),
       timestamp: new Date().toISOString(),
     },
-    { status },
+    { status }
   );
 }

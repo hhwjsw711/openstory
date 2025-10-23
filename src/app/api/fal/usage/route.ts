@@ -40,7 +40,7 @@ export async function GET(request: Request) {
           message: "Authentication required",
           timestamp: new Date().toISOString(),
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
           break;
         case "year":
           calculatedStartDate.setFullYear(
-            calculatedStartDate.getFullYear() - 1,
+            calculatedStartDate.getFullYear() - 1
           );
           break;
       }
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

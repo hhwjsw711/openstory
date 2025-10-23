@@ -13,6 +13,7 @@ Let me analyze issue #$ARGUMENTS and create an implementation plan.
 Now I'll analyze the issue content and labels to determine the appropriate tech lead agent.
 
 Based on the issue details above, I'll select the right tech lead/architect:
+
 - If it mentions API, database, Supabase, QStash, or has backend labels → `backend-tech-lead`
 - If it mentions UI, React, components, shadcn, or has frontend labels → `frontend-architect`
 - If it mentions testing, QA, or has test labels → `qa-lead-tester`
@@ -21,6 +22,7 @@ Based on the issue details above, I'll select the right tech lead/architect:
 I'll now use the Task tool to invoke the appropriate agent to create a comprehensive implementation plan.
 
 The selected agent will:
+
 1. **Analyze Requirements** - Review issue details and acceptance criteria
 2. **Review Codebase** - Understand existing implementation and patterns
 3. **Design Architecture** - Plan the technical approach and data flow

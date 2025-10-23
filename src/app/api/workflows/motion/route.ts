@@ -19,7 +19,7 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
   validateWorkflowAuth(input);
 
   loggerService.logDebug(
-    `Starting motion generation workflow for frame ${input.frameId}`,
+    `Starting motion generation workflow for frame ${input.frameId}`
   );
 
   // Step 1: Verify frame and get sequence/style info
@@ -68,7 +68,7 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
       return result;
     } catch (error) {
       loggerService.logError(
-        `Motion generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Motion generation failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       // Update frame metadata on error
       const supabase = createAdminClient();

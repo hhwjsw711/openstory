@@ -38,7 +38,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
 }) => {
   const router = useRouter();
   const getStepStatus = (
-    stepNumber: number,
+    stepNumber: number
   ): "current" | "completed" | "upcoming" => {
     if (stepNumber === currentStep) return "current";
     if (completedSteps.has(stepNumber)) return "completed";
@@ -71,7 +71,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
           break;
       }
     },
-    [sequenceId, router, completedSteps, currentStep],
+    [sequenceId, router, completedSteps, currentStep]
   );
 
   return (
@@ -103,7 +103,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                       "text-muted-foreground": status === "completed",
                       "cursor-pointer": isClickable,
                       "cursor-default": !isClickable,
-                    },
+                    }
                   )}
                   data-testid={`step-${step.number}-button`}
                 >
@@ -118,7 +118,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                           status === "upcoming",
                         "bg-primary/10 border-primary text-primary":
                           status === "completed",
-                      },
+                      }
                     )}
                   >
                     {status === "completed" ? (
@@ -158,7 +158,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                     {
                       "bg-primary": completedSteps.has(step.number),
                       "bg-muted": !completedSteps.has(step.number),
-                    },
+                    }
                   )}
                   aria-hidden="true"
                 />

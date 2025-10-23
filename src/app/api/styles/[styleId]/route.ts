@@ -30,7 +30,7 @@ async function getUserTeamId(userId: string): Promise<string | null> {
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ styleId: string }> },
+  { params }: { params: Promise<{ styleId: string }> }
 ) {
   try {
     const { styleId } = await params;
@@ -60,7 +60,7 @@ export async function GET(
         data: style,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/styles/[styleId]] Error:", error);
@@ -73,14 +73,14 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ styleId: string }> },
+  { params }: { params: Promise<{ styleId: string }> }
 ) {
   try {
     const { styleId } = await params;
@@ -148,7 +148,7 @@ export async function PATCH(
         message: "Style updated successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[PATCH /api/styles/[styleId]] Error:", error);
@@ -161,7 +161,7 @@ export async function PATCH(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -173,14 +173,14 @@ export async function PATCH(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ styleId: string }> },
+  { params }: { params: Promise<{ styleId: string }> }
 ) {
   try {
     const { styleId } = await params;
@@ -229,7 +229,7 @@ export async function DELETE(
         message: "Style deleted successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[DELETE /api/styles/[styleId]] Error:", error);
@@ -242,7 +242,7 @@ export async function DELETE(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

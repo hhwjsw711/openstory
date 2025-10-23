@@ -66,7 +66,7 @@ export interface FrameGenerationResult {
  */
 export class FrameService {
   constructor(
-    private supabase: SupabaseClient<Database> = createServerClient(),
+    private supabase: SupabaseClient<Database> = createServerClient()
   ) {}
 
   /**
@@ -232,7 +232,7 @@ export class FrameService {
    */
   async reorderFrames(
     sequenceId: string,
-    frameOrders: Array<{ id: string; order_index: number }>,
+    frameOrders: Array<{ id: string; order_index: number }>
   ): Promise<void> {
     // Update all frames with their new order indexes
     const updates = frameOrders.map((frameOrder) =>
@@ -240,7 +240,7 @@ export class FrameService {
         .from("frames")
         .update({ order_index: frameOrder.order_index })
         .eq("id", frameOrder.id)
-        .eq("sequence_id", sequenceId),
+        .eq("sequence_id", sequenceId)
     );
 
     const results = await Promise.all(updates);
@@ -248,7 +248,7 @@ export class FrameService {
     const errors = results.filter((result) => result.error);
     if (errors.length > 0) {
       throw new Error(
-        `Failed to reorder frames: ${errors.map((e) => e.error?.message).join(", ")}`,
+        `Failed to reorder frames: ${errors.map((e) => e.error?.message).join(", ")}`
       );
     }
   }
@@ -316,7 +316,7 @@ export class FrameService {
    */
   async updateFrameThumbnail(
     frameId: string,
-    thumbnailUrl: string,
+    thumbnailUrl: string
   ): Promise<void> {
     const { error } = await this.supabase
       .from("frames")

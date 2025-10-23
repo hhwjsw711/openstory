@@ -49,7 +49,7 @@ export function AnonymousProvider({ children }: AnonymousProviderProps) {
       } catch (error) {
         console.error(
           "[AnonymousProvider] Failed to create anonymous session:",
-          error,
+          error
         );
         // Still set initialized to true to prevent infinite loading
         setIsInitialized(true);

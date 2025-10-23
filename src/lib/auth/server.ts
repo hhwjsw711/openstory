@@ -95,7 +95,7 @@ export async function getUserWithTeam(): Promise<{
     let selectedTeam = teamMembers[0];
     if (teamMembers.length > 1) {
       const highestRole = getHighestRole(
-        teamMembers.map((tm) => tm.role as TeamRole),
+        teamMembers.map((tm) => tm.role as TeamRole)
       );
       selectedTeam =
         teamMembers.find((tm) => tm.role === highestRole) || teamMembers[0];

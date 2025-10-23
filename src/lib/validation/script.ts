@@ -17,7 +17,7 @@ const VALIDATION_DELAY = 300; // ms
  * Validate script and provide feedback
  */
 export async function validateScript(
-  script: string,
+  script: string
 ): Promise<ScriptValidationResult> {
   // Simulate processing time for UX
   await new Promise((resolve) => setTimeout(resolve, VALIDATION_DELAY));
@@ -62,7 +62,7 @@ export async function validateScript(
     // Check for dialogue
     if (trimmedScript.includes('"') || trimmedScript.includes("'")) {
       suggestions.push(
-        "Dialogue detected - consider describing character expressions",
+        "Dialogue detected - consider describing character expressions"
       );
     }
 
@@ -76,12 +76,12 @@ export async function validateScript(
       "crashes",
     ];
     const hasAction = actionWords.some((word) =>
-      trimmedScript.toLowerCase().includes(word),
+      trimmedScript.toLowerCase().includes(word)
     );
 
     if (hasAction) {
       suggestions.push(
-        "Action sequences detected - great for dynamic visuals!",
+        "Action sequences detected - great for dynamic visuals!"
       );
     }
   }

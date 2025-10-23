@@ -5,11 +5,13 @@ This document contains the prompt templates used by the workflow system to coord
 ## Tech Lead/Architect Prompts
 
 ### Backend Tech Lead
+
 ```
 Can you get the @agent-backend-tech-lead to validate the plan for this issue, delegate the work to @agent-backend-engineer who should make regular commits then validate the work at the end through a PR. Involve the @agent-qa-lead-tester to create a test suite and mock data for all API endpoints.
 ```
 
 ### Frontend Architect
+
 ```
 Can you get the @agent-frontend-architect to review the UI/UX requirements, create component architecture, then delegate to @agent-frontend-react-engineer for implementation. Coordinate with @agent-qa-lead-tester for comprehensive frontend testing including unit tests and e2e tests.
 ```
@@ -17,11 +19,13 @@ Can you get the @agent-frontend-architect to review the UI/UX requirements, crea
 ## Implementation Engineer Prompts
 
 ### Backend Engineer
+
 ```
 Can you get the @agent-backend-engineer to implement this feature following the plan from @agent-backend-tech-lead. Make regular, descriptive commits and work with @agent-qa-lead-tester to ensure >80% test coverage. Create a PR when complete.
 ```
 
 ### Frontend React Engineer
+
 ```
 Can you get the @agent-frontend-react-engineer to implement these components following the architecture from @agent-frontend-architect. Use shadcn/ui components, make frequent commits, and coordinate with @agent-qa-lead-tester for testing.
 ```
@@ -29,6 +33,7 @@ Can you get the @agent-frontend-react-engineer to implement these components fol
 ## QA/Testing Prompts
 
 ### QA Lead Tester
+
 ```
 Can you get the @agent-qa-lead-tester to:
 1. Create comprehensive test suites for the implementation
@@ -41,6 +46,7 @@ Can you get the @agent-qa-lead-tester to:
 ## Multi-Agent Coordination Examples
 
 ### Full Feature Implementation
+
 ```
 For this feature:
 1. @agent-backend-tech-lead should create the technical plan
@@ -52,6 +58,7 @@ For this feature:
 ```
 
 ### Bug Fix Workflow
+
 ```
 For this bug:
 1. @agent-backend-tech-lead or @agent-frontend-architect should investigate and create a fix plan
@@ -61,6 +68,7 @@ For this bug:
 ```
 
 ### API Endpoint Creation
+
 ```
 Can you coordinate the following:
 1. @agent-backend-tech-lead designs the API endpoint structure

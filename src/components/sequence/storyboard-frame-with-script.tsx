@@ -143,7 +143,7 @@ export const StoryboardFrameWithScript: React.FC<
             fps: 14,
             motionBucket: 127,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -208,7 +208,7 @@ export const StoryboardFrameWithScript: React.FC<
           body: JSON.stringify({
             model: selectedModel,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -233,7 +233,7 @@ export const StoryboardFrameWithScript: React.FC<
     } catch (error) {
       console.error(
         "[handleGenerateWithSelectedModel] Regeneration failed",
-        error,
+        error
       );
     } finally {
       setIsRegenerating(false);
@@ -315,7 +315,7 @@ export const StoryboardFrameWithScript: React.FC<
               onLoadedMetadata={() => {
                 console.log(
                   "[Video] Metadata loaded for frame",
-                  frame.order_index,
+                  frame.order_index
                 );
               }}
               controls={false}
@@ -362,7 +362,7 @@ export const StoryboardFrameWithScript: React.FC<
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20",
                 "h-12 w-12 rounded-full bg-black/60 text-white",
                 "transition-opacity hover:bg-black/80",
-                isPlaying ? "opacity-0 pointer-events-none" : "opacity-100",
+                isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
               )}
               onClick={handlePlay}
             >

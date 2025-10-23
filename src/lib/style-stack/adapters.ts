@@ -22,7 +22,7 @@ export class FluxProAdapter
   modelName = "flux-pro";
 
   adaptStyle(
-    styleConfig: StyleStackConfig,
+    styleConfig: StyleStackConfig
   ): FluxProConfig & { prompt: string } {
     const base = styleConfig.base;
     const fluxConfig = styleConfig.models?.["flux-pro"];
@@ -104,7 +104,7 @@ export class Imagen4Adapter
   modelName = "imagen4";
 
   adaptStyle(
-    styleConfig: StyleStackConfig,
+    styleConfig: StyleStackConfig
   ): Imagen4Config & { prompt: string } {
     const base = styleConfig.base;
     const imagen4Config = styleConfig.models?.imagen4;
@@ -262,7 +262,7 @@ export class RunwayAdapter
   }
 
   private inferCameraMotion(
-    base: StyleStackConfig["base"],
+    base: StyleStackConfig["base"]
   ): RunwayConfig["camera_motion"] {
     if (base.camera.includes("zoom")) return "zoom_in";
     if (base.camera.includes("pan")) return "pan_right";
@@ -413,7 +413,7 @@ export class ModelAdapterRegistry {
   adaptStyleForModel(
     styleConfig: StyleStackConfig,
     provider: string,
-    modelName: string,
+    modelName: string
   ): Record<string, unknown> | null {
     const adapter = this.getAdapter(provider, modelName);
     if (!adapter) {
@@ -426,7 +426,7 @@ export class ModelAdapterRegistry {
       // Validate the adapted configuration
       if (!adapter.validateConfig(adaptedConfig)) {
         console.warn(
-          `Invalid adapted configuration for ${provider}:${modelName}`,
+          `Invalid adapted configuration for ${provider}:${modelName}`
         );
         return null;
       }
@@ -435,7 +435,7 @@ export class ModelAdapterRegistry {
     } catch (error) {
       console.error(
         `Failed to adapt style for ${provider}:${modelName}:`,
-        error,
+        error
       );
       return null;
     }
@@ -449,18 +449,18 @@ export const modelAdapterRegistry = new ModelAdapterRegistry();
 export function getAdaptedStyleConfig(
   styleConfig: StyleStackConfig,
   provider: string,
-  modelName: string,
+  modelName: string
 ): Record<string, unknown> | null {
   return modelAdapterRegistry.adaptStyleForModel(
     styleConfig,
     provider,
-    modelName,
+    modelName
   );
 }
 
 // Utility function to generate all adaptations for a style
 export async function generateAllAdaptations(
-  styleConfig: StyleStackConfig,
+  styleConfig: StyleStackConfig
 ): Promise<
   Array<{
     provider: string;
@@ -475,7 +475,7 @@ export async function generateAllAdaptations(
     const adaptedConfig = modelAdapterRegistry.adaptStyleForModel(
       styleConfig,
       provider,
-      modelName,
+      modelName
     );
 
     if (adaptedConfig) {

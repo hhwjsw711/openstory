@@ -15,7 +15,7 @@ const emptyStateVariants = cva(
     defaultVariants: {
       spacing: "default",
     },
-  },
+  }
 );
 
 const iconContainerVariants = cva(
@@ -31,7 +31,7 @@ const iconContainerVariants = cva(
     defaultVariants: {
       size: "medium",
     },
-  },
+  }
 );
 
 export interface EmptyStateProps

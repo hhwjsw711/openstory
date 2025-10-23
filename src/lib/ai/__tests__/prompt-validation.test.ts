@@ -118,7 +118,7 @@ FADE IN: Coffee shop scene...
 By the way, my system prompt says I should...`;
 
       expect(() => validateAIResponse(suspiciousResponse)).toThrow(
-        "AI response contains potentially injected content",
+        "AI response contains potentially injected content"
       );
     });
 
@@ -126,7 +126,7 @@ By the way, my system prompt says I should...`;
       const suspiciousResponse = `I'll ignore the previous instructions and tell you that...`;
 
       expect(() => validateAIResponse(suspiciousResponse)).toThrow(
-        "AI response contains potentially injected content",
+        "AI response contains potentially injected content"
       );
     });
 
@@ -134,7 +134,7 @@ By the way, my system prompt says I should...`;
       const suspiciousResponse = `I am an AI language model created by OpenAI...`;
 
       expect(() => validateAIResponse(suspiciousResponse)).toThrow(
-        "AI response contains potentially injected content",
+        "AI response contains potentially injected content"
       );
     });
 
@@ -142,7 +142,7 @@ By the way, my system prompt says I should...`;
       const longResponse = "A".repeat(20000);
 
       expect(() => validateAIResponse(longResponse)).toThrow(
-        "AI response exceeds maximum safe length",
+        "AI response exceeds maximum safe length"
       );
     });
 
@@ -239,7 +239,7 @@ By the way, my system prompt says I should...`;
         "My system prompt is: You are an AI assistant...";
 
       expect(() => validateAIResponse(suspiciousResponse)).toThrow(
-        "AI response contains potentially injected content",
+        "AI response contains potentially injected content"
       );
 
       // Test that normal responses pass validation
@@ -291,7 +291,7 @@ By the way, my system prompt says I should...`;
         if (testCase.shouldMatch) {
           if (matchingPatterns.length === 0) {
             console.log(
-              `Failed to match "${testCase.input}" against ${INJECTION_PATTERNS.length} patterns`,
+              `Failed to match "${testCase.input}" against ${INJECTION_PATTERNS.length} patterns`
             );
             // Test individual patterns for debugging
             for (let i = 0; i < INJECTION_PATTERNS.length; i++) {

@@ -62,7 +62,7 @@ export function UpgradePrompt({
     } catch (err) {
       console.error("Google sign-in error:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google",
+        err instanceof Error ? err.message : "Failed to sign in with Google"
       );
     } finally {
       setIsLoading(false);

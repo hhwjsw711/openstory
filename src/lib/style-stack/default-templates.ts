@@ -502,7 +502,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
  * This should be run during app initialization or migration
  */
 export async function seedDefaultTemplates(
-  supabaseClient: SupabaseClient<Database>,
+  supabaseClient: SupabaseClient<Database>
 ): Promise<void> {
   try {
     // Create a system team for templates if it doesn't exist
@@ -527,7 +527,7 @@ export async function seedDefaultTemplates(
 
       if (createTeamError) {
         throw new Error(
-          `Failed to create system team: ${createTeamError.message}`,
+          `Failed to create system team: ${createTeamError.message}`
         );
       }
 
@@ -550,7 +550,7 @@ export async function seedDefaultTemplates(
 
     if (existingError) {
       throw new Error(
-        `Failed to check existing templates: ${existingError.message}`,
+        `Failed to check existing templates: ${existingError.message}`
       );
     }
 
@@ -558,7 +558,7 @@ export async function seedDefaultTemplates(
 
     // Filter out templates that already exist
     const templatesToInsert = DEFAULT_STYLE_TEMPLATES.filter(
-      (template) => !existingNames.has(template.name),
+      (template) => !existingNames.has(template.name)
     ).map((template) => ({
       ...template,
       team_id: systemTeam.id,
@@ -579,7 +579,7 @@ export async function seedDefaultTemplates(
     }
 
     console.log(
-      `Successfully seeded ${templatesToInsert.length} default style templates`,
+      `Successfully seeded ${templatesToInsert.length} default style templates`
     );
   } catch (error) {
     console.error("Failed to seed default templates:", error);

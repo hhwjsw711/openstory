@@ -126,7 +126,7 @@ interface MotionResult {
  */
 function enhanceMotionPrompt(
   basePrompt: string | undefined,
-  styleStack: Json | undefined,
+  styleStack: Json | undefined
 ): string {
   let enhancedPrompt = basePrompt || "Create smooth, natural motion";
 
@@ -164,7 +164,7 @@ function enhanceMotionPrompt(
  * Generate motion for a single frame using Fal.ai
  */
 export async function generateMotionForFrame(
-  options: GenerateMotionOptions,
+  options: GenerateMotionOptions
 ): Promise<MotionResult> {
   try {
     const modelKey = options.model || "svd_lcm";
@@ -177,17 +177,17 @@ export async function generateMotionForFrame(
     // Prepare the enhanced prompt
     const enhancedPrompt = enhanceMotionPrompt(
       options.prompt,
-      options.styleStack,
+      options.styleStack
     );
 
     // Validate and set parameters
     const duration = Math.min(
       options.duration || modelConfig.defaultDuration,
-      modelConfig.maxDuration,
+      modelConfig.maxDuration
     );
     const fps = Math.max(
       modelConfig.minFps,
-      Math.min(options.fps || modelConfig.defaultFps, modelConfig.maxFps),
+      Math.min(options.fps || modelConfig.defaultFps, modelConfig.maxFps)
     );
     const motionBucket = options.motionBucket || 127; // 1-255, higher = more motion
 
@@ -330,7 +330,7 @@ export function selectMotionModel(requirements: {
  */
 export function estimateMotionGeneration(
   frameCount: number,
-  model: MotionModel = "svd_lcm",
+  model: MotionModel = "svd_lcm"
 ): {
   totalCost: number;
   totalTime: number; // in seconds

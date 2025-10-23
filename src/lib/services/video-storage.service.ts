@@ -23,7 +23,7 @@ interface StorageResult {
  * Upload a video from URL to Supabase Storage
  */
 export async function uploadVideoToStorage(
-  options: UploadVideoOptions,
+  options: UploadVideoOptions
 ): Promise<StorageResult> {
   try {
     const { videoUrl, teamId, sequenceId, frameId } = options;
@@ -79,7 +79,7 @@ export async function uploadVideoToStorage(
  */
 export async function getSignedVideoUrl(
   path: string,
-  expiresIn: number = 3600, // 1 hour default
+  expiresIn: number = 3600 // 1 hour default
 ): Promise<StorageResult> {
   try {
     const supabase = createAdminClient();
@@ -111,7 +111,7 @@ export async function getSignedVideoUrl(
  * Delete a video from storage
  */
 export async function deleteVideoFromStorage(
-  path: string,
+  path: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createAdminClient();
@@ -137,7 +137,7 @@ export async function deleteVideoFromStorage(
  */
 export async function listSequenceVideos(
   teamId: string,
-  sequenceId: string,
+  sequenceId: string
 ): Promise<{
   success: boolean;
   videos?: Array<{ name: string; size: number; path: string }>;

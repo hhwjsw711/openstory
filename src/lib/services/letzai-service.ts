@@ -43,7 +43,7 @@ export class LetzAIService {
       throw new VelroError(
         "LETZAI_API_KEY environment variable is required",
         "LETZAI_CONFIG_ERROR",
-        500,
+        500
       );
     }
     // API key is used in request headers
@@ -58,7 +58,7 @@ export class LetzAIService {
       userId?: string;
       teamId?: string;
       jobId?: string;
-    },
+    }
   ): Promise<LetzAIServiceResponse<LetzAIImageResponse>> {
     const result = await this.executeRequest({
       endpoint: "/images",
@@ -80,7 +80,7 @@ export class LetzAIService {
       userId?: string;
       teamId?: string;
       jobId?: string;
-    },
+    }
   ): Promise<LetzAIServiceResponse<LetzAIImageEditResponse>> {
     const result = await this.executeRequest({
       endpoint: "/image-edits",
@@ -102,7 +102,7 @@ export class LetzAIService {
       userId?: string;
       teamId?: string;
       jobId?: string;
-    },
+    }
   ): Promise<LetzAIServiceResponse<LetzAIImageResponse>> {
     const result = await this.executeRequest({
       endpoint: "/upscale",
@@ -138,7 +138,7 @@ export class LetzAIService {
    */
   async checkStatus(
     jobId: string,
-    endpoint: LetzAIEndpoint = "/images",
+    endpoint: LetzAIEndpoint = "/images"
   ): Promise<LetzAIServiceResponse> {
     try {
       const response = await fetch(`${LETZAI_API_URL}${endpoint}/${jobId}`, {
@@ -248,7 +248,7 @@ export class LetzAIService {
       throw new VelroError(
         `Failed to fetch usage stats: ${error.message}`,
         "DATABASE_ERROR",
-        500,
+        500
       );
     }
 
@@ -257,15 +257,15 @@ export class LetzAIService {
 
     const totalRequests = typedRequests.length;
     const completedRequests = typedRequests.filter(
-      (r: LetzAIRequest) => r.status === "completed",
+      (r: LetzAIRequest) => r.status === "completed"
     );
     const totalCost = typedRequests.reduce(
       (sum: number, r: LetzAIRequest) => sum + (r.cost_credits || 0),
-      0,
+      0
     );
     const totalLatency = typedRequests.reduce(
       (sum: number, r: LetzAIRequest) => sum + (r.latency_ms || 0),
-      0,
+      0
     );
     const averageLatency = totalRequests > 0 ? totalLatency / totalRequests : 0;
     const successRate =
@@ -296,7 +296,7 @@ export class LetzAIService {
    */
   calculateCost(
     endpoint: LetzAIEndpoint,
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ): number {
     // LetzAI pricing (these would need to be updated based on actual pricing)
     const baseCosts = {
@@ -333,14 +333,14 @@ export class LetzAIService {
    * Execute a LetzAI request with full error handling and monitoring
    */
   private async executeRequest(
-    request: LetzAIServiceRequest,
+    request: LetzAIServiceRequest
   ): Promise<LetzAIServiceResponse> {
     const startTime = Date.now();
 
     // Calculate estimated cost
     const estimatedCost = this.calculateCost(
       request.endpoint,
-      request.parameters,
+      request.parameters
     );
 
     // Create database record (using type assertion until types are updated)
@@ -361,7 +361,7 @@ export class LetzAIService {
     if (dbError || !dbRecord) {
       console.error(
         "[LetzAI Service] Failed to create database record:",
-        dbError,
+        dbError
       );
       return {
         success: false,
@@ -373,7 +373,7 @@ export class LetzAIService {
       // Execute the API request
       const result = await this.makeApiRequest(
         request.endpoint,
-        request.parameters,
+        request.parameters
       );
 
       const latencyMs = Date.now() - startTime;
@@ -426,7 +426,7 @@ export class LetzAIService {
    */
   private async makeApiRequest(
     endpoint: LetzAIEndpoint,
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ): Promise<unknown> {
     const response = await fetch(`${LETZAI_API_URL}${endpoint}`, {
       method: "POST",
@@ -457,7 +457,7 @@ export class LetzAIService {
    */
   private async pollForCompletion(
     jobId: string,
-    endpoint: LetzAIEndpoint,
+    endpoint: LetzAIEndpoint
   ): Promise<unknown> {
     const maxPolls = 120; // 6 minutes with 3-second intervals
     let polls = 0;
@@ -473,7 +473,7 @@ export class LetzAIService {
             Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       if (!statusResponse.ok) {
@@ -488,7 +488,7 @@ export class LetzAIService {
 
       if (statusData.status === "failed") {
         throw new Error(
-          `LetzAI generation failed: ${statusData.error || "Unknown error"}`,
+          `LetzAI generation failed: ${statusData.error || "Unknown error"}`
         );
       }
     }

@@ -42,7 +42,7 @@ export const PageDescription: React.FC<PageDescriptionProps> = ({
     <p
       className={cn(
         pageDescriptionVariants({ size, align, maxWidth }),
-        className,
+        className
       )}
       {...props}
     >

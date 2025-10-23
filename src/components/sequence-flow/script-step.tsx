@@ -63,7 +63,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
   // Load existing sequence data if editing
   const { data: existingSequence, isLoading: isLoadingSequence } = useSequence(
-    sequenceId || "",
+    sequenceId || ""
   );
 
   // TanStack Query mutations
@@ -141,7 +141,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         setEnhancementResult(null);
       }
     },
-    [],
+    []
   );
 
   // Handle script enhancement
@@ -171,10 +171,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       const improvements: string[] = [];
       if (apiResult.data?.styleStackRecommendation) {
         improvements.push(
-          `Style Stack: ${apiResult.data.styleStackRecommendation.recommended_style_stack}`,
+          `Style Stack: ${apiResult.data.styleStackRecommendation.recommended_style_stack}`
         );
         improvements.push(
-          `Reasoning: ${apiResult.data.styleStackRecommendation.reasoning}`,
+          `Reasoning: ${apiResult.data.styleStackRecommendation.reasoning}`
         );
       }
 

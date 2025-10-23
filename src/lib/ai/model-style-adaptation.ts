@@ -271,7 +271,7 @@ export function analyzeStyleComplexity(styleConfig: StyleStackConfig): {
  */
 export function adaptStyleForModel(
   styleConfig: StyleStackConfig,
-  modelId: string,
+  modelId: string
 ): AdaptedStyleConfig | null {
   const capabilities = MODEL_STYLE_CAPABILITIES[modelId];
   if (!capabilities) {
@@ -326,7 +326,7 @@ export function adaptStyleForModel(
     negativePromptParts.push(
       "dramatic lighting",
       "harsh shadows",
-      "complex lighting setup",
+      "complex lighting setup"
     );
   } else if (
     capabilities.supportsComplexLighting &&
@@ -334,7 +334,7 @@ export function adaptStyleForModel(
   ) {
     additionalPromptParts.push(
       "cinematic lighting",
-      "professional lighting setup",
+      "professional lighting setup"
     );
   }
 
@@ -347,7 +347,7 @@ export function adaptStyleForModel(
     styleModifications.push("simplified textures for model compatibility");
     negativePromptParts.push(
       "highly detailed textures",
-      "intricate surface details",
+      "intricate surface details"
     );
   } else if (
     capabilities.supportsDetailedTextures &&
@@ -355,7 +355,7 @@ export function adaptStyleForModel(
   ) {
     additionalPromptParts.push(
       "highly detailed textures",
-      "intricate surface details",
+      "intricate surface details"
     );
   }
 
@@ -373,7 +373,7 @@ export function adaptStyleForModel(
   ) {
     additionalPromptParts.push(
       "professional composition",
-      "advanced framing techniques",
+      "advanced framing techniques"
     );
   }
 
@@ -386,7 +386,7 @@ export function adaptStyleForModel(
     styleModifications.push("simplified color palette for model compatibility");
     negativePromptParts.push(
       "complex color grading",
-      "sophisticated color schemes",
+      "sophisticated color schemes"
     );
   } else if (
     capabilities.supportsColorGrading &&
@@ -394,7 +394,7 @@ export function adaptStyleForModel(
   ) {
     additionalPromptParts.push(
       "sophisticated color grading",
-      "complex color harmony",
+      "complex color harmony"
     );
   }
 
@@ -405,7 +405,7 @@ export function adaptStyleForModel(
   ) {
     adaptedBase.mood = base.mood.replace(
       /cinematic|dramatic|atmospheric/g,
-      "enhanced",
+      "enhanced"
     );
     styleModifications.push("simplified effects for model compatibility");
     negativePromptParts.push("cinematic effects", "dramatic atmosphere");
@@ -536,7 +536,7 @@ export function getModelStyleRecommendations(modelId: string): {
  */
 export function validateStyleModelCompatibility(
   styleConfig: StyleStackConfig,
-  modelId: string,
+  modelId: string
 ): {
   compatible: boolean;
   issues: string[];
@@ -586,10 +586,10 @@ export function validateStyleModelCompatibility(
   const totalPromptLength = Object.values(styleConfig.base).join(" ").length;
   if (totalPromptLength > capabilities.maxPromptLength) {
     issues.push(
-      `Style prompt too long for model (${totalPromptLength} > ${capabilities.maxPromptLength})`,
+      `Style prompt too long for model (${totalPromptLength} > ${capabilities.maxPromptLength})`
     );
     recommendations.push(
-      "Shorten style descriptions and remove unnecessary details",
+      "Shorten style descriptions and remove unnecessary details"
     );
   }
 

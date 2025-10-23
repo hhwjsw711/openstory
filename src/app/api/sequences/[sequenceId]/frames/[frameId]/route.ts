@@ -15,7 +15,7 @@ import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> }
 ) {
   try {
     const { sequenceId, frameId } = await params;
@@ -48,7 +48,7 @@ export async function GET(
           message: "Frame not found in this sequence",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -61,12 +61,12 @@ export async function GET(
         data: frame,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[GET /api/sequences/[sequenceId]/frames/[frameId]] Error:",
-      error,
+      error
     );
 
     const handledError = handleApiError(error);
@@ -77,14 +77,14 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> }
 ) {
   try {
     const { sequenceId, frameId } = await params;
@@ -121,7 +121,7 @@ export async function PATCH(
           message: "Frame not found in this sequence",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -146,12 +146,12 @@ export async function PATCH(
         message: "Frame updated successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[PATCH /api/sequences/[sequenceId]/frames/[frameId]] Error:",
-      error,
+      error
     );
 
     if (error instanceof z.ZodError) {
@@ -162,7 +162,7 @@ export async function PATCH(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -174,14 +174,14 @@ export async function PATCH(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> }
 ) {
   try {
     const { sequenceId, frameId } = await params;
@@ -214,7 +214,7 @@ export async function DELETE(
           message: "Frame not found in this sequence",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -230,12 +230,12 @@ export async function DELETE(
         message: "Frame deleted successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[DELETE /api/sequences/[sequenceId]/frames/[frameId]] Error:",
-      error,
+      error
     );
 
     const handledError = handleApiError(error);
@@ -246,7 +246,7 @@ export async function DELETE(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

@@ -198,7 +198,7 @@ describe("withRetry", () => {
       withRetry(operation, {
         attempts: 3,
         delayMs: 10,
-      }),
+      })
     ).rejects.toThrow("Persistent failure");
 
     expect(operation).toHaveBeenCalledTimes(3);
@@ -238,7 +238,7 @@ describe("withRetry", () => {
         shouldRetry: (error) => {
           return error instanceof Error && error.message !== "Do not retry";
         },
-      }),
+      })
     ).rejects.toThrow("Do not retry");
 
     // Should stop after non-retryable error
@@ -254,7 +254,7 @@ describe("withRetry", () => {
         attempts: 3,
         delayMs: 10,
         shouldRetry: () => false,
-      }),
+      })
     ).rejects.toThrow("Non-retryable");
 
     expect(operation).toHaveBeenCalledTimes(1);

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ runId: string }> },
+  { params }: { params: Promise<{ runId: string }> }
 ) {
   try {
     const { runId } = await params;
@@ -16,7 +16,7 @@ export async function GET(
     if (!runId) {
       return NextResponse.json(
         { error: "Run ID is required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -25,7 +25,7 @@ export async function GET(
     if (!token) {
       return NextResponse.json(
         { error: "QStash not configured" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -50,7 +50,7 @@ export async function GET(
         error: "Failed to fetch workflow status",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

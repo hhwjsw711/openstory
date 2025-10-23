@@ -11,7 +11,7 @@ import { teamService } from "@/lib/services/team.service";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const { teamId } = await params;
@@ -37,7 +37,7 @@ export async function GET(
         data: members,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/teams/[teamId]/members] Error:", error);
@@ -49,7 +49,7 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

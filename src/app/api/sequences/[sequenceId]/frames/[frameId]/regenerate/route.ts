@@ -14,7 +14,7 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> }
 ) {
   try {
     const { sequenceId, frameId } = await params;
@@ -51,7 +51,7 @@ export async function POST(
           message: "Frame not found in this sequence",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -65,7 +65,7 @@ export async function POST(
           message: "Frame has no description to regenerate from",
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -100,12 +100,12 @@ export async function POST(
         },
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:",
-      error,
+      error
     );
 
     const handledError = handleApiError(error);
@@ -116,7 +116,7 @@ export async function POST(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

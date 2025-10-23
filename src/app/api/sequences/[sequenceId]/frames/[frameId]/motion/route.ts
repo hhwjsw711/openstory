@@ -21,7 +21,7 @@ import { getQStashClient, workflowConfig } from "@/lib/workflow";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string; frameId: string }> },
+  { params }: { params: Promise<{ sequenceId: string; frameId: string }> }
 ) {
   try {
     const { sequenceId, frameId } = await params;
@@ -63,7 +63,7 @@ export async function POST(
     if (!frame.thumbnail_url) {
       return createErrorResponse(
         "Frame has no thumbnail to generate motion from",
-        400,
+        400
       );
     }
 
@@ -96,7 +96,7 @@ export async function POST(
         frameId,
         sequenceId: frame.sequence_id,
       },
-      "Motion generation started successfully",
+      "Motion generation started successfully"
     );
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -104,7 +104,7 @@ export async function POST(
     }
     return createErrorResponse(
       error instanceof Error ? error.message : "Internal server error",
-      500,
+      500
     );
   }
 }

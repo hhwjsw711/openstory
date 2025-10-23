@@ -17,7 +17,7 @@ const withQueryClient: Decorator = (StoryFn) => {
   return React.createElement(
     QueryClientProvider,
     { client: queryClient },
-    React.createElement(StoryFn),
+    React.createElement(StoryFn)
   );
 };
 

@@ -21,7 +21,7 @@ const reorderSchema = z.object({
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -56,7 +56,7 @@ export async function PATCH(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -72,12 +72,12 @@ export async function PATCH(
         message: "Frames reordered successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
       "[PATCH /api/sequences/[sequenceId]/frames/reorder] Error:",
-      error,
+      error
     );
 
     if (error instanceof z.ZodError) {
@@ -88,7 +88,7 @@ export async function PATCH(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -100,7 +100,7 @@ export async function PATCH(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

@@ -68,7 +68,7 @@ export async function GET(request: Request) {
             cost: falService.calculateCost(model, {}),
             costUnit: "USD",
           }),
-        }),
+        })
       );
     }
 
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
             cost: falService.calculateCost(model, {}),
             costUnit: "USD",
           }),
-        }),
+        })
       );
     }
 
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

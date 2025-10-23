@@ -13,7 +13,7 @@ export const HeroActions: React.FC<HeroActionsProps> = ({
     <div
       className={cn(
         "flex flex-col sm:flex-row gap-4 justify-center",
-        className,
+        className
       )}
       {...props}
     >

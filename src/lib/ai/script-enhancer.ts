@@ -141,7 +141,7 @@ function parseEnhancedScriptResponse(response: string): {
   // Final check to ensure we have content
   if (!enhancedScript) {
     throw new Error(
-      "No enhanced script text found in AI response after preamble removal",
+      "No enhanced script text found in AI response after preamble removal"
     );
   }
 
@@ -152,7 +152,7 @@ function parseEnhancedScriptResponse(response: string): {
 }
 
 export async function enhanceScript(
-  options: EnhanceScriptOptions,
+  options: EnhanceScriptOptions
 ): Promise<ScriptEnhancementResult> {
   try {
     // Validate input
@@ -267,7 +267,7 @@ class RateLimiter {
 
   constructor(
     private maxRequests: number,
-    private windowMs: number,
+    private windowMs: number
   ) {}
 
   isAllowed(key: string): boolean {
@@ -279,7 +279,7 @@ class RateLimiter {
 
     // Filter out requests outside the current window
     const recentRequests = existingRequests.filter(
-      (time) => time > windowStart,
+      (time) => time > windowStart
     );
 
     // Check if under the limit

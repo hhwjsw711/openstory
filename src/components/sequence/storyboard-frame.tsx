@@ -29,7 +29,7 @@ const storyboardFrameVariants = cva(
       dragging: false,
       disabled: false,
     },
-  },
+  }
 );
 
 const orderIndicatorVariants = cva(
@@ -43,17 +43,17 @@ const orderIndicatorVariants = cva(
     defaultVariants: {
       color: "primary",
     },
-  },
+  }
 );
 
 const frameContentVariants = cva(
-  "aspect-video w-full overflow-hidden rounded-md",
+  "aspect-video w-full overflow-hidden rounded-md"
 );
 
 const frameImageVariants = cva("h-full w-full object-cover");
 
 const emptyFrameVariants = cva(
-  "flex h-full w-full items-center justify-center bg-gray-100 text-gray-500",
+  "flex h-full w-full items-center justify-center bg-gray-100 text-gray-500"
 );
 
 const frameInfoVariants = cva("p-3");
@@ -63,7 +63,7 @@ const frameDescriptionVariants = cva("text-sm text-gray-600 line-clamp-2");
 const frameDurationVariants = cva("mt-1 text-xs text-gray-400");
 
 const actionOverlayVariants = cva(
-  "absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100",
+  "absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100"
 );
 
 const actionButtonsVariants = cva("flex gap-2");
@@ -117,7 +117,7 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
           selected,
           disabled,
           dragging: isDragging || dragging,
-        }),
+        })
       )}
     >
       {/* Order indicator */}

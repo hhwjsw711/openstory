@@ -59,7 +59,7 @@ export function getSignupUrl(currentPath?: string): string {
  */
 export function navigateToLogin(
   router: { push: (url: string) => void | Promise<void> },
-  currentPath?: string,
+  currentPath?: string
 ): void {
   const loginUrl = getLoginUrl(currentPath);
   router.push(loginUrl);
@@ -73,7 +73,7 @@ export function navigateToLogin(
  */
 export function navigateToSignup(
   router: { push: (url: string) => void | Promise<void> },
-  currentPath?: string,
+  currentPath?: string
 ): void {
   const signupUrl = getSignupUrl(currentPath);
   router.push(signupUrl);
@@ -86,7 +86,7 @@ export function navigateToSignup(
  * @returns Redirect path or default (/sequences)
  */
 export function getRedirectFromParams(
-  searchParams: URLSearchParams | Record<string, string | string[] | undefined>,
+  searchParams: URLSearchParams | Record<string, string | string[] | undefined>
 ): string {
   let redirectTo: string | null = null;
 

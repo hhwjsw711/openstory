@@ -29,7 +29,7 @@ export interface MigrationResult {
 export async function migrateAnonymousUserData(
   supabase: SupabaseClient<Database>,
   anonymousUserId: string,
-  newUserId: string,
+  newUserId: string
 ): Promise<MigrationResult> {
   // Set threshold for detecting recently created teams (5 seconds ago)
   const recentThreshold = new Date(Date.now() - 5000).toISOString();
@@ -45,7 +45,7 @@ export async function migrateAnonymousUserData(
 
   if (teamError || !anonymousTeamMember) {
     throw new Error(
-      `Anonymous user team not found for user ${anonymousUserId}`,
+      `Anonymous user team not found for user ${anonymousUserId}`
     );
   }
 
@@ -86,7 +86,7 @@ export async function migrateAnonymousUserData(
 
     if (sequencesError) {
       throw new Error(
-        `Failed to transfer sequences: ${sequencesError.message}`,
+        `Failed to transfer sequences: ${sequencesError.message}`
       );
     }
     sequencesTransferred = sequencesCount ?? 0;
@@ -114,7 +114,7 @@ export async function migrateAnonymousUserData(
 
     if (membershipError) {
       throw new Error(
-        `Failed to delete anonymous team membership: ${membershipError.message}`,
+        `Failed to delete anonymous team membership: ${membershipError.message}`
       );
     }
 
@@ -126,7 +126,7 @@ export async function migrateAnonymousUserData(
 
     if (teamDeleteError) {
       throw new Error(
-        `Failed to delete anonymous team: ${teamDeleteError.message}`,
+        `Failed to delete anonymous team: ${teamDeleteError.message}`
       );
     }
   } else {
@@ -144,7 +144,7 @@ export async function migrateAnonymousUserData(
 
     if (ownershipError) {
       throw new Error(
-        `Failed to transfer team ownership: ${ownershipError.message}`,
+        `Failed to transfer team ownership: ${ownershipError.message}`
       );
     }
 
@@ -160,7 +160,7 @@ export async function migrateAnonymousUserData(
 
     if (sequencesError) {
       throw new Error(
-        `Failed to transfer sequences: ${sequencesError.message}`,
+        `Failed to transfer sequences: ${sequencesError.message}`
       );
     }
     sequencesTransferred = sequencesCount ?? 0;
@@ -217,7 +217,7 @@ export async function migrateAnonymousUserData(
 
   if (charactersError) {
     throw new Error(
-      `Failed to transfer characters: ${charactersError.message}`,
+      `Failed to transfer characters: ${charactersError.message}`
     );
   }
 

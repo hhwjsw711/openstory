@@ -29,7 +29,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         onValueChange(newValue);
       }
     },
-    [onValueChange, maxLength],
+    [onValueChange, maxLength]
   );
 
   const isOverLimit = maxLength && value.length > maxLength;
@@ -46,7 +46,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           aria-invalid={hasError ? "true" : "false"}
           className={cn(
             "min-h-32 resize-none",
-            hasError && "border-destructive focus-visible:ring-destructive/20",
+            hasError && "border-destructive focus-visible:ring-destructive/20"
           )}
           data-testid="script-editor-textarea"
         />

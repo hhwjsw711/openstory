@@ -30,7 +30,7 @@ const bulkFrameSchema = z.object({
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -61,7 +61,7 @@ export async function GET(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -77,7 +77,7 @@ export async function GET(
         data: frames,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/sequences/[sequenceId]/frames] Error:", error);
@@ -90,14 +90,14 @@ export async function GET(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -128,7 +128,7 @@ export async function POST(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -164,7 +164,7 @@ export async function POST(
           message: `${frames.length} frames created successfully`,
           timestamp: new Date().toISOString(),
         },
-        { status: 201 },
+        { status: 201 }
       );
     }
 
@@ -188,7 +188,7 @@ export async function POST(
         message: "Frame created successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/sequences/[sequenceId]/frames] Error:", error);
@@ -201,7 +201,7 @@ export async function POST(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -213,14 +213,14 @@ export async function POST(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -251,7 +251,7 @@ export async function DELETE(
           message: "Sequence not found",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -267,7 +267,7 @@ export async function DELETE(
         message: "Frames deleted successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[DELETE /api/sequences/[sequenceId]/frames] Error:", error);
@@ -280,7 +280,7 @@ export async function DELETE(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

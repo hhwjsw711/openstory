@@ -99,7 +99,7 @@ export const auth = betterAuth({
           const result = await migrateAnonymousUserData(
             supabase,
             anonymousUser.user.id,
-            newUser.user.id,
+            newUser.user.id
           );
 
           // Log successful migration with details
@@ -113,7 +113,7 @@ export const auth = betterAuth({
         } catch (error) {
           console.error(
             "[BetterAuth] Failed to link anonymous account:",
-            error,
+            error
           );
           throw error;
         }

@@ -22,7 +22,7 @@ export async function getFramesBySequenceId(
     ascending?: boolean;
     limit?: number;
     offset?: number;
-  },
+  }
 ): Promise<Frame[]> {
   const supabase = createAdminClient();
   const {
@@ -66,7 +66,7 @@ export async function getFrameById(
   frameId: string,
   _options?: {
     forUpdate?: boolean; // Lock for update (requires transaction)
-  },
+  }
 ): Promise<Frame | null> {
   const supabase = createAdminClient();
 
@@ -94,7 +94,7 @@ export async function getFrameById(
  * Create multiple frames in a batch
  */
 export async function batchCreateFrames(
-  frames: FrameInsert[],
+  frames: FrameInsert[]
 ): Promise<Frame[]> {
   const supabase = createAdminClient();
 
@@ -117,7 +117,7 @@ export async function batchCreateFrames(
 export async function updateFrameWithVersion(
   frameId: string,
   updates: FrameUpdate,
-  expectedVersion?: number,
+  expectedVersion?: number
 ): Promise<Frame> {
   const supabase = createAdminClient();
 
@@ -175,7 +175,7 @@ export async function updateFrameWithVersion(
  * Batch update frames
  */
 export async function batchUpdateFrames(
-  updates: Array<{ id: string; updates: FrameUpdate }>,
+  updates: Array<{ id: string; updates: FrameUpdate }>
 ): Promise<Frame[]> {
   const supabase = createAdminClient();
   const results: Frame[] = [];
@@ -193,7 +193,7 @@ export async function batchUpdateFrames(
         })
         .eq("id", id)
         .select()
-        .single(),
+        .single()
     );
 
     const batchResults = await Promise.all(promises);
@@ -231,7 +231,7 @@ export async function deleteFramesByIds(frameIds: string[]): Promise<void> {
  */
 export async function reorderSequenceFrames(
   sequenceId: string,
-  frameOrders: Array<{ id: string; order_index: number }>,
+  frameOrders: Array<{ id: string; order_index: number }>
 ): Promise<void> {
   const supabase = createAdminClient();
 
@@ -244,7 +244,7 @@ export async function reorderSequenceFrames(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("sequence_id", sequenceId),
+      .eq("sequence_id", sequenceId)
   );
 
   const results = await Promise.all(promises);
@@ -320,7 +320,7 @@ export async function getFramesByJobId(jobId: string): Promise<Frame[]> {
 export async function updateFrameGenerationStatus(
   frameId: string,
   status: "generating" | "completed" | "failed",
-  additionalMetadata?: Record<string, unknown>,
+  additionalMetadata?: Record<string, unknown>
 ): Promise<Frame> {
   const frame = await getFrameById(frameId);
   if (!frame) {
@@ -340,7 +340,7 @@ export async function updateFrameGenerationStatus(
     {
       metadata: updatedMetadata as Json,
     },
-    currentMetadata.version as number | undefined,
+    currentMetadata.version as number | undefined
   );
 }
 
@@ -349,7 +349,7 @@ export async function updateFrameGenerationStatus(
  */
 export async function clearPlaceholderFrames(
   sequenceId: string,
-  jobId?: string,
+  jobId?: string
 ): Promise<number> {
   const supabase = createAdminClient();
 

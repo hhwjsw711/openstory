@@ -11,7 +11,7 @@ export class VelroError extends Error {
     message: string,
     code: string,
     statusCode: number = 500,
-    details?: Record<string, unknown>,
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -132,7 +132,7 @@ export interface RetryOptions {
 
 export const withRetry = async <T>(
   operation: () => Promise<T>,
-  options: RetryOptions,
+  options: RetryOptions
 ): Promise<T> => {
   const {
     attempts,

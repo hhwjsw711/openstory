@@ -100,7 +100,7 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
     } catch (err) {
       console.error("[AuthForm] Google sign-in error:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google",
+        err instanceof Error ? err.message : "Failed to sign in with Google"
       );
       setIsLoading(false);
     }

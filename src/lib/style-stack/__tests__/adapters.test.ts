@@ -351,7 +351,7 @@ describe("ModelAdapterRegistry", () => {
     const adapted = registry.adaptStyleForModel(
       mockStyleConfig,
       "fal",
-      "flux-pro",
+      "flux-pro"
     );
 
     expect(adapted).not.toBeNull();
@@ -363,7 +363,7 @@ describe("ModelAdapterRegistry", () => {
     const adapted = registry.adaptStyleForModel(
       mockStyleConfig,
       "invalid",
-      "model",
+      "model"
     );
     expect(adapted).toBeNull();
   });
@@ -396,7 +396,7 @@ describe("Utility Functions", () => {
       const adapted = getAdaptedStyleConfig(
         mockStyleConfig,
         "invalid",
-        "model",
+        "model"
       );
       expect(adapted).toBeNull();
     });
@@ -409,13 +409,13 @@ describe("Utility Functions", () => {
       expect(adaptations).toHaveLength(4);
 
       const fluxAdaptation = adaptations.find(
-        (a) => a.provider === "fal" && a.modelName === "flux-pro",
+        (a) => a.provider === "fal" && a.modelName === "flux-pro"
       );
       expect(fluxAdaptation).toBeDefined();
       expect(fluxAdaptation?.config).toHaveProperty("prompt");
 
       const imagen4Adaptation = adaptations.find(
-        (a) => a.provider === "google" && a.modelName === "imagen4",
+        (a) => a.provider === "google" && a.modelName === "imagen4"
       );
       expect(imagen4Adaptation).toBeDefined();
       expect(imagen4Adaptation?.config).toHaveProperty("style_preset");

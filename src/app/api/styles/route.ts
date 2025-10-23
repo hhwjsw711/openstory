@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         message: "Style created successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/styles] Error:", error);
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
@@ -128,7 +128,7 @@ export async function GET() {
           data: styles || [],
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -149,7 +149,7 @@ export async function GET() {
         data: styles || [],
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/styles] Error:", error);
@@ -162,7 +162,7 @@ export async function GET() {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

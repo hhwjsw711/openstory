@@ -18,7 +18,7 @@ export function getQStashClient(): Client {
 
   if (!token) {
     throw new ConfigurationError(
-      "QSTASH_TOKEN environment variable is required",
+      "QSTASH_TOKEN environment variable is required"
     );
   }
 

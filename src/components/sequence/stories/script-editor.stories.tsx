@@ -56,7 +56,7 @@ function InteractiveScriptEditor(
     "value" | "onValueChange"
   > & {
     initialValue?: string;
-  },
+  }
 ) {
   const { initialValue = "", ...otherProps } = props;
   const [value, setValue] = useState(initialValue);

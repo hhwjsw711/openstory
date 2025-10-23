@@ -109,7 +109,7 @@ export const createMockJobManager = () => ({
  * Test job payload fixtures
  */
 export const createTestJobPayload = (
-  overrides?: Partial<JobPayload>,
+  overrides?: Partial<JobPayload>
 ): JobPayload => {
   const base = {
     jobId: "550e8400-e29b-41d4-a716-446655440000",
@@ -135,7 +135,7 @@ export const createTestJobPayload = (
         sequenceId: "550e8400-e29b-41d4-a716-446655440031",
         thumbnailUrl: "https://example.com/thumbnail.jpg",
         model: "svd-lcm",
-        ...(motionOverrides.data || {}),
+        ...motionOverrides.data,
       },
       userId: motionOverrides.userId || base.userId,
       teamId: motionOverrides.teamId || base.teamId,
@@ -155,7 +155,7 @@ export const createTestWebhookRequest = (
     body: Record<string, unknown>;
     url: string;
     method: string;
-  }>,
+  }>
 ) => {
   const baseHeaders = {
     "content-type": "application/json",
@@ -177,7 +177,7 @@ export const createTestWebhookRequest = (
     headers: new Headers(headers),
     json: mock().mockResolvedValue(overrides?.body || defaultBody),
     text: mock().mockResolvedValue(
-      JSON.stringify(overrides?.body || defaultBody),
+      JSON.stringify(overrides?.body || defaultBody)
     ),
     url: overrides?.url || "https://example.com/api/webhooks/qstash/image",
     method: overrides?.method || "POST",
@@ -190,7 +190,7 @@ export const createTestWebhookRequest = (
 export const generateTestSignature = (
   body: string,
   timestamp = "1704067200",
-  key = "test-signing-key",
+  key = "test-signing-key"
 ): string => {
   // This is a mock implementation for testing
   // In real usage, QStash generates the actual signature
@@ -256,7 +256,7 @@ export const testUUIDs = {
 export const expectVelroError = (
   error: unknown,
   code: string,
-  statusCode: number,
+  statusCode: number
 ) => {
   expect(error).toBeInstanceOf(Error);
   const velroError = error as VelroError;

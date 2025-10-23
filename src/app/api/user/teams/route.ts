@@ -19,7 +19,7 @@ export async function GET() {
           message: "Authentication required",
           timestamp: new Date().toISOString(),
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -37,7 +37,7 @@ export async function GET() {
           message: error.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -61,7 +61,7 @@ export async function GET() {
         data: teams,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/user/teams] Error:", error);
@@ -74,7 +74,7 @@ export async function GET() {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

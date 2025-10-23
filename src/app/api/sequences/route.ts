@@ -43,7 +43,7 @@ export async function POST(request: Request) {
             "No team found for user. Please refresh the page to initialize your account.",
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     };
     console.log(
       "[POST /api/sequences] Creating sequence with params:",
-      createParams,
+      createParams
     );
     const sequence = await sequenceService.createSequence(createParams);
     console.log("[POST /api/sequences] Created sequence:", {
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         message: "Sequence created successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/sequences] Error:", error);
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
@@ -138,12 +138,12 @@ export async function GET() {
           data: [],
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
     const sequences = await sequenceService.getSequencesByTeam(
-      membership.team_id,
+      membership.team_id
     );
 
     return NextResponse.json(
@@ -152,7 +152,7 @@ export async function GET() {
         data: sequences,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("[GET /api/sequences] Error:", error);
@@ -164,7 +164,7 @@ export async function GET() {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

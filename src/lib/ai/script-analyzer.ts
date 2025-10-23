@@ -39,7 +39,7 @@ const sceneAnalysisSchema = z.object({
           message: "Intensity must be a valid number",
         })
         .optional(),
-    }),
+    })
   ),
   characters: z.array(z.string()).optional(),
   settings: z.array(z.string()).optional(),
@@ -59,7 +59,7 @@ export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
  */
 export async function analyzeScriptForFrames(
   script: string,
-  styleConfig: DirectorDnaConfig,
+  styleConfig: DirectorDnaConfig
 ): Promise<SceneAnalysis> {
   if (!process.env.OPENROUTER_KEY) {
     throw new Error("OPENROUTER_KEY is not set");

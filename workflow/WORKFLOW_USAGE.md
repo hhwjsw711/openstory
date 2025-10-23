@@ -41,6 +41,7 @@ gh issue view 123
 ```
 
 This will:
+
 1. Analyze the issue to determine type (backend/frontend/qa)
 2. Select the appropriate agent (backend-engineer, frontend-react-engineer, etc.)
 3. Create a git worktree at `.trees/123-issue-title`
@@ -63,6 +64,7 @@ In the Cursor window that opens:
    ```
 
 Claude will then:
+
 - Read the issue context
 - Use the appropriate agent (backend-engineer, frontend-react-engineer, etc.)
 - Implement the solution
@@ -99,6 +101,7 @@ Once the agent creates a PR:
 To have the qa-lead-tester agent review:
 
 1. In Claude Code, say:
+
    ```
    Use the qa-lead-tester agent to review PR #[PR_NUMBER]
    ```
@@ -136,6 +139,7 @@ You can work on multiple issues simultaneously:
 If you need to manually invoke an agent in Claude Code:
 
 ### For Implementation:
+
 ```
 @Task Use the backend-engineer agent to implement issue #123.
 Read the context from workflow/instructions/issue-123-instructions.md
@@ -143,6 +147,7 @@ Working directory is .trees/123-issue-title
 ```
 
 ### For Review:
+
 ```
 @Task Use the qa-lead-tester agent to review PR #456.
 Check the diff with: gh pr diff 456
@@ -167,12 +172,14 @@ You can directly invoke agents using Claude Code's Task tool:
 ## Troubleshooting
 
 ### Issue: Cursor doesn't open
+
 ```bash
 # Manually open Cursor with the worktree
 cursor .trees/123-issue-title
 ```
 
 ### Issue: Claude Code doesn't start
+
 ```bash
 # Start Claude Code manually in the worktree
 cd .trees/123-issue-title
@@ -180,12 +187,14 @@ claude chat
 ```
 
 ### Issue: Worktree conflicts
+
 ```bash
 # Reset all worktrees and state
 ./workflow/scripts/workflow-manager.sh reset
 ```
 
 ### Issue: Can't find instructions
+
 ```bash
 # List all instruction files
 ls -la workflow/instructions/

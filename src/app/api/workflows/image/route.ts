@@ -43,7 +43,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
   validateWorkflowAuth(input);
 
   loggerService.logDebug(
-    `Starting image generation workflow for user ${input.userId}`,
+    `Starting image generation workflow for user ${input.userId}`
   );
 
   // Step 1: Generate image
@@ -57,7 +57,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
     if (!model) model = "flux_krea_lora"; // Default to fast model
 
     loggerService.logDebug(
-      `Generating image ${input.frameId} with model ${model}`,
+      `Generating image ${input.frameId} with model ${model}`
     );
 
     // Generate image using selected AI provider
@@ -75,7 +75,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
     const result = resultByProvider(
       model,
       input as unknown as Record<string, unknown>,
-      respData,
+      respData
     );
 
     return result;
@@ -99,7 +99,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
       if (updateError) {
         loggerService.logError(
-          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`,
+          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`
         );
         throw updateError;
       }
@@ -112,7 +112,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
       await context.run("update-sequence-status", async () => {
         if (!input.sequenceId) {
           throw new Error(
-            "sequenceId is required for update-sequence-status step",
+            "sequenceId is required for update-sequence-status step"
           );
         }
 
@@ -126,7 +126,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
         if (allFrames) {
           const framesWithThumbnails = allFrames.filter(
-            (frame) => frame.thumbnail_url,
+            (frame) => frame.thumbnail_url
           );
           const allFramesHaveThumbnails =
             framesWithThumbnails.length === allFrames.length;
@@ -166,7 +166,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
               if (seqUpdateError) {
                 loggerService.logError(
-                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`,
+                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`
                 );
               }
             }
@@ -227,7 +227,7 @@ function generateImageWithProvider(payload: Record<string, unknown>) {
 function resultByProvider(
   model: string,
   data: Record<string, unknown>,
-  resp: FalImageResponse | LetzAIImageResponse,
+  resp: FalImageResponse | LetzAIImageResponse
 ) {
   const result = {
     imageUrls: [] as string[],

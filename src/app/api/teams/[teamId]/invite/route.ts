@@ -17,7 +17,7 @@ const inviteRequestSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const { teamId } = await params;
@@ -53,7 +53,7 @@ export async function POST(
         message: "Invitation sent successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/teams/[teamId]/invite] Error:", error);
@@ -66,7 +66,7 @@ export async function POST(
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -78,7 +78,7 @@ export async function POST(
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

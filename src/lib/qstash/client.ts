@@ -40,7 +40,7 @@ class QStashClient {
 
     if (!token) {
       throw new ConfigurationError(
-        "QSTASH_TOKEN environment variable is required",
+        "QSTASH_TOKEN environment variable is required"
       );
     }
 
@@ -89,7 +89,7 @@ class QStashClient {
           `Failed to publish QStash message: ${error.message}`,
           "QSTASH_PUBLISH_ERROR",
           503,
-          { originalError: error.name, url: message.url },
+          { originalError: error.name, url: message.url }
         );
       }
 
@@ -97,7 +97,7 @@ class QStashClient {
         "Failed to publish QStash message: Unknown error",
         "QSTASH_PUBLISH_ERROR",
         503,
-        { url: message.url },
+        { url: message.url }
       );
     }
   }
@@ -110,7 +110,7 @@ class QStashClient {
     options?: {
       delay?: number;
       deduplicationId?: string;
-    },
+    }
   ): Promise<QStashResponse> {
     this.loggerService.logDebug(`Publishing image job ${payload.jobId}`);
     return this.publishMessage({
@@ -131,7 +131,7 @@ class QStashClient {
     options?: {
       delay?: number;
       deduplicationId?: string;
-    },
+    }
   ): Promise<QStashResponse> {
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/generations/videos/processor`,
@@ -151,7 +151,7 @@ class QStashClient {
     options?: {
       delay?: number;
       deduplicationId?: string;
-    },
+    }
   ): Promise<QStashResponse> {
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/script/processor`,
@@ -171,7 +171,7 @@ class QStashClient {
     options?: {
       delay?: number;
       deduplicationId?: string;
-    },
+    }
   ): Promise<QStashResponse> {
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/frames/processor`,
@@ -191,7 +191,7 @@ class QStashClient {
     options?: {
       delay?: number;
       deduplicationId?: string;
-    },
+    }
   ): Promise<QStashResponse> {
     return this.publishMessage({
       url: `${this.baseWebhookUrl}/frames/motion/processor`,
@@ -220,7 +220,7 @@ class QStashClient {
           `Failed to cancel QStash message: ${error.message}`,
           "QSTASH_CANCEL_ERROR",
           503,
-          { originalError: error.name, messageId },
+          { originalError: error.name, messageId }
         );
       }
 
@@ -228,7 +228,7 @@ class QStashClient {
         "Failed to cancel QStash message: Unknown error",
         "QSTASH_CANCEL_ERROR",
         503,
-        { messageId },
+        { messageId }
       );
     }
   }
@@ -252,7 +252,7 @@ class QStashClient {
           `Failed to get QStash message: ${error.message}`,
           "QSTASH_GET_ERROR",
           503,
-          { originalError: error.name, messageId },
+          { originalError: error.name, messageId }
         );
       }
 
@@ -260,7 +260,7 @@ class QStashClient {
         "Failed to get QStash message: Unknown error",
         "QSTASH_GET_ERROR",
         503,
-        { messageId },
+        { messageId }
       );
     }
   }

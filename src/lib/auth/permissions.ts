@@ -37,7 +37,7 @@ export interface AuthError {
  */
 export async function getUserRole(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<TeamRole | null> {
   const supabase = createServerClient();
 
@@ -83,7 +83,7 @@ async function getAuthenticatedUser(request: Request): Promise<User | null> {
  */
 export async function canManageTeam(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
 
@@ -99,7 +99,7 @@ export async function canManageTeam(
  */
 export async function canDeleteResource(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
 
@@ -115,7 +115,7 @@ export async function canDeleteResource(
  */
 export async function isTeamOwner(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
   return role === "owner";
@@ -127,7 +127,7 @@ export async function isTeamOwner(
  */
 export async function requireAdmin(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -139,7 +139,7 @@ export async function requireAdmin(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -153,7 +153,7 @@ export async function requireAdmin(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -165,7 +165,7 @@ export async function requireAdmin(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -178,7 +178,7 @@ export async function requireAdmin(
  */
 export async function requireOwner(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -190,7 +190,7 @@ export async function requireOwner(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -204,7 +204,7 @@ export async function requireOwner(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -216,7 +216,7 @@ export async function requireOwner(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -230,7 +230,7 @@ export async function requireOwner(
 export async function checkUserRole(
   userId: string,
   teamId: string,
-  requiredRole: TeamRole,
+  requiredRole: TeamRole
 ): Promise<RoleCheckResult> {
   const userRole = await getUserRole(userId, teamId);
 
@@ -256,7 +256,7 @@ export async function checkUserRole(
 export async function verifyTeamResourceAccess(
   request: Request,
   resourceTeamId: string,
-  requiredRole: TeamRole = "member",
+  requiredRole: TeamRole = "member"
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -268,7 +268,7 @@ export async function verifyTeamResourceAccess(
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -282,7 +282,7 @@ export async function verifyTeamResourceAccess(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -294,7 +294,7 @@ export async function verifyTeamResourceAccess(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 

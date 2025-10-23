@@ -95,7 +95,7 @@ export async function GET(request: Request) {
             start:
               startDate?.toISOString() ||
               new Date(
-                currentPeriod.getTime() - 30 * 24 * 60 * 60 * 1000,
+                currentPeriod.getTime() - 30 * 24 * 60 * 60 * 1000
               ).toISOString(),
             end: endDate?.toISOString() || currentPeriod.toISOString(),
           },
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
           // Most used endpoint
           topEndpoint:
             Object.entries(stats.requestsByEndpoint).sort(
-              ([, a], [, b]) => b - a,
+              ([, a], [, b]) => b - a
             )[0]?.[0] || null,
           // Cost efficiency (requests per credit)
           costEfficiency:
@@ -146,7 +146,7 @@ export async function GET(request: Request) {
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

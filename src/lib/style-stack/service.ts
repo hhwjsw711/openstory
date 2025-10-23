@@ -128,7 +128,7 @@ export class StyleStackService {
 
     if (validatedInput.search) {
       query = query.or(
-        `name.ilike.%${validatedInput.search}%,description.ilike.%${validatedInput.search}%`,
+        `name.ilike.%${validatedInput.search}%,description.ilike.%${validatedInput.search}%`
       );
     }
 
@@ -138,7 +138,7 @@ export class StyleStackService {
       .order("created_at", { ascending: false })
       .range(
         validatedInput.offset,
-        validatedInput.offset + validatedInput.limit - 1,
+        validatedInput.offset + validatedInput.limit - 1
       );
 
     const { data, error, count } = await query;
@@ -164,7 +164,7 @@ export class StyleStackService {
    * Get a style by ID with optional adaptations
    */
   async getStyleById(
-    input: GetStyleByIdInput,
+    input: GetStyleByIdInput
   ): Promise<StyleWithAdaptations | null> {
     const validatedInput = GetStyleByIdSchema.parse(input);
 
@@ -195,7 +195,7 @@ export class StyleStackService {
 
       if (adaptationsError) {
         throw new Error(
-          `Failed to get style adaptations: ${adaptationsError.message}`,
+          `Failed to get style adaptations: ${adaptationsError.message}`
         );
       }
 
@@ -311,7 +311,7 @@ export class StyleStackService {
    */
   async duplicateStyle(
     input: DuplicateStyleInput,
-    userId: string,
+    userId: string
   ): Promise<Style> {
     const validatedInput = DuplicateStyleSchema.parse(input);
 
@@ -408,7 +408,7 @@ export class StyleStackService {
    * Create a style adaptation for a specific model
    */
   async createStyleAdaptation(
-    input: CreateStyleAdaptationInput,
+    input: CreateStyleAdaptationInput
   ): Promise<void> {
     const validatedInput = CreateStyleAdaptationSchema.parse(input);
 
@@ -438,7 +438,7 @@ export class StyleStackService {
    */
   async applyStyleToFrames(
     input: ApplyStyleToFramesInput,
-    userId: string,
+    userId: string
   ): Promise<void> {
     const validatedInput = ApplyStyleToFramesSchema.parse(input);
 
@@ -528,7 +528,7 @@ export class StyleStackService {
 
       if (getFrameError) {
         throw new Error(
-          `Failed to get frame ${frameId}: ${getFrameError.message}`,
+          `Failed to get frame ${frameId}: ${getFrameError.message}`
         );
       }
 
@@ -569,7 +569,7 @@ export class StyleStackService {
 
       if (updateError) {
         throw new Error(
-          `Failed to update frame ${frameId}: ${updateError.message}`,
+          `Failed to update frame ${frameId}: ${updateError.message}`
         );
       }
     }
@@ -643,7 +643,7 @@ export class StyleStackService {
    */
   async exportStyle(
     input: ExportStyleInput,
-    userId: string,
+    userId: string
   ): Promise<{
     style: StyleStackConfig;
     metadata: {

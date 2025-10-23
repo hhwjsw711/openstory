@@ -10,7 +10,7 @@ const falModelsResponseSchema = z.object({
       model: z.string(),
       name: z.string(),
       type: z.enum(["image", "video"]),
-    }),
+    })
   ),
 });
 
@@ -39,7 +39,7 @@ async function fetchFalModels(params: FalModelsRequest) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
-      "[hooks/use-fal-models/fetchFalModels] Failed to fetch FAL models",
+      "[hooks/use-fal-models/fetchFalModels] Failed to fetch FAL models"
     );
   }
   const data = await response.json();
@@ -56,7 +56,7 @@ export function useFalModels(params: FalModelsRequest) {
 
 // fetch estimate image cost by FAL
 async function fetchEstimateImageCostByFal(
-  params: EstimateImageCostByFalRequest,
+  params: EstimateImageCostByFalRequest
 ) {
   const url = new URL("/api/fal/estimates", window.location.origin);
   const response = await fetch(url, {
@@ -68,7 +68,7 @@ async function fetchEstimateImageCostByFal(
   });
   if (!response.ok) {
     throw new Error(
-      "[hooks/use-fal-models/fetchEstimateImageCostByFal] Failed to fetch estimate",
+      "[hooks/use-fal-models/fetchEstimateImageCostByFal] Failed to fetch estimate"
     );
   }
   const data = await response.json();
