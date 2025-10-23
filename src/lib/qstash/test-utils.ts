@@ -3,36 +3,36 @@
  * Provides mocks, fixtures, and test helpers for unit testing
  */
 
-import { expect, mock } from "bun:test";
-import type { VelroError } from "@/lib/errors";
-import type { JobPayload, QStashResponse } from "./client";
-import type { MotionGenerationPayload } from "./types";
+import type { VelroError } from '@/lib/errors';
+import { expect, mock } from 'bun:test';
+import type { JobPayload, QStashResponse } from './client';
+import type { MotionGenerationPayload } from './types';
 
 /**
  * Mock QStash client for testing
  */
 export const createMockQStashClient = () => ({
   publishMessage: mock().mockResolvedValue({
-    messageId: "msg_test123456789",
+    messageId: 'msg_test123456789',
     deduplicated: false,
   } as QStashResponse),
   publishImageJob: mock().mockResolvedValue({
-    messageId: "msg_image123456789",
+    messageId: 'msg_image123456789',
     deduplicated: false,
   } as QStashResponse),
   publishVideoJob: mock().mockResolvedValue({
-    messageId: "msg_video123456789",
+    messageId: 'msg_video123456789',
     deduplicated: false,
   } as QStashResponse),
   publishScriptJob: mock().mockResolvedValue({
-    messageId: "msg_script123456789",
+    messageId: 'msg_script123456789',
     deduplicated: false,
   } as QStashResponse),
   cancelMessage: mock().mockResolvedValue(undefined),
   getMessage: mock().mockResolvedValue({
-    messageId: "msg_test123456789",
-    url: "https://example.com/webhook",
-    body: "test body",
+    messageId: 'msg_test123456789',
+    url: 'https://example.com/webhook',
+    body: 'test body',
   }),
 });
 
@@ -112,29 +112,29 @@ export const createTestJobPayload = (
   overrides?: Partial<JobPayload>
 ): JobPayload => {
   const base = {
-    jobId: "550e8400-e29b-41d4-a716-446655440000",
-    type: "image" as const,
+    jobId: '550e8400-e29b-41d4-a716-446655440000',
+    type: 'image' as const,
     data: {
-      prompt: "A beautiful landscape with mountains",
-      style: "photographic",
+      prompt: 'A beautiful landscape with mountains',
+      style: 'photographic',
       width: 1024,
       height: 1024,
     },
-    userId: "550e8400-e29b-41d4-a716-446655440011",
-    teamId: "550e8400-e29b-41d4-a716-446655440021",
+    userId: '550e8400-e29b-41d4-a716-446655440011',
+    teamId: '550e8400-e29b-41d4-a716-446655440021',
   };
 
   // Handle different payload types
-  if (overrides?.type === "motion") {
+  if (overrides?.type === 'motion') {
     const motionOverrides = overrides as Partial<MotionGenerationPayload>;
     return {
       jobId: motionOverrides.jobId || base.jobId,
-      type: "motion" as const,
+      type: 'motion' as const,
       data: {
-        frameId: "550e8400-e29b-41d4-a716-446655440030",
-        sequenceId: "550e8400-e29b-41d4-a716-446655440031",
-        thumbnailUrl: "https://example.com/thumbnail.jpg",
-        model: "svd-lcm",
+        frameId: '550e8400-e29b-41d4-a716-446655440030',
+        sequenceId: '550e8400-e29b-41d4-a716-446655440031',
+        thumbnailUrl: 'https://example.com/thumbnail.jpg',
+        model: 'svd-lcm',
         ...motionOverrides.data,
       },
       userId: motionOverrides.userId || base.userId,
@@ -158,15 +158,15 @@ export const createTestWebhookRequest = (
   }>
 ) => {
   const baseHeaders = {
-    "content-type": "application/json",
-    "upstash-message-id": "msg_test123456789",
-    "upstash-timestamp": "1704067200",
+    'content-type': 'application/json',
+    'upstash-message-id': 'msg_test123456789',
+    'upstash-timestamp': '1704067200',
   };
 
   // Only add signature if not explicitly overridden
   const defaultHeaders = {
     ...baseHeaders,
-    "upstash-signature": "test-signature-12345",
+    'upstash-signature': 'test-signature-12345',
   };
 
   const headers = overrides?.headers || defaultHeaders;
@@ -179,8 +179,8 @@ export const createTestWebhookRequest = (
     text: mock().mockResolvedValue(
       JSON.stringify(overrides?.body || defaultBody)
     ),
-    url: overrides?.url || "https://example.com/api/webhooks/qstash/image",
-    method: overrides?.method || "POST",
+    url: overrides?.url || 'https://example.com/api/webhooks/qstash/image',
+    method: overrides?.method || 'POST',
   };
 };
 
@@ -189,13 +189,13 @@ export const createTestWebhookRequest = (
  */
 export const generateTestSignature = (
   body: string,
-  timestamp = "1704067200",
-  key = "test-signing-key"
+  timestamp = '1704067200',
+  key = 'test-signing-key'
 ): string => {
   // This is a mock implementation for testing
   // In real usage, QStash generates the actual signature
   return `test-signature-${Buffer.from(`${key}-${timestamp}-${body.length}`)
-    .toString("base64")
+    .toString('base64')
     .slice(0, 16)}`;
 };
 
@@ -203,13 +203,13 @@ export const generateTestSignature = (
  * Test environment variables setup
  */
 export const setupTestEnv = () => {
-  process.env.QSTASH_TOKEN = "test-qstash-token-12345";
-  process.env.QSTASH_CURRENT_SIGNING_KEY = "test-current-signing-key";
-  process.env.QSTASH_NEXT_SIGNING_KEY = "test-next-signing-key";
-  process.env.QSTASH_URL = "https://qstash.upstash.io";
-  process.env.VERCEL_URL = "test-api.example.com";
-  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test-project.supabase.co";
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+  process.env.QSTASH_TOKEN = 'test-qstash-token-12345';
+  process.env.QSTASH_CURRENT_SIGNING_KEY = 'test-current-signing-key';
+  process.env.QSTASH_NEXT_SIGNING_KEY = 'test-next-signing-key';
+  process.env.QSTASH_URL = 'https://qstash.upstash.io';
+  process.env.VERCEL_URL = 'test-api.example.com';
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 };
 
 /**
@@ -229,7 +229,7 @@ export const cleanupTestEnv = () => {
  * Time-related test utilities
  */
 export const createTestDate = (offset = 0): string => {
-  const date = new Date("2024-01-01T00:00:00.000Z");
+  const date = new Date('2024-01-01T00:00:00.000Z');
   date.setMinutes(date.getMinutes() + offset);
   return date.toISOString();
 };
@@ -238,16 +238,16 @@ export const createTestDate = (offset = 0): string => {
  * UUID test utilities
  */
 export const testUUIDs = {
-  job1: "550e8400-e29b-41d4-a716-446655440001",
-  job2: "550e8400-e29b-41d4-a716-446655440002",
-  user1: "550e8400-e29b-41d4-a716-446655440011",
-  user2: "550e8400-e29b-41d4-a716-446655440012",
-  team1: "550e8400-e29b-41d4-a716-446655440021",
-  team2: "550e8400-e29b-41d4-a716-446655440022",
-  event1: "550e8400-e29b-41d4-a716-446655440031",
-  sequence1: "550e8400-e29b-41d4-a716-446655440041",
-  frame1: "550e8400-e29b-41d4-a716-446655440051",
-  style1: "550e8400-e29b-41d4-a716-446655440061",
+  job1: '550e8400-e29b-41d4-a716-446655440001',
+  job2: '550e8400-e29b-41d4-a716-446655440002',
+  user1: '550e8400-e29b-41d4-a716-446655440011',
+  user2: '550e8400-e29b-41d4-a716-446655440012',
+  team1: '550e8400-e29b-41d4-a716-446655440021',
+  team2: '550e8400-e29b-41d4-a716-446655440022',
+  event1: '550e8400-e29b-41d4-a716-446655440031',
+  sequence1: '550e8400-e29b-41d4-a716-446655440041',
+  frame1: '550e8400-e29b-41d4-a716-446655440051',
+  style1: '550e8400-e29b-41d4-a716-446655440061',
 };
 
 /**
@@ -274,7 +274,7 @@ export const createMockNextRequest = (options?: {
   body?: unknown;
   searchParams?: Record<string, string>;
 }) => {
-  const url = new URL(options?.url || "https://example.com/api/test");
+  const url = new URL(options?.url || 'https://example.com/api/test');
 
   if (options?.searchParams) {
     Object.entries(options.searchParams).forEach(([key, value]) => {
@@ -283,7 +283,7 @@ export const createMockNextRequest = (options?: {
   }
 
   return {
-    method: options?.method || "POST",
+    method: options?.method || 'POST',
     url: url.toString(),
     headers: new Headers(options?.headers || {}),
     json: mock().mockResolvedValue(options?.body || {}),

@@ -23,11 +23,8 @@
       "icon": "terminal"
     }
   },
-  "terminal.integrated.shell.linux": "/bin/zsh",
-  "terminal.integrated.shell.osx": "/bin/zsh",
   "editor.formatOnSave": true,
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "typescript.suggest.includeCompletionsForModuleExports": true,
   "typescript.preferences.includePackageJsonAutoImports": "auto",
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
@@ -38,34 +35,22 @@
   "githubPullRequests.createDefaultBaseBranch": "repositoryDefault",
   "task.allowAutomaticTasks": "on",
   "[typescript]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "task.problemMatchers.neverPrompt": false,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
