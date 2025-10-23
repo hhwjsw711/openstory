@@ -3,18 +3,18 @@
  * Replaces Supabase Auth with anonymous users and email/password login
  */
 
-import { betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
-import { anonymous } from "better-auth/plugins";
-import { pgPool } from "@/lib/db/pool";
-import { createAdminClient } from "@/lib/supabase/server";
-import { migrateAnonymousUserData } from "./migrate-user-data";
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
+import { anonymous } from 'better-auth/plugins';
+import { pgPool } from '@/lib/db/pool';
+import { createAdminClient } from '@/lib/supabase/server';
+import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
 const requiredEnvVars = {
   DATABASE_URL: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
 } as const;
 
 // Validate environment variables
@@ -48,23 +48,23 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {
-      console.log("[BetterAuth] Sending password reset email", {
+      console.log('[BetterAuth] Sending password reset email', {
         email: user.email,
         url,
       });
 
       // Import dynamically to avoid issues during build
       const { sendPasswordResetEmail } = await import(
-        "@/lib/services/email-service"
+        '@/lib/services/email-service'
       );
       const result = await sendPasswordResetEmail(user.email, url);
 
       if (!result.success) {
-        console.error("[BetterAuth] Failed to send reset email:", result.error);
-        throw new Error("Failed to send password reset email");
+        console.error('[BetterAuth] Failed to send reset email:', result.error);
+        throw new Error('Failed to send password reset email');
       }
 
-      console.log("[BetterAuth] Password reset email sent successfully");
+      console.log('[BetterAuth] Password reset email sent successfully');
     },
     resetPasswordTokenExpiresIn: 60 * 60, // 1 hour (in seconds)
   },
@@ -72,8 +72,8 @@ export const auth = betterAuth({
   // Social providers
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       enabled: !!(
         process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ),
@@ -85,7 +85,7 @@ export const auth = betterAuth({
     // Anonymous user support with account linking
     anonymous({
       onLinkAccount: async ({ anonymousUser, newUser }) => {
-        console.log("[BetterAuth] Linking anonymous account", {
+        console.log('[BetterAuth] Linking anonymous account', {
           anonymousUserId: anonymousUser.user.id,
           newUserId: newUser.user.id,
         });
@@ -99,11 +99,11 @@ export const auth = betterAuth({
           const result = await migrateAnonymousUserData(
             supabase,
             anonymousUser.user.id,
-            newUser.user.id,
+            newUser.user.id
           );
 
           // Log successful migration with details
-          console.log("[BetterAuth] Successfully linked anonymous account", {
+          console.log('[BetterAuth] Successfully linked anonymous account', {
             migrationType: result.migrationType,
             targetTeamId: result.targetTeamId,
             sequencesTransferred: result.sequencesTransferred,
@@ -112,8 +112,8 @@ export const auth = betterAuth({
           });
         } catch (error) {
           console.error(
-            "[BetterAuth] Failed to link anonymous account:",
-            error,
+            '[BetterAuth] Failed to link anonymous account:',
+            error
           );
           throw error;
         }
@@ -128,15 +128,15 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       fullName: {
-        type: "string",
+        type: 'string',
         required: false,
       },
       avatarUrl: {
-        type: "string",
+        type: 'string',
         required: false,
       },
       onboardingCompleted: {
-        type: "boolean",
+        type: 'boolean',
         required: false,
         defaultValue: false,
       },

@@ -4,11 +4,11 @@
  * Maintains Velro's anonymous-first user experience
  */
 
-"use client";
+'use client';
 
-import type React from "react";
-import { useEffect, useState } from "react";
-import { useUser } from "@/hooks/use-user";
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useUser } from '@/hooks/use-user';
 
 interface AnonymousProviderProps {
   children: React.ReactNode;
@@ -37,19 +37,19 @@ export function AnonymousProvider({ children }: AnonymousProviderProps) {
 
       // No session exists, create an anonymous one
       try {
-        const response = await fetch("/api/auth/anonymous", {
-          method: "POST",
+        const response = await fetch('/api/auth/anonymous', {
+          method: 'POST',
         });
 
         if (!response.ok) {
-          throw new Error("Failed to create anonymous session");
+          throw new Error('Failed to create anonymous session');
         }
 
         setIsInitialized(true);
       } catch (error) {
         console.error(
-          "[AnonymousProvider] Failed to create anonymous session:",
-          error,
+          '[AnonymousProvider] Failed to create anonymous session:',
+          error
         );
         // Still set initialized to true to prevent infinite loading
         setIsInitialized(true);

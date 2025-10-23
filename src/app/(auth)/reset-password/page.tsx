@@ -3,32 +3,32 @@
  * Allows users to set a new password via reset token
  */
 
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
-import { PageContainer } from "@/components/layout";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { PageContainer } from '@/components/layout';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth/client";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { authClient } from '@/lib/auth/client';
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const token = searchParams.get('token');
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -60,12 +60,12 @@ function ResetPasswordForm() {
 
     // Validation
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError('Password must be at least 8 characters');
       return;
     }
 
@@ -77,16 +77,16 @@ function ResetPasswordForm() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to reset password");
+        setError(result.error.message || 'Failed to reset password');
         setIsLoading(false);
         return;
       }
 
       setSuccess(true);
-      setTimeout(() => router.push("/login"), 3000);
+      setTimeout(() => router.push('/login'), 3000);
     } catch (err) {
-      console.error("[ResetPassword] Error:", err);
-      setError(err instanceof Error ? err.message : "Failed to reset password");
+      console.error('[ResetPassword] Error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
       setIsLoading(false);
     }
   };
@@ -143,7 +143,7 @@ function ResetPasswordForm() {
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Resetting..." : "Reset Password"}
+        {isLoading ? 'Resetting...' : 'Reset Password'}
       </Button>
 
       <div className="text-center text-sm pt-4 border-t">

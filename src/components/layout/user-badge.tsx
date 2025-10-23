@@ -3,13 +3,13 @@
  * Displays user authentication state with login/logout actions
  */
 
-"use client";
+'use client';
 
-import { LogIn, LogOut, User, UserPlus } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { LogIn, LogOut, User, UserPlus } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +17,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuthNavigation } from "@/hooks/use-auth-navigation";
-import { useUser } from "@/hooks/use-user";
-import { authClient, useSession } from "@/lib/auth/client";
+} from '@/components/ui/dropdown-menu';
+import { useAuthNavigation } from '@/hooks/use-auth-navigation';
+import { useUser } from '@/hooks/use-user';
+import { authClient, useSession } from '@/lib/auth/client';
 
 export function UserBadge() {
   const { data: userData, isLoading } = useUser();
@@ -60,7 +60,7 @@ export function UserBadge() {
   // Authenticated user - show user menu
   const user = userData.user;
   const userEmail = session?.user?.email;
-  const displayName = user.full_name || userEmail || "User";
+  const displayName = user.full_name || userEmail || 'User';
   const initials = getInitials(displayName);
 
   const handleSignOut = async () => {
@@ -68,9 +68,9 @@ export function UserBadge() {
     try {
       await authClient.signOut();
       // Refresh the page to clear state
-      window.location.href = "/sequences";
+      window.location.href = '/sequences';
     } catch (error) {
-      console.error("Sign out error:", error);
+      console.error('Sign out error:', error);
       setIsSigningOut(false);
     }
   };
@@ -106,7 +106,7 @@ export function UserBadge() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
           <LogOut className="mr-2 h-4 w-4" />
-          {isSigningOut ? "Signing out..." : "Sign Out"}
+          {isSigningOut ? 'Signing out...' : 'Sign Out'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

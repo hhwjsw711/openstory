@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./gen.types";
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from './gen.types';
 
 interface BrowserEnvironmentVariables {
   NEXT_PUBLIC_SUPABASE_URL: string;
@@ -13,17 +13,17 @@ const validateBrowserEnvironmentVariables = (): BrowserEnvironmentVariables => {
   const missingVars: string[] = [];
 
   if (!supabaseUrl) {
-    missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
+    missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
   }
 
   if (!supabaseAnonKey) {
-    missingVars.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   }
 
   if (missingVars.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missingVars.join(", ")}. ` +
-        `Please check your .env file and ensure all Supabase variables are set.`,
+      `Missing required environment variables: ${missingVars.join(', ')}. ` +
+        `Please check your .env file and ensure all Supabase variables are set.`
     );
   }
 
@@ -46,7 +46,7 @@ export const createBrowserClient = () => {
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
-    },
+    }
   );
 
   return client;

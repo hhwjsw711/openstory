@@ -3,16 +3,16 @@
  * Form to invite new team members (admin/owner only)
  */
 
-"use client";
+'use client';
 
-import type React from "react";
-import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { useTeamRole } from "@/hooks/use-team-role";
+import type React from 'react';
+import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { useTeamRole } from '@/hooks/use-team-role';
 
 interface InviteMemberFormProps {
   onSuccess?: () => void;
@@ -35,16 +35,16 @@ export function InviteMemberForm({
   onCancel,
 }: InviteMemberFormProps) {
   const { teamId, canInviteMembers } = useTeamRole();
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"member" | "admin" | "viewer">("member");
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'member' | 'admin' | 'viewer'>('member');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const roleOptions = [
-    { value: "member", label: "Member" },
-    { value: "admin", label: "Admin" },
-    { value: "viewer", label: "Viewer" },
+    { value: 'member', label: 'Member' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'viewer', label: 'Viewer' },
   ];
 
   if (!canInviteMembers) {
@@ -64,16 +64,16 @@ export function InviteMemberForm({
     setIsLoading(true);
 
     if (!teamId) {
-      setError("No team selected");
+      setError('No team selected');
       setIsLoading(false);
       return;
     }
 
     try {
       const response = await fetch(`/api/teams/${teamId}/invite`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email,
@@ -83,23 +83,23 @@ export function InviteMemberForm({
 
       if (!response.ok) {
         const error = await response.json();
-        setError(error.error || "Failed to send invitation");
+        setError(error.error || 'Failed to send invitation');
         setIsLoading(false);
         return;
       }
 
       setSuccess(true);
-      setEmail("");
-      setRole("member");
+      setEmail('');
+      setRole('member');
 
       // Call success callback after a short delay
       setTimeout(() => {
         onSuccess?.();
       }, 1500);
     } catch (err) {
-      console.error("[InviteMemberForm] Error:", err);
+      console.error('[InviteMemberForm] Error:', err);
       setError(
-        err instanceof Error ? err.message : "Failed to send invitation",
+        err instanceof Error ? err.message : 'Failed to send invitation'
       );
     } finally {
       setIsLoading(false);
@@ -126,14 +126,14 @@ export function InviteMemberForm({
         <Select
           options={roleOptions}
           value={role}
-          onChange={(value) => setRole(value as "member" | "admin" | "viewer")}
+          onChange={(value) => setRole(value as 'member' | 'admin' | 'viewer')}
           disabled={isLoading}
           placeholder="Select a role"
         />
         <p className="text-sm text-muted-foreground">
-          {role === "admin" && "Can manage team members and resources"}
-          {role === "member" && "Can create and edit own resources"}
-          {role === "viewer" && "Read-only access to team resources"}
+          {role === 'admin' && 'Can manage team members and resources'}
+          {role === 'member' && 'Can create and edit own resources'}
+          {role === 'viewer' && 'Read-only access to team resources'}
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export function InviteMemberForm({
           </Button>
         )}
         <Button type="submit" disabled={isLoading || !email}>
-          {isLoading ? "Sending..." : "Send Invitation"}
+          {isLoading ? 'Sending...' : 'Send Invitation'}
         </Button>
       </div>
     </form>

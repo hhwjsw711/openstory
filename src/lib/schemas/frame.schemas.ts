@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from "@/lib/ai/models";
-import type { Json } from "@/types/database";
+import { z } from 'zod';
+import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type { Json } from '@/types/database';
 
 /**
  * Shared Zod schemas for frame operations
@@ -37,7 +37,7 @@ export const generateFramesSchema = z.object({
       framesPerScene: z.number().min(1).max(10).optional(),
       generateThumbnails: z.boolean().optional(),
       generateDescriptions: z.boolean().optional(),
-      aiProvider: z.enum(["openai", "anthropic", "openrouter"]).optional(),
+      aiProvider: z.enum(['openai', 'anthropic', 'openrouter']).optional(),
       regenerateAll: z.boolean().optional(),
     })
     .optional(),
@@ -54,9 +54,7 @@ export const regenerateFrameSchema = z.object({
 export const generateMotionSchema = z.object({
   model: z
     .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [
-        keyof typeof IMAGE_TO_VIDEO_MODELS,
-      ],
+      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
     )
     .optional(),
   duration: z.number().min(1).max(10).optional(),

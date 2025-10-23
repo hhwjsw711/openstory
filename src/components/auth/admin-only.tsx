@@ -3,10 +3,10 @@
  * Only renders children if user has admin or owner role
  */
 
-"use client";
+'use client';
 
-import type React from "react";
-import { useTeamRole } from "@/hooks/use-team-role";
+import type React from 'react';
+import { useTeamRole } from '@/hooks/use-team-role';
 
 interface AdminOnlyProps {
   children: React.ReactNode;

@@ -4,7 +4,7 @@ import type {
   KlingConfig,
   RunwayConfig,
   StyleStackConfig,
-} from "@/lib/schemas/style-stack";
+} from '@/lib/schemas/style-stack';
 
 // Base adapter interface
 export interface ModelAdapter<TConfig = Record<string, unknown>> {
@@ -18,14 +18,14 @@ export interface ModelAdapter<TConfig = Record<string, unknown>> {
 export class FluxProAdapter
   implements ModelAdapter<FluxProConfig & { prompt: string }>
 {
-  provider = "fal";
-  modelName = "flux-pro";
+  provider = 'fal';
+  modelName = 'flux-pro';
 
   adaptStyle(
-    styleConfig: StyleStackConfig,
+    styleConfig: StyleStackConfig
   ): FluxProConfig & { prompt: string } {
     const base = styleConfig.base;
-    const fluxConfig = styleConfig.models?.["flux-pro"];
+    const fluxConfig = styleConfig.models?.['flux-pro'];
 
     // Build comprehensive prompt from base style
     const promptParts = [
@@ -50,11 +50,11 @@ export class FluxProAdapter
       promptParts.push(fluxConfig.additional_prompt);
     }
 
-    const prompt = promptParts.join(", ");
+    const prompt = promptParts.join(', ');
 
     return {
       prompt,
-      additional_prompt: fluxConfig?.additional_prompt || "",
+      additional_prompt: fluxConfig?.additional_prompt || '',
       negative_prompt:
         fluxConfig?.negative_prompt || this.getDefaultNegativePrompt(base),
       guidance_scale: fluxConfig?.guidance_scale || 7.5,
@@ -62,34 +62,34 @@ export class FluxProAdapter
     };
   }
 
-  private getDefaultNegativePrompt(base: StyleStackConfig["base"]): string {
-    const negatives = ["low quality", "blurry", "distorted"];
+  private getDefaultNegativePrompt(base: StyleStackConfig['base']): string {
+    const negatives = ['low quality', 'blurry', 'distorted'];
 
     // Add contextual negatives based on style
-    if (base.mood.includes("dark") || base.mood.includes("noir")) {
-      negatives.push("bright", "cheerful", "colorful");
+    if (base.mood.includes('dark') || base.mood.includes('noir')) {
+      negatives.push('bright', 'cheerful', 'colorful');
     }
     if (
-      base.color_palette.includes("monochrome") ||
-      base.color_palette.includes("black and white")
+      base.color_palette.includes('monochrome') ||
+      base.color_palette.includes('black and white')
     ) {
-      negatives.push("colorful", "vibrant colors");
+      negatives.push('colorful', 'vibrant colors');
     }
-    if (base.mood.includes("minimal") || base.mood.includes("clean")) {
-      negatives.push("cluttered", "busy", "complex");
+    if (base.mood.includes('minimal') || base.mood.includes('clean')) {
+      negatives.push('cluttered', 'busy', 'complex');
     }
 
-    return negatives.join(", ");
+    return negatives.join(', ');
   }
 
   validateConfig(config: FluxProConfig & { prompt: string }): boolean {
     return (
-      typeof config.prompt === "string" &&
+      typeof config.prompt === 'string' &&
       config.prompt.length > 0 &&
-      typeof config.guidance_scale === "number" &&
+      typeof config.guidance_scale === 'number' &&
       config.guidance_scale >= 1 &&
       config.guidance_scale <= 20 &&
-      typeof config.steps === "number" &&
+      typeof config.steps === 'number' &&
       config.steps >= 10 &&
       config.steps <= 50
     );
@@ -100,11 +100,11 @@ export class FluxProAdapter
 export class Imagen4Adapter
   implements ModelAdapter<Imagen4Config & { prompt: string }>
 {
-  provider = "google";
-  modelName = "imagen4";
+  provider = 'google';
+  modelName = 'imagen4';
 
   adaptStyle(
-    styleConfig: StyleStackConfig,
+    styleConfig: StyleStackConfig
   ): Imagen4Config & { prompt: string } {
     const base = styleConfig.base;
     const imagen4Config = styleConfig.models?.imagen4;
@@ -121,37 +121,37 @@ export class Imagen4Adapter
       promptParts.push(base.environment);
     }
 
-    const prompt = promptParts.join(", ");
+    const prompt = promptParts.join(', ');
 
     return {
       prompt,
       style_preset:
         imagen4Config?.style_preset || this.inferStylePreset(styleConfig),
       guidance_scale: imagen4Config?.guidance_scale || 7.5,
-      aspect_ratio: imagen4Config?.aspect_ratio || "16:9",
+      aspect_ratio: imagen4Config?.aspect_ratio || '16:9',
     };
   }
 
   private adaptMoodForImagen4(mood: string): string {
     // Imagen4 responds well to specific artistic terms
     return mood
-      .replace(/noir/g, "film noir aesthetic")
-      .replace(/dramatic/g, "cinematic drama")
-      .replace(/minimal/g, "minimalist composition");
+      .replace(/noir/g, 'film noir aesthetic')
+      .replace(/dramatic/g, 'cinematic drama')
+      .replace(/minimal/g, 'minimalist composition');
   }
 
   private adaptLightingForImagen4(lighting: string): string {
     // Imagen4 lighting adaptations
     return lighting
-      .replace(/rim lighting/g, "edge lighting")
-      .replace(/practical lights/g, "source lighting")
-      .replace(/chiaroscuro/g, "strong light-shadow contrast");
+      .replace(/rim lighting/g, 'edge lighting')
+      .replace(/practical lights/g, 'source lighting')
+      .replace(/chiaroscuro/g, 'strong light-shadow contrast');
   }
 
   private adaptCameraForImagen4(camera: string): string {
     // Imagen4 camera term adaptations
     return camera
-      .replace(/dutch tilt/g, "tilted camera angle")
+      .replace(/dutch tilt/g, 'tilted camera angle')
       .replace(/low angle/g, "worm's eye view")
       .replace(/high angle/g, "bird's eye view");
   }
@@ -159,28 +159,28 @@ export class Imagen4Adapter
   private inferStylePreset(styleConfig: StyleStackConfig): string {
     const category = styleConfig.base.mood.toLowerCase();
 
-    if (category.includes("cinematic") || category.includes("film"))
-      return "cinematic";
-    if (category.includes("artistic") || category.includes("art"))
-      return "artistic";
-    if (category.includes("photo") || category.includes("realistic"))
-      return "photographic";
-    if (category.includes("minimal")) return "minimal";
-    if (category.includes("vintage") || category.includes("retro"))
-      return "vintage";
-    if (category.includes("fantasy") || category.includes("magical"))
-      return "fantasy";
+    if (category.includes('cinematic') || category.includes('film'))
+      return 'cinematic';
+    if (category.includes('artistic') || category.includes('art'))
+      return 'artistic';
+    if (category.includes('photo') || category.includes('realistic'))
+      return 'photographic';
+    if (category.includes('minimal')) return 'minimal';
+    if (category.includes('vintage') || category.includes('retro'))
+      return 'vintage';
+    if (category.includes('fantasy') || category.includes('magical'))
+      return 'fantasy';
 
-    return "cinematic"; // Default fallback
+    return 'cinematic'; // Default fallback
   }
 
   validateConfig(config: Imagen4Config & { prompt: string }): boolean {
-    const validAspectRatios = ["1:1", "16:9", "9:16", "4:3", "3:4"];
+    const validAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 
     return (
-      typeof config.prompt === "string" &&
+      typeof config.prompt === 'string' &&
       config.prompt.length > 0 &&
-      typeof config.guidance_scale === "number" &&
+      typeof config.guidance_scale === 'number' &&
       config.guidance_scale >= 1 &&
       config.guidance_scale <= 20 &&
       validAspectRatios.includes(config.aspect_ratio)
@@ -192,8 +192,8 @@ export class Imagen4Adapter
 export class RunwayAdapter
   implements ModelAdapter<RunwayConfig & { prompt: string }>
 {
-  provider = "runway";
-  modelName = "gen3";
+  provider = 'runway';
+  modelName = 'gen3';
 
   adaptStyle(styleConfig: StyleStackConfig): RunwayConfig & { prompt: string } {
     const base = styleConfig.base;
@@ -214,7 +214,7 @@ export class RunwayAdapter
     // Add motion descriptors based on style
     promptParts.push(this.inferMotionStyle(base));
 
-    const prompt = promptParts.join(", ");
+    const prompt = promptParts.join(', ');
 
     return {
       prompt,
@@ -229,65 +229,65 @@ export class RunwayAdapter
   private adaptLightingForVideo(lighting: string): string {
     // Video-specific lighting adaptations
     return lighting
-      .replace(/high contrast/g, "dynamic lighting contrast")
-      .replace(/soft shadows/g, "gentle shadow movement");
+      .replace(/high contrast/g, 'dynamic lighting contrast')
+      .replace(/soft shadows/g, 'gentle shadow movement');
   }
 
   private adaptCameraForVideo(camera: string): string {
     // Video camera movement adaptations
     return camera
-      .replace(/close-ups/g, "intimate framing with subtle movement")
-      .replace(/wide shots/g, "expansive cinematic framing");
+      .replace(/close-ups/g, 'intimate framing with subtle movement')
+      .replace(/wide shots/g, 'expansive cinematic framing');
   }
 
-  private inferMotionStyle(base: StyleStackConfig["base"]): string {
-    if (base.mood.includes("dynamic") || base.mood.includes("energetic")) {
-      return "dynamic movement, flowing motion";
+  private inferMotionStyle(base: StyleStackConfig['base']): string {
+    if (base.mood.includes('dynamic') || base.mood.includes('energetic')) {
+      return 'dynamic movement, flowing motion';
     }
-    if (base.mood.includes("calm") || base.mood.includes("peaceful")) {
-      return "gentle movement, subtle motion";
+    if (base.mood.includes('calm') || base.mood.includes('peaceful')) {
+      return 'gentle movement, subtle motion';
     }
-    if (base.mood.includes("dramatic")) {
-      return "cinematic movement, purposeful motion";
+    if (base.mood.includes('dramatic')) {
+      return 'cinematic movement, purposeful motion';
     }
-    return "natural movement";
+    return 'natural movement';
   }
 
-  private inferMotionStrength(base: StyleStackConfig["base"]): number {
-    if (base.mood.includes("dynamic") || base.mood.includes("energetic"))
+  private inferMotionStrength(base: StyleStackConfig['base']): number {
+    if (base.mood.includes('dynamic') || base.mood.includes('energetic'))
       return 8;
-    if (base.mood.includes("dramatic")) return 6;
-    if (base.mood.includes("calm") || base.mood.includes("minimal")) return 3;
+    if (base.mood.includes('dramatic')) return 6;
+    if (base.mood.includes('calm') || base.mood.includes('minimal')) return 3;
     return 5; // Default medium motion
   }
 
   private inferCameraMotion(
-    base: StyleStackConfig["base"],
-  ): RunwayConfig["camera_motion"] {
-    if (base.camera.includes("zoom")) return "zoom_in";
-    if (base.camera.includes("pan")) return "pan_right";
-    if (base.mood.includes("epic") || base.mood.includes("dramatic"))
-      return "zoom_out";
-    return "static"; // Default
+    base: StyleStackConfig['base']
+  ): RunwayConfig['camera_motion'] {
+    if (base.camera.includes('zoom')) return 'zoom_in';
+    if (base.camera.includes('pan')) return 'pan_right';
+    if (base.mood.includes('epic') || base.mood.includes('dramatic'))
+      return 'zoom_out';
+    return 'static'; // Default
   }
 
   validateConfig(config: RunwayConfig & { prompt: string }): boolean {
     const validCameraMotions = [
-      "static",
-      "pan_left",
-      "pan_right",
-      "zoom_in",
-      "zoom_out",
+      'static',
+      'pan_left',
+      'pan_right',
+      'zoom_in',
+      'zoom_out',
     ];
 
     return (
-      typeof config.prompt === "string" &&
+      typeof config.prompt === 'string' &&
       config.prompt.length > 0 &&
-      typeof config.motion_strength === "number" &&
+      typeof config.motion_strength === 'number' &&
       config.motion_strength >= 0 &&
       config.motion_strength <= 10 &&
       validCameraMotions.includes(config.camera_motion) &&
-      typeof config.duration === "number" &&
+      typeof config.duration === 'number' &&
       config.duration >= 1 &&
       config.duration <= 10
     );
@@ -298,8 +298,8 @@ export class RunwayAdapter
 export class KlingAdapter
   implements ModelAdapter<KlingConfig & { prompt: string }>
 {
-  provider = "kling";
-  modelName = "v1";
+  provider = 'kling';
+  modelName = 'v1';
 
   adaptStyle(styleConfig: StyleStackConfig): KlingConfig & { prompt: string } {
     const base = styleConfig.base;
@@ -320,61 +320,61 @@ export class KlingAdapter
       promptParts.push(base.environment);
     }
 
-    const prompt = promptParts.join(", ");
+    const prompt = promptParts.join(', ');
 
     return {
       prompt,
       creativity: klingConfig?.creativity || this.inferCreativity(base),
       motion_strength:
         klingConfig?.motion_strength || this.inferMotionStrength(base),
-      quality: klingConfig?.quality || "high",
+      quality: klingConfig?.quality || 'high',
     };
   }
 
   private adaptMoodForKling(mood: string): string {
     // Kling-specific mood adaptations
     return mood
-      .replace(/cinematic/g, "movie-like")
-      .replace(/atmospheric/g, "immersive atmosphere");
+      .replace(/cinematic/g, 'movie-like')
+      .replace(/atmospheric/g, 'immersive atmosphere');
   }
 
   private adaptColorForKling(colorPalette: string): string {
     // Kling responds well to specific color terms
     return colorPalette
-      .replace(/neon/g, "bright neon colors")
-      .replace(/monochrome/g, "black and white tones");
+      .replace(/neon/g, 'bright neon colors')
+      .replace(/monochrome/g, 'black and white tones');
   }
 
-  private inferCreativity(base: StyleStackConfig["base"]): number {
-    if (base.mood.includes("fantasy") || base.mood.includes("surreal"))
+  private inferCreativity(base: StyleStackConfig['base']): number {
+    if (base.mood.includes('fantasy') || base.mood.includes('surreal'))
       return 0.9;
-    if (base.mood.includes("artistic") || base.mood.includes("experimental"))
+    if (base.mood.includes('artistic') || base.mood.includes('experimental'))
       return 0.8;
-    if (base.mood.includes("realistic") || base.mood.includes("documentary"))
+    if (base.mood.includes('realistic') || base.mood.includes('documentary'))
       return 0.4;
-    if (base.mood.includes("commercial") || base.mood.includes("professional"))
+    if (base.mood.includes('commercial') || base.mood.includes('professional'))
       return 0.3;
     return 0.7; // Default moderate creativity
   }
 
-  private inferMotionStrength(base: StyleStackConfig["base"]): number {
-    if (base.mood.includes("dynamic") || base.mood.includes("energetic"))
+  private inferMotionStrength(base: StyleStackConfig['base']): number {
+    if (base.mood.includes('dynamic') || base.mood.includes('energetic'))
       return 0.8;
-    if (base.mood.includes("dramatic")) return 0.6;
-    if (base.mood.includes("calm") || base.mood.includes("minimal")) return 0.3;
+    if (base.mood.includes('dramatic')) return 0.6;
+    if (base.mood.includes('calm') || base.mood.includes('minimal')) return 0.3;
     return 0.5; // Default medium motion
   }
 
   validateConfig(config: KlingConfig & { prompt: string }): boolean {
-    const validQualities = ["standard", "high"];
+    const validQualities = ['standard', 'high'];
 
     return (
-      typeof config.prompt === "string" &&
+      typeof config.prompt === 'string' &&
       config.prompt.length > 0 &&
-      typeof config.creativity === "number" &&
+      typeof config.creativity === 'number' &&
       config.creativity >= 0 &&
       config.creativity <= 1 &&
-      typeof config.motion_strength === "number" &&
+      typeof config.motion_strength === 'number' &&
       config.motion_strength >= 0 &&
       config.motion_strength <= 1 &&
       validQualities.includes(config.quality)
@@ -413,7 +413,7 @@ export class ModelAdapterRegistry {
   adaptStyleForModel(
     styleConfig: StyleStackConfig,
     provider: string,
-    modelName: string,
+    modelName: string
   ): Record<string, unknown> | null {
     const adapter = this.getAdapter(provider, modelName);
     if (!adapter) {
@@ -426,7 +426,7 @@ export class ModelAdapterRegistry {
       // Validate the adapted configuration
       if (!adapter.validateConfig(adaptedConfig)) {
         console.warn(
-          `Invalid adapted configuration for ${provider}:${modelName}`,
+          `Invalid adapted configuration for ${provider}:${modelName}`
         );
         return null;
       }
@@ -435,7 +435,7 @@ export class ModelAdapterRegistry {
     } catch (error) {
       console.error(
         `Failed to adapt style for ${provider}:${modelName}:`,
-        error,
+        error
       );
       return null;
     }
@@ -449,18 +449,18 @@ export const modelAdapterRegistry = new ModelAdapterRegistry();
 export function getAdaptedStyleConfig(
   styleConfig: StyleStackConfig,
   provider: string,
-  modelName: string,
+  modelName: string
 ): Record<string, unknown> | null {
   return modelAdapterRegistry.adaptStyleForModel(
     styleConfig,
     provider,
-    modelName,
+    modelName
   );
 }
 
 // Utility function to generate all adaptations for a style
 export async function generateAllAdaptations(
-  styleConfig: StyleStackConfig,
+  styleConfig: StyleStackConfig
 ): Promise<
   Array<{
     provider: string;
@@ -475,7 +475,7 @@ export async function generateAllAdaptations(
     const adaptedConfig = modelAdapterRegistry.adaptStyleForModel(
       styleConfig,
       provider,
-      modelName,
+      modelName
     );
 
     if (adaptedConfig) {

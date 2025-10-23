@@ -5,13 +5,13 @@
  * DELETE /api/sequences/[sequenceId]/frames - Delete all frames for a sequence
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { frameService } from "@/lib/services/frame.service";
-import { createServerClient } from "@/lib/supabase/server";
-import type { FrameInsert, Json } from "@/types/database";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { frameService } from '@/lib/services/frame.service';
+import { createServerClient } from '@/lib/supabase/server';
+import type { FrameInsert, Json } from '@/types/database';
 
 // Schema for single frame creation
 const singleFrameSchema = z.object({
@@ -30,7 +30,7 @@ const bulkFrameSchema = z.object({
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -40,7 +40,7 @@ export async function GET(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -49,19 +49,19 @@ export async function GET(
 
     // Verify sequence exists and get team_id
     const { data: sequence, error: sequenceError } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -77,27 +77,27 @@ export async function GET(
         data: frames,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/sequences/[sequenceId]/frames] Error:", error);
+    console.error('[GET /api/sequences/[sequenceId]/frames] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get frames",
+        message: 'Failed to get frames',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -107,7 +107,7 @@ export async function POST(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -116,19 +116,19 @@ export async function POST(
 
     // Verify sequence exists and get team_id
     const { data: sequence, error: sequenceError } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -139,7 +139,7 @@ export async function POST(
     const body = await request.json();
 
     // Determine if this is bulk or single creation
-    const isBulk = "frames" in body && Array.isArray(body.frames);
+    const isBulk = 'frames' in body && Array.isArray(body.frames);
 
     if (isBulk) {
       // Bulk creation
@@ -164,7 +164,7 @@ export async function POST(
           message: `${frames.length} frames created successfully`,
           timestamp: new Date().toISOString(),
         },
-        { status: 201 },
+        { status: 201 }
       );
     }
 
@@ -185,23 +185,23 @@ export async function POST(
       {
         success: true,
         data: frame,
-        message: "Frame created successfully",
+        message: 'Frame created successfully',
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
-    console.error("[POST /api/sequences/[sequenceId]/frames] Error:", error);
+    console.error('[POST /api/sequences/[sequenceId]/frames] Error:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request data",
+          message: 'Invalid request data',
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -209,18 +209,18 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to create frame(s)",
+        message: 'Failed to create frame(s)',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -230,7 +230,7 @@ export async function DELETE(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -239,19 +239,19 @@ export async function DELETE(
 
     // Verify sequence exists and get team_id
     const { data: sequence, error: sequenceError } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -264,23 +264,23 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: true,
-        message: "Frames deleted successfully",
+        message: 'Frames deleted successfully',
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
-    console.error("[DELETE /api/sequences/[sequenceId]/frames] Error:", error);
+    console.error('[DELETE /api/sequences/[sequenceId]/frames] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to delete frames",
+        message: 'Failed to delete frames',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

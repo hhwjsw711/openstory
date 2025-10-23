@@ -17,7 +17,7 @@ const VALIDATION_DELAY = 300; // ms
  * Validate script and provide feedback
  */
 export async function validateScript(
-  script: string,
+  script: string
 ): Promise<ScriptValidationResult> {
   // Simulate processing time for UX
   await new Promise((resolve) => setTimeout(resolve, VALIDATION_DELAY));
@@ -29,11 +29,11 @@ export async function validateScript(
 
   // Basic validation
   if (!trimmedScript) {
-    errors.push("Script cannot be empty");
+    errors.push('Script cannot be empty');
   } else if (trimmedScript.length < 10) {
-    errors.push("Script must be at least 10 characters long");
+    errors.push('Script must be at least 10 characters long');
   } else if (trimmedScript.length > 10000) {
-    errors.push("Script must be 10,000 characters or less");
+    errors.push('Script must be 10,000 characters or less');
   }
 
   // Content warnings and suggestions
@@ -44,44 +44,44 @@ export async function validateScript(
       .filter((s) => s.trim().length > 0).length;
 
     if (wordCount < 50) {
-      warnings.push("Short scripts may generate fewer frames");
+      warnings.push('Short scripts may generate fewer frames');
     }
 
     if (wordCount > 500) {
-      warnings.push("Long scripts may take more time to process");
+      warnings.push('Long scripts may take more time to process');
     }
 
     if (sentenceCount < 3) {
-      suggestions.push("Consider adding more detail for richer visuals");
+      suggestions.push('Consider adding more detail for richer visuals');
     }
 
     if (!trimmedScript.match(/[.!?]/)) {
-      suggestions.push("Add punctuation to help identify scene breaks");
+      suggestions.push('Add punctuation to help identify scene breaks');
     }
 
     // Check for dialogue
     if (trimmedScript.includes('"') || trimmedScript.includes("'")) {
       suggestions.push(
-        "Dialogue detected - consider describing character expressions",
+        'Dialogue detected - consider describing character expressions'
       );
     }
 
     // Check for action words
     const actionWords = [
-      "runs",
-      "jumps",
-      "fights",
-      "flies",
-      "explodes",
-      "crashes",
+      'runs',
+      'jumps',
+      'fights',
+      'flies',
+      'explodes',
+      'crashes',
     ];
     const hasAction = actionWords.some((word) =>
-      trimmedScript.toLowerCase().includes(word),
+      trimmedScript.toLowerCase().includes(word)
     );
 
     if (hasAction) {
       suggestions.push(
-        "Action sequences detected - great for dynamic visuals!",
+        'Action sequences detected - great for dynamic visuals!'
       );
     }
   }

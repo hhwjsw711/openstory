@@ -3,11 +3,11 @@
  * React hook for navigating to auth pages with redirect preservation
  */
 
-"use client";
+'use client';
 
-import { usePathname, useRouter } from "next/navigation";
-import { useCallback } from "react";
-import { getLoginUrl, getSignupUrl } from "@/lib/auth/navigation";
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback } from 'react';
+import { getLoginUrl, getSignupUrl } from '@/lib/auth/navigation';
 
 /**
  * Hook for auth navigation with redirect preservation
@@ -26,7 +26,7 @@ export function useAuthNavigation() {
       const loginUrl = getLoginUrl(customPath || pathname);
       router.push(loginUrl);
     },
-    [router, pathname],
+    [router, pathname]
   );
 
   /**
@@ -38,7 +38,7 @@ export function useAuthNavigation() {
       const signupUrl = getSignupUrl(customPath || pathname);
       router.push(signupUrl);
     },
-    [router, pathname],
+    [router, pathname]
   );
 
   /**

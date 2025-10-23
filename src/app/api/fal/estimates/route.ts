@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import z from "zod";
-import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
-import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
+import { NextResponse } from 'next/server';
+import z from 'zod';
+import { calculateFalCost, calculateFalTime } from '@/lib/ai/fal-client';
+import { type FalImageModel, IMAGE_MODELS } from '@/lib/ai/models';
 import {
   MODEL_KEYS,
   parseExtraParamsByModel,
-} from "@/lib/ai/models-validation";
-import { handleApiError } from "@/lib/errors";
+} from '@/lib/ai/models-validation';
+import { handleApiError } from '@/lib/errors';
 
 const estimateImageCostSchema = z
   .object({
@@ -25,8 +25,8 @@ const estimateImageCostSchema = z
     },
     {
       message:
-        "[api/fal/estimates] Generating image | extra_params validation failed for the selected model",
-    },
+        '[api/fal/estimates] Generating image | extra_params validation failed for the selected model',
+    }
   );
 
 // calculate cost for image generation
@@ -40,11 +40,11 @@ export async function POST(request: Request) {
     } catch (schemaError) {
       if (
         schemaError instanceof Error &&
-        schemaError.message.startsWith("[model-validations]")
+        schemaError.message.startsWith('[model-validations]')
       ) {
         return NextResponse.json(
           { error: schemaError.message },
-          { status: 400 },
+          { status: 400 }
         );
       }
       throw schemaError;
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     if (!parseResult.success) {
       return NextResponse.json(
         { error: parseResult.error.flatten() },
-        { status: 400 },
+        { status: 400 }
       );
     }
     const validatedData = parseResult.data;
@@ -77,13 +77,13 @@ export async function POST(request: Request) {
           time: timeResult,
         },
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     const velroError = handleApiError(error);
     return NextResponse.json(
       { error: velroError.message },
-      { status: velroError.statusCode },
+      { status: velroError.statusCode }
     );
   }
 }

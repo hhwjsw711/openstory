@@ -1,4 +1,4 @@
-import type { DirectorDnaConfig } from "@/lib/services/director-dna-types";
+import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 
 export const VELRO_UNIVERSAL_SYSTEM_PROMPT = `You are a Cinematic Previsualization Engine using MARS (Modular Action & Rendering Syntax) to transform stories into director-specific visual narratives.
 
@@ -437,7 +437,7 @@ When user provides input:
 
 // This is used to enhance a script when the user clicks the "Enhance with AI" button
 export const enhanceScriptPrompt = (
-  sanitizedScript: string,
+  sanitizedScript: string
 ) => `Please enhance this script for a short film:
 
 <USER_SCRIPT>
@@ -450,7 +450,7 @@ Transform the content within the USER_SCRIPT tags into a professional, visually 
 // This enhances the script if needed then breaks it into frames
 export const storyboardPrompt = (
   sanitizedScript: string,
-  styleConfig: DirectorDnaConfig,
+  styleConfig: DirectorDnaConfig
 ) => `Use the style configuration within the STYLE_CONFIG tags to analyze the script within the USER_SCRIPT tags and divide it into logical scenes for storyboard generation.
 
 <STYLE_CONFIG>

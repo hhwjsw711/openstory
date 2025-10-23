@@ -1,12 +1,14 @@
 # Motion Generation Feature Implementation Plan
 
 ## Executive Summary
+
 Extend the existing frame generation system to support motion/video generation using Fal.ai's video models. This feature builds upon the existing thumbnail generation functionality by adding the capability to transform static frames into dynamic video sequences.
 
 ## Current Architecture Analysis
 
 ### Existing Components
-1. **Frame System**: 
+
+1. **Frame System**:
    - Database schema supports `video_url` field alongside `thumbnail_url`
    - Frame generation creates descriptions and static thumbnails
    - Two-phase generation: Quick frame creation + async image generation
@@ -29,6 +31,7 @@ Extend the existing frame generation system to support motion/video generation u
 ## Implementation Design
 
 ### Motion Generation Workflow
+
 ```mermaid
 sequenceDiagram
     User->>API: Request motion generation
@@ -45,23 +48,26 @@ sequenceDiagram
 ### Technical Architecture
 
 #### 1. Motion Generation Strategy
+
 - **Primary Approach**: Image-to-Video (I2V) using existing thumbnails
 - **Input**: Frame's `thumbnail_url` + enhanced motion prompt
 - **Output**: MP4 video stored in Supabase Storage
 - **Duration**: 3-5 seconds per frame (configurable)
 
 #### 2. Model Selection
+
 ```typescript
 // Recommended models by quality/speed tradeoff
 const MOTION_MODELS = {
-  fast: 'svd_lcm',        // ~5s generation, good quality
-  balanced: 'wan_i2v',    // ~15s generation, better quality
-  premium: 'kling_i2v',   // ~30s generation, cinematic quality
-  audio: 'veo3'           // ~45s generation, includes audio
-}
+  fast: 'svd_lcm', // ~5s generation, good quality
+  balanced: 'wan_i2v', // ~15s generation, better quality
+  premium: 'kling_i2v', // ~30s generation, cinematic quality
+  audio: 'veo3', // ~45s generation, includes audio
+};
 ```
 
 #### 3. Storage Strategy
+
 - Store videos in Supabase Storage `videos` bucket
 - Path structure: `/teams/{teamId}/sequences/{sequenceId}/frames/{frameId}/motion.mp4`
 - Keep original Fal.ai URLs as backup in metadata
@@ -72,7 +78,9 @@ const MOTION_MODELS = {
 ### Phase 1: Backend Infrastructure (Day 1-2)
 
 #### Task 1.1: Extend Frame Actions
+
 **File**: `/src/app/actions/frames/index.ts`
+
 ```typescript
 // Add new schemas
 const generateMotionSchema = z.object({
@@ -98,7 +106,9 @@ export async function generateMotionAction(
 ```
 
 #### Task 1.2: Create Motion Generation Webhook
+
 **File**: `/src/app/webhooks/qstash/motion/route.ts`
+
 ```typescript
 // New webhook specifically for frame motion generation
 // Differs from generic video webhook by:
@@ -108,7 +118,9 @@ export async function generateMotionAction(
 ```
 
 #### Task 1.3: Extend QStash Client
+
 **File**: `/src/lib/qstash/client.ts`
+
 ```typescript
 async publishMotionJob(
   payload: MotionGenerationPayload,
@@ -127,7 +139,9 @@ async publishMotionJob(
 ### Phase 2: Motion Generation Logic (Day 2-3)
 
 #### Task 2.1: Motion Prompt Enhancement
+
 **File**: `/src/lib/ai/motion-enhancer.ts`
+
 ```typescript
 export async function enhanceMotionPrompt({
   frameDescription: string,
@@ -144,7 +158,9 @@ export async function enhanceMotionPrompt({
 ```
 
 #### Task 2.2: Batch Motion Generation
+
 **File**: `/src/app/actions/frames/generate-motion-batch.ts`
+
 ```typescript
 export async function generateMotionBatchAction({
   sequenceId: string,
@@ -159,18 +175,17 @@ export async function generateMotionBatchAction({
 ```
 
 #### Task 2.3: Video Storage Service
+
 **File**: `/src/lib/storage/video-storage.ts`
+
 ```typescript
 export class VideoStorageService {
-  async uploadVideo(
-    videoUrl: string,
-    path: string
-  ): Promise<string> {
+  async uploadVideo(videoUrl: string, path: string): Promise<string> {
     // Download from Fal.ai
     // Upload to Supabase Storage
     // Return public URL
   }
-  
+
   async getVideoMetadata(url: string): Promise<VideoMetadata> {
     // Extract duration, dimensions, bitrate
   }
@@ -180,7 +195,9 @@ export class VideoStorageService {
 ### Phase 3: Progress Tracking (Day 3-4)
 
 #### Task 3.1: Motion Job Status
+
 **File**: `/src/app/actions/frames/get-motion-status.ts`
+
 ```typescript
 export async function getMotionJobStatus(
   jobId: string
@@ -192,10 +209,9 @@ export async function getMotionJobStatus(
 ```
 
 #### Task 3.2: Sequence Motion Progress
+
 ```typescript
-export async function getSequenceMotionProgress(
-  sequenceId: string
-): Promise<{
+export async function getSequenceMotionProgress(sequenceId: string): Promise<{
   totalFrames: number;
   framesWithMotion: number;
   activeJobs: number;
@@ -209,7 +225,9 @@ export async function getSequenceMotionProgress(
 ### Phase 4: Frontend Integration (Day 4-5)
 
 #### Task 4.1: Motion Generation UI
+
 **File**: `/src/components/frames/motion-generator.tsx`
+
 ```typescript
 export function MotionGenerator({ frame }: { frame: Frame }) {
   // Generate Motion button
@@ -221,7 +239,9 @@ export function MotionGenerator({ frame }: { frame: Frame }) {
 ```
 
 #### Task 4.2: Motion Preview Component
+
 **File**: `/src/components/frames/motion-preview.tsx`
+
 ```typescript
 export function MotionPreview({ frame }: { frame: Frame }) {
   // Video player with controls
@@ -232,11 +252,11 @@ export function MotionPreview({ frame }: { frame: Frame }) {
 ```
 
 #### Task 4.3: Batch Motion Controls
+
 **File**: `/src/components/sequence/batch-motion-controls.tsx`
+
 ```typescript
-export function BatchMotionControls({ 
-  sequenceId: string 
-}) {
+export function BatchMotionControls({ sequenceId: string }) {
   // Generate All Motion button
   // Batch progress indicator
   // Cancel batch operation
@@ -247,6 +267,7 @@ export function BatchMotionControls({
 ### Phase 5: Testing & Optimization (Day 5-6)
 
 #### Task 5.1: Unit Tests
+
 ```typescript
 // Test files needed:
 // - motion-enhancer.test.ts
@@ -256,12 +277,14 @@ export function BatchMotionControls({
 ```
 
 #### Task 5.2: Performance Optimization
+
 - Implement job prioritization
 - Add caching for frequently accessed videos
 - Optimize video compression settings
 - Implement progressive loading
 
 #### Task 5.3: Error Handling
+
 - Retry logic for failed generations
 - Fallback to lower quality models
 - User notification system
@@ -270,30 +293,33 @@ export function BatchMotionControls({
 ## API Endpoints
 
 ### New Endpoints
+
 ```typescript
 // Single frame motion
-POST /api/frames/{frameId}/generate-motion
-GET  /api/frames/{frameId}/motion-status
+POST / api / frames / { frameId } / generate - motion;
+GET / api / frames / { frameId } / motion - status;
 
 // Batch operations
-POST /api/sequences/{sequenceId}/generate-all-motion
-GET  /api/sequences/{sequenceId}/motion-progress
+POST / api / sequences / { sequenceId } / generate - all - motion;
+GET / api / sequences / { sequenceId } / motion - progress;
 
 // Motion management
-DELETE /api/frames/{frameId}/motion
-POST   /api/frames/{frameId}/regenerate-motion
+DELETE / api / frames / { frameId } / motion;
+POST / api / frames / { frameId } / regenerate - motion;
 ```
 
 ### Modified Endpoints
+
 ```typescript
 // Extended to include motion data
-GET /api/sequences/{sequenceId}/frames
-GET /api/frames/{frameId}
+GET / api / sequences / { sequenceId } / frames;
+GET / api / frames / { frameId };
 ```
 
 ## Database Schema Updates
 
 No schema changes required! Current schema already supports:
+
 - `frames.video_url` - Store video URL
 - `frames.duration_ms` - Video duration
 - `frames.metadata` - Motion generation parameters
@@ -301,6 +327,7 @@ No schema changes required! Current schema already supports:
 ## Configuration & Environment
 
 ### Required Environment Variables
+
 ```env
 # Existing (already configured)
 FAL_KEY=your_fal_api_key
@@ -318,15 +345,18 @@ MOTION_MAX_CONCURRENT_JOBS=5
 ## Cost Considerations
 
 ### Fal.ai Pricing
+
 - Fast model (SVD-LCM): ~$0.10 per generation
-- Balanced model (WAN): ~$0.25 per generation  
+- Balanced model (WAN): ~$0.25 per generation
 - Premium model (Kling): ~$0.50 per generation
 
 ### Estimated Costs per Sequence
+
 - 30 frames × $0.25 = $7.50 (balanced quality)
 - 30 frames × $0.10 = $3.00 (fast quality)
 
 ### Storage Costs
+
 - Supabase Storage: $0.021 per GB/month
 - Average video: 10MB per frame
 - 30 frames = 300MB per sequence
@@ -334,7 +364,8 @@ MOTION_MAX_CONCURRENT_JOBS=5
 ## Risk Mitigation
 
 ### Technical Risks
-1. **Rate Limiting**: 
+
+1. **Rate Limiting**:
    - Solution: Implement intelligent queue delays
    - Fallback: Batch processing with exponential backoff
 
@@ -351,6 +382,7 @@ MOTION_MAX_CONCURRENT_JOBS=5
    - Fallback: Limit to premium users
 
 ### Performance Risks
+
 1. **Long Generation Times**:
    - Solution: Progressive enhancement (show thumbnail first)
    - Optimization: Parallel processing with job pools
@@ -362,12 +394,14 @@ MOTION_MAX_CONCURRENT_JOBS=5
 ## Success Metrics
 
 ### Technical Metrics
+
 - Generation success rate > 95%
 - Average generation time < 30s per frame
 - Storage efficiency < 15MB per frame
 - API response time < 200ms
 
 ### User Experience Metrics
+
 - Motion generation adoption > 60% of sequences
 - User satisfaction score > 4.5/5
 - Regeneration rate < 10%
@@ -376,11 +410,13 @@ MOTION_MAX_CONCURRENT_JOBS=5
 ## Timeline
 
 ### Week 1
+
 - Day 1-2: Backend infrastructure
 - Day 3-4: Motion generation logic & storage
 - Day 5-6: Testing & optimization
 
-### Week 2  
+### Week 2
+
 - Day 7-8: Frontend components
 - Day 9-10: Integration testing
 - Day 11-12: Performance optimization

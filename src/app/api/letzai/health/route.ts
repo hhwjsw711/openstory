@@ -3,9 +3,9 @@
  * GET /api/letzai/health - Check LetzAI service health and connectivity
  */
 
-import { NextResponse } from "next/server";
-import { handleApiError } from "@/lib/errors";
-import { getLetzAIService } from "@/lib/services/letzai-service";
+import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/errors';
+import { getLetzAIService } from '@/lib/services/letzai-service';
 
 /**
  * GET handler for LetzAI health check
@@ -20,7 +20,7 @@ export async function GET() {
 
     const response = {
       success: true,
-      service: "letzai",
+      service: 'letzai',
       healthy: health.healthy,
       latencyMs: health.latencyMs,
       timestamp: new Date().toISOString(),
@@ -32,19 +32,19 @@ export async function GET() {
 
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
-    console.error("[LetzAI Health] Health check failed:", error);
+    console.error('[LetzAI Health] Health check failed:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        service: "letzai",
+        service: 'letzai',
         healthy: false,
-        message: "Health check failed",
+        message: 'Health check failed',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

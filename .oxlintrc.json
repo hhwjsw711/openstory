@@ -1,0 +1,13 @@
+{
+  "$schema": "https://oxc.rs/schema.json",
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "react",
+    "react-perf",
+    "nextjs",
+    "oxc"
+  ],
+  "extends": ["recommended"]
+}

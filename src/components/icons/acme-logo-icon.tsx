@@ -1,19 +1,19 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
-import { cn } from "@/lib/utils";
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
+import { cn } from '@/lib/utils';
 
-const acmeLogoIconVariants = cva("text-current", {
+const acmeLogoIconVariants = cva('text-current', {
   variants: {
     size: {
-      xs: "w-4 h-4",
-      sm: "w-6 h-6",
-      md: "w-8 h-8",
-      lg: "w-12 h-12",
-      xl: "w-16 h-16",
+      xs: 'w-4 h-4',
+      sm: 'w-6 h-6',
+      md: 'w-8 h-8',
+      lg: 'w-12 h-12',
+      xl: 'w-16 h-16',
     },
   },
   defaultVariants: {
-    size: "md",
+    size: 'md',
   },
 });
 

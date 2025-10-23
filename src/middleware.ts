@@ -3,60 +3,60 @@
  * Lightweight middleware for Velro's anonymous-first approach
  */
 
-import { betterFetch } from "@better-fetch/fetch";
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import type { Session } from "@/lib/auth/config";
+import { betterFetch } from '@better-fetch/fetch';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { Session } from '@/lib/auth/config';
 
 // Routes that require full authentication (not anonymous)
-const authRequiredRoutes = ["/settings", "/billing"];
+const authRequiredRoutes = ['/settings', '/billing'];
 
 // Routes that authenticated users should skip
-const authOnlyRoutes = ["/login", "/signup"];
+const authOnlyRoutes = ['/login', '/signup'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for static files, API routes, and Next.js internals
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes(".") ||
-    pathname.startsWith("/public")
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.') ||
+    pathname.startsWith('/public')
   ) {
     return NextResponse.next();
   }
 
   // Check for BetterAuth session using the proper API
   const { data: session, error } = await betterFetch<Session>(
-    "/api/auth/get-session",
+    '/api/auth/get-session',
     {
       baseURL: request.nextUrl.origin,
       headers: {
-        cookie: request.headers.get("cookie") || "",
+        cookie: request.headers.get('cookie') || '',
       },
-    },
+    }
   );
 
   // SECURITY: Fail closed if auth service is unavailable
   // Prevents authentication bypass during service degradation
   if (error) {
-    console.error("[Middleware] Auth service error:", error);
+    console.error('[Middleware] Auth service error:', error);
 
     // Check if this is a protected route
     const isAuthRequired = authRequiredRoutes.some((route) =>
-      pathname.startsWith(route),
+      pathname.startsWith(route)
     );
 
     if (isAuthRequired) {
       // Deny access to protected routes when auth service is down
       return NextResponse.json(
         {
-          error: "Authentication service unavailable",
-          message: "Unable to verify authentication. Please try again.",
+          error: 'Authentication service unavailable',
+          message: 'Unable to verify authentication. Please try again.',
         },
-        { status: 503 },
+        { status: 503 }
       );
     }
 
@@ -75,20 +75,20 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated (non-anonymous) users away from auth pages
   const isAuthOnlyRoute = authOnlyRoutes.some((route) =>
-    pathname.startsWith(route),
+    pathname.startsWith(route)
   );
   if (hasSession && !isAnonymous && isAuthOnlyRoute) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Protect sensitive routes that require full authentication (not anonymous)
   const isAuthRequired = authRequiredRoutes.some((route) =>
-    pathname.startsWith(route),
+    pathname.startsWith(route)
   );
   if (isAuthRequired && (!hasSession || isAnonymous)) {
     // Preserve the original URL for redirect after login
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirectTo", pathname);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -106,6 +106,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files with extensions
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

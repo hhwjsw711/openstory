@@ -11,6 +11,7 @@ This plan outlines the implementation of a frontend-only anonymous user flow tha
 ## Technical Requirements
 
 ### Core Features
+
 1. **Anonymous User Simulation**: Simulate long-lived anonymous users with localStorage persistence
 2. **Three-Step Creation Flow**: Script → Storyboard → Motion
 3. **Mock Data Persistence**: Store user work in localStorage to simulate database behavior
@@ -19,6 +20,7 @@ This plan outlines the implementation of a frontend-only anonymous user flow tha
 6. **Upgrade Flow Mockup**: Show upgrade prompts and simulate magic link transition
 
 ### Technology Stack
+
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Storage**: localStorage for simulating persistence
 - **Mocking**: Faker.js for consistent mock data generation
@@ -30,6 +32,7 @@ This plan outlines the implementation of a frontend-only anonymous user flow tha
 ## Component Architecture
 
 ### Page Structure
+
 ```
 src/
 ├── app/
@@ -48,30 +51,31 @@ src/
 ```
 
 ### State Structure
+
 ```typescript
 interface StoryboardFlowState {
-  currentStep: 1 | 2 | 3
+  currentStep: 1 | 2 | 3;
   user: {
-    id: string // Simulated anonymous user ID
-    isAnonymous: boolean
-    createdAt: Date
-  }
+    id: string; // Simulated anonymous user ID
+    isAnonymous: boolean;
+    createdAt: Date;
+  };
   sequence: {
-    id: string // Local sequence ID
-    script: string
-    enhanced_script?: string
-    style_stack_id: string | null
-    frames: MockFrame[]
-    lastSaved: Date
-  }
+    id: string; // Local sequence ID
+    script: string;
+    enhanced_script?: string;
+    style_stack_id: string | null;
+    frames: MockFrame[];
+    lastSaved: Date;
+  };
   generation: {
-    jobs: Record<string, MockJobStatus>
-    isGenerating: boolean
-  }
+    jobs: Record<string, MockJobStatus>;
+    isGenerating: boolean;
+  };
   ui: {
-    showUpgradePrompt: boolean
-    hasUnsavedChanges: boolean
-  }
+    showUpgradePrompt: boolean;
+    hasUnsavedChanges: boolean;
+  };
 }
 ```
 
@@ -80,6 +84,7 @@ interface StoryboardFlowState {
 ### Phase 1: Foundation (Days 1-2)
 
 #### 1.1 Create Anonymous Flow Page
+
 ```typescript
 // src/app/create/page.tsx
 - Set up main container with step navigation
@@ -89,6 +94,7 @@ interface StoryboardFlowState {
 ```
 
 #### 1.2 Implement Flow Reducer
+
 ```typescript
 // src/reducers/anonymous-flow-reducer.ts
 - Extend existing sequence form reducer
@@ -99,6 +105,7 @@ interface StoryboardFlowState {
 ```
 
 #### 1.3 Create Mock Data Management
+
 ```typescript
 // src/app/actions/anonymous-flow/index.mock.ts
 - validateScript() - Simple mock validation (always passes)
@@ -116,6 +123,7 @@ interface StoryboardFlowState {
 ### Phase 2: Script & Style Step (Days 2-3)
 
 #### 2.1 Script Step Component
+
 ```typescript
 // src/components/sequence/script-step.tsx
 - Integrate existing ScriptEditor component
@@ -125,6 +133,7 @@ interface StoryboardFlowState {
 ```
 
 #### 2.2 Style Selection
+
 ```typescript
 // Extend script-step.tsx
 - Integrate existing StyleSelector component
@@ -134,6 +143,7 @@ interface StoryboardFlowState {
 ```
 
 #### 2.3 Storyboard Generation
+
 ```typescript
 // Add to script-step.tsx
 - "Generate Storyboard" button
@@ -145,6 +155,7 @@ interface StoryboardFlowState {
 ### Phase 3: Storyboard Step (Days 3-4)
 
 #### 3.1 Frame List View
+
 ```typescript
 // src/components/sequence/storyboard-step.tsx
 - Display mock frames using existing StoryboardFrame component
@@ -154,6 +165,7 @@ interface StoryboardFlowState {
 ```
 
 #### 3.2 Frame CRUD Operations
+
 ```typescript
 // Add to storyboard-step.tsx
 - Edit script section inline with localStorage auto-save
@@ -164,6 +176,7 @@ interface StoryboardFlowState {
 ```
 
 #### 3.3 Frame Image Regeneration
+
 ```typescript
 // Add frame regeneration
 - Mock image generation (1-2 second delays)
@@ -175,6 +188,7 @@ interface StoryboardFlowState {
 ### Phase 4: Motion Step (Days 4-5)
 
 #### 4.1 Motion Preview
+
 ```typescript
 // src/components/sequence/motion-step.tsx
 - Display frames with mock motion previews
@@ -184,6 +198,7 @@ interface StoryboardFlowState {
 ```
 
 #### 4.2 Export and Upgrade Options
+
 ```typescript
 // Add to motion-step.tsx
 - Preview full sequence with mock video
@@ -195,12 +210,14 @@ interface StoryboardFlowState {
 ### Phase 5: Testing & Polish (Day 5)
 
 #### 5.1 Integration Testing
+
 - Full flow walkthrough with mock data
 - localStorage persistence verification
 - Cross-session data recovery
 - Mock error state coverage
 
 #### 5.2 UI Polish
+
 - Smooth loading state transitions
 - Step navigation improvements
 - Responsive design verification
@@ -209,10 +226,11 @@ interface StoryboardFlowState {
 ## Mock Data Strategy
 
 ### Consistent Mock Generation
+
 ```typescript
 // Use seed-based generation for consistent results
 const generateMockFrame = (seed: string, index: number) => {
-  faker.seed(hashString(seed + index))
+  faker.seed(hashString(seed + index));
   return {
     id: faker.string.uuid(),
     name: `Frame ${index + 1}`,
@@ -220,52 +238,57 @@ const generateMockFrame = (seed: string, index: number) => {
     video: `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`,
     scriptSection: script.slice(start, end),
     order: index,
-    createdAt: new Date()
-  }
-}
+    createdAt: new Date(),
+  };
+};
 ```
 
 ### Mock Response Delays
+
 ```typescript
 // Realistic delays for different operations
 const MOCK_DELAYS = {
-  scriptValidation: 500,    // Quick validation
-  scriptEnhancement: 1500,  // AI processing time
-  frameGeneration: 2500,    // Storyboard creation
-  imageGeneration: 2000,    // Per frame image
-  motionGeneration: 3500,   // Per frame video
-  export: 4000             // Final export
-}
+  scriptValidation: 500, // Quick validation
+  scriptEnhancement: 1500, // AI processing time
+  frameGeneration: 2500, // Storyboard creation
+  imageGeneration: 2000, // Per frame image
+  motionGeneration: 3500, // Per frame video
+  export: 4000, // Final export
+};
 ```
 
 ### localStorage Persistence Schema
+
 ```typescript
 interface LocalStorageData {
-  anonymousUserId: string
-  sequences: Record<string, MockSequence>
-  currentSequenceId: string | null
+  anonymousUserId: string;
+  sequences: Record<string, MockSequence>;
+  currentSequenceId: string | null;
   userPreferences: {
-    preferredStyle: string
-    seenUpgradePrompt: boolean
-  }
-  lastActive: Date
+    preferredStyle: string;
+    seenUpgradePrompt: boolean;
+  };
+  lastActive: Date;
 }
 ```
 
 ## Testing Approach
 
 ### Unit Tests
+
 - Reducer action tests
 - Mock data generator tests
 - Validation logic tests
 
 ### Integration Tests
+
 - Full flow completion
 - State persistence
 - Error recovery
 - Session expiry
 
 ### E2E Tests (Future)
+
 ```typescript
 // tests/anonymous-flow.spec.ts
 - Complete creation flow
@@ -276,6 +299,7 @@ interface LocalStorageData {
 ## Risk Assessment
 
 ### Low Risk Items
+
 1. **localStorage Data Loss**: User might lose work if they clear browser data
    - **Mitigation**: Prompt users before data loss, show upgrade prompts to preserve work
 
@@ -286,6 +310,7 @@ interface LocalStorageData {
    - **Mitigation**: Use high-quality seed-based generation, realistic delays, varied content
 
 ### Very Low Risk Items
+
 1. **Component Integration**: Existing components might need minor adjustments
    - **Mitigation**: Use components as-is first, minimal modifications only if needed
 
@@ -295,12 +320,14 @@ interface LocalStorageData {
 ## Implementation Checklist
 
 ### Pre-Implementation
+
 - [ ] Review existing components in Storybook
 - [ ] Check existing mock data generators
 - [ ] Understand current reducer patterns
 - [ ] Verify localStorage capabilities
 
 ### Phase 1 (Days 1-2)
+
 - [ ] Create `src/app/create` route with step navigation
 - [ ] Implement anonymous flow reducer in `src/reducers/`
 - [ ] Create mock actions in `src/app/actions/anonymous-flow/`
@@ -308,6 +335,7 @@ interface LocalStorageData {
 - [ ] Test anonymous session simulation
 
 ### Phase 2 (Days 2-3)
+
 - [ ] Build script step with existing ScriptEditor
 - [ ] Integrate StyleSelector with mock data
 - [ ] Add mock validation and enhancement
@@ -315,6 +343,7 @@ interface LocalStorageData {
 - [ ] Test step 1 to step 2 transition
 
 ### Phase 3 (Days 3-4)
+
 - [ ] Create storyboard step with existing components
 - [ ] Implement frame list with drag-and-drop
 - [ ] Add frame CRUD with localStorage sync
@@ -322,6 +351,7 @@ interface LocalStorageData {
 - [ ] Test full frame management flow
 
 ### Phase 4 (Days 4-5)
+
 - [ ] Build motion step with existing MotionPreview
 - [ ] Mock motion generation with delays
 - [ ] Add export simulation
@@ -329,6 +359,7 @@ interface LocalStorageData {
 - [ ] Test complete end-to-end flow
 
 ### Phase 5 (Day 5)
+
 - [ ] Full integration testing
 - [ ] Cross-browser localStorage testing
 - [ ] UI/UX polish and transitions
@@ -362,6 +393,7 @@ interface LocalStorageData {
 ## Code Examples
 
 ### Reducer Actions
+
 ```typescript
 type StoryboardFlowAction =
   | { type: 'SET_ANONYMOUS_USER'; payload: AnonymousUser }
@@ -375,53 +407,61 @@ type StoryboardFlowAction =
   | { type: 'REORDER_FRAMES'; payload: string[] }
   | { type: 'NEXT_STEP' }
   | { type: 'PREVIOUS_STEP' }
-  | { type: 'SET_GENERATION_JOB'; payload: { frameId: string; jobId: string; status: JobStatus } }
-  | { type: 'SHOW_UPGRADE_PROMPT'; payload: boolean }
+  | {
+      type: 'SET_GENERATION_JOB';
+      payload: { frameId: string; jobId: string; status: JobStatus };
+    }
+  | { type: 'SHOW_UPGRADE_PROMPT'; payload: boolean };
 ```
 
 ### Anonymous User Hook
+
 ```typescript
 export function useAnonymousUser() {
-  const [user, setUser] = useState<AnonymousUser | null>(null)
-  
+  const [user, setUser] = useState<AnonymousUser | null>(null);
+
   useEffect(() => {
-    const storedToken = localStorage.getItem('velro_anon_token')
+    const storedToken = localStorage.getItem('velro_anon_token');
     if (storedToken) {
       // Validate and refresh user from API
-      validateAnonymousToken(storedToken).then(setUser)
+      validateAnonymousToken(storedToken).then(setUser);
     } else {
       // Create new anonymous user
       createAnonymousUser().then((newUser) => {
-        localStorage.setItem('velro_anon_token', newUser.auth_token)
-        setUser(newUser)
-      })
+        localStorage.setItem('velro_anon_token', newUser.auth_token);
+        setUser(newUser);
+      });
     }
-  }, [])
-  
+  }, []);
+
   const upgradeToMagicLink = async (email: string) => {
-    if (!user) return
-    return upgradeAnonymousUser(user.id, email)
-  }
-  
-  return { user, upgradeToMagicLink }
+    if (!user) return;
+    return upgradeAnonymousUser(user.id, email);
+  };
+
+  return { user, upgradeToMagicLink };
 }
 ```
 
 ### Database Auto-Save
+
 ```typescript
-export function useDatabaseAutoSave(sequenceId: string, data: Partial<Sequence>) {
-  const saveTimeoutRef = useRef<NodeJS.Timeout>()
-  
+export function useDatabaseAutoSave(
+  sequenceId: string,
+  data: Partial<Sequence>
+) {
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+
   useEffect(() => {
-    if (!sequenceId) return
-    
-    clearTimeout(saveTimeoutRef.current)
+    if (!sequenceId) return;
+
+    clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      updateSequence(sequenceId, data)
-    }, 2000) // Debounced saves
-    
-    return () => clearTimeout(saveTimeoutRef.current)
-  }, [sequenceId, data])
+      updateSequence(sequenceId, data);
+    }, 2000); // Debounced saves
+
+    return () => clearTimeout(saveTimeoutRef.current);
+  }, [sequenceId, data]);
 }
 ```
 
@@ -439,6 +479,7 @@ export function useDatabaseAutoSave(sequenceId: string, data: Partial<Sequence>)
 ## Approval and Sign-off
 
 This plan has been created based on:
+
 - Issue #50 requirements
 - Existing codebase analysis
 - CLAUDE.md architectural guidelines

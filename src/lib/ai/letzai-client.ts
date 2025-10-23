@@ -10,29 +10,29 @@ import type {
   LetzAIImageResponse,
   LetzAIModelResponse,
   LetzAIUpscaleRequest,
-} from "@/lib/schemas/letzai-request";
-import type { LetzAIServiceResponse } from "@/lib/services/letzai-service";
-import { getLetzAIService } from "@/lib/services/letzai-service";
+} from '@/lib/schemas/letzai-request';
+import type { LetzAIServiceResponse } from '@/lib/services/letzai-service';
+import { getLetzAIService } from '@/lib/services/letzai-service';
 
 // LetzAI model constants
 export const LETZAI_MODES = {
-  default: "default",
-  sigma: "sigma",
-  turbo: "turbo",
-  cinematic: "cinematic",
+  default: 'default',
+  sigma: 'sigma',
+  turbo: 'turbo',
+  cinematic: 'cinematic',
 } as const;
 
 export const LETZAI_EDIT_MODES = {
-  context: "context",
-  inpaint: "in",
-  outpaint: "out",
-  skin_fix: "skin",
+  context: 'context',
+  inpaint: 'in',
+  outpaint: 'out',
+  skin_fix: 'skin',
 } as const;
 
 export const LETZAI_MODEL_CLASSES = {
-  person: "person",
-  object: "object",
-  style: "style",
+  person: 'person',
+  object: 'object',
+  style: 'style',
 } as const;
 
 // Type exports
@@ -66,7 +66,7 @@ export async function generateImage(params: {
     creativity: params.creativity || 2,
     hasWatermark: params.hasWatermark ?? true,
     systemVersion: params.systemVersion || 2,
-    mode: LETZAI_MODES[params.mode || "default"],
+    mode: LETZAI_MODES[params.mode || 'default'],
   };
 
   return letzaiService.generateImage(request, {
@@ -156,8 +156,8 @@ export async function upscaleImage(params: {
 export async function getModels(params?: {
   page?: number;
   limit?: number;
-  sortBy?: "createdAt" | "usages";
-  sortOrder?: "ASC" | "DESC";
+  sortBy?: 'createdAt' | 'usages';
+  sortOrder?: 'ASC' | 'DESC';
   class?: LetzAIModelClass;
 }): Promise<LetzAIServiceResponse<LetzAIModelResponse[]>> {
   const letzaiService = getLetzAIService();
@@ -176,7 +176,7 @@ export async function getModels(params?: {
  */
 export async function checkJobStatus(
   jobId: string,
-  endpoint: "/images" | "/image-edits" | "/upscale" = "/images",
+  endpoint: '/images' | '/image-edits' | '/upscale' = '/images'
 ): Promise<LetzAIServiceResponse> {
   const letzaiService = getLetzAIService();
   return letzaiService.checkStatus(jobId, endpoint);
@@ -201,7 +201,7 @@ export async function getUsageStats(params: {
   teamId: string;
   startDate?: Date;
   endDate?: Date;
-  endpoint?: "/images" | "/image-edits" | "/upscale" | "/models";
+  endpoint?: '/images' | '/image-edits' | '/upscale' | '/models';
 }): Promise<{
   totalRequests: number;
   totalCost: number;
@@ -218,8 +218,8 @@ export async function getUsageStats(params: {
  * Calculate estimated cost for a LetzAI request
  */
 export function calculateCost(
-  endpoint: "/images" | "/image-edits" | "/upscale" | "/models",
-  parameters: Record<string, unknown>,
+  endpoint: '/images' | '/image-edits' | '/upscale' | '/models',
+  parameters: Record<string, unknown>
 ): number {
   const letzaiService = getLetzAIService();
   return letzaiService.calculateCost(endpoint, parameters);

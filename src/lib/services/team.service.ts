@@ -8,14 +8,14 @@
  * @module lib/services/team.service
  */
 
-import crypto from "node:crypto";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { INVITATION_CONFIG } from "@/lib/auth/constants";
-import type { TeamRole } from "@/lib/auth/permissions";
-import { getUserRole } from "@/lib/auth/permissions";
-import { ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
-import type { Database } from "@/types/database";
+import crypto from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { INVITATION_CONFIG } from '@/lib/auth/constants';
+import type { TeamRole } from '@/lib/auth/permissions';
+import { getUserRole } from '@/lib/auth/permissions';
+import { ValidationError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/database';
 
 // Type definitions
 export interface TeamMember {
@@ -44,7 +44,7 @@ export interface TeamInvitation {
 export interface CreateInvitationParams {
   teamId: string;
   email: string;
-  role: "member" | "admin" | "viewer";
+  role: 'member' | 'admin' | 'viewer';
   invitedBy: string;
 }
 
@@ -74,7 +74,7 @@ export interface UpdateMemberRoleParams {
  */
 export class TeamService {
   constructor(
-    private supabase: SupabaseClient<Database> = createServerClient(),
+    private supabase: SupabaseClient<Database> = createServerClient()
   ) {}
 
   /**
@@ -86,40 +86,40 @@ export class TeamService {
    * @returns The created invitation
    */
   async createInvitation(
-    params: CreateInvitationParams,
+    params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
     const { data: betterAuthUser } = await this.supabase
-      .from("user")
-      .select("id")
-      .eq("email", params.email)
+      .from('user')
+      .select('id')
+      .eq('email', params.email)
       .single();
 
     if (betterAuthUser) {
       const { data: existingMember } = await this.supabase
-        .from("team_members")
-        .select("user_id")
-        .eq("team_id", params.teamId)
-        .eq("user_id", betterAuthUser.id)
+        .from('team_members')
+        .select('user_id')
+        .eq('team_id', params.teamId)
+        .eq('user_id', betterAuthUser.id)
         .single();
 
       if (existingMember) {
-        throw new ValidationError("User is already a team member");
+        throw new ValidationError('User is already a team member');
       }
     }
 
     // Check if there's already a pending invitation
     const { data: existingInvitation } = await this.supabase
-      .from("team_invitations")
-      .select("id")
-      .eq("team_id", params.teamId)
-      .eq("email", params.email)
-      .eq("status", "pending")
+      .from('team_invitations')
+      .select('id')
+      .eq('team_id', params.teamId)
+      .eq('email', params.email)
+      .eq('status', 'pending')
       .single();
 
     if (existingInvitation) {
       throw new ValidationError(
-        "An invitation has already been sent to this email",
+        'An invitation has already been sent to this email'
       );
     }
 
@@ -130,12 +130,12 @@ export class TeamService {
 
     // Calculate expiry date
     const expiresAt = new Date(
-      Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000
     ).toISOString();
 
     // Create invitation
     const { data: invitation, error } = await this.supabase
-      .from("team_invitations")
+      .from('team_invitations')
       .insert({
         team_id: params.teamId,
         email: params.email,
@@ -152,14 +152,14 @@ export class TeamService {
     }
 
     if (!invitation) {
-      throw new Error("No invitation returned from database");
+      throw new Error('No invitation returned from database');
     }
 
     // TODO: Send invitation email with token
     // SECURITY: Token should ONLY be sent via email, never in API response
     // await this.emailService.sendInvitation(params.email, token);
     console.log(
-      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`,
+      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`
     );
 
     // SECURITY: Do NOT return token in response
@@ -188,45 +188,45 @@ export class TeamService {
   async acceptInvitation(params: AcceptInvitationParams): Promise<string> {
     // Get invitation
     const { data: invitation, error: fetchError } = await this.supabase
-      .from("team_invitations")
-      .select("*")
-      .eq("token", params.token)
+      .from('team_invitations')
+      .select('*')
+      .eq('token', params.token)
       .single();
 
     if (fetchError || !invitation) {
-      throw new ValidationError("Invalid invitation token");
+      throw new ValidationError('Invalid invitation token');
     }
 
     // Check if invitation is still valid
-    if (invitation.status !== "pending") {
-      throw new ValidationError("Invitation is no longer valid");
+    if (invitation.status !== 'pending') {
+      throw new ValidationError('Invitation is no longer valid');
     }
 
     if (new Date(invitation.expires_at) < new Date()) {
       // Mark as expired
       await this.supabase
-        .from("team_invitations")
-        .update({ status: "expired" })
-        .eq("id", invitation.id);
+        .from('team_invitations')
+        .update({ status: 'expired' })
+        .eq('id', invitation.id);
 
-      throw new ValidationError("Invitation has expired");
+      throw new ValidationError('Invitation has expired');
     }
 
     // Check if user is already a member
     const { data: existingMember } = await this.supabase
-      .from("team_members")
-      .select("user_id")
-      .eq("team_id", invitation.team_id)
-      .eq("user_id", params.userId)
+      .from('team_members')
+      .select('user_id')
+      .eq('team_id', invitation.team_id)
+      .eq('user_id', params.userId)
       .single();
 
     if (existingMember) {
-      throw new ValidationError("You are already a member of this team");
+      throw new ValidationError('You are already a member of this team');
     }
 
     // Add user to team
     const { error: memberError } = await this.supabase
-      .from("team_members")
+      .from('team_members')
       .insert({
         team_id: invitation.team_id,
         user_id: params.userId,
@@ -239,17 +239,17 @@ export class TeamService {
 
     // Mark invitation as accepted
     const { error: updateError } = await this.supabase
-      .from("team_invitations")
+      .from('team_invitations')
       .update({
-        status: "accepted",
+        status: 'accepted',
         accepted_at: new Date().toISOString(),
       })
-      .eq("id", invitation.id);
+      .eq('id', invitation.id);
 
     if (updateError) {
       console.error(
-        "[TeamService] Failed to update invitation status:",
-        updateError,
+        '[TeamService] Failed to update invitation status:',
+        updateError
       );
       // Don't throw - user is already added to team
     }
@@ -267,26 +267,26 @@ export class TeamService {
   async removeMember(params: RemoveMemberParams): Promise<void> {
     // Prevent removing yourself
     if (params.requestingUserId === params.userId) {
-      throw new ValidationError("You cannot remove yourself from the team");
+      throw new ValidationError('You cannot remove yourself from the team');
     }
 
     // Get the target user's role
     const targetRole = await getUserRole(params.userId, params.teamId);
     if (!targetRole) {
-      throw new ValidationError("User is not a member of this team");
+      throw new ValidationError('User is not a member of this team');
     }
 
     // Prevent removing the owner
-    if (targetRole === "owner") {
-      throw new ValidationError("Cannot remove the team owner");
+    if (targetRole === 'owner') {
+      throw new ValidationError('Cannot remove the team owner');
     }
 
     // Remove the member
     const { error } = await this.supabase
-      .from("team_members")
+      .from('team_members')
       .delete()
-      .eq("team_id", params.teamId)
-      .eq("user_id", params.userId);
+      .eq('team_id', params.teamId)
+      .eq('user_id', params.userId);
 
     if (error) {
       throw new Error(`Failed to remove member: ${error.message}`);
@@ -303,28 +303,28 @@ export class TeamService {
   async updateMemberRole(params: UpdateMemberRoleParams): Promise<void> {
     // Prevent changing your own role
     if (params.requestingUserId === params.userId) {
-      throw new ValidationError("You cannot change your own role");
+      throw new ValidationError('You cannot change your own role');
     }
 
     // Get the target user's current role
     const currentRole = await getUserRole(params.userId, params.teamId);
     if (!currentRole) {
-      throw new ValidationError("User is not a member of this team");
+      throw new ValidationError('User is not a member of this team');
     }
 
     // Prevent changing from owner role (there should only be one owner)
-    if (currentRole === "owner") {
+    if (currentRole === 'owner') {
       throw new ValidationError(
-        "Cannot change the owner's role. Transfer ownership first.",
+        "Cannot change the owner's role. Transfer ownership first."
       );
     }
 
     // Update the role
     const { error } = await this.supabase
-      .from("team_members")
+      .from('team_members')
       .update({ role: params.newRole })
-      .eq("team_id", params.teamId)
-      .eq("user_id", params.userId);
+      .eq('team_id', params.teamId)
+      .eq('user_id', params.userId);
 
     if (error) {
       throw new Error(`Failed to update role: ${error.message}`);
@@ -341,7 +341,7 @@ export class TeamService {
   async getMembers(teamId: string): Promise<TeamMember[]> {
     // Get team members with Velro user data
     const { data: members, error } = await this.supabase
-      .from("team_members")
+      .from('team_members')
       .select(
         `
         user_id,
@@ -351,10 +351,10 @@ export class TeamService {
           full_name,
           avatar_url
         )
-      `,
+      `
       )
-      .eq("team_id", teamId)
-      .order("joined_at", { ascending: true });
+      .eq('team_id', teamId)
+      .order('joined_at', { ascending: true });
 
     if (error) {
       throw new Error(`Failed to fetch team members: ${error.message}`);
@@ -363,18 +363,18 @@ export class TeamService {
     // Get emails from BetterAuth user table
     const userIds = members?.map((m) => m.user_id) || [];
     const { data: betterAuthUsers } = await this.supabase
-      .from("user")
-      .select("id, email")
-      .in("id", userIds);
+      .from('user')
+      .select('id, email')
+      .in('id', userIds);
 
     // Create email lookup map
     const emailMap = new Map(
-      betterAuthUsers?.map((u) => [u.id, u.email]) || [],
+      betterAuthUsers?.map((u) => [u.id, u.email]) || []
     );
 
     return (members || []).map((m) => ({
       userId: m.user_id,
-      email: emailMap.get(m.user_id) || "",
+      email: emailMap.get(m.user_id) || '',
       fullName:
         (m.users as { full_name: string | null } | null)?.full_name || null,
       avatarUrl:
@@ -392,13 +392,13 @@ export class TeamService {
    * @returns Array of team invitations
    */
   async getInvitations(
-    teamId: string,
-  ): Promise<Omit<TeamInvitation, "token">[]> {
+    teamId: string
+  ): Promise<Omit<TeamInvitation, 'token'>[]> {
     const { data: invitations, error } = await this.supabase
-      .from("team_invitations")
-      .select("*")
-      .eq("team_id", teamId)
-      .order("created_at", { ascending: false });
+      .from('team_invitations')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to fetch invitations: ${error.message}`);

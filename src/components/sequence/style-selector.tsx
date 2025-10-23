@@ -1,11 +1,11 @@
-import Image from "next/image";
-import type * as React from "react";
-import { useCallback } from "react";
-import { GalleryIcon } from "@/components/icons/gallery-icon";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import type { Style } from "@/types/database";
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback } from 'react';
+import { GalleryIcon } from '@/components/icons/gallery-icon';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import type { Style } from '@/types/database';
 
 interface StyleSelectorProps {
   selectedStyleId: string | null;
@@ -36,21 +36,21 @@ const StyleCard: React.FC<StyleCardProps> = ({
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
+      if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         handleClick();
       }
     },
-    [handleClick],
+    [handleClick]
   );
 
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all duration-200 hover:shadow-md",
-        "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-        selected && "ring-2 ring-primary ring-offset-2",
-        disabled && "cursor-not-allowed opacity-50",
+        'cursor-pointer transition-all duration-200 hover:shadow-md',
+        'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+        selected && 'ring-2 ring-primary ring-offset-2',
+        disabled && 'cursor-not-allowed opacity-50'
       )}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -73,9 +73,9 @@ const StyleCard: React.FC<StyleCardProps> = ({
                 onError={(e) => {
                   console.warn(
                     `Failed to load image for style ${style.name}:`,
-                    style.preview_url,
+                    style.preview_url
                   );
-                  e.currentTarget.style.display = "none";
+                  e.currentTarget.style.display = 'none';
                 }}
               />
             ) : (
@@ -94,16 +94,16 @@ const StyleCard: React.FC<StyleCardProps> = ({
             </h3>
 
             {style.config &&
-              typeof style.config === "object" &&
-              "artStyle" in style.config && (
+              typeof style.config === 'object' &&
+              'artStyle' in style.config && (
                 <p className="text-xs text-muted-foreground line-clamp-1">
                   {String(style.config.artStyle)}
                 </p>
               )}
 
             {style.config &&
-              typeof style.config === "object" &&
-              "colorPalette" in style.config &&
+              typeof style.config === 'object' &&
+              'colorPalette' in style.config &&
               Array.isArray(style.config.colorPalette) && (
                 <div className="flex gap-1 mt-1" data-testid="color-palette">
                   {style.config.colorPalette.slice(0, 4).map((color, index) => (

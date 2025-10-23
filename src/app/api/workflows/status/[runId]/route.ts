@@ -3,20 +3,20 @@
  * Get the current state and logs of a workflow run
  */
 
-import { Client } from "@upstash/qstash";
-import { NextResponse } from "next/server";
+import { Client } from '@upstash/qstash';
+import { NextResponse } from 'next/server';
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ runId: string }> },
+  { params }: { params: Promise<{ runId: string }> }
 ) {
   try {
     const { runId } = await params;
 
     if (!runId) {
       return NextResponse.json(
-        { error: "Run ID is required" },
-        { status: 400 },
+        { error: 'Run ID is required' },
+        { status: 400 }
       );
     }
 
@@ -24,8 +24,8 @@ export async function GET(
     const token = process.env.QSTASH_TOKEN;
     if (!token) {
       return NextResponse.json(
-        { error: "QStash not configured" },
-        { status: 500 },
+        { error: 'QStash not configured' },
+        { status: 500 }
       );
     }
 
@@ -37,20 +37,20 @@ export async function GET(
     // For now, return a basic response
     const response = {
       runId,
-      status: "RUNNING",
-      message: "Workflow status endpoint - API integration pending",
+      status: 'RUNNING',
+      message: 'Workflow status endpoint - API integration pending',
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("[Workflow Status] Error fetching workflow status", error);
+    console.error('[Workflow Status] Error fetching workflow status', error);
 
     return NextResponse.json(
       {
-        error: "Failed to fetch workflow status",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to fetch workflow status',
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

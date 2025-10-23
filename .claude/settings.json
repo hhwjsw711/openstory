@@ -1,15 +1,55 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun biome:*)",
-      "Bash(bun biome check --write .)",
+      "Bash(bun lint:*)",
+      "Bash(bun lint)",
+      "Bash(bun lint:fix)",
+      "Bash(bun format:*)",
+      "Bash(bun format)",
+      "Bash(bun format:check)",
+      "Bash(bunx oxlint:*)",
+      "Bash(bunx prettier:*)",
       "Bash(bun tsc --noEmit --skipLibCheck)",
       "Bash(bun test)",
       "Bash(bun test --watch)",
       "Bash(bun test --coverage)",
-      "Bash(bun test --watch --coverage)"
+      "Bash(bun test --watch --coverage)",
+      "Bash(rg:*)",
+      "Bash(git status)",
+      "Bash(bunx supabase status)",
+      "Bash(bunx supabase db diff:*)",
+      "Bash(bunx supabase migration:*)"
     ],
     "deny": [],
-    "ask": ["Bash(git commit --no-verify)"]
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(bun dev)",
+      "Bash(bunx supabase:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-ripgrep.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-lint.sh"
+          }
+        ]
+      }
+    ]
   }
 }

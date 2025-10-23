@@ -1,37 +1,37 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
-import { cn } from "@/lib/utils";
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
+import { cn } from '@/lib/utils';
 
 const emptyStateVariants = cva(
-  "flex flex-col items-center justify-center text-center",
+  'flex flex-col items-center justify-center text-center',
   {
     variants: {
       spacing: {
-        compact: "py-8 space-y-3",
-        default: "py-16 space-y-4",
-        spacious: "py-24 space-y-6",
+        compact: 'py-8 space-y-3',
+        default: 'py-16 space-y-4',
+        spacious: 'py-24 space-y-6',
       },
     },
     defaultVariants: {
-      spacing: "default",
+      spacing: 'default',
     },
-  },
+  }
 );
 
 const iconContainerVariants = cva(
-  "rounded-full bg-muted flex items-center justify-center",
+  'rounded-full bg-muted flex items-center justify-center',
   {
     variants: {
       size: {
-        small: "p-4",
-        medium: "p-6",
-        large: "p-8",
+        small: 'p-4',
+        medium: 'p-6',
+        large: 'p-8',
       },
     },
     defaultVariants: {
-      size: "medium",
+      size: 'medium',
     },
-  },
+  }
 );
 
 export interface EmptyStateProps
@@ -41,7 +41,7 @@ export interface EmptyStateProps
   title: string;
   description?: string;
   action?: React.ReactNode;
-  iconSize?: VariantProps<typeof iconContainerVariants>["size"];
+  iconSize?: VariantProps<typeof iconContainerVariants>['size'];
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -51,7 +51,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
   action,
-  iconSize = "medium",
+  iconSize = 'medium',
   ...props
 }) => {
   return (

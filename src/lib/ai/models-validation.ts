@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { IMAGE_MODELS } from "@/lib/ai/models";
-import { letzaiImageRequestSchema } from "@/lib/schemas/letzai-request";
+import { z } from 'zod';
+import { IMAGE_MODELS } from '@/lib/ai/models';
+import { letzaiImageRequestSchema } from '@/lib/schemas/letzai-request';
 
 // Extract model keys with const assertion for type safety
 export const MODEL_KEYS = Object.keys(IMAGE_MODELS) as [
@@ -16,12 +16,12 @@ export const fluxProKontextMaxSchema = z.object({
   guidance_scale: z.number().positive().optional(),
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
-  safety_tolerance: z.enum(["1", "2", "3", "4", "5", "6"]).optional(),
+  safety_tolerance: z.enum(['1', '2', '3', '4', '5', '6']).optional(),
   enhance_prompt: z.boolean().optional(),
   aspect_ratio: z
-    .enum(["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"])
+    .enum(['21:9', '16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '9:21'])
     .optional(),
-  output_format: z.enum(["jpeg", "png"]).optional(),
+  output_format: z.enum(['jpeg', 'png']).optional(),
 });
 
 export type FluxProKontextMaxSchema = z.infer<typeof fluxProKontextMaxSchema>;
@@ -30,10 +30,10 @@ export type FluxProKontextMaxSchema = z.infer<typeof fluxProKontextMaxSchema>;
 export const imagen4PreviewUltraSchema = z.object({
   prompt: z.string(),
   negative_prompt: z.string().optional(),
-  aspect_ratio: z.enum(["1:1", "16:9", "9:16", "3:4", "4:3"]).optional(),
+  aspect_ratio: z.enum(['1:1', '16:9', '9:16', '3:4', '4:3']).optional(),
   num_images: z.number().positive().optional(),
   seed: z.number().int().min(0).optional(),
-  resolution: z.enum(["1K", "2K"]).default("1K"),
+  resolution: z.enum(['1K', '2K']).default('1K'),
 });
 
 export type Imagen4PreviewUltraSchema = z.infer<
@@ -47,10 +47,10 @@ export const fluxProV11UltraSchema = z.object({
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   enable_safety_checker: z.boolean().optional(),
-  output_format: z.enum(["jpeg", "png"]).optional(),
-  safety_tolerance: z.enum(["1", "2", "3", "4", "5", "6"]).optional(),
+  output_format: z.enum(['jpeg', 'png']).optional(),
+  safety_tolerance: z.enum(['1', '2', '3', '4', '5', '6']).optional(),
   aspect_ratio: z
-    .enum(["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"])
+    .enum(['21:9', '16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '9:21'])
     .optional(),
   raw: z.boolean().optional(),
 });
@@ -63,12 +63,12 @@ export const fluxKreaLoraSchema = z.object({
   image_size: z
     .union([
       z.enum([
-        "square_hd",
-        "square",
-        "portrait_4_3",
-        "portrait_16_9",
-        "landscape_4_3",
-        "landscape_16_9",
+        'square_hd',
+        'square',
+        'portrait_4_3',
+        'portrait_16_9',
+        'landscape_4_3',
+        'landscape_16_9',
       ]),
       z.object({
         width: z.number().positive(),
@@ -83,14 +83,14 @@ export const fluxKreaLoraSchema = z.object({
       z.object({
         path: z.string(),
         scale: z.number().positive().optional(),
-      }),
+      })
     )
     .optional(),
   guidance_scale: z.number().positive().optional(),
   sync_mode: z.boolean().optional(),
   number_of_images: z.number().positive().optional(),
   enable_safety_checker: z.boolean().optional(),
-  output_format: z.enum(["jpeg", "png"]).optional(),
+  output_format: z.enum(['jpeg', 'png']).optional(),
 });
 
 // Basic schemas for models with minimal parameters
@@ -144,7 +144,7 @@ interface ExtraParamsSchemaByModelData {
 
 // extra_params schema by model
 export const extraParamsSchemaByModel = (
-  data: ExtraParamsSchemaByModelData,
+  data: ExtraParamsSchemaByModelData
 ) => {
   // Validate extra_params based on the selected model
   const modelSchemas = {
@@ -166,7 +166,7 @@ export const extraParamsSchemaByModel = (
 
   if (!schema) {
     throw new Error(
-      `[model-validations] No validation schema found for model: ${data.model}`,
+      `[model-validations] No validation schema found for model: ${data.model}`
     );
   }
 
@@ -174,7 +174,7 @@ export const extraParamsSchemaByModel = (
   const result = schema.safeParse(params);
   if (!result.success) {
     throw new Error(
-      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`
     );
   }
 
@@ -183,7 +183,7 @@ export const extraParamsSchemaByModel = (
 
 // Parser that returns normalized extra_params with defaults
 export const parseExtraParamsByModel = (
-  data: ExtraParamsSchemaByModelData,
+  data: ExtraParamsSchemaByModelData
 ): Record<string, unknown> => {
   const modelSchemas = {
     // Advanced models with specific schemas
@@ -204,7 +204,7 @@ export const parseExtraParamsByModel = (
 
   if (!schema) {
     throw new Error(
-      `[model-validations] No validation schema found for model: ${data.model}`,
+      `[model-validations] No validation schema found for model: ${data.model}`
     );
   }
 
@@ -212,7 +212,7 @@ export const parseExtraParamsByModel = (
   const result = schema.safeParse(params);
   if (!result.success) {
     throw new Error(
-      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`,
+      `[model-validations] extra_params validation failed for model ${data.model}: ${result.error.message}`
     );
   }
 
@@ -231,7 +231,7 @@ export const generateImageSchema = z
   })
   .refine((data) => extraParamsSchemaByModel(data), {
     message:
-      "[api/v1/generates/image] Generating image | extra_params validation failed for the selected model",
+      '[api/v1/generates/image] Generating image | extra_params validation failed for the selected model',
   });
 
 export type GenerateImageInput = z.infer<typeof generateImageSchema>;

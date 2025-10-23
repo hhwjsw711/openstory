@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Style } from "@/types/database";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Style } from '@/types/database';
 
 export interface CreateStyleInput {
   name: string;
@@ -13,10 +13,10 @@ export interface CreateStyleInput {
 
 // Query keys
 export const styleKeys = {
-  all: ["styles"] as const,
-  lists: () => [...styleKeys.all, "list"] as const,
+  all: ['styles'] as const,
+  lists: () => [...styleKeys.all, 'list'] as const,
   list: (teamId?: string) => [...styleKeys.lists(), teamId] as const,
-  details: () => [...styleKeys.all, "detail"] as const,
+  details: () => [...styleKeys.all, 'detail'] as const,
   detail: (id: string) => [...styleKeys.details(), id] as const,
 };
 
@@ -25,11 +25,11 @@ export function useStyles(teamId?: string) {
   return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
-      const response = await fetch("/api/styles");
+      const response = await fetch('/api/styles');
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to list styles");
+        throw new Error(result.message || 'Failed to list styles');
       }
 
       return result.data;
@@ -47,7 +47,7 @@ export function useStyle(id: string) {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to get style");
+        throw new Error(result.message || 'Failed to get style');
       }
 
       return result.data;
@@ -63,10 +63,10 @@ export function useCreateStyle() {
 
   return useMutation<Style, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
-      const response = await fetch("/api/styles", {
-        method: "POST",
+      const response = await fetch('/api/styles', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(input),
       });
@@ -74,7 +74,7 @@ export function useCreateStyle() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to create style");
+        throw new Error(result.message || 'Failed to create style');
       }
 
       return result.data;
@@ -105,9 +105,9 @@ export function useUpdateStyle() {
       input: Partial<CreateStyleInput>;
     }) => {
       const response = await fetch(`/api/styles/${id}`, {
-        method: "PATCH",
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(input),
       });
@@ -115,7 +115,7 @@ export function useUpdateStyle() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to update style");
+        throw new Error(result.message || 'Failed to update style');
       }
 
       return result.data;
@@ -136,13 +136,13 @@ export function useDeleteStyle() {
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/styles/${id}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to delete style");
+        throw new Error(result.message || 'Failed to delete style');
       }
     },
     onSuccess: (_, id) => {

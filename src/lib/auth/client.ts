@@ -3,12 +3,12 @@
  * Provides client-side authentication methods and hooks
  */
 
-import { anonymousClient } from "better-auth/client/plugins";
-import { createAuthClient } from "better-auth/react";
+import { anonymousClient } from 'better-auth/client/plugins';
+import { createAuthClient } from 'better-auth/react';
 
 // Create the auth client with plugins
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000',
   plugins: [anonymousClient()],
 });
 

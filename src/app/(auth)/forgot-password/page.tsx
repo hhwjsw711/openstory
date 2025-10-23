@@ -3,26 +3,26 @@
  * Allows users to request a password reset email
  */
 
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useState } from "react";
-import { PageContainer } from "@/components/layout";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { useState } from 'react';
+import { PageContainer } from '@/components/layout';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth/client";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { authClient } from '@/lib/auth/client';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -35,20 +35,20 @@ export default function ForgotPasswordPage() {
     try {
       const result = await authClient.forgetPassword({
         email,
-        redirectTo: "/reset-password",
+        redirectTo: '/reset-password',
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to send reset email");
+        setError(result.error.message || 'Failed to send reset email');
         setIsLoading(false);
         return;
       }
 
       setSuccess(true);
     } catch (err) {
-      console.error("[ForgotPassword] Error:", err);
+      console.error('[ForgotPassword] Error:', err);
       setError(
-        err instanceof Error ? err.message : "Failed to send reset email",
+        err instanceof Error ? err.message : 'Failed to send reset email'
       );
     } finally {
       setIsLoading(false);
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
 
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Didn't receive the email? Check your spam folder or{" "}
+                    Didn't receive the email? Check your spam folder or{' '}
                     <button
                       type="button"
                       onClick={() => setSuccess(false)}
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send Reset Link"}
+                  {isLoading ? 'Sending...' : 'Send Reset Link'}
                 </Button>
               </form>
 

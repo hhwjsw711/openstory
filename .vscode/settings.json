@@ -23,15 +23,11 @@
       "icon": "terminal"
     }
   },
-  "terminal.integrated.shell.linux": "/bin/zsh",
-  "terminal.integrated.shell.osx": "/bin/zsh",
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "biomejs.biome",
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "typescript.suggest.includeCompletionsForModuleExports": true,
   "typescript.preferences.includePackageJsonAutoImports": "auto",
   "editor.codeActionsOnSave": {
-    "source.fixAll.biome": "explicit"
+    "source.organizeImports": "explicit"
   },
   "files.associations": {
     "*.mdx": "mdx"
@@ -39,34 +35,26 @@
   "githubPullRequests.createDefaultBaseBranch": "repositoryDefault",
   "task.allowAutomaticTasks": "on",
   "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascriptreact]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[json]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
-  "task.problemMatchers.neverPrompt": false
+  "task.problemMatchers.neverPrompt": false,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "oxc.typeAware": true,
+  "oxc.lint.run": "onSave",
+  "oxc.configPath": ""
 }

@@ -3,14 +3,14 @@
  * GET /api/letzai/usage - Get usage statistics and analytics
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { handleApiError } from "@/lib/errors";
-import { getLetzAIService } from "@/lib/services/letzai-service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { handleApiError } from '@/lib/errors';
+import { getLetzAIService } from '@/lib/services/letzai-service';
 
 // Query parameters schema
 const usageQuerySchema = z.object({
-  teamId: z.string().uuid("Invalid team ID format"),
+  teamId: z.string().uuid('Invalid team ID format'),
   startDate: z
     .string()
     .optional()
@@ -20,9 +20,9 @@ const usageQuerySchema = z.object({
     .optional()
     .transform((val) => (val ? new Date(val) : undefined)),
   endpoint: z
-    .enum(["/images", "/image-edits", "/upscale", "/models"])
+    .enum(['/images', '/image-edits', '/upscale', '/models'])
     .optional(),
-  groupBy: z.enum(["day", "week", "month"]).optional().default("day"),
+  groupBy: z.enum(['day', 'week', 'month']).optional().default('day'),
 });
 
 /**
@@ -33,11 +33,11 @@ export async function GET(request: Request) {
     // Parse query parameters
     const url = new URL(request.url);
     const queryParams = {
-      teamId: url.searchParams.get("teamId"),
-      startDate: url.searchParams.get("startDate"),
-      endDate: url.searchParams.get("endDate"),
-      endpoint: url.searchParams.get("endpoint"),
-      groupBy: url.searchParams.get("groupBy"),
+      teamId: url.searchParams.get('teamId'),
+      startDate: url.searchParams.get('startDate'),
+      endDate: url.searchParams.get('endDate'),
+      endpoint: url.searchParams.get('endpoint'),
+      groupBy: url.searchParams.get('groupBy'),
     };
 
     const { teamId, startDate, endDate, endpoint, groupBy } =
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
             start:
               startDate?.toISOString() ||
               new Date(
-                currentPeriod.getTime() - 30 * 24 * 60 * 60 * 1000,
+                currentPeriod.getTime() - 30 * 24 * 60 * 60 * 1000
               ).toISOString(),
             end: endDate?.toISOString() || currentPeriod.toISOString(),
           },
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
           // Most used endpoint
           topEndpoint:
             Object.entries(stats.requestsByEndpoint).sort(
-              ([, a], [, b]) => b - a,
+              ([, a], [, b]) => b - a
             )[0]?.[0] || null,
           // Cost efficiency (requests per credit)
           costEfficiency:
@@ -130,23 +130,23 @@ export async function GET(request: Request) {
         teamId,
         endpoint,
         groupBy,
-        currency: "credits",
+        currency: 'credits',
       },
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("[LetzAI Usage] Failed to fetch usage stats:", error);
+    console.error('[LetzAI Usage] Failed to fetch usage stats:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch usage statistics",
+        message: 'Failed to fetch usage statistics',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

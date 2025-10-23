@@ -1,22 +1,22 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { ProgressSection } from "../progress-section";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { ProgressSection } from '../progress-section';
 
 const meta: Meta<typeof ProgressSection> = {
-  title: "Components/Sequence/ProgressSection",
+  title: 'Components/Sequence/ProgressSection',
   component: ProgressSection,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         component:
-          "A visual progress indicator showing completion status of sequence setup steps.",
+          'A visual progress indicator showing completion status of sequence setup steps.',
       },
     },
   },
   argTypes: {
     progress: {
-      description: "Progress data including completion counts and percentage",
-      control: "object",
+      description: 'Progress data including completion counts and percentage',
+      control: 'object',
     },
   },
 };
@@ -35,7 +35,7 @@ export const Empty: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Progress section showing no completed steps.",
+        story: 'Progress section showing no completed steps.',
       },
     },
   },
@@ -52,7 +52,7 @@ export const HalfComplete: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Progress section showing one of two steps completed.",
+        story: 'Progress section showing one of two steps completed.',
       },
     },
   },
@@ -69,7 +69,7 @@ export const Complete: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Progress section showing all steps completed.",
+        story: 'Progress section showing all steps completed.',
       },
     },
   },
@@ -86,7 +86,7 @@ export const MultipleSteps: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Progress section with multiple steps (3 of 5 completed).",
+        story: 'Progress section with multiple steps (3 of 5 completed).',
       },
     },
   },

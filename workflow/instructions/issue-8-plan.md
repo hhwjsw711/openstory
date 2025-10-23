@@ -1,12 +1,14 @@
 # Implementation Plan: Issue #8 - Generate Frames
 
 ## Issue Overview
+
 **Title:** [Backend] Generate Frames  
 **Number:** 8  
 **Labels:** backend, frames  
 **URL:** https://github.com/velro-ai/velro/issues/8
 
 ## Summary
+
 Implement the frame generation system that creates storyboard frames from analyzed scripts with proper descriptions and metadata using QStash for async processing and AI for intelligent frame descriptions.
 
 ## Implementation Plan
@@ -14,11 +16,13 @@ Implement the frame generation system that creates storyboard frames from analyz
 ### Phase 1: Core Infrastructure (Days 1-3)
 
 #### 1.1 Extend Job System for Frame Generation
+
 - **File:** `src/lib/qstash/types.ts`
 - Add new job type: `FRAME_GENERATION`
 - Add job payload interface for frame generation parameters
 
 #### 1.2 Create Frame Generation Server Actions
+
 - **File:** `src/app/actions/frames.ts`
 - `generateFramesAction` - Server action to initiate frame generation
 - Validates sequence exists and user has permissions
@@ -26,6 +30,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 - Returns job ID and optimistic frame placeholders
 
 #### 1.3 Implement QStash Webhook Handler
+
 - **File:** `src/app/webhooks/qstash/frames/route.ts`
 - Processes frame generation jobs
 - Calls AI service for frame description generation
@@ -35,18 +40,21 @@ Implement the frame generation system that creates storyboard frames from analyz
 ### Phase 2: AI Integration (Days 4-6)
 
 #### 2.1 Create AI Service Abstraction
+
 - **File:** `src/lib/ai/frame-generator.ts`
 - Service layer for frame generation AI calls
 - Support for multiple providers (Anthropic/OpenAI)
 - Prompt templates for consistent frame descriptions
 
 #### 2.2 Script Analysis Service
+
 - **File:** `src/lib/ai/script-analyzer.ts`
 - Analyze scripts to identify frame boundaries
 - Generate frame timing and duration
 - Create visual descriptions based on script content
 
 #### 2.3 Frame Description Generation
+
 - **File:** `src/lib/ai/frame-descriptions.ts`
 - Generate detailed visual descriptions for each frame
 - Maintain consistency with style stacks
@@ -55,6 +63,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 ### Phase 3: Additional Server Actions & Frontend Hooks (Days 7-8)
 
 #### 3.1 Additional Server Actions
+
 - **File:** `src/app/actions/frames.ts`
 - `regenerateFrameAction` - Regenerates specific frame
 - `updateFrameAction` - Updates frame metadata
@@ -63,6 +72,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 - Form validation with Zod schemas
 
 #### 3.2 TanStack Query Hooks
+
 - **File:** `src/hooks/use-frames.ts`
 - `useFrames` - Fetch frames for sequence
 - `useGenerateFrames` - Mutation for frame generation
@@ -70,6 +80,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 - Real-time updates via optimistic updates
 
 #### 3.3 Enhanced Database Operations
+
 - **File:** `src/lib/db/frames.ts`
 - Database helper functions for frame operations
 - Add optimistic locking with version field
@@ -79,16 +90,19 @@ Implement the frame generation system that creates storyboard frames from analyz
 ### Phase 4: Optimization & Testing (Days 9-10)
 
 #### 4.1 Performance Optimization
+
 - Database indexing for frame queries
 - Batch processing for multiple frame generation
 - Rate limiting for AI API calls
 
 #### 4.2 Testing Implementation
+
 - Unit tests for AI service layer
 - Integration tests for QStash workflow
 - API endpoint testing with mocked dependencies
 
 #### 4.3 Error Handling & Monitoring
+
 - Comprehensive error states in database
 - Retry logic for failed frame generation
 - Logging and monitoring for AI API usage
@@ -96,6 +110,7 @@ Implement the frame generation system that creates storyboard frames from analyz
 ## Database Schema Updates
 
 ### frames Table Enhancement
+
 ```sql
 -- Add optimistic locking
 ALTER TABLE frames ADD COLUMN version INTEGER DEFAULT 1;
@@ -113,32 +128,38 @@ CREATE INDEX idx_frames_generation_status ON frames(generation_status);
 ### Frame Generation Actions
 
 #### generateFramesAction
+
 ```typescript
 // Input Schema
 const generateFramesSchema = z.object({
   sequenceId: z.string().uuid(),
-  options: z.object({
-    frameCount: z.number().min(1).max(100).optional(),
-    styleStackId: z.string().uuid().optional(),
-    regenerateAll: z.boolean().optional(),
-  }).optional(),
+  options: z
+    .object({
+      frameCount: z.number().min(1).max(100).optional(),
+      styleStackId: z.string().uuid().optional(),
+      regenerateAll: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 // Return Type
-type GenerateFramesResult = {
-  success: true;
-  data: {
-    jobId: string;
-    frames: Frame[]; // Optimistic placeholders
-    estimatedDuration: number;
-  };
-} | {
-  success: false;
-  error: string;
-};
+type GenerateFramesResult =
+  | {
+      success: true;
+      data: {
+        jobId: string;
+        frames: Frame[]; // Optimistic placeholders
+        estimatedDuration: number;
+      };
+    }
+  | {
+      success: false;
+      error: string;
+    };
 ```
 
 #### regenerateFrameAction
+
 ```typescript
 const regenerateFrameSchema = z.object({
   frameId: z.string().uuid(),
@@ -159,6 +180,7 @@ const regenerateFrameSchema = z.object({
 ## AI Integration Details
 
 ### Frame Generation Prompt Template
+
 ```
 Analyze this script section and generate a detailed visual description for a storyboard frame:
 
@@ -210,12 +232,14 @@ Generate:
 ## Success Metrics
 
 ### Technical Metrics
+
 - Frame generation time < 30 seconds for 10 frames
 - AI API success rate > 95%
 - Database query performance < 100ms
 - Job processing success rate > 98%
 
 ### Business Metrics
+
 - Sequence completion rate increase of 50%
 - User adoption of frame generation > 80%
 - Frame quality rating > 4/5
@@ -224,11 +248,13 @@ Generate:
 ## Dependencies
 
 ### External Services
+
 - AI Provider (Anthropic/OpenAI) API keys
 - QStash configuration for new job type
 - Database migrations for schema updates
 
 ### Internal Dependencies
+
 - Existing sequence/script management system
 - QStash job processing infrastructure
 - TanStack Query setup
@@ -237,16 +263,19 @@ Generate:
 ## Testing Strategy
 
 ### Unit Tests
+
 - AI service layer with mocked responses
 - Frame validation logic
 - Database operations
 
 ### Integration Tests
+
 - End-to-end frame generation workflow
 - QStash job processing
 - Server action functionality
 
 ### Manual Testing
+
 - Various script formats and lengths
 - Error scenarios and recovery
 - Performance under load

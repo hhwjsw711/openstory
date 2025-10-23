@@ -3,17 +3,17 @@
  * POST /api/sequences/[sequenceId]/frames/generate - Generate frames for a sequence
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
-import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
-import { getQStashClient, workflowConfig } from "@/lib/workflow";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
+import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ sequenceId: string }> },
+  { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
     const { sequenceId } = await params;
@@ -23,7 +23,7 @@ export async function POST(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -32,19 +32,19 @@ export async function POST(
 
     // Verify sequence exists and get team info
     const { data: sequence } = await supabase
-      .from("sequences")
-      .select("id, team_id, status")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('id, team_id, status')
+      .eq('id', sequenceId)
       .single();
 
     if (!sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -52,25 +52,25 @@ export async function POST(
     await requireTeamMemberAccess(user.id, sequence.team_id);
 
     // Check if sequence is already processing
-    if (sequence.status === "processing") {
-      console.log("[generateFrames] Sequence already processing", {
+    if (sequence.status === 'processing') {
+      console.log('[generateFrames] Sequence already processing', {
         sequenceId,
       });
       return NextResponse.json(
         {
           success: true,
-          message: "Frame generation already in progress",
+          message: 'Frame generation already in progress',
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
     // Update sequence status to processing
     await supabase
-      .from("sequences")
-      .update({ status: "processing" })
-      .eq("id", sequenceId);
+      .from('sequences')
+      .update({ status: 'processing' })
+      .eq('id', sequenceId);
 
     // Trigger frame generation workflow
     const workflowInput: FrameGenerationWorkflowInput = {
@@ -81,7 +81,7 @@ export async function POST(
         framesPerScene: 3,
         generateThumbnails: true,
         generateDescriptions: true,
-        aiProvider: "openrouter",
+        aiProvider: 'openrouter',
         regenerateAll: true,
       },
     };
@@ -95,7 +95,7 @@ export async function POST(
 
     const workflowRunId = messageId;
 
-    console.log("[generateFrames] Frame generation workflow triggered", {
+    console.log('[generateFrames] Frame generation workflow triggered', {
       sequenceId,
       workflowRunId,
     });
@@ -107,25 +107,25 @@ export async function POST(
           workflowRunId,
           frames: [],
         },
-        message: "Frame generation started successfully",
+        message: 'Frame generation started successfully',
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
-      "[POST /api/sequences/[sequenceId]/frames/generate] Error:",
-      error,
+      '[POST /api/sequences/[sequenceId]/frames/generate] Error:',
+      error
     );
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to generate frames",
+        message: 'Failed to generate frames',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

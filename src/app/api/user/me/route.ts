@@ -3,11 +3,11 @@
  * GET /api/user/me - Get current user
  */
 
-import { NextResponse } from "next/server";
-import { createAnonymousSession, getSession } from "@/lib/auth/server";
-import { handleApiError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
-import type { UserProfile } from "@/types/database";
+import { NextResponse } from 'next/server';
+import { createAnonymousSession, getSession } from '@/lib/auth/server';
+import { handleApiError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
+import type { UserProfile } from '@/types/database';
 
 /**
  * Ensure user exists in database with team membership
@@ -30,7 +30,7 @@ async function ensureUserAndTeam(authUser: {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const { data: userWithTeam } = await supabase
-        .from("users")
+        .from('users')
         .select(
           `
           *,
@@ -38,9 +38,9 @@ async function ensureUserAndTeam(authUser: {
             team_id,
             role
           )
-        `,
+        `
         )
-        .eq("id", authUser.id)
+        .eq('id', authUser.id)
         .maybeSingle();
 
       // Early exit if user and team membership both exist
@@ -59,12 +59,12 @@ async function ensureUserAndTeam(authUser: {
     return {
       success: false,
       error:
-        "Failed to initialize user profile. The database trigger may not be running.",
+        'Failed to initialize user profile. The database trigger may not be running.',
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unexpected error",
+      error: error instanceof Error ? error.message : 'Unexpected error',
     };
   }
 }
@@ -81,10 +81,10 @@ export async function GET() {
         return NextResponse.json(
           {
             success: false,
-            message: "Failed to create anonymous session",
+            message: 'Failed to create anonymous session',
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -97,10 +97,10 @@ export async function GET() {
           {
             success: false,
             message:
-              createResult.error || "Failed to create anonymous user profile",
+              createResult.error || 'Failed to create anonymous user profile',
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -114,7 +114,7 @@ export async function GET() {
           },
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -124,9 +124,9 @@ export async function GET() {
     // Get user profile from database
     const supabase = createServerClient();
     const { data: userProfile, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", authUser.id)
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
       .single();
 
     if (error || !userProfile) {
@@ -136,10 +136,10 @@ export async function GET() {
         return NextResponse.json(
           {
             success: false,
-            message: createResult.error || "Failed to create user profile",
+            message: createResult.error || 'Failed to create user profile',
             timestamp: new Date().toISOString(),
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -153,7 +153,7 @@ export async function GET() {
           },
           timestamp: new Date().toISOString(),
         },
-        { status: 200 },
+        { status: 200 }
       );
     }
 
@@ -167,20 +167,20 @@ export async function GET() {
         },
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/user/me] Error:", error);
+    console.error('[GET /api/user/me] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get user",
+        message: 'Failed to get user',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

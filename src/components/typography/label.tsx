@@ -1,21 +1,21 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
-import { cn } from "@/lib/utils";
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
+import { cn } from '@/lib/utils';
 
 const labelVariants = cva(
-  "font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+  'font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
   {
     variants: {
       size: {
-        small: "text-xs",
-        medium: "text-sm",
-        large: "text-base",
+        small: 'text-xs',
+        medium: 'text-sm',
+        large: 'text-base',
       },
     },
     defaultVariants: {
-      size: "medium",
+      size: 'medium',
     },
-  },
+  }
 );
 
 export interface LabelProps

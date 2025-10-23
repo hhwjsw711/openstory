@@ -1,8 +1,8 @@
-import { useRouter } from "next/navigation";
-import type * as React from "react";
-import { useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useRouter } from 'next/navigation';
+import type * as React from 'react';
+import { useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface StepNavigationProps {
   sequenceId: string;
@@ -20,13 +20,13 @@ interface StepConfig {
 const STEPS: StepConfig[] = [
   {
     number: 1,
-    title: "Script",
-    description: "Write your story",
+    title: 'Script',
+    description: 'Write your story',
   },
   {
     number: 2,
-    title: "Storyboard & Motion",
-    description: "Generate frames and add motion",
+    title: 'Storyboard & Motion',
+    description: 'Generate frames and add motion',
   },
 ];
 
@@ -38,11 +38,11 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
 }) => {
   const router = useRouter();
   const getStepStatus = (
-    stepNumber: number,
-  ): "current" | "completed" | "upcoming" => {
-    if (stepNumber === currentStep) return "current";
-    if (completedSteps.has(stepNumber)) return "completed";
-    return "upcoming";
+    stepNumber: number
+  ): 'current' | 'completed' | 'upcoming' => {
+    if (stepNumber === currentStep) return 'current';
+    if (completedSteps.has(stepNumber)) return 'completed';
+    return 'upcoming';
   };
 
   const isStepClickable = (stepNumber: number): boolean => {
@@ -71,12 +71,12 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
           break;
       }
     },
-    [sequenceId, router, completedSteps, currentStep],
+    [sequenceId, router, completedSteps, currentStep]
   );
 
   return (
     <nav
-      className={cn("w-full", className)}
+      className={cn('w-full', className)}
       aria-label="Progress steps"
       data-testid="step-navigation"
     >
@@ -94,34 +94,34 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                   onClick={() => isClickable && handleStepClick(step.number)}
                   disabled={!isClickable}
                   className={cn(
-                    "flex flex-col items-center p-2 h-auto min-w-0 gap-1",
-                    "text-center transition-all duration-200",
+                    'flex flex-col items-center p-2 h-auto min-w-0 gap-1',
+                    'text-center transition-all duration-200',
                     {
-                      "text-primary": status === "current",
-                      "text-muted-foreground hover:text-foreground":
-                        status === "upcoming",
-                      "text-muted-foreground": status === "completed",
-                      "cursor-pointer": isClickable,
-                      "cursor-default": !isClickable,
-                    },
+                      'text-primary': status === 'current',
+                      'text-muted-foreground hover:text-foreground':
+                        status === 'upcoming',
+                      'text-muted-foreground': status === 'completed',
+                      'cursor-pointer': isClickable,
+                      'cursor-default': !isClickable,
+                    }
                   )}
                   data-testid={`step-${step.number}-button`}
                 >
                   <div
                     className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full",
-                      "border-2 text-sm font-medium transition-all duration-200",
+                      'flex items-center justify-center w-8 h-8 rounded-full',
+                      'border-2 text-sm font-medium transition-all duration-200',
                       {
-                        "bg-primary border-primary text-primary-foreground":
-                          status === "current",
-                        "bg-muted border-muted-foreground text-muted-foreground":
-                          status === "upcoming",
-                        "bg-primary/10 border-primary text-primary":
-                          status === "completed",
-                      },
+                        'bg-primary border-primary text-primary-foreground':
+                          status === 'current',
+                        'bg-muted border-muted-foreground text-muted-foreground':
+                          status === 'upcoming',
+                        'bg-primary/10 border-primary text-primary':
+                          status === 'completed',
+                      }
                     )}
                   >
-                    {status === "completed" ? (
+                    {status === 'completed' ? (
                       <svg
                         className="w-4 h-4"
                         fill="currentColor"
@@ -154,11 +154,11 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
               {!isLast && (
                 <div
                   className={cn(
-                    "flex-1 h-px mx-4 transition-colors duration-200",
+                    'flex-1 h-px mx-4 transition-colors duration-200',
                     {
-                      "bg-primary": completedSteps.has(step.number),
-                      "bg-muted": !completedSteps.has(step.number),
-                    },
+                      'bg-primary': completedSteps.has(step.number),
+                      'bg-muted': !completedSteps.has(step.number),
+                    }
                   )}
                   aria-hidden="true"
                 />

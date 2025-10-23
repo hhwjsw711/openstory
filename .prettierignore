@@ -1,0 +1,11 @@
+# Lock files (tracked but binary/generated - don't format)
+bun.lockb
+
+# Other package manager lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated TypeScript types
+*.gen.ts
+gen.types.ts

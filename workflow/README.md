@@ -69,36 +69,42 @@ export ANTHROPIC_API_KEY="your-key"
 ## Agent Roles
 
 ### Engineering Lead
+
 - Triages and prioritizes issues
 - Assigns to appropriate teams
 - Reviews architecture decisions
 - Ensures code quality standards
 
 ### Backend Lead
+
 - Reviews backend architecture
 - Delegates to backend engineers
 - Ensures API consistency
 - Reviews database changes
 
 ### Frontend Architect
+
 - Reviews UI/UX decisions
 - Delegates to React engineers
 - Ensures component patterns
 - Reviews state management
 
 ### Backend Engineer
+
 - Implements API endpoints
 - Writes database queries
 - Integrates with services
 - Writes backend tests
 
 ### Frontend React Engineer
+
 - Implements React components
 - Manages state with TanStack Query
 - Uses shadcn/ui components
 - Writes frontend tests
 
 ### QA Lead Tester
+
 - Reviews test coverage
 - Ensures quality standards
 - Validates acceptance criteria
@@ -123,6 +129,7 @@ states:
 ## Configuration
 
 See `config/` directory for detailed configuration options:
+
 - `agents.yaml`: Agent personas and capabilities
 - `workflow.yaml`: State transitions and rules
 - `environment.yaml`: System settings
@@ -130,6 +137,7 @@ See `config/` directory for detailed configuration options:
 ## Monitoring
 
 Access the dashboard at http://localhost:3001 to:
+
 - View active workflows
 - Monitor agent progress
 - Review system logs
@@ -157,12 +165,14 @@ bun build
 If Claude doesn't automatically launch when Cursor opens, you have several options:
 
 ### Option 1: Use the Launch Script (In Cursor Terminal)
+
 ```bash
 # Navigate to the worktree directory shown in Cursor
 ./.launch-claude.sh
 ```
 
 ### Option 2: Use the Manual Launcher (From Main Project)
+
 ```bash
 # List all active issues being worked on
 ./workflow/scripts/manual-claude-launcher.sh list
@@ -172,13 +182,14 @@ If Claude doesn't automatically launch when Cursor opens, you have several optio
 ```
 
 ### Option 3: Direct Claude Command
+
 Check the `.launch-claude.sh` file in your worktree for the exact command to run.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Claude not launching automatically**: 
+1. **Claude not launching automatically**:
    - Use the manual launch options above
    - Check if Claude CLI is installed: `which claude`
    - Ensure VS Code tasks are enabled in Cursor

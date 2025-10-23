@@ -33,7 +33,7 @@ export function getRoleLevel(role: TeamRole): number {
  */
 export function hasMinimumRole(
   userRole: TeamRole,
-  requiredRole: TeamRole,
+  requiredRole: TeamRole
 ): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
@@ -56,7 +56,7 @@ export function getHighestRole(roles: TeamRole[]): TeamRole | null {
  */
 export const INVITATION_CONFIG = {
   TOKEN_BYTES: 32,
-  TOKEN_ENCODING: "base64url" as const, // URL-safe encoding
+  TOKEN_ENCODING: 'base64url' as const, // URL-safe encoding
   EXPIRY_DAYS: 7,
 } as const;
 

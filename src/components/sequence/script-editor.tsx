@@ -1,7 +1,7 @@
-import type * as React from "react";
-import { useCallback } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import type * as React from 'react';
+import { useCallback } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 interface ScriptEditorProps {
   value: string;
@@ -18,7 +18,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   onValueChange,
   error,
   maxLength = 5000,
-  placeholder = "Enter your script here...",
+  placeholder = 'Enter your script here...',
   disabled = false,
   showCharacterCount = true,
 }) => {
@@ -29,7 +29,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         onValueChange(newValue);
       }
     },
-    [onValueChange, maxLength],
+    [onValueChange, maxLength]
   );
 
   const isOverLimit = maxLength && value.length > maxLength;
@@ -43,10 +43,10 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           onChange={handleChange}
           placeholder={placeholder}
           disabled={disabled}
-          aria-invalid={hasError ? "true" : "false"}
+          aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            "min-h-32 resize-none",
-            hasError && "border-destructive focus-visible:ring-destructive/20",
+            'min-h-32 resize-none',
+            hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"
         />
@@ -56,14 +56,14 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         {showCharacterCount && (
           <div className="text-sm text-muted-foreground">
             <span
-              className={cn(isOverLimit && "text-destructive font-medium")}
+              className={cn(isOverLimit && 'text-destructive font-medium')}
               data-testid="character-count"
             >
               {value.length.toLocaleString()}
             </span>
             {maxLength && (
               <>
-                {" / "}
+                {' / '}
                 <span>{maxLength.toLocaleString()}</span>
                 <span> characters</span>
               </>

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useUser } from "./use-user";
+import { useUser } from './use-user';
 
-export type TeamRole = "owner" | "admin" | "member" | "viewer";
+export type TeamRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 // Role hierarchy for permission checks
 const ROLE_HIERARCHY: Record<TeamRole, number> = {
@@ -34,14 +34,14 @@ export function useTeamRole() {
    * Check if user is an admin or owner
    */
   const isAdmin = (): boolean => {
-    return hasMinimumRole("admin");
+    return hasMinimumRole('admin');
   };
 
   /**
    * Check if user is the team owner
    */
   const isOwner = (): boolean => {
-    return role === "owner";
+    return role === 'owner';
   };
 
   /**

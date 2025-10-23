@@ -1,9 +1,9 @@
-import { createFalClient } from "@fal-ai/client";
-import type { FalImageModel, FalVideoModel } from "@/lib/ai/models";
-import { IMAGE_MODELS, VIDEO_MODELS } from "@/lib/ai/models";
-import { VelroError, withRetry } from "@/lib/errors";
-import { createAdminClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/types/database";
+import { createFalClient } from '@fal-ai/client';
+import type { FalImageModel, FalVideoModel } from '@/lib/ai/models';
+import { IMAGE_MODELS, VIDEO_MODELS } from '@/lib/ai/models';
+import { VelroError, withRetry } from '@/lib/errors';
+import { createAdminClient } from '@/lib/supabase/server';
+import type { Json } from '@/lib/types/database';
 
 // Request/Response types
 export interface FalServiceRequest {
@@ -84,9 +84,9 @@ export class FalService {
     const apiKey = process.env.FAL_KEY;
     if (!apiKey) {
       throw new VelroError(
-        "FAL_KEY environment variable is required",
-        "FAL_CONFIG_ERROR",
-        500,
+        'FAL_KEY environment variable is required',
+        'FAL_CONFIG_ERROR',
+        500
       );
     }
     this.fal = createFalClient({
@@ -105,7 +105,7 @@ export class FalService {
       teamId?: string;
       jobId?: string;
       timeout?: number;
-    },
+    }
   ): Promise<FalServiceResponse> {
     return this.executeRequest({
       model,
@@ -127,7 +127,7 @@ export class FalService {
       teamId?: string;
       jobId?: string;
       timeout?: number;
-    },
+    }
   ): Promise<FalServiceResponse> {
     return this.executeRequest({
       model,
@@ -144,8 +144,8 @@ export class FalService {
   async checkStatus(): Promise<FalServiceResponse> {
     try {
       // Use the FAL client's queue status method
-      const status = await this.fal.queue.status("fal-ai/flux/dev", {
-        requestId: "test",
+      const status = await this.fal.queue.status('fal-ai/flux/dev', {
+        requestId: 'test',
       });
       return {
         success: true,
@@ -163,11 +163,11 @@ export class FalService {
       if (code === 401)
         return {
           success: false,
-          error: "Unauthorized — check FAL_KEY / proxy",
+          error: 'Unauthorized — check FAL_KEY / proxy',
         };
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Status check failed",
+        error: error instanceof Error ? error.message : 'Status check failed',
       };
     }
   }
@@ -182,12 +182,12 @@ export class FalService {
     let multiplier = 1;
 
     // For image generation
-    if (params.num_images && typeof params.num_images === "number") {
+    if (params.num_images && typeof params.num_images === 'number') {
       multiplier *= params.num_images;
     }
 
     // For video generation
-    if (params.duration && typeof params.duration === "number") {
+    if (params.duration && typeof params.duration === 'number') {
       multiplier *= Math.max(1, params.duration / 3); // Base 3 seconds
     }
 
@@ -230,36 +230,36 @@ export class FalService {
     const { teamId, userId, startDate, endDate } = options;
 
     let query = this.supabase
-      .from("fal_requests")
-      .select("model, cost_credits, latency_ms, status, created_at");
+      .from('fal_requests')
+      .select('model, cost_credits, latency_ms, status, created_at');
 
-    if (teamId) query = query.eq("team_id", teamId);
-    if (userId) query = query.eq("user_id", userId);
-    if (startDate) query = query.gte("created_at", startDate.toISOString());
-    if (endDate) query = query.lte("created_at", endDate.toISOString());
+    if (teamId) query = query.eq('team_id', teamId);
+    if (userId) query = query.eq('user_id', userId);
+    if (startDate) query = query.gte('created_at', startDate.toISOString());
+    if (endDate) query = query.lte('created_at', endDate.toISOString());
 
     const { data: requests, error } = await query;
 
     if (error || !requests) {
       throw new VelroError(
-        "Failed to fetch usage statistics",
-        "FAL_USAGE_ERROR",
+        'Failed to fetch usage statistics',
+        'FAL_USAGE_ERROR',
         500,
-        { supabaseError: error?.message },
+        { supabaseError: error?.message }
       );
     }
 
     const totalRequests = requests.length;
     const totalCost = requests.reduce(
       (sum, req) => sum + (req.cost_credits || 0),
-      0,
+      0
     );
     const totalLatency = requests.reduce(
       (sum, req) => sum + (req.latency_ms || 0),
-      0,
+      0
     );
     const successfulRequests = requests.filter(
-      (req) => req.status === "completed",
+      (req) => req.status === 'completed'
     ).length;
 
     const modelBreakdown: Record<string, { requests: number; cost: number }> =
@@ -285,29 +285,29 @@ export class FalService {
    * Core request execution with all service layer features
    */
   private async executeRequest(
-    request: FalServiceRequest,
+    request: FalServiceRequest
   ): Promise<FalServiceResponse> {
     const startTime = Date.now();
 
     // Create database record
     const { data: dbRecord, error: dbError } = await this.supabase
-      .from("fal_requests")
+      .from('fal_requests')
       .insert({
         job_id: request.jobId || null,
         team_id: request.teamId || null,
         user_id: request.userId || null,
         model: request.model,
         request_payload: request.parameters as Json,
-        status: "pending",
+        status: 'pending',
       })
       .select()
       .single();
 
     if (dbError || !dbRecord) {
-      console.error("[FalService] Failed to create database record:", dbError);
+      console.error('[FalService] Failed to create database record:', dbError);
       return {
         success: false,
-        error: "Failed to track request",
+        error: 'Failed to track request',
       };
     }
 
@@ -324,7 +324,7 @@ export class FalService {
             if (status && status >= 400 && status < 500) return false; // don't retry on 4xx
             return true;
           },
-        },
+        }
       );
 
       const latencyMs = Date.now() - startTime;
@@ -332,14 +332,14 @@ export class FalService {
 
       // Update database record with success
       await this.supabase
-        .from("fal_requests")
+        .from('fal_requests')
         .update({
-          status: "completed",
+          status: 'completed',
           response_data: result as Json,
           latency_ms: latencyMs,
           cost_credits: cost,
         })
-        .eq("id", dbRecord.id);
+        .eq('id', dbRecord.id);
 
       return {
         success: true,
@@ -351,17 +351,17 @@ export class FalService {
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+        error instanceof Error ? error.message : 'Unknown error';
 
       // Update database record with failure
       await this.supabase
-        .from("fal_requests")
+        .from('fal_requests')
         .update({
-          status: "failed",
+          status: 'failed',
           error: errorMessage,
           latency_ms: latencyMs,
         })
-        .eq("id", dbRecord.id);
+        .eq('id', dbRecord.id);
 
       return {
         success: false,
@@ -386,7 +386,7 @@ export class FalService {
    */
   private async makeApiRequest(
     model: string,
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ): Promise<unknown> {
     try {
       // Use the official FAL client with subscribe for real-time updates
@@ -394,9 +394,9 @@ export class FalService {
         input: parameters,
         logs: true,
         onQueueUpdate: (update) => {
-          console.log("update in onQueueUpdate", update);
+          console.log('update in onQueueUpdate', update);
           // Log progress for debugging
-          if (update.status === "IN_PROGRESS") {
+          if (update.status === 'IN_PROGRESS') {
             console.log(`[FAL] ${model} - ${update.status}`);
             if (update.logs) {
               update.logs.forEach((log) => {
@@ -411,7 +411,7 @@ export class FalService {
     } catch (error) {
       // Re-throw with more context while preserving status for retry logic
       throw new Error(
-        `FAL API request failed: ${error instanceof Error ? error.message : String(error)}`,
+        `FAL API request failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

@@ -3,10 +3,10 @@
  * POST /api/auth/anonymous - Create anonymous session
  */
 
-import { NextResponse } from "next/server";
-import { createAnonymousSession } from "@/lib/auth/server";
-import { handleApiError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import { createAnonymousSession } from '@/lib/auth/server';
+import { handleApiError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function POST() {
   try {
@@ -16,10 +16,10 @@ export async function POST() {
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create anonymous session",
+          message: 'Failed to create anonymous session',
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -27,23 +27,23 @@ export async function POST() {
     const supabase = createServerClient();
 
     // Create user record if it doesn't exist
-    const { error: userError } = await supabase.from("users").upsert({
+    const { error: userError } = await supabase.from('users').upsert({
       id: session.user.id,
       full_name: session.user.name || null,
     });
 
     if (userError) {
       console.error(
-        "[POST /api/auth/anonymous] User creation error:",
-        userError,
+        '[POST /api/auth/anonymous] User creation error:',
+        userError
       );
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to initialize user account",
+          message: 'Failed to initialize user account',
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -52,7 +52,7 @@ export async function POST() {
     const teamSlug = `anon-${session.user.id.slice(0, 8)}`;
 
     const { data: team, error: teamError } = await supabase
-      .from("teams")
+      .from('teams')
       .insert({
         name: teamName,
         slug: teamSlug,
@@ -62,40 +62,40 @@ export async function POST() {
 
     if (teamError || !team) {
       console.error(
-        "[POST /api/auth/anonymous] Team creation error:",
-        teamError,
+        '[POST /api/auth/anonymous] Team creation error:',
+        teamError
       );
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create team",
+          message: 'Failed to create team',
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
     // Create team membership for anonymous user
     const { error: membershipError } = await supabase
-      .from("team_members")
+      .from('team_members')
       .insert({
         team_id: team.id,
         user_id: session.user.id,
-        role: "owner",
+        role: 'owner',
       });
 
     if (membershipError) {
       console.error(
-        "[POST /api/auth/anonymous] Team membership creation error:",
-        membershipError,
+        '[POST /api/auth/anonymous] Team membership creation error:',
+        membershipError
       );
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create team membership",
+          message: 'Failed to create team membership',
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -108,23 +108,23 @@ export async function POST() {
           isAuthenticated: false,
           isAnonymous: true,
         },
-        message: "Anonymous session created successfully",
+        message: 'Anonymous session created successfully',
         timestamp: new Date().toISOString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
-    console.error("[POST /api/auth/anonymous] Error:", error);
+    console.error('[POST /api/auth/anonymous] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to create anonymous session",
+        message: 'Failed to create anonymous session',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

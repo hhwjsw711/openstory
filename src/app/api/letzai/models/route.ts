@@ -3,10 +3,10 @@
  * GET /api/letzai/models - List available LetzAI models with metadata
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { handleApiError } from "@/lib/errors";
-import { getLetzAIService } from "@/lib/services/letzai-service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { handleApiError } from '@/lib/errors';
+import { getLetzAIService } from '@/lib/services/letzai-service';
 
 // Query parameters schema
 const modelsQuerySchema = z.object({
@@ -22,14 +22,14 @@ const modelsQuerySchema = z.object({
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 10))
     .default(10),
-  sortBy: z.enum(["createdAt", "usages"]).optional().default("createdAt"),
-  sortOrder: z.enum(["ASC", "DESC"]).optional().default("DESC"),
-  class: z.enum(["person", "object", "style"]).optional(),
+  sortBy: z.enum(['createdAt', 'usages']).optional().default('createdAt'),
+  sortOrder: z.enum(['ASC', 'DESC']).optional().default('DESC'),
+  class: z.enum(['person', 'object', 'style']).optional(),
   includeCosts: z
     .string()
     .nullable()
     .optional()
-    .transform((val) => val === "true")
+    .transform((val) => val === 'true')
     .default(false),
 });
 
@@ -41,12 +41,12 @@ export async function GET(request: Request) {
     // Parse query parameters
     const url = new URL(request.url);
     const queryParams = {
-      page: url.searchParams.get("page"),
-      limit: url.searchParams.get("limit"),
-      sortBy: url.searchParams.get("sortBy"),
-      sortOrder: url.searchParams.get("sortOrder"),
-      class: url.searchParams.get("class"),
-      includeCosts: url.searchParams.get("includeCosts"),
+      page: url.searchParams.get('page'),
+      limit: url.searchParams.get('limit'),
+      sortBy: url.searchParams.get('sortBy'),
+      sortOrder: url.searchParams.get('sortOrder'),
+      class: url.searchParams.get('class'),
+      includeCosts: url.searchParams.get('includeCosts'),
     };
 
     const {
@@ -74,11 +74,11 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to fetch models",
+          message: 'Failed to fetch models',
           error: result.error,
           timestamp: new Date().toISOString(),
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -87,8 +87,8 @@ export async function GET(request: Request) {
     if (includeCosts && Array.isArray(models)) {
       models = models.map((model) => ({
         ...model,
-        estimatedCost: letzaiService.calculateCost("/models", {}),
-        costUnit: "credits",
+        estimatedCost: letzaiService.calculateCost('/models', {}),
+        costUnit: 'credits',
       }));
     }
 
@@ -106,23 +106,23 @@ export async function GET(request: Request) {
         sortOrder,
         modelClass,
         includeCosts,
-        supportedClasses: ["person", "object", "style"],
+        supportedClasses: ['person', 'object', 'style'],
       },
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("[LetzAI Models] Failed to fetch models:", error);
+    console.error('[LetzAI Models] Failed to fetch models:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch available models",
+        message: 'Failed to fetch available models',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

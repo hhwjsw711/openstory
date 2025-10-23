@@ -1,40 +1,40 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { useState } from "react";
-import { stylePresets } from "@/lib/mocks/style-presets";
-import { StyleSelector } from "../style-selector";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { useState } from 'react';
+import { stylePresets } from '@/lib/mocks/style-presets';
+import { StyleSelector } from '../style-selector';
 
 const meta: Meta<typeof StyleSelector> = {
-  title: "Components/Sequence/StyleSelector",
+  title: 'Components/Sequence/StyleSelector',
   component: StyleSelector,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         component:
-          "A component for selecting visual styles from a collection of style presets, displaying style previews with color palettes and metadata.",
+          'A component for selecting visual styles from a collection of style presets, displaying style previews with color palettes and metadata.',
       },
     },
   },
   argTypes: {
     selectedStyleId: {
-      description: "ID of the currently selected style",
-      control: "text",
+      description: 'ID of the currently selected style',
+      control: 'text',
     },
     onStyleSelect: {
-      description: "Callback fired when a style is selected",
-      action: "style selected",
+      description: 'Callback fired when a style is selected',
+      action: 'style selected',
     },
     styles: {
-      description: "Array of available styles to choose from",
+      description: 'Array of available styles to choose from',
       control: false,
     },
     disabled: {
-      description: "Whether the selector is disabled",
-      control: "boolean",
+      description: 'Whether the selector is disabled',
+      control: 'boolean',
     },
     loading: {
-      description: "Whether to show loading skeleton",
-      control: "boolean",
+      description: 'Whether to show loading skeleton',
+      control: 'boolean',
     },
   },
 };
@@ -49,14 +49,14 @@ const mockStyles = stylePresets;
 function InteractiveStyleSelector(
   props: Omit<
     React.ComponentProps<typeof StyleSelector>,
-    "selectedStyleId" | "onStyleSelect"
+    'selectedStyleId' | 'onStyleSelect'
   > & {
     initialSelectedId?: string | null;
-  },
+  }
 ) {
   const { initialSelectedId = null, ...otherProps } = props;
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
-    initialSelectedId,
+    initialSelectedId
   );
 
   return (
@@ -83,7 +83,7 @@ export const WithSelection: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector with a pre-selected style showing visual feedback.",
+          'StyleSelector with a pre-selected style showing visual feedback.',
       },
     },
   },
@@ -100,7 +100,7 @@ export const Loading: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector showing loading skeletons while styles are being fetched.",
+          'StyleSelector showing loading skeletons while styles are being fetched.',
       },
     },
   },
@@ -117,7 +117,7 @@ export const EmptyState: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector showing empty state when no styles are available.",
+          'StyleSelector showing empty state when no styles are available.',
       },
     },
   },
@@ -135,7 +135,7 @@ export const Disabled: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector in disabled state with reduced opacity and no interaction.",
+          'StyleSelector in disabled state with reduced opacity and no interaction.',
       },
     },
   },
@@ -147,7 +147,7 @@ export const SmallCollection: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector with only a few styles, showing responsive grid behavior.",
+          'StyleSelector with only a few styles, showing responsive grid behavior.',
       },
     },
   },
@@ -170,7 +170,7 @@ export const LargeCollection: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector with many styles demonstrating scrollable grid layout.",
+          'StyleSelector with many styles demonstrating scrollable grid layout.',
       },
     },
   },
@@ -186,19 +186,19 @@ export const ResponsiveLayout: Story = {
     docs: {
       description: {
         story:
-          "StyleSelector demonstrating responsive grid layout behavior at different screen sizes.",
+          'StyleSelector demonstrating responsive grid layout behavior at different screen sizes.',
       },
     },
     viewport: {
       viewports: {
-        mobile: { name: "Mobile", styles: { width: "375px", height: "667px" } },
+        mobile: { name: 'Mobile', styles: { width: '375px', height: '667px' } },
         tablet: {
-          name: "Tablet",
-          styles: { width: "768px", height: "1024px" },
+          name: 'Tablet',
+          styles: { width: '768px', height: '1024px' },
         },
         desktop: {
-          name: "Desktop",
-          styles: { width: "1440px", height: "900px" },
+          name: 'Desktop',
+          styles: { width: '1440px', height: '900px' },
         },
       },
     },
@@ -213,11 +213,11 @@ export const StyleCategories: Story = {
         <InteractiveStyleSelector
           styles={stylePresets.filter((s) =>
             [
-              "style-cinematic",
-              "style-noir",
-              "style-documentary",
-              "style-horror",
-            ].includes(s.id),
+              'style-cinematic',
+              'style-noir',
+              'style-documentary',
+              'style-horror',
+            ].includes(s.id)
           )}
         />
       </div>
@@ -227,10 +227,10 @@ export const StyleCategories: Story = {
         <InteractiveStyleSelector
           styles={stylePresets.filter((s) =>
             [
-              "style-watercolor",
-              "style-oil-painting",
-              "style-minimalist",
-            ].includes(s.id),
+              'style-watercolor',
+              'style-oil-painting',
+              'style-minimalist',
+            ].includes(s.id)
           )}
         />
       </div>
@@ -240,23 +240,23 @@ export const StyleCategories: Story = {
         <InteractiveStyleSelector
           styles={stylePresets.filter((s) =>
             [
-              "style-anime",
-              "style-cyberpunk",
-              "style-retro",
-              "style-comic",
-              "style-fantasy",
-            ].includes(s.id),
+              'style-anime',
+              'style-cyberpunk',
+              'style-retro',
+              'style-comic',
+              'style-fantasy',
+            ].includes(s.id)
           )}
         />
       </div>
     </div>
   ),
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         story:
-          "StyleSelector organized by categories, showing different visual style groups for video generation.",
+          'StyleSelector organized by categories, showing different visual style groups for video generation.',
       },
     },
   },
@@ -273,12 +273,12 @@ export const PopularStyles: Story = {
       </div>
       <InteractiveStyleSelector
         styles={[
-          "style-cinematic",
-          "style-anime",
-          "style-cyberpunk",
-          "style-watercolor",
-          "style-minimalist",
-          "style-comic",
+          'style-cinematic',
+          'style-anime',
+          'style-cyberpunk',
+          'style-watercolor',
+          'style-minimalist',
+          'style-comic',
         ]
           .map((id) => stylePresets.find((s) => s.id === id))
           .filter((s): s is NonNullable<typeof s> => s !== undefined)}
@@ -290,7 +290,7 @@ export const PopularStyles: Story = {
     docs: {
       description: {
         story:
-          "A curated selection of the most popular styles, pre-selected with Cinematic Epic.",
+          'A curated selection of the most popular styles, pre-selected with Cinematic Epic.',
       },
     },
   },

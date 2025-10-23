@@ -25,6 +25,7 @@ First, let me read the implementation plan created by the tech lead:
 ## Implementation
 
 Based on the issue type and the plan above, I'll select the appropriate implementation engineer:
+
 - Backend issues → `backend-engineer`
 - Frontend issues → `frontend-react-engineer`
 - QA/Testing → `qa-lead-tester`
@@ -32,6 +33,7 @@ Based on the issue type and the plan above, I'll select the appropriate implemen
 I'll now use the Task tool to invoke the appropriate engineer(s) to implement the solution following the plan.
 
 The engineer will:
+
 1. **Follow the Plan** - Implement according to the tech lead's specifications
 2. **Write Tests** - Create comprehensive test coverage
 3. **Make Regular Commits** - Commit after each logical change
@@ -39,6 +41,7 @@ The engineer will:
 5. **Create PR** - Open a pull request when complete
 
 **Important Notes**:
+
 - The engineer should follow the plan created during triage
 - Work closely with `qa-lead-tester` for test coverage
 - Make frequent, descriptive commits

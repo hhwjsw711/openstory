@@ -1,10 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 export interface MigrationResult {
   success: boolean;
   targetTeamId: string;
-  migrationType: "merge" | "transfer";
+  migrationType: 'merge' | 'transfer';
   sequencesTransferred: number;
   stylesTransferred: number;
   anonymousTeamId: string;
@@ -29,23 +29,23 @@ export interface MigrationResult {
 export async function migrateAnonymousUserData(
   supabase: SupabaseClient<Database>,
   anonymousUserId: string,
-  newUserId: string,
+  newUserId: string
 ): Promise<MigrationResult> {
   // Set threshold for detecting recently created teams (5 seconds ago)
   const recentThreshold = new Date(Date.now() - 5000).toISOString();
 
   // 1. Get the anonymous user's team (must be owner)
   const { data: anonymousTeamMember, error: teamError } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", anonymousUserId)
-    .eq("role", "owner")
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', anonymousUserId)
+    .eq('role', 'owner')
     .limit(1)
     .single();
 
   if (teamError || !anonymousTeamMember) {
     throw new Error(
-      `Anonymous user team not found for user ${anonymousUserId}`,
+      `Anonymous user team not found for user ${anonymousUserId}`
     );
   }
 
@@ -53,17 +53,17 @@ export async function migrateAnonymousUserData(
 
   // 2. Check if authenticated user has pre-existing teams (created before this session)
   const { data: existingTeam, error: existingTeamError } = await supabase
-    .from("team_members")
-    .select("team_id, teams!inner(created_at)")
-    .eq("user_id", newUserId)
-    .eq("role", "owner")
-    .lt("teams.created_at", recentThreshold)
-    .order("teams(created_at)", { ascending: true })
+    .from('team_members')
+    .select('team_id, teams!inner(created_at)')
+    .eq('user_id', newUserId)
+    .eq('role', 'owner')
+    .lt('teams.created_at', recentThreshold)
+    .order('teams(created_at)', { ascending: true })
     .limit(1)
     .single();
 
   let targetTeamId: string;
-  let migrationType: "merge" | "transfer";
+  let migrationType: 'merge' | 'transfer';
   let sequencesTransferred = 0;
   let stylesTransferred = 0;
 
@@ -71,35 +71,35 @@ export async function migrateAnonymousUserData(
     // SCENARIO A: Returning user signing in from new device
     // Merge anonymous content into their existing team
     targetTeamId = existingTeam.team_id;
-    migrationType = "merge";
+    migrationType = 'merge';
 
     // Transfer sequences to existing team
     const { error: sequencesError, count: sequencesCount } = await supabase
-      .from("sequences")
+      .from('sequences')
       .update({
         team_id: targetTeamId,
         created_by: newUserId,
         updated_by: newUserId,
         updated_at: new Date().toISOString(),
       })
-      .eq("team_id", anonymousTeamId);
+      .eq('team_id', anonymousTeamId);
 
     if (sequencesError) {
       throw new Error(
-        `Failed to transfer sequences: ${sequencesError.message}`,
+        `Failed to transfer sequences: ${sequencesError.message}`
       );
     }
     sequencesTransferred = sequencesCount ?? 0;
 
     // Transfer styles to existing team
     const { error: stylesError, count: stylesCount } = await supabase
-      .from("styles")
+      .from('styles')
       .update({
         team_id: targetTeamId,
         created_by: newUserId,
         updated_at: new Date().toISOString(),
       })
-      .eq("team_id", anonymousTeamId);
+      .eq('team_id', anonymousTeamId);
 
     if (stylesError) {
       throw new Error(`Failed to transfer styles: ${stylesError.message}`);
@@ -108,71 +108,71 @@ export async function migrateAnonymousUserData(
 
     // Delete anonymous team membership
     const { error: membershipError } = await supabase
-      .from("team_members")
+      .from('team_members')
       .delete()
-      .eq("user_id", anonymousUserId);
+      .eq('user_id', anonymousUserId);
 
     if (membershipError) {
       throw new Error(
-        `Failed to delete anonymous team membership: ${membershipError.message}`,
+        `Failed to delete anonymous team membership: ${membershipError.message}`
       );
     }
 
     // Delete anonymous team
     const { error: teamDeleteError } = await supabase
-      .from("teams")
+      .from('teams')
       .delete()
-      .eq("id", anonymousTeamId);
+      .eq('id', anonymousTeamId);
 
     if (teamDeleteError) {
       throw new Error(
-        `Failed to delete anonymous team: ${teamDeleteError.message}`,
+        `Failed to delete anonymous team: ${teamDeleteError.message}`
       );
     }
   } else {
     // SCENARIO B: New user or first-time signup
     // Transfer ownership of anonymous team to authenticated user
     targetTeamId = anonymousTeamId;
-    migrationType = "transfer";
+    migrationType = 'transfer';
 
     // Transfer team ownership
     const { error: ownershipError } = await supabase
-      .from("team_members")
+      .from('team_members')
       .update({ user_id: newUserId })
-      .eq("user_id", anonymousUserId)
-      .eq("role", "owner");
+      .eq('user_id', anonymousUserId)
+      .eq('role', 'owner');
 
     if (ownershipError) {
       throw new Error(
-        `Failed to transfer team ownership: ${ownershipError.message}`,
+        `Failed to transfer team ownership: ${ownershipError.message}`
       );
     }
 
     // Transfer sequences ownership (team_id stays the same)
     const { error: sequencesError, count: sequencesCount } = await supabase
-      .from("sequences")
+      .from('sequences')
       .update({
         created_by: newUserId,
         updated_by: newUserId,
         updated_at: new Date().toISOString(),
       })
-      .eq("created_by", anonymousUserId);
+      .eq('created_by', anonymousUserId);
 
     if (sequencesError) {
       throw new Error(
-        `Failed to transfer sequences: ${sequencesError.message}`,
+        `Failed to transfer sequences: ${sequencesError.message}`
       );
     }
     sequencesTransferred = sequencesCount ?? 0;
 
     // Transfer styles ownership
     const { error: stylesError, count: stylesCount } = await supabase
-      .from("styles")
+      .from('styles')
       .update({
         created_by: newUserId,
         updated_at: new Date().toISOString(),
       })
-      .eq("created_by", anonymousUserId);
+      .eq('created_by', anonymousUserId);
 
     if (stylesError) {
       throw new Error(`Failed to transfer styles: ${stylesError.message}`);
@@ -181,12 +181,12 @@ export async function migrateAnonymousUserData(
 
     // Find and delete any auto-created team (created during signup trigger)
     const { data: autoCreatedTeam } = await supabase
-      .from("team_members")
-      .select("team_id, teams!inner(created_at)")
-      .eq("user_id", newUserId)
-      .eq("role", "owner")
-      .neq("team_id", anonymousTeamId)
-      .gte("teams.created_at", recentThreshold)
+      .from('team_members')
+      .select('team_id, teams!inner(created_at)')
+      .eq('user_id', newUserId)
+      .eq('role', 'owner')
+      .neq('team_id', anonymousTeamId)
+      .gte('teams.created_at', recentThreshold)
       .limit(1)
       .single();
 
@@ -195,12 +195,12 @@ export async function migrateAnonymousUserData(
 
       // Delete auto-created team membership
       await supabase
-        .from("team_members")
+        .from('team_members')
         .delete()
-        .eq("team_id", autoCreatedTeamId);
+        .eq('team_id', autoCreatedTeamId);
 
       // Delete auto-created team
-      await supabase.from("teams").delete().eq("id", autoCreatedTeamId);
+      await supabase.from('teams').delete().eq('id', autoCreatedTeamId);
     }
   }
 
@@ -208,27 +208,27 @@ export async function migrateAnonymousUserData(
 
   // Transfer characters
   const { error: charactersError } = await supabase
-    .from("characters")
+    .from('characters')
     .update({
       created_by: newUserId,
       updated_at: new Date().toISOString(),
     })
-    .eq("created_by", anonymousUserId);
+    .eq('created_by', anonymousUserId);
 
   if (charactersError) {
     throw new Error(
-      `Failed to transfer characters: ${charactersError.message}`,
+      `Failed to transfer characters: ${charactersError.message}`
     );
   }
 
   // Transfer VFX
   const { error: vfxError } = await supabase
-    .from("vfx")
+    .from('vfx')
     .update({
       created_by: newUserId,
       updated_at: new Date().toISOString(),
     })
-    .eq("created_by", anonymousUserId);
+    .eq('created_by', anonymousUserId);
 
   if (vfxError) {
     throw new Error(`Failed to transfer VFX: ${vfxError.message}`);
@@ -236,12 +236,12 @@ export async function migrateAnonymousUserData(
 
   // Transfer audio
   const { error: audioError } = await supabase
-    .from("audio")
+    .from('audio')
     .update({
       created_by: newUserId,
       updated_at: new Date().toISOString(),
     })
-    .eq("created_by", anonymousUserId);
+    .eq('created_by', anonymousUserId);
 
   if (audioError) {
     throw new Error(`Failed to transfer audio: ${audioError.message}`);
@@ -249,9 +249,9 @@ export async function migrateAnonymousUserData(
 
   // 4. Merge credits
   const { data: anonymousCredits } = await supabase
-    .from("credits")
-    .select("balance")
-    .eq("user_id", anonymousUserId)
+    .from('credits')
+    .select('balance')
+    .eq('user_id', anonymousUserId)
     .single();
 
   let creditsMerged = 0;
@@ -261,13 +261,13 @@ export async function migrateAnonymousUserData(
 
     // Get new user's current credits
     const { data: newUserCredits } = await supabase
-      .from("credits")
-      .select("balance")
-      .eq("user_id", newUserId)
+      .from('credits')
+      .select('balance')
+      .eq('user_id', newUserId)
       .single();
 
     // Upsert combined balance
-    const { error: creditsError } = await supabase.from("credits").upsert({
+    const { error: creditsError } = await supabase.from('credits').upsert({
       user_id: newUserId,
       balance: (newUserCredits?.balance ?? 0) + creditsMerged,
       updated_at: new Date().toISOString(),
@@ -279,9 +279,9 @@ export async function migrateAnonymousUserData(
   }
 
   // 5. Clean up anonymous user data
-  await supabase.from("credits").delete().eq("user_id", anonymousUserId);
-  await supabase.from("team_members").delete().eq("user_id", anonymousUserId);
-  await supabase.from("users").delete().eq("id", anonymousUserId);
+  await supabase.from('credits').delete().eq('user_id', anonymousUserId);
+  await supabase.from('team_members').delete().eq('user_id', anonymousUserId);
+  await supabase.from('users').delete().eq('id', anonymousUserId);
 
   // Note: BetterAuth will handle deleting from its own 'user' table
 

@@ -1,31 +1,31 @@
-import { z } from "zod";
+import { z } from 'zod';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
-} from "@/lib/ai/openrouter-client";
+} from '@/lib/ai/openrouter-client';
 import {
   checkForInjectionAttempts,
   sanitizeScriptContent,
   validateAIResponse,
-} from "@/lib/ai/prompt-validation";
+} from '@/lib/ai/prompt-validation';
 import {
   enhanceScriptPrompt,
   VELRO_UNIVERSAL_SYSTEM_PROMPT,
-} from "@/lib/ai/prompts";
+} from '@/lib/ai/prompts';
 
 // Input validation schema
 const EnhanceScriptOptionsSchema = z.object({
   originalScript: z
     .string()
-    .min(1, "Script cannot be empty")
-    .max(10000, "Script too long"),
+    .min(1, 'Script cannot be empty')
+    .max(10000, 'Script too long'),
   targetDuration: z.number().min(15).max(60).optional().default(30),
   tone: z
-    .enum(["dramatic", "comedic", "documentary", "action"])
+    .enum(['dramatic', 'comedic', 'documentary', 'action'])
     .optional()
-    .default("dramatic"),
+    .default('dramatic'),
   style: z.string().optional(),
 });
 
@@ -43,7 +43,7 @@ const EnhancedScriptSchema = z.object({
 export interface EnhanceScriptOptions {
   originalScript: string;
   targetDuration?: number; // Default 30 seconds
-  tone?: "dramatic" | "comedic" | "documentary" | "action";
+  tone?: 'dramatic' | 'comedic' | 'documentary' | 'action';
   style?: string; // Optional style context
 }
 
@@ -90,7 +90,7 @@ function parseEnhancedScriptResponse(response: string): {
   const jsonMatch = response.match(jsonRegex);
 
   if (!jsonMatch) {
-    throw new Error("No JSON metadata found in AI response");
+    throw new Error('No JSON metadata found in AI response');
   }
 
   let styleRecommendation: StyleStackRecommendation;
@@ -106,7 +106,7 @@ function parseEnhancedScriptResponse(response: string): {
   let enhancedScript = response.substring(0, scriptEndIndex).trim();
 
   if (!enhancedScript) {
-    throw new Error("No enhanced script text found in AI response");
+    throw new Error('No enhanced script text found in AI response');
   }
 
   // Remove any preamble text that might precede the actual script
@@ -141,7 +141,7 @@ function parseEnhancedScriptResponse(response: string): {
   // Final check to ensure we have content
   if (!enhancedScript) {
     throw new Error(
-      "No enhanced script text found in AI response after preamble removal",
+      'No enhanced script text found in AI response after preamble removal'
     );
   }
 
@@ -152,7 +152,7 @@ function parseEnhancedScriptResponse(response: string): {
 }
 
 export async function enhanceScript(
-  options: EnhanceScriptOptions,
+  options: EnhanceScriptOptions
 ): Promise<ScriptEnhancementResult> {
   try {
     // Validate input
@@ -162,12 +162,12 @@ export async function enhanceScript(
     const originalScript = validatedOptions.originalScript;
     const containsSuspiciousContent = checkForInjectionAttempts(originalScript);
     if (containsSuspiciousContent) {
-      console.warn("Script enhancement: Potential injection attempt detected");
+      console.warn('Script enhancement: Potential injection attempt detected');
     }
 
     // Check if OpenRouter API key is configured
     if (!process.env.OPENROUTER_KEY) {
-      throw new Error("OpenRouter API key not configured");
+      throw new Error('OpenRouter API key not configured');
     }
 
     // Create prompts
@@ -185,7 +185,7 @@ export async function enhanceScript(
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      throw new Error("No response received from AI service");
+      throw new Error('No response received from AI service');
     }
 
     // Security: Validate AI response for potential injection attempts
@@ -219,32 +219,32 @@ export async function enhanceScript(
       tokenUsage,
     };
   } catch (error) {
-    console.error("Script enhancement error:", error);
+    console.error('Script enhancement error:', error);
 
     // Handle different types of errors
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: `Validation error: ${error.issues.map((i) => i.message).join(", ")}`,
+        error: `Validation error: ${error.issues.map((i) => i.message).join(', ')}`,
       };
     }
 
     if (error instanceof Error) {
       // Check for specific OpenRouter/OpenAI errors
-      if (error.message.includes("rate limit")) {
+      if (error.message.includes('rate limit')) {
         return {
           success: false,
-          error: "Too many requests. Please try again in a moment.",
+          error: 'Too many requests. Please try again in a moment.',
         };
       }
 
       if (
-        error.message.includes("insufficient_quota") ||
-        error.message.includes("billing")
+        error.message.includes('insufficient_quota') ||
+        error.message.includes('billing')
       ) {
         return {
           success: false,
-          error: "Service temporarily unavailable. Please try again later.",
+          error: 'Service temporarily unavailable. Please try again later.',
         };
       }
 
@@ -256,7 +256,7 @@ export async function enhanceScript(
 
     return {
       success: false,
-      error: "An unexpected error occurred while enhancing the script.",
+      error: 'An unexpected error occurred while enhancing the script.',
     };
   }
 }
@@ -267,7 +267,7 @@ class RateLimiter {
 
   constructor(
     private maxRequests: number,
-    private windowMs: number,
+    private windowMs: number
   ) {}
 
   isAllowed(key: string): boolean {
@@ -279,7 +279,7 @@ class RateLimiter {
 
     // Filter out requests outside the current window
     const recentRequests = existingRequests.filter(
-      (time) => time > windowStart,
+      (time) => time > windowStart
     );
 
     // Check if under the limit

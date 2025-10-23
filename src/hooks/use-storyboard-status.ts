@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
-import type { Frame, Sequence } from "@/types/database";
-import { frameKeys } from "./use-frames";
-import { sequenceKeys } from "./use-sequences";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import type { Frame, Sequence } from '@/types/database';
+import { frameKeys } from './use-frames';
+import { sequenceKeys } from './use-sequences';
 
 export interface FrameGenerationMetadata {
   frameGeneration?: {
@@ -60,7 +60,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
     error,
     refetch: refetchQuery,
   } = useQuery({
-    queryKey: ["storyboard-status", sequenceId],
+    queryKey: ['storyboard-status', sequenceId],
     queryFn: async () => {
       const [sequenceResponse, framesResponse, activeJobResponse] =
         await Promise.all([
@@ -74,7 +74,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
           sequenceResponse.json(),
           framesResponse.json(),
           activeJobResponse.json(),
-        ],
+        ]
       );
 
       const sequence =
@@ -98,7 +98,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
     },
     enabled: !!sequenceId,
     staleTime: 1000,
-    refetchOnMount: "always",
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchInterval: (query) => {
       if (!query.state.data) return false;
@@ -107,12 +107,12 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
 
       const metadata = sequence?.metadata as FrameGenerationMetadata | null;
       const sequenceGenerating =
-        sequence?.status === "processing" ||
-        metadata?.frameGeneration?.status === "processing" ||
-        metadata?.frameGeneration?.status === "generating_thumbnails";
+        sequence?.status === 'processing' ||
+        metadata?.frameGeneration?.status === 'processing' ||
+        metadata?.frameGeneration?.status === 'generating_thumbnails';
 
       const jobGenerating =
-        activeJob?.status === "running" || activeJob?.status === "pending";
+        activeJob?.status === 'running' || activeJob?.status === 'pending';
 
       const isGenerating = sequenceGenerating || jobGenerating;
       return isGenerating ? 2000 : false;
@@ -125,7 +125,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
         queryKey: sequenceKeys.detail(sequenceId),
       }),
       queryClient.invalidateQueries({ queryKey: frameKeys.list(sequenceId) }),
-      queryClient.invalidateQueries({ queryKey: ["active-job", sequenceId] }),
+      queryClient.invalidateQueries({ queryKey: ['active-job', sequenceId] }),
     ]);
 
     await refetchQuery();
@@ -148,12 +148,12 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
     // Check if generation is in progress
     const metadata = sequence?.metadata as FrameGenerationMetadata | null;
     const sequenceGenerating =
-      sequence?.status === "processing" ||
-      metadata?.frameGeneration?.status === "processing" ||
-      metadata?.frameGeneration?.status === "generating_thumbnails";
+      sequence?.status === 'processing' ||
+      metadata?.frameGeneration?.status === 'processing' ||
+      metadata?.frameGeneration?.status === 'generating_thumbnails';
 
     const jobGenerating =
-      activeJob?.status === "running" || activeJob?.status === "pending";
+      activeJob?.status === 'running' || activeJob?.status === 'pending';
 
     const isGenerating = sequenceGenerating || jobGenerating;
     const hasFrames = frames.length > 0;
@@ -164,7 +164,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
       sequence?.script &&
         sequence.script.trim().length >= 10 &&
         styleId &&
-        !isGenerating,
+        !isGenerating
     );
 
     return {

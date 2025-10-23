@@ -12,15 +12,15 @@ export function getLoginUrl(currentPath?: string): string {
   // Get current path from window if not provided (client-side only)
   const redirectTo =
     currentPath ||
-    (typeof window !== "undefined" ? window.location.pathname : "/sequences");
+    (typeof window !== 'undefined' ? window.location.pathname : '/sequences');
 
   // Only add redirectTo if it's not a default or auth route
-  const isDefaultRoute = redirectTo === "/" || redirectTo === "/sequences";
+  const isDefaultRoute = redirectTo === '/' || redirectTo === '/sequences';
   const isAuthRoute =
-    redirectTo.startsWith("/login") || redirectTo.startsWith("/signup");
+    redirectTo.startsWith('/login') || redirectTo.startsWith('/signup');
 
   if (isDefaultRoute || isAuthRoute) {
-    return "/login";
+    return '/login';
   }
 
   const params = new URLSearchParams({ redirectTo });
@@ -36,15 +36,15 @@ export function getSignupUrl(currentPath?: string): string {
   // Get current path from window if not provided (client-side only)
   const redirectTo =
     currentPath ||
-    (typeof window !== "undefined" ? window.location.pathname : "/sequences");
+    (typeof window !== 'undefined' ? window.location.pathname : '/sequences');
 
   // Only add redirectTo if it's not a default or auth route
-  const isDefaultRoute = redirectTo === "/" || redirectTo === "/sequences";
+  const isDefaultRoute = redirectTo === '/' || redirectTo === '/sequences';
   const isAuthRoute =
-    redirectTo.startsWith("/login") || redirectTo.startsWith("/signup");
+    redirectTo.startsWith('/login') || redirectTo.startsWith('/signup');
 
   if (isDefaultRoute || isAuthRoute) {
-    return "/signup";
+    return '/signup';
   }
 
   const params = new URLSearchParams({ redirectTo });
@@ -59,7 +59,7 @@ export function getSignupUrl(currentPath?: string): string {
  */
 export function navigateToLogin(
   router: { push: (url: string) => void | Promise<void> },
-  currentPath?: string,
+  currentPath?: string
 ): void {
   const loginUrl = getLoginUrl(currentPath);
   router.push(loginUrl);
@@ -73,7 +73,7 @@ export function navigateToLogin(
  */
 export function navigateToSignup(
   router: { push: (url: string) => void | Promise<void> },
-  currentPath?: string,
+  currentPath?: string
 ): void {
   const signupUrl = getSignupUrl(currentPath);
   router.push(signupUrl);
@@ -86,13 +86,13 @@ export function navigateToSignup(
  * @returns Redirect path or default (/sequences)
  */
 export function getRedirectFromParams(
-  searchParams: URLSearchParams | Record<string, string | string[] | undefined>,
+  searchParams: URLSearchParams | Record<string, string | string[] | undefined>
 ): string {
   let redirectTo: string | null = null;
 
   if (searchParams instanceof URLSearchParams) {
-    redirectTo = searchParams.get("redirectTo");
-  } else if (typeof searchParams === "object" && searchParams.redirectTo) {
+    redirectTo = searchParams.get('redirectTo');
+  } else if (typeof searchParams === 'object' && searchParams.redirectTo) {
     const value = searchParams.redirectTo;
     redirectTo = Array.isArray(value) ? value[0] : value;
   }
@@ -100,16 +100,16 @@ export function getRedirectFromParams(
   // Validate redirect URL to prevent open redirects
   if (redirectTo) {
     // Only allow relative URLs (starting with /)
-    if (redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+    if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
       // Prevent redirecting back to auth pages
       if (
-        !redirectTo.startsWith("/login") &&
-        !redirectTo.startsWith("/signup")
+        !redirectTo.startsWith('/login') &&
+        !redirectTo.startsWith('/signup')
       ) {
         return redirectTo;
       }
     }
   }
 
-  return "/sequences";
+  return '/sequences';
 }

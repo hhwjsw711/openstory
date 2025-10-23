@@ -3,21 +3,21 @@
  * POST /api/teams/invitations/[invitationId]/accept - Accept a team invitation
  */
 
-import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { teamService } from "@/lib/services/team.service";
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { teamService } from '@/lib/services/team.service';
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ invitationId: string }> },
+  { params }: { params: Promise<{ invitationId: string }> }
 ) {
   try {
     const { invitationId } = await params;
 
     // Validate invitation ID (token)
     if (!invitationId || invitationId.length < 10) {
-      throw new ValidationError("Invalid invitation ID");
+      throw new ValidationError('Invalid invitation ID');
     }
 
     // Check authentication
@@ -33,26 +33,26 @@ export async function POST(
       {
         success: true,
         data: { teamId },
-        message: "Invitation accepted successfully",
+        message: 'Invitation accepted successfully',
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
-      "[POST /api/teams/invitations/[invitationId]/accept] Error:",
-      error,
+      '[POST /api/teams/invitations/[invitationId]/accept] Error:',
+      error
     );
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to accept invitation",
+        message: 'Failed to accept invitation',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

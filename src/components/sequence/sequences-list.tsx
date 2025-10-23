@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { Calendar, Clock, VideoIcon } from "lucide-react";
-import Link from "next/link";
-import type React from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useSequences } from "@/hooks/use-sequences";
-import { formatDistanceToNow } from "@/lib/utils";
+import { Calendar, Clock, VideoIcon } from 'lucide-react';
+import Link from 'next/link';
+import type React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useSequences } from '@/hooks/use-sequences';
+import { formatDistanceToNow } from '@/lib/utils';
 
 interface SequencesListProps {
   teamId?: string;
@@ -53,7 +53,7 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
               <div className="flex items-center gap-2">
                 <VideoIcon className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-lg line-clamp-1">
-                  {sequence.title || "Untitled Sequence"}
+                  {sequence.title || 'Untitled Sequence'}
                 </h3>
               </div>
             </div>

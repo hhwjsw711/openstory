@@ -3,36 +3,36 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { serve } from "@upstash/workflow/nextjs";
-import { analyzeScriptForFrames } from "@/lib/ai/script-analyzer";
-import { DirectorDnaConfigSchema } from "@/lib/services/director-dna-types";
-import type { CreateFrameParams } from "@/lib/services/frame.service";
-import { frameService } from "@/lib/services/frame.service";
-import { LoggerService } from "@/lib/services/logger.service";
-import { createAdminClient } from "@/lib/supabase/server";
+import { serve } from '@upstash/workflow/nextjs';
+import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
+import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
+import type { CreateFrameParams } from '@/lib/services/frame.service';
+import { frameService } from '@/lib/services/frame.service';
+import { LoggerService } from '@/lib/services/logger.service';
+import { createAdminClient } from '@/lib/supabase/server';
 import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
-} from "@/lib/workflow";
+} from '@/lib/workflow';
 import {
   getQStashClient,
   validateWorkflowAuth,
   workflowConfig,
-} from "@/lib/workflow";
-import type { Json } from "@/types/database";
+} from '@/lib/workflow';
+import type { Json } from '@/types/database';
 
 // Common cinematography shot types for variety
 const ShotTypes = [
-  "establishing",
-  "wide",
-  "medium",
-  "close-up",
-  "extreme-close-up",
-  "over-the-shoulder",
-  "point-of-view",
+  'establishing',
+  'wide',
+  'medium',
+  'close-up',
+  'extreme-close-up',
+  'over-the-shoulder',
+  'point-of-view',
 ] as const;
 
-const loggerService = new LoggerService("FrameGenerationWorkflow");
+const loggerService = new LoggerService('FrameGenerationWorkflow');
 
 export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   const input = context.requestPayload;
@@ -41,16 +41,16 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   validateWorkflowAuth(input);
 
   loggerService.logDebug(
-    `Starting frame generation workflow for sequence ${input.sequenceId}`,
+    `Starting frame generation workflow for sequence ${input.sequenceId}`
   );
 
   // Step 1: Verify sequence and get data
-  const sequence = await context.run("verify-sequence", async () => {
+  const sequence = await context.run('verify-sequence', async () => {
     const supabase = createAdminClient();
     const { data, error } = await supabase
-      .from("sequences")
-      .select("*, styles(*)")
-      .eq("id", input.sequenceId)
+      .from('sequences')
+      .select('*, styles(*)')
+      .eq('id', input.sequenceId)
       .single();
 
     if (error || !data) {
@@ -58,26 +58,26 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
     }
 
     if (!data.script) {
-      throw new Error("Sequence has no script");
+      throw new Error('Sequence has no script');
     }
 
     if (!data.style_id) {
-      throw new Error("Sequence has no style selected");
+      throw new Error('Sequence has no style selected');
     }
 
     return data;
   });
 
   // Step 2: Update sequence status to processing
-  await context.run("update-status-processing", async () => {
+  await context.run('update-status-processing', async () => {
     const supabase = createAdminClient();
     await supabase
-      .from("sequences")
+      .from('sequences')
       .update({
-        status: "processing",
+        status: 'processing',
         metadata: {
           frameGeneration: {
-            status: "processing",
+            status: 'processing',
             startedAt: new Date().toISOString(),
             expectedFrameCount: null,
             completedFrameCount: 0,
@@ -88,52 +88,52 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
         } as Json,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", input.sequenceId);
+      .eq('id', input.sequenceId);
   });
 
   // Step 3: Delete existing frames
-  await context.run("delete-existing-frames", async () => {
+  await context.run('delete-existing-frames', async () => {
     const supabase = createAdminClient();
     const { data: existingFrames } = await supabase
-      .from("frames")
-      .select("id")
-      .eq("sequence_id", input.sequenceId);
+      .from('frames')
+      .select('id')
+      .eq('sequence_id', input.sequenceId);
 
     if (existingFrames && existingFrames.length > 0) {
       await Promise.all(
-        existingFrames.map((frame) => frameService.deleteFrame(frame.id)),
+        existingFrames.map((frame) => frameService.deleteFrame(frame.id))
       );
     }
   });
 
   // Step 4: Analyze script to determine frame boundaries
-  const scriptAnalysis = await context.run("analyze-script", async () => {
+  const scriptAnalysis = await context.run('analyze-script', async () => {
     // Get or use default style
     const styleId = sequence.style_id;
     if (!styleId) {
-      throw new Error("No style ID found");
+      throw new Error('No style ID found');
     }
 
     const supabase = createAdminClient();
     const { data: style } = await supabase
-      .from("styles")
-      .select("config")
-      .eq("id", styleId)
+      .from('styles')
+      .select('config')
+      .eq('id', styleId)
       .single();
 
     if (!style) {
-      throw new Error("No style found");
+      throw new Error('No style found');
     }
 
     const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
     const analysis = await analyzeScriptForFrames(
-      sequence.script || "",
-      styleConfig,
+      sequence.script || '',
+      styleConfig
     );
 
     if (!analysis?.scenes || analysis.scenes.length === 0) {
-      throw new Error("Failed to analyze script or no scenes found");
+      throw new Error('Failed to analyze script or no scenes found');
     }
 
     return analysis;
@@ -142,14 +142,14 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   const frameCount = scriptAnalysis.scenes.length;
 
   // Step 5: Update metadata with expected frame count
-  await context.run("update-expected-count", async () => {
+  await context.run('update-expected-count', async () => {
     const supabase = createAdminClient();
     await supabase
-      .from("sequences")
+      .from('sequences')
       .update({
         metadata: {
           frameGeneration: {
-            status: "generating_thumbnails",
+            status: 'generating_thumbnails',
             startedAt: new Date().toISOString(),
             expectedFrameCount: frameCount,
             completedFrameCount: 0,
@@ -161,11 +161,11 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
         } as Json,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", input.sequenceId);
+      .eq('id', input.sequenceId);
   });
 
   // Step 6: Process all scenes in parallel
-  const frameIds = await context.run("process-scenes", async () => {
+  const frameIds = await context.run('process-scenes', async () => {
     const promises = scriptAnalysis.scenes.map(async (scene, index) => {
       const serviceStartTime = Date.now();
       const orderIndex = index;
@@ -173,7 +173,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       // Get or use default style
       const styleId = sequence.style_id;
       if (!styleId) {
-        throw new Error("No style ID found");
+        throw new Error('No style ID found');
       }
 
       const shotTypes = ShotTypes[orderIndex % ShotTypes.length];
@@ -215,14 +215,14 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
   // Step 7: Generate thumbnails in parallel if enabled
   if (input.options?.generateThumbnails !== false) {
-    await context.run("generate-thumbnails", async () => {
+    await context.run('generate-thumbnails', async () => {
       const qstash = getQStashClient();
 
       // Trigger image generation for all frames in parallel
       const promises = frameIds.map(async ({ frameId, prompt }) => {
         if (!prompt) {
           loggerService.logWarning(
-            `Frame ${frameId} has no description, skipping`,
+            `Frame ${frameId} has no description, skipping`
           );
           return null;
         }
@@ -231,8 +231,8 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
           userId: input.userId,
           teamId: input.teamId,
           prompt,
-          model: "flux_krea_lora",
-          imageSize: "landscape_16_9",
+          model: 'flux_krea_lora',
+          imageSize: 'landscape_16_9',
           numImages: 1,
           frameId,
           sequenceId: input.sequenceId,
@@ -247,7 +247,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
           return frameId;
         } catch (error) {
           loggerService.logError(
-            `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : "Unknown"}`,
+            `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : 'Unknown'}`
           );
           return null;
         }
@@ -259,25 +259,25 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   }
 
   // Step N: Update sequence status to completed
-  await context.run("update-sequence-status", async () => {
+  await context.run('update-sequence-status', async () => {
     const supabase = createAdminClient();
     const { error } = await supabase
-      .from("sequences")
-      .update({ status: "completed" })
-      .eq("id", input.sequenceId);
+      .from('sequences')
+      .update({ status: 'completed' })
+      .eq('id', input.sequenceId);
 
     if (error) {
       loggerService.logError(
-        `Failed to update sequence status: ${error.message}`,
+        `Failed to update sequence status: ${error.message}`
       );
       throw new Error(`Failed to update sequence status: ${error.message}`);
     }
 
-    loggerService.logDebug("Sequence status updated to completed");
+    loggerService.logDebug('Sequence status updated to completed');
     return { success: true };
   });
 
-  loggerService.logDebug("Frame generation workflow completed");
+  loggerService.logDebug('Frame generation workflow completed');
 
   return {
     sequenceId: input.sequenceId,

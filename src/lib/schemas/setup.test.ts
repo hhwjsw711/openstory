@@ -1,14 +1,14 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from 'bun:test';
 import {
   type InitializeDatabaseInput,
   initializeDatabaseSchema,
   type SetupStatusInput,
   setupStatusSchema,
-} from "./setup";
+} from './setup';
 
-describe("initializeDatabaseSchema", () => {
-  describe("valid inputs", () => {
-    it("should parse valid input with all fields", () => {
+describe('initializeDatabaseSchema', () => {
+  describe('valid inputs', () => {
+    it('should parse valid input with all fields', () => {
       const input = {
         skipIfExists: true,
         seedData: true,
@@ -21,7 +21,7 @@ describe("initializeDatabaseSchema", () => {
       });
     });
 
-    it("should apply default values when fields are missing", () => {
+    it('should apply default values when fields are missing', () => {
       const input = {};
       const result = initializeDatabaseSchema.parse(input);
 
@@ -31,7 +31,7 @@ describe("initializeDatabaseSchema", () => {
       });
     });
 
-    it("should handle partial input with skipIfExists only", () => {
+    it('should handle partial input with skipIfExists only', () => {
       const input = { skipIfExists: true };
       const result = initializeDatabaseSchema.parse(input);
 
@@ -41,7 +41,7 @@ describe("initializeDatabaseSchema", () => {
       });
     });
 
-    it("should handle partial input with seedData only", () => {
+    it('should handle partial input with seedData only', () => {
       const input = { seedData: true };
       const result = initializeDatabaseSchema.parse(input);
 
@@ -51,7 +51,7 @@ describe("initializeDatabaseSchema", () => {
       });
     });
 
-    it("should handle false values explicitly", () => {
+    it('should handle false values explicitly', () => {
       const input = {
         skipIfExists: false,
         seedData: false,
@@ -65,27 +65,27 @@ describe("initializeDatabaseSchema", () => {
     });
   });
 
-  describe("invalid inputs", () => {
-    it("should reject invalid skipIfExists type", () => {
-      const input = { skipIfExists: "yes" };
+  describe('invalid inputs', () => {
+    it('should reject invalid skipIfExists type', () => {
+      const input = { skipIfExists: 'yes' };
       expect(() => initializeDatabaseSchema.parse(input)).toThrow();
     });
 
-    it("should reject invalid seedData type", () => {
+    it('should reject invalid seedData type', () => {
       const input = { seedData: 1 };
       expect(() => initializeDatabaseSchema.parse(input)).toThrow();
     });
 
-    it("should reject null values", () => {
+    it('should reject null values', () => {
       const input = { skipIfExists: null };
       expect(() => initializeDatabaseSchema.parse(input)).toThrow();
     });
 
-    it("should ignore extra fields", () => {
+    it('should ignore extra fields', () => {
       const input = {
         skipIfExists: true,
         seedData: false,
-        extraField: "should be ignored",
+        extraField: 'should be ignored',
       };
 
       const result = initializeDatabaseSchema.parse(input);
@@ -93,12 +93,12 @@ describe("initializeDatabaseSchema", () => {
         skipIfExists: true,
         seedData: false,
       });
-      expect(result).not.toHaveProperty("extraField");
+      expect(result).not.toHaveProperty('extraField');
     });
   });
 
-  describe("type inference", () => {
-    it("should infer correct TypeScript types", () => {
+  describe('type inference', () => {
+    it('should infer correct TypeScript types', () => {
       const validInput: InitializeDatabaseInput = {
         skipIfExists: true,
         seedData: false,
@@ -114,7 +114,7 @@ describe("initializeDatabaseSchema", () => {
       expect(seedData).toBe(false);
     });
 
-    it("should allow optional fields in type", () => {
+    it('should allow optional fields in type', () => {
       const validInput: InitializeDatabaseInput = {
         skipIfExists: false,
         seedData: false,
@@ -127,9 +127,9 @@ describe("initializeDatabaseSchema", () => {
   });
 });
 
-describe("setupStatusSchema", () => {
-  describe("valid inputs", () => {
-    it("should parse valid input with includeDetails true", () => {
+describe('setupStatusSchema', () => {
+  describe('valid inputs', () => {
+    it('should parse valid input with includeDetails true', () => {
       const input = { includeDetails: true };
       const result = setupStatusSchema.parse(input);
 
@@ -138,7 +138,7 @@ describe("setupStatusSchema", () => {
       });
     });
 
-    it("should parse valid input with includeDetails false", () => {
+    it('should parse valid input with includeDetails false', () => {
       const input = { includeDetails: false };
       const result = setupStatusSchema.parse(input);
 
@@ -147,7 +147,7 @@ describe("setupStatusSchema", () => {
       });
     });
 
-    it("should apply default value when includeDetails is missing", () => {
+    it('should apply default value when includeDetails is missing', () => {
       const input = {};
       const result = setupStatusSchema.parse(input);
 
@@ -157,26 +157,26 @@ describe("setupStatusSchema", () => {
     });
   });
 
-  describe("invalid inputs", () => {
-    it("should reject invalid includeDetails type", () => {
-      const input = { includeDetails: "yes" };
+  describe('invalid inputs', () => {
+    it('should reject invalid includeDetails type', () => {
+      const input = { includeDetails: 'yes' };
       expect(() => setupStatusSchema.parse(input)).toThrow();
     });
 
-    it("should reject numeric values", () => {
+    it('should reject numeric values', () => {
       const input = { includeDetails: 1 };
       expect(() => setupStatusSchema.parse(input)).toThrow();
     });
 
-    it("should reject null value", () => {
+    it('should reject null value', () => {
       const input = { includeDetails: null };
       expect(() => setupStatusSchema.parse(input)).toThrow();
     });
 
-    it("should ignore extra fields", () => {
+    it('should ignore extra fields', () => {
       const input = {
         includeDetails: true,
-        extraField: "should be ignored",
+        extraField: 'should be ignored',
         anotherField: 123,
       };
 
@@ -184,13 +184,13 @@ describe("setupStatusSchema", () => {
       expect(result).toEqual({
         includeDetails: true,
       });
-      expect(result).not.toHaveProperty("extraField");
-      expect(result).not.toHaveProperty("anotherField");
+      expect(result).not.toHaveProperty('extraField');
+      expect(result).not.toHaveProperty('anotherField');
     });
   });
 
-  describe("type inference", () => {
-    it("should infer correct TypeScript types", () => {
+  describe('type inference', () => {
+    it('should infer correct TypeScript types', () => {
       const validInput: SetupStatusInput = {
         includeDetails: true,
       };
@@ -202,7 +202,7 @@ describe("setupStatusSchema", () => {
       expect(includeDetails).toBe(true);
     });
 
-    it("should allow optional field in type", () => {
+    it('should allow optional field in type', () => {
       const validInput: SetupStatusInput = {
         includeDetails: false,
       };
@@ -212,21 +212,21 @@ describe("setupStatusSchema", () => {
     });
   });
 
-  describe("edge cases", () => {
-    it("should handle undefined input", () => {
+  describe('edge cases', () => {
+    it('should handle undefined input', () => {
       // Undefined is not a valid input for Zod object schema
       expect(() => setupStatusSchema.parse(undefined)).toThrow();
     });
 
-    it("should handle empty object", () => {
+    it('should handle empty object', () => {
       const result = setupStatusSchema.parse({});
       expect(result).toEqual({
         includeDetails: false,
       });
     });
 
-    it("should handle empty string as object key", () => {
-      const input = { "": true, includeDetails: true };
+    it('should handle empty string as object key', () => {
+      const input = { '': true, includeDetails: true };
       const result = setupStatusSchema.parse(input);
 
       expect(result).toEqual({

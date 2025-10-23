@@ -1,47 +1,47 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { useState } from "react";
-import { ScriptEditor } from "../script-editor";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { useState } from 'react';
+import { ScriptEditor } from '../script-editor';
 
 const meta: Meta<typeof ScriptEditor> = {
-  title: "Components/Sequence/ScriptEditor",
+  title: 'Components/Sequence/ScriptEditor',
   component: ScriptEditor,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         component:
-          "A text editor component for writing video scripts with character counting, validation, and error handling.",
+          'A text editor component for writing video scripts with character counting, validation, and error handling.',
       },
     },
   },
   argTypes: {
     value: {
-      description: "Current script content",
-      control: "text",
+      description: 'Current script content',
+      control: 'text',
     },
     onValueChange: {
-      description: "Callback fired when the script content changes",
-      action: "value changed",
+      description: 'Callback fired when the script content changes',
+      action: 'value changed',
     },
     error: {
-      description: "Error message to display",
-      control: "text",
+      description: 'Error message to display',
+      control: 'text',
     },
     maxLength: {
-      description: "Maximum number of characters allowed",
-      control: "number",
+      description: 'Maximum number of characters allowed',
+      control: 'number',
     },
     placeholder: {
-      description: "Placeholder text when empty",
-      control: "text",
+      description: 'Placeholder text when empty',
+      control: 'text',
     },
     disabled: {
-      description: "Whether the editor is disabled",
-      control: "boolean",
+      description: 'Whether the editor is disabled',
+      control: 'boolean',
     },
     showCharacterCount: {
-      description: "Whether to show character count",
-      control: "boolean",
+      description: 'Whether to show character count',
+      control: 'boolean',
     },
   },
 };
@@ -53,12 +53,12 @@ type Story = StoryObj<typeof ScriptEditor>;
 function InteractiveScriptEditor(
   props: Omit<
     React.ComponentProps<typeof ScriptEditor>,
-    "value" | "onValueChange"
+    'value' | 'onValueChange'
   > & {
     initialValue?: string;
-  },
+  }
 ) {
-  const { initialValue = "", ...otherProps } = props;
+  const { initialValue = '', ...otherProps } = props;
   const [value, setValue] = useState(initialValue);
 
   return (
@@ -92,7 +92,7 @@ The cursor blinks mockingly on the empty page. Sarah takes a deep breath and beg
     docs: {
       description: {
         story:
-          "ScriptEditor with existing script content showing character count and proper formatting.",
+          'ScriptEditor with existing script content showing character count and proper formatting.',
       },
     },
   },
@@ -109,7 +109,7 @@ export const WithError: Story = {
     docs: {
       description: {
         story:
-          "ScriptEditor displaying an error message with appropriate styling.",
+          'ScriptEditor displaying an error message with appropriate styling.',
       },
     },
   },
@@ -117,12 +117,12 @@ export const WithError: Story = {
 
 export const NearMaxLength: Story = {
   render: () => (
-    <InteractiveScriptEditor initialValue={"A".repeat(4950)} maxLength={5000} />
+    <InteractiveScriptEditor initialValue={'A'.repeat(4950)} maxLength={5000} />
   ),
   parameters: {
     docs: {
       description: {
-        story: "ScriptEditor approaching the maximum character limit.",
+        story: 'ScriptEditor approaching the maximum character limit.',
       },
     },
   },
@@ -131,7 +131,7 @@ export const NearMaxLength: Story = {
 export const OverMaxLength: Story = {
   render: () => (
     <ScriptEditor
-      value={"A".repeat(5100)}
+      value={'A'.repeat(5100)}
       onValueChange={() => {}}
       maxLength={5000}
     />
@@ -140,7 +140,7 @@ export const OverMaxLength: Story = {
     docs: {
       description: {
         story:
-          "ScriptEditor over the maximum character limit showing error styling.",
+          'ScriptEditor over the maximum character limit showing error styling.',
       },
     },
   },
@@ -156,7 +156,7 @@ export const Disabled: Story = {
   parameters: {
     docs: {
       description: {
-        story: "ScriptEditor in disabled state with existing content.",
+        story: 'ScriptEditor in disabled state with existing content.',
       },
     },
   },
@@ -169,7 +169,7 @@ export const CustomPlaceholder: Story = {
   parameters: {
     docs: {
       description: {
-        story: "ScriptEditor with custom placeholder text.",
+        story: 'ScriptEditor with custom placeholder text.',
       },
     },
   },
@@ -185,7 +185,7 @@ export const NoCharacterCount: Story = {
   parameters: {
     docs: {
       description: {
-        story: "ScriptEditor with character count hidden.",
+        story: 'ScriptEditor with character count hidden.',
       },
     },
   },

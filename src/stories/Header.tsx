@@ -1,6 +1,6 @@
-import { AcmeLogoIcon } from "../components/icons/acme-logo-icon";
-import { Button } from "./Button";
-import "./header.css";
+import { AcmeLogoIcon } from '../components/icons/acme-logo-icon';
+import { Button } from './Button';
+import './header.css';
 
 type User = {
   name: string;

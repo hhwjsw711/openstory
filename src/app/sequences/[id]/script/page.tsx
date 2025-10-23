@@ -1,15 +1,15 @@
-"use client";
-import { useRouter } from "next/navigation";
-import { use } from "react";
-import { PageContainer } from "@/components/layout";
-import { ScriptStep } from "@/components/sequence-flow/script-step";
-import { StepNavigation } from "@/components/sequence-flow/step-navigation";
+'use client';
+import { useRouter } from 'next/navigation';
+import { use } from 'react';
+import { PageContainer } from '@/components/layout';
+import { ScriptStep } from '@/components/sequence-flow/script-step';
+import { StepNavigation } from '@/components/sequence-flow/step-navigation';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
-} from "@/components/typography";
-import { useUser } from "@/hooks/use-user";
+} from '@/components/typography';
+import { useUser } from '@/hooks/use-user';
 
 export default function ScriptPage({
   params,

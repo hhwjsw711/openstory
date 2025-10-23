@@ -3,11 +3,11 @@
  * Provides helper functions for API route authentication and authorization
  */
 
-import { NextResponse } from "next/server";
-import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
-import { getUserRole } from "@/lib/auth/permissions";
-import type { Session, User } from "./config";
-import { auth } from "./config";
+import { NextResponse } from 'next/server';
+import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
+import { getUserRole } from '@/lib/auth/permissions';
+import type { Session, User } from './config';
+import { auth } from './config';
 
 interface AuthResult {
   user: User;
@@ -25,7 +25,7 @@ interface AuthError {
  * Authenticate API request and return user/session or error response
  */
 export async function authenticateApiRequest(
-  request: Request,
+  request: Request
 ): Promise<AuthResult | NextResponse<AuthError>> {
   try {
     const session = await auth.api.getSession({
@@ -36,11 +36,11 @@ export async function authenticateApiRequest(
       return NextResponse.json(
         {
           success: false,
-          message: "Authentication required",
+          message: 'Authentication required',
           status: 401,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -49,16 +49,16 @@ export async function authenticateApiRequest(
       session: session,
     };
   } catch (error) {
-    console.error("[API Auth] Authentication error:", error);
+    console.error('[API Auth] Authentication error:', error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Authentication failed",
+        message: 'Authentication failed',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 }
@@ -71,7 +71,7 @@ export async function authenticateApiRequest(
  */
 export async function checkTeamAccess(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<AuthResult | NextResponse<AuthError>> {
   const authResult = await authenticateApiRequest(request);
 
@@ -89,11 +89,11 @@ export async function checkTeamAccess(
     return NextResponse.json(
       {
         success: false,
-        message: "Access denied",
+        message: 'Access denied',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -119,7 +119,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
  * Returns user data or null if not authenticated
  */
 export async function getOptionalUser(
-  request: Request,
+  request: Request
 ): Promise<AuthResult | null> {
   try {
     const session = await auth.api.getSession({
@@ -135,7 +135,7 @@ export async function getOptionalUser(
       session: session,
     };
   } catch (error) {
-    console.error("[API Auth] Optional auth error:", error);
+    console.error('[API Auth] Optional auth error:', error);
     return null;
   }
 }
@@ -169,7 +169,7 @@ export function validateMotionAccess(user: User): void {
  * Require authenticated (non-anonymous) user
  */
 export async function requireAuthenticatedUser(
-  request: Request,
+  request: Request
 ): Promise<AuthResult> {
   const authResult = await requireAuth(request);
 
@@ -177,11 +177,11 @@ export async function requireAuthenticatedUser(
     throw NextResponse.json(
       {
         success: false,
-        message: "Account required: please sign up or sign in",
+        message: 'Account required: please sign up or sign in',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -193,7 +193,7 @@ export async function requireAuthenticatedUser(
  * Returns specific error message for motion generation
  */
 export async function requireAuthenticatedUserForMotion(
-  request: Request,
+  request: Request
 ): Promise<AuthResult> {
   const authResult = await requireAuth(request);
 
@@ -203,11 +203,11 @@ export async function requireAuthenticatedUserForMotion(
     throw NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : "Access denied",
+        message: error instanceof Error ? error.message : 'Access denied',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -220,7 +220,7 @@ export async function requireAuthenticatedUserForMotion(
 export function createErrorResponse(
   message: string,
   status: number = 400,
-  details?: Record<string, unknown>,
+  details?: Record<string, unknown>
 ): NextResponse<AuthError> {
   return NextResponse.json(
     {
@@ -230,7 +230,7 @@ export function createErrorResponse(
       timestamp: new Date().toISOString(),
       ...(details && { details }),
     },
-    { status },
+    { status }
   );
 }
 
@@ -240,7 +240,7 @@ export function createErrorResponse(
 export function createSuccessResponse<T>(
   data: T,
   message?: string,
-  status: number = 200,
+  status: number = 200
 ): NextResponse<{
   success: true;
   data: T;
@@ -254,6 +254,6 @@ export function createSuccessResponse<T>(
       ...(message && { message }),
       timestamp: new Date().toISOString(),
     },
-    { status },
+    { status }
   );
 }

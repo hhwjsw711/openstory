@@ -3,10 +3,10 @@
  * Provides role-based access control functions for team resources
  */
 
-import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import type { User } from "./config";
-import { auth } from "./config";
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
+import type { User } from './config';
+import { auth } from './config';
 
 // Role hierarchy (higher number = more permissions)
 const ROLE_HIERARCHY = {
@@ -37,15 +37,15 @@ export interface AuthError {
  */
 export async function getUserRole(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<TeamRole | null> {
   const supabase = createServerClient();
 
   const { data: membership, error } = await supabase
-    .from("team_members")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("team_id", teamId)
+    .from('team_members')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('team_id', teamId)
     .single();
 
   if (error || !membership) {
@@ -73,7 +73,7 @@ async function getAuthenticatedUser(request: Request): Promise<User | null> {
 
     return session?.user || null;
   } catch (error) {
-    console.error("[Permissions] Failed to get user:", error);
+    console.error('[Permissions] Failed to get user:', error);
     return null;
   }
 }
@@ -83,7 +83,7 @@ async function getAuthenticatedUser(request: Request): Promise<User | null> {
  */
 export async function canManageTeam(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
 
@@ -91,7 +91,7 @@ export async function canManageTeam(
     return false;
   }
 
-  return hasMinimumRole(role, "admin");
+  return hasMinimumRole(role, 'admin');
 }
 
 /**
@@ -99,7 +99,7 @@ export async function canManageTeam(
  */
 export async function canDeleteResource(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
 
@@ -107,7 +107,7 @@ export async function canDeleteResource(
     return false;
   }
 
-  return hasMinimumRole(role, "admin");
+  return hasMinimumRole(role, 'admin');
 }
 
 /**
@@ -115,10 +115,10 @@ export async function canDeleteResource(
  */
 export async function isTeamOwner(
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
-  return role === "owner";
+  return role === 'owner';
 }
 
 /**
@@ -127,7 +127,7 @@ export async function isTeamOwner(
  */
 export async function requireAdmin(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -135,11 +135,11 @@ export async function requireAdmin(
     throw NextResponse.json(
       {
         success: false,
-        message: "Authentication required",
+        message: 'Authentication required',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -149,23 +149,23 @@ export async function requireAdmin(
     throw NextResponse.json(
       {
         success: false,
-        message: "Access denied: not a member of this team",
+        message: 'Access denied: not a member of this team',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
-  if (!hasMinimumRole(role, "admin")) {
+  if (!hasMinimumRole(role, 'admin')) {
     throw NextResponse.json(
       {
         success: false,
-        message: "Access denied: admin or owner role required",
+        message: 'Access denied: admin or owner role required',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -178,7 +178,7 @@ export async function requireAdmin(
  */
 export async function requireOwner(
   request: Request,
-  teamId: string,
+  teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -186,11 +186,11 @@ export async function requireOwner(
     throw NextResponse.json(
       {
         success: false,
-        message: "Authentication required",
+        message: 'Authentication required',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -200,23 +200,23 @@ export async function requireOwner(
     throw NextResponse.json(
       {
         success: false,
-        message: "Access denied: not a member of this team",
+        message: 'Access denied: not a member of this team',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
-  if (role !== "owner") {
+  if (role !== 'owner') {
     throw NextResponse.json(
       {
         success: false,
-        message: "Access denied: owner role required",
+        message: 'Access denied: owner role required',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -230,7 +230,7 @@ export async function requireOwner(
 export async function checkUserRole(
   userId: string,
   teamId: string,
-  requiredRole: TeamRole,
+  requiredRole: TeamRole
 ): Promise<RoleCheckResult> {
   const userRole = await getUserRole(userId, teamId);
 
@@ -256,7 +256,7 @@ export async function checkUserRole(
 export async function verifyTeamResourceAccess(
   request: Request,
   resourceTeamId: string,
-  requiredRole: TeamRole = "member",
+  requiredRole: TeamRole = 'member'
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
   const user = await getAuthenticatedUser(request);
 
@@ -264,11 +264,11 @@ export async function verifyTeamResourceAccess(
     throw NextResponse.json(
       {
         success: false,
-        message: "Authentication required",
+        message: 'Authentication required',
         status: 401,
         timestamp: new Date().toISOString(),
       },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -278,11 +278,11 @@ export async function verifyTeamResourceAccess(
     throw NextResponse.json(
       {
         success: false,
-        message: "Access denied: not a member of this team",
+        message: 'Access denied: not a member of this team',
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -294,7 +294,7 @@ export async function verifyTeamResourceAccess(
         status: 403,
         timestamp: new Date().toISOString(),
       },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -315,10 +315,10 @@ export async function getUserTeams(userId: string): Promise<
   const supabase = createServerClient();
 
   const { data: memberships, error } = await supabase
-    .from("team_members")
-    .select("team_id, role, joined_at, teams(name)")
-    .eq("user_id", userId)
-    .order("joined_at", { ascending: true });
+    .from('team_members')
+    .select('team_id, role, joined_at, teams(name)')
+    .eq('user_id', userId)
+    .order('joined_at', { ascending: true });
 
   if (error || !memberships) {
     return [];
@@ -327,7 +327,7 @@ export async function getUserTeams(userId: string): Promise<
   return memberships.map((m) => ({
     teamId: m.team_id,
     role: m.role as TeamRole,
-    teamName: (m.teams as { name: string })?.name || "Unknown Team",
+    teamName: (m.teams as { name: string })?.name || 'Unknown Team',
     joinedAt: m.joined_at,
   }));
 }

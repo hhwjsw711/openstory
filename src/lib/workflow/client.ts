@@ -2,12 +2,12 @@
  * QStash Workflow client configuration
  */
 
-import { Client } from "@upstash/qstash";
-import { ConfigurationError } from "@/lib/errors";
+import { Client } from '@upstash/qstash';
+import { ConfigurationError } from '@/lib/errors';
 import {
   getInternalAppUrl,
   getQStashWebhookUrl,
-} from "@/lib/utils/get-base-url";
+} from '@/lib/utils/get-base-url';
 
 /**
  * Gets the QStash client for direct API operations
@@ -18,7 +18,7 @@ export function getQStashClient(): Client {
 
   if (!token) {
     throw new ConfigurationError(
-      "QSTASH_TOKEN environment variable is required",
+      'QSTASH_TOKEN environment variable is required'
     );
   }
 

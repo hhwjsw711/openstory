@@ -3,15 +3,15 @@
  * GET /api/teams/[teamId]/members - List team members
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { teamService } from "@/lib/services/team.service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { teamService } from '@/lib/services/team.service';
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const { teamId } = await params;
@@ -21,7 +21,7 @@ export async function GET(
     try {
       uuidSchema.parse(teamId);
     } catch {
-      throw new ValidationError("Invalid team ID format");
+      throw new ValidationError('Invalid team ID format');
     }
 
     // Check authentication and authorization
@@ -37,19 +37,19 @@ export async function GET(
         data: members,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/teams/[teamId]/members] Error:", error);
+    console.error('[GET /api/teams/[teamId]/members] Error:', error);
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch team members",
+        message: 'Failed to fetch team members',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
-      { status: handledError.statusCode },
+      { status: handledError.statusCode }
     );
   }
 }

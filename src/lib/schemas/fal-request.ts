@@ -2,13 +2,13 @@
  * Zod schemas for Fal.ai request validation
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 
 // Fal request status enum schema
 export const falRequestStatusSchema = z.enum([
-  "pending",
-  "completed",
-  "failed",
+  'pending',
+  'completed',
+  'failed',
 ]);
 
 // Base Fal request schema
@@ -22,7 +22,7 @@ export const falRequestSchema = z.object({
   response_data: z.record(z.string(), z.unknown()).nullable(),
   cost_credits: z.number().min(0).nullable(),
   latency_ms: z.number().int().min(0).nullable(),
-  status: falRequestStatusSchema.default("pending"),
+  status: falRequestStatusSchema.default('pending'),
   error: z.string().nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
@@ -59,12 +59,12 @@ export const falImageGenerationRequestSchema = z.object({
   prompt: z.string().min(1).max(2000),
   image_size: z
     .enum([
-      "square_hd",
-      "square",
-      "portrait_4_3",
-      "portrait_16_9",
-      "landscape_4_3",
-      "landscape_16_9",
+      'square_hd',
+      'square',
+      'portrait_4_3',
+      'portrait_16_9',
+      'landscape_4_3',
+      'landscape_16_9',
     ])
     .optional(),
   num_images: z.number().int().min(1).max(4).optional(),
@@ -80,7 +80,7 @@ export const falVideoGenerationRequestSchema = z.object({
   prompt: z.string().min(1).max(2000).optional(),
   image_url: z.string().url().optional(),
   duration: z.number().min(1).max(10).optional(),
-  aspect_ratio: z.enum(["16:9", "9:16", "1:1", "4:3", "3:4"]).optional(),
+  aspect_ratio: z.enum(['16:9', '9:16', '1:1', '4:3', '3:4']).optional(),
   enable_audio: z.boolean().optional(),
   seed: z.number().int().min(0).optional(),
   userId: z.string().uuid().optional(),
@@ -94,7 +94,7 @@ export const falUsageStatsRequestSchema = z.object({
   userId: z.string().uuid().optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  period: z.enum(["day", "week", "month", "year"]).default("month"),
+  period: z.enum(['day', 'week', 'month', 'year']).default('month'),
   includeBreakdown: z.boolean().default(true),
 });
 
@@ -106,7 +106,7 @@ export const falHealthCheckRequestSchema = z.object({
 
 // Models request schema
 export const falModelsRequestSchema = z.object({
-  type: z.enum(["image", "video", "all"]).default("all"),
+  type: z.enum(['image', 'video', 'all']).default('all'),
   includeCosts: z.boolean().default(false),
 });
 
@@ -137,7 +137,7 @@ export const falUsageStatsResponseSchema = z.object({
     z.object({
       requests: z.number().int().min(0),
       cost: z.number().min(0),
-    }),
+    })
   ),
 });
 

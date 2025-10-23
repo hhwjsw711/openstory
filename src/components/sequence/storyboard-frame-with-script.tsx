@@ -1,21 +1,21 @@
-import { Play, Video } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import type * as React from "react";
-import { useCallback, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
-import { useAuthNavigation } from "@/hooks/use-auth-navigation";
-import { useEstimateImageCostByFal } from "@/hooks/use-fal-models";
-import { cn } from "@/lib/utils";
-import type { Frame, Style } from "@/types/database";
+import { Play, Video } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import type * as React from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
+import { useAuthNavigation } from '@/hooks/use-auth-navigation';
+import { useEstimateImageCostByFal } from '@/hooks/use-fal-models';
+import { cn } from '@/lib/utils';
+import type { Frame, Style } from '@/types/database';
 
 interface ModelInfo {
   id: string;
   name: string;
   model: string;
-  type: "image" | "video";
+  type: 'image' | 'video';
   cost?: number;
   costUnit?: string;
 }
@@ -64,16 +64,16 @@ export const StoryboardFrameWithScript: React.FC<
   // Check if motion is being generated in the background (via QStash)
   const motionStatus = metadata?.motionStatus as string | undefined;
   const isMotionGenerating =
-    motionStatus === "generating" || isGeneratingMotion;
+    motionStatus === 'generating' || isGeneratingMotion;
 
   // Image generation with selected model
-  const [selectedModel, setSelectedModel] = useState<string | null>("");
+  const [selectedModel, setSelectedModel] = useState<string | null>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const estimateImageCostMutation = useEstimateImageCostByFal();
 
   // Handle video playback
   const handlePlay = useCallback(() => {
-    console.log("[handlePlay] Called", {
+    console.log('[handlePlay] Called', {
       hasVideo,
       showVideo,
       isPlaying,
@@ -81,33 +81,33 @@ export const StoryboardFrameWithScript: React.FC<
     });
 
     if (!hasVideo) {
-      console.log("[handlePlay] No video URL");
+      console.log('[handlePlay] No video URL');
       return;
     }
 
     if (!showVideo) {
-      console.log("[handlePlay] Showing video element");
+      console.log('[handlePlay] Showing video element');
       setShowVideo(true);
       // Wait for video to be rendered before playing
       setTimeout(() => {
         if (videoRef.current) {
-          console.log("[handlePlay] Playing video");
+          console.log('[handlePlay] Playing video');
           videoRef.current.play().catch((err) => {
-            console.error("[handlePlay] Error playing video:", err);
+            console.error('[handlePlay] Error playing video:', err);
           });
           setIsPlaying(true);
         } else {
-          console.error("[handlePlay] Video ref is null after timeout");
+          console.error('[handlePlay] Video ref is null after timeout');
         }
       }, 100);
     } else if (isPlaying) {
-      console.log("[handlePlay] Pausing video");
+      console.log('[handlePlay] Pausing video');
       videoRef.current?.pause();
       setIsPlaying(false);
     } else {
-      console.log("[handlePlay] Resuming video");
+      console.log('[handlePlay] Resuming video');
       videoRef.current?.play().catch((err) => {
-        console.error("[handlePlay] Error resuming video:", err);
+        console.error('[handlePlay] Error resuming video:', err);
       });
       setIsPlaying(true);
     }
@@ -122,7 +122,7 @@ export const StoryboardFrameWithScript: React.FC<
   // Generate motion for the frame
   const handleGenerateMotion = useCallback(async () => {
     if (!styleId) {
-      setMotionError("Style ID is required for motion generation");
+      setMotionError('Style ID is required for motion generation');
       return;
     }
 
@@ -133,31 +133,31 @@ export const StoryboardFrameWithScript: React.FC<
       const response = await fetch(
         `/api/sequences/${frame.sequence_id}/frames/${frame.id}/motion`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: "seedance_v1_pro",
+            model: 'seedance_v1_pro',
             duration: 3,
             fps: 14,
             motionBucket: 127,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
-        console.log("response", response);
+        console.log('response', response);
 
         const error = await response.json();
-        throw new Error(error.error || "Failed to generate motion");
+        throw new Error(error.error || 'Failed to generate motion');
       }
 
       const result = await response.json();
 
       if (result.success && result.data?.workflowRunId) {
         // Motion generation started - optimistically update UI
-        console.log("[handleGenerateMotion] Motion generation started", {
+        console.log('[handleGenerateMotion] Motion generation started', {
           workflowRunId: result.data.workflowRunId,
         });
 
@@ -167,19 +167,19 @@ export const StoryboardFrameWithScript: React.FC<
           metadata: {
             ...(frame.metadata as Record<string, unknown>),
             motionWorkflowRunId: result.data.workflowRunId,
-            motionStatus: "generating",
-            motionModel: "seedance_v1_pro",
+            motionStatus: 'generating',
+            motionModel: 'seedance_v1_pro',
           },
         });
       } else {
-        console.log("result", result);
-        setMotionError("Failed to generate motion");
+        console.log('result', result);
+        setMotionError('Failed to generate motion');
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "Unexpected error during motion generation";
+          : 'Unexpected error during motion generation';
       setMotionError(errorMessage);
     } finally {
       setIsGeneratingMotion(false);
@@ -201,20 +201,20 @@ export const StoryboardFrameWithScript: React.FC<
       const response = await fetch(
         `/api/sequences/${frame.sequence_id}/frames/${frame.id}/regenerate`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: selectedModel,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
-        console.log("response", response);
+        console.log('response', response);
         const error = await response.json();
-        throw new Error(error.message || "Failed to regenerate frame");
+        throw new Error(error.message || 'Failed to regenerate frame');
       }
 
       const result = await response.json();
@@ -226,14 +226,14 @@ export const StoryboardFrameWithScript: React.FC<
           thumbnail_url: null,
         });
 
-        console.log("[handleGenerateWithSelectedModel] Regeneration started", {
+        console.log('[handleGenerateWithSelectedModel] Regeneration started', {
           workflowRunId: result.data.workflowRunId,
         });
       }
     } catch (error) {
       console.error(
-        "[handleGenerateWithSelectedModel] Regeneration failed",
-        error,
+        '[handleGenerateWithSelectedModel] Regeneration failed',
+        error
       );
     } finally {
       setIsRegenerating(false);
@@ -246,14 +246,14 @@ export const StoryboardFrameWithScript: React.FC<
 
     const result = await estimateImageCostMutation.mutateAsync({
       model: selectedModel,
-      prompt: displayScript || "",
+      prompt: displayScript || '',
       extra_params: {
         frame_id: frame.id,
         sequence_id: frame.sequence_id,
       },
     });
 
-    console.log("[handleCheckCost] Cost result:", result);
+    console.log('[handleCheckCost] Cost result:', result);
   }, [frame, selectedModel, displayScript, estimateImageCostMutation]);
 
   return (
@@ -301,7 +301,7 @@ export const StoryboardFrameWithScript: React.FC<
             <video
               ref={videoRef}
               className="absolute inset-0 h-full w-full object-cover z-10"
-              src={frame.video_url || ""}
+              src={frame.video_url || ''}
               poster={
                 hasThumbnail ? frame.thumbnail_url || undefined : undefined
               }
@@ -309,13 +309,13 @@ export const StoryboardFrameWithScript: React.FC<
               onPause={() => setIsPlaying(false)}
               onPlay={() => setIsPlaying(true)}
               onError={(e) => {
-                console.error("[Video] Error loading video:", e);
-                console.error("[Video] URL:", frame.video_url);
+                console.error('[Video] Error loading video:', e);
+                console.error('[Video] URL:', frame.video_url);
               }}
               onLoadedMetadata={() => {
                 console.log(
-                  "[Video] Metadata loaded for frame",
-                  frame.order_index,
+                  '[Video] Metadata loaded for frame',
+                  frame.order_index
                 );
               }}
               controls={false}
@@ -327,7 +327,7 @@ export const StoryboardFrameWithScript: React.FC<
           {/* Thumbnail image (shown when video not playing) */}
           {(!showVideo || !hasVideo) && hasThumbnail ? (
             <Image
-              src={frame.thumbnail_url || ""}
+              src={frame.thumbnail_url || ''}
               alt={`Frame ${frame.order_index + 1} preview`}
               className="h-full w-full object-cover"
               width={1920}
@@ -359,10 +359,10 @@ export const StoryboardFrameWithScript: React.FC<
               variant="secondary"
               size="icon"
               className={cn(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20",
-                "h-12 w-12 rounded-full bg-black/60 text-white",
-                "transition-opacity hover:bg-black/80",
-                isPlaying ? "opacity-0 pointer-events-none" : "opacity-100",
+                'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20',
+                'h-12 w-12 rounded-full bg-black/60 text-white',
+                'transition-opacity hover:bg-black/80',
+                isPlaying ? 'opacity-0 pointer-events-none' : 'opacity-100'
               )}
               onClick={handlePlay}
             >
@@ -416,7 +416,7 @@ export const StoryboardFrameWithScript: React.FC<
               disabled={isMotionGenerating}
               className="flex-1"
             >
-              {isMotionGenerating ? "Generating..." : "Generate Motion"}
+              {isMotionGenerating ? 'Generating...' : 'Generate Motion'}
             </Button>
           )}
           {hasVideo && (
@@ -426,7 +426,7 @@ export const StoryboardFrameWithScript: React.FC<
               onClick={handlePlay}
               className="flex-1"
             >
-              {isPlaying ? "Pause" : "Play Video"}
+              {isPlaying ? 'Pause' : 'Play Video'}
             </Button>
           )}
           {onRegenerate && (
@@ -438,8 +438,8 @@ export const StoryboardFrameWithScript: React.FC<
               disabled={!selectedModel || isRegenerating}
             >
               {isRegenerating || isGeneratingPreview
-                ? "Generating..."
-                : "Regenerate Frame"}
+                ? 'Generating...'
+                : 'Regenerate Frame'}
             </Button>
           )}
           {onEdit && (

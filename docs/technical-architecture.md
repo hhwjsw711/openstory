@@ -1,9 +1,11 @@
 # Velro Technical Architecture
 
 ## Overview
+
 Velro is a video sequence creation platform using AI models to transform scripts into consistent, styled video productions. Built on Next.js, Supabase, and QStash with a focus on simplicity and minimal architecture.
 
 ## Core Principles
+
 - **Backend-only database access** - No direct client DB calls, avoiding RLS complexity
 - **State management** - TanStack Query + reducers for clean component separation
 - **UI simplicity** - shadcn/ui components with theme-driven styling
@@ -19,10 +21,10 @@ erDiagram
     teams ||--o{ vfx : owns
     teams ||--o{ audio : owns
     teams ||--o{ sequences : creates
-    
+
     sequences ||--|| styles : uses
     sequences ||--o{ frames : contains
-    
+
     frames ||--o{ characters : features
     frames ||--o{ audio : includes
     frames }o--o| vfx : applies
@@ -31,22 +33,26 @@ erDiagram
 ### Core Entities
 
 **teams**
+
 - id, name, created_at
 - Owns all creative assets (styles, characters, vfx, audio)
 - All team members have full CRUD on team resources
 
 **users**
+
 - id, email, team_id
 - Anonymous users: temporary session until signup
 - Auth methods: Magic link, Passkeys only
 
 **sequences**
+
 - id, team_id, style_id, name
 - script (text)
 - storyboard (JSON)
 - Script drives everything - name and storyboard auto-generate from script
 
 **frames**
+
 - id, sequence_id, order
 - script_section (text reference)
 - image_url (thumbnail)
@@ -55,6 +61,7 @@ erDiagram
 - AI analyzes script edits to adjust frame boundaries
 
 **Asset Libraries** (per team)
+
 - styles: Reusable Style Stacks for consistency
 - characters: LoRA models for character consistency
 - vfx: Special effects presets
@@ -63,6 +70,7 @@ erDiagram
 ## Technical Stack
 
 ### Frontend (Vercel)
+
 ```typescript
 // Component Architecture
 /app
@@ -80,6 +88,7 @@ erDiagram
 ```
 
 ### Backend Architecture
+
 ```typescript
 // API Layer (Next.js API Routes)
 
@@ -99,12 +108,14 @@ erDiagram
 ### Infrastructure
 
 **Supabase**
+
 - PostgreSQL: Core data storage
 - Auth: Magic links + Passkeys
 - Storage: Generated media files
 - Realtime: Generation status updates
 
 **QStash (Upstash)**
+
 ```typescript
 // Job Queue Structure
 interface GenerationJob {
@@ -125,12 +136,13 @@ interface GenerationJob {
 ```
 
 **AI Model Integration**
+
 ```typescript
 // Unified model interface
 interface AIProvider {
-  generateImage(prompt: string, style: StyleStack): Promise<string>
-  generateVideo(image: string, motion: MotionParams): Promise<string>
-  analyzeScript(script: string): Promise<Frame[]>
+  generateImage(prompt: string, style: StyleStack): Promise<string>;
+  generateVideo(image: string, motion: MotionParams): Promise<string>;
+  analyzeScript(script: string): Promise<Frame[]>;
 }
 
 // Providers: Fal.ai, Runway, Kling, etc.
@@ -140,6 +152,7 @@ interface AIProvider {
 ## Key Workflows
 
 ### 1. Script → Storyboard
+
 ```mermaid
 sequenceDiagram
     User->>API: Upload/edit script
@@ -150,6 +163,7 @@ sequenceDiagram
 ```
 
 ### 2. Frame Generation
+
 ```mermaid
 sequenceDiagram
     User->>API: Generate frame
@@ -163,6 +177,7 @@ sequenceDiagram
 ```
 
 ### 3. Anonymous → Authenticated Flow
+
 1. User starts creating (localStorage session)
 2. Generates frames without signup
 3. Prompted to save: Email magic link or Passkey
@@ -174,7 +189,7 @@ sequenceDiagram
 - **Authentication**: Supabase Auth (magic links, passkeys)
 - **Authorization**: Team-based access control in API layer
 - **Database**: No RLS, backend-only access via service account
-- **API Security**: 
+- **API Security**:
   - Rate limiting per endpoint
   - Input validation (Zod schemas)
   - Sanitized error messages
@@ -182,12 +197,13 @@ sequenceDiagram
 ## Development Guidelines
 
 ### Component Structure
+
 ```tsx
 // Minimal component with no business logic
 export function FrameEditor({ frameId }: Props) {
   const { data, mutate } = useFrame(frameId)  // TanStack Query
   const [state, dispatch] = useReducer(...)   // Complex UI state
-  
+
   return (
     <Card>  {/* shadcn/ui only */}
       {/* No inline styles, use theme variables */}
@@ -197,21 +213,22 @@ export function FrameEditor({ frameId }: Props) {
 ```
 
 ### API Pattern
+
 ```typescript
 // Consistent API structure
 export async function POST(req: Request) {
   // 1. Validate input
   const body = await validateRequest(schema, req)
-  
+
   // 2. Check auth/permissions
   const { team } = await requireTeam(req)
-  
+
   // 3. Execute business logic (DB calls here only)
   const result = await sequenceService.create(team.id, body)
-  
+
   // 4. Queue async work if needed
   await qstash.publishJSON({...})
-  
+
   // 5. Return standardized response
   return NextResponse.json({ data: result })
 }
@@ -220,6 +237,7 @@ export async function POST(req: Request) {
 ## Export & Delivery
 
 **Supported Formats**
+
 - MP4 video compilation
 - Image sequence (PNG/JPEG)
 - DaVinci Resolve XML
@@ -227,6 +245,7 @@ export async function POST(req: Request) {
 - Adobe Premiere project
 
 **Export Pipeline**
+
 1. Compile frame sequence
 2. Apply transitions
 3. Sync audio tracks
@@ -253,7 +272,7 @@ export async function POST(req: Request) {
 - QStash: Production queue
 - Storage: Supabase Storage + CDN
 
-# Staging Environment  
+# Staging Environment
 - Vercel: Preview deployments
 - Supabase: Staging project
 - QStash: Staging queue

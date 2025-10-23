@@ -10,12 +10,15 @@
 ## 1. Executive Summary
 
 ### 1.1 Vision
+
 To democratize cinematic content creation by providing AI-powered tools that maintain consistent artistic vision across entire productions, from script to final cut.
 
 ### 1.2 Mission
+
 Put cinematic power in the hands of anyone with a story to tell by blending AI with authentic human creativity through our revolutionary Style Stack technology.
 
 ### 1.3 Unique Value Proposition
+
 Velro.ai is the first platform to solve the "consistency problem" in AI content generation through Style Stacks - intelligent, reusable presets that ensure artistic vision remains intact across all models and generations.
 
 ---
@@ -27,6 +30,7 @@ Velro.ai is the first platform to solve the "consistency problem" in AI content 
 Style Stacks are dynamic JSON-based presets that capture and maintain consistent cinematic styles across 19+ AI models. Unlike competitors who require users to manually adjust prompts for each model, Style Stacks automatically adapt while preserving creative intent.
 
 **Key Benefits:**
+
 - 80% reduction in prompt iterations
 - Consistent aesthetic across entire productions
 - Monetizable creative assets via marketplace
@@ -35,26 +39,28 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 ### 2.2 Target Market
 
 **Primary Users:**
+
 - Independent filmmakers & directors (pre-visualization)
 - Creative agencies (rapid prototyping)
 - Content creators & YouTubers (10M+ creators)
 - Video production studios (storyboarding)
 
 **Market Size:**
+
 - TAM: $15B (global video production software)
 - SAM: $3B (AI-assisted video creation)
 - SOM: $300M (3-year target)
 
 ### 2.3 Competitive Positioning
 
-| Feature | Velro.ai | Runway | Pika | Krea.ai |
-|---------|----------|---------|------|---------|
-| Style Consistency | ✅ Style Stacks | ❌ Manual | ❌ Manual | ❌ Manual |
-| Multi-Model Support | ✅ 19+ models | ⚠️ Limited | ❌ Single | ⚠️ Limited |
-| Script-to-Video | ✅ Full pipeline | ⚠️ Partial | ❌ No | ❌ No |
-| Director Presets | ✅ 50+ styles | ❌ No | ❌ No | ❌ No |
-| Marketplace | ✅ Stack trading | ❌ No | ❌ No | ❌ No |
-| Mobile-First | ✅ Responsive | ❌ Desktop | ⚠️ Limited | ❌ Desktop |
+| Feature             | Velro.ai         | Runway     | Pika       | Krea.ai    |
+| ------------------- | ---------------- | ---------- | ---------- | ---------- |
+| Style Consistency   | ✅ Style Stacks  | ❌ Manual  | ❌ Manual  | ❌ Manual  |
+| Multi-Model Support | ✅ 19+ models    | ⚠️ Limited | ❌ Single  | ⚠️ Limited |
+| Script-to-Video     | ✅ Full pipeline | ⚠️ Partial | ❌ No      | ❌ No      |
+| Director Presets    | ✅ 50+ styles    | ❌ No      | ❌ No      | ❌ No      |
+| Marketplace         | ✅ Stack trading | ❌ No      | ❌ No      | ❌ No      |
+| Mobile-First        | ✅ Responsive    | ❌ Desktop | ⚠️ Limited | ❌ Desktop |
 
 ---
 
@@ -63,6 +69,7 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 ### 3.1 Style Stack System
 
 #### 3.1.1 Core Components
+
 ```json
 {
   "name": "Tarantino Noir",
@@ -79,8 +86,12 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
     "mood": "Emotional tone"
   },
   "model_adaptations": {
-    "runway_gen3": { /* Specific adjustments */ },
-    "pika_1.0": { /* Specific adjustments */ }
+    "runway_gen3": {
+      /* Specific adjustments */
+    },
+    "pika_1.0": {
+      /* Specific adjustments */
+    }
   },
   "persistent_elements": [
     {
@@ -93,12 +104,14 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 ```
 
 #### 3.1.2 Creation Methods
+
 1. **Visual Upload**: Drag & drop reference images → AI analyzes → generates stack
 2. **Director Templates**: Choose from 50+ prebuilt styles (Tarantino, Nolan, Wes Anderson)
 3. **Manual Builder**: Component-by-component construction via UI
 4. **Script Import**: Parse screenplay → extract visual style → generate stack
 
 #### 3.1.3 Application Flow
+
 1. User selects/creates stack
 2. System validates compatibility with chosen model
 3. Auto-adaptation engine adjusts for model specifics
@@ -110,20 +123,21 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 #### 3.2.1 Advanced Script-to-Storyboard Workflow
 
 **Step 1: Script Analysis & Frame Creation**
+
 ```typescript
 interface ScriptAnalysis {
   input: {
     script: string; // Pasted screenplay text
-    format?: "fountain" | "fdx" | "plain";
+    format?: 'fountain' | 'fdx' | 'plain';
   };
-  
+
   aiProcessing: {
-    breakDetection: "Identify scene/shot transitions";
-    frameCalculation: "Determine optimal frame count per scene";
-    descriptionGeneration: "Create detailed frame descriptions";
-    characterExtraction: "Identify characters for LoRA suggestions";
+    breakDetection: 'Identify scene/shot transitions';
+    frameCalculation: 'Determine optimal frame count per scene';
+    descriptionGeneration: 'Create detailed frame descriptions';
+    characterExtraction: 'Identify characters for LoRA suggestions';
   };
-  
+
   output: {
     frames: Array<{
       id: string;
@@ -139,70 +153,74 @@ interface ScriptAnalysis {
 ```
 
 **Step 2: Frame-Level Customization**
+
 ```typescript
 interface FrameCustomization {
   perFrameControls: {
-    styleStack: "Apply/modify style stack per frame";
-    characterLoRAs: "Inject character-specific LoRAs";
-    model: "Choose optimal model for this specific frame";
-    description: "Edit AI-generated description";
-    references: "Upload reference images";
+    styleStack: 'Apply/modify style stack per frame';
+    characterLoRAs: 'Inject character-specific LoRAs';
+    model: 'Choose optimal model for this specific frame';
+    description: 'Edit AI-generated description';
+    references: 'Upload reference images';
   };
-  
+
   batchOperations: {
-    applyStackToAll: "Propagate style across frames";
-    characterConsistency: "Lock character LoRA across scenes";
-    modelPreference: "Set default model for frame types";
+    applyStackToAll: 'Propagate style across frames';
+    characterConsistency: 'Lock character LoRA across scenes';
+    modelPreference: 'Set default model for frame types';
   };
 }
 ```
 
 **Step 3: Static Frame Generation**
+
 ```typescript
 interface FrameGeneration {
   process: {
-    queue: "Generate frames in parallel";
-    preview: "Low-res quick preview first";
-    highRes: "Full quality on approval";
+    queue: 'Generate frames in parallel';
+    preview: 'Low-res quick preview first';
+    highRes: 'Full quality on approval';
   };
-  
+
   controls: {
-    regenerate: "Re-roll specific frames";
-    variations: "Generate multiple options";
-    tweakPrompt: "Fine-tune description";
-    swapModel: "Try different AI model";
+    regenerate: 'Re-roll specific frames';
+    variations: 'Generate multiple options';
+    tweakPrompt: 'Fine-tune description';
+    swapModel: 'Try different AI model';
   };
 }
 ```
 
 **Step 4: Motion Generation**
+
 ```typescript
 interface MotionPipeline {
   imageToVideo: {
     models: [
-      "seedance", // Best for dance/movement
-      "veo", // Best for cinematic shots
-      "kling_2.1", // Best for action
-      "wan_2.2" // VFX-capable with LoRAs
+      'seedance', // Best for dance/movement
+      'veo', // Best for cinematic shots
+      'kling_2.1', // Best for action
+      'wan_2.2', // VFX-capable with LoRAs
     ];
-    
+
     vfxLoRAs: {
-      available: ["explosions", "particles", "transformations", "magic"];
-      application: "Only with wan_2.2 model";
+      available: ['explosions', 'particles', 'transformations', 'magic'];
+      application: 'Only with wan_2.2 model';
       customUpload: true;
     };
   };
-  
+
   motionControls: {
-    duration: "2-10 seconds per shot";
-    motionIntensity: "Subtle to dramatic";
-    cameraMovement: "Static, pan, zoom, orbit";
-    transitionStyle: "Cut, fade, morph";
+    duration: '2-10 seconds per shot';
+    motionIntensity: 'Subtle to dramatic';
+    cameraMovement: 'Static, pan, zoom, orbit';
+    transitionStyle: 'Cut, fade, morph';
   };
 }
 ```
 
 #### 3.2.2 Complete Production Pipeline
+
 ```mermaid
 graph LR
     Script[Script Input] --> AI[AI Analysis]
@@ -225,36 +243,39 @@ graph LR
 ### 3.3 Marketplace & Monetization
 
 #### 3.3.1 Stack Trading
+
 - **List & Sell**: Creators price their stacks in credits
 - **Preview System**: Auto-generate sample outputs
 - **Licensing**: Choose between exclusive/non-exclusive
 - **Royalties**: 70% to creator, 30% platform fee
 
 #### 3.3.2 Credit Economy
+
 ```typescript
 const CREDIT_SYSTEM = {
   purchasing: {
     starter: { credits: 500, usd: 29 },
     pro: { credits: 2000, usd: 99 },
-    studio: { credits: 10000, usd: 399 }
+    studio: { credits: 10000, usd: 399 },
   },
   consumption: {
     imageGen: 2, // credits per image
     videoGen: 10, // credits per second
-    stackPurchase: "Variable", // 50-500 credits
-    enhancement: 5 // credits per enhancement
+    stackPurchase: 'Variable', // 50-500 credits
+    enhancement: 5, // credits per enhancement
   },
   earning: {
-    stackSale: "70% of price",
-    referral: "100 bonus credits",
-    communityContrib: "50 credits"
-  }
+    stackSale: '70% of price',
+    referral: '100 bonus credits',
+    communityContrib: '50 credits',
+  },
 };
 ```
 
 ### 3.5 Advanced Frame Control System
 
 #### 3.5.1 Frame Editor Interface
+
 ```typescript
 interface FrameEditor {
   layout: {
@@ -263,25 +284,25 @@ interface FrameEditor {
     inspector: "Properties panel for frame details";
     library: "LoRAs, Style Stacks, references";
   };
-  
+
   frameProperties: {
     // Core Properties
     description: string;
     model: AIModel;
     styleStack?: StyleStack;
-    
+
     // Character Management
     characterLoRAs: Array<{
       character: string;
       loraPath: string;
       weight: number;
     }>;
-    
+
     // Advanced Controls
     seed?: number; // For consistency
     aspectRatio: "16:9" | "9:16" | "1:1" | "custom";
     quality: "draft" | "standard" | "premium";
-    
+
     // Motion Settings (for later conversion)
     plannedMotion: {
       type: "static" | "pan" | "zoom" | "action";
@@ -294,57 +315,59 @@ interface FrameEditor {
 ```
 
 #### 3.5.2 LoRA Management System
+
 ```typescript
 interface LoRASystem {
   characterLoRAs: {
-    upload: "User uploads training images";
-    train: "Auto-train via partners or self-hosted";
-    library: "Saved character models";
-    sharing: "Team-wide character consistency";
+    upload: 'User uploads training images';
+    train: 'Auto-train via partners or self-hosted';
+    library: 'Saved character models';
+    sharing: 'Team-wide character consistency';
   };
-  
+
   vfxLoRAs: {
     prebuilt: [
-      "explosion_michael_bay",
-      "magic_particles_disney",
-      "transformation_transformers",
-      "destruction_marvel",
-      "energy_blast_anime",
-      "weather_fx_realistic"
+      'explosion_michael_bay',
+      'magic_particles_disney',
+      'transformation_transformers',
+      'destruction_marvel',
+      'energy_blast_anime',
+      'weather_fx_realistic',
     ];
-    custom: "Upload custom VFX LoRAs";
-    compatibility: "WAN 2.2 exclusive";
+    custom: 'Upload custom VFX LoRAs';
+    compatibility: 'WAN 2.2 exclusive';
   };
-  
+
   styleLoRAs: {
-    artistic: "Specific artist styles";
-    technical: "Lighting, camera styles";
-    genre: "Horror, sci-fi, romance";
+    artistic: 'Specific artist styles';
+    technical: 'Lighting, camera styles';
+    genre: 'Horror, sci-fi, romance';
   };
 }
 ```
 
 #### 3.5.3 Frame-to-Motion Intelligence
+
 ```typescript
 interface SmartMotionSuggestions {
   analysis: {
-    contentType: "Detect action vs dialogue vs establishing";
-    emotionalTone: "Match motion to scene mood";
-    pacing: "Suggest duration based on script";
+    contentType: 'Detect action vs dialogue vs establishing';
+    emotionalTone: 'Match motion to scene mood';
+    pacing: 'Suggest duration based on script';
   };
-  
+
   recommendations: {
-    model: "Best video model for this content";
-    motionType: "Suggested camera movement";
-    vfxOpportunities: "Where VFX would enhance";
-    duration: "Optimal shot length";
+    model: 'Best video model for this content';
+    motionType: 'Suggested camera movement';
+    vfxOpportunities: 'Where VFX would enhance';
+    duration: 'Optimal shot length';
   };
-  
+
   presets: {
-    dialogue: { model: "veo", motion: "subtle", duration: 3 };
-    action: { model: "kling_2.1", motion: "dynamic", duration: 5 };
-    vfx_heavy: { model: "wan_2.2", motion: "complex", duration: 7 };
-    establishing: { model: "seedance", motion: "smooth", duration: 4 };
+    dialogue: { model: 'veo'; motion: 'subtle'; duration: 3 };
+    action: { model: 'kling_2.1'; motion: 'dynamic'; duration: 5 };
+    vfx_heavy: { model: 'wan_2.2'; motion: 'complex'; duration: 7 };
+    establishing: { model: 'seedance'; motion: 'smooth'; duration: 4 };
   };
 }
 ```
@@ -363,18 +386,18 @@ interface CreditOptimization {
       motionGeneration: 10-30, // Based on duration/model
       vfxEnhancement: 5-15, // Additional for VFX LoRAs
     };
-    
+
     totalEstimate: "Show before confirming";
     alternativeOptions: "Suggest cheaper models";
   };
-  
+
   savingStrategies: {
     batchProcessing: "10% discount for 10+ frames";
     offPeakGeneration: "20% discount 2am-6am";
     lowerQualityDrafts: "50% less for draft mode";
     modelSubstitution: "Suggest cheaper alternatives";
   };
-  
+
   budgetControls: {
     projectCap: "Set max credits per project";
     alerts: "Warn at 80% usage";
@@ -396,31 +419,31 @@ graph TB
         State[Zustand State]
         WS[WebSocket Client]
     end
-    
+
     subgraph "API Gateway"
         Auth[Supabase Auth]
         RL[Rate Limiter]
         Routes[API Routes]
     end
-    
+
     subgraph "Core Services"
         Adapter[Style Adapter Service]
         Queue[QStash Queue]
         Generator[Generation Service]
     end
-    
+
     subgraph "AI Models"
         Video[Video APIs]
         Image[Image APIs]
         Vision[Vision AI]
     end
-    
+
     subgraph "Data Layer"
         DB[(Supabase DB)]
         Redis[(Upstash Cache)]
         S3[(Storage)]
     end
-    
+
     UI --> Auth
     Auth --> Routes
     Routes --> Adapter
@@ -487,33 +510,33 @@ CREATE TABLE marketplace_transactions (
 // Core API Endpoints
 interface VelroAPI {
   // Style Stack Operations
-  "/stacks": {
+  '/stacks': {
     POST: CreateStack;
     GET: ListUserStacks;
   };
-  "/stacks/:id": {
+  '/stacks/:id': {
     GET: GetStack;
     PUT: UpdateStack;
     DELETE: DeleteStack;
   };
-  "/stacks/:id/adapt": {
+  '/stacks/:id/adapt': {
     POST: AdaptStackForModel;
   };
-  
+
   // Generation Operations
-  "/generate": {
+  '/generate': {
     POST: StartGeneration;
   };
-  "/generate/:id": {
+  '/generate/:id': {
     GET: GetGenerationStatus;
   };
-  
+
   // Marketplace
-  "/marketplace": {
+  '/marketplace': {
     GET: BrowseStacks;
     POST: ListStackForSale;
   };
-  "/marketplace/:id/purchase": {
+  '/marketplace/:id/purchase': {
     POST: PurchaseStack;
   };
 }
@@ -525,36 +548,36 @@ interface VelroAPI {
 const SECURITY_CONFIG = {
   // Authentication
   auth: {
-    provider: "Supabase Auth",
-    mfa: "Optional TOTP",
-    sessions: "JWT with refresh tokens"
+    provider: 'Supabase Auth',
+    mfa: 'Optional TOTP',
+    sessions: 'JWT with refresh tokens',
   },
-  
+
   // API Security
   api: {
     rateLimit: {
-      anonymous: "10 req/min",
-      authenticated: "100 req/min",
-      pro: "1000 req/min"
+      anonymous: '10 req/min',
+      authenticated: '100 req/min',
+      pro: '1000 req/min',
     },
-    encryption: "TLS 1.3",
-    cors: "Whitelist origins"
+    encryption: 'TLS 1.3',
+    cors: 'Whitelist origins',
   },
-  
+
   // Content Moderation
   moderation: {
-    preCheck: "OpenAI Moderation API",
-    postCheck: "AWS Rekognition",
-    reporting: "User flagging system"
+    preCheck: 'OpenAI Moderation API',
+    postCheck: 'AWS Rekognition',
+    reporting: 'User flagging system',
   },
-  
+
   // Data Protection
   data: {
-    encryption: "AES-256 at rest",
-    backups: "Daily automated",
-    retention: "90 days minimum",
-    gdpr: "Full compliance"
-  }
+    encryption: 'AES-256 at rest',
+    backups: 'Daily automated',
+    retention: '90 days minimum',
+    gdpr: 'Full compliance',
+  },
 };
 ```
 
@@ -565,6 +588,7 @@ const SECURITY_CONFIG = {
 ### 5.1 Key User Flows
 
 #### Flow 1: First-Time Creator
+
 1. Sign up → Receive 100 free credits
 2. Tutorial: "Create Your First Stack"
 3. Choose template (e.g., "Cinematic Drama")
@@ -572,6 +596,7 @@ const SECURITY_CONFIG = {
 5. Save and share result
 
 #### Flow 2: Professional Workflow
+
 1. Import script from Final Draft
 2. Select or create custom stack
 3. Generate full storyboard
@@ -579,6 +604,7 @@ const SECURITY_CONFIG = {
 5. Export to DaVinci Resolve
 
 #### Flow 3: Stack Monetization
+
 1. Create unique style stack
 2. Generate preview samples
 3. Set price (50-500 credits)
@@ -600,16 +626,19 @@ const SECURITY_CONFIG = {
 ### 6.1 Launch Phases
 
 **Phase 1: Private Beta (Month 1-2)**
+
 - 100 hand-picked creators
 - Focus: Style Stack refinement
 - Goal: 10 exceptional example productions
 
 **Phase 2: Public Beta (Month 3-4)**
+
 - 1,000 users waitlist
 - Focus: Marketplace launch
 - Goal: 100 stacks created
 
 **Phase 3: General Availability (Month 5)**
+
 - Open registration
 - Launch marketing campaign
 - Goal: 10,000 users
@@ -623,55 +652,55 @@ const PRICING_MODEL = {
     free: {
       monthly: 0,
       credits: 25,
-      features: ["Basic storyboarding", "2 models", "SD quality"],
-      target: "Trial users"
+      features: ['Basic storyboarding', '2 models', 'SD quality'],
+      target: 'Trial users',
     },
     starter: {
       monthly: 29,
       credits: 300,
-      features: ["All models", "HD quality", "Character LoRAs"],
-      target: "Content creators"
+      features: ['All models', 'HD quality', 'Character LoRAs'],
+      target: 'Content creators',
     },
     professional: {
       monthly: 99,
       credits: 1200,
-      features: ["4K quality", "Priority queue", "Style Stack saving"],
-      target: "Production studios"
+      features: ['4K quality', 'Priority queue', 'Style Stack saving'],
+      target: 'Production studios',
     },
     studio: {
       monthly: 299,
       credits: 4000,
-      features: ["Custom LoRAs", "API access", "Team workspace"],
-      target: "Agencies"
-    }
+      features: ['Custom LoRAs', 'API access', 'Team workspace'],
+      target: 'Agencies',
+    },
   },
-  
+
   // Credit Top-Ups (pay-as-you-go)
   creditPacks: {
-    small: { credits: 100, price: 12 },    // $0.12/credit
-    medium: { credits: 500, price: 55 },   // $0.11/credit
-    large: { credits: 2000, price: 200 },  // $0.10/credit
-    bulk: { credits: 10000, price: 900 }   // $0.09/credit
+    small: { credits: 100, price: 12 }, // $0.12/credit
+    medium: { credits: 500, price: 55 }, // $0.11/credit
+    large: { credits: 2000, price: 200 }, // $0.10/credit
+    bulk: { credits: 10000, price: 900 }, // $0.09/credit
   },
-  
+
   // Cost Structure (Bootstrap sustainable)
   unitEconomics: {
     imageGeneration: {
-      apiCost: 0.02,      // Average across models
-      userPrice: 2,       // credits
-      margin: "15-20%"    // After platform costs
+      apiCost: 0.02, // Average across models
+      userPrice: 2, // credits
+      margin: '15-20%', // After platform costs
     },
     videoGeneration: {
-      apiCost: 0.10,      // Per second average
-      userPrice: 10,      // credits per second
-      margin: "15-20%"
+      apiCost: 0.1, // Per second average
+      userPrice: 10, // credits per second
+      margin: '15-20%',
     },
     storage: {
-      cost: 0.023,        // Per GB/month (Supabase)
-      included: "10GB per user",
-      overage: 5          // credits per GB
-    }
-  }
+      cost: 0.023, // Per GB/month (Supabase)
+      included: '10GB per user',
+      overage: 5, // credits per GB
+    },
+  },
 };
 ```
 
@@ -688,6 +717,7 @@ const PRICING_MODEL = {
 ## 7. Success Metrics
 
 ### 7.1 North Star Metrics
+
 - **Primary**: Monthly Active Creators (target: 10,000 by month 6)
 - **Secondary**: Stacks created per user (target: 5+)
 - **Tertiary**: Marketplace transaction volume (target: $50K/month)
@@ -697,25 +727,25 @@ const PRICING_MODEL = {
 ```typescript
 const KPIs = {
   acquisition: {
-    signups: "1,000/week",
-    conversion: "15% free to paid",
-    CAC: "<$50"
+    signups: '1,000/week',
+    conversion: '15% free to paid',
+    CAC: '<$50',
   },
   engagement: {
-    DAU_MAU: ">40%",
-    generationsPerUser: "20/month",
-    stacksCreated: "2/month"
+    DAU_MAU: '>40%',
+    generationsPerUser: '20/month',
+    stacksCreated: '2/month',
   },
   retention: {
-    day7: ">60%",
-    day30: ">40%",
-    churnRate: "<5% monthly"
+    day7: '>60%',
+    day30: '>40%',
+    churnRate: '<5% monthly',
   },
   monetization: {
-    ARPU: "$45",
-    LTV: "$540",
-    marketplaceTakeRate: "30%"
-  }
+    ARPU: '$45',
+    LTV: '$540',
+    marketplaceTakeRate: '30%',
+  },
 };
 ```
 
@@ -725,27 +755,28 @@ const KPIs = {
 
 ### 8.1 Technical Risks
 
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| API Provider Outage | High | Medium | Multi-provider redundancy |
-| Generation Quality Issues | High | Low | Quality scoring & fallbacks |
-| Scaling Bottlenecks | Medium | Medium | Queue system & caching |
-| Security Breach | High | Low | Regular audits & encryption |
+| Risk                      | Impact | Probability | Mitigation                  |
+| ------------------------- | ------ | ----------- | --------------------------- |
+| API Provider Outage       | High   | Medium      | Multi-provider redundancy   |
+| Generation Quality Issues | High   | Low         | Quality scoring & fallbacks |
+| Scaling Bottlenecks       | Medium | Medium      | Queue system & caching      |
+| Security Breach           | High   | Low         | Regular audits & encryption |
 
 ### 8.2 Business Risks
 
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| Competitor Feature Copy | Medium | High | Rapid innovation & patents |
-| API Price Increases | High | Medium | Margin buffer & optimization |
-| Low Marketplace Adoption | Medium | Medium | Creator incentives |
-| Regulatory Changes | High | Low | Legal compliance team |
+| Risk                     | Impact | Probability | Mitigation                   |
+| ------------------------ | ------ | ----------- | ---------------------------- |
+| Competitor Feature Copy  | Medium | High        | Rapid innovation & patents   |
+| API Price Increases      | High   | Medium      | Margin buffer & optimization |
+| Low Marketplace Adoption | Medium | Medium      | Creator incentives           |
+| Regulatory Changes       | High   | Low         | Legal compliance team        |
 
 ---
 
 ## 9. Development Roadmap
 
 ### 9.1 MVP (Weeks 1-8) - FOCUSED SCOPE with Fal.ai Models
+
 **Core Feature: Script-to-Storyboard with Generation**
 
 - [ ] **Script Processing**
@@ -788,6 +819,7 @@ const KPIs = {
   - [ ] Export (MP4, images, basic XML)
 
 ### 9.2 Phase 2 (Months 3-4) - Post-Funding Development
+
 - [ ] **DaVinci Resolve Plugin** (Priority Roadmap)
   - [ ] XML export with EDL
   - [ ] Direct plugin integration
@@ -806,6 +838,7 @@ const KPIs = {
   - [ ] Mobile app (React Native)
 
 ### 9.3 Phase 3 (Months 5-6) - Scale & Innovation
+
 - [ ] VELRO proprietary model
 - [ ] ComfyUI self-hosted integration
 - [ ] Enterprise features (SSO, SLA)
@@ -817,6 +850,7 @@ const KPIs = {
 ## 10. Team & Resources
 
 ### 10.1 Required Team
+
 - **Engineering**: 2 Full-stack, 1 Backend, 1 ML Engineer
 - **Design**: 1 Product Designer, 1 Motion Designer
 - **Product**: 1 Product Manager
@@ -824,6 +858,7 @@ const KPIs = {
 - **Operations**: 1 Customer Success
 
 ### 10.2 Budget Allocation
+
 - **Development**: 40%
 - **API Costs**: 25%
 - **Marketing**: 20%
@@ -835,6 +870,7 @@ const KPIs = {
 ## 11. Success Criteria
 
 **Year 1 Goals:**
+
 - 50,000 registered users
 - 5,000 paying subscribers
 - $2M ARR
@@ -842,6 +878,7 @@ const KPIs = {
 - 4.5+ app store rating
 
 **Long-term Vision:**
+
 - Become the default creative OS for AI filmmaking
 - Power 10% of all AI-generated content
 - $100M ARR within 3 years

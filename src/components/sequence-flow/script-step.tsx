@@ -1,29 +1,29 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { z } from "zod";
-import { ScriptEditor } from "@/components/sequence/script-editor";
-import { StyleSelector } from "@/components/sequence/style-selector";
-import { SectionHeading } from "@/components/typography";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
+import { ScriptEditor } from '@/components/sequence/script-editor';
+import { StyleSelector } from '@/components/sequence/style-selector';
+import { SectionHeading } from '@/components/typography';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   useCreateSequence,
   useSequence,
   useUpdateSequence,
-} from "@/hooks/use-sequences";
-import { useStyles } from "@/hooks/use-styles";
-import { validateScript } from "@/lib/validation/script";
+} from '@/hooks/use-sequences';
+import { useStyles } from '@/hooks/use-styles';
+import { validateScript } from '@/lib/validation/script';
 
 // Zod validation schema for script form
 const scriptFormSchema = z.object({
   script: z
     .string()
-    .min(10, "Script must be at least 10 characters")
-    .max(10000, "Script must be 10,000 characters or less")
+    .min(10, 'Script must be at least 10 characters')
+    .max(10000, 'Script must be 10,000 characters or less')
     .refine((val) => val.trim().length >= 10, {
-      message: "Script must contain at least 10 non-whitespace characters",
+      message: 'Script must contain at least 10 non-whitespace characters',
     }),
-  styleId: z.string().uuid("Please select a visual style"),
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  styleId: z.string().uuid('Please select a visual style'),
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
 });
 
 type ScriptFormData = z.infer<typeof scriptFormSchema>;
@@ -36,8 +36,8 @@ interface ScriptStepProps {
 export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   // Form state
   const [formData, setFormData] = useState<Partial<ScriptFormData>>({
-    script: "",
-    name: "Untitled Sequence",
+    script: '',
+    name: 'Untitled Sequence',
     styleId: undefined,
   });
 
@@ -63,7 +63,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
   // Load existing sequence data if editing
   const { data: existingSequence, isLoading: isLoadingSequence } = useSequence(
-    sequenceId || "",
+    sequenceId || ''
   );
 
   // TanStack Query mutations
@@ -80,8 +80,8 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   useEffect(() => {
     if (existingSequence && isEditMode) {
       setFormData({
-        script: existingSequence.script || "",
-        name: existingSequence.title || "Untitled Sequence",
+        script: existingSequence.script || '',
+        name: existingSequence.title || 'Untitled Sequence',
         styleId: existingSequence.style_id || undefined,
       });
     }
@@ -97,10 +97,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     const timeoutId = setTimeout(async () => {
       setIsValidating(true);
       try {
-        const result = await validateScript(formData.script || "");
+        const result = await validateScript(formData.script || '');
         setValidationResult(result);
       } catch (error) {
-        console.error("Script validation failed:", error);
+        console.error('Script validation failed:', error);
       } finally {
         setIsValidating(false);
       }
@@ -137,11 +137,11 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       // Clear error for this field when user types
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       // Clear enhancement when script changes
-      if (field === "script") {
+      if (field === 'script') {
         setEnhancementResult(null);
       }
     },
-    [],
+    []
   );
 
   // Handle script enhancement
@@ -150,10 +150,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
     setIsEnhancing(true);
     try {
-      const response = await fetch("/api/script/enhance", {
-        method: "POST",
+      const response = await fetch('/api/script/enhance', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           script: formData.script,
@@ -162,7 +162,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to enhance script");
+        throw new Error(error.message || 'Failed to enhance script');
       }
 
       const apiResult = await response.json();
@@ -171,10 +171,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       const improvements: string[] = [];
       if (apiResult.data?.styleStackRecommendation) {
         improvements.push(
-          `Style Stack: ${apiResult.data.styleStackRecommendation.recommended_style_stack}`,
+          `Style Stack: ${apiResult.data.styleStackRecommendation.recommended_style_stack}`
         );
         improvements.push(
-          `Reasoning: ${apiResult.data.styleStackRecommendation.reasoning}`,
+          `Reasoning: ${apiResult.data.styleStackRecommendation.reasoning}`
         );
       }
 
@@ -188,16 +188,16 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       setEnhancementResult(result);
 
       if (result.success) {
-        handleFieldChange("script", result.enhancedScript);
+        handleFieldChange('script', result.enhancedScript);
       }
     } catch (error) {
-      console.error("Script enhancement failed:", error);
+      console.error('Script enhancement failed:', error);
       setEnhancementResult({
         success: false,
         originalScript: formData.script,
         enhancedScript: formData.script,
         improvements: [],
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setIsEnhancing(false);
@@ -207,7 +207,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   // Handle save and generate
   const handleSaveAndGenerate = useCallback(async () => {
     if (!validateForm()) {
-      console.error("Script validation failed");
+      console.error('Script validation failed');
       return;
     }
 
@@ -225,7 +225,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         savedSequenceId = result.id;
       } else {
         const result = await createSequenceMutation.mutateAsync({
-          script: formData.script || "",
+          script: formData.script || '',
           styleId: formData.styleId || null,
           name: formData.name,
         });
@@ -236,7 +236,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       onSuccess(savedSequenceId);
     } catch (error) {
       // Errors are handled by the mutation's onError callback
-      console.error("Error in save and generate:", error);
+      console.error('Error in save and generate:', error);
     }
   }, [
     formData,
@@ -279,7 +279,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         name: formData.name,
       });
     } catch (error) {
-      console.error("Error saving:", error);
+      console.error('Error saving:', error);
     }
   }, [formData, sequenceId, updateSequenceMutation]);
 
@@ -327,7 +327,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <SectionHeading>
-            {sequenceId ? "Edit Script" : "Your Script"}
+            {sequenceId ? 'Edit Script' : 'Your Script'}
           </SectionHeading>
           {formData.script && formData.script.trim().length >= 10 && (
             <Button
@@ -337,14 +337,14 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
               disabled={isEnhancing || isLoading}
               data-testid="enhance-script-button"
             >
-              {isEnhancing ? "Enhancing..." : "✨ Enhance with AI"}
+              {isEnhancing ? 'Enhancing...' : '✨ Enhance with AI'}
             </Button>
           )}
         </div>
 
         <ScriptEditor
-          value={formData.script || ""}
-          onValueChange={(value) => handleFieldChange("script", value)}
+          value={formData.script || ''}
+          onValueChange={(value) => handleFieldChange('script', value)}
           placeholder="Write your story here... For example: 'A lone astronaut discovers a mysterious signal from deep space. As they investigate, they uncover an ancient alien artifact that holds the key to humanity's future.'"
           error={scriptError}
           disabled={isLoading}
@@ -363,12 +363,12 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
           <div className="space-y-2">
             {validationResult.success && (
               <div className="text-sm text-muted-foreground">
-                ✓ Script looks good! Estimated{" "}
+                ✓ Script looks good! Estimated{' '}
                 {validationResult.estimatedFrames} frames, ~
                 {Math.floor(validationResult.estimatedDuration / 60)}:
                 {(validationResult.estimatedDuration % 60)
                   .toString()
-                  .padStart(2, "0")}{" "}
+                  .padStart(2, '0')}{' '}
                 duration
               </div>
             )}
@@ -427,7 +427,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
         <StyleSelector
           selectedStyleId={formData.styleId || null}
-          onStyleSelect={(styleId) => handleFieldChange("styleId", styleId)}
+          onStyleSelect={(styleId) => handleFieldChange('styleId', styleId)}
           styles={availableStyles}
           loading={availableStyles.length === 0}
           disabled={isLoading}
@@ -453,7 +453,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
             size="lg"
             data-testid="save-button"
           >
-            {updateSequenceMutation.isPending ? "Saving..." : "Save Changes"}
+            {updateSequenceMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
         )}
         <Button
@@ -463,10 +463,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
           data-testid="generate-storyboard-button"
         >
           {saveMutation.isPending
-            ? "Generating..."
+            ? 'Generating...'
             : sequenceId
-              ? "Regenerate Storyboard →"
-              : "Generate Storyboard →"}
+              ? 'Regenerate Storyboard →'
+              : 'Generate Storyboard →'}
         </Button>
       </div>
     </div>

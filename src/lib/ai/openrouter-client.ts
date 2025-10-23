@@ -3,10 +3,10 @@
  * Provides a unified interface to multiple AI models
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 
 // OpenRouter API configuration
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Response schema for OpenRouter API
 const openRouterResponseSchema = z.object({
@@ -18,7 +18,7 @@ const openRouterResponseSchema = z.object({
         content: z.string(),
       }),
       finish_reason: z.string().nullable(),
-    }),
+    })
   ),
   usage: z
     .object({
@@ -34,15 +34,15 @@ export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
 
 export type OpenRouterMessageContent =
   | string
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } }
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
   | Array<
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string } }
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: { url: string } }
     >;
 
 export interface OpenRouterMessage {
-  role: "system" | "user" | "assistant";
+  role: 'system' | 'user' | 'assistant';
   content: OpenRouterMessageContent;
 }
 
@@ -62,41 +62,41 @@ export interface OpenRouterRequestParams {
  */
 export const RECOMMENDED_MODELS = {
   // For creative writing and scene descriptions
-  creative: "anthropic/claude-sonnet-4.5",
+  creative: 'anthropic/claude-sonnet-4.5',
 
   // For structured data extraction
-  structured: "anthropic/claude-sonnet-4.5",
+  structured: 'anthropic/claude-sonnet-4.5',
 
   // For fast responses with good quality
-  fast: "anthropic/claude-haiku-4.5",
+  fast: 'anthropic/claude-haiku-4.5',
 
   // For highest quality (more expensive)
-  premium: "anthropic/claude-sonnet-4.5",
+  premium: 'anthropic/claude-sonnet-4.5',
 } as const;
 
 /**
  * Make a request to OpenRouter API
  */
 export async function callOpenRouter(
-  params: OpenRouterRequestParams,
+  params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
   const apiKey = process.env.OPENROUTER_KEY;
 
   if (!apiKey) {
     console.warn(
-      "[OpenRouter] No API key found, using mock response. Set OPENROUTER_KEY environment variable.",
+      '[OpenRouter] No API key found, using mock response. Set OPENROUTER_KEY environment variable.'
     );
     return getMockResponse(params);
   }
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://velro.ai",
-        "X-Title": "Velro AI",
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://velro.ai',
+        'X-Title': 'Velro AI',
       },
       body: JSON.stringify({
         model: params.model,
@@ -112,7 +112,7 @@ export async function callOpenRouter(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("[OpenRouter] API error:", error);
+      console.error('[OpenRouter] API error:', error);
       throw new Error(`OpenRouter API error: ${response.status} ${error}`);
     }
 
@@ -121,7 +121,7 @@ export async function callOpenRouter(
 
     return validated;
   } catch (error) {
-    console.error("[OpenRouter] Request failed:", error);
+    console.error('[OpenRouter] Request failed:', error);
     // Fall back to mock response in case of error
     return getMockResponse(params);
   }
@@ -133,12 +133,12 @@ export async function callOpenRouter(
 function getMockResponse(params: OpenRouterRequestParams): OpenRouterResponse {
   const lastMessage = params.messages[params.messages.length - 1];
   const contentStr =
-    typeof lastMessage.content === "string"
+    typeof lastMessage.content === 'string'
       ? lastMessage.content
       : JSON.stringify(lastMessage.content);
-  const isFrameDescription = contentStr.includes("frame description");
+  const isFrameDescription = contentStr.includes('frame description');
 
-  let content = "Mock AI response: ";
+  let content = 'Mock AI response: ';
 
   if (isFrameDescription) {
     content = `A cinematic wide shot reveals the scene with dramatic lighting and careful composition. The frame captures the essential narrative elements while maintaining visual coherence with the established style. Characters are positioned thoughtfully within the frame, their expressions and body language conveying the emotional weight of the moment. The environment is richly detailed, with atmospheric elements that enhance the storytelling.`;
@@ -151,10 +151,10 @@ function getMockResponse(params: OpenRouterRequestParams): OpenRouterResponse {
     choices: [
       {
         message: {
-          role: "assistant",
+          role: 'assistant',
           content,
         },
-        finish_reason: "stop",
+        finish_reason: 'stop',
       },
     ],
     usage: {
@@ -170,21 +170,21 @@ function getMockResponse(params: OpenRouterRequestParams): OpenRouterResponse {
  * Helper function to create a system message
  */
 export function systemMessage(content: string): OpenRouterMessage {
-  return { role: "system", content };
+  return { role: 'system', content };
 }
 
 /**
  * Helper function to create a user message
  */
 export function userMessage(content: string): OpenRouterMessage {
-  return { role: "user", content };
+  return { role: 'user', content };
 }
 
 /**
  * Helper function to create an assistant message
  */
 export function assistantMessage(content: string): OpenRouterMessage {
-  return { role: "assistant", content };
+  return { role: 'assistant', content };
 }
 
 /**

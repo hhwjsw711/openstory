@@ -3,26 +3,26 @@
  * Generates images using AI models and optionally updates frame thumbnails
  */
 
-import { serve } from "@upstash/workflow/nextjs";
+import { serve } from '@upstash/workflow/nextjs';
 import {
   type FalImageGenerationParams,
   type FalImageResponse,
   generateImage as generateImageFal,
   IMAGE_MODELS,
-} from "@/lib/ai/fal-client";
-import type { LetzAIMode } from "@/lib/ai/letzai-client";
-import { generateImage as generateImageLetzAI } from "@/lib/ai/letzai-client";
-import { AI_PROVIDER_MAPPINGS } from "@/lib/ai/models";
+} from '@/lib/ai/fal-client';
+import type { LetzAIMode } from '@/lib/ai/letzai-client';
+import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
+import { AI_PROVIDER_MAPPINGS } from '@/lib/ai/models';
 import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
-} from "@/lib/schemas/letzai-request";
-import { LoggerService } from "@/lib/services/logger.service";
-import { createAdminClient } from "@/lib/supabase/server";
-import type { ImageWorkflowInput, ImageWorkflowResult } from "@/lib/workflow";
-import { validateWorkflowAuth } from "@/lib/workflow";
+} from '@/lib/schemas/letzai-request';
+import { LoggerService } from '@/lib/services/logger.service';
+import { createAdminClient } from '@/lib/supabase/server';
+import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
+import { validateWorkflowAuth } from '@/lib/workflow';
 
-const loggerService = new LoggerService("ImageWorkflow");
+const loggerService = new LoggerService('ImageWorkflow');
 
 const LETZAI_PRESET_DIMENSIONS: Record<
   string,
@@ -43,21 +43,21 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
   validateWorkflowAuth(input);
 
   loggerService.logDebug(
-    `Starting image generation workflow for user ${input.userId}`,
+    `Starting image generation workflow for user ${input.userId}`
   );
 
   // Step 1: Generate image
-  const imageResult = await context.run("generate-image", async () => {
+  const imageResult = await context.run('generate-image', async () => {
     if (!input.prompt) {
-      throw new Error("Prompt is required for image generation");
+      throw new Error('Prompt is required for image generation');
     }
 
     // Determine model to use
     let model = input.model as keyof typeof IMAGE_MODELS | undefined;
-    if (!model) model = "flux_krea_lora"; // Default to fast model
+    if (!model) model = 'flux_krea_lora'; // Default to fast model
 
     loggerService.logDebug(
-      `Generating image ${input.frameId} with model ${model}`,
+      `Generating image ${input.frameId} with model ${model}`
     );
 
     // Generate image using selected AI provider
@@ -75,7 +75,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
     const result = resultByProvider(
       model,
       input as unknown as Record<string, unknown>,
-      respData,
+      respData
     );
 
     return result;
@@ -83,23 +83,23 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
   // Step 2: Update frame if frameId is provided
   if (input.frameId && imageResult.imageUrls.length > 0) {
-    await context.run("update-frame", async () => {
+    await context.run('update-frame', async () => {
       if (!input.frameId) {
-        throw new Error("frameId is required for update-frame step");
+        throw new Error('frameId is required for update-frame step');
       }
 
       const supabase = createAdminClient();
       const { error: updateError } = await supabase
-        .from("frames")
+        .from('frames')
         .update({
           thumbnail_url: imageResult.imageUrls[0],
           updated_at: new Date().toISOString(),
         })
-        .eq("id", input.frameId);
+        .eq('id', input.frameId);
 
       if (updateError) {
         loggerService.logError(
-          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`,
+          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`
         );
         throw updateError;
       }
@@ -109,10 +109,10 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
     // Step 3: Check if all frames are complete and update sequence
     if (input.sequenceId) {
-      await context.run("update-sequence-status", async () => {
+      await context.run('update-sequence-status', async () => {
         if (!input.sequenceId) {
           throw new Error(
-            "sequenceId is required for update-sequence-status step",
+            'sequenceId is required for update-sequence-status step'
           );
         }
 
@@ -120,22 +120,22 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 
         // Check if all frames for this sequence now have thumbnails
         const { data: allFrames } = await supabase
-          .from("frames")
-          .select("id, thumbnail_url")
-          .eq("sequence_id", input.sequenceId);
+          .from('frames')
+          .select('id, thumbnail_url')
+          .eq('sequence_id', input.sequenceId);
 
         if (allFrames) {
           const framesWithThumbnails = allFrames.filter(
-            (frame) => frame.thumbnail_url,
+            (frame) => frame.thumbnail_url
           );
           const allFramesHaveThumbnails =
             framesWithThumbnails.length === allFrames.length;
 
           if (allFramesHaveThumbnails && allFrames.length > 0) {
             const { data: sequence } = await supabase
-              .from("sequences")
-              .select("metadata")
-              .eq("id", input.sequenceId)
+              .from('sequences')
+              .select('metadata')
+              .eq('id', input.sequenceId)
               .single();
 
             if (sequence) {
@@ -149,24 +149,24 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
                 ...existingMetadata,
                 frameGeneration: {
                   ...frameGeneration,
-                  status: "completed",
+                  status: 'completed',
                   completedAt: new Date().toISOString(),
                   thumbnailsGenerating: false,
                 },
               };
 
               const { error: seqUpdateError } = await supabase
-                .from("sequences")
+                .from('sequences')
                 .update({
                   metadata: updatedMetadata,
-                  status: "completed",
+                  status: 'completed',
                   updated_at: new Date().toISOString(),
                 })
-                .eq("id", input.sequenceId);
+                .eq('id', input.sequenceId);
 
               if (seqUpdateError) {
                 loggerService.logError(
-                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`,
+                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`
                 );
               }
             }
@@ -178,7 +178,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
     }
   }
 
-  loggerService.logDebug("Image generation workflow completed");
+  loggerService.logDebug('Image generation workflow completed');
 
   // Return workflow result
   const result: ImageWorkflowResult = {
@@ -196,10 +196,10 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
  */
 function generateImageWithProvider(payload: Record<string, unknown>) {
   switch (payload.model) {
-    case "letzai/image": {
+    case 'letzai/image': {
       const sizePreset = payload.image_size as string | undefined;
       const { width, height } = LETZAI_PRESET_DIMENSIONS[
-        sizePreset ?? "landscape_16_9"
+        sizePreset ?? 'landscape_16_9'
       ] ?? {
         width: 1600,
         height: 900,
@@ -212,7 +212,7 @@ function generateImageWithProvider(payload: Record<string, unknown>) {
         creativity: payload.creativity || (2 as number),
         hasWatermark: payload.hasWatermark || (false as boolean),
         systemVersion: payload.systemVersion || (3 as number),
-        mode: (payload.mode as LetzAIMode) || "cinematic",
+        mode: (payload.mode as LetzAIMode) || 'cinematic',
       } as LetzAIImageRequest;
       return generateImageLetzAI(letzaiPayload);
     }
@@ -227,7 +227,7 @@ function generateImageWithProvider(payload: Record<string, unknown>) {
 function resultByProvider(
   model: string,
   data: Record<string, unknown>,
-  resp: FalImageResponse | LetzAIImageResponse,
+  resp: FalImageResponse | LetzAIImageResponse
 ) {
   const result = {
     imageUrls: [] as string[],
@@ -249,7 +249,7 @@ function resultByProvider(
   };
 
   switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
-    case "letz-ai": {
+    case 'letz-ai': {
       const generationSettings =
         (resp as { generationSettings?: Record<string, number> })
           .generationSettings ?? ({} as Record<string, number>);
