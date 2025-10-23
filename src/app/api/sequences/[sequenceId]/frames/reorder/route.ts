@@ -6,9 +6,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { frameService } from '@/lib/services/frame.service';
-import { createServerClient } from '@/lib/supabase/server';
 
 const frameOrderSchema = z.object({
   id: z.string().uuid(),
@@ -40,16 +40,11 @@ export async function PATCH(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify sequence exists and get team_id
-    const { data: sequence, error: sequenceError } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       return NextResponse.json(
         {
           success: false,
@@ -61,7 +56,7 @@ export async function PATCH(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Reorder frames
     await frameService.reorderFrames(sequenceId, validated.frameOrders);

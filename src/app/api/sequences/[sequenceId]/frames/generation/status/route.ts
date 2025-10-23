@@ -6,8 +6,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getSequenceById } from '@/lib/db/helpers/queries';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: Request,
@@ -26,16 +27,11 @@ export async function GET(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify sequence exists and get team_id + status
-    const { data: sequence, error: sequenceError } = await supabase
-      .from('sequences')
-      .select('team_id, status, metadata')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       return NextResponse.json(
         {
           success: false,
@@ -47,7 +43,7 @@ export async function GET(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // If sequence is not processing, return null (no active generation)
     if (sequence.status !== 'processing') {
@@ -62,11 +58,10 @@ export async function GET(
     }
 
     // Get frame progress
-    const { data: frames } = await supabase
-      .from('frames')
-      .select('id, order_index, thumbnail_url')
-      .eq('sequence_id', sequenceId)
-      .order('order_index', { ascending: true });
+    const frames = await getSequenceFrames(sequenceId, {
+      orderBy: 'orderIndex',
+      ascending: true,
+    });
 
     // Get expected frame count from metadata
     const metadata = sequence.metadata as Record<string, unknown> | null;
@@ -83,8 +78,12 @@ export async function GET(
           status: sequence.status,
           framesProgress: {
             total: expectedFrameCount,
-            completed: frames?.filter((f) => f.thumbnail_url).length || 0,
-            frames: frames || [],
+            completed: frames.filter((f) => f.thumbnailUrl).length,
+            frames: frames.map((f) => ({
+              id: f.id,
+              orderIndex: f.orderIndex,
+              thumbnailUrl: f.thumbnailUrl,
+            })),
           },
         },
         timestamp: new Date().toISOString(),

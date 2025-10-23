@@ -13,9 +13,9 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from '@/lib/auth/api-utils';
+import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { ValidationError } from '@/lib/errors';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
-import { createServerClient } from '@/lib/supabase/server';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
@@ -43,24 +43,17 @@ export async function POST(
     const user = await requireUser();
     validateMotionAccess(user);
 
-    const supabase = createServerClient();
-
     // Get frame with sequence info
-    const { data: frame, error: frameError } = await supabase
-      .from('frames')
-      .select('*, sequences!inner(id, team_id, script, style_id, styles(*))')
-      .eq('id', frameId)
-      .eq('sequence_id', sequenceId)
-      .single();
+    const frameData = await getFrameWithSequence(frameId);
 
-    if (frameError || !frame) {
+    if (!frameData || frameData.sequenceId !== sequenceId) {
       throw new ValidationError('Frame not found in this sequence');
     }
 
     // Verify user has access to this frame
-    await requireTeamMemberAccess(user.id, frame.sequences.team_id);
+    await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
-    if (!frame.thumbnail_url) {
+    if (!frameData.thumbnailUrl) {
       return createErrorResponse(
         'Frame has no thumbnail to generate motion from',
         400
@@ -70,11 +63,11 @@ export async function POST(
     // Trigger motion generation workflow
     const workflowInput: MotionWorkflowInput = {
       userId: user.id,
-      teamId: frame.sequences.team_id,
+      teamId: frameData.sequence.teamId,
       frameId,
-      sequenceId: frame.sequence_id,
-      thumbnailUrl: frame.thumbnail_url,
-      prompt: frame.description || undefined,
+      sequenceId: frameData.sequenceId,
+      thumbnailUrl: frameData.thumbnailUrl,
+      prompt: frameData.description || undefined,
       model: validated.model,
       duration: validated.duration,
       fps: validated.fps,
@@ -94,7 +87,7 @@ export async function POST(
       {
         workflowRunId,
         frameId,
-        sequenceId: frame.sequence_id,
+        sequenceId: frameData.sequenceId,
       },
       'Motion generation started successfully'
     );

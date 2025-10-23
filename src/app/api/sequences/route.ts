@@ -7,10 +7,10 @@
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/action-utils';
+import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
 import { createSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
-import { createServerClient } from '@/lib/supabase/server';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
 import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
@@ -25,17 +25,10 @@ export async function POST(request: Request) {
     const validated = createSequenceSchema.parse(body);
     console.log('[POST /api/sequences] Validated data:', validated);
 
-    const supabase = createServerClient();
+    // Get user's team using Drizzle helper
+    const defaultTeam = await getUserDefaultTeam(user.id);
 
-    // Get user's team
-    const { data: teamMemberships, error: teamError } = await supabase
-      .from('team_members')
-      .select('team_id, role')
-      .eq('user_id', user.id)
-      .order('role', { ascending: true })
-      .limit(1);
-
-    if (teamError || !teamMemberships || teamMemberships.length === 0) {
+    if (!defaultTeam) {
       return NextResponse.json(
         {
           success: false,
@@ -47,7 +40,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const teamId = teamMemberships[0].team_id;
+    const teamId = defaultTeam.teamId;
 
     // Create sequence
     const createParams = {
@@ -64,7 +57,7 @@ export async function POST(request: Request) {
     const sequence = await sequenceService.createSequence(createParams);
     console.log('[POST /api/sequences] Created sequence:', {
       id: sequence.id,
-      style_id: sequence.style_id,
+      styleId: sequence.styleId,
     });
 
     // Generate frames asynchronously via workflow
@@ -121,16 +114,11 @@ export async function GET() {
   try {
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
-    // Get user's team
-    const { data: membership } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', user.id)
-      .single();
+    // Get user's default team using Drizzle helper
+    const defaultTeam = await getUserDefaultTeam(user.id);
 
-    if (!membership) {
+    if (!defaultTeam) {
       // No team membership yet, return empty array
       return NextResponse.json(
         {
@@ -143,7 +131,7 @@ export async function GET() {
     }
 
     const sequences = await sequenceService.getSequencesByTeam(
-      membership.team_id
+      defaultTeam.teamId
     );
 
     return NextResponse.json(

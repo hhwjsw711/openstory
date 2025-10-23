@@ -4,7 +4,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  getUserTeam,
+  getUserTeams as getTeamsHelper,
+} from '@/lib/db/helpers/team-permissions';
 import type { User } from './config';
 import { auth } from './config';
 
@@ -39,16 +42,9 @@ export async function getUserRole(
   userId: string,
   teamId: string
 ): Promise<TeamRole | null> {
-  const supabase = createServerClient();
+  const membership = await getUserTeam(userId, teamId);
 
-  const { data: membership, error } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('team_id', teamId)
-    .single();
-
-  if (error || !membership) {
+  if (!membership) {
     return null;
   }
 
@@ -312,22 +308,12 @@ export async function getUserTeams(userId: string): Promise<
     joinedAt: string;
   }>
 > {
-  const supabase = createServerClient();
-
-  const { data: memberships, error } = await supabase
-    .from('team_members')
-    .select('team_id, role, joined_at, teams(name)')
-    .eq('user_id', userId)
-    .order('joined_at', { ascending: true });
-
-  if (error || !memberships) {
-    return [];
-  }
+  const memberships = await getTeamsHelper(userId);
 
   return memberships.map((m) => ({
-    teamId: m.team_id,
+    teamId: m.teamId,
     role: m.role as TeamRole,
-    teamName: (m.teams as { name: string })?.name || 'Unknown Team',
-    joinedAt: m.joined_at,
+    teamName: m.teamName,
+    joinedAt: m.joinedAt.toISOString(),
   }));
 }

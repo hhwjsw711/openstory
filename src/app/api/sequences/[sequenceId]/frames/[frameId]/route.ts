@@ -8,10 +8,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateFrameSchema } from '@/lib/schemas/frame.schemas';
 import { frameService } from '@/lib/services/frame.service';
-import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: Request,
@@ -31,17 +31,11 @@ export async function GET(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Get frame with sequence info
-    const { data: frame, error: frameError } = await supabase
-      .from('frames')
-      .select('*, sequences!inner(team_id)')
-      .eq('id', frameId)
-      .eq('sequence_id', sequenceId)
-      .single();
+    const frameData = await getFrameWithSequence(frameId);
 
-    if (frameError || !frame) {
+    if (!frameData || frameData.sequenceId !== sequenceId) {
       return NextResponse.json(
         {
           success: false,
@@ -53,12 +47,12 @@ export async function GET(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, frame.sequences.team_id);
+    await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
     return NextResponse.json(
       {
         success: true,
-        data: frame,
+        data: frameData,
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
@@ -104,17 +98,11 @@ export async function PATCH(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Get frame with sequence info to verify team access
-    const { data: frameData, error: frameError } = await supabase
-      .from('frames')
-      .select('sequence_id, sequences!inner(team_id)')
-      .eq('id', frameId)
-      .eq('sequence_id', sequenceId)
-      .single();
+    const frameData = await getFrameWithSequence(frameId);
 
-    if (frameError || !frameData) {
+    if (!frameData || frameData.sequenceId !== sequenceId) {
       return NextResponse.json(
         {
           success: false,
@@ -126,7 +114,7 @@ export async function PATCH(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, frameData.sequences.team_id);
+    await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
     // Update frame
     const frame = await frameService.updateFrame({
@@ -136,7 +124,10 @@ export async function PATCH(
       thumbnailUrl: validated.thumbnail_url,
       videoUrl: validated.video_url,
       durationMs: validated.duration_ms,
-      metadata: validated.metadata,
+      metadata: validated.metadata as
+        | Record<string, unknown>
+        | null
+        | undefined,
     });
 
     return NextResponse.json(
@@ -197,17 +188,11 @@ export async function DELETE(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Get frame with sequence info to verify team access
-    const { data: frameData, error: frameError } = await supabase
-      .from('frames')
-      .select('sequence_id, sequences!inner(team_id)')
-      .eq('id', frameId)
-      .eq('sequence_id', sequenceId)
-      .single();
+    const frameData = await getFrameWithSequence(frameId);
 
-    if (frameError || !frameData) {
+    if (!frameData || frameData.sequenceId !== sequenceId) {
       return NextResponse.json(
         {
           success: false,
@@ -219,7 +204,7 @@ export async function DELETE(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, frameData.sequences.team_id);
+    await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
     // Delete frame
     await frameService.deleteFrame(frameId);
