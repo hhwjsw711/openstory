@@ -1,8 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun biome:*)",
-      "Bash(bun biome check --write .)",
+      "Bash(bun lint:*)",
+      "Bash(bun lint)",
+      "Bash(bun lint:fix)",
+      "Bash(bun format:*)",
+      "Bash(bun format)",
+      "Bash(bun format:check)",
+      "Bash(bunx oxlint:*)",
+      "Bash(bunx prettier:*)",
       "Bash(bun tsc --noEmit --skipLibCheck)",
       "Bash(bun test)",
       "Bash(bun test --watch)",

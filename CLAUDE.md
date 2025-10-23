@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
+
 ```bash
 bun dev              # Start development server with Turbopack
 bun build            # Build production app with Turbopack
@@ -12,13 +13,16 @@ bun start            # Start production server
 ```
 
 ### Code Quality
+
 ```bash
-bun biome check .          # Run linter
-bun biome format .         # Format code
-bun biome check --write .  # Fix linting and formatting
+bun lint              # Run linter (oxlint with type-aware checks)
+bun lint:fix          # Fix linting issues automatically
+bun format            # Format code with Prettier
+bun format:check      # Check formatting without making changes
 ```
 
 ### Supabase
+
 ```bash
 bunx supabase start     # Start local Supabase
 bunx supabase stop      # Stop local Supabase
@@ -28,6 +32,7 @@ bun supabase:types     # Generate TypeScript types from database
 ```
 
 ### QStash Development
+
 ```bash
 bun qstash:dev         # Start QStash tunnel for local webhooks
 ```
@@ -35,11 +40,13 @@ bun qstash:dev         # Start QStash tunnel for local webhooks
 **Note**: Local development uses hardcoded QStash credentials (user: `defaultUser`) configured in `setup-env.sh`. The workflow URL is set to `http://host.docker.internal:3000` so QStash (running in Docker) can reach your local Next.js app.
 
 ### Environment Setup
+
 ```bash
 bun setup:env          # Create .env.development.local with Supabase credentials
 ```
 
 **Note**: Database types (`src/lib/gen.types.ts`) are auto-generated:
+
 - Generated automatically on `bun install` via postinstall hook
 - Can be manually regenerated with `bun supabase:types`
 - File is gitignored to ensure types always match local database schema
@@ -47,11 +54,13 @@ bun setup:env          # Create .env.development.local with Supabase credentials
 - Use the convenience exports from `@/types/database` for cleaner imports
 
 ### TypeScript
+
 ```bash
 bun tsc --noEmit      # Type check without building
 ```
 
 ### Storybook (Component Development)
+
 ```bash
 bun storybook         # Start Storybook dev server
 bun build-storybook   # Build Storybook for production
@@ -60,25 +69,30 @@ bun build-storybook   # Build Storybook for production
 ## Development Workflow
 
 ### First Time Setup
+
 1. **Install dependencies**: `bun install`
 2. **Start Supabase**: `bun supabase:start`
 3. **Setup environment**: `bun setup:env` (automatically configures Supabase + QStash with local dev credentials)
 
 ### Daily Development (3 Terminal Setup)
+
 1. **Terminal 1 - Supabase**: `bun supabase:start` (if not already running)
-2. **Terminal 2 - QStash**: `bun qstash:dev` (for async job testing)  
+2. **Terminal 2 - QStash**: `bun qstash:dev` (for async job testing)
 3. **Terminal 3 - Next.js**: `bun dev`
 
 ### Before Committing
+
 ```bash
 bun tsc --noEmit      # Check TypeScript
-bun biome check .     # Check linting/formatting  
+bun lint              # Run linter with type-aware checks
+bun format:check      # Check code formatting
 bun test              # Run test suite
 ```
 
 **Automatic Issue Tagging**: When working on branches that start with an issue number (e.g., `54-feature-name`), commit messages are automatically tagged with the issue number. For example, a commit message "Fix bug in auth" on branch `54-pre-commit-issue` becomes "Fix bug in auth (#54)".
 
 This feature:
+
 - Only applies to branches starting with digits followed by a dash
 - Skips merge commits
 - Won't duplicate existing issue numbers in commit messages
@@ -89,12 +103,14 @@ This feature:
 This is a Next.js 15 headless API application for AI-powered video sequence creation. The app transforms scripts into consistent, styled video productions using multiple AI models.
 
 ### Core Design Principles
+
 - **Backend-only database access**: All Supabase DB operations go through API routes. Never use Supabase client directly in components to avoid RLS complexity.
 - **Anonymous-first**: Users can start creating without signup, then upgrade to save work via email login.
 - **Team-based**: All resources (sequences, styles, characters, vfx, audio) belong to teams for collaboration.
 - **Script-driven**: Everything generates from the script to maintain consistency.
 
 ### Data Model Hierarchy
+
 ```
 teams
   ├── users (team members)
@@ -108,6 +124,7 @@ teams
 ```
 
 ### Key Technical Decisions
+
 1. **State Management**: Use TanStack Query for server state and reducers for complex UI state. Keep components pure.
 2. **UI Components**: Use shadcn/ui components exclusively. Apply styling through theme variables, not inline Tailwind.
 3. **Async Processing**: QStash Workflow handles all AI generation tasks with durable execution and automatic retries.
@@ -115,7 +132,9 @@ teams
 5. **File Structure**: API routes handle all business logic and DB access. Components remain presentational.
 
 ### API Pattern
+
 All API routes follow this structure:
+
 1. Validate input (Zod schemas)
 2. Check auth/team permissions
 3. Execute business logic (DB operations only here)
@@ -123,6 +142,7 @@ All API routes follow this structure:
 5. Return standardized response with workflow run ID
 
 ### Generation Pipeline
+
 1. User uploads/edits script
 2. AI analyzes and creates frame boundaries
 3. Frames generated with Style Stack + character LoRAs
@@ -130,24 +150,29 @@ All API routes follow this structure:
 5. Export as video or other formats
 
 ### Technology Stack
+
 - **Runtime**: Bun (migrated from Node.js/pnpm)
 - **Framework**: Next.js 15 with App Router and Turbopack
 - **Database**: Supabase (PostgreSQL + Better Auth + Storage + Realtime)
 - **Workflows**: QStash Workflow (Upstash) for durable, serverless AI task orchestration
 - **Styling**: Tailwind CSS v4 with shadcn/ui
 - **Testing**: Bun test (migrated from Vitest)
-- **Formatting**: Biome for linting and formatting
+- **Linting**: oxlint with type-aware checks
+- **Formatting**: Prettier
 - **AI Models**: Multiple providers (Fal.ai, Runway, Kling, etc.) via unified interface
 
 ### Import Alias
+
 Use `@/*` to import from src directory:
+
 ```typescript
-import { something } from '@/app/api/utils'
+import { something } from "@/app/api/utils";
 ```
 
 ## Backend Development Guidelines
 
 ### When creating new features:
+
 1. Start with API route in `/app/api/[feature]`
 2. All DB operations in API routes only
 3. Create workflows in `/app/api/workflows/[workflow-name]` for AI generation or long-running tasks
@@ -157,23 +182,29 @@ import { something } from '@/app/api/utils'
 7. Apply theme variables for styling, avoid inline Tailwind
 
 ### Style Stacks
+
 The core innovation - JSON presets that maintain consistent style across different AI models:
+
 - Stored per team in the styles library
 - Auto-adapt to different model requirements
 - Include persistent elements (characters, settings)
 - Tradeable in marketplace (future feature)
 
 ### Frame System
+
 Frames are the building blocks of sequences:
+
 - Reference script sections
 - Have thumbnail (image) and motion (video)
 - Can include characters, audio, and VFX from team libraries
 - AI adjusts frame boundaries when script changes
 
 ### Workflow Architecture
+
 All async AI operations use QStash Workflow for durable execution:
 
 **Available Workflows** (`/app/api/workflows/`):
+
 - `image` - Image generation with FAL/LetzAI
 - `video` - Video generation from text
 - `motion` - Image-to-video generation
@@ -181,6 +212,7 @@ All async AI operations use QStash Workflow for durable execution:
 - `script` - Script enhancement and analysis
 
 **Workflow Pattern**:
+
 ```typescript
 // 1. API route triggers workflow via QStash publish
 const workflowInput: ImageWorkflowInput = {
@@ -211,11 +243,13 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 ```
 
 **Important**:
+
 - Always use `qstash.publishJSON()` to trigger workflows, not direct `fetch()` calls
 - QStash requires proper signatures which are only added through the publish API
 - Use `workflowConfig.baseUrl` for QStash webhook URLs (external URL that QStash can reach)
 
 **Key Principles**:
+
 - Workflows handle their own state - no database job tracking needed
 - Pass auth (userId/teamId) through workflow context
 - Use `context.run()` for each logical step
@@ -223,6 +257,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - Steps are durable - execution continues even if server restarts
 
 ## Frontend Development Guidelines
+
 ### 1. Use as little React as possible
 
 - Keep components small - less than 100 lines
@@ -314,10 +349,10 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - Avoid code that conditionally shows a complex component - this creates janky ui
 - Instead use the display css property to hide or show - this will precalculate everything in the component but not render it
 
-### 15. Use eslint or equivalent
+### 15. Use a linter
 
+- We use oxlint with type-aware checks for fast, TypeScript-aware linting
 - Ensure the rules of hooks linting rule is on
-- Check out 0xlint and Biome
 
 ### 16. Views are routes
 
@@ -332,12 +367,12 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - It's more efficient to export the component directly than to import a default
 - Avoid barrelled imports as much as possible _unless_ you are planning to package that library for others
 
-
 ### 18. use useActionState for forms
 
 ### 19. Don't add React. prefix. Import useEffect, useReducer, useCallback etc.
 
 ### Testing
+
 ```bash
 bun test              # Run all tests
 bun test --watch      # Run tests in watch mode (also test:watch, test:ui)
@@ -349,16 +384,21 @@ bun test --bail       # Stop after first failure
 ## Testing
 
 ### Test Framework & Patterns
+
 - Use **bun:test** framework (not vitest) - migrated from Vitest to Bun test
 - Place API route tests in `__tests__` directories alongside routes
 - Place service/util tests in same directory as the module (e.g., `service.test.ts` next to `service.ts`)
 - Test business logic thoroughly, but avoid testing React components directly
 
 ### Mock Management (Important for Bun)
+
 When mocking modules in Bun tests, avoid shared mock state between tests:
+
 ```typescript
 // CORRECT - Fresh mock for each test
-const mockCreateClient = mock(() => ({ /* mock implementation */ }));
+const mockCreateClient = mock(() => ({
+  /* mock implementation */
+}));
 mock.module("@supabase/supabase-js", () => ({
   createClient: mockCreateClient,
 }));
@@ -371,12 +411,14 @@ beforeEach(async () => {
 ```
 
 ### Database Integration
+
 - Tests use mocked Supabase clients, not real database connections
 - Include database types from `@/types/database` (not `src/lib/supabase/gen.types.ts`)
 - Always use the Supabase CLI to create migrations
 - Use `z.uuid()` for UUID validation in schemas
 
 ### Workflow Integration Testing
+
 - Workflow tests mock the workflow context and database operations
 - Test workflow steps: step execution → state management → error handling
 - Mock external AI service calls to avoid real API usage during testing

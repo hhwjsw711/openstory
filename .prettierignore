@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+dist
+build
+out
+
+# Generated files
+src/lib/supabase/gen.types.ts
+*.gen.ts
+
+# Test coverage
+coverage
+
+# Logs
+*.log
+
+# Environment files
+.env*
+
+# Cache
+.cache
+.turbo
+
+# Storybook
+storybook-static
+
+# Git
+.git
+
+# Lock files
+bun.lockb
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

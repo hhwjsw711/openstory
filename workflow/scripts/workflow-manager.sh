@@ -346,7 +346,8 @@ EOF
 ### 3. Testing and Validation
 - Run tests: `bun test`
 - Check types: `bun tsc --noEmit`
-- Lint code: `bunx @biomejs/biome check --write .`
+- Lint code: `bun lint`
+- Format code: `bun format`
 
 ### 4. Commit Guidelines
 - Make frequent, descriptive commits
