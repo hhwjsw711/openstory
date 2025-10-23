@@ -1,37 +1,11 @@
-# Dependencies
-node_modules
-
-# Build outputs
-.next
-dist
-build
-out
-
-# Generated files
-src/lib/supabase/gen.types.ts
-*.gen.ts
-
-# Test coverage
-coverage
-
-# Logs
-*.log
-
-# Environment files
-.env*
-
-# Cache
-.cache
-.turbo
-
-# Storybook
-storybook-static
-
-# Git
-.git
-
-# Lock files
+# Lock files (tracked but binary/generated - don't format)
 bun.lockb
+
+# Other package manager lock files
+pnpm-lock.yaml
 package-lock.json
 yarn.lock
-pnpm-lock.yaml
+
+# Generated TypeScript types
+*.gen.ts
+gen.types.ts

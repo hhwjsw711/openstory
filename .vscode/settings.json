@@ -26,7 +26,6 @@
   "terminal.integrated.shell.linux": "/bin/zsh",
   "terminal.integrated.shell.osx": "/bin/zsh",
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.suggest.includeCompletionsForModuleExports": true,
   "typescript.preferences.includePackageJsonAutoImports": "auto",
@@ -39,7 +38,7 @@
   "githubPullRequests.createDefaultBaseBranch": "repositoryDefault",
   "task.allowAutomaticTasks": "on",
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "vscode.typescript-language-features",
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
     }
@@ -68,5 +67,9 @@
   "[jsonc]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "task.problemMatchers.neverPrompt": false
+  "task.problemMatchers.neverPrompt": false,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "oxc.typeAware": true,
+  "oxc.lint.run": "onSave",
+  "oxc.configPath": ""
 }

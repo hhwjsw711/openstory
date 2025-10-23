@@ -2,8 +2,8 @@
  * Tests for motion generation service
  */
 
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { Json } from "@/types/database";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   estimateMotionGeneration,
   generateMotionForFrame,

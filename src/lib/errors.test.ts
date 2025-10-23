@@ -194,7 +194,7 @@ describe("withRetry", () => {
     const error = new Error("Persistent failure");
     const operation = mock().mockRejectedValue(error);
 
-    await expect(
+    expect(
       withRetry(operation, {
         attempts: 3,
         delayMs: 10,
@@ -231,7 +231,7 @@ describe("withRetry", () => {
       .mockRejectedValueOnce(retryableError)
       .mockRejectedValueOnce(nonRetryableError);
 
-    await expect(
+    expect(
       withRetry(operation, {
         attempts: 3,
         delayMs: 10,
@@ -249,7 +249,7 @@ describe("withRetry", () => {
     const error = new Error("Non-retryable");
     const operation = mock().mockRejectedValue(error);
 
-    await expect(
+    expect(
       withRetry(operation, {
         attempts: 3,
         delayMs: 10,
