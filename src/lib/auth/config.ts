@@ -6,7 +6,8 @@
 import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
-import { pgPool } from '@/lib/db/pool';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { db } from '@/lib/db/client';
 import { createAdminClient } from '@/lib/supabase/server';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
@@ -25,7 +26,9 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 }
 
 export const auth = betterAuth({
-  database: pgPool,
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+  }),
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
   baseURL: requiredEnvVars.BETTER_AUTH_URL,
 
