@@ -7,26 +7,17 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireTeamAdminAccess, requireUser } from '@/lib/auth/action-utils';
+import { requireUser } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateStyleSchema } from '@/lib/schemas/style.schemas';
-import { createServerClient } from '@/lib/supabase/server';
-import type { Json } from '@/types/database';
-
-/**
- * Get the current user's team ID
- */
-async function getUserTeamId(userId: string): Promise<string | null> {
-  const supabase = createServerClient();
-  const { data: teamMembership } = await supabase
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', userId)
-    .eq('role', 'owner')
-    .single();
-
-  return teamMembership?.team_id || null;
-}
+import {
+  getStyleById,
+  getUserDefaultTeam,
+  requireTeamManagement,
+} from '@/lib/db/helpers';
+import { db } from '@/lib/db/client';
+import { styles } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function GET(
   _request: Request,
@@ -43,15 +34,10 @@ export async function GET(
       throw new ValidationError('Invalid style ID format');
     }
 
-    const supabase = createServerClient();
-    const { data: style, error } = await supabase
-      .from('styles')
-      .select('*')
-      .eq('id', styleId)
-      .single();
+    const style = await getStyleById(styleId);
 
-    if (error) {
-      throw new Error(`Failed to get style: ${error.message}`);
+    if (!style) {
+      throw new ValidationError('Style not found');
     }
 
     return NextResponse.json(
@@ -97,8 +83,8 @@ export async function PATCH(
     const user = await requireUser();
 
     // Get the current user's team to verify ownership
-    const teamId = await getUserTeamId(user.id);
-    if (!teamId) {
+    const teamMembership = await getUserDefaultTeam(user.id);
+    if (!teamMembership) {
       throw new ValidationError('No team found for current user');
     }
 
@@ -106,39 +92,45 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateStyleSchema.parse(body);
 
-    // Update style
-    const supabase = createServerClient();
-    const updateData: Record<
-      string,
-      Json | string | string[] | boolean | null | undefined
-    > = {
-      updated_at: new Date().toISOString(),
+    // Build update data object (only include provided fields)
+    const updateData: Partial<{
+      name: string;
+      description: string | null;
+      config: Record<string, unknown>;
+      category: string | null;
+      tags: string[];
+      isPublic: boolean;
+      previewUrl: string | null;
+      updatedAt: Date;
+    }> = {
+      updatedAt: new Date(),
     };
 
-    // Only include fields that were provided
     if (validated.name !== undefined) updateData.name = validated.name;
     if (validated.description !== undefined)
       updateData.description = validated.description;
-    if (validated.config !== undefined)
-      updateData.config = validated.config as Json;
+    if (validated.config !== undefined) updateData.config = validated.config;
     if (validated.category !== undefined)
       updateData.category = validated.category;
     if (validated.tags !== undefined) updateData.tags = validated.tags;
-    if (validated.is_public !== undefined)
-      updateData.is_public = validated.is_public;
-    if (validated.preview_url !== undefined)
-      updateData.preview_url = validated.preview_url;
+    if (validated.isPublic !== undefined)
+      updateData.isPublic = validated.isPublic;
+    if (validated.previewUrl !== undefined)
+      updateData.previewUrl = validated.previewUrl;
 
-    const { data: style, error } = await supabase
-      .from('styles')
-      .update(updateData)
-      .eq('id', styleId)
-      .eq('team_id', teamId) // Ensure user can only update their team's styles
-      .select()
-      .single();
+    // Update style with Drizzle
+    const [style] = await db
+      .update(styles)
+      .set(updateData)
+      .where(
+        and(eq(styles.id, styleId), eq(styles.teamId, teamMembership.teamId))
+      )
+      .returning();
 
-    if (error) {
-      throw new Error(`Failed to update style: ${error.message}`);
+    if (!style) {
+      throw new ValidationError(
+        'Style not found or you do not have permission to update it'
+      );
     }
 
     return NextResponse.json(
@@ -196,32 +188,20 @@ export async function DELETE(
     // Check authentication
     const user = await requireUser();
 
-    const supabase = createServerClient();
-
     // Get the style to verify team ownership
-    const { data: style, error: fetchError } = await supabase
-      .from('styles')
-      .select('team_id')
-      .eq('id', styleId)
-      .single();
+    const style = await getStyleById(styleId);
 
-    if (fetchError || !style) {
+    if (!style) {
       throw new ValidationError('Style not found');
     }
 
     // Check if user has admin/owner role for this team
-    await requireTeamAdminAccess(user.id, style.team_id);
+    await requireTeamManagement(user.id, style.teamId);
 
-    // Delete the style
-    const { error } = await supabase
-      .from('styles')
-      .delete()
-      .eq('id', styleId)
-      .eq('team_id', style.team_id);
-
-    if (error) {
-      throw new Error(`Failed to delete style: ${error.message}`);
-    }
+    // Delete the style with Drizzle
+    await db
+      .delete(styles)
+      .where(and(eq(styles.id, styleId), eq(styles.teamId, style.teamId)));
 
     return NextResponse.json(
       {

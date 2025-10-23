@@ -9,23 +9,13 @@ import { z } from 'zod';
 import { requireUser } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { createStyleSchema } from '@/lib/schemas/style.schemas';
-import { createServerClient } from '@/lib/supabase/server';
-import type { Json } from '@/types/database';
-
-/**
- * Get the current user's team ID
- */
-async function getUserTeamId(userId: string): Promise<string | null> {
-  const supabase = createServerClient();
-  const { data: teamMembership } = await supabase
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', userId)
-    .eq('role', 'owner')
-    .single();
-
-  return teamMembership?.team_id || null;
-}
+import {
+  getUserDefaultTeam,
+  getTeamAndPublicStyles,
+  getPublicStyles,
+} from '@/lib/db/helpers';
+import { db } from '@/lib/db/client';
+import { styles } from '@/lib/db/schema';
 
 export async function POST(request: Request) {
   try {
@@ -33,8 +23,8 @@ export async function POST(request: Request) {
     const user = await requireUser();
 
     // Get the current user's team
-    const teamId = await getUserTeamId(user.id);
-    if (!teamId) {
+    const teamMembership = await getUserDefaultTeam(user.id);
+    if (!teamMembership) {
       throw new ValidationError('No team found for current user');
     }
 
@@ -42,26 +32,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = createStyleSchema.parse(body);
 
-    // Create style
-    const supabase = createServerClient();
-    const { data: style, error } = await supabase
-      .from('styles')
-      .insert({
-        team_id: teamId,
+    // Create style with Drizzle
+    const [style] = await db
+      .insert(styles)
+      .values({
+        teamId: teamMembership.teamId,
         name: validated.name,
         description: validated.description,
-        config: validated.config as Json,
+        config: validated.config,
         category: validated.category,
         tags: validated.tags || [],
-        is_public: validated.is_public,
-        preview_url: validated.preview_url,
+        isPublic: validated.isPublic,
+        previewUrl: validated.previewUrl,
+        createdBy: user.id,
       })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create style: ${error.message}`);
-    }
+      .returning();
 
     return NextResponse.json(
       {
@@ -106,47 +91,22 @@ export async function GET() {
     const user = await requireUser();
 
     // Get the current user's team
-    const teamId = await getUserTeamId(user.id);
+    const teamMembership = await getUserDefaultTeam(user.id);
 
-    const supabase = createServerClient();
+    let stylesList;
 
-    if (!teamId) {
+    if (!teamMembership) {
       // If no team, just return public styles
-      const { data: styles, error } = await supabase
-        .from('styles')
-        .select('*')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw new Error(`Failed to list styles: ${error.message}`);
-      }
-
-      return NextResponse.json(
-        {
-          success: true,
-          data: styles || [],
-          timestamp: new Date().toISOString(),
-        },
-        { status: 200 }
-      );
-    }
-
-    // Get team styles and public styles
-    const { data: styles, error } = await supabase
-      .from('styles')
-      .select('*')
-      .or(`team_id.eq.${teamId},is_public.eq.true`)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to list styles: ${error.message}`);
+      stylesList = await getPublicStyles();
+    } else {
+      // Get team styles and public styles
+      stylesList = await getTeamAndPublicStyles(teamMembership.teamId);
     }
 
     return NextResponse.json(
       {
         success: true,
-        data: styles || [],
+        data: stylesList,
         timestamp: new Date().toISOString(),
       },
       { status: 200 }

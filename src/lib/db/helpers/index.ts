@@ -56,6 +56,8 @@ export {
   getSequenceWithFrames,
   getTeamSequences,
   getTeamStyles,
+  getPublicStyles,
+  getTeamAndPublicStyles,
   getTeamCharacters,
   getTeamVfx,
   getTeamAudio,

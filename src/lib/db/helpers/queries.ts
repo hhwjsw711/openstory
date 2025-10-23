@@ -3,7 +3,7 @@
  * Frequently used database queries to avoid duplication across API routes
  */
 
-import { eq, desc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, or, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   sequences,
@@ -148,6 +148,45 @@ export async function getTeamStyles(
     .from(styles)
     .where(and(...conditions))
     .orderBy(desc(styles.usageCount), desc(styles.createdAt));
+}
+
+/**
+ * Get public styles only
+ * For users without a team or to show public templates
+ *
+ * @returns Array of public styles
+ *
+ * @example
+ * ```ts
+ * const publicStyles = await getPublicStyles();
+ * ```
+ */
+export async function getPublicStyles(): Promise<Style[]> {
+  return await db
+    .select()
+    .from(styles)
+    .where(eq(styles.isPublic, true))
+    .orderBy(desc(styles.createdAt));
+}
+
+/**
+ * Get all styles accessible to a team (team styles + public styles)
+ * Combines team-specific and public styles in one call
+ *
+ * @param teamId - The team ID
+ * @returns Array of accessible styles
+ *
+ * @example
+ * ```ts
+ * const allStyles = await getTeamAndPublicStyles(teamId);
+ * ```
+ */
+export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
+  return await db
+    .select()
+    .from(styles)
+    .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
+    .orderBy(desc(styles.createdAt));
 }
 
 /**
