@@ -5,7 +5,7 @@
  */
 
 import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
-import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { InferSelectModel, InferInsertModel, relations } from 'drizzle-orm';
 
 /**
  * Velro users table
@@ -27,8 +27,13 @@ export const users = pgTable('users', {
     .defaultNow(),
 });
 
-// Note: Relations to team_members, credits, etc. will be defined in their respective schema files
-// to avoid circular dependencies
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  teamMembers: many(teamMembers),
+}));
+
+// Import for relations (placed after table definition to avoid circular deps)
+import { teamMembers } from './teams';
 
 // Type exports
 export type User = InferSelectModel<typeof users>;

@@ -59,8 +59,6 @@ export {
   getTeamCharacters,
   getTeamVfx,
   getTeamAudio,
-  getFrameById,
-  getSequenceFrames,
   getSequenceById,
   getStyleById,
   getCharacterById,
@@ -71,3 +69,36 @@ export {
   getRecentlyUsedStyles,
   type SequenceWithFrames,
 } from './queries';
+
+// Frame Operations
+export {
+  // Core CRUD
+  getFrameById,
+  getSequenceFrames,
+  createFrame,
+  updateFrame,
+  deleteFrame,
+  deleteSequenceFrames,
+  // Frame Ordering
+  reorderFrames,
+  moveFrame,
+  swapFrames,
+  // Bulk Operations
+  createFramesBulk,
+  updateFramesBulk,
+  deleteFramesBulk,
+  // Status/Content Operations
+  updateFrameThumbnail,
+  updateFrameVideo,
+  markFrameComplete,
+  getFramesWithoutThumbnails,
+  getFramesWithoutVideo,
+  // Advanced Queries
+  getFrameWithSequence,
+  countSequenceFrames,
+  getIncompleteFrames,
+  // Types
+  type FrameWithSequence,
+  type FrameOrderBy,
+  type FrameFilters,
+} from './frames';

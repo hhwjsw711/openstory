@@ -26,7 +26,7 @@ export type {
 } from './auth';
 
 // Users
-export { users } from './users';
+export { users, usersRelations } from './users';
 export type { User, NewUser } from './users';
 
 // Teams
@@ -148,6 +148,7 @@ export const schema = {
 
   // Users
   users,
+  usersRelations,
 
   // Teams
   teams,
@@ -203,7 +204,7 @@ import {
   betterAuthAccountRelations,
 } from './auth';
 
-import { users } from './users';
+import { users, usersRelations } from './users';
 
 import {
   teams,

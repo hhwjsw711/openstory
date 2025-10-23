@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
+import { getUserDefaultTeam } from '@/lib/db/helpers';
 
 export async function GET() {
   try {
@@ -23,16 +23,9 @@ export async function GET() {
       );
     }
 
-    const supabase = createServerClient();
-    const { data: membership, error } = await supabase
-      .from('team_members')
-      .select('team_id, role, teams(name)')
-      .eq('user_id', user.id)
-      .order('role', { ascending: false }) // Prefer owner/admin roles
-      .limit(1)
-      .single();
+    const membership = await getUserDefaultTeam(user.id);
 
-    if (error || !membership) {
+    if (!membership) {
       return NextResponse.json(
         {
           success: false,
@@ -43,20 +36,13 @@ export async function GET() {
       );
     }
 
-    const teamName =
-      membership.teams &&
-      typeof membership.teams === 'object' &&
-      'name' in membership.teams
-        ? (membership.teams.name as string)
-        : 'My Team';
-
     return NextResponse.json(
       {
         success: true,
         data: {
-          teamId: membership.team_id,
+          teamId: membership.teamId,
           role: membership.role,
-          teamName,
+          teamName: membership.teamName,
         },
         timestamp: new Date().toISOString(),
       },

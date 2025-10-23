@@ -4,10 +4,16 @@
  */
 
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { createAnonymousSession, getSession } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
-import type { UserProfile } from '@/types/database';
+import { db } from '@/lib/db/client';
+import { users } from '@/lib/db/schema';
+import type { User } from '@/lib/db/schema';
+
+type UserWithTeamMembers = User & {
+  teamMembers?: Array<{ teamId: string; role: string }>;
+};
 
 /**
  * Ensure user exists in database with team membership
@@ -18,33 +24,29 @@ async function ensureUserAndTeam(authUser: {
   name?: string | null;
 }): Promise<{
   success: boolean;
-  data?: UserProfile;
+  data?: UserWithTeamMembers;
   error?: string;
 }> {
-  const supabase = createServerClient();
-
   try {
     // Retry logic: The BetterAuth trigger needs time to create user and team
     const maxRetries = 3;
     const baseDelay = 50; // Start with 50ms
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const { data: userWithTeam } = await supabase
-        .from('users')
-        .select(
-          `
-          *,
-          team_members!inner (
-            team_id,
-            role
-          )
-        `
-        )
-        .eq('id', authUser.id)
-        .maybeSingle();
+      const userWithTeam = await db.query.users.findFirst({
+        where: eq(users.id, authUser.id),
+        with: {
+          teamMembers: {
+            columns: {
+              teamId: true,
+              role: true,
+            },
+          },
+        },
+      });
 
       // Early exit if user and team membership both exist
-      if (userWithTeam?.team_members) {
+      if (userWithTeam?.teamMembers && userWithTeam.teamMembers.length > 0) {
         return { success: true, data: userWithTeam };
       }
 
@@ -122,14 +124,11 @@ export async function GET() {
     const isAnonymous = authUser.isAnonymous === true;
 
     // Get user profile from database
-    const supabase = createServerClient();
-    const { data: userProfile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
+    const userProfile = await db.query.users.findFirst({
+      where: eq(users.id, authUser.id),
+    });
 
-    if (error || !userProfile) {
+    if (!userProfile) {
       // User doesn't exist in database, create them
       const createResult = await ensureUserAndTeam(authUser);
       if (!createResult.success || !createResult.data) {

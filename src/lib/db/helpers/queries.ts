@@ -7,7 +7,6 @@ import { eq, desc, and, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   sequences,
-  frames,
   styles,
   characters,
   vfx,
@@ -206,44 +205,6 @@ export async function getTeamAudio(teamId: string): Promise<Audio[]> {
     .from(audio)
     .where(eq(audio.teamId, teamId))
     .orderBy(desc(audio.createdAt));
-}
-
-/**
- * Get a single frame by ID
- *
- * @param frameId - The frame ID
- * @returns Frame or null if not found
- *
- * @example
- * ```ts
- * const frame = await getFrameById(frameId);
- * if (!frame) {
- *   return NextResponse.json({ error: 'Frame not found' }, { status: 404 });
- * }
- * ```
- */
-export async function getFrameById(frameId: string): Promise<Frame | null> {
-  const result = await db.select().from(frames).where(eq(frames.id, frameId));
-  return result[0] ?? null;
-}
-
-/**
- * Get all frames for a sequence
- * Ordered by orderIndex
- *
- * @param sequenceId - The sequence ID
- * @returns Array of frames
- *
- * @example
- * ```ts
- * const frames = await getSequenceFrames(sequenceId);
- * ```
- */
-export async function getSequenceFrames(sequenceId: string): Promise<Frame[]> {
-  return await db.query.frames.findMany({
-    where: eq(frames.sequenceId, sequenceId),
-    orderBy: (frames, { asc }) => [asc(frames.orderIndex)],
-  });
 }
 
 /**
