@@ -22,7 +22,7 @@ export function getQStashWebhookUrl(): string {
 
   // Local development with local QStash server (default)
   // The local QStash server now runs on docker. This is the correct URL to use for the QStash webhook.
-  return "http://host.docker.internal:3000";
+  return 'http://host.docker.internal:3000';
 }
 
 /**
@@ -43,6 +43,6 @@ export function getInternalAppUrl(): string {
 
   // Local development default - use localhost, not host.docker.internal
   // This works from the Next.js process calling itself
-  const port = process.env.PORT || "3000";
+  const port = process.env.PORT || '3000';
   return `http://localhost:${port}`;
 }

@@ -3,8 +3,8 @@
  * Handles email/password and OAuth authentication
  */
 
-import { AuthForm } from "@/components/auth/auth-form";
-import { PageContainer } from "@/components/layout";
+import { AuthForm } from '@/components/auth/auth-form';
+import { PageContainer } from '@/components/layout';
 
 type Props = {
   searchParams: Promise<{ redirectTo?: string }>;
@@ -12,7 +12,7 @@ type Props = {
 
 export default async function LoginPage({ searchParams }: Props) {
   const params = await searchParams;
-  const redirectTo = params.redirectTo || "/sequences";
+  const redirectTo = params.redirectTo || '/sequences';
 
   return (
     <PageContainer>

@@ -3,11 +3,11 @@
  * GET /api/fal/usage - Get usage statistics for Fal.ai API
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { auth } from "@/lib/auth/config";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { getFalService } from "@/lib/services/fal-service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { auth } from '@/lib/auth/config';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { getFalService } from '@/lib/services/fal-service';
 
 // Query parameters schema
 const usageQuerySchema = z.object({
@@ -15,11 +15,11 @@ const usageQuerySchema = z.object({
   userId: z.string().uuid().optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  period: z.enum(["day", "week", "month", "year"]).optional().default("month"),
+  period: z.enum(['day', 'week', 'month', 'year']).optional().default('month'),
   includeBreakdown: z
     .string()
     .optional()
-    .transform((val) => (val === undefined ? undefined : val === "true"))
+    .transform((val) => (val === undefined ? undefined : val === 'true'))
     .default(true),
 });
 
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Authentication required",
+          message: 'Authentication required',
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -47,12 +47,12 @@ export async function GET(request: Request) {
     // Parse query parameters
     const url = new URL(request.url);
     const queryParams = {
-      teamId: url.searchParams.get("teamId"),
-      userId: url.searchParams.get("userId"),
-      startDate: url.searchParams.get("startDate"),
-      endDate: url.searchParams.get("endDate"),
-      period: url.searchParams.get("period"),
-      includeBreakdown: url.searchParams.get("includeBreakdown") ?? undefined,
+      teamId: url.searchParams.get('teamId'),
+      userId: url.searchParams.get('userId'),
+      startDate: url.searchParams.get('startDate'),
+      endDate: url.searchParams.get('endDate'),
+      period: url.searchParams.get('period'),
+      includeBreakdown: url.searchParams.get('includeBreakdown') ?? undefined,
     };
 
     const { teamId, userId, startDate, endDate, period, includeBreakdown } =
@@ -69,16 +69,16 @@ export async function GET(request: Request) {
       // Calculate based on period
       calculatedStartDate = new Date();
       switch (period) {
-        case "day":
+        case 'day':
           calculatedStartDate.setDate(calculatedStartDate.getDate() - 1);
           break;
-        case "week":
+        case 'week':
           calculatedStartDate.setDate(calculatedStartDate.getDate() - 7);
           break;
-        case "month":
+        case 'month':
           calculatedStartDate.setMonth(calculatedStartDate.getMonth() - 1);
           break;
-        case "year":
+        case 'year':
           calculatedStartDate.setFullYear(
             calculatedStartDate.getFullYear() - 1
           );
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
     // Validate date range
     if (calculatedStartDate >= calculatedEndDate) {
-      throw new ValidationError("Start date must be before end date");
+      throw new ValidationError('Start date must be before end date');
     }
 
     // Get Fal service instance
@@ -130,13 +130,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("[Fal Usage] Failed to fetch usage statistics:", error);
+    console.error('[Fal Usage] Failed to fetch usage statistics:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch usage statistics",
+        message: 'Failed to fetch usage statistics',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

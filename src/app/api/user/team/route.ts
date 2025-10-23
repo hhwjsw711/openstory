@@ -3,10 +3,10 @@
  * GET /api/user/team - Get user's team
  */
 
-import { NextResponse } from "next/server";
-import { getUser } from "@/lib/auth/server";
-import { handleApiError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import { getUser } from '@/lib/auth/server';
+import { handleApiError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: "Authentication required",
+          message: 'Authentication required',
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -25,10 +25,10 @@ export async function GET() {
 
     const supabase = createServerClient();
     const { data: membership, error } = await supabase
-      .from("team_members")
-      .select("team_id, role, teams(name)")
-      .eq("user_id", user.id)
-      .order("role", { ascending: false }) // Prefer owner/admin roles
+      .from('team_members')
+      .select('team_id, role, teams(name)')
+      .eq('user_id', user.id)
+      .order('role', { ascending: false }) // Prefer owner/admin roles
       .limit(1)
       .single();
 
@@ -36,7 +36,7 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: "No team membership found",
+          message: 'No team membership found',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -45,10 +45,10 @@ export async function GET() {
 
     const teamName =
       membership.teams &&
-      typeof membership.teams === "object" &&
-      "name" in membership.teams
+      typeof membership.teams === 'object' &&
+      'name' in membership.teams
         ? (membership.teams.name as string)
-        : "My Team";
+        : 'My Team';
 
     return NextResponse.json(
       {
@@ -63,13 +63,13 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/user/team] Error:", error);
+    console.error('[GET /api/user/team] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get user team",
+        message: 'Failed to get user team',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

@@ -37,7 +37,7 @@ ANTHROPIC_API_KEY=your_api_key_here
 interface EnhanceScriptOptions {
   originalScript: string;
   targetDuration?: number; // Default 30 seconds
-  tone?: "dramatic" | "comedic" | "documentary" | "action";
+  tone?: 'dramatic' | 'comedic' | 'documentary' | 'action';
   style?: string; // Optional style context
 }
 

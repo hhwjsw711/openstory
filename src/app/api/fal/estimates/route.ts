@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import z from "zod";
-import { calculateFalCost, calculateFalTime } from "@/lib/ai/fal-client";
-import { type FalImageModel, IMAGE_MODELS } from "@/lib/ai/models";
+import { NextResponse } from 'next/server';
+import z from 'zod';
+import { calculateFalCost, calculateFalTime } from '@/lib/ai/fal-client';
+import { type FalImageModel, IMAGE_MODELS } from '@/lib/ai/models';
 import {
   MODEL_KEYS,
   parseExtraParamsByModel,
-} from "@/lib/ai/models-validation";
-import { handleApiError } from "@/lib/errors";
+} from '@/lib/ai/models-validation';
+import { handleApiError } from '@/lib/errors';
 
 const estimateImageCostSchema = z
   .object({
@@ -25,7 +25,7 @@ const estimateImageCostSchema = z
     },
     {
       message:
-        "[api/fal/estimates] Generating image | extra_params validation failed for the selected model",
+        '[api/fal/estimates] Generating image | extra_params validation failed for the selected model',
     }
   );
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     } catch (schemaError) {
       if (
         schemaError instanceof Error &&
-        schemaError.message.startsWith("[model-validations]")
+        schemaError.message.startsWith('[model-validations]')
       ) {
         return NextResponse.json(
           { error: schemaError.message },

@@ -5,15 +5,15 @@
  * DELETE /api/sequences/[sequenceId] - Delete a sequence
  */
 
-import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { sequenceService } from "@/lib/services/sequence.service";
-import { createServerClient } from "@/lib/supabase/server";
-import type { FrameGenerationWorkflowInput } from "@/lib/workflow";
-import { getQStashClient, workflowConfig } from "@/lib/workflow";
+import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { sequenceService } from '@/lib/services/sequence.service';
+import { createServerClient } from '@/lib/supabase/server';
+import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
 const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -33,7 +33,7 @@ export async function GET(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -42,9 +42,9 @@ export async function GET(
 
     // Verify user has access to the sequence's team
     const { data: seq } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (seq) {
@@ -62,13 +62,13 @@ export async function GET(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/sequences/[sequenceId]] Error:", error);
+    console.error('[GET /api/sequences/[sequenceId]] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get sequence",
+        message: 'Failed to get sequence',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -89,7 +89,7 @@ export async function PATCH(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -102,16 +102,16 @@ export async function PATCH(
 
     // Verify sequence exists and get team info
     const { data: existingSeq } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (!existingSeq) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -136,12 +136,12 @@ export async function PATCH(
 
       // Check if sequence is already processing
       const { data: currentSeq } = await supabase
-        .from("sequences")
-        .select("status")
-        .eq("id", sequenceId)
+        .from('sequences')
+        .select('status')
+        .eq('id', sequenceId)
         .single();
 
-      if (currentSeq?.status !== "processing") {
+      if (currentSeq?.status !== 'processing') {
         // Trigger frame generation workflow
         const workflowInput: FrameGenerationWorkflowInput = {
           userId: user.id,
@@ -151,7 +151,7 @@ export async function PATCH(
             framesPerScene: 3,
             generateThumbnails: true,
             generateDescriptions: true,
-            aiProvider: "openrouter",
+            aiProvider: 'openrouter',
             regenerateAll: true,
           },
         };
@@ -174,18 +174,18 @@ export async function PATCH(
       {
         success: true,
         data: sequence,
-        message: "Sequence updated successfully",
+        message: 'Sequence updated successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[PATCH /api/sequences/[sequenceId]] Error:", error);
+    console.error('[PATCH /api/sequences/[sequenceId]] Error:', error);
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to update sequence",
+        message: 'Failed to update sequence',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -206,7 +206,7 @@ export async function DELETE(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -215,16 +215,16 @@ export async function DELETE(
 
     // Get the sequence to verify team ownership
     const { data: sequence } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (!sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -232,30 +232,30 @@ export async function DELETE(
     }
 
     // Require admin access to delete
-    await requireTeamMemberAccess(user.id, sequence.team_id, "admin");
+    await requireTeamMemberAccess(user.id, sequence.team_id, 'admin');
 
     // Delete the sequence (frames will be cascade deleted)
     await sequenceService.deleteSequence(sequenceId);
 
     // Revalidate sequence pages
-    revalidatePath("/sequences");
+    revalidatePath('/sequences');
     revalidatePath(`/sequences/${sequenceId}`);
 
     return NextResponse.json(
       {
         success: true,
-        message: "Sequence deleted successfully",
+        message: 'Sequence deleted successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[DELETE /api/sequences/[sequenceId]] Error:", error);
+    console.error('[DELETE /api/sequences/[sequenceId]] Error:', error);
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to delete sequence",
+        message: 'Failed to delete sequence',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

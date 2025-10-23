@@ -1,4 +1,4 @@
-import type { DirectorDnaConfig } from "@/lib/services/director-dna-types";
+import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 
 export const VELRO_UNIVERSAL_SYSTEM_PROMPT = `You are a Cinematic Previsualization Engine using MARS (Modular Action & Rendering Syntax) to transform stories into director-specific visual narratives.
 

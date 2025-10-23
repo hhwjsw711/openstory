@@ -7,22 +7,22 @@
 pre-push:
   commands:
     lint:
-      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}"
+      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
       run: bunx oxlint --type-aware {push_files}
     format:
-      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}"
+      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
       run: bunx prettier --check {push_files}
 
 pre-commit:
   commands:
     lint:
-      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}"
+      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
       run: bunx oxlint --type-aware --fix {staged_files}
       stage_fixed: true
     format:
-      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}"
+      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
       run: bunx prettier --write {staged_files}
       stage_fixed: true
     typecheck:
-      glob: "*.{ts,tsx,mts,cts}"
+      glob: '*.{ts,tsx,mts,cts}'
       run: bun tsc --noEmit --skipLibCheck

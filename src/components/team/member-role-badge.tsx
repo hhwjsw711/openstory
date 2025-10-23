@@ -3,10 +3,10 @@
  * Displays a user's role with appropriate styling
  */
 
-"use client";
+'use client';
 
-import { Badge } from "@/components/ui/badge";
-import type { TeamRole } from "@/hooks/use-team-role";
+import { Badge } from '@/components/ui/badge';
+import type { TeamRole } from '@/hooks/use-team-role';
 
 interface MemberRoleBadgeProps {
   role: TeamRole;
@@ -17,24 +17,24 @@ const roleConfig: Record<
   TeamRole,
   {
     label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
   }
 > = {
   owner: {
-    label: "Owner",
-    variant: "default",
+    label: 'Owner',
+    variant: 'default',
   },
   admin: {
-    label: "Admin",
-    variant: "secondary",
+    label: 'Admin',
+    variant: 'secondary',
   },
   member: {
-    label: "Member",
-    variant: "outline",
+    label: 'Member',
+    variant: 'outline',
   },
   viewer: {
-    label: "Viewer",
-    variant: "outline",
+    label: 'Viewer',
+    variant: 'outline',
   },
 };
 

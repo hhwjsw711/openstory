@@ -1,6 +1,6 @@
-import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export interface SelectOption {
   value: string;
@@ -9,15 +9,15 @@ export interface SelectOption {
 }
 
 export interface SelectProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   options: SelectOption[];
   value?: string;
   defaultValue?: string;
   placeholder?: string;
   disabled?: boolean;
   onChange?: (value: string) => void;
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "outline" | "ghost";
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'outline' | 'ghost';
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -25,16 +25,16 @@ export const Select: React.FC<SelectProps> = ({
   options,
   value,
   defaultValue,
-  placeholder = "Select an option...",
+  placeholder = 'Select an option...',
   disabled = false,
   onChange,
-  size = "md",
-  variant = "default",
+  size = 'md',
+  variant = 'default',
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isControlled = value !== undefined;
-  const [internalValue, setInternalValue] = useState(defaultValue || "");
+  const [internalValue, setInternalValue] = useState(defaultValue || '');
   const selectedValue = isControlled ? (value as string) : internalValue;
   const containerRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -51,20 +51,20 @@ export const Select: React.FC<SelectProps> = ({
   };
 
   const sizeClasses = {
-    sm: "h-8 px-2 text-sm",
-    md: "h-10 px-3 text-sm",
-    lg: "h-12 px-4 text-base",
+    sm: 'h-8 px-2 text-sm',
+    md: 'h-10 px-3 text-sm',
+    lg: 'h-12 px-4 text-base',
   };
 
   const variantClasses = {
-    default: "bg-background border border-input",
-    outline: "bg-transparent border-2 border-input",
-    ghost: "bg-transparent border-none hover:bg-accent",
+    default: 'bg-background border border-input',
+    outline: 'bg-transparent border-2 border-input',
+    ghost: 'bg-transparent border-none hover:bg-accent',
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         setIsOpen(true);
       }
@@ -72,7 +72,7 @@ export const Select: React.FC<SelectProps> = ({
     }
 
     switch (e.key) {
-      case "ArrowDown": {
+      case 'ArrowDown': {
         e.preventDefault();
         let nextIndex = focusedIndex + 1;
         while (nextIndex < options.length && options[nextIndex].disabled) {
@@ -81,7 +81,7 @@ export const Select: React.FC<SelectProps> = ({
         setFocusedIndex(Math.min(nextIndex, options.length - 1));
         break;
       }
-      case "ArrowUp": {
+      case 'ArrowUp': {
         e.preventDefault();
         let prevIndex = focusedIndex - 1;
         while (prevIndex >= 0 && options[prevIndex].disabled) {
@@ -90,13 +90,13 @@ export const Select: React.FC<SelectProps> = ({
         setFocusedIndex(Math.max(prevIndex, 0));
         break;
       }
-      case "Enter":
+      case 'Enter':
         e.preventDefault();
         if (focusedIndex >= 0 && !options[focusedIndex].disabled) {
           handleSelect(options[focusedIndex].value);
         }
         break;
-      case "Escape":
+      case 'Escape':
         e.preventDefault();
         setIsOpen(false);
         break;
@@ -114,28 +114,28 @@ export const Select: React.FC<SelectProps> = ({
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
       return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
 
   return (
     <div
-      className={cn("relative inline-block w-full", className)}
+      className={cn('relative inline-block w-full', className)}
       {...props}
       ref={containerRef}
     >
       <button
         type="button"
         className={cn(
-          "flex w-full items-center justify-between rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          'flex w-full items-center justify-between rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           sizeClasses[size],
           variantClasses[variant],
           {
-            "cursor-not-allowed opacity-50": disabled,
-            "hover:bg-accent hover:text-accent-foreground":
-              !disabled && variant !== "ghost",
+            'cursor-not-allowed opacity-50': disabled,
+            'hover:bg-accent hover:text-accent-foreground':
+              !disabled && variant !== 'ghost',
           }
         )}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -143,15 +143,15 @@ export const Select: React.FC<SelectProps> = ({
         onKeyDown={handleKeyDown}
         tabIndex={0}
         aria-expanded={isOpen}
-        aria-controls={isOpen ? "select-options" : undefined}
+        aria-controls={isOpen ? 'select-options' : undefined}
       >
         <span
-          className={cn("truncate", !selectedOption && "text-muted-foreground")}
+          className={cn('truncate', !selectedOption && 'text-muted-foreground')}
         >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <svg
-          className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")}
+          className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -185,11 +185,11 @@ export const Select: React.FC<SelectProps> = ({
               role="option"
               aria-selected={selectedValue === option.value}
               className={cn(
-                "flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                'flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
                 {
-                  "bg-accent text-accent-foreground":
+                  'bg-accent text-accent-foreground':
                     selectedValue === option.value,
-                  "cursor-not-allowed opacity-50": option.disabled,
+                  'cursor-not-allowed opacity-50': option.disabled,
                 }
               )}
               onClick={() => !option.disabled && handleSelect(option.value)}

@@ -1,4 +1,4 @@
-import z from "zod";
+import z from 'zod';
 
 export type DirectorDnaParams = {
   prompt: string;
@@ -46,7 +46,7 @@ export interface DNADirectorResponse {
 }
 
 export interface DNADirectorTemplateMessage {
-  role: "system" | "user" | "assistant";
+  role: 'system' | 'user' | 'assistant';
   content:
     | string
     | { type: string; text: string }

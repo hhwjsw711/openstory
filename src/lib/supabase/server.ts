@@ -1,7 +1,7 @@
-import { createServerClient as createServerClientSSR } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
-import type { Database } from "./gen.types";
+import { createServerClient as createServerClientSSR } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+import type { Database } from './gen.types';
 
 interface EnvironmentVariables {
   NEXT_PUBLIC_SUPABASE_URL: string;
@@ -17,20 +17,20 @@ const validateEnvironmentVariables = (): EnvironmentVariables => {
   const missingVars: string[] = [];
 
   if (!supabaseUrl) {
-    missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
+    missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
   }
 
   if (!supabaseAnonKey) {
-    missingVars.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   }
 
   if (!supabaseServiceRoleKey) {
-    missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
+    missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
   }
 
   if (missingVars.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missingVars.join(", ")}. ` +
+      `Missing required environment variables: ${missingVars.join(', ')}. ` +
         `Please check your .env file and ensure all Supabase variables are set.`
     );
   }
@@ -55,7 +55,7 @@ export const createServerClient = () => {
         persistSession: false,
       },
       db: {
-        schema: "public",
+        schema: 'public',
       },
     }
   );
@@ -104,7 +104,7 @@ export const createAdminClient = () => {
         persistSession: false,
       },
       db: {
-        schema: "public",
+        schema: 'public',
       },
     }
   );

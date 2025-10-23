@@ -2,8 +2,8 @@
  * Type definitions for QStash Workflows
  */
 
-import type { IMAGE_TO_VIDEO_MODELS } from "@/lib/ai/models";
-import type { Json } from "@/types/database";
+import type { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type { Json } from '@/types/database';
 
 /**
  * Base workflow context that includes authentication
@@ -52,7 +52,7 @@ export interface FrameGenerationWorkflowInput extends WorkflowContext {
     framesPerScene?: number;
     generateThumbnails?: boolean;
     generateDescriptions?: boolean;
-    aiProvider?: "openai" | "anthropic" | "openrouter";
+    aiProvider?: 'openai' | 'anthropic' | 'openrouter';
     regenerateAll?: boolean;
   };
 }

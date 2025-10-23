@@ -3,7 +3,7 @@
  * Provides enterprise-grade integration with LetzAI API
  */
 
-import { VelroError } from "@/lib/errors";
+import { VelroError } from '@/lib/errors';
 import type {
   LetzAIEndpoint,
   LetzAIImageEditRequest,
@@ -13,12 +13,12 @@ import type {
   LetzAIModelResponse,
   LetzAIServiceRequest,
   LetzAIUpscaleRequest,
-} from "@/lib/schemas/letzai-request";
-import { createAdminClient } from "@/lib/supabase/server";
-import type { Json, LetzAIRequest } from "@/types/database";
+} from '@/lib/schemas/letzai-request';
+import { createAdminClient } from '@/lib/supabase/server';
+import type { Json, LetzAIRequest } from '@/types/database';
 
 // Configuration constants
-const LETZAI_API_URL = "https://api.letz.ai";
+const LETZAI_API_URL = 'https://api.letz.ai';
 const POLL_INTERVAL_MS = 3000; // 3 seconds as recommended by LetzAI
 
 // Service response interface
@@ -41,8 +41,8 @@ export class LetzAIService {
     const apiKey = process.env.LETZAI_API_KEY;
     if (!apiKey) {
       throw new VelroError(
-        "LETZAI_API_KEY environment variable is required",
-        "LETZAI_CONFIG_ERROR",
+        'LETZAI_API_KEY environment variable is required',
+        'LETZAI_CONFIG_ERROR',
         500
       );
     }
@@ -61,7 +61,7 @@ export class LetzAIService {
     }
   ): Promise<LetzAIServiceResponse<LetzAIImageResponse>> {
     const result = await this.executeRequest({
-      endpoint: "/images",
+      endpoint: '/images',
       parameters: params,
       userId: options?.userId,
       teamId: options?.teamId,
@@ -83,7 +83,7 @@ export class LetzAIService {
     }
   ): Promise<LetzAIServiceResponse<LetzAIImageEditResponse>> {
     const result = await this.executeRequest({
-      endpoint: "/image-edits",
+      endpoint: '/image-edits',
       parameters: params,
       userId: options?.userId,
       teamId: options?.teamId,
@@ -105,7 +105,7 @@ export class LetzAIService {
     }
   ): Promise<LetzAIServiceResponse<LetzAIImageResponse>> {
     const result = await this.executeRequest({
-      endpoint: "/upscale",
+      endpoint: '/upscale',
       parameters: params,
       userId: options?.userId,
       teamId: options?.teamId,
@@ -121,12 +121,12 @@ export class LetzAIService {
   async getModels(params?: {
     page?: number;
     limit?: number;
-    sortBy?: "createdAt" | "usages";
-    sortOrder?: "ASC" | "DESC";
-    class?: "person" | "object" | "style";
+    sortBy?: 'createdAt' | 'usages';
+    sortOrder?: 'ASC' | 'DESC';
+    class?: 'person' | 'object' | 'style';
   }): Promise<LetzAIServiceResponse<LetzAIModelResponse[]>> {
     const result = await this.executeRequest({
-      endpoint: "/models",
+      endpoint: '/models',
       parameters: params || {},
     });
 
@@ -138,13 +138,13 @@ export class LetzAIService {
    */
   async checkStatus(
     jobId: string,
-    endpoint: LetzAIEndpoint = "/images"
+    endpoint: LetzAIEndpoint = '/images'
   ): Promise<LetzAIServiceResponse> {
     try {
       const response = await fetch(`${LETZAI_API_URL}${endpoint}/${jobId}`, {
         headers: {
           Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -158,10 +158,10 @@ export class LetzAIService {
         data,
       };
     } catch (error) {
-      console.error("[LetzAI Service] Status check failed:", error);
+      console.error('[LetzAI Service] Status check failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Status check failed",
+        error: error instanceof Error ? error.message : 'Status check failed',
       };
     }
   }
@@ -181,7 +181,7 @@ export class LetzAIService {
       const response = await fetch(`${LETZAI_API_URL}/models?limit=1`, {
         headers: {
           Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000), // 5 second timeout for health check
       });
@@ -201,7 +201,7 @@ export class LetzAIService {
       return {
         healthy: false,
         latencyMs: Date.now() - startTime,
-        error: error instanceof Error ? error.message : "Health check failed",
+        error: error instanceof Error ? error.message : 'Health check failed',
       };
     }
   }
@@ -226,20 +226,20 @@ export class LetzAIService {
 
     // Note: Using type assertion until database types are updated
     let query = this.supabase
-      .from("letzai_requests")
-      .select("*")
-      .eq("team_id", teamId);
+      .from('letzai_requests')
+      .select('*')
+      .eq('team_id', teamId);
 
     if (startDate) {
-      query = query.gte("created_at", startDate.toISOString());
+      query = query.gte('created_at', startDate.toISOString());
     }
 
     if (endDate) {
-      query = query.lte("created_at", endDate.toISOString());
+      query = query.lte('created_at', endDate.toISOString());
     }
 
     if (endpoint) {
-      query = query.eq("endpoint", endpoint);
+      query = query.eq('endpoint', endpoint);
     }
 
     const { data: requests, error } = await query;
@@ -247,7 +247,7 @@ export class LetzAIService {
     if (error) {
       throw new VelroError(
         `Failed to fetch usage stats: ${error.message}`,
-        "DATABASE_ERROR",
+        'DATABASE_ERROR',
         500
       );
     }
@@ -257,7 +257,7 @@ export class LetzAIService {
 
     const totalRequests = typedRequests.length;
     const completedRequests = typedRequests.filter(
-      (r: LetzAIRequest) => r.status === "completed"
+      (r: LetzAIRequest) => r.status === 'completed'
     );
     const totalCost = typedRequests.reduce(
       (sum: number, r: LetzAIRequest) => sum + (r.cost_credits || 0),
@@ -300,28 +300,28 @@ export class LetzAIService {
   ): number {
     // LetzAI pricing (these would need to be updated based on actual pricing)
     const baseCosts = {
-      "/images": 1.0, // 1 credit per image
-      "/image-edits": 1.5, // 1.5 credits per edit
-      "/upscale": 0.5, // 0.5 credits per upscale
-      "/models": 0.0, // Free endpoint
+      '/images': 1.0, // 1 credit per image
+      '/image-edits': 1.5, // 1.5 credits per edit
+      '/upscale': 0.5, // 0.5 credits per upscale
+      '/models': 0.0, // Free endpoint
     };
 
     let cost = baseCosts[endpoint] || 0;
 
     // Adjust cost based on parameters
-    if (endpoint === "/images") {
+    if (endpoint === '/images') {
       const quality = (parameters.quality as number) || 2;
       const creativity = (parameters.creativity as number) || 2;
       cost *= (quality + creativity) / 4; // Scale based on quality and creativity
     }
 
-    if (endpoint === "/image-edits") {
+    if (endpoint === '/image-edits') {
       const completionsCount =
         (parameters.imageCompletionsCount as number) || 3;
       cost *= completionsCount;
     }
 
-    if (endpoint === "/upscale") {
+    if (endpoint === '/upscale') {
       const strength = (parameters.strength as number) || 1;
       cost *= strength;
     }
@@ -345,14 +345,14 @@ export class LetzAIService {
 
     // Create database record (using type assertion until types are updated)
     const { data: dbRecord, error: dbError } = await this.supabase
-      .from("letzai_requests")
+      .from('letzai_requests')
       .insert({
         job_id: request.jobId,
         team_id: request.teamId,
         user_id: request.userId,
         endpoint: request.endpoint,
         request_payload: request.parameters as Json,
-        status: "pending",
+        status: 'pending',
         cost_credits: estimatedCost,
       })
       .select()
@@ -360,12 +360,12 @@ export class LetzAIService {
 
     if (dbError || !dbRecord) {
       console.error(
-        "[LetzAI Service] Failed to create database record:",
+        '[LetzAI Service] Failed to create database record:',
         dbError
       );
       return {
         success: false,
-        error: "Failed to initialize request tracking",
+        error: 'Failed to initialize request tracking',
       };
     }
 
@@ -380,13 +380,13 @@ export class LetzAIService {
 
       // Update database record with success
       await this.supabase
-        .from("letzai_requests")
+        .from('letzai_requests')
         .update({
-          status: "completed",
+          status: 'completed',
           response_data: result as Json,
           latency_ms: latencyMs,
         })
-        .eq("id", dbRecord.id);
+        .eq('id', dbRecord.id);
 
       return {
         success: true,
@@ -398,19 +398,19 @@ export class LetzAIService {
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+        error instanceof Error ? error.message : 'Unknown error';
 
       // Update database record with failure
       await this.supabase
-        .from("letzai_requests")
+        .from('letzai_requests')
         .update({
-          status: "failed",
+          status: 'failed',
           error: errorMessage,
           latency_ms: latencyMs,
         })
-        .eq("id", dbRecord.id);
+        .eq('id', dbRecord.id);
 
-      console.error("[LetzAI Service] Request failed:", error);
+      console.error('[LetzAI Service] Request failed:', error);
 
       return {
         success: false,
@@ -429,10 +429,10 @@ export class LetzAIService {
     parameters: Record<string, unknown>
   ): Promise<unknown> {
     const response = await fetch(`${LETZAI_API_URL}${endpoint}`, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(parameters),
     });
@@ -445,7 +445,7 @@ export class LetzAIService {
     const result = await response.json();
 
     // For async endpoints, poll for completion
-    if (result.id && result.status && result.status !== "ready") {
+    if (result.id && result.status && result.status !== 'ready') {
       return await this.pollForCompletion(result.id, endpoint);
     }
 
@@ -471,7 +471,7 @@ export class LetzAIService {
         {
           headers: {
             Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -482,18 +482,18 @@ export class LetzAIService {
 
       const statusData = await statusResponse.json();
 
-      if (statusData.status === "ready") {
+      if (statusData.status === 'ready') {
         return statusData;
       }
 
-      if (statusData.status === "failed") {
+      if (statusData.status === 'failed') {
         throw new Error(
-          `LetzAI generation failed: ${statusData.error || "Unknown error"}`
+          `LetzAI generation failed: ${statusData.error || 'Unknown error'}`
         );
       }
     }
 
-    throw new Error("LetzAI generation timed out");
+    throw new Error('LetzAI generation timed out');
   }
 }
 

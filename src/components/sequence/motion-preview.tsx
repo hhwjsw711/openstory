@@ -1,11 +1,11 @@
-import { Maximize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
-import Image from "next/image";
-import type * as React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { Frame } from "@/types/database";
+import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import type { Frame } from '@/types/database';
 
 interface MotionPreviewProps {
   videoUrl?: string;
@@ -43,7 +43,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
   const [imageError, setImageError] = useState(false);
 
   const hasVideo = Boolean(videoUrl);
-  const hasThumbnail = Boolean(thumbnailUrl && thumbnailUrl.trim() !== "");
+  const hasThumbnail = Boolean(thumbnailUrl && thumbnailUrl.trim() !== '');
 
   // Handle video events
   const handlePlay = () => {
@@ -117,7 +117,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
         setIsFullscreen(false);
       }
     } catch (error) {
-      console.error("Fullscreen error:", error);
+      console.error('Fullscreen error:', error);
     }
   }, []);
   const handleKeyPress = useCallback(
@@ -125,16 +125,16 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
       if (e.target !== document.body) return; // Only handle when not in input fields
 
       switch (e.key) {
-        case " ":
-        case "k":
+        case ' ':
+        case 'k':
           e.preventDefault();
           togglePlay();
           break;
-        case "m":
+        case 'm':
           e.preventDefault();
           toggleMute();
           break;
-        case "f":
+        case 'f':
           e.preventDefault();
           toggleFullscreen();
           break;
@@ -145,8 +145,8 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
 
   // Keyboard shortcuts
   useEffect(() => {
-    document.addEventListener("keydown", handleKeyPress);
-    return () => document.removeEventListener("keydown", handleKeyPress);
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
   // Handle fullscreen change
@@ -155,16 +155,16 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
       setIsFullscreen(Boolean(document.fullscreenElement));
     };
 
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   // Format time display
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   // Image handlers
@@ -204,8 +204,8 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                   src={thumbnailUrl}
                   alt={`Frame ${frame.order_index} preview`}
                   className={cn(
-                    "h-full w-full object-cover transition-opacity duration-300",
-                    imageLoading ? "opacity-0" : "opacity-100"
+                    'h-full w-full object-cover transition-opacity duration-300',
+                    imageLoading ? 'opacity-0' : 'opacity-100'
                   )}
                   onLoad={handleImageLoad}
                   onError={handleImageError}
@@ -277,10 +277,10 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
               variant="secondary"
               size="icon"
               className={cn(
-                "h-12 w-12 rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity hover:bg-black/70",
+                'h-12 w-12 rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity hover:bg-black/70',
                 isPlaying || showControls
-                  ? "opacity-100"
-                  : "opacity-0 group-hover:opacity-100"
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100'
               )}
               onClick={togglePlay}
             >
@@ -295,8 +295,8 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           {/* Video controls overlay */}
           <div
             className={cn(
-              "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 transition-opacity",
-              showControls || isPlaying ? "opacity-100" : "opacity-0"
+              'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 transition-opacity',
+              showControls || isPlaying ? 'opacity-100' : 'opacity-0'
             )}
           >
             {/* Progress bar */}
@@ -312,7 +312,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
                   style={{
                     width: videoDuration
                       ? `${(currentTime / videoDuration) * 100}%`
-                      : "0%",
+                      : '0%',
                   }}
                 />
               </div>

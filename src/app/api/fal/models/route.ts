@@ -3,19 +3,19 @@
  * GET /api/fal/models - List available Fal.ai models with metadata
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { handleApiError } from "@/lib/errors";
-import { getFalService } from "@/lib/services/fal-service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { handleApiError } from '@/lib/errors';
+import { getFalService } from '@/lib/services/fal-service';
 
 // Query parameters schema
 const modelsQuerySchema = z.object({
-  type: z.enum(["image", "video", "all"]).optional().default("all"),
+  type: z.enum(['image', 'video', 'all']).optional().default('all'),
   includeCosts: z
     .string()
     .nullable()
     .optional()
-    .transform((val) => val === "true")
+    .transform((val) => val === 'true')
     .default(false),
 });
 
@@ -24,7 +24,7 @@ interface ModelInfo {
   id: string;
   name: string;
   model: string;
-  type: "image" | "video";
+  type: 'image' | 'video';
   cost?: number;
   costUnit?: string;
 }
@@ -42,8 +42,8 @@ export async function GET(request: Request) {
     // Parse query parameters
     const url = new URL(request.url);
     const queryParams = {
-      type: url.searchParams.get("type"),
-      includeCosts: url.searchParams.get("includeCosts"),
+      type: url.searchParams.get('type'),
+      includeCosts: url.searchParams.get('includeCosts'),
     };
 
     const { type, includeCosts } = modelsQuerySchema.parse(queryParams);
@@ -57,31 +57,31 @@ export async function GET(request: Request) {
     // Prepare response based on type filter
     const modelsObj: Partial<ModelsResponse> = {};
 
-    if (type === "all" || type === "image") {
+    if (type === 'all' || type === 'image') {
       modelsObj.image = Object.entries(availableModels.image).map(
         ([key, model]) => ({
           id: key,
-          name: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+          name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
           model: model,
-          type: "image",
+          type: 'image',
           ...(includeCosts && {
             cost: falService.calculateCost(model, {}),
-            costUnit: "USD",
+            costUnit: 'USD',
           }),
         })
       );
     }
 
-    if (type === "all" || type === "video") {
+    if (type === 'all' || type === 'video') {
       modelsObj.video = Object.entries(availableModels.video).map(
         ([key, model]) => ({
           id: key,
-          name: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+          name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
           model: model,
-          type: "video",
+          type: 'video',
           ...(includeCosts && {
             cost: falService.calculateCost(model, {}),
-            costUnit: "USD",
+            costUnit: 'USD',
           }),
         })
       );
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
     // Resolve final models shape
     const models: ModelsResponse | ModelInfo[] =
-      type === "all" ? (modelsObj as ModelsResponse) : (modelsObj[type] ?? []);
+      type === 'all' ? (modelsObj as ModelsResponse) : (modelsObj[type] ?? []);
 
     // Calculate total count with proper type checking
     const totalCount = Array.isArray(models)
@@ -104,19 +104,19 @@ export async function GET(request: Request) {
       metadata: {
         filterType: type,
         includeCosts,
-        supportedTypes: ["image", "video"],
+        supportedTypes: ['image', 'video'],
       },
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("[Fal Models] Failed to fetch models:", error);
+    console.error('[Fal Models] Failed to fetch models:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch available models",
+        message: 'Failed to fetch available models',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

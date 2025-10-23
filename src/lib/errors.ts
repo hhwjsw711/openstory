@@ -38,37 +38,37 @@ export class VelroError extends Error {
 
 export class DatabaseError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "DATABASE_ERROR", 500, details);
+    super(message, 'DATABASE_ERROR', 500, details);
   }
 }
 
 export class ConnectionError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "CONNECTION_ERROR", 503, details);
+    super(message, 'CONNECTION_ERROR', 503, details);
   }
 }
 
 export class ValidationError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "VALIDATION_ERROR", 400, details);
+    super(message, 'VALIDATION_ERROR', 400, details);
   }
 }
 
 export class ConfigurationError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "CONFIGURATION_ERROR", 500, details);
+    super(message, 'CONFIGURATION_ERROR', 500, details);
   }
 }
 
 export class StorageError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "STORAGE_ERROR", 500, details);
+    super(message, 'STORAGE_ERROR', 500, details);
   }
 }
 
 export class AuthenticationError extends VelroError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, "AUTHENTICATION_ERROR", 401, details);
+    super(message, 'AUTHENTICATION_ERROR', 401, details);
   }
 }
 
@@ -81,12 +81,12 @@ export const handleApiError = (error: unknown): VelroError => {
   }
 
   if (error instanceof Error) {
-    return new VelroError(error.message, "INTERNAL_ERROR", 500, {
+    return new VelroError(error.message, 'INTERNAL_ERROR', 500, {
       originalError: error.name,
     });
   }
 
-  return new VelroError("An unknown error occurred", "UNKNOWN_ERROR", 500, {
+  return new VelroError('An unknown error occurred', 'UNKNOWN_ERROR', 500, {
     originalError: typeof error,
   });
 };
@@ -116,7 +116,7 @@ export function createActionErrorResponse(error: unknown): {
 
   return {
     success: false,
-    error: "An unknown error occurred",
+    error: 'An unknown error occurred',
   };
 }
 

@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import NewSequencePage from "./page";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import NewSequencePage from './page';
 
 // Create a new QueryClient for each story to avoid state leakage
 const createQueryClient = () =>
@@ -17,14 +17,14 @@ const createQueryClient = () =>
   });
 
 const meta: Meta<typeof NewSequencePage> = {
-  title: "Pages/NewSequencePage",
+  title: 'Pages/NewSequencePage',
   component: NewSequencePage,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
     docs: {
       description: {
         component:
-          "The complete new sequence creation page with all sections integrated.",
+          'The complete new sequence creation page with all sections integrated.',
       },
     },
   },
@@ -37,8 +37,8 @@ const meta: Meta<typeof NewSequencePage> = {
   ],
   argTypes: {
     searchParams: {
-      description: "URL search parameters including optional teamId",
-      control: "object",
+      description: 'URL search parameters including optional teamId',
+      control: 'object',
     },
   },
 };
@@ -54,7 +54,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Default new sequence page showing the complete user flow from script writing to storyboard generation.",
+          'Default new sequence page showing the complete user flow from script writing to storyboard generation.',
       },
     },
   },
@@ -63,14 +63,14 @@ export const Default: Story = {
 export const WithTeamId: Story = {
   args: {
     searchParams: {
-      teamId: "demo-team",
+      teamId: 'demo-team',
     },
   },
   parameters: {
     docs: {
       description: {
         story:
-          "New sequence page configured for a specific team with team-specific styles.",
+          'New sequence page configured for a specific team with team-specific styles.',
       },
     },
   },

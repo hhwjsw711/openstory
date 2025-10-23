@@ -5,13 +5,13 @@
  * DELETE /api/sequences/[sequenceId]/frames/[frameId] - Delete a frame
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { updateFrameSchema } from "@/lib/schemas/frame.schemas";
-import { frameService } from "@/lib/services/frame.service";
-import { createServerClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { updateFrameSchema } from '@/lib/schemas/frame.schemas';
+import { frameService } from '@/lib/services/frame.service';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: Request,
@@ -26,7 +26,7 @@ export async function GET(
       uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid sequence or frame ID format");
+      throw new ValidationError('Invalid sequence or frame ID format');
     }
 
     // Authenticate user
@@ -35,17 +35,17 @@ export async function GET(
 
     // Get frame with sequence info
     const { data: frame, error: frameError } = await supabase
-      .from("frames")
-      .select("*, sequences!inner(team_id)")
-      .eq("id", frameId)
-      .eq("sequence_id", sequenceId)
+      .from('frames')
+      .select('*, sequences!inner(team_id)')
+      .eq('id', frameId)
+      .eq('sequence_id', sequenceId)
       .single();
 
     if (frameError || !frame) {
       return NextResponse.json(
         {
           success: false,
-          message: "Frame not found in this sequence",
+          message: 'Frame not found in this sequence',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -65,7 +65,7 @@ export async function GET(
     );
   } catch (error) {
     console.error(
-      "[GET /api/sequences/[sequenceId]/frames/[frameId]] Error:",
+      '[GET /api/sequences/[sequenceId]/frames/[frameId]] Error:',
       error
     );
 
@@ -73,7 +73,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get frame",
+        message: 'Failed to get frame',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -95,7 +95,7 @@ export async function PATCH(
       uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid sequence or frame ID format");
+      throw new ValidationError('Invalid sequence or frame ID format');
     }
 
     // Parse and validate request body
@@ -108,17 +108,17 @@ export async function PATCH(
 
     // Get frame with sequence info to verify team access
     const { data: frameData, error: frameError } = await supabase
-      .from("frames")
-      .select("sequence_id, sequences!inner(team_id)")
-      .eq("id", frameId)
-      .eq("sequence_id", sequenceId)
+      .from('frames')
+      .select('sequence_id, sequences!inner(team_id)')
+      .eq('id', frameId)
+      .eq('sequence_id', sequenceId)
       .single();
 
     if (frameError || !frameData) {
       return NextResponse.json(
         {
           success: false,
-          message: "Frame not found in this sequence",
+          message: 'Frame not found in this sequence',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -143,14 +143,14 @@ export async function PATCH(
       {
         success: true,
         data: frame,
-        message: "Frame updated successfully",
+        message: 'Frame updated successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
     console.error(
-      "[PATCH /api/sequences/[sequenceId]/frames/[frameId]] Error:",
+      '[PATCH /api/sequences/[sequenceId]/frames/[frameId]] Error:',
       error
     );
 
@@ -158,7 +158,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request data",
+          message: 'Invalid request data',
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
@@ -170,7 +170,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to update frame",
+        message: 'Failed to update frame',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -192,7 +192,7 @@ export async function DELETE(
       uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid sequence or frame ID format");
+      throw new ValidationError('Invalid sequence or frame ID format');
     }
 
     // Authenticate user
@@ -201,17 +201,17 @@ export async function DELETE(
 
     // Get frame with sequence info to verify team access
     const { data: frameData, error: frameError } = await supabase
-      .from("frames")
-      .select("sequence_id, sequences!inner(team_id)")
-      .eq("id", frameId)
-      .eq("sequence_id", sequenceId)
+      .from('frames')
+      .select('sequence_id, sequences!inner(team_id)')
+      .eq('id', frameId)
+      .eq('sequence_id', sequenceId)
       .single();
 
     if (frameError || !frameData) {
       return NextResponse.json(
         {
           success: false,
-          message: "Frame not found in this sequence",
+          message: 'Frame not found in this sequence',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -227,14 +227,14 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: true,
-        message: "Frame deleted successfully",
+        message: 'Frame deleted successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
     console.error(
-      "[DELETE /api/sequences/[sequenceId]/frames/[frameId]] Error:",
+      '[DELETE /api/sequences/[sequenceId]/frames/[frameId]] Error:',
       error
     );
 
@@ -242,7 +242,7 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to delete frame",
+        message: 'Failed to delete frame',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

@@ -5,13 +5,13 @@
  * DELETE /api/styles/[styleId] - Delete a style
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamAdminAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { updateStyleSchema } from "@/lib/schemas/style.schemas";
-import { createServerClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamAdminAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { updateStyleSchema } from '@/lib/schemas/style.schemas';
+import { createServerClient } from '@/lib/supabase/server';
+import type { Json } from '@/types/database';
 
 /**
  * Get the current user's team ID
@@ -19,10 +19,10 @@ import type { Json } from "@/types/database";
 async function getUserTeamId(userId: string): Promise<string | null> {
   const supabase = createServerClient();
   const { data: teamMembership } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", userId)
-    .eq("role", "owner")
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', userId)
+    .eq('role', 'owner')
     .single();
 
   return teamMembership?.team_id || null;
@@ -40,14 +40,14 @@ export async function GET(
     try {
       uuidSchema.parse(styleId);
     } catch {
-      throw new ValidationError("Invalid style ID format");
+      throw new ValidationError('Invalid style ID format');
     }
 
     const supabase = createServerClient();
     const { data: style, error } = await supabase
-      .from("styles")
-      .select("*")
-      .eq("id", styleId)
+      .from('styles')
+      .select('*')
+      .eq('id', styleId)
       .single();
 
     if (error) {
@@ -63,13 +63,13 @@ export async function GET(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[GET /api/styles/[styleId]] Error:", error);
+    console.error('[GET /api/styles/[styleId]] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get style",
+        message: 'Failed to get style',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -90,7 +90,7 @@ export async function PATCH(
     try {
       uuidSchema.parse(styleId);
     } catch {
-      throw new ValidationError("Invalid style ID format");
+      throw new ValidationError('Invalid style ID format');
     }
 
     // Check authentication
@@ -99,7 +99,7 @@ export async function PATCH(
     // Get the current user's team to verify ownership
     const teamId = await getUserTeamId(user.id);
     if (!teamId) {
-      throw new ValidationError("No team found for current user");
+      throw new ValidationError('No team found for current user');
     }
 
     // Parse and validate request body
@@ -130,10 +130,10 @@ export async function PATCH(
       updateData.preview_url = validated.preview_url;
 
     const { data: style, error } = await supabase
-      .from("styles")
+      .from('styles')
       .update(updateData)
-      .eq("id", styleId)
-      .eq("team_id", teamId) // Ensure user can only update their team's styles
+      .eq('id', styleId)
+      .eq('team_id', teamId) // Ensure user can only update their team's styles
       .select()
       .single();
 
@@ -145,19 +145,19 @@ export async function PATCH(
       {
         success: true,
         data: style,
-        message: "Style updated successfully",
+        message: 'Style updated successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[PATCH /api/styles/[styleId]] Error:", error);
+    console.error('[PATCH /api/styles/[styleId]] Error:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request data",
+          message: 'Invalid request data',
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
@@ -169,7 +169,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to update style",
+        message: 'Failed to update style',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },
@@ -190,7 +190,7 @@ export async function DELETE(
     try {
       uuidSchema.parse(styleId);
     } catch {
-      throw new ValidationError("Invalid style ID format");
+      throw new ValidationError('Invalid style ID format');
     }
 
     // Check authentication
@@ -200,13 +200,13 @@ export async function DELETE(
 
     // Get the style to verify team ownership
     const { data: style, error: fetchError } = await supabase
-      .from("styles")
-      .select("team_id")
-      .eq("id", styleId)
+      .from('styles')
+      .select('team_id')
+      .eq('id', styleId)
       .single();
 
     if (fetchError || !style) {
-      throw new ValidationError("Style not found");
+      throw new ValidationError('Style not found');
     }
 
     // Check if user has admin/owner role for this team
@@ -214,10 +214,10 @@ export async function DELETE(
 
     // Delete the style
     const { error } = await supabase
-      .from("styles")
+      .from('styles')
       .delete()
-      .eq("id", styleId)
-      .eq("team_id", style.team_id);
+      .eq('id', styleId)
+      .eq('team_id', style.team_id);
 
     if (error) {
       throw new Error(`Failed to delete style: ${error.message}`);
@@ -226,19 +226,19 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: true,
-        message: "Style deleted successfully",
+        message: 'Style deleted successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[DELETE /api/styles/[styleId]] Error:", error);
+    console.error('[DELETE /api/styles/[styleId]] Error:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to delete style",
+        message: 'Failed to delete style',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

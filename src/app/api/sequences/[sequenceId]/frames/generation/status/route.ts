@@ -3,11 +3,11 @@
  * GET /api/sequences/[sequenceId]/frames/generation/status - Get frame generation status for a sequence
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: Request,
@@ -21,7 +21,7 @@ export async function GET(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Authenticate user
@@ -30,16 +30,16 @@ export async function GET(
 
     // Verify sequence exists and get team_id + status
     const { data: sequence, error: sequenceError } = await supabase
-      .from("sequences")
-      .select("team_id, status, metadata")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id, status, metadata')
+      .eq('id', sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -50,7 +50,7 @@ export async function GET(
     await requireTeamMemberAccess(user.id, sequence.team_id);
 
     // If sequence is not processing, return null (no active generation)
-    if (sequence.status !== "processing") {
+    if (sequence.status !== 'processing') {
       return NextResponse.json(
         {
           success: true,
@@ -63,10 +63,10 @@ export async function GET(
 
     // Get frame progress
     const { data: frames } = await supabase
-      .from("frames")
-      .select("id, order_index, thumbnail_url")
-      .eq("sequence_id", sequenceId)
-      .order("order_index", { ascending: true });
+      .from('frames')
+      .select('id, order_index, thumbnail_url')
+      .eq('sequence_id', sequenceId)
+      .order('order_index', { ascending: true });
 
     // Get expected frame count from metadata
     const metadata = sequence.metadata as Record<string, unknown> | null;
@@ -93,7 +93,7 @@ export async function GET(
     );
   } catch (error) {
     console.error(
-      "[GET /api/sequences/[sequenceId]/frames/generation/status] Error:",
+      '[GET /api/sequences/[sequenceId]/frames/generation/status] Error:',
       error
     );
 
@@ -101,7 +101,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get generation status",
+        message: 'Failed to get generation status',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

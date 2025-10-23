@@ -7,12 +7,12 @@
  * @module lib/auth/action-utils
  */
 
-import { MOTION_ACCESS_DENIED_MESSAGE } from "@/constants";
-import type { User } from "@/lib/auth/config";
-import type { TeamRole } from "@/lib/auth/constants";
-import { hasMinimumRole } from "@/lib/auth/constants";
-import { getUserRole } from "@/lib/auth/permissions";
-import { getUser } from "@/lib/auth/server";
+import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
+import type { User } from '@/lib/auth/config';
+import type { TeamRole } from '@/lib/auth/constants';
+import { hasMinimumRole } from '@/lib/auth/constants';
+import { getUserRole } from '@/lib/auth/permissions';
+import { getUser } from '@/lib/auth/server';
 
 /**
  * Get the current authenticated user
@@ -30,7 +30,7 @@ export async function requireUser(): Promise<User> {
   const user = await getUser();
 
   if (!user) {
-    throw new Error("Authentication required");
+    throw new Error('Authentication required');
   }
 
   return user;
@@ -55,7 +55,7 @@ export async function requireAuthenticatedUser(): Promise<User> {
   const user = await requireUser();
 
   if (user.isAnonymous === true) {
-    throw new Error("Account required: please sign up or sign in to continue");
+    throw new Error('Account required: please sign up or sign in to continue');
   }
 
   return user;
@@ -82,12 +82,12 @@ export async function requireAuthenticatedUser(): Promise<User> {
 export async function requireTeamMemberAccess(
   userId: string,
   teamId: string,
-  minRole: TeamRole = "member"
+  minRole: TeamRole = 'member'
 ): Promise<TeamRole> {
   const role = await getUserRole(userId, teamId);
 
   if (!role) {
-    throw new Error("Access denied: not a member of this team");
+    throw new Error('Access denied: not a member of this team');
   }
 
   // Check if user has minimum required role using shared constants
@@ -119,7 +119,7 @@ export async function requireTeamAdminAccess(
   userId: string,
   teamId: string
 ): Promise<TeamRole> {
-  return requireTeamMemberAccess(userId, teamId, "admin");
+  return requireTeamMemberAccess(userId, teamId, 'admin');
 }
 
 /**
@@ -143,7 +143,7 @@ export async function requireTeamOwnerAccess(
   userId: string,
   teamId: string
 ): Promise<TeamRole> {
-  return requireTeamMemberAccess(userId, teamId, "owner");
+  return requireTeamMemberAccess(userId, teamId, 'owner');
 }
 
 /**
@@ -187,7 +187,7 @@ export function validateMotionAccess(user: User): void {
  */
 export async function requireUserWithTeamAccess(
   teamId: string,
-  minRole: TeamRole = "member"
+  minRole: TeamRole = 'member'
 ): Promise<{ user: User; role: TeamRole }> {
   const user = await requireUser();
   const role = await requireTeamMemberAccess(user.id, teamId, minRole);
@@ -214,7 +214,7 @@ export async function requireUserWithTeamAccess(
  */
 export async function requireAuthenticatedUserWithTeamAccess(
   teamId: string,
-  minRole: TeamRole = "member"
+  minRole: TeamRole = 'member'
 ): Promise<{ user: User; role: TeamRole }> {
   const user = await requireAuthenticatedUser();
   const role = await requireTeamMemberAccess(user.id, teamId, minRole);
@@ -244,7 +244,7 @@ export async function requireAuthenticatedUserWithTeamAccess(
 export async function checkTeamAccess(
   userId: string,
   teamId: string,
-  minRole: TeamRole = "member"
+  minRole: TeamRole = 'member'
 ): Promise<{ hasAccess: boolean; role: TeamRole | null }> {
   try {
     const role = await requireTeamMemberAccess(userId, teamId, minRole);

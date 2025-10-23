@@ -1,5 +1,5 @@
-import type * as React from "react";
-import { Button } from "@/components/ui/button";
+import type * as React from 'react';
+import { Button } from '@/components/ui/button';
 
 interface GenerationSectionProps {
   onGenerateStoryboard: () => void;
@@ -34,7 +34,7 @@ export const GenerationSection: React.FC<GenerationSectionProps> = ({
             Generating Storyboard...
           </>
         ) : (
-          "Generate Storyboard"
+          'Generate Storyboard'
         )}
       </Button>
 

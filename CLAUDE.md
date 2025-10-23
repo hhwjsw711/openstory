@@ -166,7 +166,7 @@ All API routes follow this structure:
 Use `@/*` to import from src directory:
 
 ```typescript
-import { something } from "@/app/api/utils";
+import { something } from '@/app/api/utils';
 ```
 
 ## Backend Development Guidelines
@@ -218,7 +218,7 @@ All async AI operations use QStash Workflow for durable execution:
 const workflowInput: ImageWorkflowInput = {
   userId: user.id,
   teamId: team.id,
-  prompt: "...",
+  prompt: '...',
   // ...
 };
 
@@ -236,7 +236,7 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
   const input = context.requestPayload;
   validateWorkflowAuth(input); // Check userId/teamId
 
-  const result = await context.run("step-name", async () => {
+  const result = await context.run('step-name', async () => {
     // Step logic - automatically retried on failure
   });
 });
@@ -399,14 +399,14 @@ When mocking modules in Bun tests, avoid shared mock state between tests:
 const mockCreateClient = mock(() => ({
   /* mock implementation */
 }));
-mock.module("@supabase/supabase-js", () => ({
+mock.module('@supabase/supabase-js', () => ({
   createClient: mockCreateClient,
 }));
 
 beforeEach(async () => {
   mockCreateClient.mockClear(); // Clear call history
   // Import modules after clearing mocks
-  const module = await import("./module-under-test");
+  const module = await import('./module-under-test');
 });
 ```
 

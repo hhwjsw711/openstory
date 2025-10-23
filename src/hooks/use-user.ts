@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth/client";
-import type { UserProfile } from "@/types/database";
+import { useQuery } from '@tanstack/react-query';
+import { authClient } from '@/lib/auth/client';
+import type { UserProfile } from '@/types/database';
 
 interface UserData {
   user: UserProfile;
@@ -14,19 +14,19 @@ interface UserData {
 }
 
 async function fetchUser(): Promise<UserData> {
-  const response = await fetch("/api/user/me");
+  const response = await fetch('/api/user/me');
   const result = await response.json();
 
   if (!response.ok || !result.success) {
-    if (result.message === "REQUIRES_CLIENT_AUTH") {
+    if (result.message === 'REQUIRES_CLIENT_AUTH') {
       const { data, error } = await authClient.signIn.anonymous();
 
       if (!error && data) {
-        const retryResponse = await fetch("/api/user/me");
+        const retryResponse = await fetch('/api/user/me');
         const retryResult = await retryResponse.json();
 
         if (retryResponse.ok && retryResult.success && retryResult.data) {
-          const teamResponse = await fetch("/api/user/team");
+          const teamResponse = await fetch('/api/user/team');
           const teamResult = await teamResponse.json();
 
           return {
@@ -38,17 +38,17 @@ async function fetchUser(): Promise<UserData> {
         }
       }
 
-      throw new Error(error?.message || "Failed to create anonymous session");
+      throw new Error(error?.message || 'Failed to create anonymous session');
     }
 
-    throw new Error(result.message || "Failed to fetch user");
+    throw new Error(result.message || 'Failed to fetch user');
   }
 
   if (!result.data) {
-    throw new Error("No user data returned");
+    throw new Error('No user data returned');
   }
 
-  const teamResponse = await fetch("/api/user/team");
+  const teamResponse = await fetch('/api/user/team');
   const teamResult = await teamResponse.json();
 
   return {
@@ -66,15 +66,15 @@ async function fetchUser(): Promise<UserData> {
  */
 export function useUser() {
   return useQuery({
-    queryKey: ["user"],
+    queryKey: ['user'],
     queryFn: fetchUser,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error) => {
       // Retry once for auth errors
       if (
         error instanceof Error &&
-        (error.message.includes("authentication") ||
-          error.message.includes("REQUIRES_CLIENT_AUTH"))
+        (error.message.includes('authentication') ||
+          error.message.includes('REQUIRES_CLIENT_AUTH'))
       ) {
         return failureCount < 1;
       }

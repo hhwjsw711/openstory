@@ -4,15 +4,15 @@
  * @deprecated Use /api/teams/[teamId]/invitations instead
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamAdminAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { teamService } from "@/lib/services/team.service";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamAdminAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { teamService } from '@/lib/services/team.service';
 
 const inviteRequestSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  role: z.enum(["member", "admin", "viewer"]).default("member"),
+  email: z.string().email('Invalid email address'),
+  role: z.enum(['member', 'admin', 'viewer']).default('member'),
 });
 
 export async function POST(
@@ -27,7 +27,7 @@ export async function POST(
     try {
       uuidSchema.parse(teamId);
     } catch {
-      throw new ValidationError("Invalid team ID format");
+      throw new ValidationError('Invalid team ID format');
     }
 
     // Parse and validate request body
@@ -50,19 +50,19 @@ export async function POST(
       {
         success: true,
         data: { invitationId: invitation.id },
-        message: "Invitation sent successfully",
+        message: 'Invitation sent successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("[POST /api/teams/[teamId]/invite] Error:", error);
+    console.error('[POST /api/teams/[teamId]/invite] Error:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request data",
+          message: 'Invalid request data',
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
@@ -74,7 +74,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to invite member",
+        message: 'Failed to invite member',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

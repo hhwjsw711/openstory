@@ -1,34 +1,34 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { ScriptSection } from "../script-section";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { ScriptSection } from '../script-section';
 
 const meta: Meta<typeof ScriptSection> = {
-  title: "Components/Sequence/ScriptSection",
+  title: 'Components/Sequence/ScriptSection',
   component: ScriptSection,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         component:
-          "A section component containing the script editor with title and description.",
+          'A section component containing the script editor with title and description.',
       },
     },
   },
   argTypes: {
     script: {
-      description: "Current script content",
-      control: "text",
+      description: 'Current script content',
+      control: 'text',
     },
     onScriptChange: {
-      description: "Callback fired when script content changes",
-      action: "script changed",
+      description: 'Callback fired when script content changes',
+      action: 'script changed',
     },
     error: {
-      description: "Error message to display",
-      control: "text",
+      description: 'Error message to display',
+      control: 'text',
     },
     disabled: {
-      description: "Whether the script editor is disabled",
-      control: "boolean",
+      description: 'Whether the script editor is disabled',
+      control: 'boolean',
     },
   },
 };
@@ -38,13 +38,13 @@ type Story = StoryObj<typeof ScriptSection>;
 
 export const Empty: Story = {
   args: {
-    script: "",
+    script: '',
     disabled: false,
   },
   parameters: {
     docs: {
       description: {
-        story: "Script section with no content.",
+        story: 'Script section with no content.',
       },
     },
   },
@@ -70,7 +70,7 @@ The camera slowly zooms in on her laptop screen, revealing the opening lines of 
   parameters: {
     docs: {
       description: {
-        story: "Script section with sample script content.",
+        story: 'Script section with sample script content.',
       },
     },
   },
@@ -78,14 +78,14 @@ The camera slowly zooms in on her laptop screen, revealing the opening lines of 
 
 export const WithError: Story = {
   args: {
-    script: "Too short",
-    error: "Script must be at least 10 characters long",
+    script: 'Too short',
+    error: 'Script must be at least 10 characters long',
     disabled: false,
   },
   parameters: {
     docs: {
       description: {
-        story: "Script section displaying a validation error.",
+        story: 'Script section displaying a validation error.',
       },
     },
   },
@@ -93,13 +93,13 @@ export const WithError: Story = {
 
 export const Disabled: Story = {
   args: {
-    script: "This script cannot be edited",
+    script: 'This script cannot be edited',
     disabled: true,
   },
   parameters: {
     docs: {
       description: {
-        story: "Script section in disabled state during submission.",
+        story: 'Script section in disabled state during submission.',
       },
     },
   },

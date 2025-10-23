@@ -121,24 +121,24 @@ The codebase is already well-prepared for motion generation:
 // /app/frames/[frameId]/actions.ts
 export async function generateMotionAction(
   frameId: string,
-  params: { quality?: "fast" | "balanced" | "premium" }
+  params: { quality?: 'fast' | 'balanced' | 'premium' }
 ): Promise<{ jobId: string }> {
   const frame = await getFrame(frameId);
 
   if (!frame.thumbnail_url) {
-    throw new Error("Frame must have thumbnail before generating motion");
+    throw new Error('Frame must have thumbnail before generating motion');
   }
 
   const jobId = await qstash.publishMotionJob({
     frameId,
     imageUrl: frame.thumbnail_url,
     prompt: frame.analysis?.prompt,
-    quality: params.quality || "balanced",
+    quality: params.quality || 'balanced',
   });
 
   await jobManager.createJob({
-    type: "frame_motion",
-    status: "queued",
+    type: 'frame_motion',
+    status: 'queued',
     metadata: { frameId, quality: params.quality },
   });
 
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
       image_url: imageUrl,
       prompt: enhanceMotionPrompt(prompt),
       num_frames: 25,
-      num_inference_steps: quality === "fast" ? 4 : 25,
+      num_inference_steps: quality === 'fast' ? 4 : 25,
     });
 
     // Upload to Supabase Storage

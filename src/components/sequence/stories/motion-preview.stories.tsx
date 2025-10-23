@@ -1,53 +1,53 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
-import { generateMockFrame } from "@/lib/mocks/data-generators";
-import { MotionPreview } from "../motion-preview";
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { generateMockFrame } from '@/lib/mocks/data-generators';
+import { MotionPreview } from '../motion-preview';
 
 const meta: Meta<typeof MotionPreview> = {
-  title: "Sequence/MotionPreview",
+  title: 'Sequence/MotionPreview',
   component: MotionPreview,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
     docs: {
       description: {
         component:
-          "A video preview component with custom controls for the motion generation view.",
+          'A video preview component with custom controls for the motion generation view.',
       },
     },
   },
   args: {
-    onPlay: () => console.log("onPlay"),
-    onPause: () => console.log("onPause"),
-    onSeek: () => console.log("onSeek"),
+    onPlay: () => console.log('onPlay'),
+    onPause: () => console.log('onPause'),
+    onSeek: () => console.log('onSeek'),
     muted: true,
     autoPlay: false,
   },
   argTypes: {
     videoUrl: {
       description:
-        "URL of the video file (optional - shows thumbnail fallback if not provided)",
+        'URL of the video file (optional - shows thumbnail fallback if not provided)',
     },
     thumbnailUrl: {
-      description: "URL of the thumbnail image",
+      description: 'URL of the thumbnail image',
     },
     duration: {
-      control: "number",
+      control: 'number',
       description:
-        "Expected duration in milliseconds (used for fallback when no video)",
+        'Expected duration in milliseconds (used for fallback when no video)',
     },
     frame: {
-      description: "The frame data object",
+      description: 'The frame data object',
     },
     autoPlay: {
-      control: "boolean",
-      description: "Whether to auto-play the video when loaded",
+      control: 'boolean',
+      description: 'Whether to auto-play the video when loaded',
     },
     muted: {
-      control: "boolean",
-      description: "Whether to start muted (recommended for autoplay)",
+      control: 'boolean',
+      description: 'Whether to start muted (recommended for autoplay)',
     },
     loading: {
-      control: "boolean",
-      description: "Whether to show loading state",
+      control: 'boolean',
+      description: 'Whether to show loading state',
     },
   },
 };
@@ -57,16 +57,16 @@ type Story = StoryObj<typeof meta>;
 
 // Mock frame data
 const sampleFrame = generateMockFrame({
-  id: "motion-frame-1",
+  id: 'motion-frame-1',
   order_index: 1,
-  description: "A cinematic establishing shot of a cityscape at golden hour",
-  thumbnail_url: "https://picsum.photos/seed/1514565131-fce0801e5785/640/360",
+  description: 'A cinematic establishing shot of a cityscape at golden hour',
+  thumbnail_url: 'https://picsum.photos/seed/1514565131-fce0801e5785/640/360',
   duration_ms: 5000,
 });
 
 // Sample video URLs from open sources
 const sampleVideoUrl =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
 // Basic video preview
 export const WithVideo: Story = {
@@ -74,7 +74,7 @@ export const WithVideo: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -86,7 +86,7 @@ export const ThumbnailOnly: Story = {
     // No videoUrl provided
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -98,7 +98,7 @@ export const Loading: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     loading: true,
@@ -111,7 +111,7 @@ export const AutoPlay: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     autoPlay: true,
@@ -131,7 +131,7 @@ export const Unmuted: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
     muted: false,
@@ -143,14 +143,14 @@ export const Frame2: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      "https://picsum.photos/seed/1594736797933-d0501ba2fe65/640/360",
+      'https://picsum.photos/seed/1594736797933-d0501ba2fe65/640/360',
     duration: 8500,
     frame: generateMockFrame({
-      id: "motion-frame-2",
+      id: 'motion-frame-2',
       order_index: 2,
-      description: "Close-up character dialogue scene",
+      description: 'Close-up character dialogue scene',
       thumbnail_url:
-        "https://picsum.photos/seed/1594736797933-d0501ba2fe65/640/360",
+        'https://picsum.photos/seed/1594736797933-d0501ba2fe65/640/360',
       duration_ms: 8500,
     }),
   },
@@ -159,14 +159,14 @@ export const Frame2: Story = {
 export const Frame3: Story = {
   args: {
     videoUrl: sampleVideoUrl,
-    thumbnailUrl: "https://picsum.photos/seed/1553095066-5014bc7b7f2d/640/360",
+    thumbnailUrl: 'https://picsum.photos/seed/1553095066-5014bc7b7f2d/640/360',
     duration: 3200,
     frame: generateMockFrame({
-      id: "motion-frame-3",
+      id: 'motion-frame-3',
       order_index: 3,
-      description: "Action sequence with dynamic movement",
+      description: 'Action sequence with dynamic movement',
       thumbnail_url:
-        "https://picsum.photos/seed/1553095066-5014bc7b7f2d/640/360",
+        'https://picsum.photos/seed/1553095066-5014bc7b7f2d/640/360',
       duration_ms: 3200,
     }),
   },
@@ -177,14 +177,14 @@ export const LongDuration: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      "https://picsum.photos/seed/1478720568477-152d9b164e26/640/360",
+      'https://picsum.photos/seed/1478720568477-152d9b164e26/640/360',
     duration: 15000,
     frame: generateMockFrame({
-      id: "long-motion-frame",
+      id: 'long-motion-frame',
       order_index: 5,
-      description: "Extended scene with multiple story beats",
+      description: 'Extended scene with multiple story beats',
       thumbnail_url:
-        "https://picsum.photos/seed/1478720568477-152d9b164e26/640/360",
+        'https://picsum.photos/seed/1478720568477-152d9b164e26/640/360',
       duration_ms: 15000,
     }),
   },
@@ -194,7 +194,7 @@ export const LongDuration: Story = {
 export const ImageError: Story = {
   args: {
     // No videoUrl, broken thumbnail
-    thumbnailUrl: "https://this-url-does-not-exist.com/broken.jpg",
+    thumbnailUrl: 'https://this-url-does-not-exist.com/broken.jpg',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -211,7 +211,7 @@ export const NoThumbnail: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Frame without a thumbnail shows a proper placeholder UI.",
+        story: 'Frame without a thumbnail shows a proper placeholder UI.',
       },
     },
   },
@@ -222,35 +222,35 @@ const MultiplePreviewsTemplate: Story = {
   render: (args: React.ComponentProps<typeof MotionPreview>) => {
     const frames = [
       generateMockFrame({
-        id: "multi-1",
+        id: 'multi-1',
         order_index: 1,
-        description: "Opening landscape shot",
+        description: 'Opening landscape shot',
         thumbnail_url:
-          "https://picsum.photos/seed/1506905925346-21bda4d32df4/640/360",
+          'https://picsum.photos/seed/1506905925346-21bda4d32df4/640/360',
         duration_ms: 4000,
       }),
       generateMockFrame({
-        id: "multi-2",
+        id: 'multi-2',
         order_index: 2,
-        description: "Character introduction",
+        description: 'Character introduction',
         thumbnail_url:
-          "https://picsum.photos/seed/1507003211169-0a1dd7228f2d/640/360",
+          'https://picsum.photos/seed/1507003211169-0a1dd7228f2d/640/360',
         duration_ms: 6000,
       }),
       generateMockFrame({
-        id: "multi-3",
+        id: 'multi-3',
         order_index: 3,
-        description: "Action sequence",
+        description: 'Action sequence',
         thumbnail_url:
-          "https://picsum.photos/seed/1536098561742-ca998e48cbcc/640/360",
+          'https://picsum.photos/seed/1536098561742-ca998e48cbcc/640/360',
         duration_ms: 3500,
       }),
       generateMockFrame({
-        id: "multi-4",
+        id: 'multi-4',
         order_index: 4,
-        description: "Dialogue scene",
+        description: 'Dialogue scene',
         thumbnail_url:
-          "https://picsum.photos/seed/1524712245354-2c4e5e7121c0/640/360",
+          'https://picsum.photos/seed/1524712245354-2c4e5e7121c0/640/360',
         duration_ms: 8000,
       }),
     ];
@@ -265,7 +265,7 @@ const MultiplePreviewsTemplate: Story = {
             videoUrl={index % 2 === 0 ? sampleVideoUrl : undefined}
             thumbnailUrl={
               frame.thumbnail_url ||
-              "https://picsum.photos/seed/1536240478700-b869070f9279/640/360"
+              'https://picsum.photos/seed/1536240478700-b869070f9279/640/360'
             }
             duration={frame.duration_ms || undefined}
             frame={frame}
@@ -279,11 +279,11 @@ const MultiplePreviewsTemplate: Story = {
 export const MultipleFrames: Story = {
   ...MultiplePreviewsTemplate,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
     docs: {
       description: {
         story:
-          "Multiple motion previews showing mix of completed videos and thumbnail-only frames.",
+          'Multiple motion previews showing mix of completed videos and thumbnail-only frames.',
       },
     },
   },
@@ -295,7 +295,7 @@ export const Interactive: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
@@ -367,7 +367,7 @@ export const LoadingStates: Story = {
     </div>
   ),
   parameters: {
-    layout: "padded",
+    layout: 'padded',
   },
 };
 
@@ -395,11 +395,11 @@ export const Responsive: Story = {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
       sampleFrame.thumbnail_url ||
-      "https://picsum.photos/seed/1536240478700-b869070f9279/640/360",
+      'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
     duration: sampleFrame.duration_ms || undefined,
     frame: sampleFrame,
   },
   parameters: {
-    layout: "padded",
+    layout: 'padded',
   },
 };

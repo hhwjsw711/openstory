@@ -2,27 +2,27 @@
  * Type definitions for QStash jobs and payloads
  */
 
-import type { IMAGE_TO_VIDEO_MODELS } from "@/lib/ai/models";
-import type { Json } from "@/types/database";
+import type { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type { Json } from '@/types/database';
 
 // Extend job types to include frame generation and motion
 export const JobType = {
-  IMAGE: "image",
-  VIDEO: "video",
-  SCRIPT: "script",
-  FRAME_GENERATION: "frame_generation",
-  MOTION: "motion",
+  IMAGE: 'image',
+  VIDEO: 'video',
+  SCRIPT: 'script',
+  FRAME_GENERATION: 'frame_generation',
+  MOTION: 'motion',
 } as const;
 
 export type JobTypeType = (typeof JobType)[keyof typeof JobType];
 
 // Job status enum matching database
 export const JobStatus = {
-  PENDING: "pending",
-  RUNNING: "running",
-  COMPLETED: "completed",
-  FAILED: "failed",
-  CANCELLED: "cancelled",
+  PENDING: 'pending',
+  RUNNING: 'running',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
 } as const;
 
 export type JobStatusType = (typeof JobStatus)[keyof typeof JobStatus];
@@ -39,7 +39,7 @@ export interface BaseJobPayload {
 
 // Script analysis payload
 export interface ScriptAnalysisPayload extends BaseJobPayload {
-  type: "script";
+  type: 'script';
   data: {
     sequenceId: string;
     script: string;
@@ -49,7 +49,7 @@ export interface ScriptAnalysisPayload extends BaseJobPayload {
 
 // Image generation payload
 export interface ImageGenerationPayload extends BaseJobPayload {
-  type: "image";
+  type: 'image';
   data: {
     prompt: string;
     style?: Json;
@@ -62,7 +62,7 @@ export interface ImageGenerationPayload extends BaseJobPayload {
 
 // Video generation payload
 export interface VideoGenerationPayload extends BaseJobPayload {
-  type: "video";
+  type: 'video';
   data: {
     imageUrl: string;
     prompt?: string;
@@ -73,14 +73,14 @@ export interface VideoGenerationPayload extends BaseJobPayload {
 
 // Frame generation payload - simplified to only require sequenceId
 export interface FrameGenerationPayload extends BaseJobPayload {
-  type: "frame_generation";
+  type: 'frame_generation';
   data: {
     sequenceId: string;
     options?: {
       framesPerScene?: number; // Default: 3-7
       generateThumbnails?: boolean;
       generateDescriptions?: boolean;
-      aiProvider?: "openai" | "anthropic" | "openrouter";
+      aiProvider?: 'openai' | 'anthropic' | 'openrouter';
       regenerateAll?: boolean; // Default: true - whether to delete existing frames
     };
   };
@@ -88,7 +88,7 @@ export interface FrameGenerationPayload extends BaseJobPayload {
 
 // Motion generation payload for image-to-video
 export interface MotionGenerationPayload extends BaseJobPayload {
-  type: "motion";
+  type: 'motion';
   data: {
     frameId: string;
     sequenceId: string;

@@ -3,23 +3,23 @@
  * Encourages anonymous users to save their work by creating an account
  */
 
-"use client";
+'use client';
 
-import { usePathname } from "next/navigation";
-import type React from "react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { usePathname } from 'next/navigation';
+import type React from 'react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useUser } from "@/hooks/use-user";
-import { authClient } from "@/lib/auth/client";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useUser } from '@/hooks/use-user';
+import { authClient } from '@/lib/auth/client';
 
 interface UpgradePromptProps {
   title?: string;
@@ -29,17 +29,17 @@ interface UpgradePromptProps {
 }
 
 export function UpgradePrompt({
-  title = "Save Your Work",
-  description = "Create an account to save your sequences and continue working on them later.",
+  title = 'Save Your Work',
+  description = 'Create an account to save your sequences and continue working on them later.',
   onUpgradeStart,
   onUpgradeComplete,
 }: UpgradePromptProps) {
   const { data: userData } = useUser();
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState<"google" | "email">("google");
+  const [activeTab, setActiveTab] = useState<'google' | 'email'>('google');
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Don't show for authenticated users
@@ -55,14 +55,14 @@ export function UpgradePrompt({
     try {
       // Stay on current page after upgrade
       await authClient.signIn.social({
-        provider: "google",
+        provider: 'google',
         callbackURL: pathname,
       });
       onUpgradeComplete?.();
     } catch (err) {
-      console.error("Google sign-in error:", err);
+      console.error('Google sign-in error:', err);
       setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google"
+        err instanceof Error ? err.message : 'Failed to sign in with Google'
       );
     } finally {
       setIsLoading(false);
@@ -80,12 +80,12 @@ export function UpgradePrompt({
       await authClient.signUp.email({
         email,
         password,
-        name: fullName || "User",
+        name: fullName || 'User',
       });
       onUpgradeComplete?.();
     } catch (err) {
-      console.error("Email sign-up error:", err);
-      setError(err instanceof Error ? err.message : "Failed to create account");
+      console.error('Email sign-up error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
@@ -101,15 +101,15 @@ export function UpgradePrompt({
         {/* Simple tab switcher */}
         <div className="flex gap-2 mb-4">
           <Button
-            variant={activeTab === "google" ? "default" : "outline"}
-            onClick={() => setActiveTab("google")}
+            variant={activeTab === 'google' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('google')}
             className="flex-1"
           >
             Google
           </Button>
           <Button
-            variant={activeTab === "email" ? "default" : "outline"}
-            onClick={() => setActiveTab("email")}
+            variant={activeTab === 'email' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('email')}
             className="flex-1"
           >
             Email
@@ -117,7 +117,7 @@ export function UpgradePrompt({
         </div>
 
         {/* Google sign-in */}
-        {activeTab === "google" && (
+        {activeTab === 'google' && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
               Use your Google account to save your work instantly.
@@ -128,13 +128,13 @@ export function UpgradePrompt({
               className="w-full"
               variant="outline"
             >
-              {isLoading ? "Signing in..." : "Continue with Google"}
+              {isLoading ? 'Signing in...' : 'Continue with Google'}
             </Button>
           </div>
         )}
 
         {/* Email sign-up */}
-        {activeTab === "email" && (
+        {activeTab === 'email' && (
           <form onSubmit={handleEmailSignUp} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -168,7 +168,7 @@ export function UpgradePrompt({
               disabled={isLoading || !email || !password}
               className="w-full"
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
         )}

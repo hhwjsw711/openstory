@@ -2,8 +2,8 @@
  * Authentication utilities for workflows
  */
 
-import { AuthenticationError } from "@/lib/errors";
-import type { WorkflowContext } from "./types";
+import { AuthenticationError } from '@/lib/errors';
+import type { WorkflowContext } from './types';
 
 /**
  * Validates that workflow context includes required authentication
@@ -15,11 +15,11 @@ export function validateWorkflowAuth(
   const ctx = context as Partial<WorkflowContext>;
 
   if (!ctx.userId) {
-    throw new AuthenticationError("Workflow context missing userId");
+    throw new AuthenticationError('Workflow context missing userId');
   }
 
   if (!ctx.teamId) {
-    throw new AuthenticationError("Workflow context missing teamId");
+    throw new AuthenticationError('Workflow context missing teamId');
   }
 }
 

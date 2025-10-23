@@ -3,14 +3,14 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { regenerateFrameSchema } from "@/lib/schemas/frame.schemas";
-import { createServerClient } from "@/lib/supabase/server";
-import type { ImageWorkflowInput } from "@/lib/workflow";
-import { getQStashClient, workflowConfig } from "@/lib/workflow";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
+import { createServerClient } from '@/lib/supabase/server';
+import type { ImageWorkflowInput } from '@/lib/workflow';
+import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
 export async function POST(
   request: Request,
@@ -25,7 +25,7 @@ export async function POST(
       uuidSchema.parse(sequenceId);
       uuidSchema.parse(frameId);
     } catch {
-      throw new ValidationError("Invalid sequence or frame ID format");
+      throw new ValidationError('Invalid sequence or frame ID format');
     }
 
     // Parse and validate request body
@@ -38,17 +38,17 @@ export async function POST(
 
     // Get frame with sequence info
     const { data: frame, error: frameError } = await supabase
-      .from("frames")
-      .select("*, sequences!inner(id, team_id, script)")
-      .eq("id", frameId)
-      .eq("sequence_id", sequenceId)
+      .from('frames')
+      .select('*, sequences!inner(id, team_id, script)')
+      .eq('id', frameId)
+      .eq('sequence_id', sequenceId)
       .single();
 
     if (frameError || !frame) {
       return NextResponse.json(
         {
           success: false,
-          message: "Frame not found in this sequence",
+          message: 'Frame not found in this sequence',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -62,7 +62,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Frame has no description to regenerate from",
+          message: 'Frame has no description to regenerate from',
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -74,8 +74,8 @@ export async function POST(
       userId: user.id,
       teamId: frame.sequences.team_id,
       prompt: frame.description,
-      model: validatedBody.model || "flux_krea_lora", // Use provided model or default
-      imageSize: "landscape_16_9",
+      model: validatedBody.model || 'flux_krea_lora', // Use provided model or default
+      imageSize: 'landscape_16_9',
       numImages: 1,
       frameId,
       sequenceId: frame.sequence_id,
@@ -96,7 +96,7 @@ export async function POST(
         data: {
           workflowRunId,
           frameId,
-          message: "Frame regeneration started",
+          message: 'Frame regeneration started',
         },
         timestamp: new Date().toISOString(),
       },
@@ -104,7 +104,7 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      "[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:",
+      '[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:',
       error
     );
 
@@ -112,7 +112,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to regenerate frame",
+        message: 'Failed to regenerate frame',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

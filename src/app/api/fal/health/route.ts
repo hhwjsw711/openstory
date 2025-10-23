@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { handleApiError } from "@/lib/errors";
-import { getFalService } from "@/lib/services/fal-service";
+import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/errors';
+import { getFalService } from '@/lib/services/fal-service';
 
 /**
  * GET handler for basic health check (no body required)
@@ -12,8 +12,8 @@ export async function GET() {
 
     const response = {
       success: true,
-      service: "fal.ai",
-      status: healthStatus.success ? "healthy" : "unhealthy",
+      service: 'fal.ai',
+      status: healthStatus.success ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
       latencyMs: healthStatus.latencyMs,
       ...(healthStatus.error && {
@@ -24,14 +24,14 @@ export async function GET() {
     const statusCode = healthStatus.success ? 200 : 503;
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
-    console.error("[Fal Health] Health check failed:", error);
+    console.error('[Fal Health] Health check failed:', error);
 
     const handledError = handleApiError(error);
     return NextResponse.json(
       {
         success: false,
-        service: "fal.ai",
-        status: "error",
+        service: 'fal.ai',
+        status: 'error',
         message: handledError.message,
         timestamp: new Date().toISOString(),
       },

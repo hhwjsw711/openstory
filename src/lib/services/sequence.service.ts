@@ -8,9 +8,9 @@
  * @module lib/services/sequence.service
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { ValidationError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
 import type {
   Database,
   Json,
@@ -18,7 +18,7 @@ import type {
   SequenceInsert,
   SequenceStatus,
   SequenceUpdate,
-} from "@/types/database";
+} from '@/types/database';
 
 // Type definitions
 export interface CreateSequenceParams {
@@ -75,11 +75,11 @@ export class SequenceService {
       title: params.name,
       script: params.script,
       style_id: params.styleId,
-      status: "draft",
+      status: 'draft',
     };
 
     const { data, error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .insert(sequenceData)
       .select()
       .single();
@@ -89,7 +89,7 @@ export class SequenceService {
     }
 
     if (!data) {
-      throw new Error("No sequence returned from database");
+      throw new Error('No sequence returned from database');
     }
 
     return data;
@@ -115,9 +115,9 @@ export class SequenceService {
     };
 
     const { data, error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .update(updateData)
-      .eq("id", params.id)
+      .eq('id', params.id)
       .select()
       .single();
 
@@ -126,7 +126,7 @@ export class SequenceService {
     }
 
     if (!data) {
-      throw new ValidationError("Sequence not found");
+      throw new ValidationError('Sequence not found');
     }
 
     return data;
@@ -140,9 +140,9 @@ export class SequenceService {
    */
   async deleteSequence(sequenceId: string): Promise<void> {
     const { error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .delete()
-      .eq("id", sequenceId);
+      .eq('id', sequenceId);
 
     if (error) {
       throw new Error(`Failed to delete sequence: ${error.message}`);
@@ -163,13 +163,13 @@ export class SequenceService {
     includeFrames = false
   ): Promise<SequenceWithDetails> {
     const query = this.supabase
-      .from("sequences")
+      .from('sequences')
       .select(
         includeFrames
-          ? "*, frames(id, order_index, description, thumbnail_url, video_url)"
-          : "*"
+          ? '*, frames(id, order_index, description, thumbnail_url, video_url)'
+          : '*'
       )
-      .eq("id", sequenceId)
+      .eq('id', sequenceId)
       .single();
 
     const { data, error } = await query;
@@ -179,7 +179,7 @@ export class SequenceService {
     }
 
     if (!data) {
-      throw new ValidationError("Sequence not found");
+      throw new ValidationError('Sequence not found');
     }
 
     return data as unknown as SequenceWithDetails;
@@ -194,10 +194,10 @@ export class SequenceService {
    */
   async getSequencesByTeam(teamId: string): Promise<Sequence[]> {
     const { data, error } = await this.supabase
-      .from("sequences")
-      .select("*")
-      .eq("team_id", teamId)
-      .order("updated_at", { ascending: false });
+      .from('sequences')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('updated_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to get sequences: ${error.message}`);
@@ -215,10 +215,10 @@ export class SequenceService {
    */
   async getSequencesByUser(userId: string): Promise<Sequence[]> {
     const { data, error } = await this.supabase
-      .from("sequences")
-      .select("*")
-      .eq("created_by", userId)
-      .order("updated_at", { ascending: false });
+      .from('sequences')
+      .select('*')
+      .eq('created_by', userId)
+      .order('updated_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to get sequences: ${error.message}`);
@@ -239,12 +239,12 @@ export class SequenceService {
     status: SequenceStatus
   ): Promise<void> {
     const { error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .update({
         status,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", sequenceId);
+      .eq('id', sequenceId);
 
     if (error) {
       throw new Error(`Failed to update sequence status: ${error.message}`);
@@ -264,16 +264,16 @@ export class SequenceService {
   ): Promise<void> {
     // Get current metadata
     const { data: sequence } = await this.supabase
-      .from("sequences")
-      .select("metadata")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('metadata')
+      .eq('id', sequenceId)
       .single();
 
     const currentMetadata =
       (sequence?.metadata as Record<string, unknown>) || {};
 
     const { error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .update({
         metadata: {
           ...currentMetadata,
@@ -281,7 +281,7 @@ export class SequenceService {
         } as Json,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", sequenceId);
+      .eq('id', sequenceId);
 
     if (error) {
       throw new Error(`Failed to update sequence metadata: ${error.message}`);
@@ -314,12 +314,12 @@ export class SequenceService {
       title: newName || `${original.title} (Copy)`,
       script: original.script,
       style_id: original.style_id,
-      status: "draft",
+      status: 'draft',
       metadata: original.metadata,
     };
 
     const { data, error } = await this.supabase
-      .from("sequences")
+      .from('sequences')
       .insert(duplicateData)
       .select()
       .single();
@@ -329,7 +329,7 @@ export class SequenceService {
     }
 
     if (!data) {
-      throw new Error("No sequence returned from database");
+      throw new Error('No sequence returned from database');
     }
 
     return data;

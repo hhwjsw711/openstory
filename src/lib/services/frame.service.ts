@@ -8,16 +8,16 @@
  * @module lib/services/frame.service
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { ValidationError } from "@/lib/errors";
-import { createServerClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { ValidationError } from '@/lib/errors';
+import { createServerClient } from '@/lib/supabase/server';
 import type {
   Database,
   Frame,
   FrameInsert,
   FrameUpdate,
   Json,
-} from "@/types/database";
+} from '@/types/database';
 
 // Type definitions
 export interface CreateFrameParams {
@@ -47,7 +47,7 @@ export interface GenerateFramesParams {
     framesPerScene?: number;
     generateThumbnails?: boolean;
     generateDescriptions?: boolean;
-    aiProvider?: "openai" | "anthropic" | "openrouter";
+    aiProvider?: 'openai' | 'anthropic' | 'openrouter';
     regenerateAll?: boolean;
   };
 }
@@ -88,7 +88,7 @@ export class FrameService {
     };
 
     const { data, error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .insert(frameData)
       .select()
       .single();
@@ -98,7 +98,7 @@ export class FrameService {
     }
 
     if (!data) {
-      throw new Error("No frame returned from database");
+      throw new Error('No frame returned from database');
     }
 
     return data;
@@ -132,9 +132,9 @@ export class FrameService {
     };
 
     const { data, error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .update(updateData)
-      .eq("id", params.id)
+      .eq('id', params.id)
       .select()
       .single();
 
@@ -143,7 +143,7 @@ export class FrameService {
     }
 
     if (!data) {
-      throw new ValidationError("Frame not found");
+      throw new ValidationError('Frame not found');
     }
 
     return data;
@@ -159,21 +159,21 @@ export class FrameService {
   async deleteFrame(frameId: string): Promise<string> {
     // First get the frame to know its sequence_id
     const { data: frame } = await this.supabase
-      .from("frames")
-      .select("sequence_id")
-      .eq("id", frameId)
+      .from('frames')
+      .select('sequence_id')
+      .eq('id', frameId)
       .single();
 
     const { error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .delete()
-      .eq("id", frameId);
+      .eq('id', frameId);
 
     if (error) {
       throw new Error(`Failed to delete frame: ${error.message}`);
     }
 
-    return frame?.sequence_id || "";
+    return frame?.sequence_id || '';
   }
 
   /**
@@ -186,9 +186,9 @@ export class FrameService {
    */
   async getFrame(frameId: string): Promise<Frame> {
     const { data, error } = await this.supabase
-      .from("frames")
-      .select("*")
-      .eq("id", frameId)
+      .from('frames')
+      .select('*')
+      .eq('id', frameId)
       .single();
 
     if (error) {
@@ -196,7 +196,7 @@ export class FrameService {
     }
 
     if (!data) {
-      throw new ValidationError("Frame not found");
+      throw new ValidationError('Frame not found');
     }
 
     return data;
@@ -211,10 +211,10 @@ export class FrameService {
    */
   async getFramesBySequence(sequenceId: string): Promise<Frame[]> {
     const { data, error } = await this.supabase
-      .from("frames")
-      .select("*")
-      .eq("sequence_id", sequenceId)
-      .order("order_index", { ascending: true });
+      .from('frames')
+      .select('*')
+      .eq('sequence_id', sequenceId)
+      .order('order_index', { ascending: true });
 
     if (error) {
       throw new Error(`Failed to get frames: ${error.message}`);
@@ -237,10 +237,10 @@ export class FrameService {
     // Update all frames with their new order indexes
     const updates = frameOrders.map((frameOrder) =>
       this.supabase
-        .from("frames")
+        .from('frames')
         .update({ order_index: frameOrder.order_index })
-        .eq("id", frameOrder.id)
-        .eq("sequence_id", sequenceId)
+        .eq('id', frameOrder.id)
+        .eq('sequence_id', sequenceId)
     );
 
     const results = await Promise.all(updates);
@@ -248,7 +248,7 @@ export class FrameService {
     const errors = results.filter((result) => result.error);
     if (errors.length > 0) {
       throw new Error(
-        `Failed to reorder frames: ${errors.map((e) => e.error?.message).join(", ")}`
+        `Failed to reorder frames: ${errors.map((e) => e.error?.message).join(', ')}`
       );
     }
   }
@@ -261,9 +261,9 @@ export class FrameService {
    */
   async deleteFramesBySequence(sequenceId: string): Promise<void> {
     const { error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .delete()
-      .eq("sequence_id", sequenceId);
+      .eq('sequence_id', sequenceId);
 
     if (error) {
       throw new Error(`Failed to delete frames: ${error.message}`);
@@ -279,17 +279,17 @@ export class FrameService {
    */
   async bulkInsertFrames(frames: FrameInsert[]): Promise<Frame[]> {
     const { data, error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .insert(frames)
       .select();
 
     if (error) {
       // If we get a unique constraint violation, try upsert instead
-      if (error.code === "23505" || error.message.includes("duplicate key")) {
+      if (error.code === '23505' || error.message.includes('duplicate key')) {
         const { data: upsertedFrames, error: upsertError } = await this.supabase
-          .from("frames")
+          .from('frames')
           .upsert(frames, {
-            onConflict: "sequence_id,order_index",
+            onConflict: 'sequence_id,order_index',
             ignoreDuplicates: false,
           })
           .select();
@@ -319,9 +319,9 @@ export class FrameService {
     thumbnailUrl: string
   ): Promise<void> {
     const { error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .update({ thumbnail_url: thumbnailUrl })
-      .eq("id", frameId);
+      .eq('id', frameId);
 
     if (error) {
       throw new Error(`Failed to update frame thumbnail: ${error.message}`);
@@ -337,9 +337,9 @@ export class FrameService {
    */
   async updateFrameVideo(frameId: string, videoUrl: string): Promise<void> {
     const { error } = await this.supabase
-      .from("frames")
+      .from('frames')
       .update({ video_url: videoUrl })
-      .eq("id", frameId);
+      .eq('id', frameId);
 
     if (error) {
       throw new Error(`Failed to update frame video: ${error.message}`);

@@ -18,9 +18,9 @@ import {
   type StyleStackConfig,
   type UpdateStyleInput,
   UpdateStyleSchema,
-} from "@/lib/schemas/style-stack";
-import { createAdminClient } from "@/lib/supabase/server";
-import type { Json, Style, StyleInsert, StyleUpdate } from "@/types/database";
+} from '@/lib/schemas/style-stack';
+import { createAdminClient } from '@/lib/supabase/server';
+import type { Json, Style, StyleInsert, StyleUpdate } from '@/types/database';
 
 export interface StyleWithAdaptations extends Style {
   style_adaptations?: {
@@ -55,19 +55,19 @@ export class StyleStackService {
     const validatedInput = CreateStyleSchema.parse(input);
 
     if (!userId) {
-      throw new Error("User ID is required to create a style");
+      throw new Error('User ID is required to create a style');
     }
 
     // Get user's default team (for now, using first team they're a member of)
     const { data: teamMember, error: teamError } = await this.supabase
-      .from("team_members")
-      .select("team_id")
-      .eq("user_id", userId)
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
       .limit(1)
       .single();
 
     if (teamError || !teamMember) {
-      throw new Error("No team found for user");
+      throw new Error('No team found for user');
     }
 
     const teamId = teamMember.team_id;
@@ -86,7 +86,7 @@ export class StyleStackService {
     };
 
     const { data, error } = await this.adminClient
-      .from("styles")
+      .from('styles')
       .insert(styleData)
       .select()
       .single();
@@ -105,25 +105,25 @@ export class StyleStackService {
     const validatedInput = GetTeamStylesSchema.parse(input);
 
     let query = this.supabase
-      .from("styles")
-      .select("*", { count: "exact" })
-      .eq("team_id", validatedInput.team_id);
+      .from('styles')
+      .select('*', { count: 'exact' })
+      .eq('team_id', validatedInput.team_id);
 
     // Apply filters
     if (validatedInput.category) {
-      query = query.eq("category", validatedInput.category);
+      query = query.eq('category', validatedInput.category);
     }
 
     if (validatedInput.tags && validatedInput.tags.length > 0) {
-      query = query.contains("tags", validatedInput.tags);
+      query = query.contains('tags', validatedInput.tags);
     }
 
     if (validatedInput.is_public !== undefined) {
-      query = query.eq("is_public", validatedInput.is_public);
+      query = query.eq('is_public', validatedInput.is_public);
     }
 
     if (validatedInput.is_template !== undefined) {
-      query = query.eq("is_template", validatedInput.is_template);
+      query = query.eq('is_template', validatedInput.is_template);
     }
 
     if (validatedInput.search) {
@@ -134,8 +134,8 @@ export class StyleStackService {
 
     // Apply pagination and ordering
     query = query
-      .order("usage_count", { ascending: false })
-      .order("created_at", { ascending: false })
+      .order('usage_count', { ascending: false })
+      .order('created_at', { ascending: false })
       .range(
         validatedInput.offset,
         validatedInput.offset + validatedInput.limit - 1
@@ -169,14 +169,14 @@ export class StyleStackService {
     const validatedInput = GetStyleByIdSchema.parse(input);
 
     const query = this.supabase
-      .from("styles")
-      .select("*")
-      .eq("id", validatedInput.id)
+      .from('styles')
+      .select('*')
+      .eq('id', validatedInput.id)
       .single();
 
     const { data: style, error } = await query;
 
-    if (error && error.code !== "PGRST116") {
+    if (error && error.code !== 'PGRST116') {
       throw new Error(`Failed to get style: ${error.message}`);
     }
 
@@ -185,13 +185,13 @@ export class StyleStackService {
     }
 
     // Get adaptations if requested
-    let adaptations: StyleWithAdaptations["style_adaptations"];
+    let adaptations: StyleWithAdaptations['style_adaptations'];
     if (validatedInput.include_adaptations) {
       const { data: adaptationsData, error: adaptationsError } =
         await this.supabase
-          .from("style_adaptations")
-          .select("id, model_provider, model_name, adapted_config, created_at")
-          .eq("style_id", validatedInput.id);
+          .from('style_adaptations')
+          .select('id, model_provider, model_name, adapted_config, created_at')
+          .eq('style_id', validatedInput.id);
 
       if (adaptationsError) {
         throw new Error(
@@ -220,19 +220,19 @@ export class StyleStackService {
       include_adaptations: false,
     });
     if (!existingStyle) {
-      throw new Error("Style not found");
+      throw new Error('Style not found');
     }
 
     // Check if user is member of the team that owns this style
     const { data: teamMember, error: teamError } = await this.supabase
-      .from("team_members")
-      .select("role")
-      .eq("team_id", existingStyle.team_id)
-      .eq("user_id", userId)
+      .from('team_members')
+      .select('role')
+      .eq('team_id', existingStyle.team_id)
+      .eq('user_id', userId)
       .single();
 
     if (teamError || !teamMember) {
-      throw new Error("Unauthorized: Not a member of the owning team");
+      throw new Error('Unauthorized: Not a member of the owning team');
     }
 
     const updateData: Partial<StyleUpdate> = {};
@@ -253,9 +253,9 @@ export class StyleStackService {
       updateData.preview_url = validatedInput.preview_url;
 
     const { data, error } = await this.adminClient
-      .from("styles")
+      .from('styles')
       .update(updateData)
-      .eq("id", validatedInput.id)
+      .eq('id', validatedInput.id)
       .select()
       .single();
 
@@ -276,30 +276,30 @@ export class StyleStackService {
       include_adaptations: false,
     });
     if (!existingStyle) {
-      throw new Error("Style not found");
+      throw new Error('Style not found');
     }
 
     // Check if user is member of the team that owns this style
     const { data: teamMember, error: teamError } = await this.supabase
-      .from("team_members")
-      .select("role")
-      .eq("team_id", existingStyle.team_id)
-      .eq("user_id", userId)
+      .from('team_members')
+      .select('role')
+      .eq('team_id', existingStyle.team_id)
+      .eq('user_id', userId)
       .single();
 
     if (teamError || !teamMember) {
-      throw new Error("Unauthorized: Not a member of the owning team");
+      throw new Error('Unauthorized: Not a member of the owning team');
     }
 
     // Don't allow deletion of templates
     if (existingStyle.is_template) {
-      throw new Error("Cannot delete template styles");
+      throw new Error('Cannot delete template styles');
     }
 
     const { error } = await this.adminClient
-      .from("styles")
+      .from('styles')
       .delete()
-      .eq("id", styleId);
+      .eq('id', styleId);
 
     if (error) {
       throw new Error(`Failed to delete style: ${error.message}`);
@@ -322,7 +322,7 @@ export class StyleStackService {
     });
 
     if (!originalStyle) {
-      throw new Error("Original style not found");
+      throw new Error('Original style not found');
     }
 
     // Check if style is public or user has access
@@ -330,29 +330,29 @@ export class StyleStackService {
 
     if (!canDuplicate) {
       const { data: teamMember, error: teamError } = await this.supabase
-        .from("team_members")
-        .select("role")
-        .eq("team_id", originalStyle.team_id)
-        .eq("user_id", userId)
+        .from('team_members')
+        .select('role')
+        .eq('team_id', originalStyle.team_id)
+        .eq('user_id', userId)
         .single();
 
       canDuplicate = !teamError && !!teamMember;
     }
 
     if (!canDuplicate) {
-      throw new Error("Unauthorized: Cannot duplicate private style");
+      throw new Error('Unauthorized: Cannot duplicate private style');
     }
 
     // Get user's team
     const { data: userTeamMember, error: userTeamError } = await this.supabase
-      .from("team_members")
-      .select("team_id")
-      .eq("user_id", userId)
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
       .limit(1)
       .single();
 
     if (userTeamError || !userTeamMember) {
-      throw new Error("No team found for user");
+      throw new Error('No team found for user');
     }
 
     // Create duplicate
@@ -371,7 +371,7 @@ export class StyleStackService {
     };
 
     const { data, error } = await this.adminClient
-      .from("styles")
+      .from('styles')
       .insert(duplicateData)
       .select()
       .single();
@@ -393,7 +393,7 @@ export class StyleStackService {
       }));
 
       const { error: adaptationsError } = await this.adminClient
-        .from("style_adaptations")
+        .from('style_adaptations')
         .insert(adaptations);
 
       if (adaptationsError) {
@@ -418,10 +418,10 @@ export class StyleStackService {
       include_adaptations: false,
     });
     if (!style) {
-      throw new Error("Style not found");
+      throw new Error('Style not found');
     }
 
-    const { error } = await this.adminClient.from("style_adaptations").insert({
+    const { error } = await this.adminClient.from('style_adaptations').insert({
       style_id: validatedInput.style_id,
       model_provider: validatedInput.model_provider,
       model_name: validatedInput.model_name,
@@ -449,7 +449,7 @@ export class StyleStackService {
     });
 
     if (!style) {
-      throw new Error("Style not found");
+      throw new Error('Style not found');
     }
 
     // Check if style is public or user has access
@@ -457,55 +457,55 @@ export class StyleStackService {
 
     if (!hasAccess) {
       const { data: teamMember, error: teamError } = await this.supabase
-        .from("team_members")
-        .select("role")
-        .eq("team_id", style.team_id)
-        .eq("user_id", userId)
+        .from('team_members')
+        .select('role')
+        .eq('team_id', style.team_id)
+        .eq('user_id', userId)
         .single();
 
       hasAccess = !teamError && !!teamMember;
     }
 
     if (!hasAccess) {
-      throw new Error("Unauthorized: Cannot apply private style");
+      throw new Error('Unauthorized: Cannot apply private style');
     }
 
     // Verify user has access to all frames
     const { data: frames, error: framesError } = await this.supabase
-      .from("frames")
-      .select("id, sequence_id")
-      .in("id", validatedInput.frame_ids);
+      .from('frames')
+      .select('id, sequence_id')
+      .in('id', validatedInput.frame_ids);
 
     if (framesError) {
       throw new Error(`Failed to get frames: ${framesError.message}`);
     }
 
     if (frames.length !== validatedInput.frame_ids.length) {
-      throw new Error("Some frames not found");
+      throw new Error('Some frames not found');
     }
 
     // Check user has access to all sequences containing these frames
     const sequenceIds = [...new Set(frames.map((f) => f.sequence_id))];
     for (const sequenceId of sequenceIds) {
       const { data: sequence, error: seqError } = await this.supabase
-        .from("sequences")
-        .select("team_id")
-        .eq("id", sequenceId)
+        .from('sequences')
+        .select('team_id')
+        .eq('id', sequenceId)
         .single();
 
       if (seqError || !sequence) {
-        throw new Error("Sequence not found");
+        throw new Error('Sequence not found');
       }
 
       const { data: teamMember, error: teamError } = await this.supabase
-        .from("team_members")
-        .select("role")
-        .eq("team_id", sequence.team_id)
-        .eq("user_id", userId)
+        .from('team_members')
+        .select('role')
+        .eq('team_id', sequence.team_id)
+        .eq('user_id', userId)
         .single();
 
       if (teamError || !teamMember) {
-        throw new Error("Unauthorized: No access to sequence");
+        throw new Error('Unauthorized: No access to sequence');
       }
     }
 
@@ -521,9 +521,9 @@ export class StyleStackService {
     // Update each frame's metadata
     for (const frameId of validatedInput.frame_ids) {
       const { data: currentFrame, error: getFrameError } = await this.supabase
-        .from("frames")
-        .select("metadata")
-        .eq("id", frameId)
+        .from('frames')
+        .select('metadata')
+        .eq('id', frameId)
         .single();
 
       if (getFrameError) {
@@ -563,9 +563,9 @@ export class StyleStackService {
       }
 
       const { error: updateError } = await this.adminClient
-        .from("frames")
+        .from('frames')
         .update({ metadata: newMetadata as Json })
-        .eq("id", frameId);
+        .eq('id', frameId);
 
       if (updateError) {
         throw new Error(
@@ -580,12 +580,12 @@ export class StyleStackService {
    */
   async getDefaultTemplates(): Promise<Style[]> {
     const { data, error } = await this.supabase
-      .from("styles")
-      .select("*")
-      .eq("is_template", true)
-      .eq("is_public", true)
-      .order("usage_count", { ascending: false })
-      .order("name", { ascending: true });
+      .from('styles')
+      .select('*')
+      .eq('is_template', true)
+      .eq('is_public', true)
+      .order('usage_count', { ascending: false })
+      .order('name', { ascending: true });
 
     if (error) {
       throw new Error(`Failed to get default templates: ${error.message}`);
@@ -602,14 +602,14 @@ export class StyleStackService {
 
     // Get user's team
     const { data: userTeamMember, error: userTeamError } = await this.supabase
-      .from("team_members")
-      .select("team_id")
-      .eq("user_id", userId)
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
       .limit(1)
       .single();
 
     if (userTeamError || !userTeamMember) {
-      throw new Error("No team found for user");
+      throw new Error('No team found for user');
     }
 
     // Create the imported style
@@ -626,7 +626,7 @@ export class StyleStackService {
     };
 
     const { data, error } = await this.adminClient
-      .from("styles")
+      .from('styles')
       .insert(styleData)
       .select()
       .single();
@@ -663,7 +663,7 @@ export class StyleStackService {
     });
 
     if (!style) {
-      throw new Error("Style not found");
+      throw new Error('Style not found');
     }
 
     // Check access permissions
@@ -671,17 +671,17 @@ export class StyleStackService {
 
     if (!hasAccess) {
       const { data: teamMember, error: teamError } = await this.supabase
-        .from("team_members")
-        .select("role")
-        .eq("team_id", style.team_id)
-        .eq("user_id", userId)
+        .from('team_members')
+        .select('role')
+        .eq('team_id', style.team_id)
+        .eq('user_id', userId)
         .single();
 
       hasAccess = !teamError && !!teamMember;
     }
 
     if (!hasAccess) {
-      throw new Error("Unauthorized: Cannot export private style");
+      throw new Error('Unauthorized: Cannot export private style');
     }
 
     const exportData: {
@@ -699,7 +699,7 @@ export class StyleStackService {
         exported_at: new Date().toISOString(),
         exported_by: userId,
         original_id: style.id,
-        version: style.version?.toString() || "1",
+        version: style.version?.toString() || '1',
       },
     };
 

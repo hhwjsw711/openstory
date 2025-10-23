@@ -1,19 +1,19 @@
-import type * as React from "react";
-import { useCallback, useState } from "react";
-import { StoryboardFrameSkeletonWithScript } from "@/components/sequence/storyboard-frame-skeleton-with-script";
-import { StoryboardFrameWithScript } from "@/components/sequence/storyboard-frame-with-script";
-import { SectionHeading } from "@/components/typography";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFalModels } from "@/hooks/use-fal-models";
-import { useFramePreviewStatus, useUpdateFrame } from "@/hooks/use-frames";
+import type * as React from 'react';
+import { useCallback, useState } from 'react';
+import { StoryboardFrameSkeletonWithScript } from '@/components/sequence/storyboard-frame-skeleton-with-script';
+import { StoryboardFrameWithScript } from '@/components/sequence/storyboard-frame-with-script';
+import { SectionHeading } from '@/components/typography';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFalModels } from '@/hooks/use-fal-models';
+import { useFramePreviewStatus, useUpdateFrame } from '@/hooks/use-frames';
 import {
   type FrameGenerationMetadata,
   useStoryboardStatus,
-} from "@/hooks/use-storyboard-status";
-import { useStyles } from "@/hooks/use-styles";
-import type { Frame } from "@/types/database";
+} from '@/hooks/use-storyboard-status';
+import { useStyles } from '@/hooks/use-styles';
+import type { Frame } from '@/types/database';
 
 interface StoryboardStepProps {
   sequenceId: string;
@@ -25,7 +25,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   onPrevious,
 }) => {
   const { data: falModelsResp } = useFalModels({
-    type: "image",
+    type: 'image',
     includeCosts: false,
   });
 
@@ -57,7 +57,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   // Check for errors in sequence metadata
   const metadataError = metadata?.frameGeneration?.error;
   const hasMetadataError =
-    metadataError && metadata?.frameGeneration?.status === "failed";
+    metadataError && metadata?.frameGeneration?.status === 'failed';
 
   // Update frame
   const { mutateAsync: updateFrame } = useUpdateFrame();
@@ -84,19 +84,19 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
       const response = await fetch(
         `/api/sequences/${sequenceId}/frames/generate`,
         {
-          method: "POST",
+          method: 'POST',
         }
       );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to generate storyboard");
+        throw new Error(error.error || 'Failed to generate storyboard');
       }
 
       const result = await response.json();
 
       if (!result.success) {
-        setGenerationError(result.message || "Failed to generate storyboard");
+        setGenerationError(result.message || 'Failed to generate storyboard');
       } else {
         // Refetch frames to get the job ID and start polling
         await refetchFrames();
@@ -105,7 +105,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "Unexpected error during generation";
+          : 'Unexpected error during generation';
 
       setGenerationError(errorMessage);
     }
@@ -115,7 +115,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   const handleNext = useCallback(() => {
     if (hasFrames) {
       // Could navigate to an export or final step
-      console.log("Sequence complete with motion!");
+      console.log('Sequence complete with motion!');
     }
   }, [hasFrames]);
 
@@ -222,7 +222,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
               disabled={!canGenerateFromHook || isBackgroundGenerating}
               data-testid="regenerate-storyboard-button"
             >
-              {isBackgroundGenerating ? "Generating..." : "Regenerate All"}
+              {isBackgroundGenerating ? 'Generating...' : 'Regenerate All'}
             </Button>
           </div>
 
@@ -242,15 +242,15 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                     onFrameUpdate={handleFrameUpdate}
                     onEdit={(frameId) => {
                       // TODO: Implement edit functionality
-                      console.log("Edit frame:", frameId);
+                      console.log('Edit frame:', frameId);
                     }}
                     onDelete={(frameId) => {
                       // TODO: Implement delete functionality
-                      console.log("Delete frame:", frameId);
+                      console.log('Delete frame:', frameId);
                     }}
                     onRegenerate={(payload: Record<string, unknown>) => {
                       // TODO: Implement regenerate functionality
-                      console.log("Regenerate frame:", payload);
+                      console.log('Regenerate frame:', payload);
                       handleFrameUpdate(frame);
                     }}
                     falModels={falModelsResp?.models || []}
@@ -281,7 +281,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                 <div className="text-sm">{metadataError}</div>
                 {metadata?.frameGeneration?.failedAt && (
                   <div className="text-xs text-muted-foreground">
-                    Failed at:{" "}
+                    Failed at:{' '}
                     {new Date(
                       metadata.frameGeneration.failedAt
                     ).toLocaleString()}
@@ -311,7 +311,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
             <div className="text-sm">Reason: {metadataError}</div>
             {metadata?.frameGeneration?.failedAt && (
               <div className="text-xs text-muted-foreground">
-                Failed at:{" "}
+                Failed at:{' '}
                 {new Date(metadata.frameGeneration.failedAt).toLocaleString()}
               </div>
             )}

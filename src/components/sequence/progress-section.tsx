@@ -1,5 +1,5 @@
-import type * as React from "react";
-import { Progress } from "@/components/ui/progress";
+import type * as React from 'react';
+import { Progress } from '@/components/ui/progress';
 
 interface ProgressData {
   completed: number;

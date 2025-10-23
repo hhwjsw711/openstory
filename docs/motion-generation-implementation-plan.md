@@ -59,10 +59,10 @@ sequenceDiagram
 ```typescript
 // Recommended models by quality/speed tradeoff
 const MOTION_MODELS = {
-  fast: "svd_lcm", // ~5s generation, good quality
-  balanced: "wan_i2v", // ~15s generation, better quality
-  premium: "kling_i2v", // ~30s generation, cinematic quality
-  audio: "veo3", // ~45s generation, includes audio
+  fast: 'svd_lcm', // ~5s generation, good quality
+  balanced: 'wan_i2v', // ~15s generation, better quality
+  premium: 'kling_i2v', // ~30s generation, cinematic quality
+  audio: 'veo3', // ~45s generation, includes audio
 };
 ```
 
@@ -85,9 +85,9 @@ const MOTION_MODELS = {
 // Add new schemas
 const generateMotionSchema = z.object({
   frameId: z.string().uuid(),
-  model: z.enum(["fast", "balanced", "premium"]).optional(),
+  model: z.enum(['fast', 'balanced', 'premium']).optional(),
   duration: z.number().min(1).max(10).optional(),
-  motionIntensity: z.enum(["subtle", "moderate", "dynamic"]).optional(),
+  motionIntensity: z.enum(['subtle', 'moderate', 'dynamic']).optional(),
 });
 
 // Add new action

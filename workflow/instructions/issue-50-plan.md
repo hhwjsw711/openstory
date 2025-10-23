@@ -396,22 +396,22 @@ interface LocalStorageData {
 
 ```typescript
 type StoryboardFlowAction =
-  | { type: "SET_ANONYMOUS_USER"; payload: AnonymousUser }
-  | { type: "SET_SEQUENCE"; payload: Sequence }
-  | { type: "UPDATE_SCRIPT"; payload: string }
-  | { type: "SET_STYLE"; payload: StyleStack }
-  | { type: "SET_FRAMES"; payload: Frame[] }
-  | { type: "UPDATE_FRAME"; payload: { id: string; updates: Partial<Frame> } }
-  | { type: "ADD_FRAME"; payload: Frame }
-  | { type: "DELETE_FRAME"; payload: string }
-  | { type: "REORDER_FRAMES"; payload: string[] }
-  | { type: "NEXT_STEP" }
-  | { type: "PREVIOUS_STEP" }
+  | { type: 'SET_ANONYMOUS_USER'; payload: AnonymousUser }
+  | { type: 'SET_SEQUENCE'; payload: Sequence }
+  | { type: 'UPDATE_SCRIPT'; payload: string }
+  | { type: 'SET_STYLE'; payload: StyleStack }
+  | { type: 'SET_FRAMES'; payload: Frame[] }
+  | { type: 'UPDATE_FRAME'; payload: { id: string; updates: Partial<Frame> } }
+  | { type: 'ADD_FRAME'; payload: Frame }
+  | { type: 'DELETE_FRAME'; payload: string }
+  | { type: 'REORDER_FRAMES'; payload: string[] }
+  | { type: 'NEXT_STEP' }
+  | { type: 'PREVIOUS_STEP' }
   | {
-      type: "SET_GENERATION_JOB";
+      type: 'SET_GENERATION_JOB';
       payload: { frameId: string; jobId: string; status: JobStatus };
     }
-  | { type: "SHOW_UPGRADE_PROMPT"; payload: boolean };
+  | { type: 'SHOW_UPGRADE_PROMPT'; payload: boolean };
 ```
 
 ### Anonymous User Hook
@@ -421,14 +421,14 @@ export function useAnonymousUser() {
   const [user, setUser] = useState<AnonymousUser | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("velro_anon_token");
+    const storedToken = localStorage.getItem('velro_anon_token');
     if (storedToken) {
       // Validate and refresh user from API
       validateAnonymousToken(storedToken).then(setUser);
     } else {
       // Create new anonymous user
       createAnonymousUser().then((newUser) => {
-        localStorage.setItem("velro_anon_token", newUser.auth_token);
+        localStorage.setItem('velro_anon_token', newUser.auth_token);
         setUser(newUser);
       });
     }

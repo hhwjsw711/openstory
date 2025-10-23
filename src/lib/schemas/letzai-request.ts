@@ -2,41 +2,41 @@
  * Zod schemas for LetzAI API requests and responses
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 
 // LetzAI request status enum
 export const letzaiRequestStatusSchema = z.enum([
-  "pending",
-  "in_progress",
-  "completed",
-  "failed",
+  'pending',
+  'in_progress',
+  'completed',
+  'failed',
 ]);
 
 // LetzAI API endpoints
 export const letzaiEndpointSchema = z.enum([
-  "/images",
-  "/image-edits",
-  "/upscale",
-  "/models",
+  '/images',
+  '/image-edits',
+  '/upscale',
+  '/models',
 ]);
 
 // LetzAI image generation modes
 export const letzaiModeSchema = z.enum([
-  "default",
-  "sigma",
-  "turbo",
-  "cinematic",
+  'default',
+  'sigma',
+  'turbo',
+  'cinematic',
 ]);
 
 // LetzAI image editing modes
-export const letzaiEditModeSchema = z.enum(["context", "in", "out", "skin"]);
+export const letzaiEditModeSchema = z.enum(['context', 'in', 'out', 'skin']);
 
 // LetzAI model classes
-export const letzaiModelClassSchema = z.enum(["person", "object", "style"]);
+export const letzaiModelClassSchema = z.enum(['person', 'object', 'style']);
 
 // Base LetzAI image generation request
 export const letzaiImageRequestSchema = z.object({
-  prompt: z.string().min(1, "Prompt is required"),
+  prompt: z.string().min(1, 'Prompt is required'),
   width: z.number().int().min(520).max(2160).default(1600),
   height: z.number().int().min(520).max(2160).default(1600),
   quality: z.number().int().min(1).max(5).default(5),
@@ -47,7 +47,7 @@ export const letzaiImageRequestSchema = z.object({
     .int()
     .refine((val) => val === 2 || val === 3)
     .default(2),
-  mode: letzaiModeSchema.default("cinematic"),
+  mode: letzaiModeSchema.default('cinematic'),
 });
 
 // LetzAI image editing request
@@ -88,18 +88,18 @@ export const letzaiUpscaleRequestSchema = z
     strength: z.number().int().min(1).max(3),
   })
   .refine((data) => data.imageId || data.imageUrl, {
-    message: "Either imageId or imageUrl must be provided",
+    message: 'Either imageId or imageUrl must be provided',
   });
 
 // LetzAI image response
 export const letzaiImageResponseSchema = z.object({
   id: z.string(),
   prompt: z.string(),
-  status: z.enum(["new", "in progress", "ready", "failed"]),
+  status: z.enum(['new', 'in progress', 'ready', 'failed']),
   progress: z.number().int().min(0).max(100),
   previewImage: z.string().optional(), // base64
   hasWatermark: z.boolean(),
-  privacy: z.enum(["private", "public"]),
+  privacy: z.enum(['private', 'public']),
   createdAt: z.string(),
   imageVersions: z.record(z.string(), z.string()).optional(), // Maps resolution to URLs
 });
@@ -115,12 +115,12 @@ export const letzaiImageEditResponseSchema = z.object({
   }),
   mode: letzaiEditModeSchema,
   status: z.enum([
-    "new",
-    "generating",
-    "ready",
-    "saved",
-    "failed",
-    "interrupted",
+    'new',
+    'generating',
+    'ready',
+    'saved',
+    'failed',
+    'interrupted',
   ]),
   progress: z.number().int().min(0).max(100).optional(),
   prompt: z.string().optional(),

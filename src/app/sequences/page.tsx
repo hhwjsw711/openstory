@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { VideoIcon } from "@/components/icons";
-import { PageContainer } from "@/components/layout";
-import { SequencesList } from "@/components/sequence/sequences-list";
+import Link from 'next/link';
+import { VideoIcon } from '@/components/icons';
+import { PageContainer } from '@/components/layout';
+import { SequencesList } from '@/components/sequence/sequences-list';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
-} from "@/components/typography";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { useSequences } from "@/hooks/use-sequences";
+} from '@/components/typography';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useSequences } from '@/hooks/use-sequences';
 
 export default function SequencesPage() {
   const { data: sequences, isLoading } = useSequences();

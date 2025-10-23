@@ -3,11 +3,11 @@
  * Provides typed message publishing with error handling and logging
  */
 
-import { Client } from "@upstash/qstash";
-import { ConfigurationError, VelroError } from "@/lib/errors";
-import { LoggerService } from "@/lib/services/logger.service";
-import { getQStashWebhookUrl } from "@/lib/utils/get-base-url";
-import type { JobPayload as TypedJobPayload } from "./types";
+import { Client } from '@upstash/qstash';
+import { ConfigurationError, VelroError } from '@/lib/errors';
+import { LoggerService } from '@/lib/services/logger.service';
+import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
+import type { JobPayload as TypedJobPayload } from './types';
 
 export interface QStashMessage {
   url: string;
@@ -40,14 +40,14 @@ class QStashClient {
 
     if (!token) {
       throw new ConfigurationError(
-        "QSTASH_TOKEN environment variable is required"
+        'QSTASH_TOKEN environment variable is required'
       );
     }
 
     const apiUrl = getQStashWebhookUrl();
     this.client = new Client({ token });
     this.baseWebhookUrl = `${apiUrl}/api`;
-    this.loggerService = new LoggerService("QStashClient");
+    this.loggerService = new LoggerService('QStashClient');
     // Client initialized successfully
   }
 
@@ -60,7 +60,7 @@ class QStashClient {
         url: message.url,
         body: message.body,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           ...message.headers,
         },
         delay: message.delay,
@@ -79,23 +79,23 @@ class QStashClient {
 
       return result;
     } catch (error) {
-      console.error("[QStash] Failed to publish message", {
-        error: error instanceof Error ? error.message : "Unknown error",
+      console.error('[QStash] Failed to publish message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
         url: message.url,
       });
 
       if (error instanceof Error) {
         throw new VelroError(
           `Failed to publish QStash message: ${error.message}`,
-          "QSTASH_PUBLISH_ERROR",
+          'QSTASH_PUBLISH_ERROR',
           503,
           { originalError: error.name, url: message.url }
         );
       }
 
       throw new VelroError(
-        "Failed to publish QStash message: Unknown error",
-        "QSTASH_PUBLISH_ERROR",
+        'Failed to publish QStash message: Unknown error',
+        'QSTASH_PUBLISH_ERROR',
         503,
         { url: message.url }
       );
@@ -210,23 +210,23 @@ class QStashClient {
     try {
       await this.client.messages.delete(messageId);
     } catch (error) {
-      console.error("[QStash] Failed to cancel message", {
-        error: error instanceof Error ? error.message : "Unknown error",
+      console.error('[QStash] Failed to cancel message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
         messageId,
       });
 
       if (error instanceof Error) {
         throw new VelroError(
           `Failed to cancel QStash message: ${error.message}`,
-          "QSTASH_CANCEL_ERROR",
+          'QSTASH_CANCEL_ERROR',
           503,
           { originalError: error.name, messageId }
         );
       }
 
       throw new VelroError(
-        "Failed to cancel QStash message: Unknown error",
-        "QSTASH_CANCEL_ERROR",
+        'Failed to cancel QStash message: Unknown error',
+        'QSTASH_CANCEL_ERROR',
         503,
         { messageId }
       );
@@ -242,23 +242,23 @@ class QStashClient {
 
       return message;
     } catch (error) {
-      console.error("[QStash] Failed to get message", {
-        error: error instanceof Error ? error.message : "Unknown error",
+      console.error('[QStash] Failed to get message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
         messageId,
       });
 
       if (error instanceof Error) {
         throw new VelroError(
           `Failed to get QStash message: ${error.message}`,
-          "QSTASH_GET_ERROR",
+          'QSTASH_GET_ERROR',
           503,
           { originalError: error.name, messageId }
         );
       }
 
       throw new VelroError(
-        "Failed to get QStash message: Unknown error",
-        "QSTASH_GET_ERROR",
+        'Failed to get QStash message: Unknown error',
+        'QSTASH_GET_ERROR',
         503,
         { messageId }
       );

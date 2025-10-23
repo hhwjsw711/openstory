@@ -1,5 +1,5 @@
-import type * as React from "react";
-import { cn } from "@/lib/utils";
+import type * as React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
@@ -13,7 +13,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 }) => {
   return (
     <div
-      className={cn("flex items-center justify-between", className)}
+      className={cn('flex items-center justify-between', className)}
       {...props}
     >
       <div className="space-y-2">{children}</div>

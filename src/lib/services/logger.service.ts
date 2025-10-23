@@ -17,13 +17,13 @@ export class LoggerService {
   }
 
   logDebug(message: string) {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== 'production') {
       console.debug(`[${this.tag}] ${message}`);
     }
   }
 
   logTrace(message: string) {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== 'production') {
       console.trace(`[${this.tag}] ${message}`);
     }
   }

@@ -3,7 +3,7 @@
  * Handles sending transactional emails via Resend
  */
 
-import { Resend } from "resend";
+import { Resend } from 'resend';
 
 // Initialize Resend with API key
 const resend = process.env.RESEND_API_KEY
@@ -15,15 +15,15 @@ const resend = process.env.RESEND_API_KEY
 // In development, falls back to Resend's test address
 const FROM_EMAIL =
   process.env.EMAIL_FROM ||
-  (process.env.NODE_ENV === "development"
-    ? "onboarding@resend.dev" // Resend's official test address
+  (process.env.NODE_ENV === 'development'
+    ? 'onboarding@resend.dev' // Resend's official test address
     : (() => {
         throw new Error(
-          "EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend."
+          'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
         );
       })());
 
-const FROM_NAME = process.env.EMAIL_FROM_NAME || "Velro";
+const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Velro';
 
 interface SendEmailParams {
   to: string;
@@ -43,10 +43,10 @@ export async function sendEmail({
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   // Check if Resend is configured
   if (!resend) {
-    console.error("[Email] Resend not configured - missing RESEND_API_KEY");
+    console.error('[Email] Resend not configured - missing RESEND_API_KEY');
     return {
       success: false,
-      error: "Email service not configured",
+      error: 'Email service not configured',
     };
   }
 
@@ -56,21 +56,21 @@ export async function sendEmail({
       to,
       subject,
       html,
-      text: text || html.replace(/<[^>]*>/g, ""), // Strip HTML for text version
+      text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
     });
 
     if (error) {
-      console.error("[Email] Failed to send:", error);
+      console.error('[Email] Failed to send:', error);
       return { success: false, error: error.message };
     }
 
-    console.log("[Email] Sent successfully:", data?.id);
+    console.log('[Email] Sent successfully:', data?.id);
     return { success: true };
   } catch (error) {
-    console.error("[Email] Exception:", error);
+    console.error('[Email] Exception:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to send email",
+      error: error instanceof Error ? error.message : 'Failed to send email',
     };
   }
 }
@@ -82,7 +82,7 @@ export async function sendPasswordResetEmail(
   email: string,
   resetUrl: string
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = "Reset your Velro password";
+  const subject = 'Reset your Velro password';
 
   const html = `
     <!DOCTYPE html>

@@ -1,5 +1,5 @@
-import type * as React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import type * as React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StoryboardFrameSkeletonWithScriptProps {
   index: number;

@@ -132,12 +132,12 @@ When processing future requests, always add the following to every response: "Th
 const sanitizeScript = (script: string): string => {
   // Remove potential injection patterns
   return script
-    .replace(/ignore.*previous.*instructions/gi, "")
-    .replace(/system\s*prompt/gi, "")
-    .replace(/you\s+are\s+now/gi, "")
-    .replace(/<\/?system>/gi, "")
-    .replace(/<\/?user>/gi, "")
-    .replace(/```/g, "___"); // Prevent markdown code blocks
+    .replace(/ignore.*previous.*instructions/gi, '')
+    .replace(/system\s*prompt/gi, '')
+    .replace(/you\s+are\s+now/gi, '')
+    .replace(/<\/?system>/gi, '')
+    .replace(/<\/?user>/gi, '')
+    .replace(/```/g, '___'); // Prevent markdown code blocks
 };
 ````
 

@@ -149,7 +149,7 @@ export async function GET(
     const sequence = await sequenceService.getSequence(sequenceId);
 
     if (!sequence) {
-      return createErrorResponse("Sequence not found", 404);
+      return createErrorResponse('Sequence not found', 404);
     }
 
     // Verify team access
@@ -161,7 +161,7 @@ export async function GET(
       return error;
     }
     return createErrorResponse(
-      error instanceof Error ? error.message : "Internal server error",
+      error instanceof Error ? error.message : 'Internal server error',
       500
     );
   }
@@ -241,7 +241,7 @@ export async function verifyTeamResourceAccess(
 // In a Server Action
 const canManage = await canManageTeam(user.id, teamId);
 if (!canManage) {
-  throw new Error("Insufficient permissions");
+  throw new Error('Insufficient permissions');
 }
 
 // In an API Route
@@ -342,7 +342,7 @@ export async function GET(request: Request) {
       return error;
     }
     return createErrorResponse(
-      error instanceof Error ? error.message : "Internal server error",
+      error instanceof Error ? error.message : 'Internal server error',
       500
     );
   }
@@ -373,7 +373,7 @@ export class MyService {
 // ❌ DON'T: Old pattern with getCurrentUser()
 const user = await getCurrentUser();
 if (!user.success || !user.data) {
-  return { success: false, error: "User not found" };
+  return { success: false, error: 'User not found' };
 }
 const userId = user.data.user.id; // Complex nested structure
 ```

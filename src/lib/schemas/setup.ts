@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const initializeDatabaseSchema = z.object({
   skipIfExists: z.boolean().optional().default(false),

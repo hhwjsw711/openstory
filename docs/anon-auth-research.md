@@ -22,12 +22,12 @@ Middleware-based authentication in NextJS 15 provides **centralized route protec
 
 ```typescript
 // middleware.ts - NextJS 15 pattern
-import { NextRequest, NextResponse } from "next/server";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from 'next/server';
+import { decrypt } from '@/lib/session';
+import { cookies } from 'next/headers';
 
-const protectedRoutes = ["/dashboard", "/profile", "/settings"];
-const publicRoutes = ["/login", "/signup", "/"];
+const protectedRoutes = ['/dashboard', '/profile', '/settings'];
+const publicRoutes = ['/login', '/signup', '/'];
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -38,36 +38,36 @@ export default async function middleware(req: NextRequest) {
 
   // NextJS 15: cookies() is now async
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
+  const sessionCookie = cookieStore.get('session')?.value;
   const session = await decrypt(sessionCookie);
 
   // Check for anonymous user ID in localStorage backup
-  const anonymousId = req.cookies.get("anonymous_id")?.value;
+  const anonymousId = req.cookies.get('anonymous_id')?.value;
 
   if (isProtectedRoute && !session?.userId && !anonymousId) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl));
+    return NextResponse.redirect(new URL('/login', req.nextUrl));
   }
 
   if (
     isPublicRoute &&
     session?.userId &&
-    !req.nextUrl.pathname.startsWith("/dashboard")
+    !req.nextUrl.pathname.startsWith('/dashboard')
   ) {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+    return NextResponse.redirect(new URL('/dashboard', req.nextUrl));
   }
 
   // Pass user context to pages
   const response = NextResponse.next();
   if (session?.userId || anonymousId) {
-    response.headers.set("x-user-id", session?.userId || anonymousId);
-    response.headers.set("x-is-anonymous", (!session?.userId).toString());
+    response.headers.set('x-user-id', session?.userId || anonymousId);
+    response.headers.set('x-is-anonymous', (!session?.userId).toString());
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
 };
 ```
 
@@ -81,14 +81,14 @@ Better Auth provides the **most elegant solution for anonymous user management**
 
 ```typescript
 // lib/auth.ts - Better Auth configuration
-import { betterAuth } from "better-auth";
-import { anonymous } from "better-auth/plugins";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@/db";
+import { betterAuth } from 'better-auth';
+import { anonymous } from 'better-auth/plugins';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { db } from '@/db';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: 'pg',
   }),
   session: {
     expiresIn: 60 * 60 * 24 * 365, // 1 year for anonymous users
@@ -100,7 +100,7 @@ export const auth = betterAuth({
   },
   plugins: [
     anonymous({
-      emailDomainName: "anonymous.local",
+      emailDomainName: 'anonymous.local',
       onLinkAccount: async ({ anonymousUser, newUser }) => {
         // Migrate anonymous user data to authenticated account
         await db.transaction(async (tx) => {
@@ -143,8 +143,8 @@ export const createAnonymousSession = async () => {
 
   if (data) {
     // Store anonymous ID in multiple locations for persistence
-    localStorage.setItem("anonymous_user_id", data.user.id);
-    sessionStorage.setItem("anonymous_user_id", data.user.id);
+    localStorage.setItem('anonymous_user_id', data.user.id);
+    sessionStorage.setItem('anonymous_user_id', data.user.id);
 
     // Also set a long-lived cookie as backup
     document.cookie = `anon_id=${data.user.id}; max-age=${60 * 60 * 24 * 365}; path=/`;
@@ -164,7 +164,7 @@ Supabase Auth supports anonymous users natively but **requires manual setup for 
 
 ```typescript
 // lib/supabase-auth.ts - Anonymous user management
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -176,14 +176,14 @@ export async function createAnonymousUser() {
 
   if (data?.user) {
     // Create profile with anonymous flag
-    await supabase.from("profiles").insert({
+    await supabase.from('profiles').insert({
       id: data.user.id,
       is_anonymous: true,
       created_at: new Date().toISOString(),
     });
 
     // Store ID persistently
-    localStorage.setItem("supabase_anonymous_id", data.user.id);
+    localStorage.setItem('supabase_anonymous_id', data.user.id);
 
     // Set up cleanup timer for old anonymous sessions
     setTimeout(
@@ -205,7 +205,7 @@ export async function upgradeAnonymousAccount(email: string, password: string) {
   const { data: session } = await supabase.auth.getSession();
 
   if (!session?.user?.is_anonymous) {
-    throw new Error("Current user is not anonymous");
+    throw new Error('Current user is not anonymous');
   }
 
   const anonymousUserId = session.user.id;
@@ -213,9 +213,9 @@ export async function upgradeAnonymousAccount(email: string, password: string) {
   try {
     // Check if email already exists
     const { data: existingUser } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
       .single();
 
     if (existingUser) {
@@ -233,16 +233,16 @@ export async function upgradeAnonymousAccount(email: string, password: string) {
 
       // Update profile
       await supabase
-        .from("profiles")
+        .from('profiles')
         .update({
           is_anonymous: false,
           email,
           upgraded_at: new Date().toISOString(),
         })
-        .eq("id", anonymousUserId);
+        .eq('id', anonymousUserId);
     }
   } catch (error) {
-    console.error("Upgrade failed:", error);
+    console.error('Upgrade failed:', error);
     throw error;
   }
 }
@@ -252,17 +252,17 @@ async function mergeAccounts(
   authenticatedUserId: string
 ) {
   // Transfer all anonymous user data
-  const tables = ["user_content", "user_preferences", "user_activities"];
+  const tables = ['user_content', 'user_preferences', 'user_activities'];
 
   for (const table of tables) {
     await supabase
       .from(table)
       .update({ user_id: authenticatedUserId })
-      .eq("user_id", anonymousUserId);
+      .eq('user_id', anonymousUserId);
   }
 
   // Delete anonymous profile
-  await supabase.from("profiles").delete().eq("id", anonymousUserId);
+  await supabase.from('profiles').delete().eq('id', anonymousUserId);
 }
 ```
 
@@ -295,11 +295,11 @@ Managing long-lived anonymous users requires **multi-layer storage strategies** 
 
 ```typescript
 // lib/persistent-anonymous.ts
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 
 export class PersistentAnonymousUser {
-  private readonly STORAGE_KEY = "anonymous_user_data";
-  private readonly COOKIE_NAME = "anon_sid";
+  private readonly STORAGE_KEY = 'anonymous_user_data';
+  private readonly COOKIE_NAME = 'anon_sid';
 
   async initialize(): Promise<string> {
     // Check existing ID in order of persistence
@@ -355,29 +355,29 @@ export class PersistentAnonymousUser {
       `path=/; SameSite=Lax`;
 
     // Layer 4: Server-side backup (if authenticated)
-    if (typeof window !== "undefined" && window.navigator.onLine) {
+    if (typeof window !== 'undefined' && window.navigator.onLine) {
       await this.syncToServer(userData);
     }
   }
 
   private async saveToIndexedDB(userData: any): Promise<void> {
     const db = await this.openDB();
-    const tx = db.transaction(["anonymous_users"], "readwrite");
-    const store = tx.objectStore("anonymous_users");
+    const tx = db.transaction(['anonymous_users'], 'readwrite');
+    const store = tx.objectStore('anonymous_users');
     await store.put(userData);
   }
 
   private async openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open("AnonymousUserDB", 1);
+      const request = indexedDB.open('AnonymousUserDB', 1);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("anonymous_users")) {
-          db.createObjectStore("anonymous_users", { keyPath: "id" });
+        if (!db.objectStoreNames.contains('anonymous_users')) {
+          db.createObjectStore('anonymous_users', { keyPath: 'id' });
         }
       };
     });
@@ -385,13 +385,13 @@ export class PersistentAnonymousUser {
 
   private async syncToServer(userData: any): Promise<void> {
     try {
-      await fetch("/api/anonymous/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch('/api/anonymous/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
     } catch (error) {
-      console.warn("Failed to sync anonymous user to server:", error);
+      console.warn('Failed to sync anonymous user to server:', error);
     }
   }
 
@@ -409,8 +409,8 @@ export class PersistentAnonymousUser {
   private async getFromIndexedDB(): Promise<string | null> {
     try {
       const db = await this.openDB();
-      const tx = db.transaction(["anonymous_users"], "readonly");
-      const store = tx.objectStore("anonymous_users");
+      const tx = db.transaction(['anonymous_users'], 'readonly');
+      const store = tx.objectStore('anonymous_users');
       const request = store.getAll();
 
       return new Promise((resolve) => {
@@ -463,13 +463,13 @@ export class AccountUpgradeManager {
   private initializeStrategies() {
     // Strategy 1: Direct ownership transfer
     this.strategies.push({
-      name: "direct_transfer",
+      name: 'direct_transfer',
       execute: async (anonId, authId) => {
         const tables = [
-          "user_preferences",
-          "saved_items",
-          "cart_items",
-          "session_data",
+          'user_preferences',
+          'saved_items',
+          'cart_items',
+          'session_data',
         ];
 
         for (const table of tables) {
@@ -483,7 +483,7 @@ export class AccountUpgradeManager {
 
     // Strategy 2: Merge with conflict resolution
     this.strategies.push({
-      name: "merge_with_resolution",
+      name: 'merge_with_resolution',
       execute: async (anonId, authId) => {
         // Get both user's data
         const anonData = await this.getUserData(anonId);
@@ -510,7 +510,7 @@ export class AccountUpgradeManager {
 
     // Strategy 3: Versioned migration with rollback
     this.strategies.push({
-      name: "versioned_migration",
+      name: 'versioned_migration',
       execute: async (anonId, authId) => {
         const migrationId = await this.startMigration(anonId, authId);
 
@@ -526,7 +526,7 @@ export class AccountUpgradeManager {
           // Verify migration integrity
           const isValid = await this.verifyMigration(migrationId);
           if (!isValid) {
-            throw new Error("Migration validation failed");
+            throw new Error('Migration validation failed');
           }
 
           // Commit migration
@@ -564,7 +564,7 @@ export class AccountUpgradeManager {
       if (!itemMap.has(item.productId)) {
         itemMap.set(item.productId, {
           ...item,
-          addedFrom: "anonymous",
+          addedFrom: 'anonymous',
         });
       } else {
         // Merge quantities for duplicates
@@ -582,7 +582,7 @@ export class AccountUpgradeManager {
   async executeUpgrade(
     anonymousUserId: string,
     authenticatedUserId: string,
-    strategy: string = "merge_with_resolution"
+    strategy: string = 'merge_with_resolution'
   ): Promise<void> {
     const selectedStrategy = this.strategies.find((s) => s.name === strategy);
 

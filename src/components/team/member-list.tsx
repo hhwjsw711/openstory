@@ -3,25 +3,25 @@
  * Displays team members with role badges and management actions
  */
 
-"use client";
+'use client';
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { AdminOnly } from "@/components/auth/admin-only";
-import { OwnerOnly } from "@/components/auth/owner-only";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { AdminOnly } from '@/components/auth/admin-only';
+import { OwnerOnly } from '@/components/auth/owner-only';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
-import { type TeamRole, useTeamRole } from "@/hooks/use-team-role";
-import { useUser } from "@/hooks/use-user";
-import { MemberRoleBadge } from "./member-role-badge";
+} from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
+import { type TeamRole, useTeamRole } from '@/hooks/use-team-role';
+import { useUser } from '@/hooks/use-user';
+import { MemberRoleBadge } from './member-role-badge';
 
 interface MemberListProps {
   teamId: string;
@@ -43,12 +43,12 @@ export function MemberList({ teamId }: MemberListProps) {
 
   // Fetch team members
   const { data: membersResult, isLoading } = useQuery({
-    queryKey: ["team-members", teamId],
+    queryKey: ['team-members', teamId],
     queryFn: async () => {
       const response = await fetch(`/api/teams/${teamId}/members`);
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to fetch members");
+        throw new Error(error.error || 'Failed to fetch members');
       }
       const result = await response.json();
       return result.data || [];
@@ -59,19 +59,19 @@ export function MemberList({ teamId }: MemberListProps) {
   const removeMutation = useMutation({
     mutationFn: async (userId: string) => {
       const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to remove member");
+        throw new Error(error.error || 'Failed to remove member');
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members", teamId] });
+      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
       setError(null);
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Failed to remove member");
+      setError(err instanceof Error ? err.message : 'Failed to remove member');
     },
   });
 
@@ -87,31 +87,31 @@ export function MemberList({ teamId }: MemberListProps) {
       const response = await fetch(
         `/api/teams/${teamId}/members/${userId}/role`,
         {
-          method: "PATCH",
+          method: 'PATCH',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({ role: newRole }),
         }
       );
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to update role");
+        throw new Error(error.error || 'Failed to update role');
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members", teamId] });
+      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
       setError(null);
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Failed to update role");
+      setError(err instanceof Error ? err.message : 'Failed to update role');
     },
   });
 
   const roleOptions = [
-    { value: "admin", label: "Admin" },
-    { value: "member", label: "Member" },
-    { value: "viewer", label: "Viewer" },
+    { value: 'admin', label: 'Admin' },
+    { value: 'member', label: 'Member' },
+    { value: 'viewer', label: 'Viewer' },
   ];
 
   if (isLoading) {
@@ -132,7 +132,7 @@ export function MemberList({ teamId }: MemberListProps) {
       <CardHeader>
         <CardTitle>Team Members</CardTitle>
         <CardDescription>
-          {members.length} {members.length === 1 ? "member" : "members"}
+          {members.length} {members.length === 1 ? 'member' : 'members'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -151,7 +151,7 @@ export function MemberList({ teamId }: MemberListProps) {
               role: string;
             }) => {
               const isCurrentUser = member.userId === userData?.user?.id;
-              const isOwner = member.role === "owner";
+              const isOwner = member.role === 'owner';
 
               return (
                 <div
@@ -213,7 +213,7 @@ export function MemberList({ teamId }: MemberListProps) {
                           onClick={() => removeMutation.mutate(member.userId)}
                           disabled={removeMutation.isPending}
                         >
-                          {removeMutation.isPending ? "Removing..." : "Remove"}
+                          {removeMutation.isPending ? 'Removing...' : 'Remove'}
                         </Button>
                       </AdminOnly>
                     )}

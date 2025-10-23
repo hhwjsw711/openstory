@@ -1,17 +1,17 @@
 // Set required environment variables BEFORE any imports
-process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
-process.env.BETTER_AUTH_SECRET = "test-secret-key-for-testing-purposes-only";
-process.env.BETTER_AUTH_URL = "http://localhost:3000";
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.BETTER_AUTH_SECRET = 'test-secret-key-for-testing-purposes-only';
+process.env.BETTER_AUTH_URL = 'http://localhost:3000';
 
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock BetterAuth config BEFORE any imports that use it
-mock.module("@/lib/auth/config", () => ({
+mock.module('@/lib/auth/config', () => ({
   auth: {
     api: {
       getSession: mock(() => Promise.resolve({ user: null })),
       signInAnonymous: mock(() =>
-        Promise.resolve({ user: null, token: "mock-token" })
+        Promise.resolve({ user: null, token: 'mock-token' })
       ),
       signOut: mock(() => Promise.resolve({ success: true })),
     },
@@ -19,20 +19,20 @@ mock.module("@/lib/auth/config", () => ({
 }));
 
 // Mock user actions that import auth config
-mock.module("#actions/user", () => ({
+mock.module('#actions/user', () => ({
   getCurrentUser: mock(() => Promise.resolve({ user: null })),
 }));
 
-import type { StyleStackConfig } from "../../schemas/style-stack";
+import type { StyleStackConfig } from '../../schemas/style-stack';
 
 // Mock the dependencies
-mock.module("@/lib/supabase/server", () => ({
+mock.module('@/lib/supabase/server', () => ({
   createServerClient: mock(() => mockSupabaseClient),
   createAdminClient: mock(() => mockAdminClient),
   createSessionAwareClient: mock(async () => mockSessionAwareClient),
 }));
 
-mock.module("@/lib/auth/service", () => ({
+mock.module('@/lib/auth/service', () => ({
   AuthService: mock(() => mockAuthService),
 }));
 
@@ -79,8 +79,8 @@ const mockSessionAwareClient = {
       Promise.resolve({
         data: {
           user: {
-            id: "1359a1a3-e189-448d-8451-734b4be680ec",
-            email: "test@example.com",
+            id: '1359a1a3-e189-448d-8451-734b4be680ec',
+            email: 'test@example.com',
           },
         },
         error: null,
@@ -96,18 +96,18 @@ const mockAuthService = {
 
 // Test data
 const mockStyleConfig: StyleStackConfig = {
-  version: "1.0",
-  name: "Test Style",
+  version: '1.0',
+  name: 'Test Style',
   base: {
-    mood: "dark, mysterious",
-    lighting: "high contrast shadows",
-    color_palette: "monochrome with red accents",
-    camera: "low angles, dutch tilts",
+    mood: 'dark, mysterious',
+    lighting: 'high contrast shadows',
+    color_palette: 'monochrome with red accents',
+    camera: 'low angles, dutch tilts',
   },
   models: {
-    "flux-pro": {
-      additional_prompt: "film noir style",
-      negative_prompt: "colorful, bright",
+    'flux-pro': {
+      additional_prompt: 'film noir style',
+      negative_prompt: 'colorful, bright',
       guidance_scale: 8.0,
       steps: 25,
     },
@@ -115,24 +115,24 @@ const mockStyleConfig: StyleStackConfig = {
 };
 
 const mockUser = {
-  id: "1359a1a3-e189-448d-8451-734b4be680ec",
-  email: "test@example.com",
+  id: '1359a1a3-e189-448d-8451-734b4be680ec',
+  email: 'test@example.com',
 };
 
 const _mockTeam = {
-  id: "17b89066-9c5b-4132-9067-fa5ea7af2e9c",
-  name: "Test Team",
-  slug: "test-team",
+  id: '17b89066-9c5b-4132-9067-fa5ea7af2e9c',
+  name: 'Test Team',
+  slug: 'test-team',
 };
 
 const mockStyle = {
-  id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-  team_id: "17b89066-9c5b-4132-9067-fa5ea7af2e9c",
-  name: "Test Style",
-  description: "A test style",
+  id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+  team_id: '17b89066-9c5b-4132-9067-fa5ea7af2e9c',
+  name: 'Test Style',
+  description: 'A test style',
   config: mockStyleConfig,
-  category: "cinematic",
-  tags: ["test", "noir"],
+  category: 'cinematic',
+  tags: ['test', 'noir'],
   is_public: false,
   is_template: false,
   version: 1,
@@ -141,10 +141,10 @@ const mockStyle = {
   usage_count: 0,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  created_by: "1359a1a3-e189-448d-8451-734b4be680ec",
+  created_by: '1359a1a3-e189-448d-8451-734b4be680ec',
 };
 
-describe.skip("StyleStackService", () => {
+describe.skip('StyleStackService', () => {
   let styleService: any; // Type will be inferred from dynamic import
 
   beforeEach(async () => {
@@ -153,12 +153,12 @@ describe.skip("StyleStackService", () => {
     // Reset the mock query builder for each test
     resetMockQueryBuilder();
 
-    const { StyleStackService } = await import("../service");
+    const { StyleStackService } = await import('../service');
     styleService = new StyleStackService();
   });
 
-  describe("createStyle", () => {
-    it("should create a new style successfully", async () => {
+  describe('createStyle', () => {
+    it('should create a new style successfully', async () => {
       // Setup mocks
       mockAuthService.getSession.mockResolvedValue({
         user: mockUser,
@@ -166,7 +166,7 @@ describe.skip("StyleStackService", () => {
 
       // Mock the team_members select query
       const teamMembersData = {
-        team_id: "17b89066-9c5b-4132-9067-fa5ea7af2e9c",
+        team_id: '17b89066-9c5b-4132-9067-fa5ea7af2e9c',
       };
       mockQueryBuilder.single.mockResolvedValueOnce({
         data: teamMembersData,
@@ -180,24 +180,24 @@ describe.skip("StyleStackService", () => {
       });
 
       const input = {
-        name: "Test Style",
-        description: "A test style",
+        name: 'Test Style',
+        description: 'A test style',
         config: mockStyleConfig,
-        category: "cinematic",
-        tags: ["test", "noir"],
+        category: 'cinematic',
+        tags: ['test', 'noir'],
         is_public: false,
       };
 
       const result = await styleService.createStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec"
+        '1359a1a3-e189-448d-8451-734b4be680ec'
       );
 
       expect(result).toEqual(mockStyle);
       expect(mockSessionAwareClient.auth.getUser).toHaveBeenCalled();
     });
 
-    it("should throw error if user has no team", async () => {
+    it('should throw error if user has no team', async () => {
       mockAuthService.getSession.mockResolvedValue({
         user: mockUser,
       });
@@ -205,38 +205,38 @@ describe.skip("StyleStackService", () => {
       // Mock no team found
       mockQueryBuilder.single.mockResolvedValueOnce({
         data: null,
-        error: { message: "No team found" },
+        error: { message: 'No team found' },
       });
 
       const input = {
-        name: "Test Style",
+        name: 'Test Style',
         config: mockStyleConfig,
         tags: [],
         is_public: false,
       };
 
       await expect(
-        styleService.createStyle(input, "1359a1a3-e189-448d-8451-734b4be680ec")
-      ).rejects.toThrow("No team found for user");
+        styleService.createStyle(input, '1359a1a3-e189-448d-8451-734b4be680ec')
+      ).rejects.toThrow('No team found for user');
     });
 
-    it("should validate input schema", async () => {
+    it('should validate input schema', async () => {
       const invalidInput = {
-        name: "", // Invalid: empty name
+        name: '', // Invalid: empty name
         config: {}, // Invalid: missing required fields
       };
 
       await expect(
         styleService.createStyle(
           invalidInput as any,
-          "1359a1a3-e189-448d-8451-734b4be680ec"
+          '1359a1a3-e189-448d-8451-734b4be680ec'
         )
       ).rejects.toThrow();
     });
   });
 
-  describe("getTeamStyles", () => {
-    it("should return paginated team styles", async () => {
+  describe('getTeamStyles', () => {
+    it('should return paginated team styles', async () => {
       const mockStyles = [mockStyle];
 
       // Mock the getTeamStyles query result
@@ -247,7 +247,7 @@ describe.skip("StyleStackService", () => {
       }));
 
       const input = {
-        team_id: "17b89066-9c5b-4132-9067-fa5ea7af2e9c",
+        team_id: '17b89066-9c5b-4132-9067-fa5ea7af2e9c',
         limit: 10,
         offset: 0,
       };
@@ -266,40 +266,40 @@ describe.skip("StyleStackService", () => {
     // Test removed - mock chaining issues
   });
 
-  describe("getStyleById", () => {
-    it("should return style by ID", async () => {
+  describe('getStyleById', () => {
+    it('should return style by ID', async () => {
       // Mock style by ID query
       mockQueryBuilder.single.mockResolvedValueOnce({
         data: mockStyle,
         error: null,
       });
 
-      const input = { id: "6de92947-647b-4c33-a6b8-1f8fed2787d1" };
+      const input = { id: '6de92947-647b-4c33-a6b8-1f8fed2787d1' };
       const result = await styleService.getStyleById(input);
 
       expect(result).toEqual(mockStyle);
     });
 
-    it("should return null if style not found", async () => {
+    it('should return null if style not found', async () => {
       // Mock style not found
       mockQueryBuilder.single.mockResolvedValueOnce({
         data: null,
-        error: { code: "PGRST116" },
+        error: { code: 'PGRST116' },
       });
 
-      const input = { id: "00000000-0000-0000-0000-000000000000" };
+      const input = { id: '00000000-0000-0000-0000-000000000000' };
       const result = await styleService.getStyleById(input);
 
       expect(result).toBeNull();
     });
 
-    it.skip("should include adaptations when requested", async () => {
+    it.skip('should include adaptations when requested', async () => {
       const mockAdaptations = [
         {
-          id: "49cdffa6-6b51-4a03-a0fb-aa8e7d9ca737",
-          model_provider: "fal",
-          model_name: "flux-pro",
-          adapted_config: { test: "config" },
+          id: '49cdffa6-6b51-4a03-a0fb-aa8e7d9ca737',
+          model_provider: 'fal',
+          model_name: 'flux-pro',
+          adapted_config: { test: 'config' },
           created_at: new Date().toISOString(),
         },
       ];
@@ -317,7 +317,7 @@ describe.skip("StyleStackService", () => {
       });
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
         include_adaptations: true,
       };
       const result = await styleService.getStyleById(input);
@@ -329,8 +329,8 @@ describe.skip("StyleStackService", () => {
     });
   });
 
-  describe("updateStyle", () => {
-    it.skip("should update style successfully", async () => {
+  describe('updateStyle', () => {
+    it.skip('should update style successfully', async () => {
       // Mock getting existing style
       (mockSupabaseClient.from as any)
         .mockReturnValueOnce({
@@ -348,7 +348,7 @@ describe.skip("StyleStackService", () => {
             eq: mock().mockReturnValue({
               eq: mock().mockReturnValue({
                 single: mock().mockResolvedValue({
-                  data: { role: "owner" },
+                  data: { role: 'owner' },
                   error: null,
                 }),
               }),
@@ -356,7 +356,7 @@ describe.skip("StyleStackService", () => {
           }),
         });
 
-      const updatedStyle = { ...mockStyle, name: "Updated Style" };
+      const updatedStyle = { ...mockStyle, name: 'Updated Style' };
       (mockAdminClient.from as any).mockReturnValue({
         update: mock().mockReturnValue({
           eq: mock().mockReturnValue({
@@ -371,19 +371,19 @@ describe.skip("StyleStackService", () => {
       });
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        name: "Updated Style",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        name: 'Updated Style',
       };
 
       const result = await styleService.updateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec"
+        '1359a1a3-e189-448d-8451-734b4be680ec'
       );
 
       expect(result).toEqual(updatedStyle);
     });
 
-    it.skip("should throw error if user unauthorized", async () => {
+    it.skip('should throw error if user unauthorized', async () => {
       // Mock getting existing style
       (mockSupabaseClient.from as any)
         .mockReturnValueOnce({
@@ -402,7 +402,7 @@ describe.skip("StyleStackService", () => {
               eq: mock().mockReturnValue({
                 single: mock().mockResolvedValue({
                   data: null,
-                  error: { message: "Not found" },
+                  error: { message: 'Not found' },
                 }),
               }),
             }),
@@ -410,18 +410,18 @@ describe.skip("StyleStackService", () => {
         });
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        name: "Updated Style",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        name: 'Updated Style',
       };
 
       await expect(
-        styleService.updateStyle(input, "bf4ca47e-ab95-4c46-9035-8f75daa93029")
-      ).rejects.toThrow("Unauthorized: Not a member of the owning team");
+        styleService.updateStyle(input, 'bf4ca47e-ab95-4c46-9035-8f75daa93029')
+      ).rejects.toThrow('Unauthorized: Not a member of the owning team');
     });
   });
 
-  describe("deleteStyle", () => {
-    it.skip("should delete style successfully", async () => {
+  describe('deleteStyle', () => {
+    it.skip('should delete style successfully', async () => {
       // Mock getting existing style
       (mockSupabaseClient.from as any)
         .mockReturnValueOnce({
@@ -439,7 +439,7 @@ describe.skip("StyleStackService", () => {
             eq: mock().mockReturnValue({
               eq: mock().mockReturnValue({
                 single: mock().mockResolvedValue({
-                  data: { role: "owner" },
+                  data: { role: 'owner' },
                   error: null,
                 }),
               }),
@@ -456,13 +456,13 @@ describe.skip("StyleStackService", () => {
       });
 
       const result = await styleService.deleteStyle(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        "1359a1a3-e189-448d-8451-734b4be680ec"
+        '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        '1359a1a3-e189-448d-8451-734b4be680ec'
       );
       expect(result).toBeUndefined();
     });
 
-    it.skip("should not allow deletion of templates", async () => {
+    it.skip('should not allow deletion of templates', async () => {
       const templateStyle = { ...mockStyle, is_template: true };
 
       // Mock getting existing style
@@ -482,7 +482,7 @@ describe.skip("StyleStackService", () => {
             eq: mock().mockReturnValue({
               eq: mock().mockReturnValue({
                 single: mock().mockResolvedValue({
-                  data: { role: "owner" },
+                  data: { role: 'owner' },
                   error: null,
                 }),
               }),
@@ -492,15 +492,15 @@ describe.skip("StyleStackService", () => {
 
       await expect(
         styleService.deleteStyle(
-          "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-          "1359a1a3-e189-448d-8451-734b4be680ec"
+          '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+          '1359a1a3-e189-448d-8451-734b4be680ec'
         )
-      ).rejects.toThrow("Cannot delete template styles");
+      ).rejects.toThrow('Cannot delete template styles');
     });
   });
 
-  describe("duplicateStyle", () => {
-    it.skip("should duplicate public style successfully", async () => {
+  describe('duplicateStyle', () => {
+    it.skip('should duplicate public style successfully', async () => {
       const publicStyle = { ...mockStyle, is_public: true };
 
       // Create a counter to track how many times from() is called
@@ -510,7 +510,7 @@ describe.skip("StyleStackService", () => {
         (tableName: string) => {
           fromCallCount++;
 
-          if (fromCallCount === 1 && tableName === "styles") {
+          if (fromCallCount === 1 && tableName === 'styles') {
             // First call: getting original style
             return {
               select: mock().mockReturnThis(),
@@ -520,7 +520,7 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+          } else if (fromCallCount === 2 && tableName === 'style_adaptations') {
             // Second call: getting style adaptations (from getStyleById with include_adaptations)
             return {
               select: mock().mockReturnThis(),
@@ -529,14 +529,14 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 3 && tableName === "team_members") {
+          } else if (fromCallCount === 3 && tableName === 'team_members') {
             // Third call: getting user's team (with limit method)
             const queryObj: any = {};
             queryObj.select = mock(() => queryObj);
             queryObj.eq = mock(() => queryObj);
             queryObj.limit = mock(() => queryObj);
             queryObj.single = mock().mockResolvedValue({
-              data: { team_id: "080c66c9-0797-4611-9227-21a0d57ab694" },
+              data: { team_id: '080c66c9-0797-4611-9227-21a0d57ab694' },
               error: null,
             });
             return queryObj;
@@ -548,7 +548,7 @@ describe.skip("StyleStackService", () => {
           defaultMock.limit = mock(() => defaultMock);
           defaultMock.single = mock().mockResolvedValue({
             data: null,
-            error: { message: "Unexpected call" },
+            error: { message: 'Unexpected call' },
           });
           return defaultMock;
         }
@@ -556,10 +556,10 @@ describe.skip("StyleStackService", () => {
 
       const duplicatedStyle = {
         ...mockStyle,
-        id: "d22d721b-ef44-41e4-b089-65c618aedc06",
-        name: "Duplicated Style",
-        team_id: "080c66c9-0797-4611-9227-21a0d57ab694",
-        parent_id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        id: 'd22d721b-ef44-41e4-b089-65c618aedc06',
+        name: 'Duplicated Style',
+        team_id: '080c66c9-0797-4611-9227-21a0d57ab694',
+        parent_id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
       };
 
       (mockAdminClient.from as any).mockReturnValue({
@@ -574,19 +574,19 @@ describe.skip("StyleStackService", () => {
       });
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        name: "Duplicated Style",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        name: 'Duplicated Style',
       };
 
       const result = await styleService.duplicateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec"
+        '1359a1a3-e189-448d-8451-734b4be680ec'
       );
 
       expect(result).toEqual(duplicatedStyle);
     });
 
-    it.skip("should not allow duplicating private style without access", async () => {
+    it.skip('should not allow duplicating private style without access', async () => {
       const privateStyle = { ...mockStyle, is_public: false };
 
       // Create a counter to track how many times from() is called
@@ -596,7 +596,7 @@ describe.skip("StyleStackService", () => {
         (tableName: string) => {
           fromCallCount++;
 
-          if (fromCallCount === 1 && tableName === "styles") {
+          if (fromCallCount === 1 && tableName === 'styles') {
             // First call: getting original style
             return {
               select: mock().mockReturnThis(),
@@ -606,7 +606,7 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+          } else if (fromCallCount === 2 && tableName === 'style_adaptations') {
             // Second call: getting style adaptations (from getStyleById with include_adaptations)
             return {
               select: mock().mockReturnThis(),
@@ -615,14 +615,14 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 3 && tableName === "team_members") {
+          } else if (fromCallCount === 3 && tableName === 'team_members') {
             // Third call: checking team membership (with two eq() calls)
             const queryObj: any = {};
             queryObj.select = mock(() => queryObj);
             queryObj.eq = mock(() => queryObj);
             queryObj.single = mock().mockResolvedValue({
               data: null,
-              error: { message: "Not found" },
+              error: { message: 'Not found' },
             });
             return queryObj;
           }
@@ -633,26 +633,26 @@ describe.skip("StyleStackService", () => {
           defaultMock.limit = mock(() => defaultMock);
           defaultMock.single = mock().mockResolvedValue({
             data: null,
-            error: { message: "Unexpected call" },
+            error: { message: 'Unexpected call' },
           });
           return defaultMock;
         }
       );
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        name: "Duplicated Style",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        name: 'Duplicated Style',
       };
 
       await expect(
         styleService.duplicateStyle(
           input,
-          "bf4ca47e-ab95-4c46-9035-8f75daa93029"
+          'bf4ca47e-ab95-4c46-9035-8f75daa93029'
         )
-      ).rejects.toThrow("Unauthorized: Cannot duplicate private style");
+      ).rejects.toThrow('Unauthorized: Cannot duplicate private style');
     });
 
-    it.skip("should allow duplicating private style with team access", async () => {
+    it.skip('should allow duplicating private style with team access', async () => {
       const privateStyle = { ...mockStyle, is_public: false };
 
       // Create a counter to track how many times from() is called
@@ -662,7 +662,7 @@ describe.skip("StyleStackService", () => {
         (tableName: string) => {
           fromCallCount++;
 
-          if (fromCallCount === 1 && tableName === "styles") {
+          if (fromCallCount === 1 && tableName === 'styles') {
             // First call: getting original style
             return {
               select: mock().mockReturnThis(),
@@ -672,7 +672,7 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 2 && tableName === "style_adaptations") {
+          } else if (fromCallCount === 2 && tableName === 'style_adaptations') {
             // Second call: getting style adaptations (from getStyleById with include_adaptations)
             return {
               select: mock().mockReturnThis(),
@@ -681,24 +681,24 @@ describe.skip("StyleStackService", () => {
                 error: null,
               }),
             };
-          } else if (fromCallCount === 3 && tableName === "team_members") {
+          } else if (fromCallCount === 3 && tableName === 'team_members') {
             // Third call: checking team membership (user is a member)
             const queryObj: any = {};
             queryObj.select = mock(() => queryObj);
             queryObj.eq = mock(() => queryObj);
             queryObj.single = mock().mockResolvedValue({
-              data: { role: "member" },
+              data: { role: 'member' },
               error: null,
             });
             return queryObj;
-          } else if (fromCallCount === 4 && tableName === "team_members") {
+          } else if (fromCallCount === 4 && tableName === 'team_members') {
             // Fourth call: getting user's team
             const queryObj: any = {};
             queryObj.select = mock(() => queryObj);
             queryObj.eq = mock(() => queryObj);
             queryObj.limit = mock(() => queryObj);
             queryObj.single = mock().mockResolvedValue({
-              data: { team_id: "080c66c9-0797-4611-9227-21a0d57ab694" },
+              data: { team_id: '080c66c9-0797-4611-9227-21a0d57ab694' },
               error: null,
             });
             return queryObj;
@@ -710,7 +710,7 @@ describe.skip("StyleStackService", () => {
           defaultMock.limit = mock(() => defaultMock);
           defaultMock.single = mock().mockResolvedValue({
             data: null,
-            error: { message: "Unexpected call" },
+            error: { message: 'Unexpected call' },
           });
           return defaultMock;
         }
@@ -718,10 +718,10 @@ describe.skip("StyleStackService", () => {
 
       const duplicatedStyle = {
         ...mockStyle,
-        id: "d22d721b-ef44-41e4-b089-65c618aedc06",
-        name: "Duplicated Style from Private",
-        team_id: "080c66c9-0797-4611-9227-21a0d57ab694",
-        parent_id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
+        id: 'd22d721b-ef44-41e4-b089-65c618aedc06',
+        name: 'Duplicated Style from Private',
+        team_id: '080c66c9-0797-4611-9227-21a0d57ab694',
+        parent_id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
       };
 
       (mockAdminClient.from as any).mockReturnValue({
@@ -736,21 +736,21 @@ describe.skip("StyleStackService", () => {
       });
 
       const input = {
-        id: "6de92947-647b-4c33-a6b8-1f8fed2787d1",
-        name: "Duplicated Style from Private",
+        id: '6de92947-647b-4c33-a6b8-1f8fed2787d1',
+        name: 'Duplicated Style from Private',
       };
 
       const result = await styleService.duplicateStyle(
         input,
-        "1359a1a3-e189-448d-8451-734b4be680ec"
+        '1359a1a3-e189-448d-8451-734b4be680ec'
       );
 
       expect(result).toEqual(duplicatedStyle);
     });
   });
 
-  describe("getDefaultTemplates", () => {
-    it.skip("should return default templates", async () => {
+  describe('getDefaultTemplates', () => {
+    it.skip('should return default templates', async () => {
       const mockTemplates = [
         { ...mockStyle, is_template: true, is_public: true },
       ];
@@ -776,8 +776,8 @@ describe.skip("StyleStackService", () => {
     });
   });
 
-  describe("incrementUsageCount", () => {
-    it("should increment usage count via direct UPDATE", async () => {
+  describe('incrementUsageCount', () => {
+    it('should increment usage count via direct UPDATE', async () => {
       const mockFrom = {
         select: mock(() => ({
           eq: mock(() => ({
@@ -797,23 +797,23 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
+        '6de92947-647b-4c33-a6b8-1f8fed2787d1'
       );
       expect(result).toBeUndefined();
 
-      expect(mockAdminClient.from).toHaveBeenCalledWith("styles");
-      expect(mockFrom.select).toHaveBeenCalledWith("usage_count");
+      expect(mockAdminClient.from).toHaveBeenCalledWith('styles');
+      expect(mockFrom.select).toHaveBeenCalledWith('usage_count');
       expect(mockFrom.update).toHaveBeenCalledWith({ usage_count: 6 });
     });
 
-    it("should not throw on read error", async () => {
+    it('should not throw on read error', async () => {
       const mockFrom = {
         select: mock(() => ({
           eq: mock(() => ({
             single: mock(() =>
               Promise.resolve({
                 data: null,
-                error: { message: "Read failed" },
+                error: { message: 'Read failed' },
               })
             ),
           })),
@@ -823,12 +823,12 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
+        '6de92947-647b-4c33-a6b8-1f8fed2787d1'
       );
       expect(result).toBeUndefined();
     });
 
-    it("should not throw on write error", async () => {
+    it('should not throw on write error', async () => {
       const mockFrom = {
         select: mock(() => ({
           eq: mock(() => ({
@@ -843,7 +843,7 @@ describe.skip("StyleStackService", () => {
         update: mock(() => ({
           eq: mock(() =>
             Promise.resolve({
-              error: { message: "Write failed" },
+              error: { message: 'Write failed' },
             })
           ),
         })),
@@ -852,7 +852,7 @@ describe.skip("StyleStackService", () => {
       mockAdminClient.from.mockReturnValue(mockFrom as never);
 
       const result = await styleService.incrementUsageCount(
-        "6de92947-647b-4c33-a6b8-1f8fed2787d1"
+        '6de92947-647b-4c33-a6b8-1f8fed2787d1'
       );
       expect(result).toBeUndefined();
     });

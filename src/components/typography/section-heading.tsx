@@ -1,30 +1,30 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
-import { cn } from "@/lib/utils";
+import { cva, type VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
+import { cn } from '@/lib/utils';
 
-const sectionHeadingVariants = cva("font-semibold", {
+const sectionHeadingVariants = cva('font-semibold', {
   variants: {
     size: {
-      small: "text-lg",
-      medium: "text-xl",
-      large: "text-2xl",
+      small: 'text-lg',
+      medium: 'text-xl',
+      large: 'text-2xl',
     },
   },
   defaultVariants: {
-    size: "large",
+    size: 'large',
   },
 });
 
 export interface SectionHeadingProps
   extends React.HTMLAttributes<HTMLHeadingElement>,
     VariantProps<typeof sectionHeadingVariants> {
-  as?: "h2" | "h3" | "h4";
+  as?: 'h2' | 'h3' | 'h4';
 }
 
 export const SectionHeading: React.FC<SectionHeadingProps> = ({
   className,
   size,
-  as: Component = "h2",
+  as: Component = 'h2',
   children,
   ...props
 }) => {

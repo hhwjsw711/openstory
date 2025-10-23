@@ -111,11 +111,11 @@ interface RegenerateFrameRequest {
 ```typescript
 // Add to JobType enum
 export const JobType = {
-  IMAGE: "image",
-  VIDEO: "video",
-  SCRIPT: "script",
-  FRAME_GENERATION: "frame_generation", // NEW
-  FRAME_THUMBNAIL: "frame_thumbnail", // NEW
+  IMAGE: 'image',
+  VIDEO: 'video',
+  SCRIPT: 'script',
+  FRAME_GENERATION: 'frame_generation', // NEW
+  FRAME_THUMBNAIL: 'frame_thumbnail', // NEW
 } as const;
 
 // Frame generation payload
@@ -277,8 +277,8 @@ export class AnthropicProvider implements AIProvider {
   async complete(prompt: string): Promise<string> {
     // Use Claude for script analysis and frame generation
     const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20241022",
-      messages: [{ role: "user", content: prompt }],
+      model: 'claude-3-sonnet-20241022',
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: 2000,
     });
     return response.content[0].text;
@@ -430,10 +430,10 @@ Generate JSON array of frame descriptions...
 
 ```typescript
 enum ScriptFormat {
-  PLAIN_TEXT = "plain",
-  FOUNTAIN = "fountain",
-  FINAL_DRAFT = "fdx",
-  CELTX = "celtx",
+  PLAIN_TEXT = 'plain',
+  FOUNTAIN = 'fountain',
+  FINAL_DRAFT = 'fdx',
+  CELTX = 'celtx',
 }
 
 class ScriptParser {
@@ -482,14 +482,14 @@ class ScriptParser {
 
 ```typescript
 // /src/lib/ai/__tests__/frame-generator.test.ts
-describe("FrameGenerator", () => {
-  test("generates correct number of frames", async () => {
+describe('FrameGenerator', () => {
+  test('generates correct number of frames', async () => {
     const generator = new FrameGenerator(mockProvider);
     const frames = await generator.generate(script, 5);
     expect(frames).toHaveLength(5);
   });
 
-  test("calculates duration based on dialogue", async () => {
+  test('calculates duration based on dialogue', async () => {
     const frames = await generator.generate(dialogueScript, 3);
     expect(frames[0].duration_ms).toBeGreaterThan(3000);
   });
@@ -500,8 +500,8 @@ describe("FrameGenerator", () => {
 
 ```typescript
 // /src/app/frames/generate/__tests__/route.test.ts
-describe("Frame Generation API", () => {
-  test("creates job and returns jobId", async () => {
+describe('Frame Generation API', () => {
+  test('creates job and returns jobId', async () => {
     const response = await POST(mockRequest);
     const data = await response.json();
     expect(data.jobId).toBeDefined();
@@ -514,11 +514,11 @@ describe("Frame Generation API", () => {
 
 ```typescript
 // /e2e/frame-generation.spec.ts
-test("complete frame generation flow", async ({ page }) => {
-  await page.goto("/sequences/new");
-  await page.fill("[data-testid=script-input]", testScript);
-  await page.click("[data-testid=generate-frames]");
-  await expect(page.locator("[data-testid=frame-card]")).toHaveCount(5);
+test('complete frame generation flow', async ({ page }) => {
+  await page.goto('/sequences/new');
+  await page.fill('[data-testid=script-input]', testScript);
+  await page.click('[data-testid=generate-frames]');
+  await expect(page.locator('[data-testid=frame-card]')).toHaveCount(5);
 });
 ```
 

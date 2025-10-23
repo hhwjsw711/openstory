@@ -128,14 +128,14 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 interface ScriptAnalysis {
   input: {
     script: string; // Pasted screenplay text
-    format?: "fountain" | "fdx" | "plain";
+    format?: 'fountain' | 'fdx' | 'plain';
   };
 
   aiProcessing: {
-    breakDetection: "Identify scene/shot transitions";
-    frameCalculation: "Determine optimal frame count per scene";
-    descriptionGeneration: "Create detailed frame descriptions";
-    characterExtraction: "Identify characters for LoRA suggestions";
+    breakDetection: 'Identify scene/shot transitions';
+    frameCalculation: 'Determine optimal frame count per scene';
+    descriptionGeneration: 'Create detailed frame descriptions';
+    characterExtraction: 'Identify characters for LoRA suggestions';
   };
 
   output: {
@@ -157,17 +157,17 @@ interface ScriptAnalysis {
 ```typescript
 interface FrameCustomization {
   perFrameControls: {
-    styleStack: "Apply/modify style stack per frame";
-    characterLoRAs: "Inject character-specific LoRAs";
-    model: "Choose optimal model for this specific frame";
-    description: "Edit AI-generated description";
-    references: "Upload reference images";
+    styleStack: 'Apply/modify style stack per frame';
+    characterLoRAs: 'Inject character-specific LoRAs';
+    model: 'Choose optimal model for this specific frame';
+    description: 'Edit AI-generated description';
+    references: 'Upload reference images';
   };
 
   batchOperations: {
-    applyStackToAll: "Propagate style across frames";
-    characterConsistency: "Lock character LoRA across scenes";
-    modelPreference: "Set default model for frame types";
+    applyStackToAll: 'Propagate style across frames';
+    characterConsistency: 'Lock character LoRA across scenes';
+    modelPreference: 'Set default model for frame types';
   };
 }
 ```
@@ -177,16 +177,16 @@ interface FrameCustomization {
 ```typescript
 interface FrameGeneration {
   process: {
-    queue: "Generate frames in parallel";
-    preview: "Low-res quick preview first";
-    highRes: "Full quality on approval";
+    queue: 'Generate frames in parallel';
+    preview: 'Low-res quick preview first';
+    highRes: 'Full quality on approval';
   };
 
   controls: {
-    regenerate: "Re-roll specific frames";
-    variations: "Generate multiple options";
-    tweakPrompt: "Fine-tune description";
-    swapModel: "Try different AI model";
+    regenerate: 'Re-roll specific frames';
+    variations: 'Generate multiple options';
+    tweakPrompt: 'Fine-tune description';
+    swapModel: 'Try different AI model';
   };
 }
 ```
@@ -197,24 +197,24 @@ interface FrameGeneration {
 interface MotionPipeline {
   imageToVideo: {
     models: [
-      "seedance", // Best for dance/movement
-      "veo", // Best for cinematic shots
-      "kling_2.1", // Best for action
-      "wan_2.2", // VFX-capable with LoRAs
+      'seedance', // Best for dance/movement
+      'veo', // Best for cinematic shots
+      'kling_2.1', // Best for action
+      'wan_2.2', // VFX-capable with LoRAs
     ];
 
     vfxLoRAs: {
-      available: ["explosions", "particles", "transformations", "magic"];
-      application: "Only with wan_2.2 model";
+      available: ['explosions', 'particles', 'transformations', 'magic'];
+      application: 'Only with wan_2.2 model';
       customUpload: true;
     };
   };
 
   motionControls: {
-    duration: "2-10 seconds per shot";
-    motionIntensity: "Subtle to dramatic";
-    cameraMovement: "Static, pan, zoom, orbit";
-    transitionStyle: "Cut, fade, morph";
+    duration: '2-10 seconds per shot';
+    motionIntensity: 'Subtle to dramatic';
+    cameraMovement: 'Static, pan, zoom, orbit';
+    transitionStyle: 'Cut, fade, morph';
   };
 }
 ```
@@ -261,13 +261,13 @@ const CREDIT_SYSTEM = {
   consumption: {
     imageGen: 2, // credits per image
     videoGen: 10, // credits per second
-    stackPurchase: "Variable", // 50-500 credits
+    stackPurchase: 'Variable', // 50-500 credits
     enhancement: 5, // credits per enhancement
   },
   earning: {
-    stackSale: "70% of price",
-    referral: "100 bonus credits",
-    communityContrib: "50 credits",
+    stackSale: '70% of price',
+    referral: '100 bonus credits',
+    communityContrib: '50 credits',
   },
 };
 ```
@@ -319,29 +319,29 @@ interface FrameEditor {
 ```typescript
 interface LoRASystem {
   characterLoRAs: {
-    upload: "User uploads training images";
-    train: "Auto-train via partners or self-hosted";
-    library: "Saved character models";
-    sharing: "Team-wide character consistency";
+    upload: 'User uploads training images';
+    train: 'Auto-train via partners or self-hosted';
+    library: 'Saved character models';
+    sharing: 'Team-wide character consistency';
   };
 
   vfxLoRAs: {
     prebuilt: [
-      "explosion_michael_bay",
-      "magic_particles_disney",
-      "transformation_transformers",
-      "destruction_marvel",
-      "energy_blast_anime",
-      "weather_fx_realistic",
+      'explosion_michael_bay',
+      'magic_particles_disney',
+      'transformation_transformers',
+      'destruction_marvel',
+      'energy_blast_anime',
+      'weather_fx_realistic',
     ];
-    custom: "Upload custom VFX LoRAs";
-    compatibility: "WAN 2.2 exclusive";
+    custom: 'Upload custom VFX LoRAs';
+    compatibility: 'WAN 2.2 exclusive';
   };
 
   styleLoRAs: {
-    artistic: "Specific artist styles";
-    technical: "Lighting, camera styles";
-    genre: "Horror, sci-fi, romance";
+    artistic: 'Specific artist styles';
+    technical: 'Lighting, camera styles';
+    genre: 'Horror, sci-fi, romance';
   };
 }
 ```
@@ -351,23 +351,23 @@ interface LoRASystem {
 ```typescript
 interface SmartMotionSuggestions {
   analysis: {
-    contentType: "Detect action vs dialogue vs establishing";
-    emotionalTone: "Match motion to scene mood";
-    pacing: "Suggest duration based on script";
+    contentType: 'Detect action vs dialogue vs establishing';
+    emotionalTone: 'Match motion to scene mood';
+    pacing: 'Suggest duration based on script';
   };
 
   recommendations: {
-    model: "Best video model for this content";
-    motionType: "Suggested camera movement";
-    vfxOpportunities: "Where VFX would enhance";
-    duration: "Optimal shot length";
+    model: 'Best video model for this content';
+    motionType: 'Suggested camera movement';
+    vfxOpportunities: 'Where VFX would enhance';
+    duration: 'Optimal shot length';
   };
 
   presets: {
-    dialogue: { model: "veo"; motion: "subtle"; duration: 3 };
-    action: { model: "kling_2.1"; motion: "dynamic"; duration: 5 };
-    vfx_heavy: { model: "wan_2.2"; motion: "complex"; duration: 7 };
-    establishing: { model: "seedance"; motion: "smooth"; duration: 4 };
+    dialogue: { model: 'veo'; motion: 'subtle'; duration: 3 };
+    action: { model: 'kling_2.1'; motion: 'dynamic'; duration: 5 };
+    vfx_heavy: { model: 'wan_2.2'; motion: 'complex'; duration: 7 };
+    establishing: { model: 'seedance'; motion: 'smooth'; duration: 4 };
   };
 }
 ```
@@ -510,33 +510,33 @@ CREATE TABLE marketplace_transactions (
 // Core API Endpoints
 interface VelroAPI {
   // Style Stack Operations
-  "/stacks": {
+  '/stacks': {
     POST: CreateStack;
     GET: ListUserStacks;
   };
-  "/stacks/:id": {
+  '/stacks/:id': {
     GET: GetStack;
     PUT: UpdateStack;
     DELETE: DeleteStack;
   };
-  "/stacks/:id/adapt": {
+  '/stacks/:id/adapt': {
     POST: AdaptStackForModel;
   };
 
   // Generation Operations
-  "/generate": {
+  '/generate': {
     POST: StartGeneration;
   };
-  "/generate/:id": {
+  '/generate/:id': {
     GET: GetGenerationStatus;
   };
 
   // Marketplace
-  "/marketplace": {
+  '/marketplace': {
     GET: BrowseStacks;
     POST: ListStackForSale;
   };
-  "/marketplace/:id/purchase": {
+  '/marketplace/:id/purchase': {
     POST: PurchaseStack;
   };
 }
@@ -548,35 +548,35 @@ interface VelroAPI {
 const SECURITY_CONFIG = {
   // Authentication
   auth: {
-    provider: "Supabase Auth",
-    mfa: "Optional TOTP",
-    sessions: "JWT with refresh tokens",
+    provider: 'Supabase Auth',
+    mfa: 'Optional TOTP',
+    sessions: 'JWT with refresh tokens',
   },
 
   // API Security
   api: {
     rateLimit: {
-      anonymous: "10 req/min",
-      authenticated: "100 req/min",
-      pro: "1000 req/min",
+      anonymous: '10 req/min',
+      authenticated: '100 req/min',
+      pro: '1000 req/min',
     },
-    encryption: "TLS 1.3",
-    cors: "Whitelist origins",
+    encryption: 'TLS 1.3',
+    cors: 'Whitelist origins',
   },
 
   // Content Moderation
   moderation: {
-    preCheck: "OpenAI Moderation API",
-    postCheck: "AWS Rekognition",
-    reporting: "User flagging system",
+    preCheck: 'OpenAI Moderation API',
+    postCheck: 'AWS Rekognition',
+    reporting: 'User flagging system',
   },
 
   // Data Protection
   data: {
-    encryption: "AES-256 at rest",
-    backups: "Daily automated",
-    retention: "90 days minimum",
-    gdpr: "Full compliance",
+    encryption: 'AES-256 at rest',
+    backups: 'Daily automated',
+    retention: '90 days minimum',
+    gdpr: 'Full compliance',
   },
 };
 ```
@@ -652,26 +652,26 @@ const PRICING_MODEL = {
     free: {
       monthly: 0,
       credits: 25,
-      features: ["Basic storyboarding", "2 models", "SD quality"],
-      target: "Trial users",
+      features: ['Basic storyboarding', '2 models', 'SD quality'],
+      target: 'Trial users',
     },
     starter: {
       monthly: 29,
       credits: 300,
-      features: ["All models", "HD quality", "Character LoRAs"],
-      target: "Content creators",
+      features: ['All models', 'HD quality', 'Character LoRAs'],
+      target: 'Content creators',
     },
     professional: {
       monthly: 99,
       credits: 1200,
-      features: ["4K quality", "Priority queue", "Style Stack saving"],
-      target: "Production studios",
+      features: ['4K quality', 'Priority queue', 'Style Stack saving'],
+      target: 'Production studios',
     },
     studio: {
       monthly: 299,
       credits: 4000,
-      features: ["Custom LoRAs", "API access", "Team workspace"],
-      target: "Agencies",
+      features: ['Custom LoRAs', 'API access', 'Team workspace'],
+      target: 'Agencies',
     },
   },
 
@@ -688,16 +688,16 @@ const PRICING_MODEL = {
     imageGeneration: {
       apiCost: 0.02, // Average across models
       userPrice: 2, // credits
-      margin: "15-20%", // After platform costs
+      margin: '15-20%', // After platform costs
     },
     videoGeneration: {
       apiCost: 0.1, // Per second average
       userPrice: 10, // credits per second
-      margin: "15-20%",
+      margin: '15-20%',
     },
     storage: {
       cost: 0.023, // Per GB/month (Supabase)
-      included: "10GB per user",
+      included: '10GB per user',
       overage: 5, // credits per GB
     },
   },
@@ -727,24 +727,24 @@ const PRICING_MODEL = {
 ```typescript
 const KPIs = {
   acquisition: {
-    signups: "1,000/week",
-    conversion: "15% free to paid",
-    CAC: "<$50",
+    signups: '1,000/week',
+    conversion: '15% free to paid',
+    CAC: '<$50',
   },
   engagement: {
-    DAU_MAU: ">40%",
-    generationsPerUser: "20/month",
-    stacksCreated: "2/month",
+    DAU_MAU: '>40%',
+    generationsPerUser: '20/month',
+    stacksCreated: '2/month',
   },
   retention: {
-    day7: ">60%",
-    day30: ">40%",
-    churnRate: "<5% monthly",
+    day7: '>60%',
+    day30: '>40%',
+    churnRate: '<5% monthly',
   },
   monetization: {
-    ARPU: "$45",
-    LTV: "$540",
-    marketplaceTakeRate: "30%",
+    ARPU: '$45',
+    LTV: '$540',
+    marketplaceTakeRate: '30%',
   },
 };
 ```

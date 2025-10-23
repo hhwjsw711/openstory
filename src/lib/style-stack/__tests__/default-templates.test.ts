@@ -1,29 +1,29 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { StyleStackConfigSchema } from "../../schemas/style-stack";
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { StyleStackConfigSchema } from '../../schemas/style-stack';
 import {
   DEFAULT_STYLE_TEMPLATES,
   seedDefaultTemplates,
-} from "../default-templates";
+} from '../default-templates';
 
-describe("DEFAULT_STYLE_TEMPLATES", () => {
-  it("should have at least 12 templates", () => {
+describe('DEFAULT_STYLE_TEMPLATES', () => {
+  it('should have at least 12 templates', () => {
     expect(DEFAULT_STYLE_TEMPLATES.length).toBeGreaterThanOrEqual(12);
   });
 
-  it("should have all templates marked as public and template", () => {
+  it('should have all templates marked as public and template', () => {
     for (const template of DEFAULT_STYLE_TEMPLATES) {
       expect(template.is_public).toBe(true);
       expect(template.is_template).toBe(true);
     }
   });
 
-  it("should have unique template names", () => {
+  it('should have unique template names', () => {
     const names = DEFAULT_STYLE_TEMPLATES.map((t) => t.name);
     const uniqueNames = [...new Set(names)];
     expect(uniqueNames.length).toBe(names.length);
   });
 
-  it("should have valid style stack configurations", () => {
+  it('should have valid style stack configurations', () => {
     for (const template of DEFAULT_STYLE_TEMPLATES) {
       expect(() => StyleStackConfigSchema.parse(template.config)).not.toThrow(
         `Template "${template.name}" has invalid configuration`
@@ -31,7 +31,7 @@ describe("DEFAULT_STYLE_TEMPLATES", () => {
     }
   });
 
-  it("should have required base properties in all templates", () => {
+  it('should have required base properties in all templates', () => {
     for (const template of DEFAULT_STYLE_TEMPLATES) {
       const config = template.config as any;
 
@@ -43,15 +43,15 @@ describe("DEFAULT_STYLE_TEMPLATES", () => {
     }
   });
 
-  it("should have categories assigned to all templates", () => {
+  it('should have categories assigned to all templates', () => {
     for (const template of DEFAULT_STYLE_TEMPLATES) {
       expect(template.category).toBeDefined();
-      expect(typeof template.category).toBe("string");
+      expect(typeof template.category).toBe('string');
       expect(template.category?.length).toBeGreaterThan(0);
     }
   });
 
-  it("should have tags assigned to all templates", () => {
+  it('should have tags assigned to all templates', () => {
     for (const template of DEFAULT_STYLE_TEMPLATES) {
       expect(template.tags).toBeDefined();
       expect(Array.isArray(template.tags)).toBe(true);
@@ -59,94 +59,94 @@ describe("DEFAULT_STYLE_TEMPLATES", () => {
     }
   });
 
-  describe("Specific Templates", () => {
-    it("should have Cinematic Noir template", () => {
+  describe('Specific Templates', () => {
+    it('should have Cinematic Noir template', () => {
       const noirTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Cinematic Noir"
+        (t) => t.name === 'Cinematic Noir'
       );
 
       expect(noirTemplate).toBeDefined();
-      expect(noirTemplate?.category).toBe("cinematic");
-      expect(noirTemplate?.tags).toContain("noir");
+      expect(noirTemplate?.category).toBe('cinematic');
+      expect(noirTemplate?.tags).toContain('noir');
 
       const config = noirTemplate?.config as any;
-      expect(config.base.mood).toContain("dark");
-      expect(config.base.color_palette).toContain("black and white");
+      expect(config.base.mood).toContain('dark');
+      expect(config.base.color_palette).toContain('black and white');
     });
 
-    it("should have Vibrant Pop Art template", () => {
+    it('should have Vibrant Pop Art template', () => {
       const popArtTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Vibrant Pop Art"
+        (t) => t.name === 'Vibrant Pop Art'
       );
 
       expect(popArtTemplate).toBeDefined();
-      expect(popArtTemplate?.category).toBe("artistic");
-      expect(popArtTemplate?.tags).toContain("pop-art");
+      expect(popArtTemplate?.category).toBe('artistic');
+      expect(popArtTemplate?.tags).toContain('pop-art');
 
       const config = popArtTemplate?.config as any;
-      expect(config.base.mood).toContain("energetic");
-      expect(config.base.color_palette).toContain("neon colors");
+      expect(config.base.mood).toContain('energetic');
+      expect(config.base.color_palette).toContain('neon colors');
     });
 
-    it("should have Documentary Realism template", () => {
+    it('should have Documentary Realism template', () => {
       const docTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Documentary Realism"
+        (t) => t.name === 'Documentary Realism'
       );
 
       expect(docTemplate).toBeDefined();
-      expect(docTemplate?.category).toBe("documentary");
-      expect(docTemplate?.tags).toContain("realistic");
+      expect(docTemplate?.category).toBe('documentary');
+      expect(docTemplate?.tags).toContain('realistic');
 
       const config = docTemplate?.config as any;
-      expect(config.base.mood).toContain("authentic");
-      expect(config.base.lighting).toContain("natural");
+      expect(config.base.mood).toContain('authentic');
+      expect(config.base.lighting).toContain('natural');
     });
 
-    it("should have Futuristic Sci-Fi template", () => {
+    it('should have Futuristic Sci-Fi template', () => {
       const sciFiTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Futuristic Sci-Fi"
+        (t) => t.name === 'Futuristic Sci-Fi'
       );
 
       expect(sciFiTemplate).toBeDefined();
-      expect(sciFiTemplate?.category).toBe("sci-fi");
-      expect(sciFiTemplate?.tags).toContain("futuristic");
+      expect(sciFiTemplate?.category).toBe('sci-fi');
+      expect(sciFiTemplate?.tags).toContain('futuristic');
 
       const config = sciFiTemplate?.config as any;
-      expect(config.base.color_palette).toContain("cyan");
-      expect(config.base.environment).toContain("futuristic");
+      expect(config.base.color_palette).toContain('cyan');
+      expect(config.base.environment).toContain('futuristic');
     });
 
-    it("should have Fantasy Epic template", () => {
+    it('should have Fantasy Epic template', () => {
       const fantasyTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Fantasy Epic"
+        (t) => t.name === 'Fantasy Epic'
       );
 
       expect(fantasyTemplate).toBeDefined();
-      expect(fantasyTemplate?.category).toBe("fantasy");
-      expect(fantasyTemplate?.tags).toContain("epic");
+      expect(fantasyTemplate?.category).toBe('fantasy');
+      expect(fantasyTemplate?.tags).toContain('epic');
 
       const config = fantasyTemplate?.config as any;
-      expect(config.base.mood).toContain("magical");
-      expect(config.base.environment).toContain("fantasy");
+      expect(config.base.mood).toContain('magical');
+      expect(config.base.environment).toContain('fantasy');
     });
   });
 
-  describe("Model Configurations", () => {
-    it("should have flux-pro configurations in templates", () => {
+  describe('Model Configurations', () => {
+    it('should have flux-pro configurations in templates', () => {
       const templatesWithFlux = DEFAULT_STYLE_TEMPLATES.filter(
-        (t) => (t.config as any).models?.["flux-pro"]
+        (t) => (t.config as any).models?.['flux-pro']
       );
 
       expect(templatesWithFlux.length).toBeGreaterThan(0);
 
       for (const template of templatesWithFlux) {
-        const fluxConfig = (template.config as any).models["flux-pro"];
+        const fluxConfig = (template.config as any).models['flux-pro'];
         expect(fluxConfig.additional_prompt).toBeDefined();
         expect(fluxConfig.negative_prompt).toBeDefined();
       }
     });
 
-    it("should have imagen4 configurations in some templates", () => {
+    it('should have imagen4 configurations in some templates', () => {
       const templatesWithImagen4 = DEFAULT_STYLE_TEMPLATES.filter(
         (t) => (t.config as any).models?.imagen4
       );
@@ -159,9 +159,9 @@ describe("DEFAULT_STYLE_TEMPLATES", () => {
       }
     });
 
-    it("should have runway configurations in video-oriented templates", () => {
+    it('should have runway configurations in video-oriented templates', () => {
       const musicVideoTemplate = DEFAULT_STYLE_TEMPLATES.find(
-        (t) => t.name === "Music Video Dynamic"
+        (t) => t.name === 'Music Video Dynamic'
       );
 
       expect(musicVideoTemplate).toBeDefined();
@@ -174,7 +174,7 @@ describe("DEFAULT_STYLE_TEMPLATES", () => {
   });
 });
 
-describe("seedDefaultTemplates", () => {
+describe('seedDefaultTemplates', () => {
   let mockSupabaseClient: any;
 
   beforeEach(() => {
@@ -195,7 +195,7 @@ describe("seedDefaultTemplates", () => {
         eq: mock().mockReturnValue({
           single: mock().mockResolvedValue({
             data: null,
-            error: { code: "PGRST116" },
+            error: { code: 'PGRST116' },
           }),
         }),
       }),
@@ -206,7 +206,7 @@ describe("seedDefaultTemplates", () => {
       insert: mock().mockReturnValue({
         select: mock().mockReturnValue({
           single: mock().mockResolvedValue({
-            data: { id: "system-team-123" },
+            data: { id: 'system-team-123' },
             error: null,
           }),
         }),
@@ -241,19 +241,19 @@ describe("seedDefaultTemplates", () => {
     await seedDefaultTemplates(mockSupabaseClient);
 
     expect(mockTeamInsert.insert).toHaveBeenCalledWith({
-      name: "System Templates",
-      slug: "system-templates",
+      name: 'System Templates',
+      slug: 'system-templates',
     });
     expect(mockTemplatesInsert.insert).toHaveBeenCalled();
   });
 
-  it("should use existing system team", async () => {
+  it('should use existing system team', async () => {
     // Mock team exists
     const mockTeamQuery = {
       select: mock().mockReturnValue({
         eq: mock().mockReturnValue({
           single: mock().mockResolvedValue({
-            data: { id: "existing-system-team" },
+            data: { id: 'existing-system-team' },
             error: null,
           }),
         }),
@@ -289,7 +289,7 @@ describe("seedDefaultTemplates", () => {
     expect(mockTemplatesInsert.insert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          team_id: "existing-system-team",
+          team_id: 'existing-system-team',
           is_template: true,
           is_public: true,
         }),
@@ -297,10 +297,10 @@ describe("seedDefaultTemplates", () => {
     );
   });
 
-  it("should skip existing templates", async () => {
+  it('should skip existing templates', async () => {
     const existingTemplates = [
-      { name: "Cinematic Noir" },
-      { name: "Vibrant Pop Art" },
+      { name: 'Cinematic Noir' },
+      { name: 'Vibrant Pop Art' },
     ];
 
     // Mock team exists
@@ -308,7 +308,7 @@ describe("seedDefaultTemplates", () => {
       select: mock().mockReturnValue({
         eq: mock().mockReturnValue({
           single: mock().mockResolvedValue({
-            data: { id: "system-team-123" },
+            data: { id: 'system-team-123' },
             error: null,
           }),
         }),
@@ -345,14 +345,14 @@ describe("seedDefaultTemplates", () => {
     const insertCall = mockTemplatesInsert.insert.mock.calls[0][0];
     const insertedTemplateNames = insertCall.map((t: any) => t.name);
 
-    expect(insertedTemplateNames).not.toContain("Cinematic Noir");
-    expect(insertedTemplateNames).not.toContain("Vibrant Pop Art");
+    expect(insertedTemplateNames).not.toContain('Cinematic Noir');
+    expect(insertedTemplateNames).not.toContain('Vibrant Pop Art');
     expect(insertedTemplateNames.length).toBe(
       DEFAULT_STYLE_TEMPLATES.length - existingTemplates.length
     );
   });
 
-  it("should handle when all templates already exist", async () => {
+  it('should handle when all templates already exist', async () => {
     const allTemplateNames = DEFAULT_STYLE_TEMPLATES.map((t) => ({
       name: t.name,
     }));
@@ -362,7 +362,7 @@ describe("seedDefaultTemplates", () => {
       select: mock().mockReturnValue({
         eq: mock().mockReturnValue({
           single: mock().mockResolvedValue({
-            data: { id: "system-team-123" },
+            data: { id: 'system-team-123' },
             error: null,
           }),
         }),
@@ -385,24 +385,24 @@ describe("seedDefaultTemplates", () => {
       .mockReturnValueOnce(mockTeamQuery)
       .mockReturnValueOnce(mockTemplatesQuery);
 
-    const consoleSpy = spyOn(console, "log").mockImplementation(() => {});
+    const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
 
     await seedDefaultTemplates(mockSupabaseClient);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "All default templates already exist"
+      'All default templates already exist'
     );
     consoleSpy.mockRestore();
   });
 
-  it("should handle errors during seeding", async () => {
+  it('should handle errors during seeding', async () => {
     // Mock team query error
     const mockTeamQuery = {
       select: mock().mockReturnValue({
         eq: mock().mockReturnValue({
           single: mock().mockResolvedValue({
             data: null,
-            error: { message: "Database error" },
+            error: { message: 'Database error' },
           }),
         }),
       }),
@@ -411,7 +411,7 @@ describe("seedDefaultTemplates", () => {
     mockSupabaseClient.from.mockReturnValueOnce(mockTeamQuery);
 
     await expect(seedDefaultTemplates(mockSupabaseClient)).rejects.toThrow(
-      "Failed to get system team: Database error"
+      'Failed to get system team: Database error'
     );
   });
 });

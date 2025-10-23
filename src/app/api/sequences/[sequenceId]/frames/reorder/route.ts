@@ -3,12 +3,12 @@
  * PATCH /api/sequences/[sequenceId]/frames/reorder - Reorder frames in a sequence
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { requireTeamMemberAccess, requireUser } from "@/lib/auth/action-utils";
-import { handleApiError, ValidationError } from "@/lib/errors";
-import { frameService } from "@/lib/services/frame.service";
-import { createServerClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { frameService } from '@/lib/services/frame.service';
+import { createServerClient } from '@/lib/supabase/server';
 
 const frameOrderSchema = z.object({
   id: z.string().uuid(),
@@ -31,7 +31,7 @@ export async function PATCH(
     try {
       uuidSchema.parse(sequenceId);
     } catch {
-      throw new ValidationError("Invalid sequence ID format");
+      throw new ValidationError('Invalid sequence ID format');
     }
 
     // Parse and validate request body
@@ -44,16 +44,16 @@ export async function PATCH(
 
     // Verify sequence exists and get team_id
     const { data: sequence, error: sequenceError } = await supabase
-      .from("sequences")
-      .select("team_id")
-      .eq("id", sequenceId)
+      .from('sequences')
+      .select('team_id')
+      .eq('id', sequenceId)
       .single();
 
     if (sequenceError || !sequence) {
       return NextResponse.json(
         {
           success: false,
-          message: "Sequence not found",
+          message: 'Sequence not found',
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -69,14 +69,14 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: true,
-        message: "Frames reordered successfully",
+        message: 'Frames reordered successfully',
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );
   } catch (error) {
     console.error(
-      "[PATCH /api/sequences/[sequenceId]/frames/reorder] Error:",
+      '[PATCH /api/sequences/[sequenceId]/frames/reorder] Error:',
       error
     );
 
@@ -84,7 +84,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request data",
+          message: 'Invalid request data',
           errors: error.issues,
           timestamp: new Date().toISOString(),
         },
@@ -96,7 +96,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to reorder frames",
+        message: 'Failed to reorder frames',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

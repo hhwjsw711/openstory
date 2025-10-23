@@ -6,15 +6,15 @@
  * service layer integration for new implementations.
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 import {
   type FalImageModel,
   type FalVideoModel,
   IMAGE_MODELS,
   VIDEO_MODELS,
-} from "@/lib/ai/models";
-import type { FalServiceResponse } from "@/lib/services/fal-service";
-import { getFalService } from "@/lib/services/fal-service";
+} from '@/lib/ai/models';
+import type { FalServiceResponse } from '@/lib/services/fal-service';
+import { getFalService } from '@/lib/services/fal-service';
 
 // Response schema for FAL video generation
 const falVideoResponseSchema = z.object({
@@ -63,7 +63,7 @@ export {
   type FalVideoModel,
   IMAGE_MODELS,
   VIDEO_MODELS,
-} from "@/lib/ai/models";
+} from '@/lib/ai/models';
 
 /**
  * Parameters for video generation
@@ -73,7 +73,7 @@ export interface FalVideoGenerationParams {
   prompt?: string;
   image_url?: string; // For image-to-video models
   duration?: number; // Duration in seconds
-  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  aspect_ratio?: '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
   enable_audio?: boolean; // For models that support audio
   seed?: number;
   // Service layer options
@@ -89,12 +89,12 @@ export interface FalImageGenerationParams {
   model?: FalImageModel;
   prompt: string;
   image_size?:
-    | "square_hd"
-    | "square"
-    | "portrait_4_3"
-    | "portrait_16_9"
-    | "landscape_4_3"
-    | "landscape_16_9";
+    | 'square_hd'
+    | 'square'
+    | 'portrait_4_3'
+    | 'portrait_16_9'
+    | 'landscape_4_3'
+    | 'landscape_16_9';
   num_images?: number;
   enable_safety_checker?: boolean;
   seed?: number;
@@ -116,7 +116,7 @@ export async function generateVideo(
 
   if (!apiKey) {
     console.warn(
-      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable."
+      '[FAL] No API key found, using mock response. Set FAL_KEY environment variable.'
     );
     return {
       success: true,
@@ -161,14 +161,14 @@ export async function generateVideo(
         data: validatedData,
       } as FalServiceResponse<FalVideoResponse>;
     } catch (validationError) {
-      console.error("[FAL] Response validation failed:", validationError);
+      console.error('[FAL] Response validation failed:', validationError);
       console.error(
-        "[FAL] Actual response structure:",
+        '[FAL] Actual response structure:',
         JSON.stringify(result.data, null, 2)
       );
       return {
         success: false,
-        error: "Invalid response format from Fal.ai",
+        error: 'Invalid response format from Fal.ai',
         latencyMs: result.latencyMs,
         cost: result.cost,
       };
@@ -189,7 +189,7 @@ export async function generateImage(
 
   if (!apiKey) {
     console.warn(
-      "[FAL] No API key found, using mock response. Set FAL_KEY environment variable."
+      '[FAL] No API key found, using mock response. Set FAL_KEY environment variable.'
     );
     return {
       success: true,
@@ -215,14 +215,14 @@ export async function generateImage(
   if (params.seed !== undefined) requestData.seed = params.seed;
   if (params.image_url) requestData.image_url = params.image_url;
 
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== 'production') {
     const { prompt, image_url, ...rest } = requestData;
     const redacted = {
       ...rest,
-      prompt: prompt ? "[redacted]" : undefined,
-      image_url: image_url ? "[redacted]" : undefined,
+      prompt: prompt ? '[redacted]' : undefined,
+      image_url: image_url ? '[redacted]' : undefined,
     };
-    console.debug("[FAL] Request data:", redacted);
+    console.debug('[FAL] Request data:', redacted);
   }
 
   const result = await falService.generateImage(model, requestData, {
@@ -243,14 +243,14 @@ export async function generateImage(
         data: validatedData,
       } as FalServiceResponse<FalImageResponse>;
     } catch (validationError) {
-      console.error("[FAL] Response validation failed:", validationError);
+      console.error('[FAL] Response validation failed:', validationError);
       console.error(
-        "[FAL] Actual response structure:",
+        '[FAL] Actual response structure:',
         JSON.stringify(result.data, null, 2)
       );
       return {
         success: false,
-        error: "Invalid response format from Fal.ai",
+        error: 'Invalid response format from Fal.ai',
         latencyMs: result.latencyMs,
         cost: result.cost,
       };
@@ -268,27 +268,27 @@ function getMockVideoResponse(
 ): FalVideoResponse {
   // Use different sample videos based on a simple hash of the prompt/image
   const sampleVideos = [
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+    'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
   ];
 
   // Pick a video based on the input to get some variety
-  const hashStr = params.prompt || params.image_url || "";
+  const hashStr = params.prompt || params.image_url || '';
   const hashCode = hashStr
-    .split("")
+    .split('')
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const videoIndex = Math.abs(hashCode) % sampleVideos.length;
 
   return {
     video: {
       url: sampleVideos[videoIndex],
-      content_type: "video/mp4",
-      file_name: "generated_video.mp4",
+      content_type: 'video/mp4',
+      file_name: 'generated_video.mp4',
       file_size: 5510872,
     },
     timings: {
@@ -307,9 +307,9 @@ function getMockImageResponse(
   return {
     images: [
       {
-        url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
-        content_type: "image/jpeg",
-        file_name: "generated_image.jpg",
+        url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+        content_type: 'image/jpeg',
+        file_name: 'generated_image.jpg',
         file_size: 780831,
         width: 1920,
         height: 1080,
@@ -338,7 +338,7 @@ export const fal = {
     const apiKey = process.env.FAL_KEY;
 
     if (!apiKey) {
-      console.warn("[FAL] No API key found, returning mock response");
+      console.warn('[FAL] No API key found, returning mock response');
       return getMockVideoResponse({});
     }
 
@@ -350,29 +350,29 @@ export const fal = {
       model as FalVideoModel
     );
     const isImageHeuristic =
-      !isKnownVideo && (model.includes("flux") || model.includes("sdxl"));
+      !isKnownVideo && (model.includes('flux') || model.includes('sdxl'));
 
     if (isKnownImage || isImageHeuristic) {
       const result = await generateImage({
         model: (isKnownImage ? (model as FalImageModel) : undefined) as
           | FalImageModel
           | undefined,
-        prompt: (params.input.prompt as string) || "",
+        prompt: (params.input.prompt as string) || '',
         ...params.input,
       } as FalImageGenerationParams);
       if (result.success) return result.data;
-      throw new Error(result.error || "Image generation failed");
+      throw new Error(result.error || 'Image generation failed');
     }
 
     const result = await generateVideo({
       model: (isKnownVideo ? (model as FalVideoModel) : undefined) as
         | FalVideoModel
         | undefined,
-      prompt: (params.input.prompt as string) || "",
+      prompt: (params.input.prompt as string) || '',
       ...params.input,
     } as FalVideoGenerationParams);
     if (result.success) return result.data;
-    throw new Error(result.error || "Video generation failed");
+    throw new Error(result.error || 'Video generation failed');
   },
 };
 
@@ -386,8 +386,8 @@ export async function uploadToFal(
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
-    console.warn("[FAL] No API key, returning mock URL");
-    return "https://example.com/mock-upload.jpg";
+    console.warn('[FAL] No API key, returning mock URL');
+    return 'https://example.com/mock-upload.jpg';
   }
 
   const formData = new FormData();
@@ -400,14 +400,14 @@ export async function uploadToFal(
       uint8Array[i] = file[i];
     }
     const blob = new Blob([uint8Array]);
-    formData.append("file", blob, filename);
+    formData.append('file', blob, filename);
   } else {
     // file is a Blob
-    formData.append("file", file, filename);
+    formData.append('file', file, filename);
   }
 
-  const response = await fetch("https://fal.run/storage/upload", {
-    method: "POST",
+  const response = await fetch('https://fal.run/storage/upload', {
+    method: 'POST',
     headers: {
       Authorization: `Key ${apiKey}`,
     },

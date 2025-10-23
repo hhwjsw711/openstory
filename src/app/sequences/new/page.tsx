@@ -1,14 +1,14 @@
-"use client";
-import { useRouter } from "next/navigation";
-import { useCallback } from "react";
-import { PageContainer } from "@/components/layout";
-import { ScriptStep } from "@/components/sequence-flow/script-step";
+'use client';
+import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
+import { PageContainer } from '@/components/layout';
+import { ScriptStep } from '@/components/sequence-flow/script-step';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
-} from "@/components/typography";
-import { useUser } from "@/hooks/use-user";
+} from '@/components/typography';
+import { useUser } from '@/hooks/use-user';
 
 export default function NewSequencePage() {
   // Verify session

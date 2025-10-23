@@ -3,42 +3,42 @@
  * Supports email/password and OAuth sign-in/sign-up
  */
 
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth/client";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { authClient } from '@/lib/auth/client';
 
 interface AuthFormProps {
-  mode: "signin" | "signup";
+  mode: 'signin' | 'signup';
   redirectTo?: string;
 }
 
-export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
+export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const isSignup = mode === "signup";
-  const title = isSignup ? "Create Account" : "Sign In";
+  const isSignup = mode === 'signup';
+  const title = isSignup ? 'Create Account' : 'Sign In';
   const description = isSignup
-    ? "Enter your details to create your account"
-    : "Enter your credentials to access your account";
+    ? 'Enter your details to create your account'
+    : 'Enter your credentials to access your account';
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,17 +52,17 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
         const result = await authClient.signUp.email({
           email,
           password,
-          name: "",
+          name: '',
           callbackURL: redirectTo,
         });
 
         if (result.error) {
-          setError(result.error.message || "Failed to create account");
+          setError(result.error.message || 'Failed to create account');
           setIsLoading(false);
           return;
         }
 
-        setSuccess("Account created! Redirecting...");
+        setSuccess('Account created! Redirecting...');
         setTimeout(() => router.push(redirectTo), 1500);
       } else {
         // Sign in with email and password
@@ -73,17 +73,17 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
         });
 
         if (result.error) {
-          setError(result.error.message || "Failed to sign in");
+          setError(result.error.message || 'Failed to sign in');
           setIsLoading(false);
           return;
         }
 
-        setSuccess("Signed in! Redirecting...");
+        setSuccess('Signed in! Redirecting...');
         setTimeout(() => router.push(redirectTo), 1500);
       }
     } catch (err) {
-      console.error("[AuthForm] Error:", err);
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      console.error('[AuthForm] Error:', err);
+      setError(err instanceof Error ? err.message : 'Authentication failed');
       setIsLoading(false);
     }
   };
@@ -94,13 +94,13 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
 
     try {
       await authClient.signIn.social({
-        provider: "google",
+        provider: 'google',
         callbackURL: redirectTo,
       });
     } catch (err) {
-      console.error("[AuthForm] Google sign-in error:", err);
+      console.error('[AuthForm] Google sign-in error:', err);
       setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google"
+        err instanceof Error ? err.message : 'Failed to sign in with Google'
       );
       setIsLoading(false);
     }
@@ -211,10 +211,10 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading
-              ? "Please wait..."
+              ? 'Please wait...'
               : isSignup
-                ? "Create Account"
-                : "Sign In"}
+                ? 'Create Account'
+                : 'Sign In'}
           </Button>
         </form>
 
@@ -222,12 +222,12 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
         <div className="text-center text-sm">
           {isSignup ? (
             <p className="text-muted-foreground">
-              Already have an account?{" "}
+              Already have an account?{' '}
               <Link
                 href={
-                  redirectTo !== "/sequences"
+                  redirectTo !== '/sequences'
                     ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
-                    : "/login"
+                    : '/login'
                 }
                 className="text-primary hover:underline"
               >
@@ -236,12 +236,12 @@ export function AuthForm({ mode, redirectTo = "/sequences" }: AuthFormProps) {
             </p>
           ) : (
             <p className="text-muted-foreground">
-              Don't have an account?{" "}
+              Don't have an account?{' '}
               <Link
                 href={
-                  redirectTo !== "/sequences"
+                  redirectTo !== '/sequences'
                     ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}`
-                    : "/signup"
+                    : '/signup'
                 }
                 className="text-primary hover:underline"
               >

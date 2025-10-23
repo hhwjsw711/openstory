@@ -1,27 +1,27 @@
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { cva, type VariantProps } from "class-variance-authority";
-import Image from "next/image";
-import type * as React from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { Frame } from "@/types/database";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cva, type VariantProps } from 'class-variance-authority';
+import Image from 'next/image';
+import type * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import type { Frame } from '@/types/database';
 
 const storyboardFrameVariants = cva(
-  "relative rounded-lg border-2 bg-white shadow-sm transition-all",
+  'relative rounded-lg border-2 bg-white shadow-sm transition-all',
   {
     variants: {
       selected: {
-        true: "border-blue-500 ring-2 ring-blue-200",
-        false: "border-gray-200",
+        true: 'border-blue-500 ring-2 ring-blue-200',
+        false: 'border-gray-200',
       },
       dragging: {
-        true: "opacity-50",
-        false: "",
+        true: 'opacity-50',
+        false: '',
       },
       disabled: {
-        true: "opacity-50",
-        false: "hover:shadow-md",
+        true: 'opacity-50',
+        false: 'hover:shadow-md',
       },
     },
     defaultVariants: {
@@ -33,40 +33,40 @@ const storyboardFrameVariants = cva(
 );
 
 const orderIndicatorVariants = cva(
-  "absolute -top-2 -left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold text-white cursor-grab",
+  'absolute -top-2 -left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold text-white cursor-grab',
   {
     variants: {
       color: {
-        primary: "bg-blue-500",
+        primary: 'bg-blue-500',
       },
     },
     defaultVariants: {
-      color: "primary",
+      color: 'primary',
     },
   }
 );
 
 const frameContentVariants = cva(
-  "aspect-video w-full overflow-hidden rounded-md"
+  'aspect-video w-full overflow-hidden rounded-md'
 );
 
-const frameImageVariants = cva("h-full w-full object-cover");
+const frameImageVariants = cva('h-full w-full object-cover');
 
 const emptyFrameVariants = cva(
-  "flex h-full w-full items-center justify-center bg-gray-100 text-gray-500"
+  'flex h-full w-full items-center justify-center bg-gray-100 text-gray-500'
 );
 
-const frameInfoVariants = cva("p-3");
+const frameInfoVariants = cva('p-3');
 
-const frameDescriptionVariants = cva("text-sm text-gray-600 line-clamp-2");
+const frameDescriptionVariants = cva('text-sm text-gray-600 line-clamp-2');
 
-const frameDurationVariants = cva("mt-1 text-xs text-gray-400");
+const frameDurationVariants = cva('mt-1 text-xs text-gray-400');
 
 const actionOverlayVariants = cva(
-  "absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100"
+  'absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100'
 );
 
-const actionButtonsVariants = cva("flex gap-2");
+const actionButtonsVariants = cva('flex gap-2');
 
 interface StoryboardFrameProps
   extends VariantProps<typeof storyboardFrameVariants> {
@@ -149,7 +149,7 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
                 <span className="text-xs">Generating preview...</span>
               </div>
             ) : (
-              "No preview available"
+              'No preview available'
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
-import type * as React from "react";
-import { StyleSelector } from "@/components/sequence/style-selector";
-import type { Style } from "@/types/database";
+import type * as React from 'react';
+import { StyleSelector } from '@/components/sequence/style-selector';
+import type { Style } from '@/types/database';
 
 interface StyleSectionProps {
   selectedStyleId: string | null;

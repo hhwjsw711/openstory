@@ -1,7 +1,7 @@
-import type { Decorator, Preview } from "@storybook/nextjs";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React from "react";
-import "../src/app/global.css";
+import type { Decorator, Preview } from '@storybook/nextjs';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import '../src/app/global.css';
 
 // Create a client for Storybook
 const queryClient = new QueryClient({
