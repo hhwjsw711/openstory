@@ -11,7 +11,6 @@ import { db } from '@/lib/db/client';
 import { frames } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateFrame } from '@/lib/db/helpers/frames';
-import type { Json } from '@/lib/supabase/gen.types';
 
 const loggerService = new LoggerService('MotionWorkflow');
 
@@ -75,7 +74,9 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
         duration: input.duration || 2,
         fps: input.fps || 7,
         motionBucket: input.motionBucket || 127,
-        styleStack: (frame.sequence.style?.config as Json) || undefined,
+        styleStack:
+          (frame.sequence.style?.config as Record<string, unknown> | null) ||
+          undefined,
       });
 
       if (!result.success || !result.videoUrl) {

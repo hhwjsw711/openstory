@@ -50,32 +50,30 @@ type Story = StoryObj<typeof meta>;
 // Mock frame data
 const sampleFrame = generateMockFrame({
   id: 'frame-1',
-  order_index: 1,
+  orderIndex: 1,
   description:
     'A hero shot of the main character standing on a cliff overlooking the ocean at sunset. The warm golden light illuminates their face as they contemplate their next move.',
-  thumbnail_url:
-    'https://picsum.photos/seed/1506905925346-21bda4d32df4/400/225',
-  duration_ms: 5000,
+  thumbnailUrl: 'https://picsum.photos/seed/1506905925346-21bda4d32df4/400/225',
+  durationMs: 5000,
 });
 
 const frameWithVideo = generateMockFrame({
   id: 'frame-2',
-  order_index: 2,
+  orderIndex: 2,
   description:
     'Close-up of hands typing rapidly on a keyboard in a dimly lit room.',
-  thumbnail_url:
-    'https://picsum.photos/seed/1515378791036-0648a3ef77b2/400/225',
-  video_url: 'https://example.com/video.mp4',
-  duration_ms: 3500,
+  thumbnailUrl: 'https://picsum.photos/seed/1515378791036-0648a3ef77b2/400/225',
+  videoUrl: 'https://example.com/video.mp4',
+  durationMs: 3500,
 });
 
 const longDescriptionFrame = generateMockFrame({
   id: 'frame-3',
-  order_index: 3,
+  orderIndex: 3,
   description:
     'An extremely long description that should be truncated when displayed in the component. This text goes on and on to demonstrate how the component handles overflow text by adding ellipsis after a certain character limit to maintain clean visual appearance.',
-  thumbnail_url: 'https://picsum.photos/seed/1550745165-9bc0b252726f/400/225',
-  duration_ms: 7500,
+  thumbnailUrl: 'https://picsum.photos/seed/1550745165-9bc0b252726f/400/225',
+  durationMs: 7500,
 });
 
 // Basic frame story
@@ -140,24 +138,24 @@ const MultipleFramesTemplate: Story = {
     const frames = [
       generateMockFrame({
         id: 'frame-1',
-        order_index: 1,
+        orderIndex: 1,
         description: 'Opening scene with dramatic landscape',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1519904981063-b0cf448d479e/400/225',
       }),
       generateMockFrame({
         id: 'frame-2',
-        order_index: 2,
+        orderIndex: 2,
         description: 'Character introduction with close-up shot',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1507003211169-0a1dd7228f2d/400/225',
-        video_url: 'https://example.com/video2.mp4',
+        videoUrl: 'https://example.com/video2.mp4',
       }),
       generateMockFrame({
         id: 'frame-3',
-        order_index: 3,
+        orderIndex: 3,
         description: 'Action sequence in urban environment',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1536098561742-ca998e48cbcc/400/225',
       }),
     ];
@@ -202,7 +200,7 @@ export const LoadingImage: Story = {
   args: {
     frame: {
       ...sampleFrame,
-      thumbnail_url: 'https://httpstat.us/500', // This will cause loading state
+      thumbnailUrl: 'https://httpstat.us/500', // This will cause loading state
     },
   },
 };
@@ -212,7 +210,7 @@ export const ImageError: Story = {
   args: {
     frame: {
       ...sampleFrame,
-      thumbnail_url: 'https://this-url-does-not-exist.com/image.jpg',
+      thumbnailUrl: 'https://this-url-does-not-exist.com/image.jpg',
     },
   },
 };
@@ -222,9 +220,9 @@ export const PortraitImage: Story = {
   args: {
     frame: generateMockFrame({
       id: 'portrait-frame',
-      order_index: 5,
+      orderIndex: 5,
       description: 'Portrait orientation shot for mobile-first content',
-      thumbnail_url:
+      thumbnailUrl:
         'https://picsum.photos/seed/1544005313-94ddf0286df2/400/600',
     }),
   },
@@ -235,11 +233,11 @@ export const MinimalData: Story = {
   args: {
     frame: generateMockFrame({
       id: 'minimal-frame',
-      order_index: 1,
+      orderIndex: 1,
       description: 'Basic frame',
-      thumbnail_url:
+      thumbnailUrl:
         'https://picsum.photos/seed/1485846234645-a62644f84728/400/225',
-      duration_ms: undefined, // No duration
+      durationMs: undefined, // No duration
     }),
   },
 };

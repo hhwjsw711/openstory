@@ -67,15 +67,11 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>
-                  {formatDistanceToNow(new Date(sequence.created_at))}
-                </span>
+                <span>{formatDistanceToNow(new Date(sequence.createdAt))}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                <span>
-                  {formatDistanceToNow(new Date(sequence.updated_at))}
-                </span>
+                <span>{formatDistanceToNow(new Date(sequence.updatedAt))}</span>
               </div>
             </div>
           </Card>

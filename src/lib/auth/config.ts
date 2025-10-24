@@ -94,13 +94,10 @@ export const auth = betterAuth({
         });
 
         // Transfer anonymous user data to authenticated account
-        const supabase = createAdminClient();
-
         try {
           // Migrate all anonymous user data to the authenticated account
           // All data transfer happens atomically - either all succeeds or all fails
           const result = await migrateAnonymousUserData(
-            supabase,
             anonymousUser.user.id,
             newUser.user.id
           );

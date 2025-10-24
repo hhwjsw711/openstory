@@ -82,7 +82,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
       setFormData({
         script: existingSequence.script || '',
         name: existingSequence.title || 'Untitled Sequence',
-        styleId: existingSequence.style_id || undefined,
+        styleId: existingSequence.styleId || undefined,
       });
     }
   }, [existingSequence, isEditMode]);

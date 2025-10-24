@@ -14,8 +14,9 @@ import type {
   LetzAIServiceRequest,
   LetzAIUpscaleRequest,
 } from '@/lib/schemas/letzai-request';
-import { createAdminClient } from '@/lib/supabase/server';
-import type { Json, LetzAIRequest } from '@/types/database';
+import { db } from '@/lib/db/client';
+import { letzaiRequests } from '@/lib/db/schema/tracking';
+import { eq, and, gte, lte } from 'drizzle-orm';
 
 // Configuration constants
 const LETZAI_API_URL = 'https://api.letz.ai';
@@ -35,8 +36,6 @@ export interface LetzAIServiceResponse<T = unknown> {
  * Enhanced LetzAI service class with comprehensive error handling and monitoring
  */
 export class LetzAIService {
-  private supabase = createAdminClient();
-
   constructor() {
     const apiKey = process.env.LETZAI_API_KEY;
     if (!apiKey) {
@@ -224,47 +223,30 @@ export class LetzAIService {
   }> {
     const { teamId, startDate, endDate, endpoint } = params;
 
-    // Note: Using type assertion until database types are updated
-    let query = this.supabase
-      .from('letzai_requests')
-      .select('*')
-      .eq('team_id', teamId);
+    // Build where conditions
+    const conditions = [eq(letzaiRequests.teamId, teamId)];
+    if (startDate) conditions.push(gte(letzaiRequests.createdAt, startDate));
+    if (endDate) conditions.push(lte(letzaiRequests.createdAt, endDate));
+    if (endpoint) conditions.push(eq(letzaiRequests.endpoint, endpoint));
 
-    if (startDate) {
-      query = query.gte('created_at', startDate.toISOString());
-    }
+    const requests = await db
+      .select({
+        endpoint: letzaiRequests.endpoint,
+        status: letzaiRequests.status,
+        costCredits: letzaiRequests.costCredits,
+        latencyMs: letzaiRequests.latencyMs,
+      })
+      .from(letzaiRequests)
+      .where(and(...conditions));
 
-    if (endDate) {
-      query = query.lte('created_at', endDate.toISOString());
-    }
-
-    if (endpoint) {
-      query = query.eq('endpoint', endpoint);
-    }
-
-    const { data: requests, error } = await query;
-
-    if (error) {
-      throw new VelroError(
-        `Failed to fetch usage stats: ${error.message}`,
-        'DATABASE_ERROR',
-        500
-      );
-    }
-
-    // Type assertion for database records until types are updated
-    const typedRequests = requests as LetzAIRequest[];
-
-    const totalRequests = typedRequests.length;
-    const completedRequests = typedRequests.filter(
-      (r: LetzAIRequest) => r.status === 'completed'
-    );
-    const totalCost = typedRequests.reduce(
-      (sum: number, r: LetzAIRequest) => sum + (r.cost_credits || 0),
+    const totalRequests = requests.length;
+    const completedRequests = requests.filter((r) => r.status === 'completed');
+    const totalCost = requests.reduce(
+      (sum, r) => sum + Number(r.costCredits || 0),
       0
     );
-    const totalLatency = typedRequests.reduce(
-      (sum: number, r: LetzAIRequest) => sum + (r.latency_ms || 0),
+    const totalLatency = requests.reduce(
+      (sum, r) => sum + (r.latencyMs || 0),
       0
     );
     const averageLatency = totalRequests > 0 ? totalLatency / totalRequests : 0;
@@ -274,11 +256,11 @@ export class LetzAIService {
     const requestsByEndpoint: Record<string, number> = {};
     const costByEndpoint: Record<string, number> = {};
 
-    for (const request of typedRequests) {
+    for (const request of requests) {
       const ep = request.endpoint;
       requestsByEndpoint[ep] = (requestsByEndpoint[ep] || 0) + 1;
       costByEndpoint[ep] =
-        (costByEndpoint[ep] || 0) + (request.cost_credits || 0);
+        (costByEndpoint[ep] || 0) + Number(request.costCredits || 0);
     }
 
     return {
@@ -343,26 +325,22 @@ export class LetzAIService {
       request.parameters
     );
 
-    // Create database record (using type assertion until types are updated)
-    const { data: dbRecord, error: dbError } = await this.supabase
-      .from('letzai_requests')
-      .insert({
-        job_id: request.jobId,
-        team_id: request.teamId,
-        user_id: request.userId,
+    // Create database record
+    const [dbRecord] = await db
+      .insert(letzaiRequests)
+      .values({
+        jobId: request.jobId,
+        teamId: request.teamId,
+        userId: request.userId,
         endpoint: request.endpoint,
-        request_payload: request.parameters as Json,
+        requestPayload: request.parameters,
         status: 'pending',
-        cost_credits: estimatedCost,
+        costCredits: estimatedCost.toString(),
       })
-      .select()
-      .single();
+      .returning({ id: letzaiRequests.id });
 
-    if (dbError || !dbRecord) {
-      console.error(
-        '[LetzAI Service] Failed to create database record:',
-        dbError
-      );
+    if (!dbRecord) {
+      console.error('[LetzAI Service] Failed to create database record');
       return {
         success: false,
         error: 'Failed to initialize request tracking',
@@ -379,14 +357,16 @@ export class LetzAIService {
       const latencyMs = Date.now() - startTime;
 
       // Update database record with success
-      await this.supabase
-        .from('letzai_requests')
-        .update({
+      await db
+        .update(letzaiRequests)
+        .set({
           status: 'completed',
-          response_data: result as Json,
-          latency_ms: latencyMs,
+          responseData: result as Record<string, unknown>,
+          latencyMs: latencyMs,
+          updatedAt: new Date(),
+          completedAt: new Date(),
         })
-        .eq('id', dbRecord.id);
+        .where(eq(letzaiRequests.id, dbRecord.id));
 
       return {
         success: true,
@@ -401,14 +381,15 @@ export class LetzAIService {
         error instanceof Error ? error.message : 'Unknown error';
 
       // Update database record with failure
-      await this.supabase
-        .from('letzai_requests')
-        .update({
+      await db
+        .update(letzaiRequests)
+        .set({
           status: 'failed',
           error: errorMessage,
-          latency_ms: latencyMs,
+          latencyMs: latencyMs,
+          updatedAt: new Date(),
         })
-        .eq('id', dbRecord.id);
+        .where(eq(letzaiRequests.id, dbRecord.id));
 
       console.error('[LetzAI Service] Request failed:', error);
 

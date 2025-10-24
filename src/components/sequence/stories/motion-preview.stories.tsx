@@ -58,10 +58,10 @@ type Story = StoryObj<typeof meta>;
 // Mock frame data
 const sampleFrame = generateMockFrame({
   id: 'motion-frame-1',
-  order_index: 1,
+  orderIndex: 1,
   description: 'A cinematic establishing shot of a cityscape at golden hour',
-  thumbnail_url: 'https://picsum.photos/seed/1514565131-fce0801e5785/640/360',
-  duration_ms: 5000,
+  thumbnailUrl: 'https://picsum.photos/seed/1514565131-fce0801e5785/640/360',
+  durationMs: 5000,
 });
 
 // Sample video URLs from open sources
@@ -73,9 +73,9 @@ export const WithVideo: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
 };
@@ -85,9 +85,9 @@ export const ThumbnailOnly: Story = {
   args: {
     // No videoUrl provided
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
 };
@@ -97,9 +97,9 @@ export const Loading: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
     loading: true,
   },
@@ -110,9 +110,9 @@ export const AutoPlay: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
     autoPlay: true,
     muted: true,
@@ -130,9 +130,9 @@ export const Unmuted: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
     muted: false,
   },
@@ -147,11 +147,11 @@ export const Frame2: Story = {
     duration: 8500,
     frame: generateMockFrame({
       id: 'motion-frame-2',
-      order_index: 2,
+      orderIndex: 2,
       description: 'Close-up character dialogue scene',
-      thumbnail_url:
+      thumbnailUrl:
         'https://picsum.photos/seed/1594736797933-d0501ba2fe65/640/360',
-      duration_ms: 8500,
+      durationMs: 8500,
     }),
   },
 };
@@ -163,11 +163,11 @@ export const Frame3: Story = {
     duration: 3200,
     frame: generateMockFrame({
       id: 'motion-frame-3',
-      order_index: 3,
+      orderIndex: 3,
       description: 'Action sequence with dynamic movement',
-      thumbnail_url:
+      thumbnailUrl:
         'https://picsum.photos/seed/1553095066-5014bc7b7f2d/640/360',
-      duration_ms: 3200,
+      durationMs: 3200,
     }),
   },
 };
@@ -181,11 +181,11 @@ export const LongDuration: Story = {
     duration: 15000,
     frame: generateMockFrame({
       id: 'long-motion-frame',
-      order_index: 5,
+      orderIndex: 5,
       description: 'Extended scene with multiple story beats',
-      thumbnail_url:
+      thumbnailUrl:
         'https://picsum.photos/seed/1478720568477-152d9b164e26/640/360',
-      duration_ms: 15000,
+      durationMs: 15000,
     }),
   },
 };
@@ -195,7 +195,7 @@ export const ImageError: Story = {
   args: {
     // No videoUrl, broken thumbnail
     thumbnailUrl: 'https://this-url-does-not-exist.com/broken.jpg',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
 };
@@ -205,7 +205,7 @@ export const NoThumbnail: Story = {
   args: {
     // No videoUrl, no thumbnail
     thumbnailUrl: undefined,
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
   parameters: {
@@ -223,35 +223,35 @@ const MultiplePreviewsTemplate: Story = {
     const frames = [
       generateMockFrame({
         id: 'multi-1',
-        order_index: 1,
+        orderIndex: 1,
         description: 'Opening landscape shot',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1506905925346-21bda4d32df4/640/360',
-        duration_ms: 4000,
+        durationMs: 4000,
       }),
       generateMockFrame({
         id: 'multi-2',
-        order_index: 2,
+        orderIndex: 2,
         description: 'Character introduction',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1507003211169-0a1dd7228f2d/640/360',
-        duration_ms: 6000,
+        durationMs: 6000,
       }),
       generateMockFrame({
         id: 'multi-3',
-        order_index: 3,
+        orderIndex: 3,
         description: 'Action sequence',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1536098561742-ca998e48cbcc/640/360',
-        duration_ms: 3500,
+        durationMs: 3500,
       }),
       generateMockFrame({
         id: 'multi-4',
-        order_index: 4,
+        orderIndex: 4,
         description: 'Dialogue scene',
-        thumbnail_url:
+        thumbnailUrl:
           'https://picsum.photos/seed/1524712245354-2c4e5e7121c0/640/360',
-        duration_ms: 8000,
+        durationMs: 8000,
       }),
     ];
 
@@ -264,10 +264,10 @@ const MultiplePreviewsTemplate: Story = {
             // Every other frame has video, others are thumbnail-only
             videoUrl={index % 2 === 0 ? sampleVideoUrl : undefined}
             thumbnailUrl={
-              frame.thumbnail_url ||
+              frame.thumbnailUrl ||
               'https://picsum.photos/seed/1536240478700-b869070f9279/640/360'
             }
-            duration={frame.duration_ms || undefined}
+            duration={frame.durationMs || undefined}
             frame={frame}
           />
         ))}
@@ -294,9 +294,9 @@ export const Interactive: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
   parameters: {
@@ -324,7 +324,7 @@ export const LoadingStates: Story = {
           videoUrl={sampleVideoUrl}
           thumbnailUrl="https://picsum.photos/seed/1440404653325-ab127d49abc1/640/360"
           duration={5000}
-          frame={generateMockFrame({ order_index: 1 })}
+          frame={generateMockFrame({ orderIndex: 1 })}
           loading={true}
         />
       </div>
@@ -334,7 +334,7 @@ export const LoadingStates: Story = {
         <MotionPreview
           thumbnailUrl="https://picsum.photos/seed/1485846234645-a62644f84728/640/360"
           duration={5000}
-          frame={generateMockFrame({ order_index: 2 })}
+          frame={generateMockFrame({ orderIndex: 2 })}
         />
       </div>
 
@@ -343,7 +343,7 @@ export const LoadingStates: Story = {
         <MotionPreview
           thumbnailUrl="https://broken-url.com/image.jpg"
           duration={5000}
-          frame={generateMockFrame({ order_index: 3 })}
+          frame={generateMockFrame({ orderIndex: 3 })}
         />
       </div>
 
@@ -352,7 +352,7 @@ export const LoadingStates: Story = {
         <MotionPreview
           thumbnailUrl={undefined}
           duration={5000}
-          frame={generateMockFrame({ order_index: 4 })}
+          frame={generateMockFrame({ orderIndex: 4 })}
         />
       </div>
 
@@ -361,7 +361,7 @@ export const LoadingStates: Story = {
         <MotionPreview
           thumbnailUrl=""
           duration={5000}
-          frame={generateMockFrame({ order_index: 5 })}
+          frame={generateMockFrame({ orderIndex: 5 })}
         />
       </div>
     </div>
@@ -394,9 +394,9 @@ export const Responsive: Story = {
   args: {
     videoUrl: sampleVideoUrl,
     thumbnailUrl:
-      sampleFrame.thumbnail_url ||
+      sampleFrame.thumbnailUrl ||
       'https://picsum.photos/seed/1536240478700-b869070f9279/640/360',
-    duration: sampleFrame.duration_ms || undefined,
+    duration: sampleFrame.durationMs || undefined,
     frame: sampleFrame,
   },
   parameters: {

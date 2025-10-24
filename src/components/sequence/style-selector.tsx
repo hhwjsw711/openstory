@@ -62,9 +62,9 @@ const StyleCard: React.FC<StyleCardProps> = ({
       <CardContent className="p-4">
         <div className="flex flex-col gap-3">
           <div className="aspect-[4/3] overflow-hidden rounded-lg bg-muted">
-            {style.preview_url ? (
+            {style.previewUrl ? (
               <Image
-                src={style.preview_url}
+                src={style.previewUrl}
                 alt={`${style.name} style preview`}
                 className="h-full w-full object-cover"
                 loading="lazy"
@@ -73,7 +73,7 @@ const StyleCard: React.FC<StyleCardProps> = ({
                 onError={(e) => {
                   console.warn(
                     `Failed to load image for style ${style.name}:`,
-                    style.preview_url
+                    style.previewUrl
                   );
                   e.currentTarget.style.display = 'none';
                 }}
