@@ -12,5 +12,13 @@
   "extends": ["recommended"],
   "rules": {
     "typescript/no-explicit-any": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["*.test.ts", "*.spec.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    }
+  ]
 }
