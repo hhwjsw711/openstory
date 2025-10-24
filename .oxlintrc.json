@@ -1,5 +1,5 @@
 {
-  "$schema": "https://oxc.rs/schema.json",
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [
     "eslint",
     "typescript",
@@ -9,5 +9,8 @@
     "nextjs",
     "oxc"
   ],
-  "extends": ["recommended"]
+  "extends": ["recommended"],
+  "rules": {
+    "typescript/no-explicit-any": "error"
+  }
 }

@@ -92,6 +92,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "lefthook": "^1.12.3",
+    "oxlint": "^1.24.0",
     "oxlint-tsgolint": "^0.2.1",
     "playwright": "^1.55.0",
     "prettier": "^3.6.2",
