@@ -4,6 +4,7 @@
  */
 
 import { db } from '@/lib/db/client';
+import { account, session, user, verification } from '@/lib/db/schema';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
@@ -27,6 +28,12 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
+    schema: {
+      user: user,
+      session: session,
+      account: account,
+      verification: verification,
+    },
   }),
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
   baseURL: requiredEnvVars.BETTER_AUTH_URL,

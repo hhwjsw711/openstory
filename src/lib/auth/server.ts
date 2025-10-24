@@ -3,14 +3,14 @@
  * Provides session management for Server Actions and API routes
  */
 
+import { db } from '@/lib/db/client';
+import { teamMembers } from '@/lib/db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
-import { eq, asc } from 'drizzle-orm';
 import type { Session, User } from './config';
 import { auth } from './config';
 import type { TeamRole } from './constants';
 import { getHighestRole } from './constants';
-import { db } from '@/lib/db/client';
-import { teamMembers } from '@/lib/db/schema';
 
 /**
  * Get the current session from server context
@@ -25,7 +25,10 @@ export async function getSession(): Promise<Session | null> {
 
     return session;
   } catch (error) {
-    console.error('[Auth] Failed to get session:', error);
+    console.error(
+      '[Auth] Failed to get session:',
+      error instanceof Error ? error.message : String(error)
+    );
     return null;
   }
 }

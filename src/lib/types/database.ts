@@ -7,44 +7,43 @@
 
 import type { Database } from '@/lib/db/client';
 import type {
-  User,
-  Team,
-  NewTeam,
-  TeamMember,
-  NewTeamMember,
-  TeamInvitation,
-  NewTeamInvitation,
-  Sequence,
-  NewSequence,
-  Frame,
-  NewFrame,
-  Style,
-  NewStyle,
-  StyleAdaptation,
-  Character,
-  NewCharacter,
+  Account,
   Audio,
-  NewAudio,
-  Vfx,
-  NewVfx,
+  Character,
   Credit,
-  NewCredit,
-  Transaction,
-  NewTransaction,
   FalRequest,
-  NewFalRequest,
-  LetzaiRequest,
-  NewLetzaiRequest,
-  BetterAuthUser,
-  BetterAuthSession,
-  BetterAuthAccount,
-  BetterAuthVerification,
-  SequenceStatus,
-  TeamMemberRole,
-  InvitationStatus,
-  TransactionType,
   FalRequestStatus,
+  Frame,
+  InvitationStatus,
+  LetzaiRequest,
   LetzaiRequestStatus,
+  NewAudio,
+  NewCharacter,
+  NewCredit,
+  NewFalRequest,
+  NewFrame,
+  NewLetzaiRequest,
+  NewSequence,
+  NewStyle,
+  NewTeam,
+  NewTeamInvitation,
+  NewTeamMember,
+  NewTransaction,
+  NewVfx,
+  Sequence,
+  SequenceStatus,
+  Session,
+  Style,
+  StyleAdaptation,
+  Team,
+  TeamInvitation,
+  TeamMember,
+  TeamMemberRole,
+  Transaction,
+  TransactionType,
+  User,
+  Verification,
+  Vfx,
 } from '@/lib/db/schema';
 
 // Re-export Database type
@@ -55,27 +54,21 @@ export type Json = Record<string, unknown> | unknown[];
 
 // Table row types (SELECT results - use camelCase field names)
 export type {
-  User,
-  Team,
-  TeamMember,
-  TeamInvitation,
-  Sequence,
-  Frame,
-  Style,
-  Character,
   Audio,
+  Character,
+  Frame,
+  Sequence,
+  Style,
+  Team,
+  TeamInvitation,
+  TeamMember,
 };
 export type VFX = Vfx; // Alias for consistency
-export type { Credit, Transaction, FalRequest, StyleAdaptation };
+export type { Credit, FalRequest, StyleAdaptation, Transaction };
 export type LetzAIRequest = LetzaiRequest; // Alias for consistency
 
 // BetterAuth table types
-export type {
-  BetterAuthUser,
-  BetterAuthSession,
-  BetterAuthAccount,
-  BetterAuthVerification,
-};
+export type { Account, Session, User, Verification };
 
 // User profile alias (for backward compatibility)
 export type UserProfile = User;
@@ -113,10 +106,10 @@ export type LetzAIRequestUpdate = Partial<LetzaiRequest>;
 
 // Enum types (re-export from schema)
 export type {
+  FalRequestStatus,
+  InvitationStatus,
+  LetzaiRequestStatus,
   SequenceStatus,
   TeamMemberRole,
-  InvitationStatus,
   TransactionType,
-  FalRequestStatus,
-  LetzaiRequestStatus,
 };

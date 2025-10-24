@@ -202,12 +202,19 @@ export const generateMockTeam = (overrides?: Partial<Team>): Team => {
 export const generateMockUser = (
   overrides?: Partial<UserProfile>
 ): UserProfile => {
+  const fullName = faker.person.fullName();
   return {
     id: faker.string.uuid(),
-    fullName: faker.person.fullName(),
-    avatarUrl: faker.image.avatar(),
+    name: fullName,
+    email: faker.internet.email(),
+    emailVerified: faker.datatype.boolean(),
+    image: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
+    isAnonymous: null,
+    fullName,
+    avatarUrl: faker.image.avatar(),
+    onboardingCompleted: null,
     ...overrides,
   };
 };

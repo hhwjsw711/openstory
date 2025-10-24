@@ -4,10 +4,10 @@
  */
 
 import { createAnonymousSession } from '@/lib/auth/server';
+import { db } from '@/lib/db/client';
+import { teamMembers, teams, user } from '@/lib/db/schema';
 import { handleApiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db/client';
-import { users, teams, teamMembers } from '@/lib/db/schema';
 
 export async function POST() {
   try {
@@ -28,9 +28,11 @@ export async function POST() {
     try {
       // Create user record if it doesn't exist (upsert)
       await db
-        .insert(users)
+        .insert(user)
         .values({
           id: session.user.id,
+          name: session.user.name || 'Anonymous',
+          email: session.user.email || `${session.user.id}@anonymous.local`,
           fullName: session.user.name || null,
         })
         .onConflictDoNothing();

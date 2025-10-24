@@ -8,7 +8,7 @@ import {
   vfx,
   audio,
   credits,
-  users,
+  user,
 } from '@/lib/db/schema';
 import { eq, and, lt, gte, ne, sql } from 'drizzle-orm';
 
@@ -269,7 +269,7 @@ export async function migrateAnonymousUserData(
     // 5. Clean up anonymous user data
     await tx.delete(credits).where(eq(credits.userId, anonymousUserId));
     await tx.delete(teamMembers).where(eq(teamMembers.userId, anonymousUserId));
-    await tx.delete(users).where(eq(users.id, anonymousUserId));
+    await tx.delete(user).where(eq(user.id, anonymousUserId));
 
     // Note: BetterAuth will handle deleting from its own 'user' table
 

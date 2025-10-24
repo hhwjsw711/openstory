@@ -6,8 +6,8 @@
  */
 
 import { db } from '@/lib/db/client';
-import { users, sequences, frames } from '@/lib/db/schema';
-import { eq, desc, sql } from '@/lib/db/schema';
+import { user, sequences, frames } from '@/lib/db/schema';
+import { eq, desc, sql } from 'drizzle-orm';
 
 /**
  * SELECT Examples
@@ -15,19 +15,19 @@ import { eq, desc, sql } from '@/lib/db/schema';
 
 // Select all users
 export async function getAllUsers() {
-  return await db.select().from(users);
+  return await db.select().from(user);
 }
 
 // Select user by ID
 export async function getUserById(userId: string) {
-  const result = await db.select().from(users).where(eq(users.id, userId));
+  const result = await db.select().from(user).where(eq(user.id, userId));
   return result[0];
 }
 
 // Select with multiple conditions
 export async function getActiveTeamMembers(_teamId: string) {
   // Note: This is a simplified example - would normally join with team_members
-  return await db.select().from(users);
+  return await db.select().from(user);
 }
 
 // Select with ordering and limit
@@ -47,9 +47,11 @@ export async function getRecentSequences(teamId: string, limit = 10) {
 // Insert single record
 export async function createUser(userData: {
   id: string;
+  name: string;
+  email: string;
   fullName: string | null;
 }) {
-  const result = await db.insert(users).values(userData).returning();
+  const result = await db.insert(user).values(userData).returning();
   return result[0];
 }
 
@@ -72,9 +74,9 @@ export async function createMultipleFrames(
 // Update single record
 export async function updateUserName(userId: string, fullName: string) {
   const result = await db
-    .update(users)
-    .set({ fullName, updatedAt: new Date() })
-    .where(eq(users.id, userId))
+    .update(user)
+    .set({ fullName })
+    .where(eq(user.id, userId))
     .returning();
   return result[0];
 }
@@ -189,8 +191,8 @@ export async function countTeamSequences(teamId: string) {
 
 // The return type is automatically inferred from the schema
 export async function getTypedUser(userId: string) {
-  const result = await db.select().from(users).where(eq(users.id, userId));
-  // result is typed as Array<typeof users.$inferSelect>
+  const result = await db.select().from(user).where(eq(user.id, userId));
+  // result is typed as Array<typeof user.$inferSelect>
   return result[0];
 }
 

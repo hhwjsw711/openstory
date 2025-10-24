@@ -8,20 +8,20 @@
  * @module lib/services/team.service
  */
 
-import crypto from 'node:crypto';
-import { eq, and } from 'drizzle-orm';
 import { INVITATION_CONFIG } from '@/lib/auth/constants';
 import type { TeamRole } from '@/lib/auth/permissions';
 import { getUserRole } from '@/lib/auth/permissions';
-import { ValidationError } from '@/lib/errors';
-import { db } from '@/lib/db/client';
 import type { Database } from '@/lib/db/client';
+import { db } from '@/lib/db/client';
 import {
-  betterAuthUser,
-  teamMembers,
   teamInvitations,
+  teamMembers,
+  user,
   type TeamMemberRole,
 } from '@/lib/db/schema';
+import { ValidationError } from '@/lib/errors';
+import { and, eq } from 'drizzle-orm';
+import crypto from 'node:crypto';
 
 // Type definitions
 export interface TeamMember {
@@ -93,12 +93,10 @@ export class TeamService {
     params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
-    const existingAuthUser = await this.database.query.betterAuthUser.findFirst(
-      {
-        where: eq(betterAuthUser.email, params.email),
-        columns: { id: true },
-      }
-    );
+    const existingAuthUser = await this.database.query.user.findFirst({
+      where: eq(user.email, params.email),
+      columns: { id: true },
+    });
 
     if (existingAuthUser) {
       const existingMember = await this.database.query.teamMembers.findFirst({
@@ -347,9 +345,8 @@ export class TeamService {
 
     // Get emails from BetterAuth user table
     const userIds = members.map((m) => m.userId);
-    const betterAuthUsers = await this.database.query.betterAuthUser.findMany({
-      where: (betterAuthUser, { inArray }) =>
-        inArray(betterAuthUser.id, userIds),
+    const users = await this.database.query.user.findMany({
+      where: (user, { inArray }) => inArray(user.id, userIds),
       columns: {
         id: true,
         email: true,
@@ -357,9 +354,7 @@ export class TeamService {
     });
 
     // Create email lookup map
-    const emailMap = new Map(
-      betterAuthUsers.map((u) => [u.id, u.email] as const)
-    );
+    const emailMap = new Map(users.map((u) => [u.id, u.email] as const));
 
     return members.map((m) => ({
       userId: m.userId,

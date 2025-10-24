@@ -3,18 +3,18 @@
  * Team management, members, and invitations
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
+  index,
   pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
   uuid,
   varchar,
-  timestamp,
-  index,
-  primaryKey,
-  unique,
-  text,
 } from 'drizzle-orm/pg-core';
-import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { users } from './users';
+import { user } from './auth';
 
 // Enums
 export const teamMemberRoleEnum = [
@@ -70,7 +70,7 @@ export const teamMembers = pgTable(
       .references(() => teams.id, { onDelete: 'cascade' }),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role', { enum: teamMemberRoleEnum })
       .notNull()
       .default('member'),
@@ -104,7 +104,7 @@ export const teamInvitations = pgTable(
       .default('member'),
     invitedBy: uuid('invited_by')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     status: text('status', { enum: invitationStatusEnum })
       .notNull()
       .default('pending'),
@@ -139,9 +139,9 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
     fields: [teamMembers.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [teamMembers.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -152,9 +152,9 @@ export const teamInvitationsRelations = relations(
       fields: [teamInvitations.teamId],
       references: [teams.id],
     }),
-    invitedByUser: one(users, {
+    invitedByUser: one(user, {
       fields: [teamInvitations.invitedBy],
-      references: [users.id],
+      references: [user.id],
     }),
   })
 );

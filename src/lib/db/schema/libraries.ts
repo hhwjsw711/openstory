@@ -3,22 +3,22 @@
  * Styles, characters, VFX, and audio assets for teams
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
   boolean,
+  index,
   integer,
   jsonb,
-  index,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { teams } from './teams';
-import { users } from './users';
+import { user } from './auth';
 import { sequences } from './sequences';
+import { teams } from './teams';
 
 /**
  * Styles library
@@ -55,7 +55,7 @@ export const styles = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid('created_by').references(() => users.id, {
+    createdBy: uuid('created_by').references(() => user.id, {
       onDelete: 'set null',
     }),
   },
@@ -125,7 +125,7 @@ export const characters = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid('created_by').references(() => users.id, {
+    createdBy: uuid('created_by').references(() => user.id, {
       onDelete: 'set null',
     }),
   },
@@ -159,7 +159,7 @@ export const vfx = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid('created_by').references(() => users.id, {
+    createdBy: uuid('created_by').references(() => user.id, {
       onDelete: 'set null',
     }),
   },
@@ -191,7 +191,7 @@ export const audio = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid('created_by').references(() => users.id, {
+    createdBy: uuid('created_by').references(() => user.id, {
       onDelete: 'set null',
     }),
   },
@@ -206,9 +206,9 @@ export const stylesRelations = relations(styles, ({ one, many }) => ({
     fields: [styles.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(user, {
     fields: [styles.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
   parent: one(styles, {
     fields: [styles.parentId],
@@ -237,9 +237,9 @@ export const charactersRelations = relations(characters, ({ one }) => ({
     fields: [characters.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(user, {
     fields: [characters.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -248,9 +248,9 @@ export const vfxRelations = relations(vfx, ({ one }) => ({
     fields: [vfx.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(user, {
     fields: [vfx.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -259,9 +259,9 @@ export const audioRelations = relations(audio, ({ one }) => ({
     fields: [audio.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(user, {
     fields: [audio.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

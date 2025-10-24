@@ -3,21 +3,21 @@
  * Core content creation entities for video sequences
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
+  index,
   integer,
   jsonb,
-  index,
+  pgTable,
+  text,
+  timestamp,
   unique,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { teams } from './teams';
-import { users } from './users';
+import { user } from './auth';
 import { styles } from './libraries';
+import { teams } from './teams';
 
 // Enums
 export const sequenceStatusEnum = [
@@ -57,10 +57,10 @@ export const sequences = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid('created_by').references(() => users.id, {
+    createdBy: uuid('created_by').references(() => user.id, {
       onDelete: 'set null',
     }),
-    updatedBy: uuid('updated_by').references(() => users.id, {
+    updatedBy: uuid('updated_by').references(() => user.id, {
       onDelete: 'set null',
     }),
   },
@@ -114,14 +114,14 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
     fields: [sequences.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(user, {
     fields: [sequences.createdBy],
-    references: [users.id],
+    references: [user.id],
     relationName: 'sequencesCreatedBy',
   }),
-  updatedByUser: one(users, {
+  updatedByUser: one(user, {
     fields: [sequences.updatedBy],
-    references: [users.id],
+    references: [user.id],
     relationName: 'sequencesUpdatedBy',
   }),
   frames: many(frames),

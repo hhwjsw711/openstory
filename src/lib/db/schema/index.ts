@@ -5,121 +5,117 @@
 
 // Better Auth tables
 export {
-  betterAuthUser,
-  betterAuthSession,
-  betterAuthAccount,
-  betterAuthVerification,
-  betterAuthUserRelations,
-  betterAuthSessionRelations,
-  betterAuthAccountRelations,
+  account,
+  accountRelations,
+  session,
+  sessionRelations,
+  user,
+  userRelations,
+  verification,
 } from './auth';
 
 export type {
-  BetterAuthUser,
-  NewBetterAuthUser,
-  BetterAuthSession,
-  NewBetterAuthSession,
-  BetterAuthAccount,
-  NewBetterAuthAccount,
-  BetterAuthVerification,
-  NewBetterAuthVerification,
+  Account,
+  NewAccount,
+  NewSession,
+  NewUser,
+  NewVerification,
+  Session,
+  User,
+  Verification,
 } from './auth';
-
-// Users
-export { users, usersRelations } from './users';
-export type { User, NewUser } from './users';
 
 // Teams
 export {
-  teams,
-  teamMembers,
+  invitationStatusEnum,
   teamInvitations,
-  teamsRelations,
-  teamMembersRelations,
   teamInvitationsRelations,
   teamMemberRoleEnum,
-  invitationStatusEnum,
+  teamMembers,
+  teamMembersRelations,
+  teams,
+  teamsRelations,
 } from './teams';
 
 export type {
-  Team,
-  NewTeam,
-  TeamMember,
-  NewTeamMember,
-  TeamInvitation,
-  NewTeamInvitation,
-  TeamMemberRole,
   InvitationStatus,
+  NewTeam,
+  NewTeamInvitation,
+  NewTeamMember,
+  Team,
+  TeamInvitation,
+  TeamMember,
+  TeamMemberRole,
 } from './teams';
 
 // Sequences
 export {
-  sequences,
   frames,
-  sequencesRelations,
   framesRelations,
+  sequences,
+  sequencesRelations,
   sequenceStatusEnum,
 } from './sequences';
 
 export type {
-  Sequence,
-  NewSequence,
   Frame,
   NewFrame,
+  NewSequence,
+  Sequence,
   SequenceStatus,
 } from './sequences';
 
 // Library Resources
 export {
-  styles,
-  styleAdaptations,
-  characters,
-  vfx,
   audio,
-  stylesRelations,
-  styleAdaptationsRelations,
-  charactersRelations,
-  vfxRelations,
   audioRelations,
+  characters,
+  charactersRelations,
+  styleAdaptations,
+  styleAdaptationsRelations,
+  styles,
+  stylesRelations,
+  vfx,
+  vfxRelations,
 } from './libraries';
 
 export type {
-  Style,
-  NewStyle,
-  StyleAdaptation,
-  NewStyleAdaptation,
-  Character,
-  NewCharacter,
-  Vfx,
-  NewVfx,
   Audio,
+  Character,
   NewAudio,
+  NewCharacter,
+  NewStyle,
+  NewStyleAdaptation,
+  NewVfx,
+  Style,
+  StyleAdaptation,
+  Vfx,
 } from './libraries';
 
 // API Request Tracking
 export {
   falRequests,
-  letzaiRequests,
   falRequestsRelations,
-  letzaiRequestsRelations,
   falRequestStatusEnum,
+  letzaiRequests,
+  letzaiRequestsRelations,
   letzaiRequestStatusEnum,
 } from './tracking';
 
 export type {
   FalRequest,
-  NewFalRequest,
-  LetzaiRequest,
-  NewLetzaiRequest,
   FalRequestStatus,
+  LetzaiRequest,
   LetzaiRequestStatus,
+  NewFalRequest,
+  NewLetzaiRequest,
 } from './tracking';
 
 // Credits and Transactions
 export {
   credits,
-  transactions,
   creditsRelations,
+  transactions,
   transactionsRelations,
   transactionTypeEnum,
 } from './credits';
@@ -127,8 +123,8 @@ export {
 export type {
   Credit,
   NewCredit,
-  Transaction,
   NewTransaction,
+  Transaction,
   TransactionType,
 } from './credits';
 
@@ -138,17 +134,13 @@ export type {
  */
 export const schema = {
   // Better Auth
-  betterAuthUser,
-  betterAuthSession,
-  betterAuthAccount,
-  betterAuthVerification,
-  betterAuthUserRelations,
-  betterAuthSessionRelations,
-  betterAuthAccountRelations,
-
-  // Users
-  users,
-  usersRelations,
+  user,
+  session,
+  account,
+  verification,
+  userRelations,
+  sessionRelations,
+  accountRelations,
 
   // Teams
   teams,
@@ -189,62 +181,56 @@ export const schema = {
   transactionsRelations,
 };
 
-// Re-export necessary Drizzle imports for convenience
-export { pgTable, pgEnum } from 'drizzle-orm/pg-core';
-export { eq, and, or, sql, desc, asc } from 'drizzle-orm';
-
 // Import statements (not exported, just for local use)
 import {
-  betterAuthUser,
-  betterAuthSession,
-  betterAuthAccount,
-  betterAuthVerification,
-  betterAuthUserRelations,
-  betterAuthSessionRelations,
-  betterAuthAccountRelations,
+  account,
+  accountRelations,
+  session,
+  sessionRelations,
+  user,
+  userRelations,
+  verification,
 } from './auth';
 
-import { users, usersRelations } from './users';
-
 import {
-  teams,
-  teamMembers,
   teamInvitations,
-  teamsRelations,
-  teamMembersRelations,
   teamInvitationsRelations,
+  teamMembers,
+  teamMembersRelations,
+  teams,
+  teamsRelations,
 } from './teams';
 
 import {
-  sequences,
   frames,
-  sequencesRelations,
   framesRelations,
+  sequences,
+  sequencesRelations,
 } from './sequences';
 
 import {
-  styles,
-  styleAdaptations,
-  characters,
-  vfx,
   audio,
-  stylesRelations,
-  styleAdaptationsRelations,
-  charactersRelations,
-  vfxRelations,
   audioRelations,
+  characters,
+  charactersRelations,
+  styleAdaptations,
+  styleAdaptationsRelations,
+  styles,
+  stylesRelations,
+  vfx,
+  vfxRelations,
 } from './libraries';
 
 import {
   falRequests,
-  letzaiRequests,
   falRequestsRelations,
+  letzaiRequests,
   letzaiRequestsRelations,
 } from './tracking';
 
 import {
   credits,
-  transactions,
   creditsRelations,
+  transactions,
   transactionsRelations,
 } from './credits';

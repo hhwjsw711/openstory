@@ -3,20 +3,20 @@
  * Tracks Fal.ai and LetzAI API usage for cost calculation and monitoring
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
-  integer,
-  jsonb,
   decimal,
   index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { user } from './auth';
 import { teams } from './teams';
-import { users } from './users';
 
 // Enums
 export const falRequestStatusEnum = ['pending', 'completed', 'failed'] as const;
@@ -44,7 +44,7 @@ export const falRequests = pgTable(
     teamId: uuid('team_id').references(() => teams.id, {
       onDelete: 'cascade',
     }),
-    userId: uuid('user_id').references(() => users.id, {
+    userId: uuid('user_id').references(() => user.id, {
       onDelete: 'set null',
     }),
     model: varchar('model', { length: 255 }).notNull(),
@@ -92,7 +92,7 @@ export const letzaiRequests = pgTable(
     teamId: uuid('team_id').references(() => teams.id, {
       onDelete: 'cascade',
     }),
-    userId: uuid('user_id').references(() => users.id, {
+    userId: uuid('user_id').references(() => user.id, {
       onDelete: 'set null',
     }),
     endpoint: text('endpoint').notNull(), // /images, /image-edits, /upscale, etc.
@@ -136,9 +136,9 @@ export const falRequestsRelations = relations(falRequests, ({ one }) => ({
     fields: [falRequests.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [falRequests.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -147,9 +147,9 @@ export const letzaiRequestsRelations = relations(letzaiRequests, ({ one }) => ({
     fields: [letzaiRequests.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [letzaiRequests.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

@@ -19,7 +19,7 @@ import {
   InferInsertModel,
   sql,
 } from 'drizzle-orm';
-import { users } from './users';
+import { user } from './auth';
 
 // Enums
 export const transactionTypeEnum = [
@@ -39,7 +39,7 @@ export const credits = pgTable(
   {
     userId: uuid('user_id')
       .primaryKey()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     balance: decimal('balance', { precision: 10, scale: 2 })
       .notNull()
       .default('0.00'),
@@ -64,7 +64,7 @@ export const transactions = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     type: text('type', { enum: transactionTypeEnum }).notNull(),
     amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
     balanceAfter: decimal('balance_after', {
@@ -86,17 +86,17 @@ export const transactions = pgTable(
 
 // Relations
 export const creditsRelations = relations(credits, ({ one, many }) => ({
-  user: one(users, {
+  user: one(user, {
     fields: [credits.userId],
-    references: [users.id],
+    references: [user.id],
   }),
   transactions: many(transactions),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
-  user: one(users, {
+  user: one(user, {
     fields: [transactions.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

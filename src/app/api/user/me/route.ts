@@ -3,13 +3,13 @@
  * GET /api/user/me - Get current user
  */
 
-import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { createAnonymousSession, getSession } from '@/lib/auth/server';
-import { handleApiError } from '@/lib/errors';
 import { db } from '@/lib/db/client';
-import { users } from '@/lib/db/schema';
 import type { User } from '@/lib/db/schema';
+import { user, teamMembers } from '@/lib/db/schema';
+import { handleApiError } from '@/lib/errors';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 type UserWithTeamMembers = User & {
   teamMembers?: Array<{ teamId: string; role: string }>;
@@ -33,21 +33,27 @@ async function ensureUserAndTeam(authUser: {
     const baseDelay = 50; // Start with 50ms
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const userWithTeam = await db.query.users.findFirst({
-        where: eq(users.id, authUser.id),
-        with: {
-          teamMembers: {
-            columns: {
-              teamId: true,
-              role: true,
-            },
-          },
-        },
+      const foundUser = await db.query.user.findFirst({
+        where: eq(user.id, authUser.id),
       });
 
-      // Early exit if user and team membership both exist
-      if (userWithTeam?.teamMembers && userWithTeam.teamMembers.length > 0) {
-        return { success: true, data: userWithTeam };
+      if (foundUser) {
+        // Check for team membership
+        const memberships = await db
+          .select({
+            teamId: teamMembers.teamId,
+            role: teamMembers.role,
+          })
+          .from(teamMembers)
+          .where(eq(teamMembers.userId, authUser.id));
+
+        // Early exit if user and team membership both exist
+        if (memberships.length > 0) {
+          return {
+            success: true,
+            data: { ...foundUser, teamMembers: memberships },
+          };
+        }
       }
 
       // Only wait if we're going to retry
@@ -124,8 +130,8 @@ export async function GET() {
     const isAnonymous = authUser.isAnonymous === true;
 
     // Get user profile from database
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.id, authUser.id),
+    const userProfile = await db.query.user.findFirst({
+      where: eq(user.id, authUser.id),
     });
 
     if (!userProfile) {
