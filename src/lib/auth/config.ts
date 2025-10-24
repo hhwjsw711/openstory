@@ -3,12 +3,11 @@
  * Replaces Supabase Auth with anonymous users and email/password login
  */
 
+import { db } from '@/lib/db/client';
 import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db } from '@/lib/db/client';
-import { createAdminClient } from '@/lib/supabase/server';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation

@@ -1,5 +1,3 @@
-import type * as React from 'react';
-import { useCallback, useState } from 'react';
 import { StoryboardFrameSkeletonWithScript } from '@/components/sequence/storyboard-frame-skeleton-with-script';
 import { StoryboardFrameWithScript } from '@/components/sequence/storyboard-frame-with-script';
 import { SectionHeading } from '@/components/typography';
@@ -14,6 +12,8 @@ import {
 } from '@/hooks/use-storyboard-status';
 import { useStyles } from '@/hooks/use-styles';
 import type { Frame } from '@/types/database';
+import type * as React from 'react';
+import { useCallback, useState } from 'react';
 
 interface StoryboardStepProps {
   sequenceId: string;
@@ -194,7 +194,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
           <div className="space-y-6">
             {Array.from({ length: expectedFrameCount }).map((_, index) => (
               <StoryboardFrameSkeletonWithScript
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders are static
                 key={`initial-skeleton-${index}`}
                 index={index}
                 isGenerating={true}

@@ -4,10 +4,13 @@
  */
 
 import { headers } from 'next/headers';
+import { eq, asc } from 'drizzle-orm';
 import type { Session, User } from './config';
 import { auth } from './config';
 import type { TeamRole } from './constants';
 import { getHighestRole } from './constants';
+import { db } from '@/lib/db/client';
+import { teamMembers } from '@/lib/db/schema';
 
 /**
  * Get the current session from server context
@@ -65,25 +68,19 @@ export async function getUserWithTeam(): Promise<{
     return null;
   }
 
-  // Fetch team information from database using Supabase client
-  const { createAdminClient } = await import('@/lib/supabase/server');
-  const supabase = createAdminClient();
-
   try {
     // Fetch all team memberships for the user
-    const { data: teamMembers, error } = await supabase
-      .from('team_members')
-      .select('team_id, role')
-      .eq('user_id', session.user.id)
-      .order('joined_at', { ascending: true }); // Oldest team first
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "not found" - that's okay
-      throw error;
-    }
+    const teamMembersList = await db
+      .select({
+        teamId: teamMembers.teamId,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, session.user.id))
+      .orderBy(asc(teamMembers.joinedAt)); // Oldest team first
 
     // If user has no teams, return null
-    if (!teamMembers || teamMembers.length === 0) {
+    if (!teamMembersList || teamMembersList.length === 0) {
       return {
         user: session.user,
         teamId: null,
@@ -92,18 +89,19 @@ export async function getUserWithTeam(): Promise<{
     }
 
     // If user has multiple teams, select the one with the highest role
-    let selectedTeam = teamMembers[0];
-    if (teamMembers.length > 1) {
+    let selectedTeam = teamMembersList[0];
+    if (teamMembersList.length > 1) {
       const highestRole = getHighestRole(
-        teamMembers.map((tm) => tm.role as TeamRole)
+        teamMembersList.map((tm) => tm.role as TeamRole)
       );
       selectedTeam =
-        teamMembers.find((tm) => tm.role === highestRole) || teamMembers[0];
+        teamMembersList.find((tm) => tm.role === highestRole) ||
+        teamMembersList[0];
     }
 
     return {
       user: session.user,
-      teamId: selectedTeam.team_id,
+      teamId: selectedTeam.teamId,
       teamRole: selectedTeam.role,
     };
   } catch (error) {

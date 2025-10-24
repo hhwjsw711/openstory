@@ -1,11 +1,11 @@
-import Image from 'next/image';
-import type * as React from 'react';
-import { useCallback } from 'react';
 import { GalleryIcon } from '@/components/icons/gallery-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Style } from '@/types/database';
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback } from 'react';
 
 interface StyleSelectorProps {
   selectedStyleId: string | null;
@@ -159,7 +159,6 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {Array.from({ length: 8 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton key
           <StyleCardSkeleton key={`skeleton-${index}`} />
         ))}
       </div>

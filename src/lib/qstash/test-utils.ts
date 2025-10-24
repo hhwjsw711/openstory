@@ -52,12 +52,9 @@ export const createMockSupabaseClient = () => {
       limit: mock().mockReturnThis(),
       order: mock().mockReturnThis(),
       range: mock().mockReturnThis(),
-      // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
       then: mock().mockReturnThis(),
     };
 
-    // Make the chain thenable - biome wants this as a property
-    // biome-ignore lint/suspicious/noThenProperty: Required for thenable mock
     chain.then = mock((onResolve) => {
       const defaultResult = { data: [], error: null };
       return Promise.resolve(defaultResult).then(onResolve);

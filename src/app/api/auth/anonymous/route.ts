@@ -3,10 +3,11 @@
  * POST /api/auth/anonymous - Create anonymous session
  */
 
-import { NextResponse } from 'next/server';
 import { createAnonymousSession } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db/client';
+import { users, teams, teamMembers } from '@/lib/db/schema';
 
 export async function POST() {
   try {
@@ -24,75 +25,52 @@ export async function POST() {
     }
 
     // Ensure user has a record in our users table and a team
-    const supabase = createServerClient();
+    try {
+      // Create user record if it doesn't exist (upsert)
+      await db
+        .insert(users)
+        .values({
+          id: session.user.id,
+          fullName: session.user.name || null,
+        })
+        .onConflictDoNothing();
 
-    // Create user record if it doesn't exist
-    const { error: userError } = await supabase.from('users').upsert({
-      id: session.user.id,
-      full_name: session.user.name || null,
-    });
+      // Create default team for anonymous user
+      const teamName = `Anonymous Team ${session.user.id.slice(0, 8)}`;
+      const teamSlug = `anon-${session.user.id.slice(0, 8)}`;
 
-    if (userError) {
-      console.error(
-        '[POST /api/auth/anonymous] User creation error:',
-        userError
-      );
+      const [team] = await db
+        .insert(teams)
+        .values({
+          name: teamName,
+          slug: teamSlug,
+        })
+        .returning();
+
+      if (!team) {
+        console.error('[POST /api/auth/anonymous] Team creation failed');
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Failed to create team',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 500 }
+        );
+      }
+
+      // Create team membership for anonymous user
+      await db.insert(teamMembers).values({
+        teamId: team.id,
+        userId: session.user.id,
+        role: 'owner',
+      });
+    } catch (error) {
+      console.error('[POST /api/auth/anonymous] Database error:', error);
       return NextResponse.json(
         {
           success: false,
           message: 'Failed to initialize user account',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 500 }
-      );
-    }
-
-    // Create default team for anonymous user
-    const teamName = `Anonymous Team ${session.user.id.slice(0, 8)}`;
-    const teamSlug = `anon-${session.user.id.slice(0, 8)}`;
-
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .insert({
-        name: teamName,
-        slug: teamSlug,
-      })
-      .select()
-      .single();
-
-    if (teamError || !team) {
-      console.error(
-        '[POST /api/auth/anonymous] Team creation error:',
-        teamError
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Failed to create team',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 500 }
-      );
-    }
-
-    // Create team membership for anonymous user
-    const { error: membershipError } = await supabase
-      .from('team_members')
-      .insert({
-        team_id: team.id,
-        user_id: session.user.id,
-        role: 'owner',
-      });
-
-    if (membershipError) {
-      console.error(
-        '[POST /api/auth/anonymous] Team membership creation error:',
-        membershipError
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Failed to create team membership',
           timestamp: new Date().toISOString(),
         },
         { status: 500 }

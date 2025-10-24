@@ -1,11 +1,11 @@
-import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import Image from 'next/image';
-import type * as React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
+import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface MotionPreviewProps {
   videoUrl?: string;
@@ -301,8 +301,6 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           >
             {/* Progress bar */}
             <div className="mb-2">
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: seek bar */}
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: seek bar */}
               <div
                 className="bg-white/20 h-1 w-full cursor-pointer rounded-full"
                 onClick={handleSeek}
