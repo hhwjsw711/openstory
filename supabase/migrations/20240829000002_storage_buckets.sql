@@ -1,41 +1,39 @@
 -- Create storage buckets for media assets
--- Note: This SQL creates the bucket records, actual bucket creation happens via Supabase Storage API
+-- Note: In newer Supabase versions, bucket configuration (file size limits, mime types)
+-- is managed through the Supabase Dashboard or Storage API, not SQL migrations.
+-- This migration only creates the bucket records; configure limits via Dashboard.
 
 -- Insert bucket configurations into storage.buckets table
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES 
-    -- Thumbnails bucket for frame images
-    ('thumbnails', 'thumbnails', true, 10485760, -- 10MB limit
-     ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']),
-    
-    -- Videos bucket for generated video clips
-    ('videos', 'videos', true, 524288000, -- 500MB limit
-     ARRAY['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']),
-    
-    -- Characters bucket for LoRA model files and previews
-    ('characters', 'characters', true, 104857600, -- 100MB limit
-     ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/octet-stream']),
-    
-    -- Styles bucket for style preview images
-    ('styles', 'styles', true, 10485760, -- 10MB limit
-     ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp']),
-    
-    -- Audio bucket for sound effects and music
-    ('audio', 'audio', true, 52428800, -- 50MB limit
-     ARRAY['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm']),
-    
-    -- Scripts bucket for uploaded script files
-    ('scripts', 'scripts', false, 5242880, -- 5MB limit
-     ARRAY['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
-    
-    -- Exports bucket for final exported videos
-    ('exports', 'exports', false, 2147483648, -- 2GB limit
-     ARRAY['video/mp4', 'video/webm', 'application/zip'])
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    public = EXCLUDED.public,
-    file_size_limit = EXCLUDED.file_size_limit,
-    allowed_mime_types = EXCLUDED.allowed_mime_types;
+INSERT INTO storage.buckets (id, name)
+VALUES
+    -- Thumbnails bucket for frame images (public via RLS policies)
+    -- Recommended: 10MB limit, image/* mime types
+    ('thumbnails', 'thumbnails'),
+
+    -- Videos bucket for generated video clips (public via RLS policies)
+    -- Recommended: 500MB limit, video/* mime types
+    ('videos', 'videos'),
+
+    -- Characters bucket for LoRA model files and previews (public via RLS policies)
+    -- Recommended: 100MB limit, image/* and application/octet-stream
+    ('characters', 'characters'),
+
+    -- Styles bucket for style preview images (public via RLS policies)
+    -- Recommended: 10MB limit, image/* mime types
+    ('styles', 'styles'),
+
+    -- Audio bucket for sound effects and music (public via RLS policies)
+    -- Recommended: 50MB limit, audio/* mime types
+    ('audio', 'audio'),
+
+    -- Scripts bucket for uploaded script files (private via RLS policies)
+    -- Recommended: 5MB limit, text/*, application/pdf, .docx
+    ('scripts', 'scripts'),
+
+    -- Exports bucket for final exported videos (private via RLS policies)
+    -- Recommended: 2GB limit, video/*, application/zip
+    ('exports', 'exports')
+ON CONFLICT (id) DO NOTHING;
 
 -- Create RLS policies for storage buckets
 -- Note: These are permissive for service role, restrictive for others

@@ -3,35 +3,41 @@
  * Team management, members, and invitations
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+  sql,
+} from 'drizzle-orm';
+import {
+  foreignKey,
   index,
+  pgEnum,
+  pgPolicy,
   pgTable,
   primaryKey,
-  text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { user } from './auth';
+import { users } from './auth';
 
 // Enums
-export const teamMemberRoleEnum = [
+export const teamMemberRole = pgEnum('team_member_role', [
   'owner',
   'admin',
   'member',
   'viewer',
-] as const;
-export type TeamMemberRole = (typeof teamMemberRoleEnum)[number];
+]);
 
-export const invitationStatusEnum = [
+export const invitationStatus = pgEnum('invitation_status', [
   'pending',
   'accepted',
   'declined',
   'expired',
-] as const;
-export type InvitationStatus = (typeof invitationStatusEnum)[number];
+]);
 
 /**
  * Teams table
@@ -40,22 +46,33 @@ export type InvitationStatus = (typeof invitationStatusEnum)[number];
 export const teams = pgTable(
   'teams',
   {
-    id: uuid('id')
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    name: varchar('name', { length: 255 }).notNull(),
-    slug: varchar('slug', { length: 255 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+      .notNull(),
+    name: varchar({ length: 255 }).notNull(),
+    slug: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
-  (table) => ({
-    slugIdx: index('idx_teams_slug').on(table.slug),
-    slugUnique: unique('teams_slug_unique').on(table.slug),
-  })
+  (table) => [
+    index('idx_teams_slug').using(
+      'btree',
+      table.slug.asc().nullsLast().op('text_ops')
+    ),
+    unique('teams_slug_key').on(table.slug),
+    unique('teams_slug_unique').on(table.slug),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
 );
 
 /**
@@ -65,24 +82,43 @@ export const teams = pgTable(
 export const teamMembers = pgTable(
   'team_members',
   {
-    teamId: uuid('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: teamMemberRoleEnum })
-      .notNull()
-      .default('member'),
-    joinedAt: timestamp('joined_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    teamId: uuid('team_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    role: teamMemberRole().default('member').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.teamId, table.userId] }),
-    teamIdIdx: index('idx_team_members_team_id').on(table.teamId),
-    userIdIdx: index('idx_team_members_user_id').on(table.userId),
-  })
+  (table) => [
+    index('idx_team_members_team_id').using(
+      'btree',
+      table.teamId.asc().nullsLast().op('uuid_ops')
+    ),
+    index('idx_team_members_user_id').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops')
+    ),
+    foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: 'team_members_team_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'team_members_user_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({
+      columns: [table.teamId, table.userId],
+      name: 'team_members_pkey',
+    }),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
 );
 
 /**
@@ -92,40 +128,80 @@ export const teamMembers = pgTable(
 export const teamInvitations = pgTable(
   'team_invitations',
   {
-    id: uuid('id')
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    teamId: uuid('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    email: varchar('email', { length: 255 }).notNull(),
-    role: text('role', { enum: teamMemberRoleEnum })
-      .notNull()
-      .default('member'),
-    invitedBy: uuid('invited_by')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    status: text('status', { enum: invitationStatusEnum })
-      .notNull()
-      .default('pending'),
-    token: varchar('token', { length: 255 }).notNull().unique(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
-    declinedAt: timestamp('declined_at', { withTimezone: true }),
+      .notNull(),
+    teamId: uuid('team_id').notNull(),
+    email: varchar({ length: 255 }).notNull(),
+    role: teamMemberRole().default('member').notNull(),
+    invitedBy: uuid('invited_by').notNull(),
+    status: invitationStatus().default('pending').notNull(),
+    token: varchar({ length: 255 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
+      .default(sql`(now() + '7 days'::interval)`)
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    acceptedAt: timestamp('accepted_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    declinedAt: timestamp('declined_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
   },
-  (table) => ({
-    teamIdIdx: index('idx_team_invitations_team_id').on(table.teamId),
-    emailIdx: index('idx_team_invitations_email').on(table.email),
-    tokenIdx: index('idx_team_invitations_token').on(table.token),
-    statusIdx: index('idx_team_invitations_status').on(table.status),
-    expiresAtIdx: index('idx_team_invitations_expires_at').on(table.expiresAt),
-  })
+  (table) => [
+    index('idx_team_invitations_email').using(
+      'btree',
+      table.email.asc().nullsLast().op('text_ops')
+    ),
+    index('idx_team_invitations_expires_at').using(
+      'btree',
+      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
+    ),
+    index('idx_team_invitations_status').using(
+      'btree',
+      table.status.asc().nullsLast().op('enum_ops')
+    ),
+    index('idx_team_invitations_team_id').using(
+      'btree',
+      table.teamId.asc().nullsLast().op('uuid_ops')
+    ),
+    index('idx_team_invitations_token').using(
+      'btree',
+      table.token.asc().nullsLast().op('text_ops')
+    ),
+    uniqueIndex('idx_team_invitations_unique_pending')
+      .using(
+        'btree',
+        table.teamId.asc().nullsLast().op('uuid_ops'),
+        table.email.asc().nullsLast().op('uuid_ops')
+      )
+      .where(sql`(status = 'pending'::invitation_status)`),
+    foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: 'team_invitations_team_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.invitedBy],
+      foreignColumns: [users.id],
+      name: 'team_invitations_invited_by_fkey',
+    }).onDelete('cascade'),
+    unique('team_invitations_token_key').on(table.token),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
 );
 
 // Relations
@@ -139,9 +215,9 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
     fields: [teamMembers.teamId],
     references: [teams.id],
   }),
-  user: one(user, {
+  user: one(users, {
     fields: [teamMembers.userId],
-    references: [user.id],
+    references: [users.id],
   }),
 }));
 
@@ -152,9 +228,9 @@ export const teamInvitationsRelations = relations(
       fields: [teamInvitations.teamId],
       references: [teams.id],
     }),
-    invitedByUser: one(user, {
+    user: one(users, {
       fields: [teamInvitations.invitedBy],
-      references: [user.id],
+      references: [users.id],
     }),
   })
 );
@@ -168,3 +244,7 @@ export type NewTeamMember = InferInsertModel<typeof teamMembers>;
 
 export type TeamInvitation = InferSelectModel<typeof teamInvitations>;
 export type NewTeamInvitation = InferInsertModel<typeof teamInvitations>;
+
+// Enum type exports
+export type TeamMemberRole = (typeof teamMemberRole.enumValues)[number];
+export type InvitationStatus = (typeof invitationStatus.enumValues)[number];

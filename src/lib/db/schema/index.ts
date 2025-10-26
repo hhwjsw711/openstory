@@ -7,30 +7,39 @@
 export {
   account,
   accountRelations,
+  anonymousSessions,
   session,
   sessionRelations,
   user,
+  userProfiles,
   userRelations,
+  users,
   verification,
 } from './auth';
 
 export type {
   Account,
+  AnonymousSession,
   NewAccount,
+  NewAnonymousSession,
   NewSession,
   NewUser,
+  NewUserProfile,
+  NewUsers,
   NewVerification,
   Session,
   User,
+  UserProfile,
+  Users,
   Verification,
 } from './auth';
 
 // Teams
 export {
-  invitationStatusEnum,
+  invitationStatus,
   teamInvitations,
   teamInvitationsRelations,
-  teamMemberRoleEnum,
+  teamMemberRole,
   teamMembers,
   teamMembersRelations,
   teams,
@@ -52,9 +61,9 @@ export type {
 export {
   frames,
   framesRelations,
+  sequenceStatus,
   sequences,
   sequencesRelations,
-  sequenceStatusEnum,
 } from './sequences';
 
 export type {
@@ -94,12 +103,12 @@ export type {
 
 // API Request Tracking
 export {
+  falRequestStatus,
   falRequests,
   falRequestsRelations,
-  falRequestStatusEnum,
   letzaiRequests,
   letzaiRequestsRelations,
-  letzaiRequestStatusEnum,
+  letzaiRequestStatus,
 } from './tracking';
 
 export type {
@@ -115,9 +124,9 @@ export type {
 export {
   credits,
   creditsRelations,
+  transactionType,
   transactions,
   transactionsRelations,
-  transactionTypeEnum,
 } from './credits';
 
 export type {
@@ -141,6 +150,11 @@ export const schema = {
   userRelations,
   sessionRelations,
   accountRelations,
+
+  // Velro User tables
+  users,
+  userProfiles,
+  anonymousSessions,
 
   // Teams
   teams,
@@ -185,10 +199,13 @@ export const schema = {
 import {
   account,
   accountRelations,
+  anonymousSessions,
   session,
   sessionRelations,
   user,
+  userProfiles,
   userRelations,
+  users,
   verification,
 } from './auth';
 

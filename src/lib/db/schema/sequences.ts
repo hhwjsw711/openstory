@@ -3,11 +3,19 @@
  * Core content creation entities for video sequences
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+  sql,
+} from 'drizzle-orm';
+import {
+  foreignKey,
   index,
   integer,
   jsonb,
+  pgEnum,
+  pgPolicy,
   pgTable,
   text,
   timestamp,
@@ -15,19 +23,18 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { user } from './auth';
+import { users } from './auth';
 import { styles } from './libraries';
 import { teams } from './teams';
 
 // Enums
-export const sequenceStatusEnum = [
+export const sequenceStatus = pgEnum('sequence_status', [
   'draft',
   'processing',
   'completed',
   'failed',
   'archived',
-] as const;
-export type SequenceStatus = (typeof sequenceStatusEnum)[number];
+]);
 
 /**
  * Sequences table
@@ -36,40 +43,69 @@ export type SequenceStatus = (typeof sequenceStatusEnum)[number];
 export const sequences = pgTable(
   'sequences',
   {
-    id: uuid('id')
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    teamId: uuid('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    title: varchar('title', { length: 500 }).notNull(),
-    script: text('script'),
-    status: text('status', { enum: sequenceStatusEnum })
-      .notNull()
-      .default('draft'),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
-    styleId: uuid('style_id').references(() => styles.id, {
-      onDelete: 'set null',
-    }),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    createdBy: uuid('created_by').references(() => user.id, {
-      onDelete: 'set null',
-    }),
-    updatedBy: uuid('updated_by').references(() => user.id, {
-      onDelete: 'set null',
-    }),
+      .notNull(),
+    teamId: uuid('team_id').notNull(),
+    title: varchar({ length: 500 }).notNull(),
+    script: text(),
+    status: sequenceStatus().default('draft').notNull(),
+    metadata: jsonb().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    createdBy: uuid('created_by'),
+    updatedBy: uuid('updated_by'),
+    styleId: uuid('style_id'),
   },
-  (table) => ({
-    teamIdIdx: index('idx_sequences_team_id').on(table.teamId),
-    statusIdx: index('idx_sequences_status').on(table.status),
-    createdAtIdx: index('idx_sequences_created_at').on(table.createdAt),
-    styleIdIdx: index('idx_sequences_style_id').on(table.styleId),
-  })
+  (table) => [
+    index('idx_sequences_created_at').using(
+      'btree',
+      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
+    ),
+    index('idx_sequences_status').using(
+      'btree',
+      table.status.asc().nullsLast().op('enum_ops')
+    ),
+    index('idx_sequences_style_id').using(
+      'btree',
+      table.styleId.asc().nullsLast().op('uuid_ops')
+    ),
+    index('idx_sequences_team_id').using(
+      'btree',
+      table.teamId.asc().nullsLast().op('uuid_ops')
+    ),
+    foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: 'sequences_team_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'sequences_created_by_fkey',
+    }).onDelete('set null'),
+    foreignKey({
+      columns: [table.updatedBy],
+      foreignColumns: [users.id],
+      name: 'sequences_updated_by_fkey',
+    }).onDelete('set null'),
+    foreignKey({
+      columns: [table.styleId],
+      foreignColumns: [styles.id],
+      name: 'sequences_style_id_fkey',
+    }).onDelete('set null'),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
 );
 
 /**
@@ -79,33 +115,50 @@ export const sequences = pgTable(
 export const frames = pgTable(
   'frames',
   {
-    id: uuid('id')
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    sequenceId: uuid('sequence_id')
-      .notNull()
-      .references(() => sequences.id, { onDelete: 'cascade' }),
+      .notNull(),
+    sequenceId: uuid('sequence_id').notNull(),
     orderIndex: integer('order_index').notNull(),
-    description: text('description'),
+    description: text(),
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
     videoUrl: text('video_url'),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    metadata: jsonb().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
-  (table) => ({
-    sequenceIdIdx: index('idx_frames_sequence_id').on(table.sequenceId),
-    orderIdx: index('idx_frames_order').on(table.sequenceId, table.orderIndex),
-    sequenceOrderUnique: unique('frames_sequence_id_order_index_key').on(
+  (table) => [
+    index('idx_frames_order').using(
+      'btree',
+      table.sequenceId.asc().nullsLast().op('uuid_ops'),
+      table.orderIndex.asc().nullsLast().op('uuid_ops')
+    ),
+    index('idx_frames_sequence_id').using(
+      'btree',
+      table.sequenceId.asc().nullsLast().op('uuid_ops')
+    ),
+    foreignKey({
+      columns: [table.sequenceId],
+      foreignColumns: [sequences.id],
+      name: 'frames_sequence_id_fkey',
+    }).onDelete('cascade'),
+    unique('frames_sequence_id_order_index_key').on(
       table.sequenceId,
       table.orderIndex
     ),
-  })
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
 );
 
 // Relations
@@ -114,21 +167,21 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
     fields: [sequences.teamId],
     references: [teams.id],
   }),
-  createdByUser: one(user, {
+  user_createdBy: one(users, {
     fields: [sequences.createdBy],
-    references: [user.id],
-    relationName: 'sequencesCreatedBy',
+    references: [users.id],
+    relationName: 'sequences_createdBy_users_id',
   }),
-  updatedByUser: one(user, {
+  user_updatedBy: one(users, {
     fields: [sequences.updatedBy],
-    references: [user.id],
-    relationName: 'sequencesUpdatedBy',
+    references: [users.id],
+    relationName: 'sequences_updatedBy_users_id',
   }),
-  frames: many(frames),
   style: one(styles, {
     fields: [sequences.styleId],
     references: [styles.id],
   }),
+  frames: many(frames),
 }));
 
 export const framesRelations = relations(frames, ({ one }) => ({
@@ -144,3 +197,6 @@ export type NewSequence = InferInsertModel<typeof sequences>;
 
 export type Frame = InferSelectModel<typeof frames>;
 export type NewFrame = InferInsertModel<typeof frames>;
+
+// Enum type exports
+export type SequenceStatus = (typeof sequenceStatus.enumValues)[number];

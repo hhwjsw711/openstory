@@ -42,9 +42,9 @@ export interface TeamInvitation {
   // SECURITY: Token should NOT be included in API responses
   // It should only be sent via secure email channel
   status: string;
-  expiresAt: string;
-  createdAt: string;
-  acceptedAt: string | null;
+  expiresAt: Date;
+  createdAt: Date;
+  acceptedAt: Date | null;
 }
 
 export interface CreateInvitationParams {
@@ -172,9 +172,9 @@ export class TeamService {
       role: invitation.role,
       invitedBy: invitation.invitedBy,
       status: invitation.status,
-      expiresAt: invitation.expiresAt.toISOString(),
-      createdAt: invitation.createdAt.toISOString(),
-      acceptedAt: invitation.acceptedAt?.toISOString() ?? null,
+      expiresAt: invitation.expiresAt,
+      createdAt: invitation.createdAt,
+      acceptedAt: invitation.acceptedAt ?? null,
     };
   }
 
@@ -391,9 +391,9 @@ export class TeamService {
       role: inv.role,
       invitedBy: inv.invitedBy,
       status: inv.status,
-      expiresAt: inv.expiresAt.toISOString(),
-      createdAt: inv.createdAt.toISOString(),
-      acceptedAt: inv.acceptedAt?.toISOString() ?? null,
+      expiresAt: inv.expiresAt,
+      createdAt: inv.createdAt,
+      acceptedAt: inv.acceptedAt ?? null,
     }));
   }
 }

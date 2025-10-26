@@ -1,75 +1,280 @@
 /**
- * Better Auth Schema
- * Authentication tables managed by Better Auth library
- * Uses camelCase column names as per Better Auth conventions
+ * Authentication Schema
+ * Better Auth tables and user-related tables
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+  sql,
+} from 'drizzle-orm';
+import {
+  boolean,
+  index,
+  jsonb,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').default(false).notNull(),
-  image: text('image'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-  isAnonymous: boolean('is_anonymous'),
-  fullName: text('full_name'),
-  avatarUrl: text('avatar_url'),
-  onboardingCompleted: boolean('onboarding_completed').default(false),
-});
+/**
+ * Better Auth user table
+ * Core authentication identity table using UUID for Velro compatibility
+ */
+export const user = pgTable(
+  'user',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    email: text().notNull(),
+    emailVerified: boolean().default(false).notNull(),
+    name: text(),
+    image: text(),
+    createdAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    isAnonymous: boolean().default(false),
+    fullName: text(),
+    avatarUrl: text(),
+    onboardingCompleted: boolean().default(false),
+  },
+  (table) => [
+    unique('user_email_key').on(table.email),
+    pgPolicy('Service role full access', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
 
-export const session = pgTable('session', {
-  id: text('id').primaryKey(),
-  expiresAt: timestamp('expires_at').notNull(),
-  token: text('token').notNull().unique(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-});
+/**
+ * Better Auth session table
+ * Tracks active user sessions
+ */
+export const session = pgTable(
+  'session',
+  {
+    id: text().primaryKey().notNull(),
+    expiresAt: timestamp({ withTimezone: true, mode: 'date' }).notNull(),
+    token: text().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    ipAddress: text(),
+    userAgent: text(),
+    userId: uuid().notNull(),
+  },
+  (table) => [
+    index('idx_session_expires_at').using(
+      'btree',
+      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
+    ),
+    index('idx_session_token').using(
+      'btree',
+      table.token.asc().nullsLast().op('text_ops')
+    ),
+    index('idx_session_user_id').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops')
+    ),
+    unique('session_token_key').on(table.token),
+    pgPolicy('Service role full access', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
 
-export const account = pgTable('account', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
-  providerId: text('provider_id').notNull(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  accessToken: text('access_token'),
-  refreshToken: text('refresh_token'),
-  idToken: text('id_token'),
-  accessTokenExpiresAt: timestamp('access_token_expires_at'),
-  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
-  scope: text('scope'),
-  password: text('password'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+/**
+ * Better Auth account table
+ * Links users to auth providers (OAuth, email/password, etc)
+ */
+export const account = pgTable(
+  'account',
+  {
+    id: text().primaryKey().notNull(),
+    accountId: text().notNull(),
+    providerId: text().notNull(),
+    userId: uuid().notNull(),
+    accessToken: text(),
+    refreshToken: text(),
+    idToken: text(),
+    accessTokenExpiresAt: timestamp({ withTimezone: true, mode: 'date' }),
+    refreshTokenExpiresAt: timestamp({ withTimezone: true, mode: 'date' }),
+    scope: text(),
+    password: text(),
+    createdAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('idx_account_provider').using(
+      'btree',
+      table.providerId.asc().nullsLast().op('text_ops'),
+      table.accountId.asc().nullsLast().op('text_ops')
+    ),
+    index('idx_account_user_id').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops')
+    ),
+    pgPolicy('Service role full access', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
 
-export const verification = pgTable('verification', {
-  id: text('id').primaryKey(),
-  identifier: text('identifier').notNull(),
-  value: text('value').notNull(),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+/**
+ * Better Auth verification table
+ * Manages email verification tokens
+ */
+export const verification = pgTable(
+  'verification',
+  {
+    id: text().primaryKey().notNull(),
+    identifier: text().notNull(),
+    value: text().notNull(),
+    expiresAt: timestamp({ withTimezone: true, mode: 'date' }).notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('idx_verification_expires_at').using(
+      'btree',
+      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
+    ),
+    index('idx_verification_identifier').using(
+      'btree',
+      table.identifier.asc().nullsLast().op('text_ops')
+    ),
+    pgPolicy('Service role full access', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
+
+/**
+ * Velro users table
+ * Application-specific user data, synced from Better Auth via trigger
+ */
+export const users = pgTable(
+  'users',
+  {
+    id: uuid().primaryKey().notNull(),
+    fullName: varchar('full_name', { length: 255 }),
+    avatarUrl: text('avatar_url'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
+
+/**
+ * User profiles table
+ * Extended user profile information
+ */
+export const userProfiles = pgTable(
+  'user_profiles',
+  {
+    id: uuid().primaryKey().notNull(),
+    anonymousId: varchar('anonymous_id', { length: 36 }),
+    fullName: varchar('full_name', { length: 255 }),
+    avatarUrl: text('avatar_url'),
+    onboardingCompleted: boolean('onboarding_completed').default(false),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('idx_user_profiles_anonymous_id').using(
+      'btree',
+      table.anonymousId.asc().nullsLast().op('text_ops')
+    ),
+    unique('user_profiles_anonymous_id_key').on(table.anonymousId),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
+
+/**
+ * Anonymous sessions table
+ * Manages temporary sessions for anonymous users
+ */
+export const anonymousSessions = pgTable(
+  'anonymous_sessions',
+  {
+    id: varchar({ length: 36 }).primaryKey().notNull(),
+    teamId: uuid('team_id'),
+    data: jsonb().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).default(sql`(now() + '30 days'::interval)`),
+  },
+  (table) => [
+    index('idx_anonymous_sessions_expires').using(
+      'btree',
+      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
+    ),
+    index('idx_anonymous_sessions_team_id').using(
+      'btree',
+      table.teamId.asc().nullsLast().op('uuid_ops')
+    ),
+    pgPolicy('Service role bypass', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`true`,
+    }),
+  ]
+);
 
 // Relations
 export const userRelations = relations(user, ({ many }) => ({
@@ -103,3 +308,12 @@ export type NewAccount = InferInsertModel<typeof account>;
 
 export type Verification = InferSelectModel<typeof verification>;
 export type NewVerification = InferInsertModel<typeof verification>;
+
+export type Users = InferSelectModel<typeof users>;
+export type NewUsers = InferInsertModel<typeof users>;
+
+export type UserProfile = InferSelectModel<typeof userProfiles>;
+export type NewUserProfile = InferInsertModel<typeof userProfiles>;
+
+export type AnonymousSession = InferSelectModel<typeof anonymousSessions>;
+export type NewAnonymousSession = InferInsertModel<typeof anonymousSessions>;
