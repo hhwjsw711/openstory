@@ -12,6 +12,7 @@ export const createSequenceSchema = createInsertSchema(sequences, {
   script: z.string().min(10).max(10000), // Override to make it required with business rules
 }).omit({
   id: true,
+  teamId: true, // Server determines from authenticated user
   status: true,
   createdAt: true,
   updatedAt: true,

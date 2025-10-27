@@ -3,8 +3,9 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { serve } from '@upstash/workflow/nextjs';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
+import { db } from '@/lib/db/client';
+import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import type { CreateFrameParams } from '@/lib/services/frame.service';
 import { frameService } from '@/lib/services/frame.service';
@@ -18,8 +19,7 @@ import {
   validateWorkflowAuth,
   workflowConfig,
 } from '@/lib/workflow';
-import { db } from '@/lib/db/client';
-import { sequences } from '@/lib/db/schema';
+import { serve } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 // Common cinematography shot types for variety
