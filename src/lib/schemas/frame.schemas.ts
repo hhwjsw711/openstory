@@ -17,7 +17,6 @@ export const createFrameSchema = z.object({
 });
 
 export const updateFrameSchema = z.object({
-  id: z.string().uuid(),
   description: z.string().min(1).max(5000).optional(),
   order_index: z.number().int().optional(),
   thumbnail_url: z.string().url().nullable().optional(),
