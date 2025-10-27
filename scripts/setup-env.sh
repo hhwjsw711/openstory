@@ -77,14 +77,11 @@ fi
 
 # Generate a random secret for BetterAuth
 BETTER_AUTH_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)
-BETTER_AUTH_URL="http://localhost:3000"
 
 cat >> $ENV_FILE << EOF
 
 # BetterAuth Configuration
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
-BETTER_AUTH_URL=$BETTER_AUTH_URL
-NEXT_PUBLIC_BETTER_AUTH_URL=$BETTER_AUTH_URL
 
 # Google OAuth Configuration (optional - for Google sign-in)
 # GOOGLE_CLIENT_ID=your-google-client-id

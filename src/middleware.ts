@@ -3,10 +3,10 @@
  * Lightweight middleware for Velro's anonymous-first approach
  */
 
-import { betterFetch } from '@better-fetch/fetch';
+import { auth } from '@/lib/auth/config';
+import { headers } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import type { Session } from '@/lib/auth/config';
 
 // Routes that require full authentication (not anonymous)
 const authRequiredRoutes = ['/settings', '/billing'];
@@ -28,42 +28,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for BetterAuth session using the proper API
-  const { data: session, error } = await betterFetch<Session>(
-    '/api/auth/get-session',
-    {
-      baseURL: request.nextUrl.origin,
-      headers: {
-        cookie: request.headers.get('cookie') || '',
-      },
-    }
-  );
-
-  // SECURITY: Fail closed if auth service is unavailable
-  // Prevents authentication bypass during service degradation
-  if (error) {
-    console.error('[Middleware] Auth service error:', error);
-
-    // Check if this is a protected route
-    const isAuthRequired = authRequiredRoutes.some((route) =>
-      pathname.startsWith(route)
-    );
-
-    if (isAuthRequired) {
-      // Deny access to protected routes when auth service is down
-      return NextResponse.json(
-        {
-          error: 'Authentication service unavailable',
-          message: 'Unable to verify authentication. Please try again.',
-        },
-        { status: 503 }
-      );
-    }
-
-    // Allow public routes to continue even if auth service is down
-    // This maintains availability for anonymous users
-    return NextResponse.next();
-  }
+  // Check for BetterAuth session using direct API access
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
   const hasSession = !!session;
   const isAnonymous = session?.user?.isAnonymous ?? true;
@@ -97,6 +65,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: 'nodejs', // Required for direct API access with auth.api.getSession
   matcher: [
     /*
      * Match all request paths except for the ones starting with:

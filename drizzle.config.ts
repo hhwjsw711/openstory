@@ -1,7 +1,6 @@
 import { defineConfig } from 'drizzle-kit';
 
-const connectionString =
-  process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
+const connectionString = process.env.POSTGRES_URL;
 
 if (!connectionString) {
   throw new Error(

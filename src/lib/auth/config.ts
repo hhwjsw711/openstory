@@ -15,7 +15,9 @@ import { migrateAnonymousUserData } from './migrate-user-data';
 const requiredEnvVars = {
   DATABASE_URL: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  BASE_URL: process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000',
 } as const;
 
 // Validate environment variables
@@ -36,7 +38,7 @@ export const auth = betterAuth({
     },
   }),
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
-  baseURL: requiredEnvVars.BETTER_AUTH_URL,
+  baseURL: requiredEnvVars.BASE_URL,
 
   // Session configuration optimized for anonymous users
   // SECURITY: Reduced from 1 year to 90 days to

@@ -3,7 +3,7 @@
  * GET /api/user/me - Get current user
  */
 
-import { createAnonymousSession, getSession } from '@/lib/auth/server';
+import { getSession } from '@/lib/auth/server';
 import { db } from '@/lib/db/client';
 import { user } from '@/lib/db/schema';
 import { ensureUserAndTeam } from '@/lib/db/helpers';
@@ -16,47 +16,14 @@ export async function GET() {
     const session = await getSession();
 
     if (!session?.user) {
-      // No session exists, create anonymous session
-      const anonymousSession = await createAnonymousSession();
-
-      if (!anonymousSession?.user) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Failed to create anonymous session',
-            timestamp: new Date().toISOString(),
-          },
-          { status: 500 }
-        );
-      }
-
-      const authUser = anonymousSession.user;
-
-      // Ensure user has database record and team
-      const createResult = await ensureUserAndTeam(authUser);
-      if (!createResult.success || !createResult.data) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              createResult.error || 'Failed to create anonymous user profile',
-            timestamp: new Date().toISOString(),
-          },
-          { status: 500 }
-        );
-      }
-
+      // No session exists - signal client to create anonymous session
       return NextResponse.json(
         {
-          success: true,
-          data: {
-            user: createResult.data,
-            isAuthenticated: false,
-            isAnonymous: true,
-          },
+          success: false,
+          message: 'REQUIRES_CLIENT_AUTH',
           timestamp: new Date().toISOString(),
         },
-        { status: 200 }
+        { status: 401 }
       );
     }
 

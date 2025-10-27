@@ -132,39 +132,6 @@ export async function checkTeamAccess(teamId: string): Promise<boolean> {
 }
 
 /**
- * Create an anonymous session
- * Used when users start creating without signing up
- */
-export async function createAnonymousSession(): Promise<Session | null> {
-  try {
-    const headersList = await headers();
-    // Use the anonymous plugin's sign-in method
-    const result = await auth.api.signInAnonymous({
-      headers: headersList,
-    });
-
-    if (!result) {
-      return null;
-    }
-
-    // Return the session data
-    return {
-      session: {
-        token: result.token,
-        userId: result.user.id,
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-        createdAt: result.user.createdAt,
-        updatedAt: result.user.updatedAt,
-      },
-      user: result.user,
-    } as unknown as Session;
-  } catch (error) {
-    console.error('[Auth] Failed to create anonymous session:', error);
-    return null;
-  }
-}
-
-/**
  * Sign out the current user
  */
 export async function signOut(): Promise<{ success: boolean; error?: string }> {
