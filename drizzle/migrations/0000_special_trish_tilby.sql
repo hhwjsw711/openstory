@@ -1,3 +1,5 @@
+-- Enable pg_trgm extension for GIN trigram indexes
+CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
 CREATE TYPE "public"."fal_request_status" AS ENUM('pending', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."invitation_status" AS ENUM('pending', 'accepted', 'declined', 'expired');--> statement-breakpoint
 CREATE TYPE "public"."letzai_request_status" AS ENUM('pending', 'in_progress', 'completed', 'failed');--> statement-breakpoint
