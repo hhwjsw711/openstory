@@ -31,6 +31,7 @@ export async function GET() {
     // 1. User doesn't exist in database (creates user + team)
     // 2. User exists but has no team (creates team only)
     const ensureResult = await ensureUserAndTeam(authUser);
+    console.log('ensureResult', JSON.stringify(ensureResult, null, 2));
     if (!ensureResult.success || !ensureResult.data) {
       return NextResponse.json(
         {
@@ -44,6 +45,7 @@ export async function GET() {
 
     // Get complete team info with team name
     const teamMembership = await getUserDefaultTeam(authUser.id);
+    console.log('teamMembership', JSON.stringify(teamMembership, null, 2));
 
     return NextResponse.json(
       {
