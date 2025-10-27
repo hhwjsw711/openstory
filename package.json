@@ -18,7 +18,7 @@
     "db:generate": "bun --bun drizzle-kit generate",
     "db:migrate": "bun --bun drizzle-kit migrate",
     "db:push": "bun --bun drizzle-kit push",
-    "db:studio": "bun --bun drizzle-kit studio",
+    "db:studio": "bun --env-file=.env.development.local drizzle-kit studio",
     "db:check": "bun --bun drizzle-kit check",
     "db:seed": "bun --bun scripts/seed.ts",
     "supabase:start": "bunx supabase start",

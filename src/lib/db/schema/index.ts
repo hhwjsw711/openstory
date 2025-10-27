@@ -7,7 +7,6 @@
 export {
   account,
   accountRelations,
-  anonymousSessions,
   session,
   sessionRelations,
   user,
@@ -17,9 +16,7 @@ export {
 
 export type {
   Account,
-  AnonymousSession,
   NewAccount,
-  NewAnonymousSession,
   NewSession,
   NewUser,
   NewVerification,
@@ -55,9 +52,9 @@ export type {
 export {
   frames,
   framesRelations,
-  sequenceStatus,
   sequences,
   sequencesRelations,
+  sequenceStatus,
 } from './sequences';
 
 export type {
@@ -97,9 +94,9 @@ export type {
 
 // API Request Tracking
 export {
-  falRequestStatus,
   falRequests,
   falRequestsRelations,
+  falRequestStatus,
   letzaiRequests,
   letzaiRequestsRelations,
   letzaiRequestStatus,
@@ -118,9 +115,9 @@ export type {
 export {
   credits,
   creditsRelations,
-  transactionType,
   transactions,
   transactionsRelations,
+  transactionType,
 } from './credits';
 
 export type {
@@ -144,9 +141,6 @@ export const schema = {
   userRelations,
   sessionRelations,
   accountRelations,
-
-  // Anonymous sessions
-  anonymousSessions,
 
   // Teams
   teams,
@@ -191,7 +185,6 @@ export const schema = {
 import {
   account,
   accountRelations,
-  anonymousSessions,
   session,
   sessionRelations,
   user,

@@ -12,14 +12,12 @@ import {
 import {
   boolean,
   index,
-  jsonb,
   pgPolicy,
   pgTable,
   text,
   timestamp,
   unique,
   uuid,
-  varchar,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -183,42 +181,6 @@ export const verification = pgTable(
   ]
 );
 
-/**
- * Anonymous sessions table
- * Manages temporary sessions for anonymous users
- */
-export const anonymousSessions = pgTable(
-  'anonymous_sessions',
-  {
-    id: varchar({ length: 36 }).primaryKey().notNull(),
-    teamId: uuid('team_id'),
-    data: jsonb().default({}),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    expiresAt: timestamp('expires_at', {
-      withTimezone: true,
-      mode: 'date',
-    }).default(sql`(now() + '30 days'::interval)`),
-  },
-  (table) => [
-    index('idx_anonymous_sessions_expires').using(
-      'btree',
-      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
-    ),
-    index('idx_anonymous_sessions_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
-);
-
 // Relations
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
@@ -251,6 +213,3 @@ export type NewAccount = InferInsertModel<typeof account>;
 
 export type Verification = InferSelectModel<typeof verification>;
 export type NewVerification = InferInsertModel<typeof verification>;
-
-export type AnonymousSession = InferSelectModel<typeof anonymousSessions>;
-export type NewAnonymousSession = InferInsertModel<typeof anonymousSessions>;
