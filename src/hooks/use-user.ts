@@ -1,8 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { authClient } from '@/lib/auth/client';
+import { authClient, useSession } from '@/lib/auth/client';
 import type { UserProfile } from '@/types/database';
+import { useQuery } from '@tanstack/react-query';
 
 interface UserData {
   user: UserProfile;
@@ -13,73 +13,45 @@ interface UserData {
   teamName?: string;
 }
 
-async function fetchUser(): Promise<UserData> {
-  const response = await fetch('/api/user/me');
-  const result = await response.json();
-
-  if (!response.ok || !result.success) {
-    if (result.message === 'REQUIRES_CLIENT_AUTH') {
-      const { data, error } = await authClient.signIn.anonymous();
-
-      if (!error && data) {
-        const retryResponse = await fetch('/api/user/me');
-        const retryResult = await retryResponse.json();
-
-        if (retryResponse.ok && retryResult.success && retryResult.data) {
-          const teamResponse = await fetch('/api/user/team');
-          const teamResult = await teamResponse.json();
-
-          return {
-            ...retryResult.data,
-            teamId: teamResult.data?.teamId,
-            teamRole: teamResult.data?.role,
-            teamName: teamResult.data?.teamName,
-          };
-        }
-      }
-
-      throw new Error(error?.message || 'Failed to create anonymous session');
-    }
-
-    throw new Error(result.message || 'Failed to fetch user');
-  }
-
-  if (!result.data) {
-    throw new Error('No user data returned');
-  }
-
-  const teamResponse = await fetch('/api/user/team');
-  const teamResult = await teamResponse.json();
-
-  return {
-    ...result.data,
-    teamId: teamResult.data?.teamId,
-    teamRole: teamResult.data?.role,
-    teamName: teamResult.data?.teamName,
-  };
-}
-
 /**
  * Simple hook for client components that need user data
  * Automatically handles both authenticated and anonymous users with BetterAuth
- * Handles auth errors by creating new anonymous sessions
+ * Creates anonymous session if needed before fetching user data
  */
 export function useUser() {
+  // Check client-side session state (no HTTP request)
+  const { data: session, isPending: isSessionPending } = useSession();
+
   return useQuery({
-    queryKey: ['user'],
-    queryFn: fetchUser,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error) => {
-      // Retry once for auth errors
-      if (
-        error instanceof Error &&
-        (error.message.includes('authentication') ||
-          error.message.includes('REQUIRES_CLIENT_AUTH'))
-      ) {
-        return failureCount < 1;
+    queryKey: ['current-user'],
+    queryFn: async (): Promise<UserData> => {
+      // If no session exists, create anonymous session first
+      if (!session) {
+        const { error } = await authClient.signIn.anonymous();
+        if (error) {
+          throw new Error(
+            error.message || 'Failed to create anonymous session'
+          );
+        }
       }
-      return failureCount < 1;
+
+      // Fetch user data (will succeed since session now exists)
+      const response = await fetch('/api/user/me');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to fetch user');
+      }
+
+      if (!result.data) {
+        throw new Error('No user data returned');
+      }
+
+      return result.data;
     },
+    enabled: !isSessionPending, // Wait for session check to complete
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Retry once on failure
     refetchOnWindowFocus: false, // Prevent refetch on focus to avoid session conflicts
   });
 }

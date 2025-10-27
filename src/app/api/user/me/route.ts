@@ -6,7 +6,7 @@
 import { getSession } from '@/lib/auth/server';
 import { db } from '@/lib/db/client';
 import { user } from '@/lib/db/schema';
-import { ensureUserAndTeam } from '@/lib/db/helpers';
+import { ensureUserAndTeam, getUserDefaultTeam } from '@/lib/db/helpers';
 import { handleApiError } from '@/lib/errors';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -49,6 +49,9 @@ export async function GET() {
         );
       }
 
+      // Get complete team info with team name
+      const teamMembership = await getUserDefaultTeam(authUser.id);
+
       return NextResponse.json(
         {
           success: true,
@@ -56,12 +59,18 @@ export async function GET() {
             user: createResult.data,
             isAuthenticated: !isAnonymous,
             isAnonymous,
+            teamId: teamMembership?.teamId,
+            teamRole: teamMembership?.role,
+            teamName: teamMembership?.teamName,
           },
           timestamp: new Date().toISOString(),
         },
         { status: 200 }
       );
     }
+
+    // Get team info for existing user
+    const teamMembership = await getUserDefaultTeam(authUser.id);
 
     return NextResponse.json(
       {
@@ -70,6 +79,9 @@ export async function GET() {
           user: userProfile,
           isAuthenticated: !isAnonymous,
           isAnonymous,
+          teamId: teamMembership?.teamId,
+          teamRole: teamMembership?.role,
+          teamName: teamMembership?.teamName,
         },
         timestamp: new Date().toISOString(),
       },
