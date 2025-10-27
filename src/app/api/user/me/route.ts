@@ -4,11 +4,8 @@
  */
 
 import { getSession } from '@/lib/auth/server';
-import { db } from '@/lib/db/client';
-import { user } from '@/lib/db/schema';
 import { ensureUserAndTeam, getUserDefaultTeam } from '@/lib/db/helpers';
 import { handleApiError } from '@/lib/errors';
-import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -30,53 +27,29 @@ export async function GET() {
     const authUser = session.user;
     const isAnonymous = authUser.isAnonymous === true;
 
-    // Get user profile from database
-    const userProfile = await db.query.user.findFirst({
-      where: eq(user.id, authUser.id),
-    });
-
-    if (!userProfile) {
-      // User doesn't exist in database, create them
-      const createResult = await ensureUserAndTeam(authUser);
-      if (!createResult.success || !createResult.data) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: createResult.error || 'Failed to create user profile',
-            timestamp: new Date().toISOString(),
-          },
-          { status: 500 }
-        );
-      }
-
-      // Get complete team info with team name
-      const teamMembership = await getUserDefaultTeam(authUser.id);
-
+    // Ensure user and team exist - this handles both:
+    // 1. User doesn't exist in database (creates user + team)
+    // 2. User exists but has no team (creates team only)
+    const ensureResult = await ensureUserAndTeam(authUser);
+    if (!ensureResult.success || !ensureResult.data) {
       return NextResponse.json(
         {
-          success: true,
-          data: {
-            user: createResult.data,
-            isAuthenticated: !isAnonymous,
-            isAnonymous,
-            teamId: teamMembership?.teamId,
-            teamRole: teamMembership?.role,
-            teamName: teamMembership?.teamName,
-          },
+          success: false,
+          message: ensureResult.error || 'Failed to ensure user and team',
           timestamp: new Date().toISOString(),
         },
-        { status: 200 }
+        { status: 500 }
       );
     }
 
-    // Get team info for existing user
+    // Get complete team info with team name
     const teamMembership = await getUserDefaultTeam(authUser.id);
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          user: userProfile,
+          user: ensureResult.data,
           isAuthenticated: !isAnonymous,
           isAnonymous,
           teamId: teamMembership?.teamId,
