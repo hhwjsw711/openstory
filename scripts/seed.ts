@@ -17,10 +17,22 @@ async function seed() {
     throw new Error('POSTGRES_URL environment variable is not set');
   }
 
-  const dbUrl = new URL(connectionString);
-  dbUrl.searchParams.set('sslmode', 'no-verify');
+  const isLocalDevelopment =
+    connectionString.includes('localhost') ||
+    connectionString.includes('127.0.0.1');
 
-  const pool = new Pool({ connectionString: dbUrl.toString() });
+  const dbUrl = new URL(connectionString);
+
+  // Only configure SSL for production (when not local)
+  if (!isLocalDevelopment) {
+    dbUrl.searchParams.set('sslmode', 'no-verify');
+  }
+
+  const pool = new Pool({
+    connectionString: dbUrl.toString(),
+    // Only enable SSL for production connections
+    ssl: isLocalDevelopment ? false : { rejectUnauthorized: false },
+  });
   const db = drizzle(pool);
 
   try {

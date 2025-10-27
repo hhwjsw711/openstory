@@ -7,10 +7,18 @@ if (!conn) {
   throw new Error('POSTGRES_URL environment variable is required');
 }
 
+const isLocalDevelopment =
+  conn.includes('localhost') || conn.includes('127.0.0.1');
+
 const dbUrl = new URL(conn);
-dbUrl.searchParams.set('sslmode', 'no-verify');
+
+// Only configure SSL for production (when not local)
+if (!isLocalDevelopment) {
+  dbUrl.searchParams.set('sslmode', 'no-verify');
+}
 
 export const pgPool = new Pool({
   connectionString: dbUrl.toString(),
-  ssl: { rejectUnauthorized: false },
+  // Only enable SSL for production connections
+  ssl: isLocalDevelopment ? false : { rejectUnauthorized: false },
 });

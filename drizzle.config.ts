@@ -1,7 +1,24 @@
 import { defineConfig } from 'drizzle-kit';
 
-const dbUrl = new URL(process.env.POSTGRES_URL_NON_POOLING!);
-dbUrl.searchParams.set('sslmode', 'no-verify');
+const connectionString =
+  process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
+
+if (!connectionString) {
+  throw new Error(
+    'POSTGRES_URL or POSTGRES_URL_NON_POOLING environment variable is required'
+  );
+}
+
+const isLocalDevelopment =
+  connectionString.includes('localhost') ||
+  connectionString.includes('127.0.0.1');
+
+const dbUrl = new URL(connectionString);
+
+// Only configure SSL for production (when not local)
+if (!isLocalDevelopment) {
+  dbUrl.searchParams.set('sslmode', 'no-verify');
+}
 
 export default defineConfig({
   schema: './src/lib/db/schema/index.ts',
