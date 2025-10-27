@@ -3,18 +3,18 @@
  * Seeds the database with initial template styles and system team
  */
 
+import { styles, teams } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { eq } from 'drizzle-orm';
-import { styles, teams } from '@/lib/db/schema';
 
 const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
 
 async function seed() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.POSTGRES_URL;
 
   if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    throw new Error('POSTGRES_URL environment variable is not set');
   }
 
   const pool = new Pool({ connectionString });

@@ -1,5 +1,5 @@
 // Set required environment variables BEFORE any imports
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.POSTGRES_URL = 'postgresql://test:test@localhost:5432/test';
 process.env.BETTER_AUTH_SECRET = 'test-secret-key-for-testing-purposes-only';
 process.env.BETTER_AUTH_URL = 'http://localhost:3000';
 

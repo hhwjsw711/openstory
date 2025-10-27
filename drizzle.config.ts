@@ -1,11 +1,16 @@
 import { defineConfig } from 'drizzle-kit';
 
+const POSTGRES_URL = process.env.POSTGRES_URL;
+if (!POSTGRES_URL) {
+  throw new Error('POSTGRES_URL environment variable is not set');
+}
+
 export default defineConfig({
   schema: './src/lib/db/schema/index.ts',
   out: './drizzle/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    url: POSTGRES_URL,
   },
   verbose: true,
   strict: true,
