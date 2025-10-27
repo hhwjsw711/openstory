@@ -4,8 +4,6 @@
  * GET /api/sequences - List all sequences for the user's team
  */
 
-import { revalidatePath } from 'next/cache';
-import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
@@ -13,6 +11,8 @@ import { createSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
 import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
@@ -76,10 +76,14 @@ export async function POST(request: Request) {
 
     // Publish to QStash to trigger the workflow
     const qstash = getQStashClient();
-    await qstash.publishJSON({
+    const qstashResponse = await qstash.publishJSON({
       url: `${workflowConfig.baseUrl}/storyboard`,
       body: workflowInput,
     });
+    console.log(
+      '[POST /api/sequences] QStash response:',
+      JSON.stringify(qstashResponse, null, 2)
+    );
 
     // Revalidate paths
     revalidatePath(`/sequences/${sequence.id}`);
