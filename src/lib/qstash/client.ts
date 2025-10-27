@@ -57,20 +57,20 @@ class QStashClient {
   async publishMessage(message: QStashMessage): Promise<QStashResponse> {
     const messageUrl = new URL(message.url);
 
-    // Check for Vercel automation bypass secret and add it to the message URL
-    if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-      messageUrl.searchParams.set(
-        'x-vercel-protection-bypass',
-        process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      );
-    }
-
     try {
       const response = await this.client.publishJSON({
         url: messageUrl.toString(),
         body: message.body,
         headers: {
           'Content-Type': 'application/json',
+          // Check for Vercel automation bypass secret and add it to the message URL
+
+          ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+            ? {
+                'x-vercel-protection-bypass':
+                  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+              }
+            : {}),
           ...message.headers,
         },
         delay: message.delay,
