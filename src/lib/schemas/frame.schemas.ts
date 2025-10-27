@@ -1,28 +1,30 @@
 import { z } from 'zod';
+import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
+import { frames } from '@/lib/db/schema/sequences';
 import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
-import type { Json } from '@/types/database';
 
 /**
  * Shared Zod schemas for frame operations
+ * Generated from Drizzle schema with custom refinements
  */
 
-export const createFrameSchema = z.object({
-  sequence_id: z.string().uuid(),
-  description: z.string().min(1).max(5000),
-  order_index: z.number().int(),
-  thumbnail_url: z.string().url().optional(),
-  video_url: z.string().url().optional(),
-  duration_ms: z.number().int().min(1).optional(),
-  metadata: z.any().optional() as z.ZodType<Json | undefined>,
+export const createFrameSchema = createInsertSchema(frames, {
+  description: (schema) => schema.min(1).max(5000),
+  durationMs: (schema) => schema.min(1),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const updateFrameSchema = z.object({
-  description: z.string().min(1).max(5000).optional(),
-  order_index: z.number().int().optional(),
-  thumbnail_url: z.string().url().nullable().optional(),
-  video_url: z.string().url().nullable().optional(),
-  duration_ms: z.number().int().min(1).nullable().optional(),
-  metadata: z.any().nullable().optional() as z.ZodType<Json | null | undefined>,
+export const updateFrameSchema = createUpdateSchema(frames, {
+  description: (schema) => schema.min(1).max(5000),
+  durationMs: (schema) => schema.min(1),
+}).omit({
+  id: true,
+  sequenceId: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const deleteFrameSchema = z.object({

@@ -46,9 +46,9 @@ export async function POST(request: Request) {
     const createParams = {
       teamId,
       userId: user.id,
-      name: validated.name,
+      name: validated.title,
       script: validated.script,
-      styleId: validated.style_id || undefined,
+      styleId: validated.styleId || undefined,
     };
     console.log(
       '[POST /api/sequences] Creating sequence with params:',

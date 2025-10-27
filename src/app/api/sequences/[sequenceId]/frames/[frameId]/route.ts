@@ -119,11 +119,11 @@ export async function PATCH(
     // Update frame
     const frame = await frameService.updateFrame({
       id: frameId,
-      description: validated.description,
-      orderIndex: validated.order_index,
-      thumbnailUrl: validated.thumbnail_url,
-      videoUrl: validated.video_url,
-      durationMs: validated.duration_ms,
+      description: validated.description ?? undefined,
+      orderIndex: validated.orderIndex,
+      thumbnailUrl: validated.thumbnailUrl ?? undefined,
+      videoUrl: validated.videoUrl ?? undefined,
+      durationMs: validated.durationMs ?? undefined,
       metadata: validated.metadata as
         | Record<string, unknown>
         | null
