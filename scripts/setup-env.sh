@@ -22,7 +22,7 @@ if echo "$SUPABASE_STATUS" | grep -q "supabase local development setup"; then
     SUPABASE_SERVICE_KEY=$(echo "$SUPABASE_STATUS" | grep "service_role key" | awk '{print $3}')
     
     # Database URL is typically: postgresql://postgres:postgres@localhost:54322/postgres
-    DATABASE_URL="postgresql://postgres:postgres@localhost:54322/postgres"
+    POSTGRES_URL="postgresql://postgres:postgres@localhost:54322/postgres"
 else
     echo -e "${RED}✗ Supabase is not running. Please run: bun supabase:start${NC}"
     exit 1
@@ -54,7 +54,7 @@ cat > $ENV_FILE << EOF
 NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_KEY
-DATABASE_URL=$DATABASE_URL
+POSTGRES_URL=$POSTGRES_URL
 
 # QStash
 QSTASH_URL=$QSTASH_URL
@@ -103,7 +103,7 @@ echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
 echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Supabase URL: $SUPABASE_URL"
-echo "  Database URL: $DATABASE_URL"
+echo "  Database URL: $POSTGRES_URL"
 echo "  QStash URL: $QSTASH_URL"
 echo "  QStash Token: defaultUser (local dev defaults)"
 echo "  Upstash Workflow URL: $UPSTASH_WORKFLOW_URL"
