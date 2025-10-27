@@ -17,7 +17,10 @@ async function seed() {
     throw new Error('POSTGRES_URL environment variable is not set');
   }
 
-  const pool = new Pool({ connectionString });
+  const dbUrl = new URL(connectionString);
+  dbUrl.searchParams.set('sslmode', 'no-verify');
+
+  const pool = new Pool({ connectionString: dbUrl.toString() });
   const db = drizzle(pool);
 
   try {
