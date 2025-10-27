@@ -23,6 +23,12 @@ export {
   type TeamMemberWithDetails,
 } from './team-permissions';
 
+// User and Team Creation
+export {
+  ensureUserAndTeam,
+  type EnsureUserTeamResult,
+} from './ensure-user-team';
+
 // Storage Helpers
 export {
   getStorageClient,

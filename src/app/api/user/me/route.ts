@@ -5,77 +5,11 @@
 
 import { createAnonymousSession, getSession } from '@/lib/auth/server';
 import { db } from '@/lib/db/client';
-import type { User } from '@/lib/db/schema';
-import { user, teamMembers } from '@/lib/db/schema';
+import { user } from '@/lib/db/schema';
+import { ensureUserAndTeam } from '@/lib/db/helpers';
 import { handleApiError } from '@/lib/errors';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-type UserWithTeamMembers = User & {
-  teamMembers?: Array<{ teamId: string; role: string }>;
-};
-
-/**
- * Ensure user exists in database with team membership
- * NOTE: Team creation is handled automatically by the sync_betterauth_to_users trigger
- */
-async function ensureUserAndTeam(authUser: {
-  id: string;
-  name?: string | null;
-}): Promise<{
-  success: boolean;
-  data?: UserWithTeamMembers;
-  error?: string;
-}> {
-  try {
-    // Retry logic: The BetterAuth trigger needs time to create user and team
-    const maxRetries = 3;
-    const baseDelay = 50; // Start with 50ms
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const foundUser = await db.query.user.findFirst({
-        where: eq(user.id, authUser.id),
-      });
-
-      if (foundUser) {
-        // Check for team membership
-        const memberships = await db
-          .select({
-            teamId: teamMembers.teamId,
-            role: teamMembers.role,
-          })
-          .from(teamMembers)
-          .where(eq(teamMembers.userId, authUser.id));
-
-        // Early exit if user and team membership both exist
-        if (memberships.length > 0) {
-          return {
-            success: true,
-            data: { ...foundUser, teamMembers: memberships },
-          };
-        }
-      }
-
-      // Only wait if we're going to retry
-      if (attempt < maxRetries - 1) {
-        const jitter = Math.random() * 20;
-        const delay = baseDelay * (attempt + 1) + jitter;
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-
-    return {
-      success: false,
-      error:
-        'Failed to initialize user profile. The database trigger may not be running.',
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unexpected error',
-    };
-  }
-}
 
 export async function GET() {
   try {
