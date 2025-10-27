@@ -39,7 +39,8 @@ export const user = pgTable(
       .notNull(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     isAnonymous: boolean().default(false),
     fullName: text(),
     avatarUrl: text(),
@@ -71,7 +72,8 @@ export const session = pgTable(
       .notNull(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     ipAddress: text(),
     userAgent: text(),
     userId: uuid().notNull(),
@@ -122,7 +124,8 @@ export const account = pgTable(
       .notNull(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('idx_account_provider').using(
@@ -159,7 +162,8 @@ export const verification = pgTable(
       .notNull(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('idx_verification_expires_at').using(
@@ -171,67 +175,6 @@ export const verification = pgTable(
       table.identifier.asc().nullsLast().op('text_ops')
     ),
     pgPolicy('Service role full access', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
-);
-
-/**
- * Velro users table
- * Application-specific user data, synced from Better Auth via trigger
- */
-export const users = pgTable(
-  'users',
-  {
-    id: uuid().primaryKey().notNull(),
-    fullName: varchar('full_name', { length: 255 }),
-    avatarUrl: text('avatar_url'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
-);
-
-/**
- * User profiles table
- * Extended user profile information
- */
-export const userProfiles = pgTable(
-  'user_profiles',
-  {
-    id: uuid().primaryKey().notNull(),
-    anonymousId: varchar('anonymous_id', { length: 36 }),
-    fullName: varchar('full_name', { length: 255 }),
-    avatarUrl: text('avatar_url'),
-    onboardingCompleted: boolean('onboarding_completed').default(false),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index('idx_user_profiles_anonymous_id').using(
-      'btree',
-      table.anonymousId.asc().nullsLast().op('text_ops')
-    ),
-    unique('user_profiles_anonymous_id_key').on(table.anonymousId),
-    pgPolicy('Service role bypass', {
       as: 'permissive',
       for: 'all',
       to: ['public'],
@@ -308,12 +251,6 @@ export type NewAccount = InferInsertModel<typeof account>;
 
 export type Verification = InferSelectModel<typeof verification>;
 export type NewVerification = InferInsertModel<typeof verification>;
-
-export type Users = InferSelectModel<typeof users>;
-export type NewUsers = InferInsertModel<typeof users>;
-
-export type UserProfile = InferSelectModel<typeof userProfiles>;
-export type NewUserProfile = InferInsertModel<typeof userProfiles>;
 
 export type AnonymousSession = InferSelectModel<typeof anonymousSessions>;
 export type NewAnonymousSession = InferInsertModel<typeof anonymousSessions>;

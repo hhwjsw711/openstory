@@ -23,7 +23,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './auth';
+import { user } from './auth';
 import { styles } from './libraries';
 import { teams } from './teams';
 
@@ -57,7 +57,8 @@ export const sequences = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
     styleId: uuid('style_id'),
@@ -86,12 +87,12 @@ export const sequences = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.createdBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'sequences_created_by_fkey',
     }).onDelete('set null'),
     foreignKey({
       columns: [table.updatedBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'sequences_updated_by_fkey',
     }).onDelete('set null'),
     foreignKey({
@@ -131,13 +132,14 @@ export const frames = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('idx_frames_order').using(
       'btree',
       table.sequenceId.asc().nullsLast().op('uuid_ops'),
-      table.orderIndex.asc().nullsLast().op('uuid_ops')
+      table.orderIndex.asc().nullsLast().op('int4_ops')
     ),
     index('idx_frames_sequence_id').using(
       'btree',
@@ -167,14 +169,14 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
     fields: [sequences.teamId],
     references: [teams.id],
   }),
-  user_createdBy: one(users, {
+  user_createdBy: one(user, {
     fields: [sequences.createdBy],
-    references: [users.id],
+    references: [user.id],
     relationName: 'sequences_createdBy_users_id',
   }),
-  user_updatedBy: one(users, {
+  user_updatedBy: one(user, {
     fields: [sequences.updatedBy],
-    references: [users.id],
+    references: [user.id],
     relationName: 'sequences_updatedBy_users_id',
   }),
   style: one(styles, {

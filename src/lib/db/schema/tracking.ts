@@ -23,7 +23,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './auth';
+import { user } from './auth';
 import { teams } from './teams';
 
 // Enums
@@ -68,7 +68,8 @@ export const falRequests = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('idx_fal_requests_created_at').using(
@@ -102,7 +103,7 @@ export const falRequests = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'fal_requests_user_id_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -138,7 +139,8 @@ export const letzaiRequests = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     completedAt: timestamp('completed_at', {
       withTimezone: true,
       mode: 'date',
@@ -167,9 +169,9 @@ export const letzaiRequests = pgTable(
     ),
     index('idx_letzai_requests_team_status_created').using(
       'btree',
-      table.teamId.asc().nullsLast().op('timestamptz_ops'),
-      table.status.asc().nullsLast().op('timestamptz_ops'),
-      table.createdAt.asc().nullsLast().op('enum_ops')
+      table.teamId.asc().nullsLast().op('uuid_ops'),
+      table.status.asc().nullsLast().op('enum_ops'),
+      table.createdAt.asc().nullsLast().op('timestamptz_ops')
     ),
     index('idx_letzai_requests_user_id').using(
       'btree',
@@ -182,7 +184,7 @@ export const letzaiRequests = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'letzai_requests_user_id_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -200,9 +202,9 @@ export const falRequestsRelations = relations(falRequests, ({ one }) => ({
     fields: [falRequests.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [falRequests.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -211,9 +213,9 @@ export const letzaiRequestsRelations = relations(letzaiRequests, ({ one }) => ({
     fields: [letzaiRequests.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [letzaiRequests.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

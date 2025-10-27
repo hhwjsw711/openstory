@@ -36,59 +36,51 @@ export type Database = {
     Tables: {
       account: {
         Row: {
-          accessToken: string | null
-          accessTokenExpiresAt: string | null
-          accountId: string
-          createdAt: string
+          access_token: string | null
+          access_token_expires_at: string | null
+          account_id: string
+          created_at: string
           id: string
-          idToken: string | null
+          id_token: string | null
           password: string | null
-          providerId: string
-          refreshToken: string | null
-          refreshTokenExpiresAt: string | null
+          provider_id: string
+          refresh_token: string | null
+          refresh_token_expires_at: string | null
           scope: string | null
-          updatedAt: string
-          userId: string
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          accessToken?: string | null
-          accessTokenExpiresAt?: string | null
-          accountId: string
-          createdAt?: string
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          account_id: string
+          created_at?: string
           id: string
-          idToken?: string | null
+          id_token?: string | null
           password?: string | null
-          providerId: string
-          refreshToken?: string | null
-          refreshTokenExpiresAt?: string | null
+          provider_id: string
+          refresh_token?: string | null
+          refresh_token_expires_at?: string | null
           scope?: string | null
-          updatedAt?: string
-          userId: string
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          accessToken?: string | null
-          accessTokenExpiresAt?: string | null
-          accountId?: string
-          createdAt?: string
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          account_id?: string
+          created_at?: string
           id?: string
-          idToken?: string | null
+          id_token?: string | null
           password?: string | null
-          providerId?: string
-          refreshToken?: string | null
-          refreshTokenExpiresAt?: string | null
+          provider_id?: string
+          refresh_token?: string | null
+          refresh_token_expires_at?: string | null
           scope?: string | null
-          updatedAt?: string
-          userId?: string
+          updated_at?: string
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "account_userId_fkey"
-            columns: ["userId"]
-            isOneToOne: false
-            referencedRelation: "user"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       anonymous_sessions: {
         Row: {
@@ -112,15 +104,7 @@ export type Database = {
           id?: string
           team_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "anonymous_sessions_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       audio: {
         Row: {
@@ -157,13 +141,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "audio_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "audio_team_id_fkey"
             columns: ["team_id"]
@@ -209,13 +186,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "characters_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "characters_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -240,15 +210,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "credits_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       fal_requests: {
         Row: {
@@ -302,13 +264,6 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fal_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -420,13 +375,6 @@ export type Database = {
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "letzai_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       sequences: {
@@ -471,13 +419,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sequences_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "sequences_style_id_fkey"
             columns: ["style_id"]
             isOneToOne: false
@@ -491,55 +432,40 @@ export type Database = {
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "sequences_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       session: {
         Row: {
-          createdAt: string
-          expiresAt: string
+          created_at: string
+          expires_at: string
           id: string
-          ipAddress: string | null
+          ip_address: string | null
           token: string
-          updatedAt: string
-          userAgent: string | null
-          userId: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
         }
         Insert: {
-          createdAt?: string
-          expiresAt: string
+          created_at?: string
+          expires_at: string
           id: string
-          ipAddress?: string | null
+          ip_address?: string | null
           token: string
-          updatedAt?: string
-          userAgent?: string | null
-          userId: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
         }
         Update: {
-          createdAt?: string
-          expiresAt?: string
+          created_at?: string
+          expires_at?: string
           id?: string
-          ipAddress?: string | null
+          ip_address?: string | null
           token?: string
-          updatedAt?: string
-          userAgent?: string | null
-          userId?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "session_userId_fkey"
-            columns: ["userId"]
-            isOneToOne: false
-            referencedRelation: "user"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       style_adaptations: {
         Row: {
@@ -633,13 +559,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "styles_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "styles_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
@@ -700,13 +619,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "team_invitations_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "team_invitations_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -740,13 +652,6 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -806,135 +711,73 @@ export type Database = {
           type?: Database["public"]["Enums"]["transaction_type"]
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user: {
         Row: {
-          avatarUrl: string | null
-          createdAt: string
-          email: string
-          emailVerified: boolean
-          fullName: string | null
-          id: string
-          image: string | null
-          isAnonymous: boolean | null
-          name: string | null
-          onboardingCompleted: boolean | null
-          updatedAt: string
-        }
-        Insert: {
-          avatarUrl?: string | null
-          createdAt?: string
-          email: string
-          emailVerified?: boolean
-          fullName?: string | null
-          id?: string
-          image?: string | null
-          isAnonymous?: boolean | null
-          name?: string | null
-          onboardingCompleted?: boolean | null
-          updatedAt?: string
-        }
-        Update: {
-          avatarUrl?: string | null
-          createdAt?: string
-          email?: string
-          emailVerified?: boolean
-          fullName?: string | null
-          id?: string
-          image?: string | null
-          isAnonymous?: boolean | null
-          name?: string | null
-          onboardingCompleted?: boolean | null
-          updatedAt?: string
-        }
-        Relationships: []
-      }
-      user_profiles: {
-        Row: {
-          anonymous_id: string | null
           avatar_url: string | null
           created_at: string
+          email: string
+          email_verified: boolean
           full_name: string | null
           id: string
+          image: string | null
+          is_anonymous: boolean | null
+          name: string | null
           onboarding_completed: boolean | null
           updated_at: string
         }
         Insert: {
-          anonymous_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          email: string
+          email_verified?: boolean
           full_name?: string | null
-          id: string
+          id?: string
+          image?: string | null
+          is_anonymous?: boolean | null
+          name?: string | null
           onboarding_completed?: boolean | null
           updated_at?: string
         }
         Update: {
-          anonymous_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          email?: string
+          email_verified?: boolean
           full_name?: string | null
           id?: string
+          image?: string | null
+          is_anonymous?: boolean | null
+          name?: string | null
           onboarding_completed?: boolean | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      users: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          full_name: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          full_name?: string | null
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          full_name?: string | null
-          id?: string
           updated_at?: string
         }
         Relationships: []
       }
       verification: {
         Row: {
-          createdAt: string
-          expiresAt: string
+          created_at: string
+          expires_at: string
           id: string
           identifier: string
-          updatedAt: string
+          updated_at: string
           value: string
         }
         Insert: {
-          createdAt?: string
-          expiresAt: string
+          created_at?: string
+          expires_at: string
           id: string
           identifier: string
-          updatedAt?: string
+          updated_at?: string
           value: string
         }
         Update: {
-          createdAt?: string
-          expiresAt?: string
+          created_at?: string
+          expires_at?: string
           id?: string
           identifier?: string
-          updatedAt?: string
+          updated_at?: string
           value?: string
         }
         Relationships: []
@@ -971,13 +814,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "vfx_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "vfx_team_id_fkey"
             columns: ["team_id"]

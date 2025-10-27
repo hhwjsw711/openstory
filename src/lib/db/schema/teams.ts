@@ -22,7 +22,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './auth';
+import { user } from './auth';
 
 // Enums
 export const teamMemberRole = pgEnum('team_member_role', [
@@ -57,7 +57,8 @@ export const teams = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('idx_teams_slug').using(
@@ -105,7 +106,7 @@ export const teamMembers = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'team_members_user_id_fkey',
     }).onDelete('cascade'),
     primaryKey({
@@ -146,7 +147,8 @@ export const teamInvitations = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     acceptedAt: timestamp('accepted_at', {
       withTimezone: true,
       mode: 'date',
@@ -181,7 +183,7 @@ export const teamInvitations = pgTable(
       .using(
         'btree',
         table.teamId.asc().nullsLast().op('uuid_ops'),
-        table.email.asc().nullsLast().op('uuid_ops')
+        table.email.asc().nullsLast().op('text_ops')
       )
       .where(sql`(status = 'pending'::invitation_status)`),
     foreignKey({
@@ -191,7 +193,7 @@ export const teamInvitations = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.invitedBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'team_invitations_invited_by_fkey',
     }).onDelete('cascade'),
     unique('team_invitations_token_key').on(table.token),
@@ -215,9 +217,9 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
     fields: [teamMembers.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [teamMembers.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -228,9 +230,9 @@ export const teamInvitationsRelations = relations(
       fields: [teamInvitations.teamId],
       references: [teams.id],
     }),
-    user: one(users, {
+    user: one(user, {
       fields: [teamInvitations.invitedBy],
-      references: [users.id],
+      references: [user.id],
     }),
   })
 );

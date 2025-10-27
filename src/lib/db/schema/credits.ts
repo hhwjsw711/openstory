@@ -22,7 +22,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { users } from './auth';
+import { user } from './auth';
 
 // Enums
 export const transactionType = pgEnum('transaction_type', [
@@ -43,12 +43,13 @@ export const credits = pgTable(
     balance: numeric({ precision: 10, scale: 2 }).default('0.00').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'credits_user_id_fkey',
     }).onDelete('cascade'),
     pgPolicy('Service role bypass', {
@@ -100,7 +101,7 @@ export const transactions = pgTable(
     ),
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'transactions_user_id_fkey',
     }).onDelete('cascade'),
     pgPolicy('Service role bypass', {
@@ -114,16 +115,16 @@ export const transactions = pgTable(
 
 // Relations
 export const creditsRelations = relations(credits, ({ one }) => ({
-  user: one(users, {
+  user: one(user, {
     fields: [credits.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
-  user: one(users, {
+  user: one(user, {
     fields: [transactions.userId],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

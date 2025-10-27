@@ -22,7 +22,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './auth';
+import { user } from './auth';
 import { teams } from './teams';
 
 /**
@@ -53,7 +53,8 @@ export const styles = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
   },
   (table) => [
@@ -105,7 +106,7 @@ export const styles = pgTable(
     }).onDelete('set null'),
     foreignKey({
       columns: [table.createdBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'styles_created_by_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -181,7 +182,8 @@ export const characters = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
   },
   (table) => [
@@ -200,7 +202,7 @@ export const characters = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.createdBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'characters_created_by_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -232,7 +234,8 @@ export const vfx = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
   },
   (table) => [
@@ -251,7 +254,7 @@ export const vfx = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.createdBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'vfx_created_by_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -284,7 +287,8 @@ export const audio = pgTable(
       .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
   },
   (table) => [
@@ -303,7 +307,7 @@ export const audio = pgTable(
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.createdBy],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'audio_created_by_fkey',
     }).onDelete('set null'),
     pgPolicy('Service role bypass', {
@@ -329,9 +333,9 @@ export const stylesRelations = relations(styles, ({ one, many }) => ({
   styles: many(styles, {
     relationName: 'styles_parentId_styles_id',
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [styles.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
   styleAdaptations: many(styleAdaptations),
 }));
@@ -351,9 +355,9 @@ export const charactersRelations = relations(characters, ({ one }) => ({
     fields: [characters.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [characters.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -362,9 +366,9 @@ export const vfxRelations = relations(vfx, ({ one }) => ({
     fields: [vfx.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [vfx.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 
@@ -373,9 +377,9 @@ export const audioRelations = relations(audio, ({ one }) => ({
     fields: [audio.teamId],
     references: [teams.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [audio.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

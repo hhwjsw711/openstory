@@ -11,9 +11,7 @@ export {
   session,
   sessionRelations,
   user,
-  userProfiles,
   userRelations,
-  users,
   verification,
 } from './auth';
 
@@ -24,13 +22,9 @@ export type {
   NewAnonymousSession,
   NewSession,
   NewUser,
-  NewUserProfile,
-  NewUsers,
   NewVerification,
   Session,
   User,
-  UserProfile,
-  Users,
   Verification,
 } from './auth';
 
@@ -151,9 +145,7 @@ export const schema = {
   sessionRelations,
   accountRelations,
 
-  // Velro User tables
-  users,
-  userProfiles,
+  // Anonymous sessions
   anonymousSessions,
 
   // Teams
@@ -203,9 +195,7 @@ import {
   session,
   sessionRelations,
   user,
-  userProfiles,
   userRelations,
-  users,
   verification,
 } from './auth';
 
