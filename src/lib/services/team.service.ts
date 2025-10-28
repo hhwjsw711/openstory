@@ -8,14 +8,20 @@
  * @module lib/services/team.service
  */
 
-import crypto from 'node:crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVITATION_CONFIG } from '@/lib/auth/constants';
 import type { TeamRole } from '@/lib/auth/permissions';
 import { getUserRole } from '@/lib/auth/permissions';
+import type { Database } from '@/lib/db/client';
+import { db } from '@/lib/db/client';
+import {
+  teamInvitations,
+  teamMembers,
+  user,
+  type TeamMemberRole,
+} from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
-import type { Database } from '@/types/database';
+import { and, eq } from 'drizzle-orm';
+import crypto from 'node:crypto';
 
 // Type definitions
 export interface TeamMember {
@@ -36,9 +42,9 @@ export interface TeamInvitation {
   // SECURITY: Token should NOT be included in API responses
   // It should only be sent via secure email channel
   status: string;
-  expiresAt: string;
-  createdAt: string;
-  acceptedAt: string | null;
+  expiresAt: Date;
+  createdAt: Date;
+  acceptedAt: Date | null;
 }
 
 export interface CreateInvitationParams {
@@ -73,9 +79,7 @@ export interface UpdateMemberRoleParams {
  * the caller has already verified authentication and authorization.
  */
 export class TeamService {
-  constructor(
-    private supabase: SupabaseClient<Database> = createServerClient()
-  ) {}
+  constructor(private database: Database = db) {}
 
   /**
    * Create a team invitation
@@ -89,19 +93,19 @@ export class TeamService {
     params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
-    const { data: betterAuthUser } = await this.supabase
-      .from('user')
-      .select('id')
-      .eq('email', params.email)
-      .single();
+    const existingAuthUser = await this.database.query.user.findFirst({
+      where: eq(user.email, params.email),
+      columns: { id: true },
+    });
 
-    if (betterAuthUser) {
-      const { data: existingMember } = await this.supabase
-        .from('team_members')
-        .select('user_id')
-        .eq('team_id', params.teamId)
-        .eq('user_id', betterAuthUser.id)
-        .single();
+    if (existingAuthUser) {
+      const existingMember = await this.database.query.teamMembers.findFirst({
+        where: and(
+          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.userId, existingAuthUser.id)
+        ),
+        columns: { userId: true },
+      });
 
       if (existingMember) {
         throw new ValidationError('User is already a team member');
@@ -109,13 +113,15 @@ export class TeamService {
     }
 
     // Check if there's already a pending invitation
-    const { data: existingInvitation } = await this.supabase
-      .from('team_invitations')
-      .select('id')
-      .eq('team_id', params.teamId)
-      .eq('email', params.email)
-      .eq('status', 'pending')
-      .single();
+    const existingInvitation =
+      await this.database.query.teamInvitations.findFirst({
+        where: and(
+          eq(teamInvitations.teamId, params.teamId),
+          eq(teamInvitations.email, params.email),
+          eq(teamInvitations.status, 'pending')
+        ),
+        columns: { id: true },
+      });
 
     if (existingInvitation) {
       throw new ValidationError(
@@ -131,25 +137,20 @@ export class TeamService {
     // Calculate expiry date
     const expiresAt = new Date(
       Date.now() + INVITATION_CONFIG.EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString();
+    );
 
     // Create invitation
-    const { data: invitation, error } = await this.supabase
-      .from('team_invitations')
-      .insert({
-        team_id: params.teamId,
+    const [invitation] = await this.database
+      .insert(teamInvitations)
+      .values({
+        teamId: params.teamId,
         email: params.email,
         role: params.role,
-        invited_by: params.invitedBy,
+        invitedBy: params.invitedBy,
         token,
-        expires_at: expiresAt,
+        expiresAt,
       })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create invitation: ${error.message}`);
-    }
+      .returning();
 
     if (!invitation) {
       throw new Error('No invitation returned from database');
@@ -166,14 +167,14 @@ export class TeamService {
     // Token should only be sent via secure email channel
     return {
       id: invitation.id,
-      teamId: invitation.team_id,
+      teamId: invitation.teamId,
       email: invitation.email,
       role: invitation.role,
-      invitedBy: invitation.invited_by,
+      invitedBy: invitation.invitedBy,
       status: invitation.status,
-      expiresAt: invitation.expires_at,
-      createdAt: invitation.created_at,
-      acceptedAt: invitation.accepted_at,
+      expiresAt: invitation.expiresAt,
+      createdAt: invitation.createdAt,
+      acceptedAt: invitation.acceptedAt ?? null,
     };
   }
 
@@ -187,13 +188,11 @@ export class TeamService {
    */
   async acceptInvitation(params: AcceptInvitationParams): Promise<string> {
     // Get invitation
-    const { data: invitation, error: fetchError } = await this.supabase
-      .from('team_invitations')
-      .select('*')
-      .eq('token', params.token)
-      .single();
+    const invitation = await this.database.query.teamInvitations.findFirst({
+      where: eq(teamInvitations.token, params.token),
+    });
 
-    if (fetchError || !invitation) {
+    if (!invitation) {
       throw new ValidationError('Invalid invitation token');
     }
 
@@ -202,59 +201,51 @@ export class TeamService {
       throw new ValidationError('Invitation is no longer valid');
     }
 
-    if (new Date(invitation.expires_at) < new Date()) {
+    if (new Date(invitation.expiresAt) < new Date()) {
       // Mark as expired
-      await this.supabase
-        .from('team_invitations')
-        .update({ status: 'expired' })
-        .eq('id', invitation.id);
+      await this.database
+        .update(teamInvitations)
+        .set({ status: 'expired' })
+        .where(eq(teamInvitations.id, invitation.id));
 
       throw new ValidationError('Invitation has expired');
     }
 
     // Check if user is already a member
-    const { data: existingMember } = await this.supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', invitation.team_id)
-      .eq('user_id', params.userId)
-      .single();
+    const existingMember = await this.database.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, invitation.teamId),
+        eq(teamMembers.userId, params.userId)
+      ),
+      columns: { userId: true },
+    });
 
     if (existingMember) {
       throw new ValidationError('You are already a member of this team');
     }
 
     // Add user to team
-    const { error: memberError } = await this.supabase
-      .from('team_members')
-      .insert({
-        team_id: invitation.team_id,
-        user_id: params.userId,
-        role: invitation.role,
-      });
-
-    if (memberError) {
-      throw new Error(`Failed to join team: ${memberError.message}`);
-    }
+    await this.database.insert(teamMembers).values({
+      teamId: invitation.teamId,
+      userId: params.userId,
+      role: invitation.role as TeamMemberRole,
+    });
 
     // Mark invitation as accepted
-    const { error: updateError } = await this.supabase
-      .from('team_invitations')
-      .update({
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
-      })
-      .eq('id', invitation.id);
-
-    if (updateError) {
-      console.error(
-        '[TeamService] Failed to update invitation status:',
-        updateError
-      );
+    try {
+      await this.database
+        .update(teamInvitations)
+        .set({
+          status: 'accepted',
+          acceptedAt: new Date(),
+        })
+        .where(eq(teamInvitations.id, invitation.id));
+    } catch (error) {
+      console.error('[TeamService] Failed to update invitation status:', error);
       // Don't throw - user is already added to team
     }
 
-    return invitation.team_id;
+    return invitation.teamId;
   }
 
   /**
@@ -282,15 +273,14 @@ export class TeamService {
     }
 
     // Remove the member
-    const { error } = await this.supabase
-      .from('team_members')
-      .delete()
-      .eq('team_id', params.teamId)
-      .eq('user_id', params.userId);
-
-    if (error) {
-      throw new Error(`Failed to remove member: ${error.message}`);
-    }
+    await this.database
+      .delete(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.userId, params.userId)
+        )
+      );
   }
 
   /**
@@ -320,15 +310,15 @@ export class TeamService {
     }
 
     // Update the role
-    const { error } = await this.supabase
-      .from('team_members')
-      .update({ role: params.newRole })
-      .eq('team_id', params.teamId)
-      .eq('user_id', params.userId);
-
-    if (error) {
-      throw new Error(`Failed to update role: ${error.message}`);
-    }
+    await this.database
+      .update(teamMembers)
+      .set({ role: params.newRole as TeamMemberRole })
+      .where(
+        and(
+          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.userId, params.userId)
+        )
+      );
   }
 
   /**
@@ -340,47 +330,39 @@ export class TeamService {
    */
   async getMembers(teamId: string): Promise<TeamMember[]> {
     // Get team members with Velro user data
-    const { data: members, error } = await this.supabase
-      .from('team_members')
-      .select(
-        `
-        user_id,
-        role,
-        joined_at,
-        users (
-          full_name,
-          avatar_url
-        )
-      `
-      )
-      .eq('team_id', teamId)
-      .order('joined_at', { ascending: true });
-
-    if (error) {
-      throw new Error(`Failed to fetch team members: ${error.message}`);
-    }
+    const members = await this.database.query.teamMembers.findMany({
+      where: eq(teamMembers.teamId, teamId),
+      with: {
+        user: {
+          columns: {
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: (teamMembers, { asc }) => [asc(teamMembers.joinedAt)],
+    });
 
     // Get emails from BetterAuth user table
-    const userIds = members?.map((m) => m.user_id) || [];
-    const { data: betterAuthUsers } = await this.supabase
-      .from('user')
-      .select('id, email')
-      .in('id', userIds);
+    const userIds = members.map((m) => m.userId);
+    const users = await this.database.query.user.findMany({
+      where: (user, { inArray }) => inArray(user.id, userIds),
+      columns: {
+        id: true,
+        email: true,
+      },
+    });
 
     // Create email lookup map
-    const emailMap = new Map(
-      betterAuthUsers?.map((u) => [u.id, u.email]) || []
-    );
+    const emailMap = new Map(users.map((u) => [u.id, u.email] as const));
 
-    return (members || []).map((m) => ({
-      userId: m.user_id,
-      email: emailMap.get(m.user_id) || '',
-      fullName:
-        (m.users as { full_name: string | null } | null)?.full_name || null,
-      avatarUrl:
-        (m.users as { avatar_url: string | null } | null)?.avatar_url || null,
+    return members.map((m) => ({
+      userId: m.userId,
+      email: emailMap.get(m.userId) || '',
+      fullName: m.user.fullName,
+      avatarUrl: m.user.avatarUrl,
       role: m.role,
-      joinedAt: m.joined_at,
+      joinedAt: m.joinedAt.toISOString(),
     }));
   }
 
@@ -394,26 +376,24 @@ export class TeamService {
   async getInvitations(
     teamId: string
   ): Promise<Omit<TeamInvitation, 'token'>[]> {
-    const { data: invitations, error } = await this.supabase
-      .from('team_invitations')
-      .select('*')
-      .eq('team_id', teamId)
-      .order('created_at', { ascending: false });
+    const invitations = await this.database.query.teamInvitations.findMany({
+      where: eq(teamInvitations.teamId, teamId),
+      orderBy: (teamInvitations, { desc }) => [desc(teamInvitations.createdAt)],
+      columns: {
+        token: false, // Exclude token for security
+      },
+    });
 
-    if (error) {
-      throw new Error(`Failed to fetch invitations: ${error.message}`);
-    }
-
-    return (invitations || []).map((inv) => ({
+    return invitations.map((inv) => ({
       id: inv.id,
-      teamId: inv.team_id,
+      teamId: inv.teamId,
       email: inv.email,
       role: inv.role,
-      invitedBy: inv.invited_by,
+      invitedBy: inv.invitedBy,
       status: inv.status,
-      expiresAt: inv.expires_at,
-      createdAt: inv.created_at,
-      acceptedAt: inv.accepted_at,
+      expiresAt: inv.expiresAt,
+      createdAt: inv.createdAt,
+      acceptedAt: inv.acceptedAt ?? null,
     }));
   }
 }

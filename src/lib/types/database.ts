@@ -1,75 +1,115 @@
+/**
+ * Database Types - Now using Drizzle ORM
+ *
+ * This file provides type exports for the database schema using Drizzle ORM.
+ * All types use camelCase field names thanks to Drizzle's casing configuration.
+ */
+
+import type { Database } from '@/lib/db/client';
 import type {
-  Database,
-  Enums,
-  Json,
-  Tables,
-  TablesInsert,
-  TablesUpdate,
-} from '@/lib/supabase/gen.types';
+  Account,
+  Audio,
+  Character,
+  Credit,
+  FalRequest,
+  FalRequestStatus,
+  Frame,
+  InvitationStatus,
+  LetzaiRequest,
+  LetzaiRequestStatus,
+  NewAudio,
+  NewCharacter,
+  NewCredit,
+  NewFalRequest,
+  NewFrame,
+  NewLetzaiRequest,
+  NewSequence,
+  NewStyle,
+  NewTeam,
+  NewTeamInvitation,
+  NewTeamMember,
+  NewTransaction,
+  NewVfx,
+  Sequence,
+  SequenceStatus,
+  Session,
+  Style,
+  StyleAdaptation,
+  Team,
+  TeamInvitation,
+  TeamMember,
+  TeamMemberRole,
+  Transaction,
+  TransactionType,
+  User,
+  Verification,
+  Vfx,
+} from '@/lib/db/schema';
 
-// Re-export the Database and Json types for infrastructure code
-// Note: Use specific table types (UserProfile, Team, etc.) instead of raw Database types in application code
-export type { Json, Database };
+// Re-export Database type
+export type { Database };
 
-// User profile type (use UserProfileRow for database operations)
-// This is kept for backward compatibility but prefer UserProfileRow
-export type UserProfile = Tables<'users'>;
+// JSON type for metadata fields (compatible with Supabase Json type)
+export type Json = Record<string, unknown> | unknown[];
 
-// Table row types (what you get from SELECT)
-export type Team = Tables<'teams'>;
-export type TeamMember = Tables<'team_members'>;
-export type TeamInvitation = Tables<'team_invitations'>;
-export type Sequence = Tables<'sequences'>;
-export type Frame = Tables<'frames'>;
-export type Style = Tables<'styles'>;
-export type Character = Tables<'characters'>;
-export type Audio = Tables<'audio'>;
-export type VFX = Tables<'vfx'>;
-export type Credit = Tables<'credits'>;
-export type Transaction = Tables<'transactions'>;
-export type FalRequest = Tables<'fal_requests'>;
-export type LetzAIRequest = Tables<'letzai_requests'>;
+// Table row types (SELECT results - use camelCase field names)
+export type {
+  Audio,
+  Character,
+  Frame,
+  Sequence,
+  Style,
+  Team,
+  TeamInvitation,
+  TeamMember,
+};
+export type VFX = Vfx; // Alias for consistency
+export type { Credit, FalRequest, StyleAdaptation, Transaction };
+export type LetzAIRequest = LetzaiRequest; // Alias for consistency
 
-// BetterAuth tables (using standard names)
-export type BetterAuthUser = Tables<'user'>;
-export type BetterAuthSession = Tables<'session'>;
-export type BetterAuthAccount = Tables<'account'>;
-export type BetterAuthVerification = Tables<'verification'>;
+// BetterAuth table types
+export type { Account, Session, User, Verification };
 
-// User profile (separate from BetterAuth user table)
-export type UserProfileRow = Tables<'users'>;
+// User profile alias (for backward compatibility)
+export type UserProfile = User;
+export type UserProfileRow = User;
+
 // Insert types (for creating new records)
-export type TeamInsert = TablesInsert<'teams'>;
-export type TeamMemberInsert = TablesInsert<'team_members'>;
-export type TeamInvitationInsert = TablesInsert<'team_invitations'>;
-export type SequenceInsert = TablesInsert<'sequences'>;
-export type FrameInsert = TablesInsert<'frames'>;
-export type StyleInsert = TablesInsert<'styles'>;
-export type CharacterInsert = TablesInsert<'characters'>;
-export type AudioInsert = TablesInsert<'audio'>;
-export type VFXInsert = TablesInsert<'vfx'>;
-export type CreditInsert = TablesInsert<'credits'>;
-export type TransactionInsert = TablesInsert<'transactions'>;
-export type FalRequestInsert = TablesInsert<'fal_requests'>;
-export type LetzAIRequestInsert = TablesInsert<'letzai_requests'>;
-// Update types (for updating existing records)
-export type TeamUpdate = TablesUpdate<'teams'>;
-export type TeamMemberUpdate = TablesUpdate<'team_members'>;
-export type TeamInvitationUpdate = TablesUpdate<'team_invitations'>;
-export type SequenceUpdate = TablesUpdate<'sequences'>;
-export type FrameUpdate = TablesUpdate<'frames'>;
-export type StyleUpdate = TablesUpdate<'styles'>;
-export type CharacterUpdate = TablesUpdate<'characters'>;
-export type AudioUpdate = TablesUpdate<'audio'>;
-export type VFXUpdate = TablesUpdate<'vfx'>;
-export type CreditUpdate = TablesUpdate<'credits'>;
-export type TransactionUpdate = TablesUpdate<'transactions'>;
-export type FalRequestUpdate = TablesUpdate<'fal_requests'>;
-export type LetzAIRequestUpdate = TablesUpdate<'letzai_requests'>;
-// Enum types
-export type SequenceStatus = Enums<'sequence_status'>;
-export type TeamMemberRole = Enums<'team_member_role'>;
-export type InvitationStatus = Enums<'invitation_status'>;
-export type TransactionType = Enums<'transaction_type'>;
-export type FalRequestStatus = Enums<'fal_request_status'>;
-export type LetzAIRequestStatus = Enums<'letzai_request_status'>;
+export type TeamInsert = NewTeam;
+export type TeamMemberInsert = NewTeamMember;
+export type TeamInvitationInsert = NewTeamInvitation;
+export type SequenceInsert = NewSequence;
+export type FrameInsert = NewFrame;
+export type StyleInsert = NewStyle;
+export type CharacterInsert = NewCharacter;
+export type AudioInsert = NewAudio;
+export type VFXInsert = NewVfx;
+export type CreditInsert = NewCredit;
+export type TransactionInsert = NewTransaction;
+export type FalRequestInsert = NewFalRequest;
+export type LetzAIRequestInsert = NewLetzaiRequest;
+
+// Update types (partial of row types - Drizzle handles this automatically)
+export type TeamUpdate = Partial<Team>;
+export type TeamMemberUpdate = Partial<TeamMember>;
+export type TeamInvitationUpdate = Partial<TeamInvitation>;
+export type SequenceUpdate = Partial<Sequence>;
+export type FrameUpdate = Partial<Frame>;
+export type StyleUpdate = Partial<Style>;
+export type CharacterUpdate = Partial<Character>;
+export type AudioUpdate = Partial<Audio>;
+export type VFXUpdate = Partial<Vfx>;
+export type CreditUpdate = Partial<Credit>;
+export type TransactionUpdate = Partial<Transaction>;
+export type FalRequestUpdate = Partial<FalRequest>;
+export type LetzAIRequestUpdate = Partial<LetzaiRequest>;
+
+// Enum types (re-export from schema)
+export type {
+  FalRequestStatus,
+  InvitationStatus,
+  LetzaiRequestStatus,
+  SequenceStatus,
+  TeamMemberRole,
+  TransactionType,
+};

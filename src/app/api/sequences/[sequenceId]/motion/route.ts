@@ -3,17 +3,18 @@
  * POST /api/sequences/[sequenceId]/motion
  */
 
-import { z } from 'zod';
 import { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import {
   createErrorResponse,
   createSuccessResponse,
   requireAuthenticatedUserForMotion,
 } from '@/lib/auth/api-utils';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
+import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { ValidationError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
 import type { MotionWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { z } from 'zod';
 
 // Request body schema
 const requestSchema = z.object({
@@ -33,7 +34,6 @@ export async function POST(
   { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
-    const supabase = createServerClient();
     const { sequenceId } = await params;
 
     // Validate UUID
@@ -48,12 +48,8 @@ export async function POST(
     const authResult = await requireAuthenticatedUserForMotion(request);
     const user = authResult.user;
 
-    // Get user's team
-    const { data: membership } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', user.id)
-      .single();
+    // Get user's team using Drizzle helper
+    const membership = await getUserDefaultTeam(user.id);
 
     if (!membership) {
       return createErrorResponse('No team found for user', 404);
@@ -63,26 +59,22 @@ export async function POST(
     const body = await request.json();
     const validatedData = requestSchema.parse(body);
 
-    // Get frames for the sequence
-    let frameQuery = supabase
-      .from('frames')
-      .select('id, thumbnail_url, description, order_index')
-      .eq('sequence_id', sequenceId)
-      .order('order_index', { ascending: true });
+    // Get frames for the sequence using Drizzle helper
+    let allFrames = await getSequenceFrames(sequenceId);
 
     // Filter by specific frame IDs if provided
     if (validatedData.frameIds && validatedData.frameIds.length > 0) {
-      frameQuery = frameQuery.in('id', validatedData.frameIds);
+      allFrames = allFrames.filter((f) =>
+        validatedData.frameIds!.includes(f.id)
+      );
     }
 
-    const { data: frames, error: framesError } = await frameQuery;
-
-    if (framesError || !frames || frames.length === 0) {
+    if (allFrames.length === 0) {
       return createErrorResponse('No frames found for sequence', 404);
     }
 
     // Filter frames that have thumbnails
-    const framesWithThumbnails = frames.filter((f) => f.thumbnail_url);
+    const framesWithThumbnails = allFrames.filter((f) => f.thumbnailUrl);
 
     if (framesWithThumbnails.length === 0) {
       return createErrorResponse('No frames with thumbnails found', 400);
@@ -95,7 +87,7 @@ export async function POST(
     for (const frame of framesWithThumbnails) {
       try {
         // TypeScript guard - we already filtered for frames with thumbnails
-        if (!frame.thumbnail_url) continue;
+        if (!frame.thumbnailUrl) continue;
 
         // Use description or empty string as fallback
         const prompt = frame.description || '';
@@ -103,10 +95,10 @@ export async function POST(
         // Trigger motion workflow
         const workflowInput: MotionWorkflowInput = {
           userId: user.id,
-          teamId: membership.team_id,
+          teamId: membership.teamId,
           frameId: frame.id,
           sequenceId,
-          thumbnailUrl: frame.thumbnail_url,
+          thumbnailUrl: frame.thumbnailUrl,
           prompt,
           model: validatedData.model,
           duration: validatedData.duration,
@@ -115,16 +107,12 @@ export async function POST(
         };
 
         // Publish to QStash to trigger the workflow
-        const qstash = getQStashClient();
-        const { messageId } = await qstash.publishJSON({
-          url: `${workflowConfig.baseUrl}/motion`,
-          body: workflowInput,
-        });
+        const workflowRunId = await publishWorkflow('/motion', workflowInput);
 
         workflows.push({
           frameId: frame.id,
-          workflowRunId: messageId,
-          orderIndex: frame.order_index,
+          workflowRunId,
+          orderIndex: frame.orderIndex,
         });
       } catch (error) {
         errors.push({
@@ -140,7 +128,7 @@ export async function POST(
     return createSuccessResponse(
       {
         sequenceId,
-        totalFrames: frames.length,
+        totalFrames: allFrames.length,
         framesWithThumbnails: framesWithThumbnails.length,
         workflowsStarted: workflows.length,
         workflows,

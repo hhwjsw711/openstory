@@ -1,5 +1,3 @@
-import type * as React from 'react';
-import { useCallback, useState } from 'react';
 import { StoryboardFrameSkeletonWithScript } from '@/components/sequence/storyboard-frame-skeleton-with-script';
 import { StoryboardFrameWithScript } from '@/components/sequence/storyboard-frame-with-script';
 import { SectionHeading } from '@/components/typography';
@@ -14,6 +12,8 @@ import {
 } from '@/hooks/use-storyboard-status';
 import { useStyles } from '@/hooks/use-styles';
 import type { Frame } from '@/types/database';
+import type * as React from 'react';
+import { useCallback, useState } from 'react';
 
 interface StoryboardStepProps {
   sequenceId: string;
@@ -69,9 +69,8 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Count frames with motion (hasFrames already available from hook)
-  const framesWithMotion = frames.filter((frame: Frame) => frame.video_url);
+  const framesWithMotion = frames.filter((frame: Frame) => frame.videoUrl);
   const totalFrames = frames.length;
-  const _hasAnyMotion = framesWithMotion.length > 0;
   const allFramesHaveMotion =
     totalFrames > 0 && framesWithMotion.length === totalFrames;
 
@@ -195,7 +194,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
           <div className="space-y-6">
             {Array.from({ length: expectedFrameCount }).map((_, index) => (
               <StoryboardFrameSkeletonWithScript
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders are static
                 key={`initial-skeleton-${index}`}
                 index={index}
                 isGenerating={true}
@@ -230,14 +228,14 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
           <div className="space-y-6">
             {/* Show existing frames */}
             {frames
-              .sort((a: Frame, b: Frame) => a.order_index - b.order_index)
+              .sort((a: Frame, b: Frame) => a.orderIndex - b.orderIndex)
               .map((frame: Frame) => {
                 const previewStatus = framePreviewStatus.get(frame.id);
                 return (
                   <StoryboardFrameWithScript
                     key={frame.id}
                     frame={frame}
-                    styleId={sequence?.style_id || undefined}
+                    styleId={sequence?.styleId || undefined}
                     isGeneratingPreview={previewStatus?.isGenerating || false}
                     onFrameUpdate={handleFrameUpdate}
                     onEdit={(frameId) => {
@@ -251,7 +249,7 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                     onRegenerate={(payload: Record<string, unknown>) => {
                       // TODO: Implement regenerate functionality
                       console.log('Regenerate frame:', payload);
-                      handleFrameUpdate(frame);
+                      void handleFrameUpdate(frame);
                     }}
                     falModels={falModelsResp?.models || []}
                     styles={styles || []}

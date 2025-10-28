@@ -1,13 +1,9 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { NewStyle } from '@/lib/db/schema';
 import type { StyleStackConfig } from '@/lib/schemas/style-stack';
-import type { Database, StyleInsert } from '@/types/database';
 
 // Default style templates that can be imported into any team
 export const DEFAULT_STYLE_TEMPLATES: Array<
-  Omit<
-    StyleInsert,
-    'id' | 'team_id' | 'created_at' | 'updated_at' | 'created_by'
-  >
+  Omit<NewStyle, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'createdBy'>
 > = [
   {
     name: 'Cinematic Noir',
@@ -15,8 +11,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'Classic film noir style with high contrast lighting and dramatic shadows',
     category: 'cinematic',
     tags: ['noir', 'dramatic', 'high-contrast', 'vintage', 'monochrome'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Cinematic Noir',
@@ -46,8 +42,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -56,8 +52,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'Bold, colorful pop art aesthetic with high saturation and graphic elements',
     category: 'artistic',
     tags: ['pop-art', 'vibrant', 'colorful', 'bold', 'graphic', 'modern'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Vibrant Pop Art',
@@ -87,8 +83,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -96,8 +92,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Natural, authentic documentary-style cinematography',
     category: 'documentary',
     tags: ['realistic', 'natural', 'authentic', 'handheld', 'candid'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Documentary Realism',
@@ -128,8 +124,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -138,8 +134,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'High-tech sci-fi aesthetic with neon lights and futuristic elements',
     category: 'sci-fi',
     tags: ['futuristic', 'sci-fi', 'neon', 'cyberpunk', 'high-tech'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Futuristic Sci-Fi',
@@ -167,8 +163,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -176,8 +172,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Classic vintage film look with warm tones and film grain',
     category: 'vintage',
     tags: ['vintage', 'retro', 'film-grain', 'warm', 'nostalgic'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Vintage Film',
@@ -207,8 +203,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -216,8 +212,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Clean, minimal aesthetic with plenty of white space',
     category: 'minimal',
     tags: ['minimal', 'clean', 'white-space', 'simple', 'modern'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Minimal Clean',
@@ -246,8 +242,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -256,8 +252,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'Epic fantasy style with magical elements and dramatic landscapes',
     category: 'fantasy',
     tags: ['fantasy', 'epic', 'magical', 'dramatic', 'otherworldly'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Fantasy Epic',
@@ -286,8 +282,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -295,8 +291,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Dark, atmospheric horror style with moody lighting',
     category: 'horror',
     tags: ['horror', 'dark', 'moody', 'atmospheric', 'suspenseful'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Horror Dark',
@@ -328,8 +324,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -337,8 +333,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Professional commercial advertising style',
     category: 'commercial',
     tags: ['commercial', 'professional', 'clean', 'advertising', 'product'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Commercial Clean',
@@ -369,8 +365,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -379,8 +375,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'High-energy music video style with dynamic movement and effects',
     category: 'music_video',
     tags: ['music-video', 'dynamic', 'energetic', 'effects', 'rhythmic'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Music Video Dynamic',
@@ -410,8 +406,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -420,8 +416,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
       'Stylized animation look with exaggerated features and vibrant colors',
     category: 'animation',
     tags: ['animation', 'stylized', 'cartoon', 'colorful', 'exaggerated'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Animation Stylized',
@@ -452,8 +448,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 
   {
@@ -461,8 +457,8 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     description: 'Warm, flattering portrait style with golden hour lighting',
     category: 'cinematic',
     tags: ['portrait', 'golden-hour', 'warm', 'flattering', 'natural'],
-    is_public: true,
-    is_template: true,
+    isPublic: true,
+    isTemplate: true,
     config: {
       version: '1.0',
       name: 'Golden Hour Portrait',
@@ -492,97 +488,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
         },
       },
     } as StyleStackConfig,
-    usage_count: 0,
-    preview_url: null,
+    usageCount: 0,
+    previewUrl: null,
   },
 ];
-
-/**
- * Service function to seed default templates into the database
- * This should be run during app initialization or migration
- */
-export async function seedDefaultTemplates(
-  supabaseClient: SupabaseClient<Database>
-): Promise<void> {
-  try {
-    // Create a system team for templates if it doesn't exist
-    const systemTeamSlug = 'system-templates';
-
-    let { data: systemTeam, error: teamError } = await supabaseClient
-      .from('teams')
-      .select('id')
-      .eq('slug', systemTeamSlug)
-      .single();
-
-    if (teamError && teamError.code === 'PGRST116') {
-      // Team doesn't exist, create it
-      const { data: newTeam, error: createTeamError } = await supabaseClient
-        .from('teams')
-        .insert({
-          name: 'System Templates',
-          slug: systemTeamSlug,
-        })
-        .select()
-        .single();
-
-      if (createTeamError) {
-        throw new Error(
-          `Failed to create system team: ${createTeamError.message}`
-        );
-      }
-
-      systemTeam = newTeam;
-    } else if (teamError) {
-      throw new Error(`Failed to get system team: ${teamError.message}`);
-    }
-
-    if (!systemTeam) {
-      throw new Error('System team is required but not found');
-    }
-
-    // Check which templates already exist
-    const { data: existingTemplates, error: existingError } =
-      await supabaseClient
-        .from('styles')
-        .select('name')
-        .eq('team_id', systemTeam.id)
-        .eq('is_template', true);
-
-    if (existingError) {
-      throw new Error(
-        `Failed to check existing templates: ${existingError.message}`
-      );
-    }
-
-    const existingNames = new Set(existingTemplates?.map((t) => t.name) || []);
-
-    // Filter out templates that already exist
-    const templatesToInsert = DEFAULT_STYLE_TEMPLATES.filter(
-      (template) => !existingNames.has(template.name)
-    ).map((template) => ({
-      ...template,
-      team_id: systemTeam.id,
-    }));
-
-    if (templatesToInsert.length === 0) {
-      console.log('All default templates already exist');
-      return;
-    }
-
-    // Insert new templates
-    const { error: insertError } = await supabaseClient
-      .from('styles')
-      .insert(templatesToInsert);
-
-    if (insertError) {
-      throw new Error(`Failed to insert templates: ${insertError.message}`);
-    }
-
-    console.log(
-      `Successfully seeded ${templatesToInsert.length} default style templates`
-    );
-  } catch (error) {
-    console.error('Failed to seed default templates:', error);
-    throw error;
-  }
-}

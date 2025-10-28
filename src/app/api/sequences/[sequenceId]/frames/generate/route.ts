@@ -3,13 +3,14 @@
  * POST /api/sequences/[sequenceId]/frames/generate - Generate frames for a sequence
  */
 
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getSequenceById } from '@/lib/db/helpers/queries';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { sequenceService } from '@/lib/services/sequence.service';
+import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
-import { handleApiError, ValidationError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
-import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
 export async function POST(
   _request: Request,
@@ -28,14 +29,9 @@ export async function POST(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify sequence exists and get team info
-    const { data: sequence } = await supabase
-      .from('sequences')
-      .select('id, team_id, status')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
     if (!sequence) {
       return NextResponse.json(
@@ -49,7 +45,7 @@ export async function POST(
     }
 
     // Verify user has access to this sequence
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Check if sequence is already processing
     if (sequence.status === 'processing') {
@@ -67,15 +63,12 @@ export async function POST(
     }
 
     // Update sequence status to processing
-    await supabase
-      .from('sequences')
-      .update({ status: 'processing' })
-      .eq('id', sequenceId);
+    await sequenceService.updateSequenceStatus(sequenceId, 'processing');
 
     // Trigger frame generation workflow
     const workflowInput: FrameGenerationWorkflowInput = {
       userId: user.id,
-      teamId: sequence.team_id,
+      teamId: sequence.teamId,
       sequenceId,
       options: {
         framesPerScene: 3,
@@ -87,13 +80,7 @@ export async function POST(
     };
 
     // Publish to QStash to trigger the workflow
-    const qstash = getQStashClient();
-    const { messageId } = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/storyboard`,
-      body: workflowInput,
-    });
-
-    const workflowRunId = messageId;
+    const workflowRunId = await publishWorkflow('/storyboard', workflowInput);
 
     console.log('[generateFrames] Frame generation workflow triggered', {
       sequenceId,

@@ -58,8 +58,8 @@ export const StoryboardFrameWithScript: React.FC<
   const [isGeneratingMotion, setIsGeneratingMotion] = useState(false);
   const [motionError, setMotionError] = useState<string | null>(null);
 
-  const hasVideo = Boolean(frame.video_url);
-  const hasThumbnail = Boolean(frame.thumbnail_url);
+  const hasVideo = Boolean(frame.videoUrl);
+  const hasThumbnail = Boolean(frame.thumbnailUrl);
 
   // Check if motion is being generated in the background (via QStash)
   const motionStatus = metadata?.motionStatus as string | undefined;
@@ -77,7 +77,7 @@ export const StoryboardFrameWithScript: React.FC<
       hasVideo,
       showVideo,
       isPlaying,
-      videoUrl: frame.video_url,
+      videoUrl: frame.videoUrl,
     });
 
     if (!hasVideo) {
@@ -111,7 +111,7 @@ export const StoryboardFrameWithScript: React.FC<
       });
       setIsPlaying(true);
     }
-  }, [hasVideo, showVideo, isPlaying, frame.video_url]);
+  }, [hasVideo, showVideo, isPlaying, frame.videoUrl]);
 
   // Handle video ended
   const handleVideoEnded = useCallback(() => {
@@ -131,7 +131,7 @@ export const StoryboardFrameWithScript: React.FC<
 
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/motion`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/motion`,
         {
           method: 'POST',
           headers: {
@@ -199,7 +199,7 @@ export const StoryboardFrameWithScript: React.FC<
     setIsRegenerating(true);
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequence_id}/frames/${frame.id}/regenerate`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate`,
         {
           method: 'POST',
           headers: {
@@ -223,7 +223,7 @@ export const StoryboardFrameWithScript: React.FC<
         // Optimistically clear thumbnail to show loading state
         onFrameUpdate?.({
           ...frame,
-          thumbnail_url: null,
+          thumbnailUrl: null,
         });
 
         console.log('[handleGenerateWithSelectedModel] Regeneration started', {
@@ -249,7 +249,7 @@ export const StoryboardFrameWithScript: React.FC<
       prompt: displayScript || '',
       extra_params: {
         frame_id: frame.id,
-        sequence_id: frame.sequence_id,
+        sequenceId: frame.sequenceId,
       },
     });
 
@@ -259,11 +259,11 @@ export const StoryboardFrameWithScript: React.FC<
   return (
     <div
       className="group relative flex gap-6 rounded-lg border bg-card p-6 transition-all hover:shadow-md"
-      data-testid={`storyboard-frame-${frame.order_index}`}
+      data-testid={`storyboard-frame-${frame.orderIndex}`}
     >
       {/* Frame number badge */}
       <div className="absolute -left-3 top-8 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-        {frame.order_index + 1}
+        {frame.orderIndex + 1}
       </div>
 
       {/* Script section - Left side */}
@@ -276,11 +276,11 @@ export const StoryboardFrameWithScript: React.FC<
             {displayScript}
           </p>
         </div>
-        {frame.duration_ms !== undefined &&
-          frame.duration_ms !== null &&
-          frame.duration_ms > 0 && (
+        {frame.durationMs !== undefined &&
+          frame.durationMs !== null &&
+          frame.durationMs > 0 && (
             <div className="text-xs text-muted-foreground">
-              Duration: {(frame.duration_ms / 1000).toFixed(1)}s
+              Duration: {(frame.durationMs / 1000).toFixed(1)}s
             </div>
           )}
       </div>
@@ -301,21 +301,21 @@ export const StoryboardFrameWithScript: React.FC<
             <video
               ref={videoRef}
               className="absolute inset-0 h-full w-full object-cover z-10"
-              src={frame.video_url || ''}
+              src={frame.videoUrl || ''}
               poster={
-                hasThumbnail ? frame.thumbnail_url || undefined : undefined
+                hasThumbnail ? frame.thumbnailUrl || undefined : undefined
               }
               onEnded={handleVideoEnded}
               onPause={() => setIsPlaying(false)}
               onPlay={() => setIsPlaying(true)}
               onError={(e) => {
                 console.error('[Video] Error loading video:', e);
-                console.error('[Video] URL:', frame.video_url);
+                console.error('[Video] URL:', frame.videoUrl);
               }}
               onLoadedMetadata={() => {
                 console.log(
                   '[Video] Metadata loaded for frame',
-                  frame.order_index
+                  frame.orderIndex
                 );
               }}
               controls={false}
@@ -327,8 +327,8 @@ export const StoryboardFrameWithScript: React.FC<
           {/* Thumbnail image (shown when video not playing) */}
           {(!showVideo || !hasVideo) && hasThumbnail ? (
             <Image
-              src={frame.thumbnail_url || ''}
-              alt={`Frame ${frame.order_index + 1} preview`}
+              src={frame.thumbnailUrl || ''}
+              alt={`Frame ${frame.orderIndex + 1} preview`}
               className="h-full w-full object-cover"
               width={1920}
               height={1080}

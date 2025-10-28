@@ -127,16 +127,16 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
           {...attributes}
           {...listeners}
         >
-          {frame.order_index + 1}
+          {frame.orderIndex + 1}
         </div>
       )}
 
       {/* Frame content */}
       <div className={cn(frameContentVariants())}>
-        {frame.thumbnail_url ? (
+        {frame.thumbnailUrl ? (
           <Image
-            src={frame.thumbnail_url}
-            alt={`Frame ${frame.order_index + 1} preview`}
+            src={frame.thumbnailUrl}
+            alt={`Frame ${frame.orderIndex + 1} preview`}
             className={cn(frameImageVariants())}
             width={1920}
             height={1080}
@@ -164,9 +164,9 @@ export const StoryboardFrame: React.FC<StoryboardFrameProps> = ({
             return scriptChunk || frame.description;
           })()}
         </p>
-        {frame.duration_ms && (
+        {frame.durationMs && (
           <p className={cn(frameDurationVariants())}>
-            {(frame.duration_ms / 1000).toFixed(1)}s
+            {(frame.durationMs / 1000).toFixed(1)}s
           </p>
         )}
       </div>

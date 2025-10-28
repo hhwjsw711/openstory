@@ -49,12 +49,12 @@ export const generateMockSequence = (
       'failed',
       'archived',
     ]),
-    team_id: faker.string.uuid(),
-    style_id: faker.datatype.boolean() ? faker.string.uuid() : null,
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
-    created_by: faker.string.uuid(),
-    updated_by: faker.string.uuid(),
+    teamId: faker.string.uuid(),
+    styleId: faker.datatype.boolean() ? faker.string.uuid() : null,
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.recent(),
+    createdBy: faker.string.uuid(),
+    updatedBy: faker.string.uuid(),
     metadata: {
       genre: faker.helpers.arrayElement(genres),
       mood: faker.helpers.arrayElement(moods),
@@ -78,10 +78,10 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
 
   return {
     id: faker.string.uuid(),
-    sequence_id: faker.string.uuid(),
-    order_index: faker.number.int({ min: 1, max: 10 }),
+    sequenceId: faker.string.uuid(),
+    orderIndex: faker.number.int({ min: 1, max: 10 }),
     description: faker.lorem.paragraph(),
-    thumbnail_url: `https://picsum.photos/seed/${faker.helpers.arrayElement([
+    thumbnailUrl: `https://picsum.photos/seed/${faker.helpers.arrayElement([
       '1478720568477-152d9b164e26', // Cinema scene
       '1485846234645-a62644f84728', // Film production
       '1524712245354-2c4e5e7121c0', // Cinematic landscape
@@ -91,12 +91,12 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       '1506905925346-21bda4d32df4', // Mountain landscape
       '1507003211169-0a1dd7228f2d', // Portrait
     ])}/1920/1080`,
-    video_url: faker.datatype.boolean()
+    videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
       : null,
-    duration_ms: faker.number.int({ min: 3000, max: 10000 }),
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
+    durationMs: faker.number.int({ min: 3000, max: 10000 }),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.recent(),
     metadata: {
       characters: faker.helpers.arrayElements(characters, { min: 1, max: 3 }),
       setting: faker.helpers.arrayElement(settings),
@@ -135,7 +135,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
   return {
     id: faker.string.uuid(),
     name: faker.lorem.words(2),
-    preview_url: faker.helpers.arrayElement([
+    previewUrl: faker.helpers.arrayElement([
       'https://picsum.photos/seed/1618005182384-a83a8bd57fbe/400/300', // Abstract gradient
       'https://picsum.photos/seed/1579783902614-a3fb3927b6a5/400/300', // Colorful art
       'https://picsum.photos/seed/1549490349-8643362247b5/400/300', // Neon lights
@@ -171,17 +171,17 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
       lighting: faker.helpers.arrayElement(lightings),
       composition: faker.helpers.arrayElement(compositions),
     },
-    team_id: faker.string.uuid(),
-    is_public: faker.datatype.boolean(),
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
-    created_by: faker.string.uuid(),
+    teamId: faker.string.uuid(),
+    isPublic: faker.datatype.boolean(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.recent(),
+    createdBy: faker.string.uuid(),
     category: null,
     description: null,
-    is_template: null,
-    parent_id: null,
+    isTemplate: null,
+    parentId: null,
     tags: null,
-    usage_count: null,
+    usageCount: null,
     version: null,
     ...overrides,
   };
@@ -193,8 +193,8 @@ export const generateMockTeam = (overrides?: Partial<Team>): Team => {
     id: faker.string.uuid(),
     name,
     slug: faker.helpers.slugify(name).toLowerCase(),
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.recent(),
     ...overrides,
   };
 };
@@ -202,12 +202,19 @@ export const generateMockTeam = (overrides?: Partial<Team>): Team => {
 export const generateMockUser = (
   overrides?: Partial<UserProfile>
 ): UserProfile => {
+  const fullName = faker.person.fullName();
   return {
     id: faker.string.uuid(),
-    full_name: faker.person.fullName(),
-    avatar_url: faker.image.avatar(),
-    created_at: faker.date.past().toISOString(),
-    updated_at: faker.date.recent().toISOString(),
+    name: fullName,
+    email: faker.internet.email(),
+    emailVerified: faker.datatype.boolean(),
+    image: null,
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.recent(),
+    isAnonymous: null,
+    fullName,
+    avatarUrl: faker.image.avatar(),
+    onboardingCompleted: null,
     ...overrides,
   };
 };
@@ -223,8 +230,8 @@ export const generateMockFrames = (
 ): Frame[] => {
   return Array.from({ length: count }, (_, index) =>
     generateMockFrame({
-      order_index: index + 1,
-      ...(sequenceId && { sequence_id: sequenceId }),
+      orderIndex: index + 1,
+      ...(sequenceId && { sequenceId: sequenceId }),
     })
   );
 };

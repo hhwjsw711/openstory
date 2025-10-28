@@ -1,11 +1,11 @@
-import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import Image from 'next/image';
-import type * as React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
+import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface MotionPreviewProps {
   videoUrl?: string;
@@ -202,7 +202,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
               thumbnailUrl && (
                 <Image
                   src={thumbnailUrl}
-                  alt={`Frame ${frame.order_index} preview`}
+                  alt={`Frame ${frame.orderIndex} preview`}
                   className={cn(
                     'h-full w-full object-cover transition-opacity duration-300',
                     imageLoading ? 'opacity-0' : 'opacity-100'
@@ -225,7 +225,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
 
           {/* Frame info */}
           <div className="p-3">
-            <h3 className="text-sm font-medium">Frame {frame.order_index}</h3>
+            <h3 className="text-sm font-medium">Frame {frame.orderIndex}</h3>
             {duration && (
               <p className="text-muted-foreground text-xs">
                 Expected duration: {(duration / 1000).toFixed(1)}s
@@ -301,8 +301,6 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           >
             {/* Progress bar */}
             <div className="mb-2">
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: seek bar */}
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: seek bar */}
               <div
                 className="bg-white/20 h-1 w-full cursor-pointer rounded-full"
                 onClick={handleSeek}
@@ -366,7 +364,7 @@ export const MotionPreview: React.FC<MotionPreviewProps> = ({
           {/* Frame info badge */}
           <div className="absolute left-2 top-2">
             <div className="bg-black/50 text-white flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium backdrop-blur-sm">
-              Frame {frame.order_index}
+              Frame {frame.orderIndex}
               <div className="h-1 w-1 rounded-full bg-green-400" />
             </div>
           </div>

@@ -1,11 +1,11 @@
-import Image from 'next/image';
-import type * as React from 'react';
-import { useCallback } from 'react';
 import { GalleryIcon } from '@/components/icons/gallery-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Style } from '@/types/database';
+import Image from 'next/image';
+import type * as React from 'react';
+import { useCallback } from 'react';
 
 interface StyleSelectorProps {
   selectedStyleId: string | null;
@@ -62,9 +62,9 @@ const StyleCard: React.FC<StyleCardProps> = ({
       <CardContent className="p-4">
         <div className="flex flex-col gap-3">
           <div className="aspect-[4/3] overflow-hidden rounded-lg bg-muted">
-            {style.preview_url ? (
+            {style.previewUrl ? (
               <Image
-                src={style.preview_url}
+                src={style.previewUrl}
                 alt={`${style.name} style preview`}
                 className="h-full w-full object-cover"
                 loading="lazy"
@@ -73,7 +73,7 @@ const StyleCard: React.FC<StyleCardProps> = ({
                 onError={(e) => {
                   console.warn(
                     `Failed to load image for style ${style.name}:`,
-                    style.preview_url
+                    style.previewUrl
                   );
                   e.currentTarget.style.display = 'none';
                 }}
@@ -94,33 +94,33 @@ const StyleCard: React.FC<StyleCardProps> = ({
             </h3>
 
             {style.config &&
-              typeof style.config === 'object' &&
-              'artStyle' in style.config && (
-                <p className="text-xs text-muted-foreground line-clamp-1">
-                  {String(style.config.artStyle)}
-                </p>
-              )}
+            typeof style.config === 'object' &&
+            'artStyle' in style.config ? (
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {String(style.config.artStyle)}
+              </p>
+            ) : null}
 
             {style.config &&
-              typeof style.config === 'object' &&
-              'colorPalette' in style.config &&
-              Array.isArray(style.config.colorPalette) && (
-                <div className="flex gap-1 mt-1" data-testid="color-palette">
-                  {style.config.colorPalette.slice(0, 4).map((color, index) => (
-                    <div
-                      key={`color-${String(color)}-${index}`}
-                      className="w-3 h-3 rounded-full border border-border/20"
-                      style={{ backgroundColor: String(color) }}
-                      title={String(color)}
-                    />
-                  ))}
-                  {style.config.colorPalette.length > 4 && (
-                    <div className="flex items-center justify-center w-3 h-3 text-[8px] text-muted-foreground">
-                      +{style.config.colorPalette.length - 4}
-                    </div>
-                  )}
-                </div>
-              )}
+            typeof style.config === 'object' &&
+            'colorPalette' in style.config &&
+            Array.isArray(style.config.colorPalette) ? (
+              <div className="flex gap-1 mt-1" data-testid="color-palette">
+                {style.config.colorPalette.slice(0, 4).map((color, index) => (
+                  <div
+                    key={`color-${String(color)}-${index}`}
+                    className="w-3 h-3 rounded-full border border-border/20"
+                    style={{ backgroundColor: String(color) }}
+                    title={String(color)}
+                  />
+                ))}
+                {style.config.colorPalette.length > 4 && (
+                  <div className="flex items-center justify-center w-3 h-3 text-[8px] text-muted-foreground">
+                    +{style.config.colorPalette.length - 4}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
       </CardContent>
@@ -159,7 +159,6 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {Array.from({ length: 8 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton key
           <StyleCardSkeleton key={`skeleton-${index}`} />
         ))}
       </div>

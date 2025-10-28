@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
+import { getUserTeams } from '@/lib/db/helpers';
 
 export async function GET() {
   try {
@@ -23,37 +23,14 @@ export async function GET() {
       );
     }
 
-    const supabase = createServerClient();
-    const { data: memberships, error } = await supabase
-      .from('team_members')
-      .select('team_id, role, joined_at, teams(name)')
-      .eq('user_id', user.id)
-      .order('joined_at', { ascending: true });
+    const memberships = await getUserTeams(user.id);
 
-    if (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: error.message,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 500 }
-      );
-    }
-
-    const teams = (memberships || []).map((m) => {
-      const teamName =
-        m.teams && typeof m.teams === 'object' && 'name' in m.teams
-          ? (m.teams.name as string)
-          : 'Unknown Team';
-
-      return {
-        teamId: m.team_id,
-        role: m.role,
-        teamName,
-        joinedAt: m.joined_at,
-      };
-    });
+    const teams = memberships.map((m) => ({
+      teamId: m.teamId,
+      role: m.role,
+      teamName: m.teamName,
+      joinedAt: m.joinedAt.toISOString(),
+    }));
 
     return NextResponse.json(
       {

@@ -21,15 +21,15 @@ export interface Job {
   progress?: number;
   result?: unknown;
   error?: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   framesProgress?: {
     total: number;
     completed: number;
     frames: Array<{
       id: string;
-      order_index: number;
-      thumbnail_url?: string | null;
+      orderIndex: number;
+      thumbnailUrl?: string | null;
     }>;
   };
 }
@@ -157,7 +157,7 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
 
     const isGenerating = sequenceGenerating || jobGenerating;
     const hasFrames = frames.length > 0;
-    const styleId = sequence?.style_id;
+    const styleId = sequence?.styleId;
 
     // Can generate if we have script, style, and not currently generating
     const canGenerate = Boolean(

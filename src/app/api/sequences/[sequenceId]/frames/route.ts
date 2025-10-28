@@ -8,10 +8,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { frameService } from '@/lib/services/frame.service';
-import { createServerClient } from '@/lib/supabase/server';
-import type { FrameInsert, Json } from '@/types/database';
+import type { NewFrame } from '@/lib/db/schema';
 
 // Schema for single frame creation
 const singleFrameSchema = z.object({
@@ -20,7 +20,7 @@ const singleFrameSchema = z.object({
   thumbnail_url: z.string().url().optional(),
   video_url: z.string().url().optional(),
   duration_ms: z.number().int().min(1).optional(),
-  metadata: z.any().optional() as z.ZodType<Json | undefined>,
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Schema for bulk frame creation
@@ -45,16 +45,11 @@ export async function GET(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
-    // Verify sequence exists and get team_id
-    const { data: sequence, error: sequenceError } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    // Verify sequence exists and get teamId
+    const sequence = await getSequenceById(sequenceId);
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       return NextResponse.json(
         {
           success: false,
@@ -66,7 +61,7 @@ export async function GET(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Get frames
     const frames = await frameService.getFramesBySequence(sequenceId);
@@ -112,16 +107,11 @@ export async function POST(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify sequence exists and get team_id
-    const { data: sequence, error: sequenceError } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       return NextResponse.json(
         {
           success: false,
@@ -133,7 +123,7 @@ export async function POST(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Parse request body
     const body = await request.json();
@@ -145,13 +135,13 @@ export async function POST(
       // Bulk creation
       const validated = bulkFrameSchema.parse(body);
 
-      const frameInserts: FrameInsert[] = validated.frames.map((frame) => ({
-        sequence_id: sequenceId,
+      const frameInserts: NewFrame[] = validated.frames.map((frame) => ({
+        sequenceId: sequenceId,
         description: frame.description,
-        order_index: frame.order_index,
-        thumbnail_url: frame.thumbnail_url,
-        video_url: frame.video_url,
-        duration_ms: frame.duration_ms,
+        orderIndex: frame.order_index,
+        thumbnailUrl: frame.thumbnail_url,
+        videoUrl: frame.video_url,
+        durationMs: frame.duration_ms,
         metadata: frame.metadata,
       }));
 
@@ -235,16 +225,11 @@ export async function DELETE(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify sequence exists and get team_id
-    const { data: sequence, error: sequenceError } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
-    if (sequenceError || !sequence) {
+    if (!sequence) {
       return NextResponse.json(
         {
           success: false,
@@ -256,7 +241,7 @@ export async function DELETE(
     }
 
     // Verify team access
-    await requireTeamMemberAccess(user.id, sequence.team_id);
+    await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Delete frames
     await frameService.deleteFramesBySequence(sequenceId);

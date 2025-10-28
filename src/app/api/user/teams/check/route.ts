@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getUser } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
-import { createServerClient } from '@/lib/supabase/server';
+import { canAccessTeam } from '@/lib/db/helpers';
 
 const checkAccessSchema = z.object({
   teamId: z.string().uuid(),
@@ -33,29 +33,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = checkAccessSchema.parse(body);
 
-    const supabase = createServerClient();
-    const { data: membership, error } = await supabase
-      .from('team_members')
-      .select('team_id, role')
-      .eq('user_id', user.id)
-      .order('role', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error || !membership) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            hasAccess: false,
-          },
-          timestamp: new Date().toISOString(),
-        },
-        { status: 200 }
-      );
-    }
-
-    const hasAccess = membership.team_id === validated.teamId;
+    const hasAccess = await canAccessTeam(user.id, validated.teamId);
 
     return NextResponse.json(
       {

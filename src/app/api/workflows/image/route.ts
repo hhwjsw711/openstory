@@ -18,9 +18,13 @@ import type {
   LetzAIImageResponse,
 } from '@/lib/schemas/letzai-request';
 import { LoggerService } from '@/lib/services/logger.service';
-import { createAdminClient } from '@/lib/supabase/server';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
+import { db } from '@/lib/db/client';
+import { frames, sequences } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { getSequenceById } from '@/lib/db/helpers/queries';
 
 const loggerService = new LoggerService('ImageWorkflow');
 
@@ -88,20 +92,15 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
         throw new Error('frameId is required for update-frame step');
       }
 
-      const supabase = createAdminClient();
-      const { error: updateError } = await supabase
-        .from('frames')
-        .update({
-          thumbnail_url: imageResult.imageUrls[0],
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', input.frameId);
-
-      if (updateError) {
+      try {
+        await updateFrame(input.frameId, {
+          thumbnailUrl: imageResult.imageUrls[0],
+        });
+      } catch (error) {
         loggerService.logError(
-          `Failed to update frame ${input.frameId} with image URL: ${updateError.message}`
+          `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
-        throw updateError;
+        throw error;
       }
 
       return { updated: true };
@@ -116,27 +115,21 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
           );
         }
 
-        const supabase = createAdminClient();
-
         // Check if all frames for this sequence now have thumbnails
-        const { data: allFrames } = await supabase
-          .from('frames')
-          .select('id, thumbnail_url')
-          .eq('sequence_id', input.sequenceId);
+        const allFrames = await db
+          .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
+          .from(frames)
+          .where(eq(frames.sequenceId, input.sequenceId));
 
-        if (allFrames) {
+        if (allFrames.length > 0) {
           const framesWithThumbnails = allFrames.filter(
-            (frame) => frame.thumbnail_url
+            (frame) => frame.thumbnailUrl
           );
           const allFramesHaveThumbnails =
             framesWithThumbnails.length === allFrames.length;
 
-          if (allFramesHaveThumbnails && allFrames.length > 0) {
-            const { data: sequence } = await supabase
-              .from('sequences')
-              .select('metadata')
-              .eq('id', input.sequenceId)
-              .single();
+          if (allFramesHaveThumbnails) {
+            const sequence = await getSequenceById(input.sequenceId);
 
             if (sequence) {
               const existingMetadata =
@@ -155,18 +148,18 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
                 },
               };
 
-              const { error: seqUpdateError } = await supabase
-                .from('sequences')
-                .update({
-                  metadata: updatedMetadata,
-                  status: 'completed',
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', input.sequenceId);
-
-              if (seqUpdateError) {
+              try {
+                await db
+                  .update(sequences)
+                  .set({
+                    metadata: updatedMetadata,
+                    status: 'completed',
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(sequences.id, input.sequenceId));
+              } catch (error) {
                 loggerService.logError(
-                  `Failed to update sequence ${input.sequenceId}: ${seqUpdateError.message}`
+                  `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
                 );
               }
             }

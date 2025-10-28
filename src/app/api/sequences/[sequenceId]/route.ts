@@ -5,15 +5,15 @@
  * DELETE /api/sequences/[sequenceId] - Delete a sequence
  */
 
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { getSequenceById } from '@/lib/db/helpers/queries';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { sequenceService } from '@/lib/services/sequence.service';
+import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
-import { handleApiError, ValidationError } from '@/lib/errors';
-import { sequenceService } from '@/lib/services/sequence.service';
-import { createServerClient } from '@/lib/supabase/server';
-import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
 
 const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -38,17 +38,12 @@ export async function GET(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Verify user has access to the sequence's team
-    const { data: seq } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const seq = await getSequenceById(sequenceId);
 
     if (seq) {
-      await requireTeamMemberAccess(user.id, seq.team_id);
+      await requireTeamMemberAccess(user.id, seq.teamId);
     }
 
     const sequence = await sequenceService.getSequence(sequenceId, true);
@@ -94,18 +89,13 @@ export async function PATCH(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Parse and validate request body
     const body = await request.json();
     const validated = updateSequenceRequestSchema.parse(body);
 
     // Verify sequence exists and get team info
-    const { data: existingSeq } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const existingSeq = await getSequenceById(sequenceId);
 
     if (!existingSeq) {
       return NextResponse.json(
@@ -119,7 +109,7 @@ export async function PATCH(
     }
 
     // Verify user has access to this sequence
-    await requireTeamMemberAccess(user.id, existingSeq.team_id);
+    await requireTeamMemberAccess(user.id, existingSeq.teamId);
 
     // Update sequence
     const sequence = await sequenceService.updateSequence({
@@ -132,20 +122,14 @@ export async function PATCH(
 
     // If script or style changed, regenerate frames
     if (validated.script !== undefined || validated.styleId !== undefined) {
-      const supabase = createServerClient();
-
       // Check if sequence is already processing
-      const { data: currentSeq } = await supabase
-        .from('sequences')
-        .select('status')
-        .eq('id', sequenceId)
-        .single();
+      const currentSeq = await getSequenceById(sequenceId);
 
       if (currentSeq?.status !== 'processing') {
         // Trigger frame generation workflow
         const workflowInput: FrameGenerationWorkflowInput = {
           userId: user.id,
-          teamId: existingSeq.team_id,
+          teamId: existingSeq.teamId,
           sequenceId,
           options: {
             framesPerScene: 3,
@@ -157,11 +141,7 @@ export async function PATCH(
         };
 
         // Publish to QStash to trigger the workflow
-        const qstash = getQStashClient();
-        await qstash.publishJSON({
-          url: `${workflowConfig.baseUrl}/storyboard`,
-          body: workflowInput,
-        });
+        await publishWorkflow('/storyboard', workflowInput);
       }
     }
 
@@ -211,14 +191,9 @@ export async function DELETE(
 
     // Authenticate user
     const user = await requireUser();
-    const supabase = createServerClient();
 
     // Get the sequence to verify team ownership
-    const { data: sequence } = await supabase
-      .from('sequences')
-      .select('team_id')
-      .eq('id', sequenceId)
-      .single();
+    const sequence = await getSequenceById(sequenceId);
 
     if (!sequence) {
       return NextResponse.json(
@@ -232,7 +207,7 @@ export async function DELETE(
     }
 
     // Require admin access to delete
-    await requireTeamMemberAccess(user.id, sequence.team_id, 'admin');
+    await requireTeamMemberAccess(user.id, sequence.teamId, 'admin');
 
     // Delete the sequence (frames will be cascade deleted)
     await sequenceService.deleteSequence(sequenceId);

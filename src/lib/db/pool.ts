@@ -2,22 +2,23 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const conn = process.env.DATABASE_URL;
+const conn = process.env.POSTGRES_URL;
 if (!conn) {
-  throw new Error('DATABASE_URL environment variable is required');
+  throw new Error('POSTGRES_URL environment variable is required');
 }
-const u = new URL(conn);
 
-const isSupabaseHost = /(\.supabase\.co|\.pooler\.supabase\.com)$/i.test(
-  u.hostname
-);
-const isPoolerPort = u.port === '6543';
+const isLocalDevelopment =
+  conn.includes('localhost') || conn.includes('127.0.0.1');
 
-// Force SSL for Supabase/hosted; disable for localhost
-const shouldUseSsl =
-  isSupabaseHost || isPoolerPort || process.env.NODE_ENV === 'production';
+const dbUrl = new URL(conn);
+
+// Only configure SSL for production (when not local)
+if (!isLocalDevelopment) {
+  dbUrl.searchParams.set('sslmode', 'no-verify');
+}
 
 export const pgPool = new Pool({
-  connectionString: conn,
-  ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
+  connectionString: dbUrl.toString(),
+  // Only enable SSL for production connections
+  ssl: isLocalDevelopment ? false : { rejectUnauthorized: false },
 });

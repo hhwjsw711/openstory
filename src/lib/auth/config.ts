@@ -3,18 +3,21 @@
  * Replaces Supabase Auth with anonymous users and email/password login
  */
 
+import { db } from '@/lib/db/client';
+import { account, session, user, verification } from '@/lib/db/schema';
 import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
-import { pgPool } from '@/lib/db/pool';
-import { createAdminClient } from '@/lib/supabase/server';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
 const requiredEnvVars = {
   DATABASE_URL: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  BASE_URL: process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000',
 } as const;
 
 // Validate environment variables
@@ -25,9 +28,17 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 }
 
 export const auth = betterAuth({
-  database: pgPool,
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: {
+      user: user,
+      session: session,
+      account: account,
+      verification: verification,
+    },
+  }),
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
-  baseURL: requiredEnvVars.BETTER_AUTH_URL,
+  baseURL: requiredEnvVars.BASE_URL,
 
   // Session configuration optimized for anonymous users
   // SECURITY: Reduced from 1 year to 90 days to
@@ -91,13 +102,10 @@ export const auth = betterAuth({
         });
 
         // Transfer anonymous user data to authenticated account
-        const supabase = createAdminClient();
-
         try {
           // Migrate all anonymous user data to the authenticated account
           // All data transfer happens atomically - either all succeeds or all fails
           const result = await migrateAnonymousUserData(
-            supabase,
             anonymousUser.user.id,
             newUser.user.id
           );

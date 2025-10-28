@@ -3,22 +3,22 @@ import { useMemo } from 'react';
 import type { Frame } from '@/types/database';
 
 export interface CreateFrameInput {
-  sequence_id: string;
+  sequenceId: string;
   description: string;
-  order_index: number;
-  thumbnail_url?: string;
-  video_url?: string;
-  duration_ms?: number;
+  orderIndex: number;
+  thumbnailUrl?: string;
+  videoUrl?: string;
+  durationMs?: number;
   metadata?: unknown;
 }
 
 export interface UpdateFrameInput {
   id: string;
   description?: string;
-  order_index?: number;
-  thumbnail_url?: string | null;
-  video_url?: string | null;
-  duration_ms?: number | null;
+  orderIndex?: number;
+  thumbnailUrl?: string | null;
+  videoUrl?: string | null;
+  durationMs?: number | null;
   metadata?: unknown;
 }
 
@@ -97,8 +97,8 @@ export function useCreateFrame() {
 
   return useMutation<Frame, Error, CreateFrameInput>({
     mutationFn: async (input: CreateFrameInput) => {
-      const { sequence_id, ...frameData } = input;
-      const response = await fetch(`/api/sequences/${sequence_id}/frames`, {
+      const { sequenceId, ...frameData } = input;
+      const response = await fetch(`/api/sequences/${sequenceId}/frames`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,9 +115,9 @@ export function useCreateFrame() {
       return result.data;
     },
     onSuccess: (data) => {
-      if (data?.sequence_id) {
+      if (data?.sequenceId) {
         queryClient.invalidateQueries({
-          queryKey: frameKeys.list(data.sequence_id),
+          queryKey: frameKeys.list(data.sequenceId),
         });
       }
     },
@@ -128,12 +128,12 @@ export function useCreateFrame() {
 export function useUpdateFrame() {
   const queryClient = useQueryClient();
 
-  return useMutation<Frame, Error, UpdateFrameInput & { sequence_id: string }>({
+  return useMutation<Frame, Error, UpdateFrameInput & { sequenceId: string }>({
     mutationFn: async (input) => {
-      const { id, sequence_id, ...updateData } = input;
+      const { id, sequenceId, ...updateData } = input;
 
       const response = await fetch(
-        `/api/sequences/${sequence_id}/frames/${id}`,
+        `/api/sequences/${sequenceId}/frames/${id}`,
         {
           method: 'PATCH',
           headers: {
@@ -155,9 +155,9 @@ export function useUpdateFrame() {
       if (data?.id) {
         queryClient.setQueryData(frameKeys.detail(data.id), data);
       }
-      if (data?.sequence_id) {
+      if (data?.sequenceId) {
         queryClient.invalidateQueries({
-          queryKey: frameKeys.list(data.sequence_id),
+          queryKey: frameKeys.list(data.sequenceId),
         });
       }
     },
@@ -191,7 +191,7 @@ export function useDeleteFrame() {
         throw new Error(result.message || 'Failed to delete frame');
       }
 
-      return { frameId, sequenceId: frameData?.sequence_id };
+      return { frameId, sequenceId: frameData?.sequenceId };
     },
     onSuccess: ({ frameId, sequenceId }) => {
       queryClient.removeQueries({ queryKey: frameKeys.detail(frameId) });
@@ -213,7 +213,7 @@ export function useReorderFrames() {
     Error,
     {
       sequenceId: string;
-      frameOrders: Array<{ id: string; order_index: number }>;
+      frameOrders: Array<{ id: string; orderIndex: number }>;
     },
     { previousFrames: Frame[] | undefined; sequenceId: string }
   >({
@@ -222,7 +222,7 @@ export function useReorderFrames() {
       frameOrders,
     }: {
       sequenceId: string;
-      frameOrders: Array<{ id: string; order_index: number }>;
+      frameOrders: Array<{ id: string; orderIndex: number }>;
     }) => {
       const response = await fetch(
         `/api/sequences/${sequenceId}/frames/reorder`,
@@ -257,10 +257,10 @@ export function useReorderFrames() {
           .map((frame) => {
             const newOrder = frameOrders.find((o) => o.id === frame.id);
             return newOrder
-              ? { ...frame, order_index: newOrder.order_index }
+              ? { ...frame, orderIndex: newOrder.orderIndex }
               : frame;
           })
-          .sort((a, b) => a.order_index - b.order_index);
+          .sort((a, b) => a.orderIndex - b.orderIndex);
 
         queryClient.setQueryData(frameKeys.list(sequenceId), reorderedFrames);
       }
@@ -292,7 +292,7 @@ export function useBulkCreateFrames() {
     Error,
     {
       sequenceId: string;
-      frames: Omit<CreateFrameInput, 'sequence_id'>[];
+      frames: Omit<CreateFrameInput, 'sequenceId'>[];
     }
   >({
     mutationFn: async ({
@@ -300,7 +300,7 @@ export function useBulkCreateFrames() {
       frames,
     }: {
       sequenceId: string;
-      frames: Omit<CreateFrameInput, 'sequence_id'>[];
+      frames: Omit<CreateFrameInput, 'sequenceId'>[];
     }) => {
       const response = await fetch(`/api/sequences/${sequenceId}/frames`, {
         method: 'POST',
@@ -502,13 +502,13 @@ export function useActiveFrameGeneration(sequenceId: string) {
 
 // Hook to track preview image generation status for frames
 export function useFramePreviewStatus(frames: Frame[]) {
-  // Get frames that might be generating previews (no thumbnail_url but were recently created)
+  // Get frames that might be generating previews (no thumbnailUrl but were recently created)
   const framesNeedingPreviews = useMemo(() => {
     return frames.filter((frame) => {
-      if (frame.thumbnail_url) return false; // Already has preview
+      if (frame.thumbnailUrl) return false; // Already has preview
 
       // Check if frame was created recently (within last 2 minutes for faster timeout)
-      const createdAt = new Date(frame.created_at).getTime();
+      const createdAt = new Date(frame.createdAt).getTime();
       const now = Date.now();
       const twoMinutesAgo = now - 2 * 60 * 1000;
 
@@ -518,7 +518,7 @@ export function useFramePreviewStatus(frames: Frame[]) {
 
   // Auto-refresh frames list when there are frames potentially generating previews
   const { data: refreshedFrames = frames } = useFramesBySequence(
-    frames.length > 0 ? frames[0].sequence_id : '',
+    frames.length > 0 ? frames[0].sequenceId : '',
     {
       refetchInterval: framesNeedingPreviews.length > 0 ? 2000 : false, // Faster refresh
       staleTime: 500, // Shorter stale time for preview updates
@@ -533,14 +533,14 @@ export function useFramePreviewStatus(frames: Frame[]) {
     >();
 
     refreshedFrames.forEach((frame) => {
-      const hasPreview = !!frame.thumbnail_url;
+      const hasPreview = !!frame.thumbnailUrl;
 
       // Check if this frame should show as generating
       let isGenerating = false;
       if (!hasPreview) {
-        const createdAt = new Date(frame.created_at).getTime();
-        const updatedAt = frame.updated_at
-          ? new Date(frame.updated_at).getTime()
+        const createdAt = new Date(frame.createdAt).getTime();
+        const updatedAt = frame.updatedAt
+          ? new Date(frame.updatedAt).getTime()
           : createdAt;
         const now = Date.now();
         const twoMinutesAgo = now - 2 * 60 * 1000;

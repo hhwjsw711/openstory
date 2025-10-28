@@ -69,7 +69,6 @@ export const FrameSkeletonGrid: React.FC<FrameSkeletonGridProps> = ({
     <div className="grid gap-6 md:grid-cols-2">
       {Array.from({ length: count }).map((_, index) => (
         <FrameSkeleton
-          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton key
           key={`frame-skeleton-${index}`}
           index={index}
           isGenerating={isGenerating}

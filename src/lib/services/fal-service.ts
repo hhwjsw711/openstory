@@ -2,8 +2,9 @@ import { createFalClient } from '@fal-ai/client';
 import type { FalImageModel, FalVideoModel } from '@/lib/ai/models';
 import { IMAGE_MODELS, VIDEO_MODELS } from '@/lib/ai/models';
 import { VelroError, withRetry } from '@/lib/errors';
-import { createAdminClient } from '@/lib/supabase/server';
-import type { Json } from '@/lib/types/database';
+import { db } from '@/lib/db/client';
+import { falRequests } from '@/lib/db/schema/tracking';
+import { eq, and, gte, lte } from 'drizzle-orm';
 
 // Request/Response types
 export interface FalServiceRequest {
@@ -78,7 +79,6 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
  * Enhanced Fal.ai service class with comprehensive error handling and monitoring
  */
 export class FalService {
-  private supabase = createAdminClient();
   private fal;
   constructor() {
     const apiKey = process.env.FAL_KEY;
@@ -229,33 +229,30 @@ export class FalService {
   }> {
     const { teamId, userId, startDate, endDate } = options;
 
-    let query = this.supabase
-      .from('fal_requests')
-      .select('model, cost_credits, latency_ms, status, created_at');
+    // Build where conditions
+    const conditions = [];
+    if (teamId) conditions.push(eq(falRequests.teamId, teamId));
+    if (userId) conditions.push(eq(falRequests.userId, userId));
+    if (startDate) conditions.push(gte(falRequests.createdAt, startDate));
+    if (endDate) conditions.push(lte(falRequests.createdAt, endDate));
 
-    if (teamId) query = query.eq('team_id', teamId);
-    if (userId) query = query.eq('user_id', userId);
-    if (startDate) query = query.gte('created_at', startDate.toISOString());
-    if (endDate) query = query.lte('created_at', endDate.toISOString());
-
-    const { data: requests, error } = await query;
-
-    if (error || !requests) {
-      throw new VelroError(
-        'Failed to fetch usage statistics',
-        'FAL_USAGE_ERROR',
-        500,
-        { supabaseError: error?.message }
-      );
-    }
+    const requests = await db
+      .select({
+        model: falRequests.model,
+        costCredits: falRequests.costCredits,
+        latencyMs: falRequests.latencyMs,
+        status: falRequests.status,
+      })
+      .from(falRequests)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const totalRequests = requests.length;
     const totalCost = requests.reduce(
-      (sum, req) => sum + (req.cost_credits || 0),
+      (sum, req) => sum + Number(req.costCredits || 0),
       0
     );
     const totalLatency = requests.reduce(
-      (sum, req) => sum + (req.latency_ms || 0),
+      (sum, req) => sum + (req.latencyMs || 0),
       0
     );
     const successfulRequests = requests.filter(
@@ -269,7 +266,7 @@ export class FalService {
         modelBreakdown[request.model] = { requests: 0, cost: 0 };
       }
       modelBreakdown[request.model].requests++;
-      modelBreakdown[request.model].cost += request.cost_credits || 0;
+      modelBreakdown[request.model].cost += Number(request.costCredits || 0);
     }
 
     return {
@@ -290,21 +287,20 @@ export class FalService {
     const startTime = Date.now();
 
     // Create database record
-    const { data: dbRecord, error: dbError } = await this.supabase
-      .from('fal_requests')
-      .insert({
-        job_id: request.jobId || null,
-        team_id: request.teamId || null,
-        user_id: request.userId || null,
+    const [dbRecord] = await db
+      .insert(falRequests)
+      .values({
+        jobId: request.jobId || null,
+        teamId: request.teamId || null,
+        userId: request.userId || null,
         model: request.model,
-        request_payload: request.parameters as Json,
+        requestPayload: request.parameters,
         status: 'pending',
       })
-      .select()
-      .single();
+      .returning({ id: falRequests.id });
 
-    if (dbError || !dbRecord) {
-      console.error('[FalService] Failed to create database record:', dbError);
+    if (!dbRecord) {
+      console.error('[FalService] Failed to create database record');
       return {
         success: false,
         error: 'Failed to track request',
@@ -331,15 +327,16 @@ export class FalService {
       const cost = this.calculateCost(request.model, request.parameters);
 
       // Update database record with success
-      await this.supabase
-        .from('fal_requests')
-        .update({
+      await db
+        .update(falRequests)
+        .set({
           status: 'completed',
-          response_data: result as Json,
-          latency_ms: latencyMs,
-          cost_credits: cost,
+          responseData: result as Record<string, unknown>,
+          latencyMs: latencyMs,
+          costCredits: cost.toString(),
+          updatedAt: new Date(),
         })
-        .eq('id', dbRecord.id);
+        .where(eq(falRequests.id, dbRecord.id));
 
       return {
         success: true,
@@ -354,14 +351,15 @@ export class FalService {
         error instanceof Error ? error.message : 'Unknown error';
 
       // Update database record with failure
-      await this.supabase
-        .from('fal_requests')
-        .update({
+      await db
+        .update(falRequests)
+        .set({
           status: 'failed',
           error: errorMessage,
-          latency_ms: latencyMs,
+          latencyMs: latencyMs,
+          updatedAt: new Date(),
         })
-        .eq('id', dbRecord.id);
+        .where(eq(falRequests.id, dbRecord.id));
 
       return {
         success: false,

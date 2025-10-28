@@ -3,6 +3,9 @@
  * Provides session management for Server Actions and API routes
  */
 
+import { db } from '@/lib/db/client';
+import { teamMembers } from '@/lib/db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import type { Session, User } from './config';
 import { auth } from './config';
@@ -22,7 +25,10 @@ export async function getSession(): Promise<Session | null> {
 
     return session;
   } catch (error) {
-    console.error('[Auth] Failed to get session:', error);
+    console.error(
+      '[Auth] Failed to get session:',
+      error instanceof Error ? error.message : String(error)
+    );
     return null;
   }
 }
@@ -65,25 +71,19 @@ export async function getUserWithTeam(): Promise<{
     return null;
   }
 
-  // Fetch team information from database using Supabase client
-  const { createAdminClient } = await import('@/lib/supabase/server');
-  const supabase = createAdminClient();
-
   try {
     // Fetch all team memberships for the user
-    const { data: teamMembers, error } = await supabase
-      .from('team_members')
-      .select('team_id, role')
-      .eq('user_id', session.user.id)
-      .order('joined_at', { ascending: true }); // Oldest team first
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "not found" - that's okay
-      throw error;
-    }
+    const teamMembersList = await db
+      .select({
+        teamId: teamMembers.teamId,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, session.user.id))
+      .orderBy(asc(teamMembers.joinedAt)); // Oldest team first
 
     // If user has no teams, return null
-    if (!teamMembers || teamMembers.length === 0) {
+    if (!teamMembersList || teamMembersList.length === 0) {
       return {
         user: session.user,
         teamId: null,
@@ -92,18 +92,19 @@ export async function getUserWithTeam(): Promise<{
     }
 
     // If user has multiple teams, select the one with the highest role
-    let selectedTeam = teamMembers[0];
-    if (teamMembers.length > 1) {
+    let selectedTeam = teamMembersList[0];
+    if (teamMembersList.length > 1) {
       const highestRole = getHighestRole(
-        teamMembers.map((tm) => tm.role as TeamRole)
+        teamMembersList.map((tm) => tm.role as TeamRole)
       );
       selectedTeam =
-        teamMembers.find((tm) => tm.role === highestRole) || teamMembers[0];
+        teamMembersList.find((tm) => tm.role === highestRole) ||
+        teamMembersList[0];
     }
 
     return {
       user: session.user,
-      teamId: selectedTeam.team_id,
+      teamId: selectedTeam.teamId,
       teamRole: selectedTeam.role,
     };
   } catch (error) {
@@ -128,39 +129,6 @@ export async function checkTeamAccess(teamId: string): Promise<boolean> {
   }
 
   return userWithTeam.teamId === teamId;
-}
-
-/**
- * Create an anonymous session
- * Used when users start creating without signing up
- */
-export async function createAnonymousSession(): Promise<Session | null> {
-  try {
-    const headersList = await headers();
-    // Use the anonymous plugin's sign-in method
-    const result = await auth.api.signInAnonymous({
-      headers: headersList,
-    });
-
-    if (!result) {
-      return null;
-    }
-
-    // Return the session data
-    return {
-      session: {
-        token: result.token,
-        userId: result.user.id,
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-        createdAt: result.user.createdAt,
-        updatedAt: result.user.updatedAt,
-      },
-      user: result.user,
-    } as unknown as Session;
-  } catch (error) {
-    console.error('[Auth] Failed to create anonymous session:', error);
-    return null;
-  }
 }
 
 /**

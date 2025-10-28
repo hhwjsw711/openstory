@@ -10,8 +10,8 @@ export const createStyleSchema = z.object({
   config: z.any().default({}),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  is_public: z.boolean().default(false),
-  preview_url: z.string().optional().nullable(),
+  isPublic: z.boolean().default(false),
+  previewUrl: z.string().optional().nullable(),
 });
 
 export const updateStyleSchema = z.object({
@@ -20,8 +20,8 @@ export const updateStyleSchema = z.object({
   config: z.any().optional(),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  is_public: z.boolean().optional(),
-  preview_url: z.string().optional().nullable(),
+  isPublic: z.boolean().optional(),
+  previewUrl: z.string().optional().nullable(),
 });
 
 export type CreateStyleInput = z.infer<typeof createStyleSchema>;

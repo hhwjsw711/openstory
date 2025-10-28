@@ -19,17 +19,22 @@ import {
   type UpdateStyleInput,
   UpdateStyleSchema,
 } from '@/lib/schemas/style-stack';
-import { createAdminClient } from '@/lib/supabase/server';
-import type { Json, Style, StyleInsert, StyleUpdate } from '@/types/database';
+import { db } from '@/lib/db/client';
+import {
+  styles,
+  styleAdaptations,
+  teamMembers,
+  frames,
+  sequences,
+  type Style,
+  type NewStyle,
+  type StyleAdaptation,
+  type NewStyleAdaptation,
+} from '@/lib/db/schema';
+import { eq, and, desc, sql, or, ilike } from 'drizzle-orm';
 
 export interface StyleWithAdaptations extends Style {
-  style_adaptations?: {
-    id: string;
-    model_provider: string;
-    model_name: string;
-    adapted_config: Json;
-    created_at: string;
-  }[];
+  adaptations?: StyleAdaptation[];
 }
 
 export interface PaginatedStyles {
@@ -41,13 +46,6 @@ export interface PaginatedStyles {
 }
 
 export class StyleStackService {
-  private adminClient = createAdminClient();
-
-  // Use admin client for most operations, session-aware client for auth-specific needs
-  private get supabase() {
-    return this.adminClient;
-  }
-
   /**
    * Create a new style for a team
    */
@@ -59,40 +57,35 @@ export class StyleStackService {
     }
 
     // Get user's default team (for now, using first team they're a member of)
-    const { data: teamMember, error: teamError } = await this.supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    const [teamMember] = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId))
+      .limit(1);
 
-    if (teamError || !teamMember) {
+    if (!teamMember) {
       throw new Error('No team found for user');
     }
 
-    const teamId = teamMember.team_id;
+    const teamId = teamMember.teamId;
 
-    const styleData: StyleInsert = {
-      team_id: teamId,
+    const styleData: NewStyle = {
+      teamId: teamId,
       name: validatedInput.name,
       description: validatedInput.description || null,
-      config: validatedInput.config as Json,
+      config: validatedInput.config,
       category: validatedInput.category || null,
       tags: validatedInput.tags,
-      is_public: validatedInput.is_public,
-      is_template: false, // Only admins can create templates
-      preview_url: validatedInput.preview_url || null,
-      created_by: userId,
+      isPublic: validatedInput.is_public,
+      isTemplate: false, // Only admins can create templates
+      previewUrl: validatedInput.preview_url || null,
+      createdBy: userId,
     };
 
-    const { data, error } = await this.adminClient
-      .from('styles')
-      .insert(styleData)
-      .select()
-      .single();
+    const [data] = await db.insert(styles).values(styleData).returning();
 
-    if (error) {
-      throw new Error(`Failed to create style: ${error.message}`);
+    if (!data) {
+      throw new Error('Failed to create style: No data returned');
     }
 
     return data;
@@ -104,55 +97,62 @@ export class StyleStackService {
   async getTeamStyles(input: GetTeamStylesInput): Promise<PaginatedStyles> {
     const validatedInput = GetTeamStylesSchema.parse(input);
 
-    let query = this.supabase
-      .from('styles')
-      .select('*', { count: 'exact' })
-      .eq('team_id', validatedInput.team_id);
+    // Build where conditions
+    const conditions = [eq(styles.teamId, validatedInput.team_id)];
 
     // Apply filters
     if (validatedInput.category) {
-      query = query.eq('category', validatedInput.category);
+      conditions.push(eq(styles.category, validatedInput.category));
     }
 
     if (validatedInput.tags && validatedInput.tags.length > 0) {
-      query = query.contains('tags', validatedInput.tags);
+      // Check if all specified tags are present in the tags array
+      for (const tag of validatedInput.tags) {
+        conditions.push(sql`${styles.tags} @> ARRAY[${tag}]::text[]`);
+      }
     }
 
     if (validatedInput.is_public !== undefined) {
-      query = query.eq('is_public', validatedInput.is_public);
+      conditions.push(eq(styles.isPublic, validatedInput.is_public));
     }
 
     if (validatedInput.is_template !== undefined) {
-      query = query.eq('is_template', validatedInput.is_template);
+      conditions.push(eq(styles.isTemplate, validatedInput.is_template));
     }
 
-    if (validatedInput.search) {
-      query = query.or(
-        `name.ilike.%${validatedInput.search}%,description.ilike.%${validatedInput.search}%`
-      );
-    }
+    // Search condition
+    const whereClause = validatedInput.search
+      ? and(
+          ...conditions,
+          or(
+            ilike(styles.name, `%${validatedInput.search}%`),
+            ilike(styles.description, `%${validatedInput.search}%`)
+          )
+        )
+      : and(...conditions);
 
-    // Apply pagination and ordering
-    query = query
-      .order('usage_count', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(
-        validatedInput.offset,
-        validatedInput.offset + validatedInput.limit - 1
-      );
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(styles)
+      .where(whereClause);
 
-    const { data, error, count } = await query;
+    const total = countResult?.count || 0;
 
-    if (error) {
-      throw new Error(`Failed to get team styles: ${error.message}`);
-    }
+    // Get paginated data
+    const data = await db
+      .select()
+      .from(styles)
+      .where(whereClause)
+      .orderBy(desc(styles.usageCount), desc(styles.createdAt))
+      .limit(validatedInput.limit)
+      .offset(validatedInput.offset);
 
-    const total = count || 0;
     const page = Math.floor(validatedInput.offset / validatedInput.limit) + 1;
     const hasMore = validatedInput.offset + validatedInput.limit < total;
 
     return {
-      data: data || [],
+      data,
       total,
       page,
       limit: validatedInput.limit,
@@ -168,43 +168,27 @@ export class StyleStackService {
   ): Promise<StyleWithAdaptations | null> {
     const validatedInput = GetStyleByIdSchema.parse(input);
 
-    const query = this.supabase
-      .from('styles')
-      .select('*')
-      .eq('id', validatedInput.id)
-      .single();
-
-    const { data: style, error } = await query;
-
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`Failed to get style: ${error.message}`);
-    }
+    const [style] = await db
+      .select()
+      .from(styles)
+      .where(eq(styles.id, validatedInput.id));
 
     if (!style) {
       return null;
     }
 
     // Get adaptations if requested
-    let adaptations: StyleWithAdaptations['style_adaptations'];
+    let adaptationsList: StyleAdaptation[] | undefined;
     if (validatedInput.include_adaptations) {
-      const { data: adaptationsData, error: adaptationsError } =
-        await this.supabase
-          .from('style_adaptations')
-          .select('id, model_provider, model_name, adapted_config, created_at')
-          .eq('style_id', validatedInput.id);
-
-      if (adaptationsError) {
-        throw new Error(
-          `Failed to get style adaptations: ${adaptationsError.message}`
-        );
-      }
-
-      adaptations = adaptationsData;
+      adaptationsList = await db
+        .select()
+        .from(styleAdaptations)
+        .where(eq(styleAdaptations.styleId, validatedInput.id));
     }
 
     return {
       ...style,
-      ...(adaptations && { style_adaptations: adaptations }),
+      ...(adaptationsList && { adaptations: adaptationsList }),
     };
   }
 
@@ -224,43 +208,47 @@ export class StyleStackService {
     }
 
     // Check if user is member of the team that owns this style
-    const { data: teamMember, error: teamError } = await this.supabase
-      .from('team_members')
-      .select('role')
-      .eq('team_id', existingStyle.team_id)
-      .eq('user_id', userId)
-      .single();
+    const [teamMember] = await db
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.teamId, existingStyle.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      );
 
-    if (teamError || !teamMember) {
+    if (!teamMember) {
       throw new Error('Unauthorized: Not a member of the owning team');
     }
 
-    const updateData: Partial<StyleUpdate> = {};
+    const updateData: Partial<NewStyle> = {
+      updatedAt: new Date(),
+    };
 
     if (validatedInput.name !== undefined)
       updateData.name = validatedInput.name;
     if (validatedInput.description !== undefined)
       updateData.description = validatedInput.description;
     if (validatedInput.config !== undefined)
-      updateData.config = validatedInput.config as Json;
+      updateData.config = validatedInput.config;
     if (validatedInput.category !== undefined)
       updateData.category = validatedInput.category;
     if (validatedInput.tags !== undefined)
       updateData.tags = validatedInput.tags;
     if (validatedInput.is_public !== undefined)
-      updateData.is_public = validatedInput.is_public;
+      updateData.isPublic = validatedInput.is_public;
     if (validatedInput.preview_url !== undefined)
-      updateData.preview_url = validatedInput.preview_url;
+      updateData.previewUrl = validatedInput.preview_url;
 
-    const { data, error } = await this.adminClient
-      .from('styles')
-      .update(updateData)
-      .eq('id', validatedInput.id)
-      .select()
-      .single();
+    const [data] = await db
+      .update(styles)
+      .set(updateData)
+      .where(eq(styles.id, validatedInput.id))
+      .returning();
 
-    if (error) {
-      throw new Error(`Failed to update style: ${error.message}`);
+    if (!data) {
+      throw new Error('Failed to update style: No data returned');
     }
 
     return data;
@@ -280,30 +268,26 @@ export class StyleStackService {
     }
 
     // Check if user is member of the team that owns this style
-    const { data: teamMember, error: teamError } = await this.supabase
-      .from('team_members')
-      .select('role')
-      .eq('team_id', existingStyle.team_id)
-      .eq('user_id', userId)
-      .single();
+    const [teamMember] = await db
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.teamId, existingStyle.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      );
 
-    if (teamError || !teamMember) {
+    if (!teamMember) {
       throw new Error('Unauthorized: Not a member of the owning team');
     }
 
     // Don't allow deletion of templates
-    if (existingStyle.is_template) {
+    if (existingStyle.isTemplate) {
       throw new Error('Cannot delete template styles');
     }
 
-    const { error } = await this.adminClient
-      .from('styles')
-      .delete()
-      .eq('id', styleId);
-
-    if (error) {
-      throw new Error(`Failed to delete style: ${error.message}`);
-    }
+    await db.delete(styles).where(eq(styles.id, styleId));
   }
 
   /**
@@ -326,17 +310,20 @@ export class StyleStackService {
     }
 
     // Check if style is public or user has access
-    let canDuplicate = originalStyle.is_public;
+    let canDuplicate = originalStyle.isPublic;
 
     if (!canDuplicate) {
-      const { data: teamMember, error: teamError } = await this.supabase
-        .from('team_members')
-        .select('role')
-        .eq('team_id', originalStyle.team_id)
-        .eq('user_id', userId)
-        .single();
+      const [teamMember] = await db
+        .select({ role: teamMembers.role })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.teamId, originalStyle.teamId),
+            eq(teamMembers.userId, userId)
+          )
+        );
 
-      canDuplicate = !teamError && !!teamMember;
+      canDuplicate = !!teamMember;
     }
 
     if (!canDuplicate) {
@@ -344,60 +331,54 @@ export class StyleStackService {
     }
 
     // Get user's team
-    const { data: userTeamMember, error: userTeamError } = await this.supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    const [userTeamMember] = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId))
+      .limit(1);
 
-    if (userTeamError || !userTeamMember) {
+    if (!userTeamMember) {
       throw new Error('No team found for user');
     }
 
     // Create duplicate
-    const duplicateData: StyleInsert = {
-      team_id: userTeamMember.team_id,
+    const duplicateData: NewStyle = {
+      teamId: userTeamMember.teamId,
       name: validatedInput.name,
       description: validatedInput.description || originalStyle.description,
       config: originalStyle.config,
       category: originalStyle.category,
       tags: originalStyle.tags || [],
-      is_public: false, // Duplicates are private by default
-      is_template: false,
-      parent_id: originalStyle.id,
-      preview_url: originalStyle.preview_url,
-      created_by: userId,
+      isPublic: false, // Duplicates are private by default
+      isTemplate: false,
+      parentId: originalStyle.id,
+      previewUrl: originalStyle.previewUrl,
+      createdBy: userId,
     };
 
-    const { data, error } = await this.adminClient
-      .from('styles')
-      .insert(duplicateData)
-      .select()
-      .single();
+    const [data] = await db.insert(styles).values(duplicateData).returning();
 
-    if (error) {
-      throw new Error(`Failed to duplicate style: ${error.message}`);
+    if (!data) {
+      throw new Error('Failed to duplicate style: No data returned');
     }
 
     // Copy adaptations if they exist
-    if (
-      originalStyle.style_adaptations &&
-      originalStyle.style_adaptations.length > 0
-    ) {
-      const adaptations = originalStyle.style_adaptations.map((adaptation) => ({
-        style_id: data.id,
-        model_provider: adaptation.model_provider,
-        model_name: adaptation.model_name,
-        adapted_config: adaptation.adapted_config,
-      }));
+    if (originalStyle.adaptations && originalStyle.adaptations.length > 0) {
+      const adaptations: NewStyleAdaptation[] = originalStyle.adaptations.map(
+        (adaptation) => ({
+          styleId: data.id,
+          modelProvider: adaptation.modelProvider,
+          modelName: adaptation.modelName,
+          adaptedConfig: adaptation.adaptedConfig,
+        })
+      );
 
-      const { error: adaptationsError } = await this.adminClient
-        .from('style_adaptations')
-        .insert(adaptations);
-
-      if (adaptationsError) {
-        console.warn(`Failed to copy adaptations: ${adaptationsError.message}`);
+      try {
+        await db.insert(styleAdaptations).values(adaptations);
+      } catch (error) {
+        console.warn(
+          `Failed to copy adaptations: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
 
@@ -421,16 +402,14 @@ export class StyleStackService {
       throw new Error('Style not found');
     }
 
-    const { error } = await this.adminClient.from('style_adaptations').insert({
-      style_id: validatedInput.style_id,
-      model_provider: validatedInput.model_provider,
-      model_name: validatedInput.model_name,
-      adapted_config: validatedInput.adapted_config as Json,
-    });
+    const adaptationData: NewStyleAdaptation = {
+      styleId: validatedInput.style_id,
+      modelProvider: validatedInput.model_provider,
+      modelName: validatedInput.model_name,
+      adaptedConfig: validatedInput.adapted_config,
+    };
 
-    if (error) {
-      throw new Error(`Failed to create style adaptation: ${error.message}`);
-    }
+    await db.insert(styleAdaptations).values(adaptationData);
   }
 
   /**
@@ -453,17 +432,20 @@ export class StyleStackService {
     }
 
     // Check if style is public or user has access
-    let hasAccess = style.is_public;
+    let hasAccess = style.isPublic;
 
     if (!hasAccess) {
-      const { data: teamMember, error: teamError } = await this.supabase
-        .from('team_members')
-        .select('role')
-        .eq('team_id', style.team_id)
-        .eq('user_id', userId)
-        .single();
+      const [teamMember] = await db
+        .select({ role: teamMembers.role })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.teamId, style.teamId),
+            eq(teamMembers.userId, userId)
+          )
+        );
 
-      hasAccess = !teamError && !!teamMember;
+      hasAccess = !!teamMember;
     }
 
     if (!hasAccess) {
@@ -471,40 +453,41 @@ export class StyleStackService {
     }
 
     // Verify user has access to all frames
-    const { data: frames, error: framesError } = await this.supabase
-      .from('frames')
-      .select('id, sequence_id')
-      .in('id', validatedInput.frame_ids);
+    const framesList = await db
+      .select({
+        id: frames.id,
+        sequenceId: frames.sequenceId,
+      })
+      .from(frames)
+      .where(sql`${frames.id} = ANY(${validatedInput.frame_ids}::uuid[])`);
 
-    if (framesError) {
-      throw new Error(`Failed to get frames: ${framesError.message}`);
-    }
-
-    if (frames.length !== validatedInput.frame_ids.length) {
+    if (framesList.length !== validatedInput.frame_ids.length) {
       throw new Error('Some frames not found');
     }
 
     // Check user has access to all sequences containing these frames
-    const sequenceIds = [...new Set(frames.map((f) => f.sequence_id))];
+    const sequenceIds = [...new Set(framesList.map((f) => f.sequenceId))];
     for (const sequenceId of sequenceIds) {
-      const { data: sequence, error: seqError } = await this.supabase
-        .from('sequences')
-        .select('team_id')
-        .eq('id', sequenceId)
-        .single();
+      const [sequence] = await db
+        .select({ teamId: sequences.teamId })
+        .from(sequences)
+        .where(eq(sequences.id, sequenceId));
 
-      if (seqError || !sequence) {
+      if (!sequence) {
         throw new Error('Sequence not found');
       }
 
-      const { data: teamMember, error: teamError } = await this.supabase
-        .from('team_members')
-        .select('role')
-        .eq('team_id', sequence.team_id)
-        .eq('user_id', userId)
-        .single();
+      const [teamMember] = await db
+        .select({ role: teamMembers.role })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.teamId, sequence.teamId),
+            eq(teamMembers.userId, userId)
+          )
+        );
 
-      if (teamError || !teamMember) {
+      if (!teamMember) {
         throw new Error('Unauthorized: No access to sequence');
       }
     }
@@ -520,16 +503,13 @@ export class StyleStackService {
 
     // Update each frame's metadata
     for (const frameId of validatedInput.frame_ids) {
-      const { data: currentFrame, error: getFrameError } = await this.supabase
-        .from('frames')
-        .select('metadata')
-        .eq('id', frameId)
-        .single();
+      const [currentFrame] = await db
+        .select({ metadata: frames.metadata })
+        .from(frames)
+        .where(eq(frames.id, frameId));
 
-      if (getFrameError) {
-        throw new Error(
-          `Failed to get frame ${frameId}: ${getFrameError.message}`
-        );
+      if (!currentFrame) {
+        throw new Error(`Failed to get frame ${frameId}`);
       }
 
       const currentMetadata =
@@ -562,16 +542,10 @@ export class StyleStackService {
         newMetadata.characters = currentMetadata.characters;
       }
 
-      const { error: updateError } = await this.adminClient
-        .from('frames')
-        .update({ metadata: newMetadata as Json })
-        .eq('id', frameId);
-
-      if (updateError) {
-        throw new Error(
-          `Failed to update frame ${frameId}: ${updateError.message}`
-        );
-      }
+      await db
+        .update(frames)
+        .set({ metadata: newMetadata, updatedAt: new Date() })
+        .where(eq(frames.id, frameId));
     }
   }
 
@@ -579,19 +553,11 @@ export class StyleStackService {
    * Get default style templates
    */
   async getDefaultTemplates(): Promise<Style[]> {
-    const { data, error } = await this.supabase
-      .from('styles')
-      .select('*')
-      .eq('is_template', true)
-      .eq('is_public', true)
-      .order('usage_count', { ascending: false })
-      .order('name', { ascending: true });
-
-    if (error) {
-      throw new Error(`Failed to get default templates: ${error.message}`);
-    }
-
-    return data || [];
+    return await db
+      .select()
+      .from(styles)
+      .where(and(eq(styles.isTemplate, true), eq(styles.isPublic, true)))
+      .orderBy(desc(styles.usageCount), styles.name);
   }
 
   /**
@@ -601,38 +567,33 @@ export class StyleStackService {
     const validatedInput = ImportStyleSchema.parse(input);
 
     // Get user's team
-    const { data: userTeamMember, error: userTeamError } = await this.supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    const [userTeamMember] = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId))
+      .limit(1);
 
-    if (userTeamError || !userTeamMember) {
+    if (!userTeamMember) {
       throw new Error('No team found for user');
     }
 
     // Create the imported style
-    const styleData: StyleInsert = {
-      team_id: userTeamMember.team_id,
+    const styleData: NewStyle = {
+      teamId: userTeamMember.teamId,
       name: validatedInput.name || validatedInput.style_data.name,
       description: `Imported style: ${validatedInput.style_data.name}`,
-      config: validatedInput.style_data as Json,
+      config: validatedInput.style_data,
       category: validatedInput.category || null,
       tags: validatedInput.tags,
-      is_public: false, // Imported styles are private by default
-      is_template: false,
-      created_by: userId,
+      isPublic: false, // Imported styles are private by default
+      isTemplate: false,
+      createdBy: userId,
     };
 
-    const { data, error } = await this.adminClient
-      .from('styles')
-      .insert(styleData)
-      .select()
-      .single();
+    const [data] = await db.insert(styles).values(styleData).returning();
 
-    if (error) {
-      throw new Error(`Failed to import style: ${error.message}`);
+    if (!data) {
+      throw new Error('Failed to import style: No data returned');
     }
 
     return data;
@@ -667,17 +628,20 @@ export class StyleStackService {
     }
 
     // Check access permissions
-    let hasAccess = style.is_public;
+    let hasAccess = style.isPublic;
 
     if (!hasAccess) {
-      const { data: teamMember, error: teamError } = await this.supabase
-        .from('team_members')
-        .select('role')
-        .eq('team_id', style.team_id)
-        .eq('user_id', userId)
-        .single();
+      const [teamMember] = await db
+        .select({ role: teamMembers.role })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.teamId, style.teamId),
+            eq(teamMembers.userId, userId)
+          )
+        );
 
-      hasAccess = !teamError && !!teamMember;
+      hasAccess = !!teamMember;
     }
 
     if (!hasAccess) {
@@ -704,11 +668,11 @@ export class StyleStackService {
     };
 
     // Include adaptations if requested and available
-    if (validatedInput.include_adaptations && style.style_adaptations) {
+    if (validatedInput.include_adaptations && style.adaptations) {
       exportData.adaptations = {};
-      for (const adaptation of style.style_adaptations) {
-        const key = `${adaptation.model_provider}:${adaptation.model_name}`;
-        exportData.adaptations[key] = adaptation.adapted_config as Record<
+      for (const adaptation of style.adaptations) {
+        const key = `${adaptation.modelProvider}:${adaptation.modelName}`;
+        exportData.adaptations[key] = adaptation.adaptedConfig as Record<
           string,
           unknown
         >;
