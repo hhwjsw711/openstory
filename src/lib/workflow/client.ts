@@ -2,18 +2,15 @@
  * QStash Workflow client configuration
  */
 
-import { Client } from '@upstash/qstash';
 import { ConfigurationError } from '@/lib/errors';
-import {
-  getInternalAppUrl,
-  getQStashWebhookUrl,
-} from '@/lib/utils/get-base-url';
+import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
+import { Client } from '@upstash/qstash';
 
 /**
  * Gets the QStash client for direct API operations
  * Most workflow operations should use the serve() function in route files
  */
-export function getQStashClient(): Client {
+function getQStashClient(): Client {
   const token = process.env.QSTASH_TOKEN;
 
   if (!token) {
@@ -29,41 +26,25 @@ export function getQStashClient(): Client {
  * Gets the external webhook base URL for workflow endpoints
  * Used by QStash to call back to workflows
  */
-export function getWorkflowBaseUrl(): string {
+function getWorkflowBaseUrl(): string {
   const apiUrl = getQStashWebhookUrl();
   return `${apiUrl}/api/workflows`;
 }
 
-/**
- * Gets the internal base URL for workflow endpoints
- * Used when API routes need to trigger workflows within the same app
- */
-export function getInternalWorkflowBaseUrl(): string {
-  const appUrl = getInternalAppUrl();
-  return `${appUrl}/api/workflows`;
+export async function publishWorkflow(url: string, body: object) {
+  const qstash = getQStashClient();
+  const baseUrl = getWorkflowBaseUrl();
+  const response = await qstash.publishJSON({
+    url: `${baseUrl}${url}`,
+    body: body,
+    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          'x-vercel-protection-bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+        }
+      : {},
+  });
+  return typeof response === 'object' && 'messageId' in response
+    ? response.messageId
+    : null;
 }
-
-/**
- * Configuration for workflow runtime
- */
-export const workflowConfig = {
-  /**
-   * External webhook base URL (for QStash callbacks)
-   */
-  baseUrl: getWorkflowBaseUrl(),
-
-  /**
-   * Internal base URL (for API route → workflow calls)
-   */
-  internalBaseUrl: getInternalWorkflowBaseUrl(),
-
-  /**
-   * Default retry configuration
-   */
-  retries: 3,
-
-  /**
-   * Default timeout for workflow steps (in seconds)
-   */
-  timeout: 300, // 5 minutes
-} as const;

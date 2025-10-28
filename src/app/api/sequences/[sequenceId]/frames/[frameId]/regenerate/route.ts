@@ -3,14 +3,14 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
 import type { ImageWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export async function POST(
   request: Request,
@@ -75,14 +75,7 @@ export async function POST(
       sequenceId: frameData.sequenceId,
     };
 
-    // Publish to QStash to trigger the workflow
-    const qstash = getQStashClient();
-    const { messageId } = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/image`,
-      body: workflowInput,
-    });
-
-    const workflowRunId = messageId;
+    const workflowRunId = await publishWorkflow('/image', workflowInput);
 
     return NextResponse.json(
       {

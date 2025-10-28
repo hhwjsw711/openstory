@@ -3,18 +3,18 @@
  * POST /api/sequences/[sequenceId]/motion
  */
 
-import { z } from 'zod';
 import { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import {
   createErrorResponse,
   createSuccessResponse,
   requireAuthenticatedUserForMotion,
 } from '@/lib/auth/api-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
+import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { ValidationError } from '@/lib/errors';
 import type { MotionWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { z } from 'zod';
 
 // Request body schema
 const requestSchema = z.object({
@@ -107,15 +107,11 @@ export async function POST(
         };
 
         // Publish to QStash to trigger the workflow
-        const qstash = getQStashClient();
-        const { messageId } = await qstash.publishJSON({
-          url: `${workflowConfig.baseUrl}/motion`,
-          body: workflowInput,
-        });
+        const workflowRunId = await publishWorkflow('/motion', workflowInput);
 
         workflows.push({
           frameId: frame.id,
-          workflowRunId: messageId,
+          workflowRunId,
           orderIndex: frame.orderIndex,
         });
       } catch (error) {

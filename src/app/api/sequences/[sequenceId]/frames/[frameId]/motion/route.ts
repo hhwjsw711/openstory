@@ -3,7 +3,6 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/motion
  */
 
-import { z } from 'zod';
 import {
   requireTeamMemberAccess,
   requireUser,
@@ -17,7 +16,8 @@ import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { ValidationError } from '@/lib/errors';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { z } from 'zod';
 
 export async function POST(
   request: Request,
@@ -75,13 +75,8 @@ export async function POST(
     };
 
     // Publish to QStash to trigger the workflow
-    const qstash = getQStashClient();
-    const { messageId } = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/motion`,
-      body: workflowInput,
-    });
 
-    const workflowRunId = messageId;
+    const workflowRunId = await publishWorkflow('/motion', workflowInput);
 
     return createSuccessResponse(
       {

@@ -5,15 +5,15 @@
  * DELETE /api/sequences/[sequenceId] - Delete a sequence
  */
 
-import { revalidatePath } from 'next/cache';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -141,11 +141,7 @@ export async function PATCH(
         };
 
         // Publish to QStash to trigger the workflow
-        const qstash = getQStashClient();
-        await qstash.publishJSON({
-          url: `${workflowConfig.baseUrl}/storyboard`,
-          body: workflowInput,
-        });
+        await publishWorkflow('/storyboard', workflowInput);
       }
     }
 

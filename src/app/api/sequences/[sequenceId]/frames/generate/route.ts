@@ -3,14 +3,14 @@
  * POST /api/sequences/[sequenceId]/frames/generate - Generate frames for a sequence
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export async function POST(
   _request: Request,
@@ -80,13 +80,7 @@ export async function POST(
     };
 
     // Publish to QStash to trigger the workflow
-    const qstash = getQStashClient();
-    const { messageId } = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/storyboard`,
-      body: workflowInput,
-    });
-
-    const workflowRunId = messageId;
+    const workflowRunId = await publishWorkflow('/storyboard', workflowInput);
 
     console.log('[generateFrames] Frame generation workflow triggered', {
       sequenceId,

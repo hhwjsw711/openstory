@@ -10,7 +10,7 @@ import { handleApiError } from '@/lib/errors';
 import { createSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { getQStashClient, workflowConfig } from '@/lib/workflow';
+import { publishWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
@@ -73,17 +73,7 @@ export async function POST(request: Request) {
         regenerateAll: true,
       },
     };
-
-    // Publish to QStash to trigger the workflow
-    const qstash = getQStashClient();
-    const qstashResponse = await qstash.publishJSON({
-      url: `${workflowConfig.baseUrl}/storyboard`,
-      body: workflowInput,
-    });
-    console.log(
-      '[POST /api/sequences] QStash response:',
-      JSON.stringify(qstashResponse, null, 2)
-    );
+    await publishWorkflow('/storyboard', workflowInput);
 
     // Revalidate paths
     revalidatePath(`/sequences/${sequence.id}`);

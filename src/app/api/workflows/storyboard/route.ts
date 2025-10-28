@@ -14,11 +14,7 @@ import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
 } from '@/lib/workflow';
-import {
-  getQStashClient,
-  validateWorkflowAuth,
-  workflowConfig,
-} from '@/lib/workflow';
+import { publishWorkflow, validateWorkflowAuth } from '@/lib/workflow';
 import { serve } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
@@ -206,8 +202,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   // Step 7: Generate thumbnails in parallel if enabled
   if (input.options?.generateThumbnails !== false) {
     await context.run('generate-thumbnails', async () => {
-      const qstash = getQStashClient();
-
       // Trigger image generation for all frames in parallel
       const promises = frameIds.map(async ({ frameId, prompt }) => {
         if (!prompt) {
@@ -230,10 +224,11 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
         // Publish to QStash to trigger image workflow (fire and forget)
         try {
-          await qstash.publishJSON({
-            url: `${workflowConfig.baseUrl}/image`,
-            body: imageInput,
-          });
+          const workflowRunId = await publishWorkflow('/image', imageInput);
+          console.log(
+            '[generate-thumbnails] Workflow response:',
+            workflowRunId
+          );
           return frameId;
         } catch (error) {
           loggerService.logError(
