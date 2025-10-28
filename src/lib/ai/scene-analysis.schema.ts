@@ -150,7 +150,7 @@ export const promptsSchema = z.object({
 // ============================================================================
 
 export const musicSchema = z.object({
-  presence: z.enum(['none', 'low', 'medium', 'high']),
+  presence: z.enum(['none', 'minimal', 'moderate', 'full']),
   style: z.string().optional(),
   mood: z.string().optional(),
   rationale: z.string().optional(),
@@ -165,9 +165,14 @@ export const soundEffectSchema = z.object({
   spatialPosition: z.enum(['left', 'center', 'right', 'wide', 'surround']),
 });
 
+export const dialogueLineSchema = z.object({
+  character: z.string().nullable(),
+  line: z.string(),
+});
+
 export const dialogueSchema = z.object({
   presence: z.boolean(),
-  lines: z.array(z.string()),
+  lines: z.array(dialogueLineSchema),
 });
 
 export const ambientSchema = z.object({
@@ -197,11 +202,6 @@ export const continuitySchema = z.object({
 // ============================================================================
 // Original Script Schema
 // ============================================================================
-
-export const dialogueLineSchema = z.object({
-  character: z.string().nullable(),
-  line: z.string(),
-});
 
 export const originalScriptSchema = z.object({
   extract: z.string(),

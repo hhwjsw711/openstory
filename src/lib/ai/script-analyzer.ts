@@ -39,16 +39,20 @@ export async function analyzeScriptForFrames(
       systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
       userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),
     ],
-    temperature: 0.1, // Very low temperature for consistent structured output
-    max_tokens: 2000, // Increased to handle full script analysis
   });
+  console.log('response.choices.length', response.choices.length);
+
+  console.log('response.choices', response.choices);
 
   const content = response.choices[0].message.content;
   const parsed = extractJSON<SceneAnalysis>(content);
 
   if (!parsed) {
+    console.error('Failed to parse this content:', content);
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
+
+  console.log('parsed', parsed);
 
   // Validate and return the parsed result
   return sceneAnalysisSchema.parse(parsed);

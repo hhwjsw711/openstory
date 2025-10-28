@@ -101,12 +101,20 @@ export async function callOpenRouter(
       body: JSON.stringify({
         model: params.model,
         messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.max_tokens ?? 1000,
-        top_p: params.top_p ?? 1,
-        frequency_penalty: params.frequency_penalty ?? 0,
-        presence_penalty: params.presence_penalty ?? 0,
-        stream: params.stream ?? false,
+        ...(params.temperature !== undefined && {
+          temperature: params.temperature,
+        }),
+        ...(params.max_tokens !== undefined && {
+          max_tokens: params.max_tokens,
+        }),
+        ...(params.top_p !== undefined && { top_p: params.top_p }),
+        ...(params.frequency_penalty !== undefined && {
+          frequency_penalty: params.frequency_penalty,
+        }),
+        ...(params.presence_penalty !== undefined && {
+          presence_penalty: params.presence_penalty,
+        }),
+        ...(params.stream !== undefined && { stream: params.stream }),
       }),
     });
 
@@ -194,13 +202,17 @@ export function extractJSON<T>(content: string): T | null {
   try {
     // Try direct parse first
     return JSON.parse(content) as T;
-  } catch {
+  } catch (error) {
+    console.error('Failed to parse JSON:', error);
     // Try to extract JSON from markdown code blocks
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
     if (jsonMatch) {
       try {
-        return JSON.parse(jsonMatch[1]) as T;
-      } catch {
+        const parsed = JSON.parse(jsonMatch[1]) as T;
+        console.log('parsed from markdown code blocks', parsed);
+        return parsed;
+      } catch (error) {
+        console.error('Failed to parse JSON from markdown code blocks:', error);
         // Continue to next attempt
       }
     }
@@ -211,6 +223,7 @@ export function extractJSON<T>(content: string): T | null {
       try {
         return JSON.parse(objectMatch[0]) as T;
       } catch {
+        console.error('Failed to parse JSON from object match:', error);
         return null;
       }
     }

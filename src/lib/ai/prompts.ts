@@ -194,6 +194,7 @@ PARAMETERS (standardized across models):
 - dimensions: { width: [int], height: [int], aspect_ratio: "[ratio]" }
 - duration: [int seconds] (video only)
 - fps: [int] (video only)
+- motionAmount: "low"|"medium"|"high" (video only, must be one of these exact values)
 - quality: { steps: [int], guidance: [float] }
 - control: { seed: [int or null] }
 
@@ -398,21 +399,21 @@ ENHANCEMENT STRATEGY:
 For each scene, determine appropriate audio design:
 
 MUSIC:
-- Presence: none|minimal|moderate|full
-- Style: Genre and instrumentation if music present
-- Mood: Emotional quality
-- Rationale: Why this choice fits director style and scene
+- presence: "none"|"minimal"|"moderate"|"full" (must be one of these exact values)
+- style: Genre and instrumentation if music present (optional, only if presence is not "none")
+- mood: Emotional quality (optional, only if presence is not "none")
+- rationale: Why this choice fits director style and scene (optional)
 
 SOUND EFFECTS:
-- Type: ambient (environmental), foley (character movement), mechanical (machines), natural (nature)
+- Type: "ambient"|"foley"|"mechanical"|"natural" (must be one of these exact values)
 - Description: Clear description of sound
 - Timing: When it occurs (timestamp format "MM:SS" or "continuous")
-- Volume: Relative level (low/medium/high)
-- Spatial_position: Where in soundscape (left/center/right/wide/surround)
+- Volume: "low"|"medium"|"high" (must be one of these exact values)
+- spatialPosition: "left"|"center"|"right"|"wide"|"surround" (must be one of these exact values)
 
 DIALOGUE:
-- Presence: true if scene has dialogue, false if silent
-- Lines: Array of dialogue lines with speaker and text if present
+- presence: true if scene has dialogue, false if silent
+- lines: Array of objects with { character: "CHARACTER NAME or null", line: "Exact dialogue text" }
 
 AMBIENT:
 - Room_tone: Base environmental sound
