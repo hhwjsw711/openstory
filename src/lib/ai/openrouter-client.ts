@@ -162,13 +162,13 @@ export function extractJSON<T>(content: string): T | null {
     // Try direct parse first
     return JSON.parse(content) as T;
   } catch (error) {
-    console.error('Failed to parse JSON:', error);
+    console.error('Failed to parse JSON from direct parse:', error);
     // Try to extract JSON from markdown code blocks
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[1]) as T;
-        console.log('parsed from markdown code blocks', parsed);
+        console.log('parsed from markdown code blocks');
         return parsed;
       } catch (error) {
         console.error('Failed to parse JSON from markdown code blocks:', error);
@@ -182,7 +182,7 @@ export function extractJSON<T>(content: string): T | null {
       try {
         return JSON.parse(objectMatch[0]) as T;
       } catch {
-        console.error('Failed to parse JSON from object match:', error);
+        console.error('Failed to parse JSON from object match:', content);
         return null;
       }
     }

@@ -40,9 +40,6 @@ export async function analyzeScriptForFrames(
       userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),
     ],
   });
-  console.log('response.choices.length', response.choices.length);
-
-  console.log('response.choices', response.choices);
 
   const content = response.choices[0].message.content;
   const parsed = extractJSON<SceneAnalysis>(content);
