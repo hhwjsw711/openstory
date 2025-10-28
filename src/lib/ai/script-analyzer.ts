@@ -3,12 +3,15 @@
  * Analyzes scripts to identify scene boundaries and generate frame metadata
  */
 
-import { z } from 'zod';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   storyboardPrompt,
   VELRO_UNIVERSAL_SYSTEM_PROMPT,
 } from '@/lib/ai/prompts';
+import {
+  sceneAnalysisSchema,
+  type SceneAnalysis,
+} from '@/lib/ai/scene-analysis.schema';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import {
   callOpenRouter,
@@ -17,42 +20,6 @@ import {
   systemMessage,
   userMessage,
 } from './openrouter-client';
-
-// Scene analysis schema
-const sceneAnalysisSchema = z.object({
-  scenes: z.array(
-    z.object({
-      scriptContent: z.string(), // The actual script text for this scene
-      description: z.string(), // Brief description of what happens
-      duration: z.coerce
-        .number()
-        .refine((val) => !Number.isNaN(val), {
-          message: 'Duration must be a valid number',
-        })
-        .optional(),
-      type: z.string().optional(), // e.g., "action", "dialogue", "montage"
-      intensity: z.coerce
-        .number()
-        .min(1)
-        .max(10)
-        .refine((val) => !Number.isNaN(val), {
-          message: 'Intensity must be a valid number',
-        })
-        .optional(),
-    })
-  ),
-  characters: z.array(z.string()).optional(),
-  settings: z.array(z.string()).optional(),
-  themes: z.array(z.string()).optional(),
-  totalDuration: z.coerce
-    .number()
-    .refine((val) => !Number.isNaN(val), {
-      message: 'Total duration must be a valid number',
-    })
-    .optional(),
-});
-
-export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
 
 /**
  * Analyze script to identify frame boundaries

@@ -163,28 +163,29 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       }
 
       const shotTypes = ShotTypes[orderIndex % ShotTypes.length];
-      const originalSceneScript = scene.scriptContent;
+      const originalSceneScript = scene.originalScript.extract;
 
       const serviceEndTime = Date.now();
       const serviceDurationMs = serviceEndTime - serviceStartTime;
 
       // Create frame record
       const frameData: CreateFrameParams = {
-        description: scene.scriptContent,
+        description: scene.originalScript.extract,
         orderIndex,
         durationMs: serviceDurationMs,
         sequenceId: input.sequenceId,
         metadata: {
           scene: orderIndex,
-          scriptChunk: scene.scriptContent,
+          scriptChunk: scene.originalScript.extract,
           shotType: shotTypes,
-          sceneType: scene.type,
-          sceneIntensity: scene.intensity,
-          characters: scriptAnalysis.characters || [],
-          settings: scriptAnalysis.settings || [],
-          durationMs: serviceDurationMs,
-          startTime: new Date(serviceStartTime).toISOString(),
-          endTime: new Date(serviceEndTime).toISOString(),
+          sceneType: scene.metadata.storyBeat,
+          sceneIntensity: scene.metadata.storyBeat,
+          characters:
+            scriptAnalysis.characterBible?.map((character) => character.name) ||
+            [],
+          durationMs: scene.metadata.durationSeconds * 1000,
+          startTime: new Date(scene.metadata.timeOfDay).toISOString(),
+          endTime: new Date(scene.metadata.timeOfDay).toISOString(),
           userId: input.userId,
           teamId: input.teamId,
           shouldGenerateImage: input.options?.generateThumbnails !== false,
@@ -193,7 +194,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       };
 
       const frame = await frameService.createFrame(frameData);
-      return { frameId: frame.id, prompt: scene.scriptContent };
+      return { frameId: frame.id, prompt: scene.originalScript.extract };
     });
 
     return await Promise.all(promises);
