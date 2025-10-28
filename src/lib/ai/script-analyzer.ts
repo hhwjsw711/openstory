@@ -34,7 +34,7 @@ export async function analyzeScriptForFrames(
 
   // Use OpenRouter for AI-powered analysis
   const response = await callOpenRouter({
-    model: RECOMMENDED_MODELS.structured,
+    model: RECOMMENDED_MODELS.fast,
     messages: [
       systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
       userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),
