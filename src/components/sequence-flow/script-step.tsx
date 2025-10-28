@@ -11,6 +11,7 @@ import {
   useUpdateSequence,
 } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
+import { useUser } from '@/hooks/use-user';
 import { validateScript } from '@/lib/validation/script';
 
 // Zod validation schema for script form
@@ -58,8 +59,14 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
   const [isValidating, setIsValidating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Load styles using hook
-  const { data: availableStyles = [] } = useStyles();
+  // Get user data for conditional queries
+  const { data: userData, isPending: isUserPending } = useUser();
+
+  // Load styles using hook (only when we have a user)
+  const { data: availableStyles = [] } = useStyles(
+    undefined,
+    !isUserPending && !!userData
+  );
 
   // Load existing sequence data if editing
   const { data: existingSequence, isLoading: isLoadingSequence } = useSequence(
