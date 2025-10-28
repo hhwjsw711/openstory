@@ -3,30 +3,24 @@
  * GET /api/sequences/[sequenceId]/frames - Get all frames for a sequence
  * POST /api/sequences/[sequenceId]/frames - Create frame(s) for a sequence
  * DELETE /api/sequences/[sequenceId]/frames - Delete all frames for a sequence
+ *
+ * Note: Frames created through the storyboard workflow contain structured FrameMetadata
+ * with complete Scene data. See src/lib/ai/frame.schema.ts for the metadata structure.
+ * Manual frame creation via this API is supported but should follow the same structure
+ * when possible.
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
-import { handleApiError, ValidationError } from '@/lib/errors';
-import { frameService } from '@/lib/services/frame.service';
 import type { NewFrame } from '@/lib/db/schema';
-
-// Schema for single frame creation
-const singleFrameSchema = z.object({
-  description: z.string().min(1).max(5000),
-  order_index: z.number().int(),
-  thumbnail_url: z.string().url().optional(),
-  video_url: z.string().url().optional(),
-  duration_ms: z.number().int().min(1).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-// Schema for bulk frame creation
-const bulkFrameSchema = z.object({
-  frames: z.array(singleFrameSchema).min(1).max(100),
-});
+import { handleApiError, ValidationError } from '@/lib/errors';
+import {
+  bulkFrameSchema,
+  singleFrameSchema,
+} from '@/lib/schemas/frame.schemas';
+import { frameService } from '@/lib/services/frame.service';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export async function GET(
   _request: Request,
@@ -137,12 +131,7 @@ export async function POST(
 
       const frameInserts: NewFrame[] = validated.frames.map((frame) => ({
         sequenceId: sequenceId,
-        description: frame.description,
-        orderIndex: frame.order_index,
-        thumbnailUrl: frame.thumbnail_url,
-        videoUrl: frame.video_url,
-        durationMs: frame.duration_ms,
-        metadata: frame.metadata,
+        ...frame,
       }));
 
       const frames = await frameService.bulkInsertFrames(frameInserts);
@@ -163,12 +152,7 @@ export async function POST(
 
     const frame = await frameService.createFrame({
       sequenceId,
-      description: validated.description,
-      orderIndex: validated.order_index,
-      thumbnailUrl: validated.thumbnail_url,
-      videoUrl: validated.video_url,
-      durationMs: validated.duration_ms,
-      metadata: validated.metadata,
+      ...validated,
     });
 
     return NextResponse.json(

@@ -15,6 +15,13 @@
       "when": 1761535141005,
       "tag": "0001_fair_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761633370481,
+      "tag": "0002_omniscient_may_parker",
+      "breakpoints": true
     }
   ]
 }

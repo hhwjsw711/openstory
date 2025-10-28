@@ -59,7 +59,15 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
     return data;
   });
 
-  // Step 2: Generate motion/video
+  // Step 2: Set status to generating
+  await context.run('set-generating-status', async () => {
+    await updateFrame(input.frameId, {
+      videoStatus: 'generating',
+      videoWorkflowRunId: context.workflowRunId,
+    });
+  });
+
+  // Step 3: Generate motion/video
   const videoResult = await context.run('generate-motion', async () => {
     try {
       // Import motion service
@@ -88,14 +96,10 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
       loggerService.logError(
         `Motion generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
-      // Update frame metadata on error
+      // Update frame status on error
       await updateFrame(input.frameId, {
-        metadata: {
-          ...(frame.metadata as Record<string, unknown>),
-          motionStatus: 'failed',
-          motionError: error instanceof Error ? error.message : 'Unknown error',
-          motionFailedAt: new Date().toISOString(),
-        },
+        videoStatus: 'failed',
+        videoError: error instanceof Error ? error.message : 'Unknown error',
       });
 
       throw error;
@@ -126,19 +130,15 @@ export const { POST } = serve<MotionWorkflowInput>(async (context) => {
     return result.url;
   });
 
-  // Step 4: Update frame with video URL and metadata
+  // Step 4: Update frame with video URL and status
   await context.run('update-frame', async () => {
     try {
       await updateFrame(input.frameId, {
         videoUrl: storageUrl,
         durationMs: (input.duration || 2) * 1000,
-        metadata: {
-          ...(frame.metadata as Record<string, unknown>),
-          motionStatus: 'completed',
-          motionModel: input.model || 'veo3',
-          motionGeneratedAt: new Date().toISOString(),
-          motionMetadata: videoResult.metadata,
-        },
+        videoStatus: 'completed',
+        videoGeneratedAt: new Date(),
+        videoError: null,
       });
     } catch (error) {
       throw new Error(

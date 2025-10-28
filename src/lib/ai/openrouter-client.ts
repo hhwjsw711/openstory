@@ -83,10 +83,9 @@ export async function callOpenRouter(
   const apiKey = process.env.OPENROUTER_KEY;
 
   if (!apiKey) {
-    console.warn(
-      '[OpenRouter] No API key found, using mock response. Set OPENROUTER_KEY environment variable.'
+    throw new Error(
+      'OPENROUTER_KEY environment variable is required but not set'
     );
-    return getMockResponse(params);
   }
 
   try {
@@ -101,12 +100,20 @@ export async function callOpenRouter(
       body: JSON.stringify({
         model: params.model,
         messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.max_tokens ?? 1000,
-        top_p: params.top_p ?? 1,
-        frequency_penalty: params.frequency_penalty ?? 0,
-        presence_penalty: params.presence_penalty ?? 0,
-        stream: params.stream ?? false,
+        ...(params.temperature !== undefined && {
+          temperature: params.temperature,
+        }),
+        ...(params.max_tokens !== undefined && {
+          max_tokens: params.max_tokens,
+        }),
+        ...(params.top_p !== undefined && { top_p: params.top_p }),
+        ...(params.frequency_penalty !== undefined && {
+          frequency_penalty: params.frequency_penalty,
+        }),
+        ...(params.presence_penalty !== undefined && {
+          presence_penalty: params.presence_penalty,
+        }),
+        ...(params.stream !== undefined && { stream: params.stream }),
       }),
     });
 
@@ -122,48 +129,8 @@ export async function callOpenRouter(
     return validated;
   } catch (error) {
     console.error('[OpenRouter] Request failed:', error);
-    // Fall back to mock response in case of error
-    return getMockResponse(params);
+    throw error;
   }
-}
-
-/**
- * Generate a mock response for testing/development
- */
-function getMockResponse(params: OpenRouterRequestParams): OpenRouterResponse {
-  const lastMessage = params.messages[params.messages.length - 1];
-  const contentStr =
-    typeof lastMessage.content === 'string'
-      ? lastMessage.content
-      : JSON.stringify(lastMessage.content);
-  const isFrameDescription = contentStr.includes('frame description');
-
-  let content = 'Mock AI response: ';
-
-  if (isFrameDescription) {
-    content = `A cinematic wide shot reveals the scene with dramatic lighting and careful composition. The frame captures the essential narrative elements while maintaining visual coherence with the established style. Characters are positioned thoughtfully within the frame, their expressions and body language conveying the emotional weight of the moment. The environment is richly detailed, with atmospheric elements that enhance the storytelling.`;
-  } else {
-    content = `This is a mock response for: ${contentStr.slice(0, 100)}...`;
-  }
-
-  return {
-    id: `mock-${Date.now()}`,
-    choices: [
-      {
-        message: {
-          role: 'assistant',
-          content,
-        },
-        finish_reason: 'stop',
-      },
-    ],
-    usage: {
-      prompt_tokens: 100,
-      completion_tokens: 50,
-      total_tokens: 150,
-    },
-    model: params.model,
-  };
 }
 
 /**
@@ -194,13 +161,17 @@ export function extractJSON<T>(content: string): T | null {
   try {
     // Try direct parse first
     return JSON.parse(content) as T;
-  } catch {
+  } catch (error) {
+    console.error('Failed to parse JSON from direct parse:', error);
     // Try to extract JSON from markdown code blocks
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
     if (jsonMatch) {
       try {
-        return JSON.parse(jsonMatch[1]) as T;
-      } catch {
+        const parsed = JSON.parse(jsonMatch[1]) as T;
+        console.log('parsed from markdown code blocks');
+        return parsed;
+      } catch (error) {
+        console.error('Failed to parse JSON from markdown code blocks:', error);
         // Continue to next attempt
       }
     }
@@ -211,6 +182,7 @@ export function extractJSON<T>(content: string): T | null {
       try {
         return JSON.parse(objectMatch[0]) as T;
       } catch {
+        console.error('Failed to parse JSON from object match:', content);
         return null;
       }
     }

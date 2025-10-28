@@ -4,6 +4,11 @@ import type { Frame, Sequence } from '@/types/database';
 import { frameKeys } from './use-frames';
 import { sequenceKeys } from './use-sequences';
 
+/**
+ * Type for sequence metadata containing frame generation information
+ * Note: This is still used by components for displaying progress and error details
+ * but is NOT used for determining isGenerating status (which uses workflow status)
+ */
 export interface FrameGenerationMetadata {
   frameGeneration?: {
     status?: string;
@@ -62,20 +67,15 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
   } = useQuery({
     queryKey: ['storyboard-status', sequenceId],
     queryFn: async () => {
-      const [sequenceResponse, framesResponse, activeJobResponse] =
-        await Promise.all([
-          fetch(`/api/sequences/${sequenceId}`),
-          fetch(`/api/sequences/${sequenceId}/frames`),
-          fetch(`/api/sequences/${sequenceId}/frames/generation/status`),
-        ]);
+      const [sequenceResponse, framesResponse] = await Promise.all([
+        fetch(`/api/sequences/${sequenceId}`),
+        fetch(`/api/sequences/${sequenceId}/frames`),
+      ]);
 
-      const [sequenceResult, framesResult, activeJobResult] = await Promise.all(
-        [
-          sequenceResponse.json(),
-          framesResponse.json(),
-          activeJobResponse.json(),
-        ]
-      );
+      const [sequenceResult, framesResult] = await Promise.all([
+        sequenceResponse.json(),
+        framesResponse.json(),
+      ]);
 
       const sequence =
         sequenceResponse.ok && sequenceResult.success
@@ -85,15 +85,10 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
         framesResponse.ok && framesResult.success
           ? framesResult.data || []
           : [];
-      const activeJob =
-        activeJobResponse.ok && activeJobResult.success
-          ? activeJobResult.data
-          : null;
 
       return {
         sequence: sequence as Sequence | null,
         frames,
-        activeJob,
       };
     },
     enabled: !!sequenceId,
@@ -103,18 +98,19 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
     refetchInterval: (query) => {
       if (!query.state.data) return false;
 
-      const { sequence, activeJob } = query.state.data;
+      const { sequence, frames } = query.state.data;
 
-      const metadata = sequence?.metadata as FrameGenerationMetadata | null;
-      const sequenceGenerating =
-        sequence?.status === 'processing' ||
-        metadata?.frameGeneration?.status === 'processing' ||
-        metadata?.frameGeneration?.status === 'generating_thumbnails';
+      // Check if any workflows are active (vanilla TypeScript logic)
+      // - Parent storyboard workflow: sequence.status === 'processing'
+      // - Child image workflows: any frame has thumbnailStatus === 'generating'
+      // - Child video workflows: any frame has videoStatus === 'generating'
+      const isParentWorkflowActive = sequence?.status === 'processing';
+      const hasActiveChildWorkflows = frames.some(
+        (f: Frame) =>
+          f.thumbnailStatus === 'generating' || f.videoStatus === 'generating'
+      );
 
-      const jobGenerating =
-        activeJob?.status === 'running' || activeJob?.status === 'pending';
-
-      const isGenerating = sequenceGenerating || jobGenerating;
+      const isGenerating = isParentWorkflowActive || hasActiveChildWorkflows;
       return isGenerating ? 2000 : false;
     },
   });
@@ -125,7 +121,6 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
         queryKey: sequenceKeys.detail(sequenceId),
       }),
       queryClient.invalidateQueries({ queryKey: frameKeys.list(sequenceId) }),
-      queryClient.invalidateQueries({ queryKey: ['active-job', sequenceId] }),
     ]);
 
     await refetchQuery();
@@ -143,19 +138,19 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
       };
     }
 
-    const { sequence, frames, activeJob } = data;
+    const { sequence, frames } = data;
 
-    // Check if generation is in progress
-    const metadata = sequence?.metadata as FrameGenerationMetadata | null;
-    const sequenceGenerating =
-      sequence?.status === 'processing' ||
-      metadata?.frameGeneration?.status === 'processing' ||
-      metadata?.frameGeneration?.status === 'generating_thumbnails';
+    // Check if any workflows are active (vanilla TypeScript logic)
+    // - Parent storyboard workflow: sequence.status === 'processing'
+    // - Child image workflows: any frame has thumbnailStatus === 'generating'
+    // - Child video workflows: any frame has videoStatus === 'generating'
+    const isParentWorkflowActive = sequence?.status === 'processing';
+    const hasActiveChildWorkflows = frames.some(
+      (f: Frame) =>
+        f.thumbnailStatus === 'generating' || f.videoStatus === 'generating'
+    );
+    const isGenerating = isParentWorkflowActive || hasActiveChildWorkflows;
 
-    const jobGenerating =
-      activeJob?.status === 'running' || activeJob?.status === 'pending';
-
-    const isGenerating = sequenceGenerating || jobGenerating;
     const hasFrames = frames.length > 0;
     const styleId = sequence?.styleId;
 
@@ -166,6 +161,32 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
         styleId &&
         !isGenerating
     );
+
+    // Build activeJob for backwards compatibility with components
+    // Get expected frame count from metadata
+    const metadata = sequence?.metadata as FrameGenerationMetadata | null;
+    const expectedFrameCount =
+      metadata?.frameGeneration?.expectedFrameCount || 3;
+    const completedFrames = frames.filter((f: Frame) => f.thumbnailUrl).length;
+
+    const activeJob = isGenerating
+      ? {
+          id: 'storyboard-generation',
+          type: 'storyboard',
+          status: 'running' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          framesProgress: {
+            total: expectedFrameCount,
+            completed: completedFrames,
+            frames: frames.map((f: Frame) => ({
+              id: f.id,
+              orderIndex: f.orderIndex,
+              thumbnailUrl: f.thumbnailUrl,
+            })),
+          },
+        }
+      : null;
 
     return {
       sequence,

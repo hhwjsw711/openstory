@@ -7,7 +7,6 @@ import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
 import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
-import type { CreateFrameParams } from '@/lib/services/frame.service';
 import { frameService } from '@/lib/services/frame.service';
 import { LoggerService } from '@/lib/services/logger.service';
 import type {
@@ -17,17 +16,6 @@ import type {
 import { publishWorkflow, validateWorkflowAuth } from '@/lib/workflow';
 import { serve } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-
-// Common cinematography shot types for variety
-const ShotTypes = [
-  'establishing',
-  'wide',
-  'medium',
-  'close-up',
-  'extreme-close-up',
-  'over-the-shoulder',
-  'point-of-view',
-] as const;
 
 const loggerService = new LoggerService('FrameGenerationWorkflow');
 
@@ -150,53 +138,25 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       .where(eq(sequences.id, input.sequenceId));
   });
 
-  // Step 6: Process all scenes in parallel
-  const frameIds = await context.run('process-scenes', async () => {
-    const promises = scriptAnalysis.scenes.map(async (scene, index) => {
-      const serviceStartTime = Date.now();
-      const orderIndex = index;
+  // Step 6: Create all frames using bulk insert
+  const frameIds = await context.run('create-frames', async () => {
+    // Build array of all frames to create
+    const frameInserts = scriptAnalysis.scenes.map((scene, index) => ({
+      sequenceId: input.sequenceId,
+      description: scene.originalScript.extract,
+      orderIndex: index,
+      metadata: scene, // Store Scene object directly
+    }));
 
-      // Get or use default style
-      const styleId = sequence.styleId;
-      if (!styleId) {
-        throw new Error('No style ID found');
-      }
+    // Bulk insert all frames at once
+    const createdFrames = await frameService.bulkInsertFrames(frameInserts);
 
-      const shotTypes = ShotTypes[orderIndex % ShotTypes.length];
-      const originalSceneScript = scene.scriptContent;
-
-      const serviceEndTime = Date.now();
-      const serviceDurationMs = serviceEndTime - serviceStartTime;
-
-      // Create frame record
-      const frameData: CreateFrameParams = {
-        description: scene.scriptContent,
-        orderIndex,
-        durationMs: serviceDurationMs,
-        sequenceId: input.sequenceId,
-        metadata: {
-          scene: orderIndex,
-          scriptChunk: scene.scriptContent,
-          shotType: shotTypes,
-          sceneType: scene.type,
-          sceneIntensity: scene.intensity,
-          characters: scriptAnalysis.characters || [],
-          settings: scriptAnalysis.settings || [],
-          durationMs: serviceDurationMs,
-          startTime: new Date(serviceStartTime).toISOString(),
-          endTime: new Date(serviceEndTime).toISOString(),
-          userId: input.userId,
-          teamId: input.teamId,
-          shouldGenerateImage: input.options?.generateThumbnails !== false,
-          originalSceneScript,
-        },
-      };
-
-      const frame = await frameService.createFrame(frameData);
-      return { frameId: frame.id, prompt: scene.scriptContent };
+    // Map frames to their prompts for thumbnail generation
+    return createdFrames.map((frame) => {
+      const scene = frame.metadata;
+      const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
+      return { frameId: frame.id, prompt: visualPrompt };
     });
-
-    return await Promise.all(promises);
   });
 
   // Step 7: Generate thumbnails in parallel if enabled

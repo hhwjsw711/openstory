@@ -8,40 +8,29 @@
  * @module lib/services/frame.service
  */
 
-import { eq, and } from 'drizzle-orm';
-import { ValidationError } from '@/lib/errors';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { db } from '@/lib/db/client';
-import { frames } from '@/lib/db/schema';
-import type { Frame, NewFrame } from '@/lib/db/schema';
 import {
   createFrame as createFrameHelper,
-  updateFrame as updateFrameHelper,
+  createFramesBulk,
   deleteFrame as deleteFrameHelper,
   deleteSequenceFrames,
   getSequenceFrames,
-  createFramesBulk,
+  updateFrame as updateFrameHelper,
 } from '@/lib/db/helpers/frames';
+import type { Frame, NewFrame } from '@/lib/db/schema';
+import { frames } from '@/lib/db/schema';
+import { ValidationError } from '@/lib/errors';
+import type {
+  CreateFrameInput,
+  UpdateFrameInput,
+} from '@/lib/schemas/frame.schemas';
+import { and, eq } from 'drizzle-orm';
 
-// Type definitions
-export interface CreateFrameParams {
-  sequenceId: string;
-  description: string;
-  orderIndex: number;
-  thumbnailUrl?: string;
-  videoUrl?: string;
-  durationMs?: number;
-  metadata?: Record<string, unknown>;
-}
+// Type definitions - using Zod-inferred types for consistency with API validation
+export type CreateFrameParams = CreateFrameInput;
 
-export interface UpdateFrameParams {
-  id: string;
-  description?: string;
-  orderIndex?: number;
-  thumbnailUrl?: string | null;
-  videoUrl?: string | null;
-  durationMs?: number | null;
-  metadata?: Record<string, unknown> | null;
-}
+export type UpdateFrameParams = { id: string } & UpdateFrameInput;
 
 export interface GenerateFramesParams {
   sequenceId: string;
@@ -71,51 +60,25 @@ export class FrameService {
   /**
    * Create a new frame
    *
-   * @param params - Frame creation parameters
+   * @param params - Frame creation parameters (validated by CreateFrameInput schema)
    * @throws {Error} If database operation fails
    * @returns The created frame
    */
   async createFrame(params: CreateFrameParams): Promise<Frame> {
-    const frameData: NewFrame = {
-      sequenceId: params.sequenceId,
-      description: params.description,
-      orderIndex: params.orderIndex,
-      thumbnailUrl: params.thumbnailUrl,
-      videoUrl: params.videoUrl,
-      durationMs: params.durationMs,
-      metadata: params.metadata,
-    };
-
-    return await createFrameHelper(frameData);
+    return await createFrameHelper(params);
   }
 
   /**
    * Update an existing frame
    *
-   * @param params - Frame update parameters
+   * @param params - Frame update parameters (validated by UpdateFrameInput schema)
    * @throws {ValidationError} If frame not found
    * @throws {Error} If database operation fails
    * @returns The updated frame
    */
   async updateFrame(params: UpdateFrameParams): Promise<Frame> {
-    const updateData: Partial<NewFrame> = {
-      ...(params.description !== undefined && {
-        description: params.description,
-      }),
-      ...(params.orderIndex !== undefined && {
-        orderIndex: params.orderIndex,
-      }),
-      ...(params.thumbnailUrl !== undefined && {
-        thumbnailUrl: params.thumbnailUrl,
-      }),
-      ...(params.videoUrl !== undefined && { videoUrl: params.videoUrl }),
-      ...(params.durationMs !== undefined && {
-        durationMs: params.durationMs,
-      }),
-      ...(params.metadata !== undefined && { metadata: params.metadata }),
-    };
-
-    return await updateFrameHelper(params.id, updateData);
+    const { id, ...updateData } = params;
+    return await updateFrameHelper(id, updateData);
   }
 
   /**
@@ -277,6 +240,48 @@ export class FrameService {
    */
   async updateFrameVideo(frameId: string, videoUrl: string): Promise<void> {
     await updateFrameHelper(frameId, { videoUrl });
+  }
+
+  /**
+   * Get scene data from frame metadata
+   *
+   * @param frame - The frame with metadata
+   * @returns Scene object or null if metadata is invalid
+   */
+  getSceneData(frame: Frame): Scene | null {
+    return frame.metadata;
+  }
+
+  /**
+   * Get visual prompt from frame's scene data
+   *
+   * @param frame - The frame with metadata
+   * @returns Visual prompt string or null if not available
+   */
+  getVisualPrompt(frame: Frame): string | null {
+    const scene = frame.metadata;
+    return scene?.prompts?.visual?.fullPrompt || null;
+  }
+
+  /**
+   * Get motion prompt from frame's scene data
+   *
+   * @param frame - The frame with metadata
+   * @returns Motion prompt string or null if not available
+   */
+  getMotionPrompt(frame: Frame): string | null {
+    const scene = frame.metadata;
+    return scene?.prompts?.motion?.fullPrompt || null;
+  }
+
+  /**
+   * Check if frame has valid Scene metadata
+   *
+   * @param frame - The frame to check
+   * @returns True if frame has valid Scene metadata
+   */
+  hasSceneMetadata(frame: Frame): boolean {
+    return frame.metadata !== null;
   }
 }
 
