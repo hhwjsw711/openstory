@@ -50,7 +50,18 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
     `Starting image generation workflow for user ${input.userId}`
   );
 
-  // Step 1: Generate image
+  // Step 1: Set status to generating if frameId is provided
+  if (input.frameId) {
+    await context.run('set-generating-status', async () => {
+      if (!input.frameId) return;
+      await updateFrame(input.frameId, {
+        thumbnailStatus: 'generating',
+        thumbnailWorkflowRunId: context.workflowRunId,
+      });
+    });
+  }
+
+  // Step 2: Generate image
   const imageResult = await context.run('generate-image', async () => {
     if (!input.prompt) {
       throw new Error('Prompt is required for image generation');
@@ -64,28 +75,40 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
       `Generating image ${input.frameId} with model ${model}`
     );
 
-    // Generate image using selected AI provider
-    const resp = await generateImageWithProvider({
-      model: IMAGE_MODELS[model],
-      prompt: input.prompt,
-      image_size: input.imageSize,
-      num_images: input.numImages || 1,
-      seed: input.seed,
-    });
+    try {
+      // Generate image using selected AI provider
+      const resp = await generateImageWithProvider({
+        model: IMAGE_MODELS[model],
+        prompt: input.prompt,
+        image_size: input.imageSize,
+        num_images: input.numImages || 1,
+        seed: input.seed,
+      });
 
-    const respData = resp.data as unknown as
-      | FalImageResponse
-      | LetzAIImageResponse;
-    const result = resultByProvider(
-      model,
-      input as unknown as Record<string, unknown>,
-      respData
-    );
+      const respData = resp.data as unknown as
+        | FalImageResponse
+        | LetzAIImageResponse;
+      const result = resultByProvider(
+        model,
+        input as unknown as Record<string, unknown>,
+        respData
+      );
 
-    return result;
+      return result;
+    } catch (error) {
+      // Update status on error if frameId is provided
+      if (input.frameId) {
+        await updateFrame(input.frameId, {
+          thumbnailStatus: 'failed',
+          thumbnailError:
+            error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+      throw error;
+    }
   });
 
-  // Step 2: Update frame if frameId is provided
+  // Step 3: Update frame if frameId is provided
   if (input.frameId && imageResult.imageUrls.length > 0) {
     await context.run('update-frame', async () => {
       if (!input.frameId) {
@@ -95,6 +118,9 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
       try {
         await updateFrame(input.frameId, {
           thumbnailUrl: imageResult.imageUrls[0],
+          thumbnailStatus: 'completed',
+          thumbnailGeneratedAt: new Date(),
+          thumbnailError: null,
         });
       } catch (error) {
         loggerService.logError(

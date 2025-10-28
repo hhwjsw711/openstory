@@ -192,12 +192,63 @@ The core innovation - JSON presets that maintain consistent style across differe
 
 ### Frame System
 
-Frames are the building blocks of sequences:
+Frames are the building blocks of sequences, with each frame representing one scene from script analysis.
 
-- Reference script sections
-- Have thumbnail (image) and motion (video)
-- Can include characters, audio, and VFX from team libraries
-- AI adjusts frame boundaries when script changes
+**Frame Structure:**
+
+- **Visual Content**: `thumbnailUrl` (image) and `videoUrl` (motion video)
+- **Metadata**: Complete `Scene` object from script analysis (typed as JSONB in database)
+- **Database**: Frame.metadata is typed as `Scene` in Drizzle schema for full type safety
+
+**Frame Metadata = Scene Object** (`src/lib/ai/frame.schema.ts`):
+
+Frame metadata IS the Scene object directly - no wrapper, just the complete scene data:
+
+```typescript
+frame.metadata = {
+  sceneId: string,
+  sceneNumber: number,
+  originalScript: { extract, lineNumber, dialogue },
+  metadata: { title, durationSeconds, location, timeOfDay, storyBeat },
+  variants: { cameraAngles, movementStyles, moodTreatments }, // A/B/C options
+  selectedVariant: { cameraAngle, movementStyle, moodTreatment, rationale },
+  prompts: {
+    visual: { fullPrompt, negativePrompt, components, parameters },
+    motion: { fullPrompt, components, parameters },
+  },
+  continuity: { characterTags, environmentTag, colorPalette, lightingSetup },
+  audioDesign: { music, soundEffects, dialogue, ambient },
+};
+```
+
+**Key Benefits:**
+
+- Simple, clean structure - metadata IS the scene
+- Complete scene data enables regeneration without re-analyzing script
+- Variants preserved for trying different creative options
+- Prompts stored for consistent regeneration
+- Continuity maintained across frames
+- Type-safe with Drizzle's typed JSONB
+
+**Working with Frames:**
+
+```typescript
+import { frameService } from '@/lib/services/frame.service';
+
+// Get scene data from frame (metadata IS the scene)
+const scene = frameService.getSceneData(frame);
+
+// Get prompts for regeneration
+const visualPrompt = frameService.getVisualPrompt(frame);
+const motionPrompt = frameService.getMotionPrompt(frame);
+
+// Check if frame has valid Scene metadata
+const hasScene = frameService.hasSceneMetadata(frame);
+
+// Access scene data directly (typed!)
+const sceneTitle = frame.metadata.metadata.title;
+const visualPrompt = frame.metadata.prompts.visual.fullPrompt;
+```
 
 ### Workflow Architecture
 

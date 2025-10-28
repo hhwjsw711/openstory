@@ -3,6 +3,7 @@
  * Core content creation entities for video sequences
  */
 
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
   InferInsertModel,
   InferSelectModel,
@@ -34,6 +35,13 @@ export const sequenceStatus = pgEnum('sequence_status', [
   'completed',
   'failed',
   'archived',
+]);
+
+export const frameGenerationStatus = pgEnum('frame_generation_status', [
+  'idle',
+  'generating',
+  'completed',
+  'failed',
 ]);
 
 /**
@@ -112,6 +120,15 @@ export const sequences = pgTable(
 /**
  * Frames table
  * Individual frames/shots within a sequence
+ *
+ * Each frame represents one scene from script analysis and stores:
+ * - Visual content (thumbnailUrl for image, videoUrl for motion)
+ * - Complete scene data in metadata.sceneData (see FrameMetadata in frame.schema.ts)
+ * - Generation tracking information
+ *
+ * The metadata field stores structured Scene data
+ *
+ * @see src/lib/ai/scene-analysis.schema.ts for Scene structure
  */
 export const frames = pgTable(
   'frames',
@@ -126,7 +143,26 @@ export const frames = pgTable(
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
     videoUrl: text('video_url'),
-    metadata: jsonb().default({}),
+    // Thumbnail generation status tracking
+    thumbnailStatus: frameGenerationStatus('thumbnail_status').default('idle'),
+    thumbnailWorkflowRunId: text('thumbnail_workflow_run_id'),
+    thumbnailGeneratedAt: timestamp('thumbnail_generated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    thumbnailError: text('thumbnail_error'),
+    // Video/motion generation status tracking
+    videoStatus: frameGenerationStatus('video_status').default('idle'),
+    videoWorkflowRunId: text('video_workflow_run_id'),
+    videoGeneratedAt: timestamp('video_generated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    videoError: text('video_error'),
+    /** Stores Scene object from script analysis - see src/lib/ai/scene-analysis.schema.ts */
+    metadata: jsonb()
+      .$type<Scene>()
+      .default({} as Scene),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

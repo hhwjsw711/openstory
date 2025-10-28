@@ -6,6 +6,10 @@ import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 /**
  * Shared Zod schemas for frame operations
  * Generated from Drizzle schema with custom refinements
+ *
+ * Note: Frame metadata field should contain FrameMetadata structure (see src/lib/ai/frame.schema.ts)
+ * which includes complete Scene data from script analysis. The schemas below validate structure
+ * but do not enforce FrameMetadata typing to maintain flexibility.
  */
 
 export const createFrameSchema = createInsertSchema(frames, {
@@ -63,9 +67,18 @@ export const generateMotionSchema = z.object({
   motionBucket: z.number().min(1).max(255).optional(),
 });
 
+// Schemas for API endpoint frame creation (sequenceId comes from URL params)
+export const singleFrameSchema = createFrameSchema.omit({ sequenceId: true });
+
+export const bulkFrameSchema = z.object({
+  frames: z.array(createFrameSchema.omit({ sequenceId: true })).min(1),
+});
+
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
 export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
 export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
 export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
 export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
+export type SingleFrameInput = z.infer<typeof singleFrameSchema>;
+export type BulkFrameInput = z.infer<typeof bulkFrameSchema>;

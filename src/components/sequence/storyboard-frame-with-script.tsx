@@ -161,15 +161,11 @@ export const StoryboardFrameWithScript: React.FC<
           workflowRunId: result.data.workflowRunId,
         });
 
-        // Optimistically update frame metadata to show generating state
+        // Optimistically update frame to show generating state
         onFrameUpdate?.({
           ...frame,
-          metadata: {
-            ...(frame.metadata as Record<string, unknown>),
-            motionWorkflowRunId: result.data.workflowRunId,
-            motionStatus: 'generating',
-            motionModel: 'seedance_v1_pro',
-          },
+          videoStatus: 'generating',
+          videoWorkflowRunId: result.data.workflowRunId,
         });
       } else {
         console.log('result', result);
