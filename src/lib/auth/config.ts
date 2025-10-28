@@ -42,6 +42,17 @@ export const auth = betterAuth({
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
   baseURL: requiredEnvVars.BETTER_AUTH_URL,
 
+  // Trusted origins for CSRF protection
+  // Uses project-specific wildcards to allow all Vercel deployments
+  // while blocking requests from other Vercel users' deployments
+  trustedOrigins: [
+    'https://velro-*.vercel.app', // Production deployments
+    'https://velro-git-*.vercel.app', // Branch preview deployments
+    ...(process.env.NODE_ENV === 'development'
+      ? ['http://localhost:3000']
+      : []), // Local development only
+  ],
+
   // Session configuration optimized for anonymous users
   // SECURITY: Reduced from 1 year to 90 days to
   //  mitigate:
