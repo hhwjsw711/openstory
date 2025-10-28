@@ -11,6 +11,7 @@ import {
   useStoryboardStatus,
 } from '@/hooks/use-storyboard-status';
 import { useStyles } from '@/hooks/use-styles';
+import { useUser } from '@/hooks/use-user';
 import type { Frame } from '@/types/database';
 import type * as React from 'react';
 import { useCallback, useState } from 'react';
@@ -29,8 +30,11 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     includeCosts: false,
   });
 
-  // Load styles
-  const { data: styles } = useStyles();
+  // Get user data for conditional queries
+  const { data: userData, isPending: isUserPending } = useUser();
+
+  // Load styles (only when we have a user)
+  const { data: styles } = useStyles(undefined, !isUserPending && !!userData);
 
   // Use unified storyboard status hook (replaces multiple polling hooks)
   const {

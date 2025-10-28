@@ -21,7 +21,7 @@ export const styleKeys = {
 };
 
 // Hook for listing styles
-export function useStyles(teamId?: string) {
+export function useStyles(teamId?: string, enabled = true) {
   return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
@@ -35,6 +35,7 @@ export function useStyles(teamId?: string) {
       return result.data;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes (styles change less frequently)
+    enabled,
   });
 }
 

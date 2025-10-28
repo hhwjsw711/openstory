@@ -8,9 +8,12 @@ import { createAuthClient } from 'better-auth/react';
 
 // Create the auth client with plugins
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000',
+  // Use runtime domain detection to support multiple Vercel domains
+  // This prevents CORS errors when accessing from preview deployments
+  baseURL:
+    typeof window !== 'undefined'
+      ? window.location.origin // Use current domain in browser
+      : process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000', // SSR fallback
   plugins: [anonymousClient()],
 });
 
