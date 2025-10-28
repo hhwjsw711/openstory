@@ -14,7 +14,7 @@ export const characterBibleEntrySchema = z.object({
   characterId: z.string(),
   name: z.string(),
   firstMention: firstMentionSchema,
-  age: z.number().optional(),
+  age: z.union([z.number(), z.string()]).optional(), // Accept both numbers and age ranges like "30s"
   gender: z.string().optional(),
   ethnicity: z.string().optional(),
   physicalDescription: z.string(),
@@ -47,7 +47,11 @@ export const cameraAngleVariantSchema = z.object({
 export const movementStyleVariantSchema = z.object({
   id: z.enum(['B1', 'B2', 'B3']),
   description: z.string(),
-  energy: z.enum(['low', 'medium', 'high']),
+  energy: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['low', 'medium', 'high']))
+    .catch('medium'), // Handle case variations
 });
 
 export const moodTreatmentVariantSchema = z.object({
@@ -125,7 +129,11 @@ export const motionPromptComponentsSchema = z.object({
 export const motionPromptParametersSchema = z.object({
   durationSeconds: z.number(),
   fps: z.number(),
-  motionAmount: z.enum(['low', 'medium', 'high']),
+  motionAmount: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['low', 'medium', 'high']))
+    .catch('medium'), // Handle case variations
   cameraControl: z.object({
     pan: z.number(),
     tilt: z.number(),
@@ -151,18 +159,22 @@ export const promptsSchema = z.object({
 
 export const musicSchema = z.object({
   presence: z.enum(['none', 'minimal', 'moderate', 'full']),
-  style: z.string().optional(),
-  mood: z.string().optional(),
+  style: z.string().nullable().default('').optional(), // Handle null when no music
+  mood: z.string().nullable().default('').optional(), // Handle null when no music
   rationale: z.string().optional(),
 });
 
 export const soundEffectSchema = z.object({
   sfxId: z.string(),
-  type: z.enum(['ambient', 'foley', 'mechanical', 'natural']),
+  type: z.string().catch('ambient'), // Accept any string, default to ambient
   description: z.string(),
   timing: z.string(),
-  volume: z.enum(['low', 'medium', 'high']),
-  spatialPosition: z.enum(['left', 'center', 'right', 'wide', 'surround']),
+  volume: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['low', 'medium', 'high']))
+    .catch('medium'), // Handle case variations
+  spatialPosition: z.string().catch('center'), // Accept any string, default to center
 });
 
 export const dialogueLineSchema = z.object({

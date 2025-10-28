@@ -49,8 +49,6 @@ export async function analyzeScriptForFrames(
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
 
-  console.log('parsed', parsed);
-
   // Validate and return the parsed result
   return sceneAnalysisSchema.parse(parsed);
 }
