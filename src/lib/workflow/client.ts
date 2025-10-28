@@ -35,16 +35,8 @@ export async function publishWorkflow(url: string, body: object) {
   const qstash = getQStashClient();
   const baseUrl = getWorkflowBaseUrl();
   const response = await qstash.publishJSON({
-    url: `${baseUrl}${url}`,
+    url: `${baseUrl}${url}${process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? `?x-vercel-protection-bypass=${process.env.VERCEL_AUTOMATION_BYPASS_SECRET}` : ''}`,
     body: body,
-    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      ? {
-          'x-vercel-protection-bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-        }
-      : {},
   });
-  return typeof response === 'object' && 'messageId' in response
-    ? response.messageId
-    : null;
+  return response.messageId;
 }
