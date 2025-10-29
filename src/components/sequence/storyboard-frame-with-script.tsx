@@ -1,10 +1,11 @@
-import { Play, Video } from 'lucide-react';
+import { Copy, Play, Video } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useEstimateImageCostByFal } from '@/hooks/use-fal-models';
@@ -48,6 +49,38 @@ export const StoryboardFrameWithScript: React.FC<
   const metadata = frame.metadata as Record<string, unknown> | null;
   const scriptChunk = metadata?.scriptChunk as string | undefined;
   const displayScript = scriptChunk || frame.description;
+
+  // Extract prompts from metadata
+  const scene = metadata as {
+    originalScript?: { extract?: string };
+    prompts?: {
+      visual?: { fullPrompt?: string };
+      motion?: { fullPrompt?: string };
+    };
+  } | null;
+  const scriptText = scene?.originalScript?.extract || displayScript;
+  const imagePrompt = scene?.prompts?.visual?.fullPrompt;
+  const motionPrompt = scene?.prompts?.motion?.fullPrompt;
+
+  // Copy state management
+  const [copiedTab, setCopiedTab] = useState<string | null>(null);
+
+  // Handle copy to clipboard
+  const handleCopy = useCallback(
+    async (text: string | undefined | null, tabName: string) => {
+      if (!text) return;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedTab(tabName);
+        setTimeout(() => setCopiedTab(null), 2000);
+      } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+      }
+    },
+    []
+  );
+
   // Auth navigation for redirect preservation
   const { loginUrl } = useAuthNavigation();
 
@@ -262,23 +295,97 @@ export const StoryboardFrameWithScript: React.FC<
         {frame.orderIndex + 1}
       </div>
 
-      {/* Script section - Left side */}
+      {/* Script section with tabs - Left side */}
       <div className="flex-1 space-y-3">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Script Section
-        </div>
-        <div className="prose prose-sm max-w-none">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-            {displayScript}
-          </p>
-        </div>
-        {frame.durationMs !== undefined &&
-          frame.durationMs !== null &&
-          frame.durationMs > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Duration: {(frame.durationMs / 1000).toFixed(1)}s
+        <Tabs defaultValue="script" className="w-full">
+          <TabsList>
+            <TabsTrigger value="script">Script</TabsTrigger>
+            <TabsTrigger value="image-prompt">Image Prompt</TabsTrigger>
+            <TabsTrigger value="motion-prompt">Motion Prompt</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="script" className="space-y-3">
+            <div className="relative">
+              <div className="absolute right-0 top-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCopy(scriptText, 'script')}
+                  disabled={!scriptText}
+                  className="h-8 w-8 p-0"
+                >
+                  {copiedTab === 'script' ? (
+                    <span className="text-xs">✓</span>
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="prose prose-sm max-w-none pr-10">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {scriptText || 'No script available'}
+                </p>
+              </div>
             </div>
-          )}
+            {frame.durationMs !== undefined &&
+              frame.durationMs !== null &&
+              frame.durationMs > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Duration: {(frame.durationMs / 1000).toFixed(1)}s
+                </div>
+              )}
+          </TabsContent>
+
+          <TabsContent value="image-prompt" className="space-y-3">
+            <div className="relative">
+              <div className="absolute right-0 top-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCopy(imagePrompt, 'image-prompt')}
+                  disabled={!imagePrompt}
+                  className="h-8 w-8 p-0"
+                >
+                  {copiedTab === 'image-prompt' ? (
+                    <span className="text-xs">✓</span>
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="prose prose-sm max-w-none pr-10">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {imagePrompt || 'No image prompt available'}
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="motion-prompt" className="space-y-3">
+            <div className="relative">
+              <div className="absolute right-0 top-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCopy(motionPrompt, 'motion-prompt')}
+                  disabled={!motionPrompt}
+                  className="h-8 w-8 p-0"
+                >
+                  {copiedTab === 'motion-prompt' ? (
+                    <span className="text-xs">✓</span>
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="prose prose-sm max-w-none pr-10">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {motionPrompt || 'No motion prompt available'}
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Divider */}
