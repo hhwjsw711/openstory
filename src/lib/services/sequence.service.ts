@@ -21,6 +21,7 @@ export interface CreateSequenceParams {
   name: string;
   script: string;
   styleId?: string;
+  analysisModel?: string;
 }
 
 export interface UpdateSequenceParams {
@@ -31,6 +32,7 @@ export interface UpdateSequenceParams {
   styleId?: string | null;
   status?: SequenceStatus;
   metadata?: Record<string, unknown>;
+  analysisModel?: string;
 }
 
 export interface SequenceWithDetails extends Sequence {
@@ -65,6 +67,7 @@ export class SequenceService {
       title: params.name,
       script: params.script,
       styleId: params.styleId,
+      analysisModel: params.analysisModel,
       status: 'draft',
     };
 
@@ -92,6 +95,9 @@ export class SequenceService {
       ...(params.styleId !== undefined && { styleId: params.styleId }),
       ...(params.status !== undefined && { status: params.status }),
       ...(params.metadata !== undefined && { metadata: params.metadata }),
+      ...(params.analysisModel !== undefined && {
+        analysisModel: params.analysisModel,
+      }),
       updatedBy: params.userId,
       updatedAt: new Date(),
     };
@@ -276,6 +282,7 @@ export class SequenceService {
       title: newName || `${original.title} (Copy)`,
       script: original.script,
       styleId: original.styleId,
+      analysisModel: original.analysisModel,
       status: 'draft',
       metadata: original.metadata,
     };

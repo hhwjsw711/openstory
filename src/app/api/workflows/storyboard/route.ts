@@ -102,9 +102,14 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
 
     const styleConfig = DirectorDnaConfigSchema.parse(sequence.style.config);
 
+    // Use the sequence's analysisModel for script analysis
+    const analysisModel =
+      sequence.analysisModel || 'anthropic/claude-haiku-4.5';
+
     const analysis = await analyzeScriptForFrames(
       sequence.script || '',
-      styleConfig
+      styleConfig,
+      analysisModel
     );
 
     if (!analysis?.scenes || analysis.scenes.length === 0) {

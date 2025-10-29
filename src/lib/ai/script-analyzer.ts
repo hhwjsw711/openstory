@@ -23,10 +23,14 @@ import {
 
 /**
  * Analyze script to identify frame boundaries
+ * @param script - The script content to analyze
+ * @param styleConfig - The director DNA configuration to use
+ * @param model - The AI model to use for analysis (defaults to fast model)
  */
 export async function analyzeScriptForFrames(
   script: string,
-  styleConfig: DirectorDnaConfig
+  styleConfig: DirectorDnaConfig,
+  model: string = RECOMMENDED_MODELS.fast
 ): Promise<SceneAnalysis> {
   if (!process.env.OPENROUTER_KEY) {
     throw new Error('OPENROUTER_KEY is not set');
@@ -34,7 +38,7 @@ export async function analyzeScriptForFrames(
 
   // Use OpenRouter for AI-powered analysis
   const response = await callOpenRouter({
-    model: RECOMMENDED_MODELS.fast,
+    model,
     messages: [
       systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
       userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),

@@ -4,9 +4,11 @@ import { Calendar, Clock, VideoIcon } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';
 import { formatDistanceToNow } from '@/lib/utils';
+import { getModelById } from '@/lib/ai/models.config';
 
 interface SequencesListProps {
   teamId?: string;
@@ -50,11 +52,26 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
         <Link key={sequence.id} href={`/sequences/${sequence.id}/storyboard`}>
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <VideoIcon className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-lg line-clamp-1">
-                  {sequence.title || 'Untitled Sequence'}
-                </h3>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <VideoIcon className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg line-clamp-1">
+                    {sequence.title || 'Untitled Sequence'}
+                  </h3>
+                </div>
+                {sequence.analysisModel && (
+                  <Badge
+                    variant={
+                      getModelById(sequence.analysisModel)?.tier === 'premium'
+                        ? 'default'
+                        : 'secondary'
+                    }
+                    className="text-xs"
+                  >
+                    {getModelById(sequence.analysisModel)?.name ||
+                      sequence.analysisModel}
+                  </Badge>
+                )}
               </div>
             </div>
 

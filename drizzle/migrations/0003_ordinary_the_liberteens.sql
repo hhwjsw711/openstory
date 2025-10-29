@@ -1,0 +1,1 @@
+ALTER TABLE "sequences" ADD COLUMN "analysis_model" varchar(100) DEFAULT 'anthropic/claude-haiku-4.5' NOT NULL;

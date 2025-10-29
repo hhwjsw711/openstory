@@ -51,6 +51,10 @@ export const generateMockSequence = (
     ]),
     teamId: faker.string.uuid(),
     styleId: faker.datatype.boolean() ? faker.string.uuid() : null,
+    analysisModel: faker.helpers.arrayElement([
+      'anthropic/claude-haiku-4.5',
+      'anthropic/claude-sonnet-4.5',
+    ]),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { ScriptEditor } from '@/components/sequence/script-editor';
+import { ModelSelector } from '@/components/sequence/model-selector';
 import { StyleSelector } from '@/components/sequence/style-selector';
 import { SectionHeading } from '@/components/typography';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,6 +14,10 @@ import {
 import { useStyles } from '@/hooks/use-styles';
 import { useUser } from '@/hooks/use-user';
 import { validateScript } from '@/lib/validation/script';
+import {
+  DEFAULT_ANALYSIS_MODEL,
+  type AnalysisModelId,
+} from '@/lib/ai/models.config';
 
 // Zod validation schema for script form
 const scriptFormSchema = z.object({
@@ -25,6 +30,9 @@ const scriptFormSchema = z.object({
     }),
   styleId: z.string().uuid('Please select a visual style'),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+  analysisModels: z
+    .array(z.string())
+    .min(1, 'At least one model must be selected'),
 });
 
 type ScriptFormData = z.infer<typeof scriptFormSchema>;
@@ -40,6 +48,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     script: '',
     name: 'Untitled Sequence',
     styleId: undefined,
+    analysisModels: [DEFAULT_ANALYSIS_MODEL],
   });
 
   // Validation state
@@ -139,7 +148,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
   // Handle field changes
   const handleFieldChange = useCallback(
-    (field: keyof ScriptFormData, value: string | undefined) => {
+    (field: keyof ScriptFormData, value: string | string[] | undefined) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
       // Clear error for this field when user types
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -235,8 +244,10 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
           script: formData.script || '',
           styleId: formData.styleId || null,
           name: formData.name,
+          analysisModels: formData.analysisModels || [DEFAULT_ANALYSIS_MODEL],
         });
-        savedSequenceId = result.id;
+        // Multi-model creation returns array of sequences
+        savedSequenceId = result.data[0].id;
       }
 
       // Success - notify parent
@@ -425,6 +436,23 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
               </div>
             </AlertDescription>
           </Alert>
+        )}
+      </div>
+
+      {/* Model Selection */}
+      <div className="space-y-4">
+        <SectionHeading>Choose Analysis Model(s)</SectionHeading>
+        <ModelSelector
+          selectedModels={(formData.analysisModels || []) as AnalysisModelId[]}
+          onModelsChange={(models) =>
+            handleFieldChange('analysisModels', models)
+          }
+          disabled={isLoading}
+        />
+        {errors.analysisModels && (
+          <div className="text-sm text-destructive">
+            {errors.analysisModels}
+          </div>
         )}
       </div>
 

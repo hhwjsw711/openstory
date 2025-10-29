@@ -42,65 +42,80 @@ export async function POST(request: Request) {
 
     const teamId = defaultTeam.teamId;
 
-    // Create sequence
-    const createParams = {
-      teamId,
-      userId: user.id,
-      name: validated.title,
-      script: validated.script,
-      styleId: validated.styleId || undefined,
-    };
+    // Create sequences in parallel for each selected model
+    const { analysisModels } = validated;
     console.log(
-      '[POST /api/sequences] Creating sequence with params:',
-      createParams
+      '[POST /api/sequences] Creating sequences for models:',
+      analysisModels
     );
-    const sequence = await sequenceService.createSequence(createParams);
-    console.log('[POST /api/sequences] Created sequence:', {
-      id: sequence.id,
-      styleId: sequence.styleId,
-    });
 
-    // Set status to 'processing' before triggering workflow for immediate UI feedback
-    await sequenceService.updateSequenceStatus(sequence.id, 'processing');
-    console.log('[POST /api/sequences] Set sequence status to processing');
+    const sequences = await Promise.all(
+      analysisModels.map(async (modelId) => {
+        // Create sequence with model-specific config
+        const createParams = {
+          teamId,
+          userId: user.id,
+          name: validated.title,
+          script: validated.script,
+          styleId: validated.styleId || undefined,
+          analysisModel: modelId,
+        };
+        console.log(
+          `[POST /api/sequences] Creating sequence for model ${modelId}:`,
+          createParams
+        );
+        const sequence = await sequenceService.createSequence(createParams);
+        console.log('[POST /api/sequences] Created sequence:', {
+          id: sequence.id,
+          analysisModel: sequence.analysisModel,
+        });
 
-    // Generate frames asynchronously via workflow
-    const workflowInput: FrameGenerationWorkflowInput = {
-      userId: user.id,
-      teamId,
-      sequenceId: sequence.id,
-      options: {
-        framesPerScene: 3,
-        generateThumbnails: true,
-        generateDescriptions: true,
-        aiProvider: 'openrouter',
-        regenerateAll: true,
-      },
-    };
+        // Set status to 'processing' before triggering workflow
+        await sequenceService.updateSequenceStatus(sequence.id, 'processing');
 
-    try {
-      await publishWorkflow('/storyboard', workflowInput);
-      console.log('[POST /api/sequences] Workflow triggered successfully');
-    } catch (workflowError) {
-      // If workflow publish fails, mark sequence as failed
-      console.error(
-        '[POST /api/sequences] Failed to publish workflow:',
-        workflowError
-      );
-      await sequenceService.updateSequenceStatus(sequence.id, 'failed');
-      throw workflowError;
-    }
+        // Generate frames asynchronously via workflow
+        const workflowInput: FrameGenerationWorkflowInput = {
+          userId: user.id,
+          teamId,
+          sequenceId: sequence.id,
+          options: {
+            framesPerScene: 3,
+            generateThumbnails: true,
+            generateDescriptions: true,
+            aiProvider: 'openrouter',
+            regenerateAll: true,
+          },
+        };
 
-    // Revalidate paths
-    revalidatePath(`/sequences/${sequence.id}`);
-    revalidatePath(`/sequences/${sequence.id}/script`);
-    revalidatePath(`/sequences/${sequence.id}/storyboard`);
+        try {
+          await publishWorkflow('/storyboard', workflowInput);
+          console.log(
+            `[POST /api/sequences] Workflow triggered for sequence ${sequence.id}`
+          );
+        } catch (workflowError) {
+          // If workflow publish fails, mark sequence as failed
+          console.error(
+            `[POST /api/sequences] Failed to publish workflow for sequence ${sequence.id}:`,
+            workflowError
+          );
+          await sequenceService.updateSequenceStatus(sequence.id, 'failed');
+          throw workflowError;
+        }
+
+        // Revalidate paths for this sequence
+        revalidatePath(`/sequences/${sequence.id}`);
+        revalidatePath(`/sequences/${sequence.id}/script`);
+        revalidatePath(`/sequences/${sequence.id}/storyboard`);
+
+        return sequence;
+      })
+    );
 
     return NextResponse.json(
       {
         success: true,
-        data: sequence,
-        message: 'Sequence created successfully',
+        data: sequences,
+        message: `Created ${sequences.length} sequence(s) successfully`,
         timestamp: new Date().toISOString(),
       },
       { status: 201 }
