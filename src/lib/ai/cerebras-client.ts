@@ -4,31 +4,23 @@
  */
 
 import Cerebras from '@cerebras/cerebras_cloud_sdk';
-import { z } from 'zod';
 
-// Response schema for Cerebras API (matches OpenAI/OpenRouter structure)
-const cerebrasResponseSchema = z.object({
-  id: z.string(),
-  choices: z.array(
-    z.object({
-      message: z.object({
-        role: z.string(),
-        content: z.string(),
-      }),
-      finish_reason: z.string().nullable(),
-    })
-  ),
-  usage: z
-    .object({
-      prompt_tokens: z.number(),
-      completion_tokens: z.number(),
-      total_tokens: z.number(),
-    })
-    .optional(),
-  model: z.string(),
-});
-
-export type CerebrasResponse = z.infer<typeof cerebrasResponseSchema>;
+export type CerebrasResponse = {
+  id: string;
+  choices: Array<{
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string | null;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model: string;
+};
 
 export type CerebrasMessageContent =
   | string
@@ -116,10 +108,7 @@ export async function callCerebras(
       }),
     });
 
-    // Validate response structure
-    const validated = cerebrasResponseSchema.parse(response);
-
-    return validated;
+    return response as CerebrasResponse;
   } catch (error) {
     console.error('[Cerebras] Request failed:', error);
     throw error;
