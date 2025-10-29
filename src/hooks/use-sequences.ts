@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Sequence } from '@/types/database';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Query keys
 export const sequenceKeys = {
@@ -56,23 +56,25 @@ export function useSequence(
   });
 }
 
-// Hook for creating sequence
+// Hook for creating sequence (supports multi-model selection)
 export function useCreateSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    Sequence,
+    { data: Sequence[]; message: string },
     Error,
     {
       script: string;
       styleId: string | null;
       name?: string;
+      analysisModels?: string[];
     }
   >({
     mutationFn: async (input: {
       script: string;
       styleId: string | null;
       name?: string;
+      analysisModels?: string[];
     }) => {
       const response = await fetch('/api/sequences', {
         method: 'POST',
@@ -83,6 +85,9 @@ export function useCreateSequence() {
           script: input.script,
           styleId: input.styleId,
           title: input.name || 'Untitled Sequence',
+          analysisModels: input.analysisModels || [
+            'anthropic/claude-haiku-4.5',
+          ],
         }),
       });
 
@@ -92,10 +97,14 @@ export function useCreateSequence() {
         throw new Error(result.message || 'Failed to create sequence');
       }
 
-      return result.data;
+      return { data: result.data, message: result.message };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
+      queryClient
+        .invalidateQueries({ queryKey: sequenceKeys.lists() })
+        .catch((error) => {
+          console.error('Error invalidating sequences list on success:', error);
+        });
     },
   });
 }
@@ -145,7 +154,11 @@ export function useUpdateSequence() {
       if (data?.id) {
         queryClient.setQueryData(sequenceKeys.detail(data.id), data);
       }
-      queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
+      queryClient
+        .invalidateQueries({ queryKey: sequenceKeys.lists() })
+        .catch((error) => {
+          console.error('Error invalidating sequences list on success:', error);
+        });
     },
   });
 }
@@ -168,7 +181,7 @@ export function useDeleteSequence() {
     },
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });
 }

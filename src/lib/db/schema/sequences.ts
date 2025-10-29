@@ -70,6 +70,10 @@ export const sequences = pgTable(
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
     styleId: uuid('style_id'),
+    analysisModel: varchar('analysis_model', { length: 100 })
+      .default('anthropic/claude-haiku-4.5')
+      .notNull(),
+    analysisDurationMs: integer('analysis_duration_ms').default(0).notNull(),
   },
   (table) => [
     index('idx_sequences_created_at').using(
