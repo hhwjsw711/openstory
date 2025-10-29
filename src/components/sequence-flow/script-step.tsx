@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { z } from 'zod';
-import { ScriptEditor } from '@/components/sequence/script-editor';
 import { ModelSelector } from '@/components/sequence/model-selector';
+import { ScriptEditor } from '@/components/sequence/script-editor';
 import { StyleSelector } from '@/components/sequence/style-selector';
 import { SectionHeading } from '@/components/typography';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,11 +11,13 @@ import {
 } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import { useUser } from '@/hooks/use-user';
-import { validateScript } from '@/lib/validation/script';
 import {
   DEFAULT_ANALYSIS_MODEL,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
+import { validateScript } from '@/lib/validation/script';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
 
 // Zod validation schema for script form
 const scriptFormSchema = z.object({
@@ -99,6 +99,7 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         script: existingSequence.script || '',
         name: existingSequence.title || 'Untitled Sequence',
         styleId: existingSequence.styleId || undefined,
+        analysisModels: [existingSequence.analysisModel],
       });
     }
   }, [existingSequence, isEditMode]);

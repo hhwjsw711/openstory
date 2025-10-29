@@ -16,6 +16,7 @@ export interface FrameGenerationMetadata {
     completedFrameCount?: number;
     error?: string;
     failedAt?: string;
+    retryAttempt?: number;
   };
 }
 

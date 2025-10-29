@@ -1,8 +1,4 @@
-import { Copy, Play, Video } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import type * as React from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { RetryIndicator } from '@/components/retry-indicator';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +7,11 @@ import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useEstimateImageCostByFal } from '@/hooks/use-fal-models';
 import { cn } from '@/lib/utils';
 import type { Frame, Style } from '@/types/database';
+import { Copy, Play, Video } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import type * as React from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 interface ModelInfo {
   id: string;
@@ -214,9 +215,7 @@ export const StoryboardFrameWithScript: React.FC<
       setIsGeneratingMotion(false);
     }
   }, [
-    frame.id,
     styleId,
-    frame.metadata,
     frame, // Optimistically update frame metadata to show generating state
     onFrameUpdate,
   ]);
@@ -492,12 +491,43 @@ export const StoryboardFrameWithScript: React.FC<
               </div>
             </div>
           )}
+
+          {/* Retry badges */}
+          {frame.thumbnailRetryAttempt != null &&
+            frame.thumbnailRetryAttempt > 0 &&
+            frame.thumbnailStatus === 'generating' && (
+              <div className="absolute top-2 left-2 z-15">
+                <RetryIndicator attempt={frame.thumbnailRetryAttempt} />
+              </div>
+            )}
+          {frame.videoRetryAttempt != null &&
+            frame.videoRetryAttempt > 0 &&
+            frame.videoStatus === 'generating' && (
+              <div className="absolute top-10 left-2 z-15">
+                <RetryIndicator attempt={frame.videoRetryAttempt} />
+              </div>
+            )}
         </div>
 
-        {/* Motion error */}
-        {motionError && (
+        {/* Thumbnail error */}
+        {frame.thumbnailError && frame.thumbnailStatus === 'failed' && (
           <div className="text-xs text-destructive mt-1">
-            {motionError}
+            Image generation failed: {frame.thumbnailError}
+            {frame.thumbnailRetryAttempt != null &&
+              frame.thumbnailRetryAttempt > 0 && (
+                <span className="ml-1">
+                  (after {frame.thumbnailRetryAttempt}{' '}
+                  {frame.thumbnailRetryAttempt === 1 ? 'retry' : 'retries'})
+                </span>
+              )}
+          </div>
+        )}
+
+        {/* Motion error */}
+        {(motionError ||
+          (frame.videoError && frame.videoStatus === 'failed')) && (
+          <div className="text-xs text-destructive mt-1">
+            {motionError || frame.videoError}
             {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
               <Link
                 href={loginUrl}
@@ -506,6 +536,15 @@ export const StoryboardFrameWithScript: React.FC<
                 Sign in
               </Link>
             )}
+            {frame.videoError &&
+              frame.videoStatus === 'failed' &&
+              frame.videoRetryAttempt != null &&
+              frame.videoRetryAttempt > 0 && (
+                <span className="ml-1">
+                  (after {frame.videoRetryAttempt}{' '}
+                  {frame.videoRetryAttempt === 1 ? 'retry' : 'retries'})
+                </span>
+              )}
           </div>
         )}
 

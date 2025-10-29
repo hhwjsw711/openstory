@@ -36,6 +36,13 @@
       "when": 1761704472955,
       "tag": "0004_thin_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1761774811456,
+      "tag": "0005_left_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

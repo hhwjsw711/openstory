@@ -6,6 +6,7 @@
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
 import { sequences } from '@/lib/db/schema';
+import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
 import { LoggerService } from '@/lib/services/logger.service';
@@ -14,262 +15,327 @@ import type {
   ImageWorkflowInput,
 } from '@/lib/workflow';
 import { publishWorkflow, validateWorkflowAuth } from '@/lib/workflow';
+import {
+  WorkflowValidationError,
+  isInvalidScriptError,
+} from '@/lib/workflow/errors';
 import { serve } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 const loggerService = new LoggerService('FrameGenerationWorkflow');
 
-export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
-  const input = context.requestPayload;
+export const { POST } = serve<FrameGenerationWorkflowInput>(
+  async (context) => {
+    const input = context.requestPayload;
 
-  // Validate authentication
-  validateWorkflowAuth(input);
+    // Validate authentication
+    validateWorkflowAuth(input);
 
-  loggerService.logDebug(
-    `Starting frame generation workflow for sequence ${input.sequenceId}`
-  );
+    loggerService.logDebug(
+      `Starting frame generation workflow for sequence ${input.sequenceId}`
+    );
 
-  // Step 1: Verify sequence and get data
-  const sequence = await context.run('verify-sequence', async () => {
-    const data = await db.query.sequences.findFirst({
-      where: eq(sequences.id, input.sequenceId),
-      with: {
-        style: true,
-      },
+    // Step 1: Verify sequence and get data
+    const sequence = await context.run('verify-sequence', async () => {
+      const data = await db.query.sequences.findFirst({
+        where: eq(sequences.id, input.sequenceId),
+        with: {
+          style: true,
+        },
+      });
+
+      if (!data) {
+        throw new WorkflowValidationError(
+          `Sequence not found: ${input.sequenceId}`
+        );
+      }
+
+      if (!data.script || data.script.trim().length === 0) {
+        throw new WorkflowValidationError('Sequence has no script');
+      }
+
+      // Validate minimum script length (50 characters)
+      if (data.script.trim().length < 50) {
+        throw new WorkflowValidationError(
+          `Script is too short (minimum 50 characters, got ${data.script.trim().length})`
+        );
+      }
+
+      if (!data.styleId) {
+        throw new WorkflowValidationError('Sequence has no style selected');
+      }
+
+      return data;
     });
 
-    if (!data) {
-      throw new Error(`Sequence not found: ${input.sequenceId}`);
-    }
-
-    if (!data.script) {
-      throw new Error('Sequence has no script');
-    }
-
-    if (!data.styleId) {
-      throw new Error('Sequence has no style selected');
-    }
-
-    return data;
-  });
-
-  // Step 2: Update sequence status to processing
-  await context.run('update-status-processing', async () => {
-    await db
-      .update(sequences)
-      .set({
-        status: 'processing',
-        metadata: {
+    // Step 2: Update sequence status to processing
+    await context.run('update-status-processing', async () => {
+      await updateSequenceMetadata(
+        input.sequenceId,
+        {
           frameGeneration: {
             status: 'processing',
             startedAt: new Date().toISOString(),
             expectedFrameCount: null,
             completedFrameCount: 0,
+            retryAttempt: context.retries,
             options: input.options,
             error: null,
             failedAt: null,
           },
         },
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, input.sequenceId));
-  });
+        { status: 'processing' }
+      );
+    });
 
-  // Step 3: Delete existing frames
-  await context.run('delete-existing-frames', async () => {
-    const existingFrames = await frameService.getFramesBySequence(
-      input.sequenceId
+    // Step 3: Delete existing frames
+    await context.run('delete-existing-frames', async () => {
+      const existingFrames = await frameService.getFramesBySequence(
+        input.sequenceId
+      );
+
+      if (existingFrames.length > 0) {
+        await Promise.all(
+          existingFrames.map((frame) => frameService.deleteFrame(frame.id))
+        );
+      }
+    });
+
+    // Step 4: Analyze script to determine frame boundaries
+    const { scriptAnalysis, analysisDurationMs } = await context.run(
+      'analyze-script',
+      async () => {
+        // Get or use default style
+        const styleId = sequence.styleId;
+        if (!styleId) {
+          throw new WorkflowValidationError('No style ID found');
+        }
+
+        if (!sequence.style) {
+          throw new WorkflowValidationError('No style found');
+        }
+
+        const styleConfig = DirectorDnaConfigSchema.parse(
+          sequence.style.config
+        );
+
+        // Use the sequence's analysisModel for script analysis
+        const analysisModel =
+          sequence.analysisModel || 'anthropic/claude-haiku-4.5';
+
+        // Track analysis duration
+        const startTime = Date.now();
+
+        let analysis;
+        try {
+          analysis = await analyzeScriptForFrames(
+            sequence.script || '',
+            styleConfig,
+            analysisModel
+          );
+        } catch (error) {
+          // Check if error indicates invalid script
+          if (isInvalidScriptError(error)) {
+            throw new WorkflowValidationError(
+              error instanceof Error
+                ? error.message
+                : 'Script is invalid or not a proper script format'
+            );
+          }
+
+          // Update metadata with error for retryable errors
+          await updateSequenceMetadata(input.sequenceId, {
+            frameGeneration: {
+              status: 'processing',
+              retryAttempt: context.retries,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Script analysis failed',
+            },
+          });
+
+          // Re-throw so QStash will retry
+          throw error;
+        }
+
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+
+        // Validate analysis result
+        if (!analysis?.scenes || analysis.scenes.length === 0) {
+          throw new WorkflowValidationError(
+            'Script analysis returned no scenes - script may be too short or invalid'
+          );
+        }
+
+        return {
+          scriptAnalysis: analysis,
+          analysisDurationMs: duration,
+        };
+      }
     );
 
-    if (existingFrames.length > 0) {
-      await Promise.all(
-        existingFrames.map((frame) => frameService.deleteFrame(frame.id))
-      );
-    }
-  });
+    const frameCount = scriptAnalysis.scenes.length;
 
-  // Step 4: Analyze script to determine frame boundaries
-  const { scriptAnalysis, analysisDurationMs } = await context.run(
-    'analyze-script',
-    async () => {
-      // Get or use default style
-      const styleId = sequence.styleId;
-      if (!styleId) {
-        throw new Error('No style ID found');
-      }
-
-      if (!sequence.style) {
-        throw new Error('No style found');
-      }
-
-      const styleConfig = DirectorDnaConfigSchema.parse(sequence.style.config);
-
-      // Use the sequence's analysisModel for script analysis
-      const analysisModel =
-        sequence.analysisModel || 'anthropic/claude-haiku-4.5';
-
-      // Track analysis duration
-      const startTime = Date.now();
-
-      const analysis = await analyzeScriptForFrames(
-        sequence.script || '',
-        styleConfig,
-        analysisModel
-      );
-
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-
-      if (!analysis?.scenes || analysis.scenes.length === 0) {
-        throw new Error('Failed to analyze script or no scenes found');
-      }
-
-      return {
-        scriptAnalysis: analysis,
-        analysisDurationMs: duration,
-      };
-    }
-  );
-
-  const frameCount = scriptAnalysis.scenes.length;
-
-  // Step 5: Update sequence with title and analysis duration
-  await context.run('update-title-and-duration', async () => {
-    const updateData: {
-      analysisDurationMs: number;
-      title?: string;
-      updatedAt: Date;
-    } = {
-      analysisDurationMs,
-      updatedAt: new Date(),
-    };
-
-    // Set title from projectMetadata if available
-    if (scriptAnalysis.projectMetadata?.title) {
-      updateData.title = scriptAnalysis.projectMetadata.title;
-    }
-
-    await db
-      .update(sequences)
-      .set(updateData)
-      .where(eq(sequences.id, input.sequenceId));
-  });
-
-  // Step 6: Update metadata with expected frame count
-  await context.run('update-expected-count', async () => {
-    await db
-      .update(sequences)
-      .set({
-        metadata: {
-          frameGeneration: {
-            status: 'generating_thumbnails',
-            startedAt: new Date().toISOString(),
-            expectedFrameCount: frameCount,
-            completedFrameCount: 0,
-            options: input.options,
-            error: null,
-            failedAt: null,
-            thumbnailsGenerating: true,
-          },
-        },
+    // Step 5: Update sequence with title and analysis duration
+    await context.run('update-title-and-duration', async () => {
+      const updateData: {
+        analysisDurationMs: number;
+        title?: string;
+        updatedAt: Date;
+      } = {
+        analysisDurationMs,
         updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, input.sequenceId));
-  });
+      };
 
-  // Step 7: Create all frames using bulk insert
-  const frameIds = await context.run('create-frames', async () => {
-    // Build array of all frames to create
-    const frameInserts = scriptAnalysis.scenes.map((scene, index) => ({
-      sequenceId: input.sequenceId,
-      description: scene.originalScript.extract,
-      orderIndex: index,
-      metadata: scene, // Store Scene object directly
-    }));
+      // Set title from projectMetadata if available
+      if (scriptAnalysis.projectMetadata?.title) {
+        updateData.title = scriptAnalysis.projectMetadata.title;
+      }
 
-    // Bulk insert all frames at once
-    const createdFrames = await frameService.bulkInsertFrames(frameInserts);
-
-    // Map frames to their prompts for thumbnail generation
-    return createdFrames.map((frame) => {
-      const scene = frame.metadata;
-      const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
-      return { frameId: frame.id, prompt: visualPrompt };
-    });
-  });
-
-  // Step 8: Generate thumbnails in parallel if enabled
-  if (input.options?.generateThumbnails !== false) {
-    await context.run('generate-thumbnails', async () => {
-      // Trigger image generation for all frames in parallel
-      const promises = frameIds.map(async ({ frameId, prompt }) => {
-        if (!prompt) {
-          loggerService.logWarning(
-            `Frame ${frameId} has no description, skipping`
-          );
-          return null;
-        }
-
-        const imageInput: ImageWorkflowInput = {
-          userId: input.userId,
-          teamId: input.teamId,
-          prompt,
-          model: 'flux_krea_lora',
-          imageSize: 'landscape_16_9',
-          numImages: 1,
-          frameId,
-          sequenceId: input.sequenceId,
-        };
-
-        // Publish to QStash to trigger image workflow (fire and forget)
-        try {
-          const workflowRunId = await publishWorkflow('/image', imageInput);
-          console.log(
-            '[generate-thumbnails] Workflow response:',
-            workflowRunId
-          );
-          return frameId;
-        } catch (error) {
-          loggerService.logError(
-            `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : 'Unknown'}`
-          );
-          return null;
-        }
-      });
-
-      await Promise.all(promises);
-      return { triggered: promises.length };
-    });
-  }
-
-  // Step 9: Update sequence status to completed
-  await context.run('update-sequence-status', async () => {
-    try {
       await db
         .update(sequences)
-        .set({ status: 'completed', updatedAt: new Date() })
+        .set(updateData)
         .where(eq(sequences.id, input.sequenceId));
+    });
 
-      loggerService.logDebug('Sequence status updated to completed');
-      return { success: true };
-    } catch (error) {
-      loggerService.logError(
-        `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      throw new Error(
-        `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+    // Step 6: Update metadata with expected frame count
+    await context.run('update-expected-count', async () => {
+      await updateSequenceMetadata(input.sequenceId, {
+        frameGeneration: {
+          status: 'generating_thumbnails',
+          expectedFrameCount: frameCount,
+          completedFrameCount: 0,
+          retryAttempt: context.retries,
+          error: null,
+          failedAt: null,
+          thumbnailsGenerating: true,
+        },
+      });
+    });
+
+    // Step 7: Create all frames using bulk insert
+    const frameIds = await context.run('create-frames', async () => {
+      // Build array of all frames to create
+      const frameInserts = scriptAnalysis.scenes.map((scene, index) => ({
+        sequenceId: input.sequenceId,
+        description: scene.originalScript.extract,
+        orderIndex: index,
+        metadata: scene, // Store Scene object directly
+      }));
+
+      // Bulk insert all frames at once
+      const createdFrames = await frameService.bulkInsertFrames(frameInserts);
+
+      // Map frames to their prompts for thumbnail generation
+      return createdFrames.map((frame) => {
+        const scene = frame.metadata;
+        const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
+        return { frameId: frame.id, prompt: visualPrompt };
+      });
+    });
+
+    // Step 8: Generate thumbnails in parallel if enabled
+    if (input.options?.generateThumbnails !== false) {
+      await context.run('generate-thumbnails', async () => {
+        // Trigger image generation for all frames in parallel
+        const promises = frameIds.map(async ({ frameId, prompt }) => {
+          if (!prompt) {
+            loggerService.logWarning(
+              `Frame ${frameId} has no description, skipping`
+            );
+            return null;
+          }
+
+          const imageInput: ImageWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            prompt,
+            model: 'flux_krea_lora',
+            imageSize: 'landscape_16_9',
+            numImages: 1,
+            frameId,
+            sequenceId: input.sequenceId,
+          };
+
+          // Publish to QStash to trigger image workflow (fire and forget)
+          try {
+            const workflowRunId = await publishWorkflow('/image', imageInput);
+            console.log(
+              '[generate-thumbnails] Workflow response:',
+              workflowRunId
+            );
+            return frameId;
+          } catch (error) {
+            loggerService.logError(
+              `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : 'Unknown'}`
+            );
+            return null;
+          }
+        });
+
+        await Promise.all(promises);
+        return { triggered: promises.length };
+      });
     }
-  });
 
-  loggerService.logDebug('Frame generation workflow completed');
+    // Step 9: Update sequence status to completed
+    await context.run('update-sequence-status', async () => {
+      try {
+        await db
+          .update(sequences)
+          .set({ status: 'completed', updatedAt: new Date() })
+          .where(eq(sequences.id, input.sequenceId));
 
-  return {
-    sequenceId: input.sequenceId,
-    frameCount,
-    message:
-      input.options?.generateThumbnails !== false
-        ? `Created ${frameCount} frames. Thumbnail generation is in progress.`
-        : `Created ${frameCount} frames.`,
-  };
-});
+        loggerService.logDebug('Sequence status updated to completed');
+        return { success: true };
+      } catch (error) {
+        loggerService.logError(
+          `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        throw new Error(
+          `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    });
+
+    loggerService.logDebug('Frame generation workflow completed');
+
+    return {
+      sequenceId: input.sequenceId,
+      frameCount,
+      message:
+        input.options?.generateThumbnails !== false
+          ? `Created ${frameCount} frames. Thumbnail generation is in progress.`
+          : `Created ${frameCount} frames.`,
+    };
+  },
+  {
+    retries: 3,
+    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+    failureFunction: async ({ context, failResponse }) => {
+      const input = context.requestPayload;
+
+      // Set status to 'failed' after all retries exhausted
+      await updateSequenceMetadata(
+        input.sequenceId,
+        {
+          frameGeneration: {
+            status: 'failed',
+            error: failResponse,
+            failedAt: new Date().toISOString(),
+            retryAttempt: context.retries,
+          },
+        },
+        { status: 'failed' }
+      );
+
+      loggerService.logError(
+        `Frame generation workflow failed for sequence ${input.sequenceId}: ${failResponse}`
+      );
+
+      return `Frame generation failed for sequence ${input.sequenceId}`;
+    },
+  }
+);

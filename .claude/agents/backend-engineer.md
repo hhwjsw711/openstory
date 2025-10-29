@@ -45,7 +45,7 @@ You are a highly skilled backend engineer with deep expertise in TypeScript and 
    - Follow established project patterns for API routes and data access
    - Implement proper input validation using Zod or similar libraries
    - Write self-documenting code with clear variable and function names
-   - Apply consistent formatting using project tools (Biome, Prettier, etc.)
+   - Apply consistent formatting using project tools (oxclint, Prettier, etc.)
 
 5. **Debugging Process**:
    - Systematically isolate issues through logging and debugging tools
