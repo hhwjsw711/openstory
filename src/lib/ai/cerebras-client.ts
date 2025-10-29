@@ -5,57 +5,12 @@
 
 import Cerebras from '@cerebras/cerebras_cloud_sdk';
 
-export type CerebrasResponse = {
-  id: string;
-  choices: Array<{
-    message: {
-      role: string;
-      content: string;
-    };
-    finish_reason: string | null;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-  model: string;
-};
+export type CerebrasRequestParams = Omit<
+  Cerebras.Chat.ChatCompletionCreateParams,
+  'stream'
+> & { stream?: false };
 
-export type CerebrasMessageContent =
-  | string
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } }
-  | Array<
-      | { type: 'text'; text: string }
-      | { type: 'image_url'; image_url: { url: string } }
-    >;
-
-export interface CerebrasMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: CerebrasMessageContent;
-}
-
-export interface CerebrasRequestParams {
-  model: string;
-  messages: CerebrasMessage[];
-  temperature?: number;
-  max_tokens?: number;
-  top_p?: number;
-  stream?: boolean;
-  response_format?:
-    | {
-        type: 'json_object';
-      }
-    | {
-        type: 'json_schema';
-        json_schema: {
-          name: string;
-          strict: boolean;
-          schema: Record<string, unknown>;
-        };
-      };
-}
+export type CerebrasResponse = Cerebras.Chat.ChatCompletion;
 
 /**
  * Create Cerebras client instance
@@ -91,10 +46,8 @@ export async function callCerebras(
 
     const response = await client.chat.completions.create({
       model: modelId,
-      messages: params.messages as Array<{
-        role: 'system' | 'user' | 'assistant';
-        content: string;
-      }>,
+      messages: params.messages,
+      stream: false, // We don't use streaming
       ...(params.temperature !== undefined && {
         temperature: params.temperature,
       }),
@@ -102,12 +55,12 @@ export async function callCerebras(
         max_tokens: params.max_tokens,
       }),
       ...(params.top_p !== undefined && { top_p: params.top_p }),
-      ...(params.stream !== undefined && { stream: params.stream }),
       ...(params.response_format !== undefined && {
         response_format: params.response_format,
       }),
     });
 
+    // Since stream=false, response is always ChatCompletion (not a stream)
     return response as CerebrasResponse;
   } catch (error) {
     console.error('[Cerebras] Request failed:', error);
@@ -118,20 +71,20 @@ export async function callCerebras(
 /**
  * Helper function to create a system message
  */
-export function systemMessage(content: string): CerebrasMessage {
-  return { role: 'system', content };
+export function systemMessage(content: string) {
+  return { role: 'system' as const, content };
 }
 
 /**
  * Helper function to create a user message
  */
-export function userMessage(content: string): CerebrasMessage {
-  return { role: 'user', content };
+export function userMessage(content: string) {
+  return { role: 'user' as const, content };
 }
 
 /**
  * Helper function to create an assistant message
  */
-export function assistantMessage(content: string): CerebrasMessage {
-  return { role: 'assistant', content };
+export function assistantMessage(content: string) {
+  return { role: 'assistant' as const, content };
 }

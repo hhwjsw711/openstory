@@ -40,7 +40,7 @@ export async function analyzeScriptForFrames(
   // Determine which provider to use based on model prefix
   const isCerebrasModel = model.startsWith('cerebras/');
 
-  let response;
+  let content: string | null = null;
 
   if (isCerebrasModel) {
     // Route to Cerebras for ultra-fast inference
@@ -48,7 +48,7 @@ export async function analyzeScriptForFrames(
       throw new Error('CEREBRAS_API_KEY is not set');
     }
 
-    response = await callCerebras({
+    const response = await callCerebras({
       model,
       messages: [
         cerebrasSystemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
@@ -58,13 +58,21 @@ export async function analyzeScriptForFrames(
       ],
       max_tokens: 20000,
     });
+    if (!Array.isArray(response.choices) || response.choices.length === 0) {
+      throw new Error('No choices returned from Cerebras');
+    }
+    const firstChoice = response.choices[0];
+    if (!firstChoice) {
+      throw new Error('No choices returned from Cerebras');
+    }
+    content = firstChoice.message.content;
   } else {
     // Route to OpenRouter for Anthropic and other models
     if (!process.env.OPENROUTER_KEY) {
       throw new Error('OPENROUTER_KEY is not set');
     }
 
-    response = await callOpenRouter({
+    const response = await callOpenRouter({
       model,
       messages: [
         systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
@@ -73,9 +81,13 @@ export async function analyzeScriptForFrames(
         ),
       ],
     });
+    content = response.choices[0]?.message?.content;
   }
 
-  const content = response.choices[0].message.content;
+  if (!content) {
+    throw new Error('AI response contained no content');
+  }
+
   const parsed = extractJSON<SceneAnalysis>(content);
 
   if (!parsed) {
