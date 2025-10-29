@@ -55,6 +55,7 @@ export const generateMockSequence = (
       'anthropic/claude-haiku-4.5',
       'anthropic/claude-sonnet-4.5',
     ]),
+    analysisDurationMs: faker.number.int({ min: 1000, max: 15000 }), // 1-15 seconds
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),

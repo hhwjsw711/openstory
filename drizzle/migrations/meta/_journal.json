@@ -29,6 +29,13 @@
       "when": 1761701642952,
       "tag": "0003_ordinary_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1761704472955,
+      "tag": "0004_thin_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }

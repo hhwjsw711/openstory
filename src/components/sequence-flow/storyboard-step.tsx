@@ -12,6 +12,7 @@ import {
 } from '@/hooks/use-storyboard-status';
 import { useStyles } from '@/hooks/use-styles';
 import { useUser } from '@/hooks/use-user';
+import { formatDuration } from '@/lib/utils/format-duration';
 import type { Frame } from '@/types/database';
 import type * as React from 'react';
 import { useCallback, useState } from 'react';
@@ -155,6 +156,22 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
           to life. Each frame represents a key moment in your story.
         </p>
       </div>
+
+      {/* Analysis Info Card - shown when analysis is complete */}
+      {sequence.analysisDurationMs > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Script analysis completed in
+              </span>
+              <span className="font-medium">
+                {formatDuration(sequence.analysisDurationMs)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Motion Progress Card - shown when frames exist */}
       {hasFrames && (

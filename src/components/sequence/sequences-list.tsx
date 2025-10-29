@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Clock, VideoIcon } from 'lucide-react';
+import { Calendar, Clock, Timer, VideoIcon } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';
 import { formatDistanceToNow } from '@/lib/utils';
+import { formatDuration } from '@/lib/utils/format-duration';
 import { getModelById } from '@/lib/ai/models.config';
 
 interface SequencesListProps {
@@ -90,6 +91,12 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
                 <Clock className="h-3 w-3" />
                 <span>{formatDistanceToNow(new Date(sequence.updatedAt))}</span>
               </div>
+              {sequence.analysisDurationMs > 0 && (
+                <div className="flex items-center gap-1">
+                  <Timer className="h-3 w-3" />
+                  <span>{formatDuration(sequence.analysisDurationMs)}</span>
+                </div>
+              )}
             </div>
           </Card>
         </Link>

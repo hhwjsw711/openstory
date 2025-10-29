@@ -1,0 +1,1 @@
+ALTER TABLE "sequences" ADD COLUMN "analysis_duration_ms" integer DEFAULT 0 NOT NULL;

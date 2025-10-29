@@ -89,39 +89,73 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
   });
 
   // Step 4: Analyze script to determine frame boundaries
-  const scriptAnalysis = await context.run('analyze-script', async () => {
-    // Get or use default style
-    const styleId = sequence.styleId;
-    if (!styleId) {
-      throw new Error('No style ID found');
+  const { scriptAnalysis, analysisDurationMs } = await context.run(
+    'analyze-script',
+    async () => {
+      // Get or use default style
+      const styleId = sequence.styleId;
+      if (!styleId) {
+        throw new Error('No style ID found');
+      }
+
+      if (!sequence.style) {
+        throw new Error('No style found');
+      }
+
+      const styleConfig = DirectorDnaConfigSchema.parse(sequence.style.config);
+
+      // Use the sequence's analysisModel for script analysis
+      const analysisModel =
+        sequence.analysisModel || 'anthropic/claude-haiku-4.5';
+
+      // Track analysis duration
+      const startTime = Date.now();
+
+      const analysis = await analyzeScriptForFrames(
+        sequence.script || '',
+        styleConfig,
+        analysisModel
+      );
+
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      if (!analysis?.scenes || analysis.scenes.length === 0) {
+        throw new Error('Failed to analyze script or no scenes found');
+      }
+
+      return {
+        scriptAnalysis: analysis,
+        analysisDurationMs: duration,
+      };
     }
-
-    if (!sequence.style) {
-      throw new Error('No style found');
-    }
-
-    const styleConfig = DirectorDnaConfigSchema.parse(sequence.style.config);
-
-    // Use the sequence's analysisModel for script analysis
-    const analysisModel =
-      sequence.analysisModel || 'anthropic/claude-haiku-4.5';
-
-    const analysis = await analyzeScriptForFrames(
-      sequence.script || '',
-      styleConfig,
-      analysisModel
-    );
-
-    if (!analysis?.scenes || analysis.scenes.length === 0) {
-      throw new Error('Failed to analyze script or no scenes found');
-    }
-
-    return analysis;
-  });
+  );
 
   const frameCount = scriptAnalysis.scenes.length;
 
-  // Step 5: Update metadata with expected frame count
+  // Step 5: Update sequence with title and analysis duration
+  await context.run('update-title-and-duration', async () => {
+    const updateData: {
+      analysisDurationMs: number;
+      title?: string;
+      updatedAt: Date;
+    } = {
+      analysisDurationMs,
+      updatedAt: new Date(),
+    };
+
+    // Set title from projectMetadata if available
+    if (scriptAnalysis.projectMetadata?.title) {
+      updateData.title = scriptAnalysis.projectMetadata.title;
+    }
+
+    await db
+      .update(sequences)
+      .set(updateData)
+      .where(eq(sequences.id, input.sequenceId));
+  });
+
+  // Step 6: Update metadata with expected frame count
   await context.run('update-expected-count', async () => {
     await db
       .update(sequences)
@@ -143,7 +177,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
       .where(eq(sequences.id, input.sequenceId));
   });
 
-  // Step 6: Create all frames using bulk insert
+  // Step 7: Create all frames using bulk insert
   const frameIds = await context.run('create-frames', async () => {
     // Build array of all frames to create
     const frameInserts = scriptAnalysis.scenes.map((scene, index) => ({
@@ -164,7 +198,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
     });
   });
 
-  // Step 7: Generate thumbnails in parallel if enabled
+  // Step 8: Generate thumbnails in parallel if enabled
   if (input.options?.generateThumbnails !== false) {
     await context.run('generate-thumbnails', async () => {
       // Trigger image generation for all frames in parallel
@@ -208,7 +242,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(async (context) => {
     });
   }
 
-  // Step N: Update sequence status to completed
+  // Step 9: Update sequence status to completed
   await context.run('update-sequence-status', async () => {
     try {
       await db
