@@ -28,6 +28,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+cerebras-debug-response.json
+cerebras-validation-error.json
 
 # env files (can opt-in for commiting if needed)
 .env*

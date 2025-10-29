@@ -14,6 +14,11 @@ import {
 } from '@/lib/ai/scene-analysis.schema';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import {
+  callCerebras,
+  systemMessage as cerebrasSystemMessage,
+  userMessage as cerebrasUserMessage,
+} from './cerebras-client';
+import {
   callOpenRouter,
   extractJSON,
   RECOMMENDED_MODELS,
@@ -32,20 +37,57 @@ export async function analyzeScriptForFrames(
   styleConfig: DirectorDnaConfig,
   model: string = RECOMMENDED_MODELS.fast
 ): Promise<SceneAnalysis> {
-  if (!process.env.OPENROUTER_KEY) {
-    throw new Error('OPENROUTER_KEY is not set');
+  // Determine which provider to use based on model prefix
+  const isCerebrasModel = model.startsWith('cerebras/');
+
+  let content: string | null = null;
+
+  if (isCerebrasModel) {
+    // Route to Cerebras for ultra-fast inference
+    if (!process.env.CEREBRAS_API_KEY) {
+      throw new Error('CEREBRAS_API_KEY is not set');
+    }
+
+    const response = await callCerebras({
+      model,
+      messages: [
+        cerebrasSystemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
+        cerebrasUserMessage(
+          storyboardPrompt(sanitizeScriptContent(script), styleConfig)
+        ),
+      ],
+      max_tokens: 20000,
+    });
+    if (!Array.isArray(response.choices) || response.choices.length === 0) {
+      throw new Error('No choices returned from Cerebras');
+    }
+    const firstChoice = response.choices[0];
+    if (!firstChoice) {
+      throw new Error('No choices returned from Cerebras');
+    }
+    content = firstChoice.message.content;
+  } else {
+    // Route to OpenRouter for Anthropic and other models
+    if (!process.env.OPENROUTER_KEY) {
+      throw new Error('OPENROUTER_KEY is not set');
+    }
+
+    const response = await callOpenRouter({
+      model,
+      messages: [
+        systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
+        userMessage(
+          storyboardPrompt(sanitizeScriptContent(script), styleConfig)
+        ),
+      ],
+    });
+    content = response.choices[0]?.message?.content;
   }
 
-  // Use OpenRouter for AI-powered analysis
-  const response = await callOpenRouter({
-    model,
-    messages: [
-      systemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
-      userMessage(storyboardPrompt(sanitizeScriptContent(script), styleConfig)),
-    ],
-  });
+  if (!content) {
+    throw new Error('AI response contained no content');
+  }
 
-  const content = response.choices[0].message.content;
   const parsed = extractJSON<SceneAnalysis>(content);
 
   if (!parsed) {
@@ -53,6 +95,15 @@ export async function analyzeScriptForFrames(
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
 
+  // Handle case where AI returns just the scenes array
+  let dataToValidate = parsed;
+  if (Array.isArray(parsed)) {
+    dataToValidate = {
+      status: 'success',
+      scenes: parsed,
+    };
+  }
+
   // Validate and return the parsed result
-  return sceneAnalysisSchema.parse(parsed);
+  return sceneAnalysisSchema.parse(dataToValidate);
 }
