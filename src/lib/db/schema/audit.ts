@@ -57,7 +57,9 @@ export const scriptAnalysisAudit = pgTable(
     status: varchar('status', { length: 20 }).notNull(), // 'success', 'api_error', 'parse_error'
 
     // Timestamps
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     index('script_analysis_audit_sequence_id_idx').using(

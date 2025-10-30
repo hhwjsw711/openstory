@@ -16,7 +16,7 @@ CREATE TABLE "script_analysis_audit" (
 	"cost_credits" numeric(10, 6),
 	"duration_ms" integer NOT NULL,
 	"status" varchar(20) NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "script_analysis_audit" ADD CONSTRAINT "script_analysis_audit_sequence_id_sequences_id_fk" FOREIGN KEY ("sequence_id") REFERENCES "public"."sequences"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
