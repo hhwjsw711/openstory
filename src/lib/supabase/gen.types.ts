@@ -82,30 +82,6 @@ export type Database = {
         }
         Relationships: []
       }
-      anonymous_sessions: {
-        Row: {
-          created_at: string
-          data: Json | null
-          expires_at: string | null
-          id: string
-          team_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          data?: Json | null
-          expires_at?: string | null
-          id: string
-          team_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          data?: Json | null
-          expires_at?: string | null
-          id?: string
-          team_id?: string | null
-        }
-        Relationships: []
-      }
       audio: {
         Row: {
           created_at: string
@@ -141,6 +117,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "audio_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audio_team_id_fkey"
             columns: ["team_id"]
@@ -186,6 +169,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "characters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "characters_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -210,7 +200,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fal_requests: {
         Row: {
@@ -266,6 +264,13 @@ export type Database = {
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
         ]
       }
       frames: {
@@ -277,9 +282,21 @@ export type Database = {
           metadata: Json | null
           order_index: number
           sequence_id: string
+          thumbnail_error: string | null
+          thumbnail_generated_at: string | null
+          thumbnail_status:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           thumbnail_url: string | null
+          thumbnail_workflow_run_id: string | null
           updated_at: string
+          video_error: string | null
+          video_generated_at: string | null
+          video_status:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           video_url: string | null
+          video_workflow_run_id: string | null
         }
         Insert: {
           created_at?: string
@@ -289,9 +306,21 @@ export type Database = {
           metadata?: Json | null
           order_index: number
           sequence_id: string
+          thumbnail_error?: string | null
+          thumbnail_generated_at?: string | null
+          thumbnail_status?:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           thumbnail_url?: string | null
+          thumbnail_workflow_run_id?: string | null
           updated_at?: string
+          video_error?: string | null
+          video_generated_at?: string | null
+          video_status?:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           video_url?: string | null
+          video_workflow_run_id?: string | null
         }
         Update: {
           created_at?: string
@@ -301,9 +330,21 @@ export type Database = {
           metadata?: Json | null
           order_index?: number
           sequence_id?: string
+          thumbnail_error?: string | null
+          thumbnail_generated_at?: string | null
+          thumbnail_status?:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           thumbnail_url?: string | null
+          thumbnail_workflow_run_id?: string | null
           updated_at?: string
+          video_error?: string | null
+          video_generated_at?: string | null
+          video_status?:
+            | Database["public"]["Enums"]["frame_generation_status"]
+            | null
           video_url?: string | null
+          video_workflow_run_id?: string | null
         }
         Relationships: [
           {
@@ -375,49 +416,69 @@ export type Database = {
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "letzai_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sequences: {
         Row: {
+          analysis_duration_ms: number
+          analysis_model: string
           created_at: string
           created_by: string | null
           id: string
           metadata: Json | null
           script: string | null
           status: Database["public"]["Enums"]["sequence_status"]
-          style_id: string | null
+          style_id: string
           team_id: string
           title: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          analysis_duration_ms?: number
+          analysis_model?: string
           created_at?: string
           created_by?: string | null
           id?: string
           metadata?: Json | null
           script?: string | null
           status?: Database["public"]["Enums"]["sequence_status"]
-          style_id?: string | null
+          style_id: string
           team_id: string
           title: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          analysis_duration_ms?: number
+          analysis_model?: string
           created_at?: string
           created_by?: string | null
           id?: string
           metadata?: Json | null
           script?: string | null
           status?: Database["public"]["Enums"]["sequence_status"]
-          style_id?: string | null
+          style_id?: string
           team_id?: string
           title?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sequences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sequences_style_id_fkey"
             columns: ["style_id"]
@@ -430,6 +491,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequences_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user"
             referencedColumns: ["id"]
           },
         ]
@@ -559,6 +627,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "styles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "styles_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
@@ -619,6 +694,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "team_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "team_invitations_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -652,6 +734,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
             referencedColumns: ["id"]
           },
         ]
@@ -711,7 +800,15 @@ export type Database = {
           type?: Database["public"]["Enums"]["transaction_type"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user: {
         Row: {
@@ -815,6 +912,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "vfx_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vfx_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -863,6 +967,7 @@ export type Database = {
     }
     Enums: {
       fal_request_status: "pending" | "completed" | "failed"
+      frame_generation_status: "idle" | "generating" | "completed" | "failed"
       invitation_status: "pending" | "accepted" | "declined" | "expired"
       letzai_request_status: "pending" | "in_progress" | "completed" | "failed"
       sequence_status:
@@ -1008,6 +1113,7 @@ export const Constants = {
   public: {
     Enums: {
       fal_request_status: ["pending", "completed", "failed"],
+      frame_generation_status: ["idle", "generating", "completed", "failed"],
       invitation_status: ["pending", "accepted", "declined", "expired"],
       letzai_request_status: ["pending", "in_progress", "completed", "failed"],
       sequence_status: [

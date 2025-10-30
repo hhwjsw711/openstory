@@ -1,4 +1,3 @@
-import { RetryIndicator } from '@/components/retry-indicator';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -491,35 +490,12 @@ export const StoryboardFrameWithScript: React.FC<
               </div>
             </div>
           )}
-
-          {/* Retry badges */}
-          {frame.thumbnailRetryAttempt != null &&
-            frame.thumbnailRetryAttempt > 0 &&
-            frame.thumbnailStatus === 'generating' && (
-              <div className="absolute top-2 left-2 z-15">
-                <RetryIndicator attempt={frame.thumbnailRetryAttempt} />
-              </div>
-            )}
-          {frame.videoRetryAttempt != null &&
-            frame.videoRetryAttempt > 0 &&
-            frame.videoStatus === 'generating' && (
-              <div className="absolute top-10 left-2 z-15">
-                <RetryIndicator attempt={frame.videoRetryAttempt} />
-              </div>
-            )}
         </div>
 
         {/* Thumbnail error */}
         {frame.thumbnailError && frame.thumbnailStatus === 'failed' && (
           <div className="text-xs text-destructive mt-1">
             Image generation failed: {frame.thumbnailError}
-            {frame.thumbnailRetryAttempt != null &&
-              frame.thumbnailRetryAttempt > 0 && (
-                <span className="ml-1">
-                  (after {frame.thumbnailRetryAttempt}{' '}
-                  {frame.thumbnailRetryAttempt === 1 ? 'retry' : 'retries'})
-                </span>
-              )}
           </div>
         )}
 
@@ -536,15 +512,6 @@ export const StoryboardFrameWithScript: React.FC<
                 Sign in
               </Link>
             )}
-            {frame.videoError &&
-              frame.videoStatus === 'failed' &&
-              frame.videoRetryAttempt != null &&
-              frame.videoRetryAttempt > 0 && (
-                <span className="ml-1">
-                  (after {frame.videoRetryAttempt}{' '}
-                  {frame.videoRetryAttempt === 1 ? 'retry' : 'retries'})
-                </span>
-              )}
           </div>
         )}
 

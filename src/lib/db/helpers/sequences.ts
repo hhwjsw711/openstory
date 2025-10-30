@@ -12,7 +12,6 @@ export async function updateSequenceMetadata(
   metadataUpdates: Partial<SequenceMetadata>,
   otherFields?: {
     status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived';
-    retryAttempt?: number;
     [key: string]: unknown;
   }
 ) {

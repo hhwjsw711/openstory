@@ -1,4 +1,3 @@
-import { RetryIndicator } from '@/components/retry-indicator';
 import { StoryboardFrameSkeletonWithScript } from '@/components/sequence/storyboard-frame-skeleton-with-script';
 import { StoryboardFrameWithScript } from '@/components/sequence/storyboard-frame-with-script';
 import { SectionHeading } from '@/components/typography';
@@ -207,11 +206,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
               <span className="text-sm text-muted-foreground">
                 Generating {expectedFrameCount} frames...
               </span>
-              {metadata?.frameGeneration?.retryAttempt != null && (
-                <RetryIndicator
-                  attempt={metadata.frameGeneration.retryAttempt}
-                />
-              )}
             </div>
             {completedFrames > 0 && (
               <div className="text-sm text-muted-foreground">
@@ -313,11 +307,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                         metadata.frameGeneration.failedAt
                       ).toLocaleString()}
                     </span>
-                    {metadata?.frameGeneration?.retryAttempt != null && (
-                      <RetryIndicator
-                        attempt={metadata.frameGeneration.retryAttempt}
-                      />
-                    )}
                   </div>
                 )}
               </div>
@@ -348,11 +337,6 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                   Failed at:{' '}
                   {new Date(metadata.frameGeneration.failedAt).toLocaleString()}
                 </span>
-                {metadata?.frameGeneration?.retryAttempt != null && (
-                  <RetryIndicator
-                    attempt={metadata.frameGeneration.retryAttempt}
-                  />
-                )}
               </div>
             )}
           </div>

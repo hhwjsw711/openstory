@@ -66,7 +66,6 @@ export const { POST } = serve<ImageWorkflowInput>(
         await updateFrame(input.frameId, {
           thumbnailStatus: 'generating',
           thumbnailWorkflowRunId: context.workflowRunId,
-          thumbnailRetryAttempt: context.retries,
         });
       });
     }
@@ -106,7 +105,6 @@ export const { POST } = serve<ImageWorkflowInput>(
         if (input.frameId) {
           await updateFrame(input.frameId, {
             thumbnailStatus: 'generating',
-            thumbnailRetryAttempt: context.retries,
             thumbnailError:
               error instanceof Error ? error.message : 'Unknown error',
           });
@@ -229,7 +227,6 @@ export const { POST } = serve<ImageWorkflowInput>(
         await updateFrame(input.frameId, {
           thumbnailStatus: 'failed',
           thumbnailError: failResponse,
-          thumbnailRetryAttempt: context.retries,
         });
 
         loggerService.logError(

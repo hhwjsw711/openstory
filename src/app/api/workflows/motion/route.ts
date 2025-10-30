@@ -73,7 +73,6 @@ export const { POST } = serve<MotionWorkflowInput>(
       await updateFrame(input.frameId, {
         videoStatus: 'generating',
         videoWorkflowRunId: context.workflowRunId,
-        videoRetryAttempt: context.retries,
       });
     });
 
@@ -109,7 +108,6 @@ export const { POST } = serve<MotionWorkflowInput>(
         // Update frame status on error
         await updateFrame(input.frameId, {
           videoStatus: 'generating',
-          videoRetryAttempt: context.retries,
           videoError: error instanceof Error ? error.message : 'Unknown error',
         });
 
@@ -179,7 +177,6 @@ export const { POST } = serve<MotionWorkflowInput>(
       await updateFrame(input.frameId, {
         videoStatus: 'failed',
         videoError: failResponse,
-        videoRetryAttempt: context.retries,
       });
 
       loggerService.logError(

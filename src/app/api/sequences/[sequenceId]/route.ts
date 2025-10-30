@@ -120,7 +120,6 @@ export async function PATCH(
       userId: user.id,
       ...sequenceDetailsToUpdate,
       status: needToRegenerateStoryboard ? 'processing' : undefined,
-      metadata: needToRegenerateStoryboard ? { retryAttempt: 0 } : undefined,
     });
 
     // If script or style changed, regenerate frames

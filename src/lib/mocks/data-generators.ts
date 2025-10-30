@@ -60,7 +60,6 @@ export const generateMockSequence = (
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),
     updatedBy: faker.string.uuid(),
-    retryAttempt: 0,
     metadata: {
       genre: faker.helpers.arrayElement(genres),
       mood: faker.helpers.arrayElement(moods),
@@ -202,8 +201,6 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
         },
       },
     },
-    thumbnailRetryAttempt: 0,
-    videoRetryAttempt: 0,
     ...overrides,
   };
 };

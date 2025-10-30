@@ -77,13 +77,12 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
             startedAt: new Date().toISOString(),
             expectedFrameCount: null,
             completedFrameCount: 0,
-            retryAttempt: context.retries,
             options: input.options,
             error: null,
             failedAt: null,
           },
         },
-        { status: 'processing', retryAttempt: context.retries }
+        { status: 'processing' }
       );
     });
 
@@ -145,7 +144,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
           // Update metadata with error for retryable errors
           await updateSequenceMetadata(input.sequenceId, {
             frameGeneration: {
-              retryAttempt: context.retries,
               error:
                 error instanceof Error
                   ? error.message
@@ -204,7 +202,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         frameGeneration: {
           expectedFrameCount: frameCount,
           completedFrameCount: 0,
-          retryAttempt: context.retries,
           error: null,
           failedAt: null,
           thumbnailsGenerating: true,
@@ -321,7 +318,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
           frameGeneration: {
             error: failResponse,
             failedAt: new Date().toISOString(),
-            retryAttempt: context.retries,
           },
         },
         { status: 'failed' }

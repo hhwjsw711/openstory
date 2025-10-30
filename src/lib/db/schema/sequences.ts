@@ -52,7 +52,6 @@ export type SequenceMetadata = {
     startedAt?: string;
     expectedFrameCount?: number | null;
     completedFrameCount?: number;
-    retryAttempt?: number;
     options?: Record<string, unknown>;
     error?: string | null;
     failedAt?: string | null;
@@ -92,7 +91,6 @@ export const sequences = pgTable(
       .default('anthropic/claude-haiku-4.5')
       .notNull(),
     analysisDurationMs: integer('analysis_duration_ms').default(0).notNull(),
-    retryAttempt: integer('retry_attempt').default(0).notNull(),
   },
   (table) => [
     index('idx_sequences_created_at').using(
@@ -174,9 +172,6 @@ export const frames = pgTable(
       mode: 'date',
     }),
     thumbnailError: text('thumbnail_error'),
-    thumbnailRetryAttempt: integer('thumbnail_retry_attempt')
-      .default(0)
-      .notNull(),
     // Video/motion generation status tracking
     videoStatus: frameGenerationStatus('video_status').default('idle'),
     videoWorkflowRunId: text('video_workflow_run_id'),
@@ -185,7 +180,6 @@ export const frames = pgTable(
       mode: 'date',
     }),
     videoError: text('video_error'),
-    videoRetryAttempt: integer('video_retry_attempt').default(0).notNull(),
     /** Stores Scene object from script analysis - see src/lib/ai/scene-analysis.schema.ts */
     metadata: jsonb()
       .$type<Scene>()

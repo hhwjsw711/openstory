@@ -43,6 +43,13 @@
       "when": 1761774811456,
       "tag": "0005_left_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1761791966161,
+      "tag": "0006_common_marvel_boy",
+      "breakpoints": true
     }
   ]
 }
