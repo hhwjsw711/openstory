@@ -19,6 +19,7 @@ const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   script: z.string().min(10).max(10000).optional(),
   styleId: z.uuid().optional(),
+  teamId: z.uuid().optional(), // Optional - if provided, will verify user has access
 });
 
 export async function GET(
@@ -108,8 +109,11 @@ export async function PATCH(
       );
     }
 
-    // Verify user has access to this sequence
-    await requireTeamMemberAccess(user.id, existingSeq.teamId);
+    // Use provided teamId or fall back to sequence's current team
+    const teamId = sequenceDetailsToUpdate.teamId || existingSeq.teamId;
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, teamId);
 
     // Check if we need to regenerate the storyboard
     const needToRegenerateStoryboard = true;
@@ -132,7 +136,7 @@ export async function PATCH(
       // Trigger frame generation workflow
       const workflowInput: FrameGenerationWorkflowInput = {
         userId: user.id,
-        teamId: existingSeq.teamId,
+        teamId, // Use the verified teamId from above
         sequenceId,
         options: {
           framesPerScene: 3,

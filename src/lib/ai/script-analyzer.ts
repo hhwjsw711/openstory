@@ -104,6 +104,37 @@ export async function analyzeScriptForFrames(
     };
   }
 
-  // Validate and return the parsed result
-  return sceneAnalysisSchema.parse(dataToValidate);
+  // Validate and return the parsed result with detailed error logging
+  try {
+    return sceneAnalysisSchema.parse(dataToValidate);
+  } catch (error) {
+    // Enhanced error logging for debugging workflows
+    console.error('=== Script Analysis Validation Error ===');
+    console.error('Model used:', model);
+    console.error('\nValidation errors:');
+
+    if (error instanceof Error && 'issues' in error) {
+      // ZodError - format issues for readability
+      const zodError = error as {
+        issues: Array<{ path: string[]; message: string; code: string }>;
+      };
+      zodError.issues.forEach((issue) => {
+        console.error(
+          `  Path: ${issue.path.join('.')} | ${issue.message} (${issue.code})`
+        );
+      });
+    }
+
+    console.error('\nRaw AI response (first 2000 chars):');
+    console.error(content.substring(0, 2000));
+
+    console.error('\nParsed data structure:');
+    console.error(JSON.stringify(dataToValidate, null, 2).substring(0, 2000));
+
+    console.error('=== End Validation Error ===\n');
+
+    throw new Error(
+      `Script analysis validation failed. Model: ${model}. ${error instanceof Error ? error.message : 'Unknown error'}. Check logs for detailed output.`
+    );
+  }
 }

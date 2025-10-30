@@ -68,6 +68,7 @@ export function useCreateSequence() {
       styleId: string | null;
       title?: string;
       analysisModels?: string[];
+      teamId?: string;
     }
   >({
     mutationFn: async (input: {
@@ -75,6 +76,7 @@ export function useCreateSequence() {
       styleId: string | null;
       title?: string;
       analysisModels?: string[];
+      teamId?: string;
     }) => {
       const response = await fetch('/api/sequences', {
         method: 'POST',
@@ -88,6 +90,7 @@ export function useCreateSequence() {
           analysisModels: input.analysisModels || [
             'anthropic/claude-haiku-4.5',
           ],
+          teamId: input.teamId,
         }),
       });
 
@@ -121,6 +124,7 @@ export function useUpdateSequence() {
       title?: string;
       script?: string;
       styleId?: string | null;
+      teamId?: string;
     }
   >({
     mutationFn: async (input: {
@@ -128,11 +132,13 @@ export function useUpdateSequence() {
       title?: string;
       script?: string;
       styleId?: string | null;
+      teamId?: string;
     }) => {
       const body: Record<string, unknown> = {};
       if (input.title !== undefined) body.title = input.title;
       if (input.script !== undefined) body.script = input.script;
       if (input.styleId !== undefined) body.styleId = input.styleId;
+      if (input.teamId !== undefined) body.teamId = input.teamId;
 
       const response = await fetch(`/api/sequences/${input.id}`, {
         method: 'PATCH',

@@ -4,7 +4,7 @@
  * GET /api/sequences - List all sequences for the user's team
  */
 
-import { requireUser } from '@/lib/auth/action-utils';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
 import {
@@ -29,22 +29,30 @@ export async function POST(request: Request) {
       createSequenceSchema.parse(body);
     console.log('[POST /api/sequences] Validated data:', createSequenceInput);
 
-    // Get user's team using Drizzle helper
-    const defaultTeam = await getUserDefaultTeam(user.id);
+    // Get teamId from request or fall back to user's default team
+    let teamId = createSequenceInput.teamId;
 
-    if (!defaultTeam) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            'No team found for user. Please refresh the page to initialize your account.',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
+    if (!teamId) {
+      // Fallback to user's default team if not provided
+      const defaultTeam = await getUserDefaultTeam(user.id);
+
+      if (!defaultTeam) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'No team found for user. Please refresh the page to initialize your account.',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
+
+      teamId = defaultTeam.teamId;
     }
 
-    const teamId = defaultTeam.teamId;
+    // Verify user has access to the specified team
+    await requireTeamMemberAccess(user.id, teamId);
 
     // Create sequences in parallel for each selected model
     const { analysisModels } = createSequenceInput;
