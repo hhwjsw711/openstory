@@ -16,7 +16,7 @@ import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { ValidationError } from '@/lib/errors';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { z } from 'zod';
 
 export async function POST(
@@ -76,7 +76,7 @@ export async function POST(
 
     // Publish to QStash to trigger the workflow
 
-    const workflowRunId = await publishWorkflow('/motion', workflowInput);
+    const workflowRunId = await triggerWorkflow('/motion', workflowInput);
 
     return createSuccessResponse(
       {

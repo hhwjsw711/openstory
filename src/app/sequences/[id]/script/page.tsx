@@ -29,6 +29,11 @@ export default function ScriptPage({
     router.push(`/sequences/${updatedSequenceId}/storyboard`);
   };
 
+  const handleCancel = () => {
+    // Navigate back to storyboard without making changes
+    router.push(`/sequences/${sequenceId}/storyboard`);
+  };
+
   return (
     <PageContainer maxWidth="narrow" data-testid="edit-script-page">
       <PageHeader>
@@ -42,7 +47,11 @@ export default function ScriptPage({
         currentStep={1}
         completedSteps={new Set([1])}
       />
-      <ScriptStep sequenceId={sequenceId} onSuccess={handleSuccess} />
+      <ScriptStep
+        sequenceId={sequenceId}
+        onSuccess={handleSuccess}
+        onCancel={handleCancel}
+      />
     </PageContainer>
   );
 }

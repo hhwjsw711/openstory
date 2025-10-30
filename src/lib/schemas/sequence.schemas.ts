@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
+import { DEFAULT_ANALYSIS_MODEL, getAllModelIds } from '@/lib/ai/models.config';
 import { sequences } from '@/lib/db/schema/sequences';
-import { getAllModelIds, DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
+import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
+import { z } from 'zod';
 
 /**
  * Shared Zod schemas for sequence operations
@@ -17,7 +17,6 @@ export const createSequenceSchema = createInsertSchema(sequences, {
 })
   .omit({
     id: true,
-    teamId: true, // Server determines from authenticated user
     status: true,
     createdAt: true,
     updatedAt: true,

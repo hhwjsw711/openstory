@@ -8,28 +8,28 @@
  * @module lib/services/sequence.service
  */
 
-import { eq, desc } from 'drizzle-orm';
-import { ValidationError } from '@/lib/errors';
 import { db } from '@/lib/db/client';
+import type { NewSequence, Sequence, SequenceStatus } from '@/lib/db/schema';
 import { sequences } from '@/lib/db/schema';
-import type { Sequence, NewSequence, SequenceStatus } from '@/lib/db/schema';
+import { ValidationError } from '@/lib/errors';
+import { desc, eq } from 'drizzle-orm';
 
 // Type definitions
 export interface CreateSequenceParams {
   teamId: string;
   userId: string;
-  name: string;
+  title: string;
   script: string;
-  styleId?: string;
-  analysisModel?: string;
+  styleId: string;
+  analysisModel: string;
 }
 
 export interface UpdateSequenceParams {
   id: string;
   userId: string;
-  name?: string;
+  title?: string;
   script?: string;
-  styleId?: string | null;
+  styleId?: string;
   status?: SequenceStatus;
   metadata?: Record<string, unknown>;
   analysisModel?: string;
@@ -64,7 +64,7 @@ export class SequenceService {
       teamId: params.teamId,
       createdBy: params.userId,
       updatedBy: params.userId,
-      title: params.name,
+      title: params.title,
       script: params.script,
       styleId: params.styleId,
       analysisModel: params.analysisModel,
@@ -90,14 +90,12 @@ export class SequenceService {
    */
   async updateSequence(params: UpdateSequenceParams): Promise<Sequence> {
     const updateData: Partial<NewSequence> = {
-      ...(params.name !== undefined && { title: params.name }),
-      ...(params.script !== undefined && { script: params.script }),
-      ...(params.styleId !== undefined && { styleId: params.styleId }),
-      ...(params.status !== undefined && { status: params.status }),
-      ...(params.metadata !== undefined && { metadata: params.metadata }),
-      ...(params.analysisModel !== undefined && {
-        analysisModel: params.analysisModel,
-      }),
+      title: params.title,
+      script: params.script,
+      styleId: params.styleId,
+      status: params.status,
+      metadata: params.metadata,
+      analysisModel: params.analysisModel,
       updatedBy: params.userId,
       updatedAt: new Date(),
     };

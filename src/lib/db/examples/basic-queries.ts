@@ -6,8 +6,8 @@
  */
 
 import { db } from '@/lib/db/client';
-import { user, sequences, frames } from '@/lib/db/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { frames, sequences, user } from '@/lib/db/schema';
+import { desc, eq, sql } from 'drizzle-orm';
 
 /**
  * SELECT Examples
@@ -120,6 +120,8 @@ export async function createSequenceWithFrames(
     id: string;
     teamId: string;
     title: string;
+    styleId: string;
+    analysisModel: string;
   },
   framesData: Array<{
     id: string;

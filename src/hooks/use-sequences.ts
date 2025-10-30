@@ -66,14 +66,14 @@ export function useCreateSequence() {
     {
       script: string;
       styleId: string | null;
-      name?: string;
+      title?: string;
       analysisModels?: string[];
     }
   >({
     mutationFn: async (input: {
       script: string;
       styleId: string | null;
-      name?: string;
+      title?: string;
       analysisModels?: string[];
     }) => {
       const response = await fetch('/api/sequences', {
@@ -84,7 +84,7 @@ export function useCreateSequence() {
         body: JSON.stringify({
           script: input.script,
           styleId: input.styleId,
-          title: input.name || 'Untitled Sequence',
+          title: input.title || 'Untitled Sequence',
           analysisModels: input.analysisModels || [
             'anthropic/claude-haiku-4.5',
           ],
@@ -118,19 +118,19 @@ export function useUpdateSequence() {
     Error,
     {
       id: string;
-      name?: string;
+      title?: string;
       script?: string;
       styleId?: string | null;
     }
   >({
     mutationFn: async (input: {
       id: string;
-      name?: string;
+      title?: string;
       script?: string;
       styleId?: string | null;
     }) => {
       const body: Record<string, unknown> = {};
-      if (input.name !== undefined) body.name = input.name;
+      if (input.title !== undefined) body.title = input.title;
       if (input.script !== undefined) body.script = input.script;
       if (input.styleId !== undefined) body.styleId = input.styleId;
 

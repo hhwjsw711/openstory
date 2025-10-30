@@ -60,10 +60,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     activeJob?.framesProgress?.completed ||
     0;
 
-  // Check for errors in sequence metadata
+  // Check for errors - only show when sequence status is failed
   const metadataError = metadata?.frameGeneration?.error;
-  const hasMetadataError =
-    metadataError && metadata?.frameGeneration?.status === 'failed';
+  const hasMetadataError = metadataError && sequence?.status === 'failed';
 
   // Update frame
   const { mutateAsync: updateFrame } = useUpdateFrame();

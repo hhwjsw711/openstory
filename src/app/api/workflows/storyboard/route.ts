@@ -5,8 +5,8 @@
 
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
-import { sequences } from '@/lib/db/schema';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
+import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
 import { LoggerService } from '@/lib/services/logger.service';
@@ -14,7 +14,7 @@ import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
 } from '@/lib/workflow';
-import { publishWorkflow, validateWorkflowAuth } from '@/lib/workflow';
+import { triggerWorkflow, validateWorkflowAuth } from '@/lib/workflow';
 import {
   WorkflowValidationError,
   isInvalidScriptError,
@@ -74,7 +74,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         input.sequenceId,
         {
           frameGeneration: {
-            status: 'processing',
             startedAt: new Date().toISOString(),
             expectedFrameCount: null,
             completedFrameCount: 0,
@@ -84,7 +83,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
             failedAt: null,
           },
         },
-        { status: 'processing' }
+        { status: 'processing', retryAttempt: context.retries }
       );
     });
 
@@ -146,7 +145,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
           // Update metadata with error for retryable errors
           await updateSequenceMetadata(input.sequenceId, {
             frameGeneration: {
-              status: 'processing',
               retryAttempt: context.retries,
               error:
                 error instanceof Error
@@ -204,7 +202,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
     await context.run('update-expected-count', async () => {
       await updateSequenceMetadata(input.sequenceId, {
         frameGeneration: {
-          status: 'generating_thumbnails',
           expectedFrameCount: frameCount,
           completedFrameCount: 0,
           retryAttempt: context.retries,
@@ -261,7 +258,7 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
 
           // Publish to QStash to trigger image workflow (fire and forget)
           try {
-            const workflowRunId = await publishWorkflow('/image', imageInput);
+            const workflowRunId = await triggerWorkflow('/image', imageInput);
             console.log(
               '[generate-thumbnails] Workflow response:',
               workflowRunId
@@ -322,7 +319,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         input.sequenceId,
         {
           frameGeneration: {
-            status: 'failed',
             error: failResponse,
             failedAt: new Date().toISOString(),
             retryAttempt: context.retries,

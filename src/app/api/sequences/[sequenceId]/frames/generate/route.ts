@@ -8,7 +8,7 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -80,7 +80,7 @@ export async function POST(
     };
 
     // Publish to QStash to trigger the workflow
-    const workflowRunId = await publishWorkflow('/storyboard', workflowInput);
+    const workflowRunId = await triggerWorkflow('/storyboard', workflowInput);
 
     console.log('[generateFrames] Frame generation workflow triggered', {
       sequenceId,

@@ -7,10 +7,13 @@
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
-import { createSequenceSchema } from '@/lib/schemas/sequence.schemas';
+import {
+  CreateSequenceInput,
+  createSequenceSchema,
+} from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
@@ -22,8 +25,9 @@ export async function POST(request: Request) {
     // Parse and validate request body
     const body = await request.json();
     console.log('[POST /api/sequences] Request body:', body);
-    const validated = createSequenceSchema.parse(body);
-    console.log('[POST /api/sequences] Validated data:', validated);
+    const createSequenceInput: CreateSequenceInput =
+      createSequenceSchema.parse(body);
+    console.log('[POST /api/sequences] Validated data:', createSequenceInput);
 
     // Get user's team using Drizzle helper
     const defaultTeam = await getUserDefaultTeam(user.id);
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
     const teamId = defaultTeam.teamId;
 
     // Create sequences in parallel for each selected model
-    const { analysisModels } = validated;
+    const { analysisModels } = createSequenceInput;
     console.log(
       '[POST /api/sequences] Creating sequences for models:',
       analysisModels
@@ -55,9 +59,9 @@ export async function POST(request: Request) {
         const createParams = {
           teamId,
           userId: user.id,
-          name: validated.title,
-          script: validated.script,
-          styleId: validated.styleId || undefined,
+          title: createSequenceInput.title,
+          script: createSequenceInput.script,
+          styleId: createSequenceInput.styleId,
           analysisModel: modelId,
         };
         console.log(
@@ -88,7 +92,7 @@ export async function POST(request: Request) {
         };
 
         try {
-          await publishWorkflow('/storyboard', workflowInput);
+          await triggerWorkflow('/storyboard', workflowInput);
           console.log(
             `[POST /api/sequences] Workflow triggered for sequence ${sequence.id}`
           );

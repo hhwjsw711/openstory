@@ -4,7 +4,7 @@
 
 import { ConfigurationError } from '@/lib/errors';
 import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
-import { Client } from '@upstash/qstash';
+import { Client } from '@upstash/workflow';
 
 /**
  * Gets the QStash client for direct API operations
@@ -31,12 +31,18 @@ function getWorkflowBaseUrl(): string {
   return `${apiUrl}/api/workflows`;
 }
 
-export async function publishWorkflow(url: string, body: object) {
+export async function triggerWorkflow(url: string, body: object) {
   const qstash = getQStashClient();
   const baseUrl = getWorkflowBaseUrl();
-  const response = await qstash.publishJSON({
+  const response = await qstash.trigger({
     url: `${baseUrl}${url}${process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? `?x-vercel-protection-bypass=${process.env.VERCEL_AUTOMATION_BYPASS_SECRET}` : ''}`,
     body: body,
   });
-  return response.messageId;
+  return response.workflowRunId;
+}
+
+export async function cancelWorkflow(workflowId: string) {
+  const qstash = getQStashClient();
+  const response = await qstash.cancel({ ids: [workflowId] });
+  return response.cancelled;
 }

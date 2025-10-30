@@ -18,28 +18,38 @@ interface ModelSelectorProps {
   selectedModels: AnalysisModelId[];
   onModelsChange: (models: AnalysisModelId[]) => void;
   disabled?: boolean;
+  singleSelect?: boolean; // When true, only one model can be selected at a time
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModels,
   onModelsChange,
   disabled = false,
+  singleSelect = false,
 }) => {
   const handleToggle = useCallback(
     (modelId: AnalysisModelId, checked: boolean) => {
       if (disabled) return;
 
-      if (checked) {
-        // Add model
-        onModelsChange([...selectedModels, modelId]);
+      if (singleSelect) {
+        // In single select mode, always replace the selection
+        if (checked) {
+          onModelsChange([modelId]);
+        }
+        // Don't allow unchecking in single select mode
       } else {
-        // Remove model - but ensure at least one remains
-        if (selectedModels.length > 1) {
-          onModelsChange(selectedModels.filter((id) => id !== modelId));
+        if (checked) {
+          // Add model
+          onModelsChange([...selectedModels, modelId]);
+        } else {
+          // Remove model - but ensure at least one remains
+          if (selectedModels.length > 1) {
+            onModelsChange(selectedModels.filter((id) => id !== modelId));
+          }
         }
       }
     },
-    [selectedModels, onModelsChange, disabled]
+    [selectedModels, onModelsChange, disabled, singleSelect]
   );
 
   // Display label for button
@@ -81,13 +91,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {SCRIPT_ANALYSIS_MODELS.map((model) => {
             const isSelected = selectedModels.includes(model.id);
             const isLastSelected = isSelected && selectedModels.length === 1;
+            // In single select mode, disable the currently selected model
+            const isDisabled = singleSelect ? isSelected : isLastSelected;
 
             return (
               <DropdownMenuCheckboxItem
                 key={model.id}
                 checked={isSelected}
                 onCheckedChange={(checked) => handleToggle(model.id, checked)}
-                disabled={isLastSelected}
+                disabled={isDisabled}
                 className="cursor-pointer"
               >
                 <div className="flex flex-col gap-0.5">
@@ -106,11 +118,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-      <p className="text-xs text-muted-foreground">
-        {selectedModels.length === 1
-          ? '1 sequence will be created'
-          : `${selectedModels.length} sequences will be created`}
-      </p>
+      {!singleSelect && (
+        <p className="text-xs text-muted-foreground">
+          {selectedModels.length === 1
+            ? '1 sequence will be created'
+            : `${selectedModels.length} sequences will be created`}
+        </p>
+      )}
     </div>
   );
 };
