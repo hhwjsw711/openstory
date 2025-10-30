@@ -128,6 +128,11 @@ export type {
   TransactionType,
 } from './credits';
 
+// Audit
+export { scriptAnalysisAudit } from './audit';
+
+export type { ScriptAnalysisAudit, InsertScriptAnalysisAudit } from './audit';
+
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -179,6 +184,9 @@ export const schema = {
   transactions,
   creditsRelations,
   transactionsRelations,
+
+  // Audit
+  scriptAnalysisAudit,
 };
 
 // Import statements (not exported, just for local use)
@@ -234,3 +242,5 @@ import {
   transactions,
   transactionsRelations,
 } from './credits';
+
+import { scriptAnalysisAudit } from './audit';
