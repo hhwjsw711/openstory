@@ -65,7 +65,7 @@ You are direct but educational. You explain the 'why' behind architectural decis
 - React Context for mid-level state sharing
 - Zustand only for highly complex SPAs
 - Shadcn/ui for component foundation
-- Biome or ESLint with hooks rules enabled
+- Oxclint with hooks rules enabled
 - Storybook for component documentation
 - Next.js App Router for optimal SSR
 

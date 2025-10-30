@@ -1,4 +1,3 @@
-import { faker } from '@faker-js/faker';
 import type {
   Frame,
   Sequence,
@@ -6,6 +5,7 @@ import type {
   Team,
   UserProfile,
 } from '@/types/database';
+import { faker } from '@faker-js/faker';
 
 // Set consistent seed for reproducible mock data
 faker.seed(123);
@@ -50,7 +50,7 @@ export const generateMockSequence = (
       'archived',
     ]),
     teamId: faker.string.uuid(),
-    styleId: faker.datatype.boolean() ? faker.string.uuid() : null,
+    styleId: faker.string.uuid(),
     analysisModel: faker.helpers.arrayElement([
       'anthropic/claude-haiku-4.5',
       'anthropic/claude-sonnet-4.5',
@@ -70,7 +70,6 @@ export const generateMockSequence = (
 };
 
 export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
-  const characters = ['Hero', 'Villain', 'Sidekick', 'Narrator', 'Crowd'];
   const settings = [
     'City Street',
     'Forest',
@@ -105,7 +104,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'generating',
       'completed',
       'failed',
-    ]) as 'idle' | 'generating' | 'completed' | 'failed',
+    ]),
     thumbnailWorkflowRunId: faker.string.uuid(),
     thumbnailGeneratedAt: faker.date.recent(),
     thumbnailError: null,
@@ -114,7 +113,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'generating',
       'completed',
       'failed',
-    ]) as 'idle' | 'generating' | 'completed' | 'failed',
+    ]),
     videoWorkflowRunId: faker.string.uuid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,

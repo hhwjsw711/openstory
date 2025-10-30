@@ -10,7 +10,7 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -18,7 +18,8 @@ import { z } from 'zod';
 const updateSequenceRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   script: z.string().min(10).max(10000).optional(),
-  styleId: z.string().uuid().nullable().optional(),
+  styleId: z.uuid().optional(),
+  teamId: z.uuid().optional(), // Optional - if provided, will verify user has access
 });
 
 export async function GET(
@@ -92,7 +93,7 @@ export async function PATCH(
 
     // Parse and validate request body
     const body = await request.json();
-    const validated = updateSequenceRequestSchema.parse(body);
+    const sequenceDetailsToUpdate = updateSequenceRequestSchema.parse(body);
 
     // Verify sequence exists and get team info
     const existingSeq = await getSequenceById(sequenceId);
@@ -108,41 +109,46 @@ export async function PATCH(
       );
     }
 
-    // Verify user has access to this sequence
-    await requireTeamMemberAccess(user.id, existingSeq.teamId);
+    // Use provided teamId or fall back to sequence's current team
+    const teamId = sequenceDetailsToUpdate.teamId || existingSeq.teamId;
+
+    // Verify user has access to this sequence's team
+    await requireTeamMemberAccess(user.id, teamId);
+
+    // Check if we need to regenerate the storyboard
+    const needToRegenerateStoryboard = true;
 
     // Update sequence
     const sequence = await sequenceService.updateSequence({
       id: sequenceId,
       userId: user.id,
-      name: validated.name,
-      script: validated.script,
-      styleId: validated.styleId === undefined ? undefined : validated.styleId,
+      ...sequenceDetailsToUpdate,
+      status: needToRegenerateStoryboard ? 'processing' : undefined,
     });
 
     // If script or style changed, regenerate frames
-    if (validated.script !== undefined || validated.styleId !== undefined) {
-      // Check if sequence is already processing
-      const currentSeq = await getSequenceById(sequenceId);
-
-      if (currentSeq?.status !== 'processing') {
-        // Trigger frame generation workflow
-        const workflowInput: FrameGenerationWorkflowInput = {
-          userId: user.id,
-          teamId: existingSeq.teamId,
-          sequenceId,
-          options: {
-            framesPerScene: 3,
-            generateThumbnails: true,
-            generateDescriptions: true,
-            aiProvider: 'openrouter',
-            regenerateAll: true,
-          },
-        };
-
-        // Publish to QStash to trigger the workflow
-        await publishWorkflow('/storyboard', workflowInput);
+    if (needToRegenerateStoryboard) {
+      if (existingSeq.status === 'processing') {
+        // We need to cancel the current processing workflow
+        // await cancelWorkflow(existingSeq.workflowRunId);
       }
+
+      // Trigger frame generation workflow
+      const workflowInput: FrameGenerationWorkflowInput = {
+        userId: user.id,
+        teamId, // Use the verified teamId from above
+        sequenceId,
+        options: {
+          framesPerScene: 3,
+          generateThumbnails: true,
+          generateDescriptions: true,
+          aiProvider: 'openrouter',
+          regenerateAll: true,
+        },
+      };
+
+      // Publish to QStash to trigger the workflow
+      await triggerWorkflow('/storyboard', workflowInput);
     }
 
     // Revalidate paths

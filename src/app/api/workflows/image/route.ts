@@ -20,6 +20,7 @@ import type {
 import { LoggerService } from '@/lib/services/logger.service';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { db } from '@/lib/db/client';
 import { frames, sequences } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -40,175 +41,203 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
-export const { POST } = serve<ImageWorkflowInput>(async (context) => {
-  const input = context.requestPayload;
+export const { POST } = serve<ImageWorkflowInput>(
+  async (context) => {
+    const input = context.requestPayload;
 
-  // Validate authentication
-  validateWorkflowAuth(input);
+    // Validate authentication
+    validateWorkflowAuth(input);
 
-  loggerService.logDebug(
-    `Starting image generation workflow for user ${input.userId}`
-  );
-
-  // Step 1: Set status to generating if frameId is provided
-  if (input.frameId) {
-    await context.run('set-generating-status', async () => {
-      if (!input.frameId) return;
-      await updateFrame(input.frameId, {
-        thumbnailStatus: 'generating',
-        thumbnailWorkflowRunId: context.workflowRunId,
-      });
-    });
-  }
-
-  // Step 2: Generate image
-  const imageResult = await context.run('generate-image', async () => {
-    if (!input.prompt) {
-      throw new Error('Prompt is required for image generation');
+    // Validate required fields
+    if (!input.prompt || input.prompt.trim().length === 0) {
+      throw new WorkflowValidationError(
+        'Prompt is required for image generation'
+      );
     }
-
-    // Determine model to use
-    let model = input.model as keyof typeof IMAGE_MODELS | undefined;
-    if (!model) model = 'flux_krea_lora'; // Default to fast model
 
     loggerService.logDebug(
-      `Generating image ${input.frameId} with model ${model}`
+      `Starting image generation workflow for user ${input.userId}`
     );
 
-    try {
-      // Generate image using selected AI provider
-      const resp = await generateImageWithProvider({
-        model: IMAGE_MODELS[model],
-        prompt: input.prompt,
-        image_size: input.imageSize,
-        num_images: input.numImages || 1,
-        seed: input.seed,
+    // Step 1: Set status to generating if frameId is provided
+    if (input.frameId) {
+      await context.run('set-generating-status', async () => {
+        if (!input.frameId) return;
+        await updateFrame(input.frameId, {
+          thumbnailStatus: 'generating',
+          thumbnailWorkflowRunId: context.workflowRunId,
+        });
       });
+    }
 
-      const respData = resp.data as unknown as
-        | FalImageResponse
-        | LetzAIImageResponse;
-      const result = resultByProvider(
-        model,
-        input as unknown as Record<string, unknown>,
-        respData
+    // Step 2: Generate image
+    const imageResult = await context.run('generate-image', async () => {
+      // Determine model to use
+      let model = input.model as keyof typeof IMAGE_MODELS | undefined;
+      if (!model) model = 'flux_krea_lora'; // Default to fast model
+
+      loggerService.logDebug(
+        `Generating image ${input.frameId} with model ${model}`
       );
 
-      return result;
-    } catch (error) {
-      // Update status on error if frameId is provided
-      if (input.frameId) {
-        await updateFrame(input.frameId, {
-          thumbnailStatus: 'failed',
-          thumbnailError:
-            error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-      throw error;
-    }
-  });
-
-  // Step 3: Update frame if frameId is provided
-  if (input.frameId && imageResult.imageUrls.length > 0) {
-    await context.run('update-frame', async () => {
-      if (!input.frameId) {
-        throw new Error('frameId is required for update-frame step');
-      }
-
       try {
-        await updateFrame(input.frameId, {
-          thumbnailUrl: imageResult.imageUrls[0],
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-          thumbnailError: null,
+        // Generate image using selected AI provider
+        const resp = await generateImageWithProvider({
+          model: IMAGE_MODELS[model],
+          prompt: input.prompt,
+          image_size: input.imageSize,
+          num_images: input.numImages || 1,
+          seed: input.seed,
         });
-      } catch (error) {
-        loggerService.logError(
-          `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        throw error;
-      }
 
-      return { updated: true };
+        const respData = resp.data as unknown as
+          | FalImageResponse
+          | LetzAIImageResponse;
+        const result = resultByProvider(
+          model,
+          input as unknown as Record<string, unknown>,
+          respData
+        );
+
+        return result;
+      } catch (error) {
+        // Update status on error if frameId is provided
+        if (input.frameId) {
+          await updateFrame(input.frameId, {
+            thumbnailStatus: 'generating',
+            thumbnailError:
+              error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+        throw error; // Re-throw so QStash will retry
+      }
     });
 
-    // Step 3: Check if all frames are complete and update sequence
-    if (input.sequenceId) {
-      await context.run('update-sequence-status', async () => {
-        if (!input.sequenceId) {
-          throw new Error(
-            'sequenceId is required for update-sequence-status step'
-          );
+    // Step 3: Update frame if frameId is provided
+    if (input.frameId && imageResult.imageUrls.length > 0) {
+      await context.run('update-frame', async () => {
+        if (!input.frameId) {
+          throw new Error('frameId is required for update-frame step');
         }
 
-        // Check if all frames for this sequence now have thumbnails
-        const allFrames = await db
-          .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
-          .from(frames)
-          .where(eq(frames.sequenceId, input.sequenceId));
-
-        if (allFrames.length > 0) {
-          const framesWithThumbnails = allFrames.filter(
-            (frame) => frame.thumbnailUrl
+        try {
+          await updateFrame(input.frameId, {
+            thumbnailUrl: imageResult.imageUrls[0],
+            thumbnailStatus: 'completed',
+            thumbnailGeneratedAt: new Date(),
+            thumbnailError: null,
+          });
+        } catch (error) {
+          loggerService.logError(
+            `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
-          const allFramesHaveThumbnails =
-            framesWithThumbnails.length === allFrames.length;
-
-          if (allFramesHaveThumbnails) {
-            const sequence = await getSequenceById(input.sequenceId);
-
-            if (sequence) {
-              const existingMetadata =
-                (sequence.metadata as Record<string, unknown>) || {};
-              const frameGeneration =
-                (existingMetadata.frameGeneration as Record<string, unknown>) ||
-                {};
-
-              const updatedMetadata = {
-                ...existingMetadata,
-                frameGeneration: {
-                  ...frameGeneration,
-                  status: 'completed',
-                  completedAt: new Date().toISOString(),
-                  thumbnailsGenerating: false,
-                },
-              };
-
-              try {
-                await db
-                  .update(sequences)
-                  .set({
-                    metadata: updatedMetadata,
-                    status: 'completed',
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(sequences.id, input.sequenceId));
-              } catch (error) {
-                loggerService.logError(
-                  `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
-                );
-              }
-            }
-          }
+          throw error;
         }
 
         return { updated: true };
       });
+
+      // Step 3: Check if all frames are complete and update sequence
+      if (input.sequenceId) {
+        await context.run('update-sequence-status', async () => {
+          if (!input.sequenceId) {
+            throw new Error(
+              'sequenceId is required for update-sequence-status step'
+            );
+          }
+
+          // Check if all frames for this sequence now have thumbnails
+          const allFrames = await db
+            .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
+            .from(frames)
+            .where(eq(frames.sequenceId, input.sequenceId));
+
+          if (allFrames.length > 0) {
+            const framesWithThumbnails = allFrames.filter(
+              (frame) => frame.thumbnailUrl
+            );
+            const allFramesHaveThumbnails =
+              framesWithThumbnails.length === allFrames.length;
+
+            if (allFramesHaveThumbnails) {
+              const sequence = await getSequenceById(input.sequenceId);
+
+              if (sequence) {
+                const existingMetadata =
+                  (sequence.metadata as Record<string, unknown>) || {};
+                const frameGeneration =
+                  (existingMetadata.frameGeneration as Record<
+                    string,
+                    unknown
+                  >) || {};
+
+                const updatedMetadata = {
+                  ...existingMetadata,
+                  frameGeneration: {
+                    ...frameGeneration,
+                    status: 'completed',
+                    completedAt: new Date().toISOString(),
+                    thumbnailsGenerating: false,
+                  },
+                };
+
+                try {
+                  await db
+                    .update(sequences)
+                    .set({
+                      metadata: updatedMetadata,
+                      status: 'completed',
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(sequences.id, input.sequenceId));
+                } catch (error) {
+                  loggerService.logError(
+                    `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  );
+                }
+              }
+            }
+          }
+
+          return { updated: true };
+        });
+      }
     }
+
+    loggerService.logDebug('Image generation workflow completed');
+
+    // Return workflow result
+    const result: ImageWorkflowResult = {
+      imageUrl: imageResult.imageUrls[0],
+      thumbnailUrl: imageResult.imageUrls[0],
+      frameId: input.frameId,
+      sequenceId: input.sequenceId,
+    };
+
+    return result;
+  },
+  {
+    retries: 3,
+    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+    failureFunction: async ({ context, failResponse }) => {
+      const input = context.requestPayload;
+
+      // Set frame thumbnail status to 'failed' after all retries exhausted
+      if (input.frameId) {
+        await updateFrame(input.frameId, {
+          thumbnailStatus: 'failed',
+          thumbnailError: failResponse,
+        });
+
+        loggerService.logError(
+          `Image generation failed for frame ${input.frameId}: ${failResponse}`
+        );
+      }
+
+      return `Image generation failed for frame ${input.frameId}`;
+    },
   }
-
-  loggerService.logDebug('Image generation workflow completed');
-
-  // Return workflow result
-  const result: ImageWorkflowResult = {
-    imageUrl: imageResult.imageUrls[0],
-    thumbnailUrl: imageResult.imageUrls[0],
-    frameId: input.frameId,
-    sequenceId: input.sequenceId,
-  };
-
-  return result;
-});
+);
 
 /**
  * Select AI provider based on model

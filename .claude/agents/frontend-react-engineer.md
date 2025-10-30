@@ -52,7 +52,7 @@ When working from Figma designs (using the Figma MCP when available), you interp
 - Write self-documenting code with clear variable and function names
 - Use TypeScript's type system to make invalid states impossible
 - Follow functional programming principles where appropriate
-- Ensure all code passes Biome linting and formatting
+- Ensure all code passes oxc linting and formatting
 - Create reusable utilities and hooks for common patterns
 - Document complex logic with clear comments explaining 'why', not 'what'
 

@@ -59,10 +59,9 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
     activeJob?.framesProgress?.completed ||
     0;
 
-  // Check for errors in sequence metadata
+  // Check for errors - only show when sequence status is failed
   const metadataError = metadata?.frameGeneration?.error;
-  const hasMetadataError =
-    metadataError && metadata?.frameGeneration?.status === 'failed';
+  const hasMetadataError = metadataError && sequence?.status === 'failed';
 
   // Update frame
   const { mutateAsync: updateFrame } = useUpdateFrame();
@@ -203,8 +202,10 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
       {isBackgroundGenerating && !hasFrames && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Generating {expectedFrameCount} frames...
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Generating {expectedFrameCount} frames...
+              </span>
             </div>
             {completedFrames > 0 && (
               <div className="text-sm text-muted-foreground">
@@ -299,11 +300,13 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
                 <div className="font-medium">Generation Failed</div>
                 <div className="text-sm">{metadataError}</div>
                 {metadata?.frameGeneration?.failedAt && (
-                  <div className="text-xs text-muted-foreground">
-                    Failed at:{' '}
-                    {new Date(
-                      metadata.frameGeneration.failedAt
-                    ).toLocaleString()}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Failed at:{' '}
+                      {new Date(
+                        metadata.frameGeneration.failedAt
+                      ).toLocaleString()}
+                    </span>
                   </div>
                 )}
               </div>
@@ -329,9 +332,11 @@ export const StoryboardStep: React.FC<StoryboardStepProps> = ({
             <div className="font-medium">Generation Failed</div>
             <div className="text-sm">Reason: {metadataError}</div>
             {metadata?.frameGeneration?.failedAt && (
-              <div className="text-xs text-muted-foreground">
-                Failed at:{' '}
-                {new Date(metadata.frameGeneration.failedAt).toLocaleString()}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  Failed at:{' '}
+                  {new Date(metadata.frameGeneration.failedAt).toLocaleString()}
+                </span>
               </div>
             )}
           </div>

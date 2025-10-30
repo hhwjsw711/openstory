@@ -1,8 +1,3 @@
-import { Copy, Play, Video } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import type * as React from 'react';
-import { useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +6,11 @@ import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useEstimateImageCostByFal } from '@/hooks/use-fal-models';
 import { cn } from '@/lib/utils';
 import type { Frame, Style } from '@/types/database';
+import { Copy, Play, Video } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import type * as React from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 interface ModelInfo {
   id: string;
@@ -214,9 +214,7 @@ export const StoryboardFrameWithScript: React.FC<
       setIsGeneratingMotion(false);
     }
   }, [
-    frame.id,
     styleId,
-    frame.metadata,
     frame, // Optimistically update frame metadata to show generating state
     onFrameUpdate,
   ]);
@@ -494,10 +492,18 @@ export const StoryboardFrameWithScript: React.FC<
           )}
         </div>
 
-        {/* Motion error */}
-        {motionError && (
+        {/* Thumbnail error */}
+        {frame.thumbnailError && frame.thumbnailStatus === 'failed' && (
           <div className="text-xs text-destructive mt-1">
-            {motionError}
+            Image generation failed: {frame.thumbnailError}
+          </div>
+        )}
+
+        {/* Motion error */}
+        {(motionError ||
+          (frame.videoError && frame.videoStatus === 'failed')) && (
+          <div className="text-xs text-destructive mt-1">
+            {motionError || frame.videoError}
             {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
               <Link
                 href={loginUrl}

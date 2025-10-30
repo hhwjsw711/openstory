@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { z } from 'zod';
-import { ScriptEditor } from '@/components/sequence/script-editor';
 import { ModelSelector } from '@/components/sequence/model-selector';
+import { ScriptEditor } from '@/components/sequence/script-editor';
 import { StyleSelector } from '@/components/sequence/style-selector';
 import { SectionHeading } from '@/components/typography';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,11 +11,13 @@ import {
 } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import { useUser } from '@/hooks/use-user';
-import { validateScript } from '@/lib/validation/script';
 import {
   DEFAULT_ANALYSIS_MODEL,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
+import { validateScript } from '@/lib/validation/script';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
 
 // Zod validation schema for script form
 const scriptFormSchema = z.object({
@@ -29,7 +29,7 @@ const scriptFormSchema = z.object({
       message: 'Script must contain at least 10 non-whitespace characters',
     }),
   styleId: z.string().uuid('Please select a visual style'),
-  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+  title: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   analysisModels: z
     .array(z.string())
     .min(1, 'At least one model must be selected'),
@@ -40,13 +40,18 @@ type ScriptFormData = z.infer<typeof scriptFormSchema>;
 interface ScriptStepProps {
   sequenceId?: string; // If provided, we're editing an existing sequence
   onSuccess: (sequenceId: string) => void; // Called when sequence is saved/updated
+  onCancel?: () => void; // Called when user cancels edit mode
 }
 
-export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
+export const ScriptStep = ({
+  sequenceId,
+  onSuccess,
+  onCancel,
+}: ScriptStepProps) => {
   // Form state
   const [formData, setFormData] = useState<Partial<ScriptFormData>>({
     script: '',
-    name: 'Untitled Sequence',
+    title: 'Untitled Sequence',
     styleId: undefined,
     analysisModels: [DEFAULT_ANALYSIS_MODEL],
   });
@@ -97,8 +102,9 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     if (existingSequence && isEditMode) {
       setFormData({
         script: existingSequence.script || '',
-        name: existingSequence.title || 'Untitled Sequence',
+        title: existingSequence.title || 'Untitled Sequence',
         styleId: existingSequence.styleId || undefined,
+        analysisModels: [existingSequence.analysisModel],
       });
     }
   }, [existingSequence, isEditMode]);
@@ -235,15 +241,15 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         const result = await updateSequenceMutation.mutateAsync({
           id: sequenceId,
           script: formData.script,
-          styleId: formData.styleId || null,
-          name: formData.name,
+          styleId: formData.styleId,
+          title: formData.title,
         });
         savedSequenceId = result.id;
       } else {
         const result = await createSequenceMutation.mutateAsync({
           script: formData.script || '',
           styleId: formData.styleId || null,
-          name: formData.name,
+          title: formData.title,
           analysisModels: formData.analysisModels || [DEFAULT_ANALYSIS_MODEL],
         });
         // Multi-model creation returns array of sequences
@@ -265,41 +271,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
     updateSequenceMutation,
     onSuccess,
   ]);
-
-  // Handle save only (for edit mode)
-  const handleSaveOnly = useCallback(async () => {
-    // Validate only script and name for save-only
-    const saveSchema = scriptFormSchema.pick({ script: true, name: true });
-    try {
-      saveSchema.parse({ script: formData.script, name: formData.name });
-      setErrors({});
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const fieldErrors: Partial<Record<keyof ScriptFormData, string>> = {};
-        error.issues.forEach((err: z.ZodIssue) => {
-          const path = err.path[0] as keyof ScriptFormData;
-          if (!fieldErrors[path]) {
-            fieldErrors[path] = err.message;
-          }
-        });
-        setErrors(fieldErrors);
-        return;
-      }
-    }
-
-    if (!sequenceId) return;
-
-    try {
-      await updateSequenceMutation.mutateAsync({
-        id: sequenceId,
-        script: formData.script,
-        styleId: formData.styleId || null,
-        name: formData.name,
-      });
-    } catch (error) {
-      console.error('Error saving:', error);
-    }
-  }, [formData, sequenceId, updateSequenceMutation]);
 
   // Check if form is valid for generation
   const canGenerate = useMemo(() => {
@@ -330,14 +301,6 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{mutationError.message}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Success Alert for save only */}
-      {isEditMode && updateSequenceMutation.isSuccess && (
-        <Alert>
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>Script saved successfully!</AlertDescription>
         </Alert>
       )}
 
@@ -441,13 +404,16 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
       {/* Model Selection */}
       <div className="space-y-4">
-        <SectionHeading>Choose Analysis Model(s)</SectionHeading>
+        <SectionHeading>
+          {isEditMode ? 'Analysis Model' : 'Choose Analysis Model(s)'}
+        </SectionHeading>
         <ModelSelector
           selectedModels={(formData.analysisModels || []) as AnalysisModelId[]}
           onModelsChange={(models) =>
             handleFieldChange('analysisModels', models)
           }
           disabled={isLoading}
+          singleSelect={isEditMode}
         />
         {errors.analysisModels && (
           <div className="text-sm text-destructive">
@@ -476,33 +442,40 @@ export const ScriptStep = ({ sequenceId, onSuccess }: ScriptStepProps) => {
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
-        {sequenceId && (
+        {isEditMode ? (
+          <>
+            {onCancel && (
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                disabled={isLoading}
+                size="lg"
+                data-testid="cancel-button"
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              onClick={handleSaveAndGenerate}
+              disabled={!canGenerate || isLoading}
+              size="lg"
+              data-testid="regenerate-storyboard-button"
+            >
+              {saveMutation.isPending
+                ? 'Regenerating...'
+                : 'Regenerate Storyboard →'}
+            </Button>
+          </>
+        ) : (
           <Button
-            variant="outline"
-            onClick={handleSaveOnly}
-            disabled={
-              isLoading ||
-              !formData.script ||
-              formData.script.trim().length < 10
-            }
+            onClick={handleSaveAndGenerate}
+            disabled={!canGenerate || isLoading}
             size="lg"
-            data-testid="save-button"
+            data-testid="generate-storyboard-button"
           >
-            {updateSequenceMutation.isPending ? 'Saving...' : 'Save Changes'}
+            {saveMutation.isPending ? 'Generating...' : 'Generate Storyboard →'}
           </Button>
         )}
-        <Button
-          onClick={handleSaveAndGenerate}
-          disabled={!canGenerate || isLoading}
-          size="lg"
-          data-testid="generate-storyboard-button"
-        >
-          {saveMutation.isPending
-            ? 'Generating...'
-            : sequenceId
-              ? 'Regenerate Storyboard →'
-              : 'Generate Storyboard →'}
-        </Button>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
 import type { ImageWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -75,7 +75,7 @@ export async function POST(
       sequenceId: frameData.sequenceId,
     };
 
-    const workflowRunId = await publishWorkflow('/image', workflowInput);
+    const workflowRunId = await triggerWorkflow('/image', workflowInput);
 
     return NextResponse.json(
       {

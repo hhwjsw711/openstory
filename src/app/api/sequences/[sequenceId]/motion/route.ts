@@ -13,7 +13,7 @@ import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { ValidationError } from '@/lib/errors';
 import type { MotionWorkflowInput } from '@/lib/workflow';
-import { publishWorkflow } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import { z } from 'zod';
 
 // Request body schema
@@ -107,7 +107,7 @@ export async function POST(
         };
 
         // Publish to QStash to trigger the workflow
-        const workflowRunId = await publishWorkflow('/motion', workflowInput);
+        const workflowRunId = await triggerWorkflow('/motion', workflowInput);
 
         workflows.push({
           frameId: frame.id,

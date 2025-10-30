@@ -45,6 +45,23 @@ export const frameGenerationStatus = pgEnum('frame_generation_status', [
 ]);
 
 /**
+ * Type for sequence metadata JSONB field
+ */
+export type SequenceMetadata = {
+  frameGeneration?: {
+    startedAt?: string;
+    expectedFrameCount?: number | null;
+    completedFrameCount?: number;
+    options?: Record<string, unknown>;
+    error?: string | null;
+    failedAt?: string | null;
+    thumbnailsGenerating?: boolean;
+    completedAt?: string;
+  };
+  [key: string]: unknown; // Allow other fields
+};
+
+/**
  * Sequences table
  * Main video sequence/project entity
  */
@@ -59,7 +76,7 @@ export const sequences = pgTable(
     title: varchar({ length: 500 }).notNull(),
     script: text(),
     status: sequenceStatus().default('draft').notNull(),
-    metadata: jsonb().default({}),
+    metadata: jsonb().$type<SequenceMetadata>().default({}),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -69,7 +86,7 @@ export const sequences = pgTable(
       .$onUpdate(() => new Date()),
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
-    styleId: uuid('style_id'),
+    styleId: uuid('style_id').notNull(),
     analysisModel: varchar('analysis_model', { length: 100 })
       .default('anthropic/claude-haiku-4.5')
       .notNull(),
@@ -236,6 +253,7 @@ export const framesRelations = relations(frames, ({ one }) => ({
 // Type exports
 export type Sequence = InferSelectModel<typeof sequences>;
 export type NewSequence = InferInsertModel<typeof sequences>;
+export type UpdateSequence = Partial<Sequence>;
 
 export type Frame = InferSelectModel<typeof frames>;
 export type NewFrame = InferInsertModel<typeof frames>;

@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
+import { DEFAULT_ANALYSIS_MODEL, getAllModelIds } from '@/lib/ai/models.config';
 import { sequences } from '@/lib/db/schema/sequences';
-import { getAllModelIds, DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
+import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
+import { z } from 'zod';
 
 /**
  * Shared Zod schemas for sequence operations
@@ -14,10 +14,10 @@ const validModelIds = getAllModelIds();
 export const createSequenceSchema = createInsertSchema(sequences, {
   title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
   script: z.string().min(10).max(10000), // Override to make it required with business rules
+  teamId: z.uuid().optional(), // Optional - will use user's default team if not provided
 })
   .omit({
     id: true,
-    teamId: true, // Server determines from authenticated user
     status: true,
     createdAt: true,
     updatedAt: true,

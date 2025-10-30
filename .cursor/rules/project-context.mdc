@@ -11,6 +11,7 @@ You are working on **Velro**, an AI-powered cinematic content creation platform 
 ## Project Overview
 
 Velro democratizes cinematic content creation through:
+
 - **Script-to-storyboard AI**: Automatic scene breakdown and frame generation
 - **Style Stacks**: JSON-based presets that ensure consistent artistic vision across AI models
 - **Multi-model support**: Integration with 19+ AI models (Fal.ai, Runway, Kling, etc.)
@@ -83,17 +84,20 @@ velro/
 ## Technology Stack
 
 ### Core Framework
+
 - **Frontend**: Next.js 15.5 (App Router), React 19, TypeScript 5
 - **Runtime**: Bun (package manager + test runner)
 - **Build**: Turbopack (Next.js default)
 
 ### UI & Styling
+
 - **UI**: shadcn/ui components, Radix UI primitives
 - **Styling**: Tailwind CSS 4
 - **Icons**: Lucide React
 - **Drag & Drop**: dnd-kit
 
 ### Backend & Infrastructure
+
 - **API Server**: Elysia (Bun-native web framework)
 - **Database**: Supabase PostgreSQL via Drizzle ORM (type-safe queries, schema-first)
 - **Validation**: ArkType (runtime type validation for Elysia routes)
@@ -104,11 +108,13 @@ velro/
 - **Caching**: Upstash Redis (session storage, rate limiting)
 
 ### State Management
+
 - **Server State**: TanStack Query v5
 - **Query Pattern**: Centralized query key factories
 - **Caching**: Optimistic updates, automatic invalidation
 
 ### AI & Generation
+
 - **Primary Provider**: Fal.ai SDK (@fal-ai/client)
 - **Image Models**: flux-pro, imagen4, flux-krea-lora
 - **Video Models**: veo3, kling-video, minimax-hailuo, wan-pro
@@ -116,8 +122,9 @@ velro/
 - **Validation**: ArkType schemas
 
 ### Development Tools
+
 - **Testing**: Bun test (Jest-compatible)
-- **Linting**: Biome (fast, replaces ESLint + Prettier)
+- **Linting**: Oxclint (fast, replaces ESLint + Prettier)
 - **Git Hooks**: Lefthook
 - **Type Safety**: Drizzle Kit generates types from schema
 - **API Documentation**: Elysia Swagger plugin (auto-generated)
@@ -125,12 +132,14 @@ velro/
 ## Core Features
 
 ### 1. Script-to-Storyboard Pipeline
+
 1. User pastes script
 2. AI analyzes and breaks into scenes/frames
 3. Generates frame descriptions
 4. Creates editable storyboard
 
 ### 2. Frame Generation
+
 - Per-frame model selection
 - Style Stack application for consistency
 - Character LoRA injection
@@ -138,18 +147,21 @@ velro/
 - Parallel generation via Temporal workflows
 
 ### 3. Motion Generation
+
 - Image-to-video conversion
 - Multiple model options (veo3, kling, wan)
 - VFX LoRA support (wan-pro)
 - Duration/motion controls
 
 ### 4. Style Stacks
+
 - JSON-based style presets
 - Model-agnostic adaptation
 - Director templates (Tarantino, Nolan, etc.)
 - Visual reference upload
 
 ### 5. Anonymous-First Flow
+
 1. Users create without signup
 2. Generate frames with temporary session
 3. Prompted to save (Email login)
@@ -158,6 +170,7 @@ velro/
 ## Data Model
 
 ### Core Entities
+
 - **teams**: Team ownership of all creative assets
 - **users**: Team members (anonymous or authenticated)
 - **sequences**: Video projects (script → storyboard → video)
@@ -166,6 +179,7 @@ velro/
 - **fal_requests**: API call tracking for Fal.ai
 
 ### Key Relationships
+
 - Team → owns Styles, Sequences
 - Sequence → has many Frames, uses one Style
 - Frame → references Characters, VFX, Audio
@@ -173,12 +187,15 @@ velro/
 ## Architecture Principles
 
 ### Supabase Usage Clarification
+
 **IMPORTANT:** Velro uses Supabase for:
+
 - ✅ **PostgreSQL Database** (accessed via Drizzle ORM, NOT Supabase client)
 - ✅ **Storage** (Supabase Storage for images/videos)
 - ❌ **NOT for Auth** (we use BetterAuth instead of Supabase Auth)
 
 ### Backend-Only Database Access
+
 - **No RLS**: All auth/authorization in Elysia API layer
 - **Drizzle ORM**: All DB operations via type-safe queries (connects to Supabase PostgreSQL)
 - **Single Connection Pool**: Centralized database access in backend
@@ -186,13 +203,14 @@ velro/
 - Avoids RLS complexity, clearer security model with API gateway pattern
 
 ### State Management Pattern
+
 ```typescript
 // Centralized query keys
 export const entityKeys = {
-  all: ["entities"] as const,
-  lists: () => [...entityKeys.all, "list"] as const,
+  all: ['entities'] as const,
+  lists: () => [...entityKeys.all, 'list'] as const,
   list: (filter?: string) => [...entityKeys.lists(), filter] as const,
-  details: () => [...entityKeys.all, "detail"] as const,
+  details: () => [...entityKeys.all, 'detail'] as const,
   detail: (id: string) => [...entityKeys.details(), id] as const,
 };
 
@@ -201,15 +219,18 @@ export function useEntity(id: string) {
   return useQuery({
     queryKey: entityKeys.detail(id),
     queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/entities/${id}`, {
-        credentials: 'include', // Include cookies for BetterAuth
-      });
-      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/entities/${id}`,
+        {
+          credentials: 'include', // Include cookies for BetterAuth
+        }
+      );
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to fetch entity');
       }
-      
+
       const data = await response.json();
       return data.data; // API returns { success: true, data: ... }
     },
@@ -218,6 +239,7 @@ export function useEntity(id: string) {
 ```
 
 ### API Pattern (Elysia Backend)
+
 ```typescript
 // 1. Validate input with ArkType schemas
 // 2. Check authentication via BetterAuth plugin
@@ -228,6 +250,7 @@ export function useEntity(id: string) {
 ```
 
 ### Frontend Pattern (Next.js)
+
 ```typescript
 // 1. User interaction triggers action
 // 2. Call backend API via fetch or TanStack Query
@@ -237,6 +260,7 @@ export function useEntity(id: string) {
 ```
 
 ### Error Handling
+
 - Custom error classes: `VelroError`, `ValidationError`
 - Centralized handler: `handleApiError()`
 - User-friendly messages, detailed logs
@@ -244,6 +268,7 @@ export function useEntity(id: string) {
 ## Development Workflow
 
 ### Local Setup
+
 1. Start PostgreSQL: `docker compose up -d postgres`
 2. Run migrations: `cd apps/backend && bun run db:migrate`
 3. Generate types: `bun run db:generate`
@@ -254,6 +279,7 @@ export function useEntity(id: string) {
 8. (Optional) Start Redis: `docker compose up -d redis`
 
 ### Code Conventions
+
 - **Backend Routes**: Elysia routes in `apps/backend/src/routes/*.ts`
 - **Services**: Business logic in `apps/backend/src/services/*.ts`
 - **DB Queries**: Drizzle queries in `apps/backend/src/db/queries/*.ts`
@@ -266,16 +292,18 @@ export function useEntity(id: string) {
 ## Key Workflows
 
 ### Frame Generation Flow
+
 ```
-User triggers → Frontend calls Elysia API → API starts Temporal workflow → 
-Workflow executes activities (Fal.ai API, Save to Storage, Update DB) → 
+User triggers → Frontend calls Elysia API → API starts Temporal workflow →
+Workflow executes activities (Fal.ai API, Save to Storage, Update DB) →
 WebSocket notification → Frontend updates via TanStack Query invalidation
 ```
 
 ### Style Stack Application
+
 ```
-User selects Stack → System validates model compatibility → 
-Adapter adjusts for model → Generation with adapted params → 
+User selects Stack → System validates model compatibility →
+Adapter adjusts for model → Generation with adapted params →
 Consistent style across all frames
 ```
 

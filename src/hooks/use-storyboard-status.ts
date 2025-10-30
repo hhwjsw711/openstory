@@ -6,12 +6,11 @@ import { sequenceKeys } from './use-sequences';
 
 /**
  * Type for sequence metadata containing frame generation information
- * Note: This is still used by components for displaying progress and error details
- * but is NOT used for determining isGenerating status (which uses workflow status)
+ * Note: This is used by components for displaying progress and error details
+ * The sequence.status field (not metadata.status) is used for determining isGenerating
  */
 export interface FrameGenerationMetadata {
   frameGeneration?: {
-    status?: string;
     expectedFrameCount?: number;
     completedFrameCount?: number;
     error?: string;
