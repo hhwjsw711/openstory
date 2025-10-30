@@ -477,3 +477,4 @@ beforeEach(async () => {
 - Pass authentication (userId/teamId) through workflow context, not database lookups
 - Please create a rule that prevents claude from ever alterting files in components/ui
 - never manually create migrations
+- Use type instead of interface to define typescript types

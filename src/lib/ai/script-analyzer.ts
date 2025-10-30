@@ -13,6 +13,7 @@ import {
   type SceneAnalysis,
 } from '@/lib/ai/scene-analysis.schema';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
+import { createAuditRecord } from '@/lib/services/script-analysis-audit.service';
 import {
   callCerebras,
   systemMessage as cerebrasSystemMessage,
@@ -28,9 +29,9 @@ import {
 import { getSystemPromptVersion } from './prompt-versioning';
 
 /**
- * Audit data collected during script analysis
+ * Internal audit data collected during script analysis
  */
-export interface ScriptAnalysisAuditData {
+type ScriptAnalysisAuditData = {
   userScript: string;
   systemPromptVersion: string;
   userPrompt: string;
@@ -43,27 +44,21 @@ export interface ScriptAnalysisAuditData {
   tokenUsage: Record<string, unknown> | null;
   durationMs: number;
   status: 'success' | 'api_error' | 'parse_error';
-}
-
-/**
- * Result of script analysis including both the analysis and audit data
- */
-export interface ScriptAnalysisResult {
-  analysis: SceneAnalysis;
-  auditData: ScriptAnalysisAuditData;
-}
+};
 
 /**
  * Analyze script to identify frame boundaries
  * @param script - The script content to analyze
  * @param styleConfig - The director DNA configuration to use
  * @param model - The AI model to use for analysis (defaults to fast model)
+ * @param auditContext - Optional context for creating audit trail (sequenceId, teamId, userId)
  */
 export async function analyzeScriptForFrames(
   script: string,
   styleConfig: DirectorDnaConfig,
-  model: string = RECOMMENDED_MODELS.fast
-): Promise<ScriptAnalysisResult> {
+  model: string = RECOMMENDED_MODELS.fast,
+  auditContext?: { sequenceId: string; teamId: string; userId: string }
+): Promise<{ analysis: SceneAnalysis; durationMs: number }> {
   const startTime = Date.now();
 
   // Initialize audit data
@@ -81,7 +76,7 @@ export async function analyzeScriptForFrames(
     parseError: null,
     tokenUsage: null,
     durationMs: 0,
-    status: 'success',
+    status: 'api_error', // Set the status to api error just in case it fails at any point
   };
 
   // Determine which provider to use based on model prefix
@@ -163,59 +158,44 @@ export async function analyzeScriptForFrames(
     }
 
     // Validate and return the parsed result with detailed error logging
-    try {
-      const validatedAnalysis = sceneAnalysisSchema.parse(dataToValidate);
-      auditData.parsedOutput = validatedAnalysis;
-      auditData.durationMs = Date.now() - startTime;
-      auditData.status = 'success';
 
-      return {
-        analysis: validatedAnalysis,
-        auditData,
-      };
-    } catch (error) {
-      // Enhanced error logging for debugging workflows
-      console.error('=== Script Analysis Validation Error ===');
-      console.error('Model used:', model);
-      console.error('\nValidation errors:');
+    // Set the status to parse error just in case it fails to parse
+    auditData.status = 'parse_error';
 
-      if (error instanceof Error && 'issues' in error) {
-        // ZodError - format issues for readability
-        const zodError = error as {
-          issues: Array<{ path: string[]; message: string; code: string }>;
-        };
-        zodError.issues.forEach((issue) => {
-          console.error(
-            `  Path: ${issue.path.join('.')} | ${issue.message} (${issue.code})`
-          );
-        });
-      }
+    const validatedAnalysis = sceneAnalysisSchema.parse(dataToValidate);
+    // Set the status to success
+    auditData.status = 'success';
 
-      console.error('\nRaw AI response (first 2000 chars):');
-      console.error(content.substring(0, 2000));
-
-      console.error('\nParsed data structure:');
-      console.error(JSON.stringify(dataToValidate, null, 2).substring(0, 2000));
-
-      console.error('=== End Validation Error ===\n');
-
-      // Capture parse error in audit data
-      auditData.parseError =
-        error instanceof Error ? error.message : 'Unknown parse error';
-      auditData.durationMs = Date.now() - startTime;
-      auditData.status = 'parse_error';
-
-      throw new Error(
-        `Script analysis validation failed. Model: ${model}. ${error instanceof Error ? error.message : 'Unknown error'}. Check logs for detailed output.`
-      );
-    }
+    // return the analysis and the duration
+    return {
+      analysis: validatedAnalysis,
+      durationMs: Date.now() - startTime,
+    };
   } catch (error) {
     // Capture API error in audit data
     auditData.apiError =
       error instanceof Error ? error.message : 'Unknown API error';
-    auditData.durationMs = Date.now() - startTime;
-    auditData.status = 'api_error';
 
     throw error;
+  } finally {
+    if (auditContext) {
+      await createAuditRecord({
+        sequenceId: auditContext.sequenceId,
+        teamId: auditContext.teamId,
+        userId: auditContext.userId,
+        userScript: auditData.userScript,
+        systemPromptVersion: auditData.systemPromptVersion,
+        userPrompt: auditData.userPrompt,
+        styleConfig: auditData.styleConfig,
+        model: auditData.model,
+        rawOutput: auditData.rawOutput,
+        parsedOutput: null,
+        apiError: auditData.apiError,
+        parseError: null,
+        tokenUsage: auditData.tokenUsage,
+        durationMs: Date.now() - startTime,
+        status: auditData.status,
+      });
+    }
   }
 }

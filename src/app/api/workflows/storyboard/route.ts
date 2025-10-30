@@ -10,7 +10,6 @@ import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
 import { LoggerService } from '@/lib/services/logger.service';
-import { createAuditRecord } from '@/lib/services/script-analysis-audit.service';
 import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
@@ -55,13 +54,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         throw new WorkflowValidationError('Sequence has no script');
       }
 
-      // Validate minimum script length (50 characters)
-      if (data.script.trim().length < 50) {
-        throw new WorkflowValidationError(
-          `Script is too short (minimum 50 characters, got ${data.script.trim().length})`
-        );
-      }
-
       if (!data.styleId) {
         throw new WorkflowValidationError('Sequence has no style selected');
       }
@@ -101,8 +93,9 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
     });
 
     // Step 4: Analyze script to determine frame boundaries
-    const { scriptAnalysis, analysisDurationMs, auditRecordId } =
-      await context.run('analyze-script', async () => {
+    const { scriptAnalysis, analysisDurationMs } = await context.run(
+      'analyze-script',
+      async () => {
         // Get or use default style
         const styleId = sequence.styleId;
         if (!styleId) {
@@ -111,6 +104,10 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
 
         if (!sequence.style) {
           throw new WorkflowValidationError('No style found');
+        }
+
+        if (!sequence.script) {
+          throw new WorkflowValidationError('No script found');
         }
 
         const styleConfig = DirectorDnaConfigSchema.parse(
@@ -122,73 +119,19 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
           sequence.analysisModel || 'anthropic/claude-haiku-4.5';
 
         let result;
-        let auditId: string | undefined;
 
         try {
           result = await analyzeScriptForFrames(
-            sequence.script || '',
+            sequence.script,
             styleConfig,
-            analysisModel
-          );
-
-          // Create audit record for successful analysis
-          const auditRecord = await createAuditRecord({
-            sequenceId: input.sequenceId,
-            teamId: input.teamId,
-            userId: input.userId,
-            userScript: sequence.script || '',
-            systemPromptVersion: result.auditData.systemPromptVersion,
-            userPrompt: result.auditData.userPrompt,
-            styleConfig: styleConfig as Record<string, unknown>,
-            model: result.auditData.model,
-            rawOutput: result.auditData.rawOutput,
-            parsedOutput: result.auditData.parsedOutput,
-            apiError: null,
-            parseError: null,
-            tokenUsage: result.auditData.tokenUsage,
-            durationMs: result.auditData.durationMs,
-            status: 'success',
-          });
-
-          auditId = auditRecord.id;
-
-          loggerService.logInfo(
-            `Script analysis audit record created: ${auditId}`
-          );
-        } catch (error) {
-          // Create audit record for failed analysis
-          // Note: We may not have all audit data if the error occurred early
-          try {
-            const auditRecord = await createAuditRecord({
+            analysisModel,
+            {
               sequenceId: input.sequenceId,
               teamId: input.teamId,
               userId: input.userId,
-              userScript: sequence.script || '',
-              systemPromptVersion: '', // Will be empty if error occurred before we could get it
-              userPrompt: '', // Will be empty if error occurred before we could construct it
-              styleConfig: styleConfig as Record<string, unknown>,
-              model: analysisModel,
-              rawOutput: null,
-              parsedOutput: null,
-              apiError:
-                error instanceof Error ? error.message : 'Unknown error',
-              parseError: null,
-              tokenUsage: null,
-              durationMs: 0,
-              status: 'api_error',
-            });
-
-            auditId = auditRecord.id;
-
-            loggerService.logInfo(
-              `Script analysis audit record created for error: ${auditId}`
-            );
-          } catch (auditError) {
-            loggerService.logWarning(
-              `Failed to create audit record: ${auditError instanceof Error ? auditError.message : 'Unknown error'}`
-            );
-          }
-
+            }
+          );
+        } catch (error) {
           // Check if error indicates invalid script
           if (isInvalidScriptError(error)) {
             throw new WorkflowValidationError(
@@ -221,10 +164,10 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
 
         return {
           scriptAnalysis: result.analysis,
-          analysisDurationMs: result.auditData.durationMs,
-          auditRecordId: auditId,
+          analysisDurationMs: result.durationMs,
         };
-      });
+      }
+    );
 
     const frameCount = scriptAnalysis.scenes.length;
 
