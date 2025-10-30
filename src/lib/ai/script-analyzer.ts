@@ -176,7 +176,9 @@ export async function analyzeScriptForFrames(
     auditData.apiError =
       error instanceof Error ? error.message : 'Unknown API error';
 
-    throw error;
+    throw new Error(
+      `Failed to turn the script you entered into scenes. Maybe try enhancing the script first?`
+    );
   } finally {
     if (auditContext) {
       await createAuditRecord({
