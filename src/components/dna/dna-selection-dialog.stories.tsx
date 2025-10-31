@@ -3,7 +3,11 @@ import { useStyles } from '@/hooks/use-styles';
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
-import { DnaSelectionDialog } from './dna-selection-dialog';
+import {
+  DnaSelectionDialog,
+  DnaSelectionDialogWithTrigger,
+} from './dna-selection-dialog';
+import { DnaSelectorButton } from './dna-selector-button';
 
 const meta: Meta<typeof DnaSelectionDialog> = {
   title: 'Components/DNA/DnaSelectionDialog',
@@ -296,6 +300,263 @@ export const LoadingState: Story = {
       description: {
         story:
           'Dialog showing loading skeletons while styles are being fetched from the API.',
+      },
+    },
+  },
+};
+
+export const WithSelectorButton: Story = {
+  render: () => {
+    const SelectorButtonDemo = () => {
+      const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
+        MOCK_SYSTEM_STYLES[0].id
+      );
+
+      const { data: styles = [] } = useStyles();
+
+      const selectedStyle =
+        styles.find((s) => s.id === selectedStyleId) ||
+        MOCK_SYSTEM_STYLES.find((s) => s.id === selectedStyleId);
+
+      return (
+        <div className="flex flex-col gap-6 p-8">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">
+              DNA Selector Button Integration
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Click the button below to open the DNA selection dialog. The
+              button shows the currently selected style with a thumbnail
+              background.
+            </p>
+          </div>
+
+          <DnaSelectionDialogWithTrigger
+            styles={styles}
+            selectedStyleId={selectedStyleId}
+            selectedStyle={selectedStyle}
+            onStyleSelect={setSelectedStyleId}
+          />
+
+          {selectedStyle && (
+            <div className="mt-2 rounded-lg border bg-card p-4">
+              <h4 className="font-medium">Currently Selected:</h4>
+              <p className="text-sm text-muted-foreground">
+                {selectedStyle.name}
+              </p>
+              {selectedStyle.category && (
+                <p className="text-xs text-muted-foreground">
+                  Category: {selectedStyle.category}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return <SelectorButtonDemo />;
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'Shows the new DNA selector button component as a dialog trigger. The button displays the selected style with a thumbnail background and opens the full selection dialog when clicked.',
+      },
+    },
+  },
+};
+
+export const SelectorButtonSizes: Story = {
+  render: () => {
+    const SizeDemo = () => {
+      const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
+        MOCK_SYSTEM_STYLES[1].id
+      );
+
+      const { data: styles = [] } = useStyles();
+
+      const selectedStyle =
+        styles.find((s) => s.id === selectedStyleId) ||
+        MOCK_SYSTEM_STYLES.find((s) => s.id === selectedStyleId);
+
+      return (
+        <div className="flex flex-col gap-8 p-8">
+          <div className="space-y-4">
+            <div>
+              <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                Small Size
+              </h4>
+              <DnaSelectionDialogWithTrigger
+                styles={styles}
+                selectedStyleId={selectedStyleId}
+                selectedStyle={selectedStyle}
+                onStyleSelect={setSelectedStyleId}
+                buttonSize="sm"
+              />
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                Default Size
+              </h4>
+              <DnaSelectionDialogWithTrigger
+                styles={styles}
+                selectedStyleId={selectedStyleId}
+                selectedStyle={selectedStyle}
+                onStyleSelect={setSelectedStyleId}
+                buttonSize="default"
+              />
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                Large Size
+              </h4>
+              <DnaSelectionDialogWithTrigger
+                styles={styles}
+                selectedStyleId={selectedStyleId}
+                selectedStyle={selectedStyle}
+                onStyleSelect={setSelectedStyleId}
+                buttonSize="lg"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    return <SizeDemo />;
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'Demonstrates the three available button sizes (small, default, large) with the DNA selector button trigger.',
+      },
+    },
+  },
+};
+
+export const SelectorButtonNoSelection: Story = {
+  render: () => {
+    const NoSelectionDemo = () => {
+      const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
+        null
+      );
+
+      const { data: styles = [] } = useStyles();
+
+      const selectedStyle = selectedStyleId
+        ? styles.find((s) => s.id === selectedStyleId) ||
+          MOCK_SYSTEM_STYLES.find((s) => s.id === selectedStyleId)
+        : null;
+
+      return (
+        <div className="flex flex-col gap-6 p-8">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">No Style Selected</h3>
+            <p className="text-sm text-muted-foreground">
+              When no style is selected, the button shows placeholder text
+              "Select Style".
+            </p>
+          </div>
+
+          <DnaSelectionDialogWithTrigger
+            styles={styles}
+            selectedStyleId={selectedStyleId}
+            selectedStyle={selectedStyle}
+            onStyleSelect={setSelectedStyleId}
+          />
+
+          {selectedStyle && (
+            <div className="mt-2 rounded-lg border bg-card p-4">
+              <h4 className="font-medium">You selected:</h4>
+              <p className="text-sm text-muted-foreground">
+                {selectedStyle.name}
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return <NoSelectionDemo />;
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'Shows the selector button in its initial state when no style has been selected yet.',
+      },
+    },
+  },
+};
+
+export const CustomTrigger: Story = {
+  render: () => {
+    const CustomTriggerDemo = () => {
+      const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
+        MOCK_SYSTEM_STYLES[2].id
+      );
+
+      const { data: styles = [] } = useStyles();
+
+      const selectedStyle =
+        styles.find((s) => s.id === selectedStyleId) ||
+        MOCK_SYSTEM_STYLES.find((s) => s.id === selectedStyleId);
+
+      return (
+        <div className="flex flex-col gap-6 p-8">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Custom Trigger Button</h3>
+            <p className="text-sm text-muted-foreground">
+              You can provide your own custom trigger element instead of using
+              the default selector button.
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <DnaSelectionDialogWithTrigger
+              styles={styles}
+              selectedStyleId={selectedStyleId}
+              selectedStyle={selectedStyle}
+              onStyleSelect={setSelectedStyleId}
+              trigger={
+                <Button variant="default">Choose Director&apos;s DNA</Button>
+              }
+            />
+
+            <DnaSelectionDialogWithTrigger
+              styles={styles}
+              selectedStyleId={selectedStyleId}
+              selectedStyle={selectedStyle}
+              onStyleSelect={setSelectedStyleId}
+              trigger={<Button variant="outline">Change Style</Button>}
+            />
+          </div>
+
+          {selectedStyle && (
+            <div className="mt-2 rounded-lg border bg-card p-4">
+              <h4 className="font-medium">Currently Selected:</h4>
+              <p className="text-sm">{selectedStyle.name}</p>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return <CustomTriggerDemo />;
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'Demonstrates how to use custom trigger elements with the DnaSelectionDialogWithTrigger component.',
       },
     },
   },
