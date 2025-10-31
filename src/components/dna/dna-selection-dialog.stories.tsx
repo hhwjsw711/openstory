@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useStyles } from '@/hooks/use-styles';
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
@@ -51,6 +52,8 @@ function InteractiveDnaDialog(
     initialSelectedId
   );
 
+  const { data: styles = [] } = useStyles();
+
   const handleReopen = () => {
     setOpen(true);
   };
@@ -63,6 +66,7 @@ function InteractiveDnaDialog(
       <DnaSelectionDialog
         open={open}
         onOpenChange={setOpen}
+        styles={styles}
         selectedStyleId={selectedStyleId}
         onStyleSelect={setSelectedStyleId}
         {...otherProps}

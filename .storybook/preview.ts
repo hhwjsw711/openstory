@@ -1,17 +1,20 @@
+import { withThemeByClassName } from '@storybook/addon-themes';
 import type { Decorator, Preview } from '@storybook/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { withThemeByClassName } from '@storybook/addon-themes';
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { handlers } from '../src/lib/mocks/handlers';
+
 import React from 'react';
 import '../src/app/global.css';
 
-// Initialize MSW for API mocking
-if (typeof window !== 'undefined') {
-  import('../src/lib/mocks').then(({ worker }) => {
-    worker.start({
-      onUnhandledRequest: 'bypass', // Don't warn about unhandled requests
-    });
-  });
-}
+/*
+ * Initializes MSW with our API handlers
+ * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
+ * to learn how to customize it
+ */
+initialize({
+  onUnhandledRequest: 'bypass',
+});
 
 // Create a client for Storybook
 const queryClient = new QueryClient({
@@ -53,7 +56,12 @@ const preview: Preview = {
     viewport: {
       defaultViewport: 'responsive', // Default viewport size
     },
+    // Configure MSW handlers globally for all stories
+    msw: {
+      handlers,
+    },
   },
+  loaders: [mswLoader],
   decorators: [
     withQueryClient,
     withThemeByClassName({
