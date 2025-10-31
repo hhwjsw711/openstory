@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
-import { stylePresets } from '@/lib/mocks/style-presets';
+import { generateMockStyles } from '@/lib/mocks/data-generators';
 import { StyleSelector } from '../style-selector';
 
 const meta: Meta<typeof StyleSelector> = {
@@ -42,8 +42,8 @@ const meta: Meta<typeof StyleSelector> = {
 export default meta;
 type Story = StoryObj<typeof StyleSelector>;
 
-// Mock data - use predefined style presets for better visual examples
-const mockStyles = stylePresets;
+// Mock data - generate styles with realistic DNA-based configs
+const mockStyles = generateMockStyles(12);
 
 // Interactive wrapper for stories that need selection state
 function InteractiveStyleSelector(
@@ -126,9 +126,9 @@ export const EmptyState: Story = {
 export const Disabled: Story = {
   render: () => (
     <InteractiveStyleSelector
-      styles={stylePresets.slice(0, 6)}
+      styles={mockStyles.slice(0, 6)}
       disabled
-      initialSelectedId={stylePresets[1].id}
+      initialSelectedId={mockStyles[1].id}
     />
   ),
   parameters: {
@@ -142,7 +142,7 @@ export const Disabled: Story = {
 };
 
 export const SmallCollection: Story = {
-  render: () => <InteractiveStyleSelector styles={stylePresets.slice(0, 3)} />,
+  render: () => <InteractiveStyleSelector styles={mockStyles.slice(0, 3)} />,
   parameters: {
     docs: {
       description: {
@@ -157,8 +157,8 @@ export const LargeCollection: Story = {
   render: () => (
     <InteractiveStyleSelector
       styles={[
-        ...stylePresets,
-        ...stylePresets.map((s) => ({
+        ...mockStyles,
+        ...mockStyles.map((s) => ({
           ...s,
           id: `${s.id}-2`,
           name: `${s.name} v2`,
@@ -211,13 +211,10 @@ export const StyleCategories: Story = {
       <div>
         <h3 className="text-lg font-medium mb-4">Cinematic Styles</h3>
         <InteractiveStyleSelector
-          styles={stylePresets.filter((s) =>
-            [
-              'style-cinematic',
-              'style-noir',
-              'style-documentary',
-              'style-horror',
-            ].includes(s.id)
+          styles={mockStyles.filter((s) =>
+            ['cinematic', 'noir', 'documentary', 'horror'].includes(
+              s.category ?? ''
+            )
           )}
         />
       </div>
@@ -225,27 +222,15 @@ export const StyleCategories: Story = {
       <div>
         <h3 className="text-lg font-medium mb-4">Artistic Styles</h3>
         <InteractiveStyleSelector
-          styles={stylePresets.filter((s) =>
-            [
-              'style-watercolor',
-              'style-oil-painting',
-              'style-minimalist',
-            ].includes(s.id)
-          )}
+          styles={mockStyles.filter((s) => s.category === 'artistic')}
         />
       </div>
 
       <div>
         <h3 className="text-lg font-medium mb-4">Modern & Stylized</h3>
         <InteractiveStyleSelector
-          styles={stylePresets.filter((s) =>
-            [
-              'style-anime',
-              'style-cyberpunk',
-              'style-retro',
-              'style-comic',
-              'style-fantasy',
-            ].includes(s.id)
+          styles={mockStyles.filter((s) =>
+            ['scifi', 'animation'].includes(s.category ?? '')
           )}
         />
       </div>
@@ -272,17 +257,8 @@ export const PopularStyles: Story = {
         </p>
       </div>
       <InteractiveStyleSelector
-        styles={[
-          'style-cinematic',
-          'style-anime',
-          'style-cyberpunk',
-          'style-watercolor',
-          'style-minimalist',
-          'style-comic',
-        ]
-          .map((id) => stylePresets.find((s) => s.id === id))
-          .filter((s): s is NonNullable<typeof s> => s !== undefined)}
-        initialSelectedId="style-cinematic"
+        styles={mockStyles.slice(0, 6)}
+        initialSelectedId={mockStyles[0].id}
       />
     </div>
   ),
@@ -290,7 +266,7 @@ export const PopularStyles: Story = {
     docs: {
       description: {
         story:
-          'A curated selection of the most popular styles, pre-selected with Cinematic Epic.',
+          'A curated selection of the most popular styles, pre-selected with the first style.',
       },
     },
   },

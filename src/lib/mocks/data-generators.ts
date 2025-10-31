@@ -207,52 +207,99 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
 
 export const generateMockStyle = (overrides?: Partial<Style>): Style => {
   const artStyles = [
-    'Photorealistic',
-    'Anime',
-    'Cartoon',
-    'Oil Painting',
-    'Watercolor',
-    'Digital Art',
+    'Photorealistic cinematic style',
+    'Anime-inspired with vibrant colors',
+    'Classic cartoon aesthetic',
+    'Oil painting with rich textures',
+    'Watercolor with soft edges',
+    'Digital art with clean lines',
   ];
   const lightings = [
-    'Natural',
-    'Dramatic',
-    'Soft',
-    'High Contrast',
-    'Neon',
-    'Golden Hour',
+    'Natural sunlight with soft shadows',
+    'Dramatic chiaroscuro lighting',
+    'Soft diffused lighting',
+    'High contrast with deep blacks',
+    'Neon accent lighting with cool tones',
+    'Golden hour magic lighting',
   ];
-  const compositions = [
-    'Wide Shot',
-    'Close-up',
-    'Medium Shot',
-    "Bird's Eye",
-    'Low Angle',
-    'Dutch Angle',
+  const cameraWorks = [
+    'Smooth tracking shots with steady cam',
+    'Dynamic handheld camera movements',
+    'Static shots with careful composition',
+    'Sweeping crane shots with wide angles',
+    'Intimate close-ups with shallow depth',
+    'Dutch angles with unconventional framing',
+  ];
+  const moods = [
+    'Dramatic and emotional',
+    'Upbeat and energetic',
+    'Mysterious and tense',
+    'Romantic and warm',
+    'Intense and thrilling',
+    'Peaceful and serene',
+  ];
+  const aspectRatios = ['16:9', '2.35:1', '2.39:1', '1.85:1', '2.66:1'];
+  const frameRates = ['24fps', '30fps', '60fps'];
+  const colorGradings = [
+    'Warm highlights with cool shadows',
+    'Desaturated with selective color pops',
+    'Saturated pastels with vintage feel',
+    'Natural color with slight desaturation',
+    'Cool blues and teals with high contrast',
+    'Orange and teal contrast',
   ];
 
   return {
     id: faker.string.uuid(),
     name: faker.lorem.words(2),
+    description: faker.lorem.sentence(),
+    category: faker.helpers.arrayElement([
+      'cinematic',
+      'noir',
+      'artistic',
+      'documentary',
+      'scifi',
+      'horror',
+      'action',
+      'romance',
+      'western',
+      'animation',
+    ]),
+    tags: faker.helpers.arrayElements(
+      [
+        'dramatic',
+        'emotional',
+        'thriller',
+        'urban',
+        'whimsical',
+        'realistic',
+        'futuristic',
+        'dark',
+        'explosive',
+        'lighthearted',
+      ],
+      { min: 2, max: 4 }
+    ),
     previewUrl: faker.helpers.arrayElement([
-      'https://picsum.photos/seed/1618005182384-a83a8bd57fbe/400/300', // Abstract gradient
-      'https://picsum.photos/seed/1579783902614-a3fb3927b6a5/400/300', // Colorful art
-      'https://picsum.photos/seed/1549490349-8643362247b5/400/300', // Neon lights
-      'https://picsum.photos/seed/1604076913837-52ab5629fba9/400/300', // Abstract waves
-      'https://picsum.photos/seed/1557672172-298e090bd0f1/400/300', // Watercolor splash
-      'https://picsum.photos/seed/1549887534-1541e9326642/400/300', // Dark abstract
-      'https://picsum.photos/seed/1567095761054-7a02e69e5c43/400/300', // Geometric abstract
-      'https://picsum.photos/seed/1604871000636-074fa5117945/400/300', // Paint texture
-      'https://picsum.photos/seed/1618005198919-d3d4b5a92ead/400/300', // Gradient mesh
-      'https://picsum.photos/seed/1563089145-599997674d42/400/300', // Digital abstract
-      'https://picsum.photos/seed/1558591710-4b4a1ae0f04d/400/300', // Smoke abstract
-      'https://picsum.photos/seed/1552083375-1447ce886485/400/300', // Color gradient
-      'https://picsum.photos/seed/1579783928621-7a13d66a62d1/400/300', // Paint strokes
-      'https://picsum.photos/seed/1569163139394-de4798aa62b6/400/300', // Fluid art
-      'https://picsum.photos/seed/1566041510394-cf7c8fe21800/400/300', // Marble texture
-      'https://picsum.photos/seed/1557682250-33bd709cbe85/400/300', // Purple gradient
+      'https://picsum.photos/seed/1618005182384-a83a8bd57fbe/400/300',
+      'https://picsum.photos/seed/1579783902614-a3fb3927b6a5/400/300',
+      'https://picsum.photos/seed/1549490349-8643362247b5/400/300',
+      'https://picsum.photos/seed/1604076913837-52ab5629fba9/400/300',
+      'https://picsum.photos/seed/1557672172-298e090bd0f1/400/300',
+      'https://picsum.photos/seed/1549887534-1541e9326642/400/300',
+      'https://picsum.photos/seed/1567095761054-7a02e69e5c43/400/300',
+      'https://picsum.photos/seed/1604871000636-074fa5117945/400/300',
+      'https://picsum.photos/seed/1618005198919-d3d4b5a92ead/400/300',
+      'https://picsum.photos/seed/1563089145-599997674d42/400/300',
+      'https://picsum.photos/seed/1558591710-4b4a1ae0f04d/400/300',
+      'https://picsum.photos/seed/1552083375-1447ce886485/400/300',
+      'https://picsum.photos/seed/1579783928621-7a13d66a62d1/400/300',
+      'https://picsum.photos/seed/1569163139394-de4798aa62b6/400/300',
+      'https://picsum.photos/seed/1566041510394-cf7c8fe21800/400/300',
+      'https://picsum.photos/seed/1557682250-33bd709cbe85/400/300',
     ]),
     config: {
+      artStyle: faker.helpers.arrayElement(artStyles),
       colorPalette: faker.helpers.arrayElements(
         [
           '#FF6B6B',
@@ -263,23 +310,39 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
           '#DDA0DD',
           '#98D8C8',
           '#F7DC6F',
+          '#8B4513',
+          '#D2691E',
+          '#2F4F4F',
         ],
         { min: 3, max: 5 }
       ),
-      artStyle: faker.helpers.arrayElement(artStyles),
       lighting: faker.helpers.arrayElement(lightings),
-      composition: faker.helpers.arrayElement(compositions),
+      cameraWork: faker.helpers.arrayElement(cameraWorks),
+      mood: faker.helpers.arrayElement(moods),
+      referenceFilms: faker.helpers.arrayElements(
+        [
+          'Blade Runner',
+          'The Godfather',
+          'Grand Budapest Hotel',
+          'Mad Max: Fury Road',
+          'Moonlight',
+          'Ex Machina',
+          'The Witch',
+          'La La Land',
+        ],
+        { min: 1, max: 3 }
+      ),
+      aspectRatio: faker.helpers.arrayElement(aspectRatios),
+      frameRate: faker.helpers.arrayElement(frameRates),
+      colorGrading: faker.helpers.arrayElement(colorGradings),
     },
     teamId: faker.string.uuid(),
     isPublic: faker.datatype.boolean(),
+    isTemplate: faker.datatype.boolean(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),
-    category: null,
-    description: null,
-    isTemplate: null,
     parentId: null,
-    tags: null,
     usageCount: null,
     version: null,
     ...overrides,

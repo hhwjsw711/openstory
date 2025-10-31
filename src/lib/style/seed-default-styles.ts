@@ -2,7 +2,7 @@ import { db } from '@/lib/db/client';
 import { styles, teams } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 
-import { DEFAULT_STYLE_TEMPLATES } from './default-templates';
+import { DEFAULT_STYLE_TEMPLATES } from './style-templates';
 /**
  * Service function to seed default templates into the database
  * This should be run during app initialization or migration

@@ -1,73 +1,9 @@
+import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import type { Meta, StoryObj } from '@storybook/nextjs';
-import type { Style } from '@/types/database';
 import { StyleSection } from '../style-section';
 
 // Mock styles data for stories
-const mockStyles: Style[] = [
-  {
-    id: 'style-1',
-    name: 'Cinematic Drama',
-    previewUrl: 'https://picsum.photos/seed/1440404653325-ab127d49abc1/400/300',
-    config: {
-      artStyle: 'Cinematic',
-      colorPalette: ['#1a1a1a', '#d4af37', '#8b4513', '#2c2c2c'],
-    },
-    createdAt: new Date('2024-01-01T00:00:00Z'),
-    updatedAt: new Date('2024-01-01T00:00:00Z'),
-    createdBy: null,
-    isPublic: false,
-    teamId: 'team-1',
-    category: null,
-    description: null,
-    isTemplate: null,
-    parentId: null,
-    tags: null,
-    usageCount: null,
-    version: null,
-  },
-  {
-    id: 'style-2',
-    name: 'Animated Adventure',
-    previewUrl: 'https://picsum.photos/seed/1578662996442-48f60103fc96/400/300',
-    config: {
-      artStyle: 'Animation',
-      colorPalette: ['#ff6b35', '#f7931e', '#1f4e79', '#85c7de'],
-    },
-    createdAt: new Date('2024-01-01T00:00:00Z'),
-    updatedAt: new Date('2024-01-01T00:00:00Z'),
-    createdBy: null,
-    isPublic: false,
-    teamId: 'team-1',
-    category: null,
-    description: null,
-    isTemplate: null,
-    parentId: null,
-    tags: null,
-    usageCount: null,
-    version: null,
-  },
-  {
-    id: 'style-3',
-    name: 'Film Noir',
-    previewUrl: 'https://picsum.photos/seed/1485846234645-a62644f84728/400/300',
-    config: {
-      artStyle: 'Film Noir',
-      colorPalette: ['#000000', '#ffffff', '#404040', '#808080'],
-    },
-    createdAt: new Date('2024-01-01T00:00:00Z'),
-    updatedAt: new Date('2024-01-01T00:00:00Z'),
-    createdBy: null,
-    isPublic: false,
-    teamId: 'team-1',
-    category: null,
-    description: null,
-    isTemplate: null,
-    parentId: null,
-    tags: null,
-    usageCount: null,
-    version: null,
-  },
-];
+const mockStyles = MOCK_SYSTEM_STYLES;
 
 const meta: Meta<typeof StyleSection> = {
   title: 'Components/Sequence/StyleSection',
