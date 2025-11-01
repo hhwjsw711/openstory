@@ -7,7 +7,7 @@ import Image from 'next/image';
 import type { FC, KeyboardEvent } from 'react';
 import { useCallback } from 'react';
 
-type DnaGridProps = {
+type StyleGridProps = {
   styles: Style[];
   selectedStyleId: string | null;
   onStyleSelect: (styleId: string) => void;
@@ -60,7 +60,7 @@ const StyleCard: FC<StyleCardProps> = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       aria-pressed={selected}
-      data-testid={`dna-card-${style.id}`}
+      data-testid={`style-card-${style.id}`}
     >
       <CardContent className="p-0">
         <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg bg-muted">
@@ -106,7 +106,7 @@ const StyleCardSkeleton = () => (
   </Card>
 );
 
-export const DnaGrid: FC<DnaGridProps> = ({
+export const StyleGrid: FC<StyleGridProps> = ({
   styles,
   selectedStyleId,
   onStyleSelect,
@@ -116,7 +116,7 @@ export const DnaGrid: FC<DnaGridProps> = ({
   return (
     <div
       className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 p-4 overflow-auto"
-      data-testid="dna-grid"
+      data-testid="style-grid"
     >
       {isLoading
         ? Array.from({ length: 10 }, (_, index) => (

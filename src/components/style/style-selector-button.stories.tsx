@@ -2,21 +2,12 @@ import { useStyles } from '@/hooks/use-styles';
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
-import { DnaSelectionDialogWithTrigger } from './dna-selection-dialog';
-import { DnaSelectorButton } from './dna-selector-button';
+import { StyleSelectionDialogWithTrigger } from './style-selection-dialog';
+import { StyleSelectorButton } from './style-selector-button';
 
-const meta: Meta<typeof DnaSelectorButton> = {
-  title: 'Components/DNA/DnaSelectorButton',
-  component: DnaSelectorButton,
-  parameters: {
-    layout: 'centered',
-    docs: {
-      description: {
-        component:
-          'A stylized button for selecting DNA/styles with thumbnail preview and dynamic text. Designed to match the Higgsfield-style UI with theme colors.',
-      },
-    },
-  },
+const meta: Meta<typeof StyleSelectorButton> = {
+  title: 'Components/Style/StyleSelectorButton',
+  component: StyleSelectorButton,
   argTypes: {
     selectedStyle: {
       description: 'The currently selected style object',
@@ -35,7 +26,7 @@ const meta: Meta<typeof DnaSelectorButton> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof DnaSelectorButton>;
+type Story = StoryObj<typeof StyleSelectorButton>;
 
 export const NoSelection: Story = {
   args: {
@@ -117,7 +108,7 @@ export const InteractiveButton: Story = {
 
     return (
       <div className="flex flex-col gap-4 p-8">
-        <DnaSelectorButton
+        <StyleSelectorButton
           selectedStyle={MOCK_SYSTEM_STYLES[0]}
           onClick={() => setClicks((c) => c + 1)}
         />
@@ -151,14 +142,14 @@ export const WithDialogIntegration: Story = {
         <div className="flex flex-col gap-4 p-8">
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">
-              DNA Selector with Dialog Integration
+              Style Selector with Dialog Integration
             </h3>
             <p className="text-sm text-muted-foreground">
-              Click the button to open the DNA selection dialog
+              Click the button to open the style selection dialog
             </p>
           </div>
 
-          <DnaSelectionDialogWithTrigger
+          <StyleSelectionDialogWithTrigger
             styles={styles}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
@@ -197,18 +188,18 @@ export const DifferentSizes: Story = {
     <div className="flex flex-col gap-6 p-8">
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-muted-foreground">Small</h4>
-        <DnaSelectorButton selectedStyle={MOCK_SYSTEM_STYLES[0]} size="sm" />
+        <StyleSelectorButton selectedStyle={MOCK_SYSTEM_STYLES[0]} size="sm" />
       </div>
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-muted-foreground">Default</h4>
-        <DnaSelectorButton
+        <StyleSelectorButton
           selectedStyle={MOCK_SYSTEM_STYLES[1]}
           size="default"
         />
       </div>
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-muted-foreground">Large</h4>
-        <DnaSelectorButton selectedStyle={MOCK_SYSTEM_STYLES[2]} size="lg" />
+        <StyleSelectorButton selectedStyle={MOCK_SYSTEM_STYLES[2]} size="lg" />
       </div>
     </div>
   ),

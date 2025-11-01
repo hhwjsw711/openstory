@@ -4,13 +4,13 @@ import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { useState } from 'react';
 import {
-  DnaSelectionDialog,
-  DnaSelectionDialogWithTrigger,
-} from './dna-selection-dialog';
+  StyleSelectionDialog,
+  StyleSelectionDialogWithTrigger,
+} from './style-selection-dialog';
 
-const meta: Meta<typeof DnaSelectionDialog> = {
-  title: 'Components/DNA/DnaSelectionDialog',
-  component: DnaSelectionDialog,
+const meta: Meta<typeof StyleSelectionDialog> = {
+  title: 'Components/Style/StyleSelectionDialog',
+  component: StyleSelectionDialog,
   parameters: {
     layout: 'centered',
     docs: {
@@ -41,11 +41,11 @@ const meta: Meta<typeof DnaSelectionDialog> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof DnaSelectionDialog>;
+type Story = StoryObj<typeof StyleSelectionDialog>;
 
 // Interactive wrapper for stories
-function InteractiveDnaDialog(
-  props: Partial<React.ComponentProps<typeof DnaSelectionDialog>> & {
+function InteractiveStyleDialog(
+  props: Partial<React.ComponentProps<typeof StyleSelectionDialog>> & {
     initialSelectedId?: string | null;
   }
 ) {
@@ -66,7 +66,7 @@ function InteractiveDnaDialog(
       {!open && (
         <Button onClick={handleReopen}>Open Director's DNA Dialog</Button>
       )}
-      <DnaSelectionDialog
+      <StyleSelectionDialog
         open={open}
         onOpenChange={setOpen}
         styles={styles}
@@ -79,7 +79,7 @@ function InteractiveDnaDialog(
 }
 
 export const Default: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     docs: {
       description: {
@@ -92,7 +92,7 @@ export const Default: Story = {
 
 export const WithPreselection: Story = {
   render: () => (
-    <InteractiveDnaDialog initialSelectedId={MOCK_SYSTEM_STYLES[2].id} />
+    <InteractiveStyleDialog initialSelectedId={MOCK_SYSTEM_STYLES[2].id} />
   ),
   parameters: {
     docs: {
@@ -115,7 +115,7 @@ export const EmptyState: Story = {
       return (
         <div>
           {!open && <Button onClick={() => setOpen(true)}>Reopen</Button>}
-          <DnaSelectionDialog
+          <StyleSelectionDialog
             open={open}
             onOpenChange={setOpen}
             selectedStyleId={selectedStyleId}
@@ -138,7 +138,7 @@ export const EmptyState: Story = {
 };
 
 export const SearchFunctionality: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     docs: {
       description: {
@@ -150,7 +150,7 @@ export const SearchFunctionality: Story = {
 };
 
 export const CategoryFilters: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     docs: {
       description: {
@@ -162,7 +162,7 @@ export const CategoryFilters: Story = {
 };
 
 export const MobileView: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',
@@ -177,7 +177,7 @@ export const MobileView: Story = {
 };
 
 export const TabletView: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     viewport: {
       defaultViewport: 'tablet',
@@ -191,7 +191,7 @@ export const TabletView: Story = {
 };
 
 export const DesktopView: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     viewport: {
       defaultViewport: 'desktop',
@@ -239,7 +239,7 @@ export const InteractionFlow: Story = {
 
           <Button onClick={() => setOpen(true)}>Choose Director's DNA</Button>
 
-          <DnaSelectionDialog
+          <StyleSelectionDialog
             open={open}
             onOpenChange={setOpen}
             selectedStyleId={selectedStyleId}
@@ -263,7 +263,7 @@ export const InteractionFlow: Story = {
 };
 
 export const KeyboardNavigation: Story = {
-  render: () => <InteractiveDnaDialog />,
+  render: () => <InteractiveStyleDialog />,
   parameters: {
     docs: {
       description: {
@@ -282,7 +282,7 @@ export const LoadingState: Story = {
       return (
         <div>
           {!open && <Button onClick={() => setOpen(true)}>Reopen</Button>}
-          <DnaSelectionDialog
+          <StyleSelectionDialog
             open={open}
             onOpenChange={setOpen}
             selectedStyleId={null}
@@ -321,16 +321,16 @@ export const WithSelectorButton: Story = {
         <div className="flex flex-col gap-6 p-8">
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">
-              DNA Selector Button Integration
+              Style Selector Button Integration
             </h3>
             <p className="text-sm text-muted-foreground">
-              Click the button below to open the DNA selection dialog. The
+              Click the button below to open the style selection dialog. The
               button shows the currently selected style with a thumbnail
               background.
             </p>
           </div>
 
-          <DnaSelectionDialogWithTrigger
+          <StyleSelectionDialogWithTrigger
             styles={styles}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
@@ -360,7 +360,7 @@ export const WithSelectorButton: Story = {
     docs: {
       description: {
         story:
-          'Shows the new DNA selector button component as a dialog trigger. The button displays the selected style with a thumbnail background and opens the full selection dialog when clicked.',
+          'Shows the new style selector button component as a dialog trigger. The button displays the selected style with a thumbnail background and opens the full selection dialog when clicked.',
       },
     },
   },
@@ -386,7 +386,7 @@ export const SelectorButtonSizes: Story = {
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">
                 Small Size
               </h4>
-              <DnaSelectionDialogWithTrigger
+              <StyleSelectionDialogWithTrigger
                 styles={styles}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
@@ -398,7 +398,7 @@ export const SelectorButtonSizes: Story = {
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">
                 Default Size
               </h4>
-              <DnaSelectionDialogWithTrigger
+              <StyleSelectionDialogWithTrigger
                 styles={styles}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
@@ -410,7 +410,7 @@ export const SelectorButtonSizes: Story = {
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">
                 Large Size
               </h4>
-              <DnaSelectionDialogWithTrigger
+              <StyleSelectionDialogWithTrigger
                 styles={styles}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
@@ -429,7 +429,7 @@ export const SelectorButtonSizes: Story = {
     docs: {
       description: {
         story:
-          'Demonstrates the three available button sizes (small, default, large) with the DNA selector button trigger.',
+          'Demonstrates the three available button sizes (small, default, large) with the style selector button trigger.',
       },
     },
   },
@@ -459,7 +459,7 @@ export const SelectorButtonNoSelection: Story = {
             </p>
           </div>
 
-          <DnaSelectionDialogWithTrigger
+          <StyleSelectionDialogWithTrigger
             styles={styles}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
@@ -514,7 +514,7 @@ export const CustomTrigger: Story = {
           </div>
 
           <div className="flex gap-4">
-            <DnaSelectionDialogWithTrigger
+            <StyleSelectionDialogWithTrigger
               styles={styles}
               selectedStyle={selectedStyle}
               onStyleSelect={setSelectedStyleId}
@@ -523,7 +523,7 @@ export const CustomTrigger: Story = {
               }
             />
 
-            <DnaSelectionDialogWithTrigger
+            <StyleSelectionDialogWithTrigger
               styles={styles}
               selectedStyle={selectedStyle}
               onStyleSelect={setSelectedStyleId}
@@ -548,7 +548,7 @@ export const CustomTrigger: Story = {
     docs: {
       description: {
         story:
-          'Demonstrates how to use custom trigger elements with the DnaSelectionDialogWithTrigger component.',
+          'Demonstrates how to use custom trigger elements with the StyleSelectionDialogWithTrigger component.',
       },
     },
   },

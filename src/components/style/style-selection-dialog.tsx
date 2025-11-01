@@ -1,8 +1,8 @@
 'use client';
 
-import { DnaGrid } from '@/components/dna/dna-grid';
-import { DnaSelectorButton } from '@/components/dna/dna-selector-button';
 import { GalleryIcon } from '@/components/icons/gallery-icon';
+import { StyleGrid } from '@/components/style/style-grid';
+import { StyleSelectorButton } from '@/components/style/style-selector-button';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,7 +33,7 @@ import { Search, X } from 'lucide-react';
 import type { ChangeEvent, FC, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
-type DnaSelectionDialogProps = {
+type StyleSelectionDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   styles?: Style[];
@@ -41,7 +41,7 @@ type DnaSelectionDialogProps = {
   onStyleSelect: (styleId: string) => void;
 };
 
-type DnaSelectionDialogContentProps = {
+type StyleSelectionDialogContentProps = {
   styles?: Style[];
   selectedStyleId: string | null;
   onStyleSelect: (styleId: string) => void;
@@ -51,7 +51,7 @@ type DnaSelectionDialogContentProps = {
 /**
  * Internal content component for the DNA selection dialog
  */
-const DnaSelectionDialogContent: FC<DnaSelectionDialogContentProps> = ({
+const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
   styles,
   selectedStyleId,
   onStyleSelect,
@@ -181,7 +181,7 @@ const DnaSelectionDialogContent: FC<DnaSelectionDialogContentProps> = ({
               </EmptyHeader>
             </Empty>
           ) : (
-            <DnaGrid
+            <StyleGrid
               styles={filteredStyles}
               selectedStyleId={selectedStyleId}
               onStyleSelect={onStyleSelect}
@@ -203,7 +203,7 @@ const DnaSelectionDialogContent: FC<DnaSelectionDialogContentProps> = ({
 /**
  * Controlled dialog for DNA/style selection (backward compatible)
  */
-export const DnaSelectionDialog: FC<DnaSelectionDialogProps> = ({
+export const StyleSelectionDialog: FC<StyleSelectionDialogProps> = ({
   open,
   onOpenChange,
   styles,
@@ -216,7 +216,7 @@ export const DnaSelectionDialog: FC<DnaSelectionDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DnaSelectionDialogContent
+      <StyleSelectionDialogContent
         styles={styles}
         selectedStyleId={selectedStyleId}
         onStyleSelect={onStyleSelect}
@@ -229,7 +229,7 @@ export const DnaSelectionDialog: FC<DnaSelectionDialogProps> = ({
 /**
  * Composed dialog with trigger button
  */
-type DnaSelectionDialogWithTriggerProps = {
+type StyleSelectionDialogWithTriggerProps = {
   styles?: Style[];
   selectedStyle?: Style | null;
   onStyleSelect: (styleId: string) => void;
@@ -237,8 +237,8 @@ type DnaSelectionDialogWithTriggerProps = {
   buttonSize?: 'default' | 'sm' | 'lg';
 };
 
-export const DnaSelectionDialogWithTrigger: FC<
-  DnaSelectionDialogWithTriggerProps
+export const StyleSelectionDialogWithTrigger: FC<
+  StyleSelectionDialogWithTriggerProps
 > = ({ styles, selectedStyle, onStyleSelect, trigger, buttonSize }) => {
   const [open, setOpen] = useState(false);
 
@@ -250,10 +250,13 @@ export const DnaSelectionDialogWithTrigger: FC<
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <DnaSelectorButton selectedStyle={selectedStyle} size={buttonSize} />
+          <StyleSelectorButton
+            selectedStyle={selectedStyle}
+            size={buttonSize}
+          />
         )}
       </DialogTrigger>
-      <DnaSelectionDialogContent
+      <StyleSelectionDialogContent
         styles={styles}
         selectedStyleId={selectedStyle?.id ?? null}
         onStyleSelect={onStyleSelect}

@@ -5,13 +5,13 @@ import type { Style } from '@/types/database';
 import { ChevronDown } from 'lucide-react';
 import type { FC } from 'react';
 
-type DnaSelectorButtonProps = {
+type StyleSelectorButtonProps = {
   selectedStyle?: Style | null;
   onClick?: () => void;
   size?: 'default' | 'sm' | 'lg';
 };
 
-export const DnaSelectorButton: FC<DnaSelectorButtonProps> = ({
+export const StyleSelectorButton: FC<StyleSelectorButtonProps> = ({
   selectedStyle,
   onClick,
   size = 'default',
@@ -44,6 +44,7 @@ export const DnaSelectorButton: FC<DnaSelectorButtonProps> = ({
     <Button
       type="button"
       variant="outline"
+      size={size}
       onClick={onClick}
       className={`relative overflow-hidden ${sizeClasses[size]} min-w-[200px] justify-start rounded-2xl border-2 border-background bg-background/95 backdrop-blur-sm shadow-lg transition-all duration-200 ${hoverScaleClasses[size]} hover:border-foreground/60 hover:shadow-xl`}
     >
@@ -79,9 +80,7 @@ export const DnaSelectorButton: FC<DnaSelectorButtonProps> = ({
               )}
             </>
           ) : (
-            <span className={`text-muted-foreground ${nameSizeClasses[size]}`}>
-              Select Style
-            </span>
+            <span>Select Style</span>
           )}
         </div>
 
