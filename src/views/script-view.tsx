@@ -1,5 +1,5 @@
 import { ScriptEditor } from '@/components/sequence/script-editor';
-import { StyleSelectionDialogWithTrigger } from '@/components/style/style-selection-dialog';
+import { StyleCompactSelector } from '@/components/style/style-compact-selector';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -46,13 +46,11 @@ export const ScriptView: FC<{
           onValueChange={setScript}
           placeholder="Describe a moment, a mood, or a script, then activate the crew to create it..."
         />
-        <div className="flex flex-col gap-2 justify-center items-center w-full">
-          <StyleSelectionDialogWithTrigger
-            styles={styles}
-            selectedStyle={selectedStyle}
-            onStyleSelect={setStyleId}
-          />
-        </div>
+        <StyleCompactSelector
+          styles={styles}
+          selectedStyleId={styleId}
+          onStyleSelect={setStyleId}
+        />
       </CardContent>
       <CardFooter className="flex flex-col gap-2 justify-center items-center w-full">
         <Button

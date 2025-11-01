@@ -1,6 +1,6 @@
 import { ModelSelector } from '@/components/sequence/model-selector';
 import { ScriptEditor } from '@/components/sequence/script-editor';
-import { StyleSelector } from '@/components/sequence/style-selector';
+import { StyleCompactSelector } from '@/components/style/style-compact-selector';
 import { SectionHeading } from '@/components/typography';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -426,13 +426,12 @@ export const ScriptStep = ({
       <div className="space-y-4">
         <SectionHeading>Choose Visual Style</SectionHeading>
 
-        <StyleSelector
+        <StyleCompactSelector
           selectedStyleId={formData.styleId || null}
           onStyleSelect={(styleId) => handleFieldChange('styleId', styleId)}
           styles={availableStyles}
           loading={availableStyles.length === 0}
           disabled={isLoading}
-          data-testid="style-selector"
         />
 
         {errors.styleId && (
