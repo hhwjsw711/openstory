@@ -7,7 +7,6 @@ import {
   DnaSelectionDialog,
   DnaSelectionDialogWithTrigger,
 } from './dna-selection-dialog';
-import { DnaSelectorButton } from './dna-selector-button';
 
 const meta: Meta<typeof DnaSelectionDialog> = {
   title: 'Components/DNA/DnaSelectionDialog',
@@ -333,7 +332,6 @@ export const WithSelectorButton: Story = {
 
           <DnaSelectionDialogWithTrigger
             styles={styles}
-            selectedStyleId={selectedStyleId}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
           />
@@ -390,7 +388,6 @@ export const SelectorButtonSizes: Story = {
               </h4>
               <DnaSelectionDialogWithTrigger
                 styles={styles}
-                selectedStyleId={selectedStyleId}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
                 buttonSize="sm"
@@ -403,7 +400,6 @@ export const SelectorButtonSizes: Story = {
               </h4>
               <DnaSelectionDialogWithTrigger
                 styles={styles}
-                selectedStyleId={selectedStyleId}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
                 buttonSize="default"
@@ -416,7 +412,6 @@ export const SelectorButtonSizes: Story = {
               </h4>
               <DnaSelectionDialogWithTrigger
                 styles={styles}
-                selectedStyleId={selectedStyleId}
                 selectedStyle={selectedStyle}
                 onStyleSelect={setSelectedStyleId}
                 buttonSize="lg"
@@ -466,7 +461,6 @@ export const SelectorButtonNoSelection: Story = {
 
           <DnaSelectionDialogWithTrigger
             styles={styles}
-            selectedStyleId={selectedStyleId}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
           />
@@ -522,7 +516,6 @@ export const CustomTrigger: Story = {
           <div className="flex gap-4">
             <DnaSelectionDialogWithTrigger
               styles={styles}
-              selectedStyleId={selectedStyleId}
               selectedStyle={selectedStyle}
               onStyleSelect={setSelectedStyleId}
               trigger={
@@ -532,7 +525,6 @@ export const CustomTrigger: Story = {
 
             <DnaSelectionDialogWithTrigger
               styles={styles}
-              selectedStyleId={selectedStyleId}
               selectedStyle={selectedStyle}
               onStyleSelect={setSelectedStyleId}
               trigger={<Button variant="outline">Change Style</Button>}

@@ -9,6 +9,79 @@ const stylePresets: Style[] = MOCK_SYSTEM_STYLES;
  * These handlers intercept fetch requests and return mock data
  */
 export const handlers = [
+  // GET /api/user/me - Get current user
+  http.get('/api/user/me', () => {
+    return HttpResponse.json({
+      success: true,
+      data: {
+        user: {
+          id: 'mock-user-id',
+          email: 'demo@example.com',
+          name: 'Demo User',
+          emailVerified: false,
+          image: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        isAuthenticated: true,
+        isAnonymous: false,
+        teamId: 'demo-team',
+        teamRole: 'owner',
+        teamName: 'Demo Team',
+      },
+    });
+  }),
+
+  // POST /api/auth/sign-in/anonymous - Create anonymous session
+  http.post('/api/auth/sign-in/anonymous', () => {
+    return HttpResponse.json({
+      user: {
+        id: 'mock-anonymous-user',
+        email: null,
+        name: 'Anonymous User',
+        emailVerified: false,
+        image: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      session: {
+        id: 'mock-session-id',
+        userId: 'mock-anonymous-user',
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours
+        token: 'mock-token',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  }),
+
+  // GET /api/auth/get-session - Get current session
+  http.get('/api/auth/get-session', () => {
+    return HttpResponse.json({
+      user: {
+        id: 'mock-user-id',
+        email: 'demo@example.com',
+        name: 'Demo User',
+        emailVerified: false,
+        image: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      session: {
+        id: 'mock-session-id',
+        userId: 'mock-user-id',
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+        token: 'mock-token',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  }),
+
   // GET /api/styles - List all styles
   http.get('/api/styles', () => {
     return HttpResponse.json({

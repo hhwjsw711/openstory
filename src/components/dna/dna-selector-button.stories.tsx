@@ -160,7 +160,6 @@ export const WithDialogIntegration: Story = {
 
           <DnaSelectionDialogWithTrigger
             styles={styles}
-            selectedStyleId={selectedStyleId}
             selectedStyle={selectedStyle}
             onStyleSelect={setSelectedStyleId}
           />

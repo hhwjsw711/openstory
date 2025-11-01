@@ -1,3 +1,4 @@
+import { DnaSelectionDialogWithTrigger } from '@/components/dna/dna-selection-dialog';
 import { ScriptEditor } from '@/components/sequence/script-editor';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
+import { useStyles } from '@/hooks/use-styles';
 import { useUser } from '@/hooks/use-user';
 import { Zap } from 'lucide-react';
 import { useState, type FC } from 'react';
@@ -26,6 +28,8 @@ export const ScriptView: FC<{
   const [title, setTitle] = useState<string>('');
   const [analysisModels, setAnalysisModels] = useState<string[]>([]);
 
+  const { data: styles = [] } = useStyles();
+  const selectedStyle = styles.find((s) => s.id === styleId);
   // TanStack Query mutations
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
@@ -44,6 +48,12 @@ export const ScriptView: FC<{
         />
       </CardContent>
       <CardFooter>
+        <DnaSelectionDialogWithTrigger
+          styles={styles}
+          selectedStyle={selectedStyle}
+          onStyleSelect={setStyleId}
+          buttonSize="sm"
+        />
         <Button
           variant="outline"
           onClick={() =>

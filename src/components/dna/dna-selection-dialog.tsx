@@ -231,7 +231,6 @@ export const DnaSelectionDialog: FC<DnaSelectionDialogProps> = ({
  */
 type DnaSelectionDialogWithTriggerProps = {
   styles?: Style[];
-  selectedStyleId: string | null;
   selectedStyle?: Style | null;
   onStyleSelect: (styleId: string) => void;
   trigger?: ReactNode;
@@ -240,14 +239,7 @@ type DnaSelectionDialogWithTriggerProps = {
 
 export const DnaSelectionDialogWithTrigger: FC<
   DnaSelectionDialogWithTriggerProps
-> = ({
-  styles,
-  selectedStyleId,
-  selectedStyle,
-  onStyleSelect,
-  trigger,
-  buttonSize,
-}) => {
+> = ({ styles, selectedStyle, onStyleSelect, trigger, buttonSize }) => {
   const [open, setOpen] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -263,7 +255,7 @@ export const DnaSelectionDialogWithTrigger: FC<
       </DialogTrigger>
       <DnaSelectionDialogContent
         styles={styles}
-        selectedStyleId={selectedStyleId}
+        selectedStyleId={selectedStyle?.id ?? null}
         onStyleSelect={onStyleSelect}
         onClose={handleClose}
       />
