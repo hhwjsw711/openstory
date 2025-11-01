@@ -400,12 +400,31 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - Avoid code that conditionally shows a complex component - this creates janky ui
 - Instead use the display css property to hide or show - this will precalculate everything in the component but not render it
 
-### 15. Use a linter
+### 15. Use inline skeletons with the Skeleton component
+
+- Always show loading skeletons inline within the component itself
+- Never create separate skeleton components that duplicate the component structure
+- Use the shadcn/ui `<Skeleton />` component for consistent theming
+- Match the exact layout structure of the loaded content
+- Example:
+  ```tsx
+  return (
+    <div className="grid gap-4">
+      {loading
+        ? Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))
+        : items.map((item) => <ItemCard key={item.id} {...item} />)}
+    </div>
+  );
+  ```
+
+### 16. Use a linter
 
 - We use oxlint with type-aware checks for fast, TypeScript-aware linting
 - Ensure the rules of hooks linting rule is on
 
-### 16. Views are routes
+### 17. Views are routes
 
 - All views should be routable - meaning you can get to them via a route
 - No view should rely on variables or parameters from another
@@ -413,14 +432,14 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - Pass params on the url. You can use url segments for ids, search params should be optional
 - Name views with the same name as the route - or place in a folder with that name
 
-### 17. Avoid default exports
+### 18. Avoid default exports
 
 - It's more efficient to export the component directly than to import a default
 - Avoid barrelled imports as much as possible _unless_ you are planning to package that library for others
 
-### 18. use useActionState for forms
+### 19. use useActionState for forms
 
-### 19. Don't add React. prefix. Import useEffect, useReducer, useCallback etc.
+### 20. Don't add React. prefix. Import useEffect, useReducer, useCallback etc.
 
 ### Testing
 
