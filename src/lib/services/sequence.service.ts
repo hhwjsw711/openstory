@@ -28,7 +28,7 @@ export interface UpdateSequenceParams {
   id: string;
   userId: string;
   title?: string;
-  script?: string;
+  script?: string | null;
   styleId?: string;
   status?: SequenceStatus;
   metadata?: Record<string, unknown>;

@@ -1,3 +1,4 @@
+import { UpdateSequenceInput } from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -116,36 +117,14 @@ export function useCreateSequence() {
 export function useUpdateSequence() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    Sequence,
-    Error,
-    {
-      id: string;
-      title?: string;
-      script?: string;
-      styleId?: string | null;
-      teamId?: string;
-    }
-  >({
-    mutationFn: async (input: {
-      id: string;
-      title?: string;
-      script?: string;
-      styleId?: string | null;
-      teamId?: string;
-    }) => {
-      const body: Record<string, unknown> = {};
-      if (input.title !== undefined) body.title = input.title;
-      if (input.script !== undefined) body.script = input.script;
-      if (input.styleId !== undefined) body.styleId = input.styleId;
-      if (input.teamId !== undefined) body.teamId = input.teamId;
-
+  return useMutation<Sequence, Error, UpdateSequenceInput & { id: string }>({
+    mutationFn: async (input: UpdateSequenceInput & { id: string }) => {
       const response = await fetch(`/api/sequences/${input.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(input),
       });
 
       const result = await response.json();

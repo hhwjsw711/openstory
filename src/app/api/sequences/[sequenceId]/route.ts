@@ -8,19 +8,13 @@
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
+import { updateSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-const updateSequenceRequestSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  script: z.string().min(10).max(10000).optional(),
-  styleId: z.uuid().optional(),
-  teamId: z.uuid().optional(), // Optional - if provided, will verify user has access
-});
 
 export async function GET(
   _request: Request,
@@ -93,7 +87,7 @@ export async function PATCH(
 
     // Parse and validate request body
     const body = await request.json();
-    const sequenceDetailsToUpdate = updateSequenceRequestSchema.parse(body);
+    const sequenceDetailsToUpdate = updateSequenceSchema.parse(body);
 
     // Verify sequence exists and get team info
     const existingSeq = await getSequenceById(sequenceId);
@@ -108,12 +102,8 @@ export async function PATCH(
         { status: 404 }
       );
     }
-
-    // Use provided teamId or fall back to sequence's current team
-    const teamId = sequenceDetailsToUpdate.teamId || existingSeq.teamId;
-
     // Verify user has access to this sequence's team
-    await requireTeamMemberAccess(user.id, teamId);
+    await requireTeamMemberAccess(user.id, existingSeq.teamId);
 
     // Check if we need to regenerate the storyboard
     const needToRegenerateStoryboard = true;
@@ -123,6 +113,7 @@ export async function PATCH(
       id: sequenceId,
       userId: user.id,
       ...sequenceDetailsToUpdate,
+      metadata: sequenceDetailsToUpdate.metadata ?? undefined,
       status: needToRegenerateStoryboard ? 'processing' : undefined,
     });
 
@@ -136,7 +127,7 @@ export async function PATCH(
       // Trigger frame generation workflow
       const workflowInput: FrameGenerationWorkflowInput = {
         userId: user.id,
-        teamId, // Use the verified teamId from above
+        teamId: existingSeq.teamId,
         sequenceId,
         options: {
           framesPerScene: 3,
