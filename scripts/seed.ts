@@ -51,21 +51,33 @@ async function seed() {
       .onConflictDoNothing();
     console.log('✅ System team created\n');
 
-    // 2. Delete existing template styles
-    console.log('Clearing existing template styles...');
-    await db.delete(styles).where(eq(styles.teamId, SYSTEM_TEAM_ID));
-    console.log('✅ Existing templates cleared\n');
+    // 2. Check if template styles already exist
+    console.log('Checking existing template styles...');
+    const existingTemplates = await db
+      .select()
+      .from(styles)
+      .where(eq(styles.teamId, SYSTEM_TEAM_ID));
 
-    // 3. Insert template film styles
-    console.log('Inserting template styles...');
-    await db.insert(styles).values(
-      DEFAULT_STYLE_TEMPLATES.map((style) => ({
-        ...style,
-        teamId: SYSTEM_TEAM_ID,
-      }))
-    );
+    if (existingTemplates.length > 0) {
+      console.log(
+        `ℹ️  Found ${existingTemplates.length} existing template styles - skipping insert`
+      );
+      console.log('✅ Templates already seeded\n');
+    } else {
+      // 3. Insert template film styles
+      console.log('Inserting template styles...');
+      await db.insert(styles).values(
+        DEFAULT_STYLE_TEMPLATES.map((style) => ({
+          ...style,
+          teamId: SYSTEM_TEAM_ID,
+        }))
+      );
 
-    console.log('✅ Inserted 10 template styles\n');
+      console.log(
+        `✅ Inserted ${DEFAULT_STYLE_TEMPLATES.length} template styles\n`
+      );
+    }
+
     console.log('🎉 Database seeded successfully!');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
