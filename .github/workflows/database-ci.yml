@@ -28,20 +28,8 @@ jobs:
   migrate-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    environment: production
     steps:
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Get production database connection string
-        run: |
-          supabase --experimental branches get main --project-ref "$SUPABASE_PROJECT_ID" -o env \
-            | sed 's/"//g' \
-            >> $GITHUB_ENV
-
       - uses: actions/checkout@v5
 
       - uses: oven-sh/setup-bun@v2
@@ -53,6 +41,9 @@ jobs:
 
       - name: Run migrations
         run: bun db:migrate
+
+      - name: Seed production database
+        run: bun db:seed
 
   # Preview: Wait for Supabase Preview check, then seed database
   wait-for-preview:
