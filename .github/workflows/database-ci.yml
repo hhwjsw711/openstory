@@ -18,6 +18,11 @@ on:
     branches:
       - main
 
+permissions:
+  checks: read
+  contents: read
+  pull-requests: read
+
 jobs:
   # Production: Run migrations on main branch
   migrate-production:
@@ -32,7 +37,10 @@ jobs:
           version: latest
 
       - name: Get production database connection string
-        run: supabase --experimental branches get main --project-ref "$SUPABASE_PROJECT_ID" -o env >> $GITHUB_ENV
+        run: |
+          supabase --experimental branches get main --project-ref "$SUPABASE_PROJECT_ID" -o env \
+            | sed 's/"//g' \
+            >> $GITHUB_ENV
 
       - uses: actions/checkout@v5
 
@@ -45,8 +53,6 @@ jobs:
 
       - name: Run migrations
         run: bun db:migrate
-        env:
-          POSTGRES_URL: ${{ env.POSTGRES_URL }}
 
   # Preview: Wait for Supabase Preview check, then seed database
   wait-for-preview:
@@ -76,7 +82,10 @@ jobs:
           version: latest
 
       - name: Get preview branch connection string
-        run: supabase --experimental branches get "$GITHUB_HEAD_REF" -o env >> $GITHUB_ENV
+        run: |
+          supabase --experimental branches get "$GITHUB_HEAD_REF" -o env \
+            | sed 's/"//g' \
+            >> $GITHUB_ENV
 
       - uses: actions/checkout@v5
 
@@ -87,7 +96,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Run migrations
+        run: bun db:migrate
+
       - name: Seed preview database
         run: bun db:seed
-        env:
-          POSTGRES_URL: ${{ env.POSTGRES_URL }}
