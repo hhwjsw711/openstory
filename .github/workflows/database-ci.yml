@@ -8,6 +8,7 @@ on:
     paths:
       - 'drizzle/**'
       - 'supabase/**'
+      - '.github/workflows/database-ci.yml'
 
   # Seed preview databases on all PRs (Supabase provides empty databases per branch)
   pull_request:
