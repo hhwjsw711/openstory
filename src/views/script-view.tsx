@@ -166,10 +166,10 @@ export const ScriptView: FC<{
               updateSequenceMutation.isPending ||
               !(script || sequence?.script) ||
               !(styleId || sequence?.styleId) ||
-              !(
-                (analysisModels && analysisModels?.length > 0) ||
-                (sequenceAnalysisModels && sequenceAnalysisModels?.length > 0)
-              )
+              (
+                analysisModels ||
+                sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
+              ).length === 0
             }
           >
             <Zap className="size-4" />
