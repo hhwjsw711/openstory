@@ -25,6 +25,21 @@ import {
 import { user } from './auth';
 import { teams } from './teams';
 
+type ColorString = string;
+type AspectRatio = string;
+type FrameRate = string;
+
+type StyleConfig = {
+  artStyle: string; // 'Neo-noir with stark contrasts and neon accents',
+  colorPalette: ColorString[];
+  lighting: string; // 'High contrast with venetian blind shadows and neon highlights',
+  cameraWork: string; // 'Dutch angles and voyeuristic framing',
+  mood: string; // 'Tense and mysterious';
+  referenceFilms: string[]; // ['Blade Runner', 'Sin City', 'Drive'],
+  aspectRatio: AspectRatio; // '2.39:1',
+  frameRate: FrameRate; // '24fps',
+  colorGrading: string; // 'Desaturated with selective color pops',
+};
 /**
  * Styles library
  * Style Stacks - JSON configurations for consistent AI-generated content
@@ -39,7 +54,7 @@ export const styles = pgTable(
     teamId: uuid('team_id').notNull(),
     name: varchar({ length: 255 }).notNull(),
     description: text(),
-    config: jsonb().default({}).notNull(),
+    config: jsonb().$type<StyleConfig>().notNull(),
     category: varchar({ length: 100 }),
     tags: text().array().default(['']),
     isPublic: boolean('is_public').default(false),

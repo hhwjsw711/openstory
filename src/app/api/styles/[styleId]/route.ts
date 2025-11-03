@@ -5,19 +5,19 @@
  * DELETE /api/styles/[styleId] - Delete a style
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireUser } from '@/lib/auth/action-utils';
-import { handleApiError, ValidationError } from '@/lib/errors';
-import { updateStyleSchema } from '@/lib/schemas/style.schemas';
+import { db } from '@/lib/db/client';
 import {
   getStyleById,
   getUserDefaultTeam,
   requireTeamManagement,
 } from '@/lib/db/helpers';
-import { db } from '@/lib/db/client';
 import { styles } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { updateStyleSchema } from '@/lib/schemas/style.schemas';
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export async function GET(
   _request: Request,
@@ -92,36 +92,10 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateStyleSchema.parse(body);
 
-    // Build update data object (only include provided fields)
-    const updateData: Partial<{
-      name: string;
-      description: string | null;
-      config: Record<string, unknown>;
-      category: string | null;
-      tags: string[];
-      isPublic: boolean;
-      previewUrl: string | null;
-      updatedAt: Date;
-    }> = {
-      updatedAt: new Date(),
-    };
-
-    if (validated.name !== undefined) updateData.name = validated.name;
-    if (validated.description !== undefined)
-      updateData.description = validated.description;
-    if (validated.config !== undefined) updateData.config = validated.config;
-    if (validated.category !== undefined)
-      updateData.category = validated.category;
-    if (validated.tags !== undefined) updateData.tags = validated.tags;
-    if (validated.isPublic !== undefined)
-      updateData.isPublic = validated.isPublic;
-    if (validated.previewUrl !== undefined)
-      updateData.previewUrl = validated.previewUrl;
-
     // Update style with Drizzle
     const [style] = await db
       .update(styles)
-      .set(updateData)
+      .set(validated)
       .where(
         and(eq(styles.id, styleId), eq(styles.teamId, teamMembership.teamId))
       )

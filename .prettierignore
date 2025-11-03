@@ -9,3 +9,6 @@ yarn.lock
 # Generated TypeScript types
 *.gen.ts
 gen.types.ts
+
+# Mock Service Worker
+public/mockServiceWorker.js

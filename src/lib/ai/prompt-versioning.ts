@@ -1,6 +1,7 @@
 /**
  * Prompt versioning utilities
  * Generate version hashes for system and user prompts to track which prompt versions were used
+ * TB: This is used by the prompt audit trail
  */
 
 /**

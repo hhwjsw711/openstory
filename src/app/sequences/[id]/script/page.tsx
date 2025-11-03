@@ -1,15 +1,15 @@
 'use client';
-import { useRouter } from 'next/navigation';
-import { use } from 'react';
 import { PageContainer } from '@/components/layout';
-import { ScriptStep } from '@/components/sequence-flow/script-step';
-import { StepNavigation } from '@/components/sequence-flow/step-navigation';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
 } from '@/components/typography';
+import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
+import { ScriptView } from '@/views/script-view';
+import { useRouter } from 'next/navigation';
+import { use } from 'react';
 
 export default function ScriptPage({
   params,
@@ -24,9 +24,14 @@ export default function ScriptPage({
   // Verify session
   useUser();
 
-  const handleSuccess = (updatedSequenceId: string) => {
+  const { data: sequence, isLoading: isLoadingSequence } =
+    useSequence(sequenceId);
+
+  const handleSuccess = (sequenceIds: string[]) => {
     // Navigate to storyboard page after successful generation
-    router.push(`/sequences/${updatedSequenceId}/storyboard`);
+    if (sequenceIds.length > 0) {
+      router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+    }
   };
 
   const handleCancel = () => {
@@ -42,15 +47,12 @@ export default function ScriptPage({
           Update your script and regenerate the storyboard with new frames.
         </PageDescription>
       </PageHeader>
-      <StepNavigation
-        sequenceId={sequenceId}
-        currentStep={1}
-        completedSteps={new Set([1])}
-      />
-      <ScriptStep
-        sequenceId={sequenceId}
+
+      <ScriptView
         onSuccess={handleSuccess}
         onCancel={handleCancel}
+        sequence={sequence}
+        loading={isLoadingSequence || !sequence}
       />
     </PageContainer>
   );
