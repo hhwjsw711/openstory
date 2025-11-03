@@ -1,0 +1,176 @@
+import type { Meta, StoryObj } from '@storybook/nextjs';
+import { useState } from 'react';
+import { AspectRatioSelect } from './aspect-ratio-select';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+
+const meta: Meta<typeof AspectRatioSelect> = {
+  title: 'Components/Sequence/AspectRatioSelect',
+  component: AspectRatioSelect,
+  parameters: {
+    layout: 'centered',
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof AspectRatioSelect>;
+
+export const Default: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio | undefined>();
+    return (
+      <AspectRatioSelect
+        value={value}
+        onChange={setValue}
+        placeholder="Select aspect ratio"
+      />
+    );
+  },
+};
+
+export const Selected: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return <AspectRatioSelect value={value} onChange={setValue} />;
+  },
+};
+
+export const Disabled: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return <AspectRatioSelect value={value} onChange={setValue} disabled />;
+  },
+};
+
+export const SmallSize: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return <AspectRatioSelect value={value} onChange={setValue} size="sm" />;
+  },
+};
+
+export const LargeSize: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return <AspectRatioSelect value={value} onChange={setValue} size="lg" />;
+  },
+};
+
+export const SizeComparison: Story = {
+  render: () => {
+    const [valueSm, setValueSm] = useState<AspectRatio>('16:9');
+    const [valueDefault, setValueDefault] = useState<AspectRatio>('9:16');
+    const [valueLg, setValueLg] = useState<AspectRatio>('1:1');
+
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Small</h4>
+          <AspectRatioSelect value={valueSm} onChange={setValueSm} size="sm" />
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Default</h4>
+          <AspectRatioSelect
+            value={valueDefault}
+            onChange={setValueDefault}
+            size="default"
+          />
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Large</h4>
+          <AspectRatioSelect value={valueLg} onChange={setValueLg} size="lg" />
+        </div>
+      </div>
+    );
+  },
+};
+
+export const Vertical: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return (
+      <AspectRatioSelect value={value} onChange={setValue} variant="vertical" />
+    );
+  },
+};
+
+export const VerticalSmall: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return (
+      <AspectRatioSelect
+        value={value}
+        onChange={setValue}
+        variant="vertical"
+        size="sm"
+      />
+    );
+  },
+};
+
+export const VerticalLarge: Story = {
+  render: () => {
+    const [value, setValue] = useState<AspectRatio>('16:9');
+    return (
+      <AspectRatioSelect
+        value={value}
+        onChange={setValue}
+        variant="vertical"
+        size="lg"
+      />
+    );
+  },
+};
+
+export const VariantComparison: Story = {
+  render: () => {
+    const [valueHorizontal, setValueHorizontal] = useState<AspectRatio>('16:9');
+    const [valueVertical, setValueVertical] = useState<AspectRatio>('9:16');
+
+    return (
+      <div className="flex gap-6">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">
+            Horizontal
+          </h4>
+          <AspectRatioSelect
+            value={valueHorizontal}
+            onChange={setValueHorizontal}
+            variant="horizontal"
+          />
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">
+            Vertical
+          </h4>
+          <AspectRatioSelect
+            value={valueVertical}
+            onChange={setValueVertical}
+            variant="vertical"
+          />
+        </div>
+      </div>
+    );
+  },
+};
+
+export const Interactive: Story = {
+  render: () => {
+    const [selectedRatio, setSelectedRatio] = useState<AspectRatio | undefined>(
+      '16:9'
+    );
+
+    return (
+      <div className="flex flex-col gap-4 w-80">
+        <AspectRatioSelect value={selectedRatio} onChange={setSelectedRatio} />
+        <div className="rounded-lg border bg-muted p-4">
+          <p className="text-sm font-medium">Current Selection:</p>
+          <p className="text-lg">
+            {selectedRatio || (
+              <span className="text-muted-foreground">None</span>
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  },
+};
