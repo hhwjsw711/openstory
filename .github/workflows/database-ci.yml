@@ -42,9 +42,13 @@ jobs:
 
       - name: Run migrations
         run: bun db:migrate
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
       - name: Seed production database
         run: bun db:seed
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
   # Preview: Wait for Supabase Preview check, then seed database
   wait-for-preview:
