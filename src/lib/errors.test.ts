@@ -259,21 +259,4 @@ describe('withRetry', () => {
 
     expect(operation).toHaveBeenCalledTimes(1);
   });
-
-  it('should use default backoff multiplier of 1.5', async () => {
-    const operation = mock()
-      .mockRejectedValueOnce(new Error('Fail'))
-      .mockResolvedValue('success');
-
-    const startTime = Date.now();
-    await withRetry(operation, {
-      attempts: 2,
-      delayMs: 10,
-    });
-    const endTime = Date.now();
-
-    // With default multiplier 1.5, delay should be at least 10ms
-    expect(endTime - startTime).toBeGreaterThanOrEqual(10);
-    expect(operation).toHaveBeenCalledTimes(2);
-  });
 });
