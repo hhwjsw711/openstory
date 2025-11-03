@@ -62,7 +62,7 @@ export const AspectRatioSelect = ({
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[200px]">
+        <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup
             value={value}
             onValueChange={(val) => onChange?.(val as AspectRatio)}

@@ -1,7 +1,7 @@
-import type * as React from 'react';
-import { useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import type * as React from 'react';
+import { useCallback } from 'react';
 
 interface ScriptEditorProps {
   value: string;
@@ -36,7 +36,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const hasError = Boolean(error) || isOverLimit;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 w-full">
       <div className="relative">
         <Textarea
           value={value}

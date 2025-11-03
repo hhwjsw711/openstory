@@ -483,79 +483,72 @@ export function frameReducer(
 
 ### Styling & Layout
 
-**Use theme variables, flexbox with gap (not margin), pre-styled variants (not props)**
+**Use theme variables, flexbox with gap (not margin), pre-styled variants (not props). Avoid excessive inline Tailwind - create base components with built-in theming instead.**
+
+Key principle: If you find yourself adding lots of Tailwind classes to components/views, you should instead create or extend a base component with that styling built-in. Keep Tailwind usage minimal - mainly for layout (flex, gap, grid) and spacing. Color, typography, and component-specific styling should come from the theme.
 
 ```tsx
-// ❌ BAD - Inline styles, margin, size props, hard-coded colors
-export default function Card({
-  title,
-  size = 16,
-  className,
-}: {
-  title: string;
-  size?: number;
-  className?: string;
-}) {
+// ❌ BAD - Excessive inline Tailwind, inline styles, hard-coded colors
+export default function FrameCard({ frame, onSelect }) {
   return (
     <div
-      className={className}
-      style={{
-        width: 300,
-        height: 200,
-        margin: '16px',
-        backgroundColor: '#ffffff',
-        color: '#1a1a1a',
-      }}
+      className="w-[300px] h-[200px] m-4 p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-lg hover:shadow-xl transition-shadow border border-slate-200 dark:border-slate-700"
+      onClick={onSelect}
     >
-      <h3 style={{ fontSize: size, fontFamily: 'Arial' }}>{title}</h3>
+      <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">
+        {frame.title}
+      </h3>
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        {frame.description}
+      </p>
     </div>
   );
 }
 
-// ✅ GOOD - Theme variables, flexbox gap, variant props
-import { cva, type VariantProps } from 'class-variance-authority';
+// ✅ GOOD - Base component with theme, minimal Tailwind for layout only
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 
-const cardVariants = cva(
-  'flex flex-col bg-card text-card-foreground rounded-lg', // theme variables
-  {
-    variants: {
-      size: {
-        sm: 'p-3 gap-2',
-        md: 'p-4 gap-3',
-        lg: 'p-6 gap-4',
-      },
-    },
-    defaultVariants: {
-      size: 'md',
-    },
-  }
-);
-
-type CardProps = VariantProps<typeof cardVariants> & {
-  title: string;
+type FrameCardProps = {
+  frame: Frame;
+  onSelect?: () => void;
 };
 
-export const Card: React.FC<CardProps> = ({ title, size }) => {
+export const FrameCard: React.FC<FrameCardProps> = ({ frame, onSelect }) => {
   return (
-    <div className={cardVariants({ size })}>
-      <h3 className="text-lg font-semibold">{title}</h3>
-    </div>
+    <Card onClick={onSelect} className="cursor-pointer">
+      <CardHeader>
+        <CardTitle>{frame.title}</CardTitle>
+        <CardDescription>{frame.description}</CardDescription>
+      </CardHeader>
+    </Card>
   );
 };
 
-// Usage - parent controls spacing with gap
-export const CardGrid: React.FC<{ cards: string[] }> = ({ cards }) => {
+// Usage in view - layout only with Tailwind
+export const FrameGrid: React.FC<{ frames: Frame[] }> = ({ frames }) => {
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="grid grid-cols-3 gap-4">
       {' '}
-      {/* gap instead of margins */}
-      {cards.map((title) => (
-        <Card key={title} title={title} size="md" />
+      {/* Tailwind for layout/spacing only */}
+      {frames.map((frame) => (
+        <FrameCard key={frame.id} frame={frame} />
       ))}
     </div>
   );
 };
 ```
+
+**Why this is better:**
+
+- Base `Card` component handles theming, colors, shadows, borders automatically
+- Views only use Tailwind for layout (`grid`, `gap`) and structure
+- Dark mode, hover states, colors all come from theme
+- Easy to maintain - change theme, not every component
 
 ### Loading States & Conditional Rendering
 
@@ -782,7 +775,8 @@ export const OrderSummary: React.FC<{ items: Item[] }> = ({ items }) => {
 
 - **State**: TanStack Query for server data, reducers only for complex state logic
 - **Loading**: Suspense instead of isLoading checks, inline <Skeleton /> fallbacks
-- **Styling**: Theme variables, flexbox + gap, variant props (not size={16})
+- **Styling**: Minimal Tailwind (layout only), use base components with built-in theming
+- **Layout**: Flexbox + gap (never margin on components)
 - **Files**: kebab-case.tsx, named exports, vanilla TS for logic
 - **Forms**: useActionState, server validation, progressive enhancement
 - **Visibility**: CSS display for show/hide (not conditional rendering)
