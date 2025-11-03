@@ -11,6 +11,7 @@ interface ScriptEditorProps {
   placeholder?: string;
   disabled?: boolean;
   showCharacterCount?: boolean;
+  loading?: boolean;
 }
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
@@ -21,6 +22,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   placeholder = 'Enter your script here...',
   disabled = false,
   showCharacterCount = true,
+  loading = false,
 }) => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -39,7 +41,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     <div className="flex flex-col gap-2 w-full">
       <div className="relative">
         <Textarea
-          value={value}
+          value={loading ? 'Loading...' : value}
           onChange={handleChange}
           placeholder={placeholder}
           disabled={disabled}

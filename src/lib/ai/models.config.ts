@@ -102,6 +102,7 @@ export function getAllModelIds(): AnalysisModelId[] {
   return SCRIPT_ANALYSIS_MODELS.map((model) => model.id);
 }
 
+export const ANALYSIS_MODEL_IDS = getAllModelIds();
 /**
  * Default model to use when none is specified
  */

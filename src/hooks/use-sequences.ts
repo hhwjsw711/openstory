@@ -8,7 +8,7 @@ export const sequenceKeys = {
   lists: () => [...sequenceKeys.all, 'list'] as const,
   list: (teamId?: string) => [...sequenceKeys.lists(), teamId] as const,
   details: () => [...sequenceKeys.all, 'detail'] as const,
-  detail: (id: string) => [...sequenceKeys.details(), id] as const,
+  detail: (id?: string) => [...sequenceKeys.details(), id] as const,
 };
 
 // Hook for listing sequences
@@ -31,7 +31,7 @@ export function useSequences(teamId?: string) {
 
 // Hook for getting single sequence
 export function useSequence(
-  id: string,
+  id?: string,
   options?: {
     refetchInterval?: number | false;
     staleTime?: number;

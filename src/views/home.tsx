@@ -10,9 +10,9 @@ import scene6 from '@/assets/community/scene6.jpg';
 import scene7 from '@/assets/community/scene7.jpg';
 import scene8 from '@/assets/community/scene8.jpg';
 
-import { ScriptView } from '@/components/script/script-view';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
+import { ScriptView } from '@/views/script-view';
 import { Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
