@@ -16,15 +16,6 @@
  * This means Google OAuth is DISABLED on Vercel preview branches.
  */
 export function isGoogleOAuthEnabled(): boolean {
-  const hasCredentials =
-    !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-    (typeof window === 'undefined' &&
-      !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET));
-
-  if (!hasCredentials) {
-    return false;
-  }
-
   const isProduction = process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
   const isDevelopment = process.env.NODE_ENV === 'development';
 
