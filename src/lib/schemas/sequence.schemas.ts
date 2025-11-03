@@ -14,7 +14,7 @@ const validModelIds = getAllModelIds();
 export const createSequenceSchema = createInsertSchema(sequences, {
   title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
   script: z.string().min(10).max(10000), // Override to make it required with business rules
-  teamId: z.uuid(), // Optional - will use user's default team if not provided
+  teamId: z.uuid().optional(), // Optional - will use user's default team if not provided
 })
   .omit({
     id: true,
