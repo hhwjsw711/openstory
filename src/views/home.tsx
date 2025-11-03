@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, type FC } from 'react';
+import { useCallback, useEffect, useState, type FC } from 'react';
 
 import scene1 from '@/assets/community/scene1.jpg';
 import scene2 from '@/assets/community/scene2.jpg';
@@ -12,6 +12,7 @@ import scene8 from '@/assets/community/scene8.jpg';
 
 import { ScriptView } from '@/components/script/script-view';
 import { Button } from '@/components/ui/button';
+import { Card, CardHeader } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -75,8 +76,76 @@ const communityCreations = [
   },
 ];
 
+const headingPhrases = [
+  'Direct Your Agents',
+  'Initiate Your Story',
+  'Run the Scene',
+  'Activate the Crew',
+  'Generate the Vision',
+  'Compose the Frame',
+  'Execute the Shot',
+  'Build the Sequence',
+  'Light the Scene',
+  'Roll the Take',
+  'Words Become Vision',
+  'Turn Thought Into Cinema',
+  'Where Scripts Start to Breathe',
+  'Every Frame Begins Here',
+  'Ideas in Motion',
+  'From Script to Sequence',
+  'Stories That Build Themselves',
+  'Write It. Watch It.',
+  'The Screen Awaits.',
+  'See What You Imagine.',
+];
+
 export const HomeView: FC = () => {
   const router = useRouter();
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const currentPhrase = headingPhrases[currentPhraseIndex];
+
+    let charIndex = 0;
+
+    if (isTyping) {
+      // Typing animation
+      const typingInterval = setInterval(() => {
+        if (charIndex <= currentPhrase.length) {
+          setDisplayedText(currentPhrase.slice(0, charIndex));
+          charIndex++;
+        } else {
+          clearInterval(typingInterval);
+          // Wait before starting to delete
+          setTimeout(() => {
+            setIsTyping(false);
+          }, 2000);
+        }
+      }, 50);
+
+      return () => clearInterval(typingInterval);
+    } else {
+      // Deleting animation
+      const deletingInterval = setInterval(() => {
+        if (charIndex < currentPhrase.length) {
+          setDisplayedText(
+            currentPhrase.slice(0, currentPhrase.length - charIndex)
+          );
+          charIndex++;
+        } else {
+          clearInterval(deletingInterval);
+          setCurrentPhraseIndex((prev) => (prev + 1) % headingPhrases.length);
+          setIsTyping(true);
+        }
+      }, 30);
+
+      return () => clearInterval(deletingInterval);
+    }
+  }, [currentPhraseIndex, isTyping]);
+
+  // Handle successful sequence creation
   const handleSuccess = useCallback(
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
@@ -86,6 +155,7 @@ export const HomeView: FC = () => {
     },
     [router]
   );
+
   return (
     <div className="relative">
       {/* Hero Section with Video Background */}
@@ -107,13 +177,28 @@ export const HomeView: FC = () => {
         {/* Content Overlay - Positioned to overlap bottom */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-center px-8 translate-y-1/2 z-10">
           <div className="w-full max-w-4xl">
-            <ScriptView onSuccess={handleSuccess} />
+            <Card>
+              <CardHeader>
+                <div className="text-center space-y-4">
+                  <h1 className="text-4xl font-extralight tracking-wide min-h-[3rem] flex items-center justify-center">
+                    <span className="inline-flex items-center">
+                      {displayedText}
+                      <span className="inline-block w-[2px] h-9 bg-primary ml-1 animate-pulse shadow-sm shadow-primary/50" />
+                    </span>
+                  </h1>
+                  <div className="text-muted-foreground text-sm font-light max-w-2xl mx-auto">
+                    <p>The No.1 agentic film crew for your ideas.</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <ScriptView onSuccess={handleSuccess} flat />
+            </Card>
           </div>
         </div>
       </div>
 
       {/* Community Showcase Section */}
-      <section className="relative px-8 py-16 mt-64">
+      <section className="relative px-8 py-16 mt-84">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="text-center mb-12">

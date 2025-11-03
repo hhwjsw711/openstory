@@ -55,7 +55,7 @@ export function StyleCompactSelector({
 
   return (
     <>
-      <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-16 gap-3 overflow-hidden p-2">
+      <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-12 gap-3 overflow-hidden p-2">
         {loading
           ? Array.from({ length: GRID_SIZE }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-lg" />

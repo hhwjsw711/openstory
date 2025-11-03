@@ -22,7 +22,8 @@ export const ScriptView: FC<{
   teamId?: string;
   sequenceId?: string;
   onSuccess?: (sequenceIds: string[]) => void;
-}> = ({ teamId, sequenceId, onSuccess }) => {
+  flat?: boolean;
+}> = ({ teamId, sequenceId, onSuccess, flat }) => {
   // Local state
   const [script, setScript] = useState<string>('');
   const [styleId, setStyleId] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export const ScriptView: FC<{
     }
   };
   return (
-    <Card>
+    <Card className={flat ? 'border-none' : ''}>
       <CardHeader>
         <CardTitle>Describe a moment, a mood, or a script</CardTitle>{' '}
       </CardHeader>
