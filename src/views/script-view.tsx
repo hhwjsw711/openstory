@@ -118,8 +118,8 @@ export const ScriptView: FC<{
       <CardHeader>
         <CardTitle>Describe a moment, a mood, or a script</CardTitle>{' '}
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-row gap-4">
+      <CardContent className="@container space-y-4">
+        <div className="flex flex-col @lg:flex-row gap-4">
           <ScriptEditor
             value={script || sequence?.script || ''}
             loading={!!loading}
