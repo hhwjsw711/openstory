@@ -50,8 +50,6 @@ jobs:
 
       - name: Run migrations
         run: bun db:migrate
-        env:
-          POSTGRES_URL: ${{ env.POSTGRES_URL }}
 
   # Preview: Wait for Supabase Preview check, then seed database
   wait-for-preview:
@@ -94,5 +92,3 @@ jobs:
 
       - name: Seed preview database
         run: bun db:seed
-        env:
-          POSTGRES_URL: ${{ env.POSTGRES_URL }}
