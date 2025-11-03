@@ -49,3 +49,5 @@ jobs:
 
       - name: Drizzle migrate
         run: bun db:migrate
+        env:
+          DATABASE_URL: ${{ env.POSTGRES_URL }}
