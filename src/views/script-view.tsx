@@ -81,7 +81,7 @@ export const ScriptView: FC<{
           id: sequence.id,
           script: script || sequence?.script || '',
           styleId: styleId || sequence?.styleId || undefined,
-          analysisModel: analysisModels?.[0],
+          analysisModel: analysisModels?.[0] || DEFAULT_ANALYSIS_MODEL,
         },
         {
           onSuccess: (result) => {
@@ -96,9 +96,10 @@ export const ScriptView: FC<{
       createSequenceMutation.mutate(
         {
           teamId,
-          script: script || sequence?.script || '',
-          styleId,
-          analysisModels,
+          script: script || '',
+          styleId: styleId,
+          analysisModels: analysisModels ||
+            sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL],
         },
         {
           onSuccess: (result) => {
