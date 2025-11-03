@@ -307,141 +307,490 @@ export const { POST } = serve<ImageWorkflowInput>(async (context) => {
 - Workflows update database records directly (e.g., frame.thumbnail_url)
 - Steps are durable - execution continues even if server restarts
 
-## Frontend Development Guidelines
+## React Development Guidelines
 
-### 1. Use as little React as possible
+### Component Structure & Logic
 
-- Keep components small - less than 100 lines
-- Views reference components
-- Remove as much logic as possible from components and views
-- Externalize functions rather and keep external functions _vanilla typescript_
-- Vanilla typescript is easier to test, and package for other uses
+**Keep reusable components small (<100 lines) for clarity. Views can be larger - don't split unnecessarily. Extract logic to vanilla TypeScript.**
 
-### 1.5. Prefer SSR components
+Note: Views live in `app/` routes (Next.js pages), components live in `components/` (reusable pieces). Don't over-split components if it adds complexity - a cohesive 200-line view is better than 5 fragmented files.
 
-- Prefer SSR components for most pages that don't have significant interactivity
+```tsx
+// ❌ BAD - Logic mixed with UI, useEffect for data fetching, inline styles
+'use client';
+import { useEffect, useState } from 'react';
 
-### 2. Avoid using useEffect
+export default function UserProfile({ userId }: { userId: string }) {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-- Avoid using useEffect to fetch data or initialise state
-- Use hooks, tanstack query, or the new `use` feature in react 19
-- use useEffect to update state when something else changes
+  useEffect(() => {
+    fetch(`/api/users/${userId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setUser(data);
+        setIsLoading(false);
+      });
+  }, [userId]);
 
-### 3. Use useState sparingly
+  if (isLoading) return <div>Loading...</div>;
 
-- Using a local variable is often more optimal - even if something has to be calculated
-- useState uses reducers under the hood
-- If you have more than 3 useStates you might as well use reducers
+  return <div style={{ fontSize: 16, color: '#333' }}>{user.name}</div>;
+}
 
-### 4. Use React.FC and expand props
+// ✅ GOOD - TanStack Query, Suspense, logic extracted, theme variables
+('use client');
+import { Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatUserName } from '@/lib/users/format'; // vanilla TS function
 
-- Expand props so that each parameter is named
-- It's easier to know which props are not used
+const UserProfileContent: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: user } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId), // vanilla TS function
+    suspense: true,
+  });
 
-### 5. Avoid globals and global state
+  return <div className="text-base">{formatUserName(user)}</div>;
+};
 
-- Globals including auth globals, often lead to race conditions
-- Global state is only useful in rare cases. SPAs with signifant complexity
-- Start with reducers which are passed through props
-- If that's too complicated, use React context
-- As a last resort for very complicated SPAs - use zustand
-
-### 6. Use reducers
-
-- Reducers are great - read up on them and understand them
-- They keep all state update logic in one place
-- They are vanilla typescript - keep them that way
-- Use them to update state based on other state.
-- Note that updating any part of the state returned from a reducer will cause a re-render if the whole state is a parameter - you can pass just parts of it
-
-### 7. Avoid adding styles on top of components
-
-- Avoid passing styles to components, or styling your components in views
-- Create components that are pre-styled
-- Create variants - e.g. small, medium, large - rather than size={18}
-- Avoid using styles in views as much as possible
-
-### 8. Use the theme
-
-- Create constants for your theme or use a consistent structure
-- Use the theme fonts and colors
-- Avoid naming fonts and inluding color values directly in views and components
-
-### 9. Use flexbox
-
-- Use flexbox for every component
-
-### 10. Avoid margin
-
-- Don't pre-add padding or margin to the outside of components, unless there is a specific reason to
-- Use flexbox gap instead
-
-### 11. Use kebab-case for file names
-
-- Use PascalCase for component names, but kebab case for file-names
-- PascalCase can often give you issues in git as case sensitive file names is not supported on all platforms
-
-### 12. Create a component library
-
-- If using a 3rd party component library, wrap those components then include your wrapped components. It makes it easier to change libraries
-- Shadcn makes this easy - it includes the source in your repo, and imports only primitives from that source.
-- You don't need to wrap Shadcn generated components - just edit the component source with your changes
-- Don't create duplicates of components for minor variations. Create a variation
-- Customise the component if there's a new variation - don't style from the outside
-- Put your components into a high level components folder
-- Use an aliases or subpath imports "~" to import components from views.
-
-### 13. Avoid hard coding width or height
-
-- Use flexbox and create rules for screen sizes
-
-### 14. Use a show prop if you need to hide something
-
-- Avoid code that conditionally shows a complex component - this creates janky ui
-- Instead use the display css property to hide or show - this will precalculate everything in the component but not render it
-
-### 15. Use inline skeletons with the Skeleton component
-
-- Always show loading skeletons inline within the component itself
-- Never create separate skeleton components that duplicate the component structure
-- Use the shadcn/ui `<Skeleton />` component for consistent theming
-- Match the exact layout structure of the loaded content
-- Example:
-  ```tsx
+export const UserProfile: React.FC<{ userId: string }> = ({ userId }) => {
   return (
-    <div className="grid gap-4">
-      {loading
-        ? Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
-          ))
-        : items.map((item) => <ItemCard key={item.id} {...item} />)}
+    <Suspense fallback={<Skeleton className="h-6 w-32" />}>
+      <UserProfileContent userId={userId} />
+    </Suspense>
+  );
+};
+```
+
+### State Management
+
+**Avoid useState/useEffect for data fetching. Use Suspense instead of isLoading checks. Use reducers only when state updates depend on other state (complex state logic).**
+
+```tsx
+// ❌ BAD - Multiple useState, useEffect for data fetching, isLoading checks
+'use client';
+import { useEffect, useState } from 'react';
+
+function FrameEditor({ frameId }: { frameId: string }) {
+  const [frame, setFrame] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('default');
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetch(`/api/frames/${frameId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setFrame(data);
+        setIsLoading(false);
+      });
+  }, [frameId]);
+
+  if (isLoading) return <div>Loading...</div>; // Manual loading state
+
+  // ... complex update logic scattered across handlers
+}
+
+// ✅ GOOD - Suspense for loading, TanStack Query, reducer for UI state
+('use client');
+import { Suspense, useReducer } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { frameReducer, initialState } from './frame-editor.reducer'; // vanilla TS
+import { Skeleton } from '@/components/ui/skeleton';
+
+type FrameEditorProps = {
+  frameId: string;
+  onUpdate?: (state: EditorState) => void;
+};
+
+const FrameEditorContent: React.FC<FrameEditorProps> = ({
+  frameId,
+  onUpdate,
+}) => {
+  const { data: frame } = useQuery({
+    queryKey: ['frame', frameId],
+    queryFn: () => fetchFrame(frameId), // vanilla TS function
+    suspense: true, // Enable Suspense
+  });
+
+  const [state, dispatch] = useReducer(frameReducer, initialState);
+
+  // No isLoading check needed - Suspense handles it
+  return (
+    <div className="flex flex-col gap-4">
+      <h2>{frame.title}</h2>
+      {/* ... */}
     </div>
   );
-  ```
+};
 
-### 16. Use a linter
+// Wrap with Suspense boundary
+export const FrameEditor: React.FC<FrameEditorProps> = (props) => {
+  return (
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+      <FrameEditorContent {...props} />
+    </Suspense>
+  );
+};
+```
 
-- We use oxlint with type-aware checks for fast, TypeScript-aware linting
-- Ensure the rules of hooks linting rule is on
+**Reducer pattern (vanilla TypeScript)**
 
-### 17. Views are routes
+```typescript
+// frame-editor.reducer.ts - Pure vanilla TypeScript
+export type EditorState = {
+  isEditing: boolean;
+  prompt: string;
+  style: string;
+  isDirty: boolean;
+};
 
-- All views should be routable - meaning you can get to them via a route
-- No view should rely on variables or parameters from another
-- A view can be accessed in any order
-- Pass params on the url. You can use url segments for ids, search params should be optional
-- Name views with the same name as the route - or place in a folder with that name
+export type EditorAction =
+  | { type: 'START_EDIT' }
+  | { type: 'UPDATE_PROMPT'; payload: string }
+  | { type: 'CHANGE_STYLE'; payload: string }
+  | { type: 'RESET' };
 
-### 18. Avoid default exports
+export const initialState: EditorState = {
+  isEditing: false,
+  prompt: '',
+  style: 'default',
+  isDirty: false,
+};
 
-- It's more efficient to export the component directly than to import a default
-- Avoid barrelled imports as much as possible _unless_ you are planning to package that library for others
+export function frameReducer(
+  state: EditorState,
+  action: EditorAction
+): EditorState {
+  switch (action.type) {
+    case 'START_EDIT':
+      return { ...state, isEditing: true };
+    case 'UPDATE_PROMPT':
+      return { ...state, prompt: action.payload, isDirty: true };
+    case 'CHANGE_STYLE':
+      return { ...state, style: action.payload, isDirty: true };
+    case 'RESET':
+      return initialState;
+    default:
+      return state;
+  }
+}
+```
 
-### 19. use useActionState for forms
+### Styling & Layout
 
-### 20. Don't add React. prefix. Import useEffect, useReducer, useCallback etc.
+**Use theme variables, flexbox with gap (not margin), pre-styled variants (not props)**
 
-Concise rules for building accessible, fast, delightful UIs Use MUST/SHOULD/NEVER to guide decisions
+```tsx
+// ❌ BAD - Inline styles, margin, size props, hard-coded colors
+export default function Card({
+  title,
+  size = 16,
+  className,
+}: {
+  title: string;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={className}
+      style={{
+        width: 300,
+        height: 200,
+        margin: '16px',
+        backgroundColor: '#ffffff',
+        color: '#1a1a1a',
+      }}
+    >
+      <h3 style={{ fontSize: size, fontFamily: 'Arial' }}>{title}</h3>
+    </div>
+  );
+}
+
+// ✅ GOOD - Theme variables, flexbox gap, variant props
+import { cva, type VariantProps } from 'class-variance-authority';
+
+const cardVariants = cva(
+  'flex flex-col bg-card text-card-foreground rounded-lg', // theme variables
+  {
+    variants: {
+      size: {
+        sm: 'p-3 gap-2',
+        md: 'p-4 gap-3',
+        lg: 'p-6 gap-4',
+      },
+    },
+    defaultVariants: {
+      size: 'md',
+    },
+  }
+);
+
+type CardProps = VariantProps<typeof cardVariants> & {
+  title: string;
+};
+
+export const Card: React.FC<CardProps> = ({ title, size }) => {
+  return (
+    <div className={cardVariants({ size })}>
+      <h3 className="text-lg font-semibold">{title}</h3>
+    </div>
+  );
+};
+
+// Usage - parent controls spacing with gap
+export const CardGrid: React.FC<{ cards: string[] }> = ({ cards }) => {
+  return (
+    <div className="flex flex-wrap gap-4">
+      {' '}
+      {/* gap instead of margins */}
+      {cards.map((title) => (
+        <Card key={title} title={title} size="md" />
+      ))}
+    </div>
+  );
+};
+```
+
+### Loading States & Conditional Rendering
+
+**Inline skeletons matching layout structure. Use CSS display (not conditional rendering) for show/hide.**
+
+```tsx
+// ❌ BAD - Separate skeleton component, conditional rendering causes janky UI
+function FrameCardSkeleton() {
+  return (
+    <div className="p-4 border rounded">
+      <div className="h-4 bg-gray-200 rounded w-3/4" />
+      <div className="h-3 bg-gray-200 rounded w-1/2 mt-2" />
+    </div>
+  );
+}
+
+function FrameCard({ frame, showDetails }: Props) {
+  if (!frame) return <FrameCardSkeleton />;
+
+  return (
+    <div className="p-4 border rounded">
+      <h3>{frame.title}</h3>
+      {showDetails && ( // conditional render causes layout shift
+        <DetailPanel frame={frame} />
+      )}
+    </div>
+  );
+}
+
+// ✅ GOOD - Inline skeleton, CSS display for visibility
+import { Skeleton } from '@/components/ui/skeleton';
+
+type FrameCardProps = {
+  frame?: Frame;
+  showDetails?: boolean;
+};
+
+export const FrameCard: React.FC<FrameCardProps> = ({
+  frame,
+  showDetails = false,
+}) => {
+  return (
+    <div className="flex flex-col gap-3 p-4 border rounded">
+      {frame ? (
+        <h3 className="text-lg font-semibold">{frame.title}</h3>
+      ) : (
+        <Skeleton className="h-6 w-3/4" />
+      )}
+
+      {/* Pre-renders but hidden - no layout shift */}
+      <div className={showDetails ? 'block' : 'hidden'}>
+        {frame ? (
+          <DetailPanel frame={frame} />
+        ) : (
+          <Skeleton className="h-20 w-full" />
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### File Organization & Naming
+
+**kebab-case files, named exports, routable views with URL state**
+
+```tsx
+// ❌ BAD
+// File: UserProfile.tsx (PascalCase causes git issues)
+export default function Component({ id }) {
+  // default export, unclear name
+  const user = useGlobalUser(); // global state
+  // No URL state - can't deep link
+}
+
+// ✅ GOOD
+// File: user-profile.tsx
+import { formatUserName } from '@/lib/users/format-user-name'; // vanilla TS
+
+type UserProfileProps = {
+  userId: string; // from URL params
+};
+
+export const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
+  const { data: user } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1>{user ? formatUserName(user) : <Skeleton className="h-8 w-48" />}</h1>
+    </div>
+  );
+};
+
+// File: page.tsx (route)
+export default function UserProfilePage({
+  params,
+}: {
+  params: { userId: string };
+}) {
+  return <UserProfile userId={params.userId} />;
+}
+```
+
+### Forms
+
+**Use useActionState, uncontrolled inputs when possible, validate after submission**
+
+```tsx
+// ❌ BAD - Controlled inputs everywhere, no progressive enhancement
+'use client';
+import { useState } from 'react';
+
+function ScriptForm() {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [errors, setErrors] = useState({});
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Manual validation, blocking, no progressive enhancement
+    if (!title) {
+      setErrors({ title: 'Required' });
+      return;
+    }
+    await fetch('/api/scripts', {
+      method: 'POST',
+      body: JSON.stringify({ title, content }),
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} />
+      {errors.title && <span>{errors.title}</span>}
+    </form>
+  );
+}
+
+// ✅ GOOD - useActionState, server validation, progressive enhancement
+('use client');
+import { useActionState } from 'react';
+import { createScriptAction } from './actions'; // server action
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export const ScriptForm: React.FC = () => {
+  const [state, formAction, isPending] = useActionState(
+    createScriptAction,
+    null
+  );
+
+  return (
+    <form action={formAction} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Input
+          name="title"
+          placeholder="Script title…"
+          autoComplete="off"
+          required
+          aria-invalid={!!state?.errors?.title}
+        />
+        {state?.errors?.title && (
+          <p className="text-sm text-destructive">{state.errors.title}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <textarea
+          name="content"
+          placeholder="Write your script…"
+          className="min-h-[200px] resize-y"
+          required
+          aria-invalid={!!state?.errors?.content}
+        />
+        {state?.errors?.content && (
+          <p className="text-sm text-destructive">{state.errors.content}</p>
+        )}
+      </div>
+
+      <Button type="submit" disabled={isPending}>
+        {isPending ? 'Creating…' : 'Create Script'}
+      </Button>
+    </form>
+  );
+};
+```
+
+### Import Organization
+
+**Direct imports (no React. prefix), named exports, @ alias for src**
+
+```tsx
+// ❌ BAD
+import React from 'react';
+import Button from '../../../components/ui/button'; // relative paths
+
+export default function MyComponent() {
+  const [state, setState] = React.useState(0); // React. prefix
+  return <Button onClick={() => setState(state + 1)} />;
+}
+
+// ✅ GOOD
+import { useState } from 'react'; // direct import
+import { Button } from '@/components/ui/button'; // @ alias
+import { calculateTotal } from '@/lib/utils/calculations'; // vanilla TS
+
+export const OrderSummary: React.FC<{ items: Item[] }> = ({ items }) => {
+  const [quantity, setQuantity] = useState(1);
+  const total = calculateTotal(items, quantity); // vanilla TS function
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Button onClick={() => setQuantity(quantity + 1)}>Add More</Button>
+      <p>Total: ${total}</p>
+    </div>
+  );
+};
+```
+
+### Quick Reference
+
+- **State**: TanStack Query for server data, reducers only for complex state logic
+- **Loading**: Suspense instead of isLoading checks, inline <Skeleton /> fallbacks
+- **Styling**: Theme variables, flexbox + gap, variant props (not size={16})
+- **Files**: kebab-case.tsx, named exports, vanilla TS for logic
+- **Forms**: useActionState, server validation, progressive enhancement
+- **Visibility**: CSS display for show/hide (not conditional rendering)
+- **Imports**: Direct (useState not React.useState), @ alias, no default exports
+
+### Rules for Building Accessible, Fast, Delightful UIs
+
+Use MUST/SHOULD/NEVER to guide decisions
 
 ## Interactions
 
