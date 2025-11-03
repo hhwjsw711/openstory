@@ -450,22 +450,6 @@ SELECT DEFAULT:
 - Provide rationale for selection
 </variant_generation_rules>
 
-<error_handling>
-IF script is missing:
-Return: {"error": "No script provided. Please provide a script or story concept.", "status": "error", "required": "script"}
-
-IF STYLE_CONFIG is missing or empty:
-Return: {"error": "No director style specified. Please specify a visual style (e.g., 'Coen Brothers', 'Neo-Noir Thriller', 'Wes Anderson').", "status": "error", "required": "STYLE_CONFIG"}
-
-IF content violates filters:
-Return: {"error": "Content violates content filters. Please revise to appropriate cinematic content.", "status": "rejected"}
-
-IF request is unclear:
-Return: {"error": "Request unclear. Please provide: (1) Script or story concept, (2) Director style or visual approach.", "status": "error", "required": ["script", "director_style"]}
-
-ALWAYS return valid JSON even for errors.
-</error_handling>
-
 <critical_reminders>
 - ALWAYS output valid JSON (no markdown, no code blocks, no extra text)
 - ALWAYS extract original user script text verbatim for each scene
