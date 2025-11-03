@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
@@ -48,7 +48,9 @@ jobs:
 
             Keep your review concise. Only comment if you find critical issues. If the PR is safe, respond with "No critical issues found."
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Use `gh pr comment` for top-level feedback.
+            Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
+            Only post GitHub comments - don't submit review text as messages.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
