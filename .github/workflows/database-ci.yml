@@ -37,7 +37,10 @@ jobs:
           version: latest
 
       - name: Get production database connection string
-        run: supabase --experimental branches get main --project-ref "$SUPABASE_PROJECT_ID" -o env >> $GITHUB_ENV
+        run: |
+          supabase --experimental branches get main --project-ref "$SUPABASE_PROJECT_ID" -o env \
+            | sed 's/"//g' \
+            >> $GITHUB_ENV
 
       - uses: actions/checkout@v5
 
@@ -79,7 +82,10 @@ jobs:
           version: latest
 
       - name: Get preview branch connection string
-        run: supabase --experimental branches get "$GITHUB_HEAD_REF" -o env >> $GITHUB_ENV
+        run: |
+          supabase --experimental branches get "$GITHUB_HEAD_REF" -o env \
+            | sed 's/"//g' \
+            >> $GITHUB_ENV
 
       - uses: actions/checkout@v5
 
