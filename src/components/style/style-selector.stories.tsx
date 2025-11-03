@@ -2,16 +2,16 @@ import { generateMockStyles } from '@/lib/mocks/data-generators';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { fn } from 'storybook/internal/test';
-import { StyleCompactSelector } from './style-compact-selector';
+import { StyleSelector } from './style-selector';
 
 const meta = {
-  title: 'Components/Style/StyleCompactSelector',
-  component: StyleCompactSelector,
+  title: 'Components/Style/StyleSelector',
+  component: StyleSelector,
   parameters: {
     layout: 'padded',
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof StyleCompactSelector>;
+} satisfies Meta<typeof StyleSelector>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,7 +30,7 @@ export const Default: Story = {
     );
 
     return (
-      <StyleCompactSelector
+      <StyleSelector
         styles={mockStyles}
         selectedStyleId={selectedStyleId}
         onStyleSelect={setSelectedStyleId}

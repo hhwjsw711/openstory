@@ -1,7 +1,7 @@
 import { ModelSelector } from '@/components/sequence/model-selector';
 import { ScriptEditor } from '@/components/sequence/script-editor';
 import { AspectRatioSelect } from '@/components/style/aspect-ratio-select';
-import { StyleCompactSelector } from '@/components/style/style-compact-selector';
+import { StyleSelector } from '@/components/style/style-selector';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -136,7 +136,7 @@ export const ScriptView: FC<{
           </div>
         </div>
 
-        <StyleCompactSelector
+        <StyleSelector
           styles={styles}
           selectedStyleId={styleId || sequence?.styleId || null}
           onStyleSelect={setStyleId}

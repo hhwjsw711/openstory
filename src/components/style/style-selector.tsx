@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { StyleSelectionDialog } from './style-selection-dialog';
 
-interface StyleCompactSelectorProps {
+interface StyleSelectorProps {
   styles: Style[];
   selectedStyleId: string | null;
   onStyleSelect: (styleId: string) => void;
@@ -16,13 +16,13 @@ interface StyleCompactSelectorProps {
   disabled?: boolean;
 }
 
-export function StyleCompactSelector({
+export function StyleSelector({
   styles,
   selectedStyleId,
   onStyleSelect,
   loading = false,
   disabled = false,
-}: StyleCompactSelectorProps) {
+}: StyleSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Always show max 10 items total (9 styles + More tile, or all styles + More tile if < 10)
