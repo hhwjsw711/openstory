@@ -175,7 +175,7 @@ export const HomeView: FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/50 to-background z-0"></div>
 
         {/* Content Overlay - Positioned to overlap bottom */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-center px-8 translate-y-1/2 z-10">
+        <div className="absolute bottom-0 left-0 right-0 flex justify-center px-8 translate-y-1/4 z-10">
           <div className="w-full max-w-4xl">
             <Card>
               <CardHeader>
