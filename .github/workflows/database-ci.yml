@@ -18,6 +18,11 @@ on:
     branches:
       - main
 
+permissions:
+  checks: read
+  contents: read
+  pull-requests: read
+
 jobs:
   # Production: Run migrations on main branch
   migrate-production:
