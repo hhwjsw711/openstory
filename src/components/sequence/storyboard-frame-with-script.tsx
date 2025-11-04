@@ -94,10 +94,10 @@ export const StoryboardFrameWithScript: React.FC<
   const hasVideo = Boolean(frame.videoUrl);
   const hasThumbnail = Boolean(frame.thumbnailUrl);
 
-  // Check if motion is being generated in the background (via QStash)
-  const motionStatus = metadata?.motionStatus as string | undefined;
-  const isMotionGenerating =
-    motionStatus === 'generating' || isGeneratingMotion;
+  // Check generation status from database fields
+  const isThumbnailGenerating = frame.thumbnailStatus === 'generating';
+  const isVideoGenerating =
+    frame.videoStatus === 'generating' || isGeneratingMotion;
 
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>('');
@@ -471,8 +471,18 @@ export const StoryboardFrameWithScript: React.FC<
             </Button>
           )}
 
+          {/* Thumbnail generation status */}
+          {isThumbnailGenerating && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+              <div className="flex flex-col items-center gap-2 text-white">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                <span className="text-xs">Generating image...</span>
+              </div>
+            </div>
+          )}
+
           {/* Motion generation status */}
-          {isMotionGenerating && (
+          {isVideoGenerating && !isThumbnailGenerating && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
               <div className="flex flex-col items-center gap-2 text-white">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
@@ -522,10 +532,10 @@ export const StoryboardFrameWithScript: React.FC<
               size="sm"
               variant="outline"
               onClick={handleGenerateMotion}
-              disabled={isMotionGenerating}
+              disabled={isVideoGenerating}
               className="flex-1"
             >
-              {isMotionGenerating ? 'Generating...' : 'Generate Motion'}
+              {isVideoGenerating ? 'Generating...' : 'Generate Motion'}
             </Button>
           )}
           {hasVideo && (
@@ -544,9 +554,11 @@ export const StoryboardFrameWithScript: React.FC<
               variant="outline"
               onClick={() => handleGenerateWithSelectedModel()}
               className="flex-1"
-              disabled={!selectedModel || isRegenerating}
+              disabled={
+                !selectedModel || isRegenerating || isThumbnailGenerating
+              }
             >
-              {isRegenerating || isGeneratingPreview
+              {isRegenerating || isGeneratingPreview || isThumbnailGenerating
                 ? 'Generating...'
                 : 'Regenerate Frame'}
             </Button>
