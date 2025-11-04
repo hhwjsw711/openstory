@@ -3,6 +3,7 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
+import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
@@ -14,18 +15,19 @@ import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
 } from '@/lib/workflow';
-import { triggerWorkflow, validateWorkflowAuth } from '@/lib/workflow';
+import { validateWorkflowAuth } from '@/lib/workflow';
 import {
   WorkflowValidationError,
   isInvalidScriptError,
 } from '@/lib/workflow/errors';
-import { serve } from '@upstash/workflow/nextjs';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 const loggerService = new LoggerService('FrameGenerationWorkflow');
 
-export const { POST } = serve<FrameGenerationWorkflowInput>(
-  async (context) => {
+export const generateStoryboardWorkflow = createWorkflow(
+  async (context: WorkflowContext<FrameGenerationWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication
@@ -229,9 +231,9 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
-      await context.run('generate-thumbnails', async () => {
-        // Trigger image generation for all frames in parallel
-        const promises = frameIds.map(async ({ frameId, prompt }) => {
+      await Promise.all(
+        frameIds.map(async ({ frameId, prompt }) => {
+          // Trigger image generation for all frames in parallel
           if (!prompt) {
             loggerService.logWarning(
               `Frame ${frameId} has no description, skipping`
@@ -250,25 +252,12 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
             sequenceId: input.sequenceId,
           };
 
-          // Publish to QStash to trigger image workflow (fire and forget)
-          try {
-            const workflowRunId = await triggerWorkflow('/image', imageInput);
-            console.log(
-              '[generate-thumbnails] Workflow response:',
-              workflowRunId
-            );
-            return frameId;
-          } catch (error) {
-            loggerService.logError(
-              `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : 'Unknown'}`
-            );
-            return null;
-          }
-        });
-
-        await Promise.all(promises);
-        return { triggered: promises.length };
-      });
+          return context.invoke('image', {
+            workflow: generateImageWorkflow,
+            body: imageInput,
+          });
+        })
+      );
     }
 
     // Step 9: Update sequence status to completed

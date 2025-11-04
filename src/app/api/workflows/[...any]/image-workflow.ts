@@ -1,9 +1,3 @@
-/**
- * Image generation workflow
- * Generates images using AI models and optionally updates frame thumbnails
- */
-
-import { serve } from '@upstash/workflow/nextjs';
 import {
   type FalImageGenerationParams,
   type FalImageResponse,
@@ -13,6 +7,10 @@ import {
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
 import { AI_PROVIDER_MAPPINGS } from '@/lib/ai/models';
+import { db } from '@/lib/db/client';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { getSequenceById } from '@/lib/db/helpers/queries';
+import { frames, sequences } from '@/lib/db/schema';
 import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
@@ -21,11 +19,9 @@ import { LoggerService } from '@/lib/services/logger.service';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { db } from '@/lib/db/client';
-import { frames, sequences } from '@/lib/db/schema';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-import { updateFrame } from '@/lib/db/helpers/frames';
-import { getSequenceById } from '@/lib/db/helpers/queries';
 
 const loggerService = new LoggerService('ImageWorkflow');
 
@@ -41,8 +37,8 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
-export const { POST } = serve<ImageWorkflowInput>(
-  async (context) => {
+export const generateImageWorkflow = createWorkflow(
+  async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication

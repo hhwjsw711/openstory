@@ -9,7 +9,7 @@ import type { Json } from '@/types/database';
  * Base workflow context that includes authentication
  * All workflows must include userId and teamId for authorization
  */
-export interface WorkflowContext {
+export interface UserWorkflowContext {
   userId: string;
   teamId: string;
 }
@@ -17,7 +17,7 @@ export interface WorkflowContext {
 /**
  * Image generation workflow input
  */
-export interface ImageWorkflowInput extends WorkflowContext {
+export interface ImageWorkflowInput extends UserWorkflowContext {
   prompt: string;
   style?: Json;
   model?: string;
@@ -33,7 +33,7 @@ export interface ImageWorkflowInput extends WorkflowContext {
 /**
  * Video generation workflow input
  */
-export interface VideoWorkflowInput extends WorkflowContext {
+export interface VideoWorkflowInput extends UserWorkflowContext {
   prompt?: string;
   imageUrl?: string; // For image-to-video
   imageData?: string; // Base64 encoded
@@ -46,7 +46,7 @@ export interface VideoWorkflowInput extends WorkflowContext {
 /**
  * Frame generation workflow input
  */
-export interface FrameGenerationWorkflowInput extends WorkflowContext {
+export interface FrameGenerationWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
   options?: {
     framesPerScene?: number;
@@ -60,7 +60,7 @@ export interface FrameGenerationWorkflowInput extends WorkflowContext {
 /**
  * Motion generation workflow input
  */
-export interface MotionWorkflowInput extends WorkflowContext {
+export interface MotionWorkflowInput extends UserWorkflowContext {
   frameId: string;
   sequenceId: string;
   thumbnailUrl: string;
@@ -74,7 +74,7 @@ export interface MotionWorkflowInput extends WorkflowContext {
 /**
  * Batch motion generation workflow input
  */
-export interface BatchMotionWorkflowInput extends WorkflowContext {
+export interface BatchMotionWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
   frameIds?: string[]; // Optional: specific frames to process
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
@@ -86,7 +86,7 @@ export interface BatchMotionWorkflowInput extends WorkflowContext {
 /**
  * Script analysis workflow input
  */
-export interface ScriptWorkflowInput extends WorkflowContext {
+export interface ScriptWorkflowInput extends UserWorkflowContext {
   script: string;
   language?: string;
   genre?: string;

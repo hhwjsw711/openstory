@@ -3,20 +3,21 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
-import { serve } from '@upstash/workflow/nextjs';
+import { db } from '@/lib/db/client';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { frames } from '@/lib/db/schema';
 import { LoggerService } from '@/lib/services/logger.service';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { db } from '@/lib/db/client';
-import { frames } from '@/lib/db/schema';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-import { updateFrame } from '@/lib/db/helpers/frames';
 
 const loggerService = new LoggerService('MotionWorkflow');
 
-export const { POST } = serve<MotionWorkflowInput>(
-  async (context) => {
+export const generateMotionWorkflow = createWorkflow(
+  async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication

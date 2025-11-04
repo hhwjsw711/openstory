@@ -14,6 +14,7 @@ import {
 } from '@/lib/ai/scene-analysis.schema';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { createAuditRecord } from '@/lib/services/script-analysis-audit.service';
+import { ZodError } from 'zod';
 import {
   callCerebras,
   systemMessage as cerebrasSystemMessage,
@@ -143,7 +144,12 @@ export async function analyzeScriptForFrames(
     const parsed = extractJSON<SceneAnalysis>(content);
 
     if (!parsed) {
-      console.error('Failed to parse this content:', content);
+      // Don't log entire content - just show preview
+      const preview =
+        content.length > 200
+          ? `${content.slice(0, 200)}...[truncated ${content.length} chars]`
+          : content;
+      console.error('Failed to parse AI response:', preview);
       throw new Error('Failed to parse AI response - invalid or missing JSON');
     }
 
@@ -164,6 +170,7 @@ export async function analyzeScriptForFrames(
     const validatedAnalysis = sceneAnalysisSchema.parse(dataToValidate);
     // Set the status to success
     auditData.status = 'success';
+    auditData.parsedOutput = validatedAnalysis;
 
     // return the analysis and the duration
     return {
@@ -171,13 +178,45 @@ export async function analyzeScriptForFrames(
       durationMs: Date.now() - startTime,
     };
   } catch (error) {
-    // Capture API error in audit data
-    auditData.apiError =
-      error instanceof Error ? error.message : 'Unknown API error';
+    // Distinguish between parse errors and API errors
+    if (error instanceof ZodError) {
+      // Format validation errors for logging
+      console.error('\n❌ Script analysis validation failed:');
+      error.issues.forEach((issue) => {
+        const path = issue.path.join('.');
+        console.error(`  - ${path}: ${issue.message}`);
+      });
 
-    throw new Error(
-      `Failed to turn the script you entered into scenes. Maybe try enhancing the script first?`
-    );
+      // Show preview of raw output
+      if (auditData.rawOutput) {
+        const preview =
+          auditData.rawOutput.length > 200
+            ? `${auditData.rawOutput.slice(0, 200)}...[truncated ${auditData.rawOutput.length} chars]`
+            : auditData.rawOutput;
+        console.error('\nRaw output preview:', preview);
+      }
+
+      // Store the parse error details
+      auditData.parseError = JSON.stringify(error.issues);
+
+      // Include first error in user-facing message for debugging
+      const firstError = error.issues[0];
+      const errorDetail = firstError
+        ? ` Missing/invalid field: ${firstError.path.join('.')}`
+        : '';
+
+      throw new Error(
+        `Failed to parse AI response.${errorDetail} Check logs for details.`
+      );
+    } else {
+      // API or other errors
+      auditData.apiError =
+        error instanceof Error ? error.message : 'Unknown API error';
+
+      throw new Error(
+        `Failed to turn the script you entered into scenes. Maybe try enhancing the script first?`
+      );
+    }
   } finally {
     if (auditContext) {
       await createAuditRecord({
@@ -190,9 +229,9 @@ export async function analyzeScriptForFrames(
         styleConfig: auditData.styleConfig,
         model: auditData.model,
         rawOutput: auditData.rawOutput,
-        parsedOutput: null,
+        parsedOutput: auditData.parsedOutput,
         apiError: auditData.apiError,
-        parseError: null,
+        parseError: auditData.parseError,
         tokenUsage: auditData.tokenUsage,
         durationMs: Date.now() - startTime,
         status: auditData.status,
