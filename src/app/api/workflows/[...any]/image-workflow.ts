@@ -109,7 +109,48 @@ export const generateImageWorkflow = createWorkflow(
       }
     });
 
-    // Step 3: Update frame if frameId is provided
+    // Step 3: Upload image to storage if frameId is provided
+    let storageUrl = imageResult.imageUrls[0]; // Default to FAL URL if upload fails
+    if (input.frameId && imageResult.imageUrls.length > 0) {
+      storageUrl = await context.run('upload-to-storage', async () => {
+        if (!input.frameId || !input.sequenceId || !input.teamId) {
+          loggerService.logWarning(
+            'Missing required IDs for storage upload, using temporary URL'
+          );
+          return imageResult.imageUrls[0];
+        }
+
+        try {
+          const { uploadImageToStorage } = await import(
+            '@/lib/services/image-storage.service'
+          );
+
+          const result = await uploadImageToStorage({
+            imageUrl: imageResult.imageUrls[0],
+            teamId: input.teamId,
+            sequenceId: input.sequenceId,
+            frameId: input.frameId,
+          });
+
+          if (!result.success || !result.url) {
+            throw new Error(
+              result.error || 'Failed to upload image to storage'
+            );
+          }
+
+          loggerService.logDebug(`Image uploaded to storage: ${result.path}`);
+          return result.url;
+        } catch (error) {
+          loggerService.logError(
+            `Failed to upload image to storage: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          // Fall back to temporary FAL URL if storage upload fails
+          return imageResult.imageUrls[0];
+        }
+      });
+    }
+
+    // Step 4: Update frame if frameId is provided
     if (input.frameId && imageResult.imageUrls.length > 0) {
       await context.run('update-frame', async () => {
         if (!input.frameId) {
@@ -118,7 +159,7 @@ export const generateImageWorkflow = createWorkflow(
 
         try {
           await updateFrame(input.frameId, {
-            thumbnailUrl: imageResult.imageUrls[0],
+            thumbnailUrl: storageUrl,
             thumbnailStatus: 'completed',
             thumbnailGeneratedAt: new Date(),
             thumbnailError: null,
@@ -133,7 +174,7 @@ export const generateImageWorkflow = createWorkflow(
         return { updated: true };
       });
 
-      // Step 3: Check if all frames are complete and update sequence
+      // Step 5: Check if all frames are complete and update sequence
       if (input.sequenceId) {
         await context.run('update-sequence-status', async () => {
           if (!input.sequenceId) {
@@ -204,8 +245,8 @@ export const generateImageWorkflow = createWorkflow(
 
     // Return workflow result
     const result: ImageWorkflowResult = {
-      imageUrl: imageResult.imageUrls[0],
-      thumbnailUrl: imageResult.imageUrls[0],
+      imageUrl: storageUrl,
+      thumbnailUrl: storageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };
