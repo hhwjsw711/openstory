@@ -3,106 +3,15 @@
  * Handles image-to-video generation using various AI models
  */
 
-import { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import {
+  IMAGE_TO_VIDEO_MODELS,
+  type ImageToVideoModelKey,
+} from '@/lib/ai/models';
 import type { Json } from '@/types/database';
 
-// Model configurations with pricing and performance characteristics
-// Keys must match image-to-video model keys from IMAGE_TO_VIDEO_MODELS
-export const MOTION_MODELS = {
-  svd_lcm: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.svd_lcm,
-    name: 'Fast Motion (SVD-LCM)',
-    duration: 5, // seconds to generate
-    cost: 0.1, // per frame
-    quality: 'good',
-    defaultDuration: 2, // seconds of output video
-    defaultFps: 7,
-    maxDuration: 4,
-    minFps: 7,
-    maxFps: 15,
-  },
-  wan_i2v: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.wan_i2v,
-    name: 'Balanced Motion (WAN I2V)',
-    duration: 10, // seconds to generate
-    cost: 0.3, // per frame
-    quality: 'better',
-    defaultDuration: 3,
-    defaultFps: 24,
-    maxDuration: 5,
-    minFps: 12,
-    maxFps: 30,
-  },
-  kling_i2v: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.kling_i2v,
-    name: 'High Quality Motion (Kling I2V)',
-    duration: 15, // seconds to generate
-    cost: 0.4, // per frame
-    quality: 'better',
-    defaultDuration: 5,
-    defaultFps: 30,
-    maxDuration: 10,
-    minFps: 24,
-    maxFps: 60,
-  },
-  seedance_v1_pro: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro,
-    name: 'Premium Motion (Seedance Pro)',
-    duration: 12, // seconds to generate
-    cost: 0.5, // per frame
-    quality: 'best',
-    defaultDuration: 5,
-    defaultFps: 25,
-    maxDuration: 8,
-    minFps: 15,
-    maxFps: 30,
-  },
-  veo2_i2v: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.veo2_i2v,
-    name: 'Ultra Premium Motion (Google Veo 2)',
-    duration: 20, // seconds to generate
-    cost: 0.8, // per frame
-    quality: 'best',
-    defaultDuration: 8,
-    defaultFps: 30,
-    maxDuration: 10,
-    minFps: 24,
-    maxFps: 60,
-  },
-  veo3: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.veo3,
-    name: 'Ultra Premium Motion with Audio (Google Veo 3)',
-    duration: 25, // seconds to generate
-    cost: 1.0, // per frame
-    quality: 'best',
-    defaultDuration: 10,
-    defaultFps: 30,
-    maxDuration: 12,
-    minFps: 24,
-    maxFps: 60,
-  },
-  wan_v2: {
-    provider: 'fal',
-    model: IMAGE_TO_VIDEO_MODELS.wan_v2,
-    name: 'Cinematic Quality Motion (WAN 2.2)',
-    duration: 18, // seconds to generate
-    cost: 0.7, // per frame
-    quality: 'best',
-    defaultDuration: 6,
-    defaultFps: 30,
-    maxDuration: 10,
-    minFps: 24,
-    maxFps: 60,
-  },
-} as const;
-
-export type MotionModel = keyof typeof MOTION_MODELS;
+// Re-export for backward compatibility
+export const MOTION_MODELS = IMAGE_TO_VIDEO_MODELS;
+export type MotionModel = ImageToVideoModelKey;
 
 interface GenerateMotionOptions {
   imageUrl: string;
@@ -180,14 +89,17 @@ export async function generateMotionForFrame(
       options.styleStack
     );
 
-    // Validate and set parameters
+    // Validate and set parameters using new structure
     const duration = Math.min(
-      options.duration || modelConfig.defaultDuration,
-      modelConfig.maxDuration
+      options.duration || modelConfig.capabilities.defaultDuration,
+      modelConfig.capabilities.maxDuration
     );
     const fps = Math.max(
-      modelConfig.minFps,
-      Math.min(options.fps || modelConfig.defaultFps, modelConfig.maxFps)
+      modelConfig.capabilities.fpsRange.min,
+      Math.min(
+        options.fps || modelConfig.capabilities.fpsRange.default,
+        modelConfig.capabilities.fpsRange.max
+      )
     );
     const motionBucket = options.motionBucket || 127; // 1-255, higher = more motion
 
@@ -199,8 +111,8 @@ export async function generateMotionForFrame(
 
     switch (modelKey) {
       case 'svd_lcm': {
-        // Fast SVD-LCM model
-        result = await fal.run(modelConfig.model, {
+        // Fast SVD-LCM model - doesn't support prompts
+        result = await fal.run(modelConfig.id, {
           input: {
             image_url: options.imageUrl,
             motion_bucket_id: motionBucket,
@@ -216,9 +128,15 @@ export async function generateMotionForFrame(
       }
 
       case 'wan_i2v':
-      case 'kling_i2v': {
+      case 'kling_i2v':
+      case 'veo3':
+      case 'wan_v2':
+      case 'veo3_1':
+      case 'kling_v2_5_turbo_pro':
+      case 'wan_2_5':
+      case 'sora_2': {
         // Generic image-to-video models with prompt support
-        result = await fal.run(modelConfig.model, {
+        result = await fal.run(modelConfig.id, {
           input: {
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
@@ -231,13 +149,18 @@ export async function generateMotionForFrame(
       }
 
       case 'seedance_v1_pro': {
-        // Seedance 1.0 Pro model
-        result = await fal.run(modelConfig.model, {
+        // Seedance 1.0 Pro model - uses specific aspect ratio and resolution
+        const seedanceConfig =
+          modelConfig.capabilities as typeof modelConfig.capabilities & {
+            aspectRatio?: string;
+            resolution?: string;
+          };
+        result = await fal.run(modelConfig.id, {
           input: {
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
-            aspect_ratio: '16:9', // Always use 16:9 aspect ratio
-            resolution: '1080p', // Always use 1080p resolution
+            aspect_ratio: seedanceConfig.aspectRatio || '16:9',
+            resolution: seedanceConfig.resolution || '1080p',
             duration: duration,
             seed: Math.floor(Math.random() * 1000000),
           },
@@ -247,12 +170,16 @@ export async function generateMotionForFrame(
 
       case 'veo2_i2v': {
         // Google Veo 2 image-to-video model
-        result = await fal.run(modelConfig.model, {
+        const veo2Config =
+          modelConfig.capabilities as typeof modelConfig.capabilities & {
+            aspectRatio?: string;
+          };
+        result = await fal.run(modelConfig.id, {
           input: {
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
             duration: duration,
-            aspect_ratio: '16:9',
+            aspect_ratio: veo2Config.aspectRatio || '16:9',
             seed: Math.floor(Math.random() * 1000000),
           },
         });
@@ -275,12 +202,12 @@ export async function generateMotionForFrame(
       success: true,
       videoUrl,
       metadata: {
-        model: modelConfig.model,
+        model: modelConfig.id,
         duration,
         fps,
         motionBucket,
         totalFrames: Math.round(duration * fps),
-        cost: modelConfig.cost,
+        cost: modelConfig.pricing.estimatedCost,
         generatedAt: new Date().toISOString(),
       },
     };
@@ -340,9 +267,9 @@ export function estimateMotionGeneration(
   const modelConfig = MOTION_MODELS[model];
 
   return {
-    totalCost: frameCount * modelConfig.cost,
-    totalTime: frameCount * modelConfig.duration,
-    perFrameCost: modelConfig.cost,
-    perFrameTime: modelConfig.duration,
+    totalCost: frameCount * modelConfig.pricing.estimatedCost,
+    totalTime: frameCount * modelConfig.performance.estimatedGenerationTime,
+    perFrameCost: modelConfig.pricing.estimatedCost,
+    perFrameTime: modelConfig.performance.estimatedGenerationTime,
   };
 }

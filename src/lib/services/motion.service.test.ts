@@ -271,24 +271,51 @@ describe('Motion Service', () => {
   describe('Model configurations', () => {
     it('should have correct model configurations', () => {
       expect(MOTION_MODELS.svd_lcm).toMatchObject({
-        model: 'fal-ai/fast-svd-lcm',
-        cost: 0.1,
-        quality: 'good',
-        defaultDuration: 2,
+        id: 'fal-ai/fast-svd-lcm',
+        name: 'Fast Motion (SVD-LCM)',
+        provider: 'fal',
+        capabilities: {
+          supportsPrompt: false,
+          supportsAudio: false,
+          maxDuration: 4,
+          defaultDuration: 2,
+          fpsRange: { min: 7, max: 15, default: 7 },
+        },
+        pricing: {
+          estimatedCost: 0.1,
+          unit: 'frame',
+        },
+        performance: {
+          estimatedGenerationTime: 5,
+          quality: 'good',
+        },
       });
 
       expect(MOTION_MODELS.wan_i2v).toMatchObject({
-        model: 'fal-ai/wan-i2v',
-        cost: 0.3,
-        quality: 'better',
-        defaultDuration: 3,
+        id: 'fal-ai/wan-i2v',
+        name: 'Balanced Motion (WAN I2V)',
+        capabilities: {
+          defaultDuration: 3,
+        },
+        pricing: {
+          estimatedCost: 0.3,
+        },
+        performance: {
+          quality: 'better',
+        },
       });
 
       expect(MOTION_MODELS.seedance_v1_pro).toMatchObject({
-        model: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-        cost: 0.5,
-        quality: 'best',
-        defaultDuration: 5,
+        id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
+        capabilities: {
+          defaultDuration: 5,
+        },
+        pricing: {
+          estimatedCost: 0.5,
+        },
+        performance: {
+          quality: 'best',
+        },
       });
     });
   });

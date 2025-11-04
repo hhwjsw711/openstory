@@ -12,6 +12,10 @@ import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
+// Import motion service
+import { generateMotionForFrame } from '@/lib/services/motion.service';
+
+import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { eq } from 'drizzle-orm';
 
 const loggerService = new LoggerService('MotionWorkflow');
@@ -80,15 +84,10 @@ export const generateMotionWorkflow = createWorkflow(
     // Step 3: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       try {
-        // Import motion service
-        const { generateMotionForFrame } = await import(
-          '@/lib/services/motion.service'
-        );
-
         const result = await generateMotionForFrame({
           imageUrl: input.thumbnailUrl,
           prompt: input.prompt,
-          model: input.model || 'veo3',
+          model: input.model || DEFAULT_VIDEO_MODEL,
           duration: input.duration || 2,
           fps: input.fps || 7,
           motionBucket: input.motionBucket || 127,

@@ -4,6 +4,8 @@
  */
 
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
+import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
+import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
@@ -14,6 +16,7 @@ import { LoggerService } from '@/lib/services/logger.service';
 import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
+  MotionWorkflowInput,
 } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import {
@@ -225,14 +228,15 @@ export const generateStoryboardWorkflow = createWorkflow(
       return createdFrames.map((frame) => {
         const scene = frame.metadata;
         const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
-        return { frameId: frame.id, prompt: visualPrompt };
+        const motionPrompt = scene?.prompts?.motion?.fullPrompt || '';
+        return { frameId: frame.id, prompt: visualPrompt, motionPrompt };
       });
     });
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
       await Promise.all(
-        frameIds.map(async ({ frameId, prompt }) => {
+        frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
           // Trigger image generation for all frames in parallel
           if (!prompt) {
             loggerService.logWarning(
@@ -240,21 +244,50 @@ export const generateStoryboardWorkflow = createWorkflow(
             );
             return null;
           }
-
+          // Generate image for the frame
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
             prompt,
-            model: 'flux_krea_lora',
+            model: DEFAULT_IMAGE_MODEL,
             imageSize: 'landscape_16_9',
             numImages: 1,
             frameId,
             sequenceId: input.sequenceId,
           };
 
-          return context.invoke('image', {
+          const {
+            body: imageBody,
+            isFailed: imageIsFailed,
+            isCanceled: imageIsCanceled,
+          } = await context.invoke('image', {
             workflow: generateImageWorkflow,
             body: imageInput,
+          });
+
+          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+            throw new WorkflowValidationError(
+              `Image generation failed for frame ${frameId}, skipping motion generation`
+            );
+          }
+
+          // Trigger motion generation workflow
+          const motionInput: MotionWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            frameId,
+            sequenceId: input.sequenceId,
+            thumbnailUrl: imageBody.imageUrl,
+            prompt: motionPrompt,
+            model: DEFAULT_VIDEO_MODEL,
+            duration: 2,
+            fps: 30,
+            motionBucket: 127,
+          };
+
+          await context.invoke('motion', {
+            workflow: generateMotionWorkflow,
+            body: motionInput,
           });
         })
       );
