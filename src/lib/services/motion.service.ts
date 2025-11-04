@@ -109,6 +109,17 @@ export async function generateMotionForFrame(
     // Call the appropriate Fal.ai model
     let result: unknown;
 
+    console.log(
+      `[Motion Service] Generating motion with model: ${modelConfig.id}`,
+      {
+        duration,
+        fps,
+        motionBucket,
+        promptLength: enhancedPrompt.length,
+        enhancedPrompt,
+      }
+    );
+
     switch (modelKey) {
       case 'svd_lcm': {
         // Fast SVD-LCM model - doesn't support prompts
@@ -135,8 +146,8 @@ export async function generateMotionForFrame(
             prompt: enhancedPrompt,
             image_url: options.imageUrl,
             duration: klingDuration, // Must be string "5" or "10"
-            fps: fps,
-            seed: Math.floor(Math.random() * 1000000),
+            // Note: fps and seed are not supported by this API endpoint
+            // Optional parameters that could be added: aspect_ratio, negative_prompt, cfg_scale
           },
         });
         break;
@@ -226,7 +237,14 @@ export async function generateMotionForFrame(
       },
     };
   } catch (error) {
-    console.error('[Motion Service] Generation failed:', error);
+    console.error(
+      `[Motion Service] Generation failed for model ${options.model || 'svd_lcm'}:`,
+      {
+        error: error instanceof Error ? error.message : String(error),
+        imageUrl: options.imageUrl,
+        promptLength: options.prompt?.length,
+      }
+    );
     return {
       success: false,
       error:
