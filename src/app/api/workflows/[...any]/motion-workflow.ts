@@ -88,9 +88,9 @@ export const generateMotionWorkflow = createWorkflow(
           imageUrl: input.thumbnailUrl,
           prompt: input.prompt,
           model: input.model || DEFAULT_VIDEO_MODEL,
-          duration: input.duration || 2,
-          fps: input.fps || 7,
-          motionBucket: input.motionBucket || 127,
+          duration: input.duration,
+          fps: input.fps,
+          motionBucket: input.motionBucket,
           styleStack:
             (frame.sequence.style?.config as Record<string, unknown> | null) ||
             undefined,

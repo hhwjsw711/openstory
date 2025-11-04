@@ -229,14 +229,20 @@ export const generateStoryboardWorkflow = createWorkflow(
         const scene = frame.metadata;
         const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
         const motionPrompt = scene?.prompts?.motion?.fullPrompt || '';
-        return { frameId: frame.id, prompt: visualPrompt, motionPrompt };
+        const duration = scene?.metadata?.durationSeconds || 3000;
+        return {
+          frameId: frame.id,
+          prompt: visualPrompt,
+          motionPrompt,
+          duration,
+        };
       });
     });
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
       await Promise.all(
-        frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
+        frameIds.map(async ({ frameId, prompt, motionPrompt, duration }) => {
           // Trigger image generation for all frames in parallel
           if (!prompt) {
             loggerService.logWarning(
@@ -280,9 +286,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             thumbnailUrl: imageBody.imageUrl,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
-            duration: 2,
-            fps: 30,
-            motionBucket: 127,
+            duration: duration,
           };
 
           await context.invoke('motion', {
