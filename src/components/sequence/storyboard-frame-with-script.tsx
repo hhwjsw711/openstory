@@ -96,9 +96,17 @@ export const StoryboardFrameWithScript: React.FC<
 
   // Check generation status from database fields
   const isThumbnailGenerating = frame.thumbnailStatus === 'generating';
+  const isThumbnailPending = frame.thumbnailStatus === 'pending';
   const isVideoGenerating =
-    frame.videoStatus === 'generating' || isGeneratingMotion;
+    (frame.videoStatus ? frame.videoStatus === 'generating' : true) || // If the frame is new, we consider it generating
+    isGeneratingMotion;
+  const isVideoPending = frame.videoStatus === 'pending';
 
+  console.log('[isVideoGenerating] isVideoGenerating', {
+    frameVideoStatus: frame.videoStatus,
+    isGeneratingMotion,
+    isVideoGenerating,
+  });
   // Image generation with selected model
   const [selectedModel, setSelectedModel] = useState<string | null>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -471,6 +479,18 @@ export const StoryboardFrameWithScript: React.FC<
             </Button>
           )}
 
+          {/* Thumbnail pending status */}
+          {isThumbnailPending && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+              <div className="flex flex-col items-center gap-2 text-white">
+                <div className="h-6 w-6 rounded-full border-2 border-white/40 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-white/60" />
+                </div>
+                <span className="text-xs">Queued for generation...</span>
+              </div>
+            </div>
+          )}
+
           {/* Thumbnail generation status */}
           {isThumbnailGenerating && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
@@ -481,15 +501,29 @@ export const StoryboardFrameWithScript: React.FC<
             </div>
           )}
 
-          {/* Motion generation status */}
-          {isVideoGenerating && !isThumbnailGenerating && (
+          {/* Motion pending status */}
+          {isVideoPending && !isThumbnailPending && !isThumbnailGenerating && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
               <div className="flex flex-col items-center gap-2 text-white">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
-                <span className="text-xs">Generating motion...</span>
+                <div className="h-6 w-6 rounded-full border-2 border-white/40 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-white/60" />
+                </div>
+                <span className="text-xs">Queued for motion...</span>
               </div>
             </div>
           )}
+
+          {/* Motion generation status */}
+          {isVideoGenerating &&
+            !isThumbnailGenerating &&
+            !isThumbnailPending && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+                <div className="flex flex-col items-center gap-2 text-white">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                  <span className="text-xs">Generating motion...</span>
+                </div>
+              </div>
+            )}
 
           {/* Video indicator badge */}
           {hasVideo && (

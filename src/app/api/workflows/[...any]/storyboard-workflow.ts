@@ -12,7 +12,6 @@ import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
-import { LoggerService } from '@/lib/services/logger.service';
 import type {
   FrameGenerationWorkflowInput,
   ImageWorkflowInput,
@@ -27,8 +26,6 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
-const loggerService = new LoggerService('FrameGenerationWorkflow');
-
 export const generateStoryboardWorkflow = createWorkflow(
   async (context: WorkflowContext<FrameGenerationWorkflowInput>) => {
     const input = context.requestPayload;
@@ -36,7 +33,8 @@ export const generateStoryboardWorkflow = createWorkflow(
     // Validate authentication
     validateWorkflowAuth(input);
 
-    loggerService.logDebug(
+    console.log(
+      '[FrameGenerationWorkflow]',
       `Starting frame generation workflow for sequence ${input.sequenceId}`
     );
 
@@ -245,7 +243,8 @@ export const generateStoryboardWorkflow = createWorkflow(
         frameIds.map(async ({ frameId, prompt, motionPrompt, duration }) => {
           // Trigger image generation for all frames in parallel
           if (!prompt) {
-            loggerService.logWarning(
+            console.warn(
+              '[FrameGenerationWorkflow]',
               `Frame ${frameId} has no description, skipping`
             );
             return null;
@@ -305,10 +304,14 @@ export const generateStoryboardWorkflow = createWorkflow(
           .set({ status: 'completed', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
 
-        loggerService.logDebug('Sequence status updated to completed');
+        console.log(
+          '[FrameGenerationWorkflow]',
+          'Sequence status updated to completed'
+        );
         return { success: true };
       } catch (error) {
-        loggerService.logError(
+        console.error(
+          '[FrameGenerationWorkflow]',
           `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         throw new Error(
@@ -317,7 +320,10 @@ export const generateStoryboardWorkflow = createWorkflow(
       }
     });
 
-    loggerService.logDebug('Frame generation workflow completed');
+    console.log(
+      '[FrameGenerationWorkflow]',
+      'Frame generation workflow completed'
+    );
 
     return {
       sequenceId: input.sequenceId,
@@ -346,7 +352,8 @@ export const generateStoryboardWorkflow = createWorkflow(
         { status: 'failed' }
       );
 
-      loggerService.logError(
+      console.error(
+        '[FrameGenerationWorkflow]',
         `Frame generation workflow failed for sequence ${input.sequenceId}: ${failResponse}`
       );
 

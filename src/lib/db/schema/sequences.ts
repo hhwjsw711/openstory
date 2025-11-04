@@ -38,7 +38,7 @@ export const sequenceStatus = pgEnum('sequence_status', [
 ]);
 
 export const frameGenerationStatus = pgEnum('frame_generation_status', [
-  'idle',
+  'pending',
   'generating',
   'completed',
   'failed',
@@ -165,7 +165,8 @@ export const frames = pgTable(
     thumbnailUrl: text('thumbnail_url'),
     videoUrl: text('video_url'),
     // Thumbnail generation status tracking
-    thumbnailStatus: frameGenerationStatus('thumbnail_status').default('idle'),
+    thumbnailStatus:
+      frameGenerationStatus('thumbnail_status').default('pending'),
     thumbnailWorkflowRunId: text('thumbnail_workflow_run_id'),
     thumbnailGeneratedAt: timestamp('thumbnail_generated_at', {
       withTimezone: true,
@@ -173,7 +174,7 @@ export const frames = pgTable(
     }),
     thumbnailError: text('thumbnail_error'),
     // Video/motion generation status tracking
-    videoStatus: frameGenerationStatus('video_status').default('idle'),
+    videoStatus: frameGenerationStatus('video_status').default('pending'),
     videoWorkflowRunId: text('video_workflow_run_id'),
     videoGeneratedAt: timestamp('video_generated_at', {
       withTimezone: true,

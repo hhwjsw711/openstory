@@ -15,15 +15,12 @@ import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
 } from '@/lib/schemas/letzai-request';
-import { LoggerService } from '@/lib/services/logger.service';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-
-const loggerService = new LoggerService('ImageWorkflow');
 
 const LETZAI_PRESET_DIMENSIONS: Record<
   string,
@@ -51,7 +48,8 @@ export const generateImageWorkflow = createWorkflow(
       );
     }
 
-    loggerService.logDebug(
+    console.log(
+      '[ImageWorkflow]',
       `Starting image generation workflow for user ${input.userId}`
     );
 
@@ -72,7 +70,8 @@ export const generateImageWorkflow = createWorkflow(
       let model = input.model;
       if (!model) model = DEFAULT_IMAGE_MODEL;
 
-      loggerService.logDebug(
+      console.log(
+        '[ImageWorkflow]',
         `Generating image ${input.frameId} with model ${model}`
       );
 
@@ -114,7 +113,8 @@ export const generateImageWorkflow = createWorkflow(
     if (input.frameId && imageResult.imageUrls.length > 0) {
       storageUrl = await context.run('upload-to-storage', async () => {
         if (!input.frameId || !input.sequenceId || !input.teamId) {
-          loggerService.logWarning(
+          console.warn(
+            '[ImageWorkflow]',
             'Missing required IDs for storage upload, using temporary URL'
           );
           return imageResult.imageUrls[0];
@@ -138,10 +138,14 @@ export const generateImageWorkflow = createWorkflow(
             );
           }
 
-          loggerService.logDebug(`Image uploaded to storage: ${result.path}`);
+          console.log(
+            '[ImageWorkflow]',
+            `Image uploaded to storage: ${result.path}`
+          );
           return result.url;
         } catch (error) {
-          loggerService.logError(
+          console.error(
+            '[ImageWorkflow]',
             `Failed to upload image to storage: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
           // Fall back to temporary FAL URL if storage upload fails
@@ -165,7 +169,8 @@ export const generateImageWorkflow = createWorkflow(
             thumbnailError: null,
           });
         } catch (error) {
-          loggerService.logError(
+          console.error(
+            '[ImageWorkflow]',
             `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
           throw error;
@@ -228,7 +233,8 @@ export const generateImageWorkflow = createWorkflow(
                     })
                     .where(eq(sequences.id, input.sequenceId));
                 } catch (error) {
-                  loggerService.logError(
+                  console.error(
+                    '[ImageWorkflow]',
                     `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
                   );
                 }
@@ -241,7 +247,7 @@ export const generateImageWorkflow = createWorkflow(
       }
     }
 
-    loggerService.logDebug('Image generation workflow completed');
+    console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
     const result: ImageWorkflowResult = {
@@ -266,7 +272,8 @@ export const generateImageWorkflow = createWorkflow(
           thumbnailError: failResponse,
         });
 
-        loggerService.logError(
+        console.error(
+          '[ImageWorkflow]',
           `Image generation failed for frame ${input.frameId}: ${failResponse}`
         );
       }

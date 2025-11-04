@@ -6,7 +6,6 @@
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { frames } from '@/lib/db/schema';
-import { LoggerService } from '@/lib/services/logger.service';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -18,8 +17,28 @@ import { generateMotionForFrame } from '@/lib/services/motion.service';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { eq } from 'drizzle-orm';
 
-const loggerService = new LoggerService('MotionWorkflow');
-
+/**
+ * Motion generation workflow
+ * Generates video motion from static frame thumbnails (image-to-video)
+ * @param context - The workflow context. Input is in the request payload.
+ * - userId: string;
+ * - teamId: string;
+ * - frameId: string;
+ * - sequenceId: string;
+ * - thumbnailUrl: string;
+ * - prompt?: string;
+ * - model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
+ * - duration?: number;
+ * - fps?: number;
+ * - motionBucket?: number;
+ * @param  - The motion workflow input
+ * @returns The motion workflow result
+ * @throws WorkflowValidationError if the thumbnail URL is required for motion generation
+ * @throws WorkflowValidationError if the team ID is not authorized
+ * @throws WorkflowValidationError if the frame is not found
+ * @throws WorkflowValidationError if the frame is not authorized
+ * @throws WorkflowValidationError if the frame is not found
+ */
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
@@ -34,7 +53,8 @@ export const generateMotionWorkflow = createWorkflow(
       );
     }
 
-    loggerService.logDebug(
+    console.log(
+      '[MotionWorkflow]',
       `Starting motion generation workflow for frame ${input.frameId}`
     );
 
@@ -102,7 +122,8 @@ export const generateMotionWorkflow = createWorkflow(
 
         return result;
       } catch (error) {
-        loggerService.logError(
+        console.error(
+          '[MotionWorkflow]',
           `Motion generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         // Update frame status on error
@@ -156,7 +177,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
     });
 
-    loggerService.logDebug('Motion generation workflow completed');
+    console.log('[MotionWorkflow]', 'Motion generation workflow completed');
 
     // Return result
     const result: MotionWorkflowResult = {
@@ -179,7 +200,8 @@ export const generateMotionWorkflow = createWorkflow(
         videoError: failResponse,
       });
 
-      loggerService.logError(
+      console.error(
+        '[MotionWorkflow]',
         `Motion generation failed for frame ${input.frameId}: ${failResponse}`
       );
 

@@ -955,6 +955,6 @@ beforeEach(async () => {
 - Mock external AI service calls to avoid real API usage during testing
 - Workflows use durable execution - steps are retried automatically on failure
 - Pass authentication (userId/teamId) through workflow context, not database lookups
-- Please create a rule that prevents claude from ever alterting files in components/ui
-- never manually create migrations
+- Never manually alter files in components/ui
+- **Database migrations**: Use Drizzle Kit to generate migrations (`bun db:generate`), never manually write migration SQL files
 - Use type instead of interface to define typescript types
