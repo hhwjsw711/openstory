@@ -12,13 +12,6 @@ export const SCRIPT_ANALYSIS_MODELS = [
     description: 'Very large model, excellent for complex analysis',
   },
   {
-    id: 'cerebras/qwen-3-235b-a22b-thinking-2507',
-    name: 'Qwen 3 235B Thinking',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Very large model, excellent for complex analysis',
-  },
-  {
     id: 'cerebras/qwen-3-coder-480b',
     name: 'Qwen 3 480B Coder',
     provider: 'Cerebras',

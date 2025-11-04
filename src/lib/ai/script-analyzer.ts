@@ -97,7 +97,6 @@ export async function analyzeScriptForFrames(
           cerebrasSystemMessage(VELRO_UNIVERSAL_SYSTEM_PROMPT),
           cerebrasUserMessage(auditData.userPrompt),
         ],
-        max_tokens: 20000,
       });
 
       // Extract token usage if available (store raw)
