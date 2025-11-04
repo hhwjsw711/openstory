@@ -2,7 +2,7 @@
  * Type definitions for QStash Workflows
  */
 
-import type { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import type { Json } from '@/types/database';
 
 /**
@@ -20,7 +20,7 @@ export interface UserWorkflowContext {
 export interface ImageWorkflowInput extends UserWorkflowContext {
   prompt: string;
   style?: Json;
-  model?: string;
+  model?: keyof typeof IMAGE_MODELS;
   width?: number;
   height?: number;
   imageSize?: string;
@@ -37,7 +37,7 @@ export interface VideoWorkflowInput extends UserWorkflowContext {
   prompt?: string;
   imageUrl?: string; // For image-to-video
   imageData?: string; // Base64 encoded
-  model?: string;
+  model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
   aspectRatio?: string; // "16:9", "9:16", etc.
   enableAudio?: boolean;

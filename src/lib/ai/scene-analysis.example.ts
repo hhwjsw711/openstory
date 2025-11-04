@@ -4,8 +4,7 @@ export const sceneAnalysisExample: SceneAnalysis = {
   status: 'success',
   projectMetadata: {
     title: "Project title from script or 'Untitled'",
-    directorStyle: 'Director DNA applied',
-    aspectRatio: '21:9',
+    aspectRatio: '16:9',
     generatedAt: 'ISO 8601 timestamp',
   },
 

@@ -6,7 +6,7 @@ import {
 } from '@/lib/ai/fal-client';
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
-import { AI_PROVIDER_MAPPINGS } from '@/lib/ai/models';
+import { AI_PROVIDER_MAPPINGS, DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
@@ -69,8 +69,8 @@ export const generateImageWorkflow = createWorkflow(
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       // Determine model to use
-      let model = input.model as keyof typeof IMAGE_MODELS | undefined;
-      if (!model) model = 'flux_krea_lora'; // Default to fast model
+      let model = input.model;
+      if (!model) model = DEFAULT_IMAGE_MODEL;
 
       loggerService.logDebug(
         `Generating image ${input.frameId} with model ${model}`

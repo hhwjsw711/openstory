@@ -290,6 +290,9 @@ export const IMAGE_MODELS = {
   imagen4_preview_ultra: 'fal-ai/imagen4/preview/ultra', // https://fal.ai/models/fal-ai/imagen4/preview/ultra/api#api-call-install
   flux_pro_v1_1_ultra: 'fal-ai/flux-pro/v1.1-ultra', // https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api#api-call-install
   flux_krea_lora: 'fal-ai/flux-krea-lora', // https://fal.ai/models/fal-ai/flux-krea-lora/api#api-call-install
+  nano_banana: 'fal-ai/nano-banana', // https://fal.ai/models/fal-ai/nano-banana
+  recraft_v3: 'fal-ai/recraft/v3/text-to-image', // https://fal.ai/models/fal-ai/recraft/v3/text-to-image
+  hidream_i1_full: 'fal-ai/hidream-i1-full', // https://fal.ai/models/fal-ai/hidream-i1-full
   letzai: 'letzai/image',
 } as const;
 
@@ -306,6 +309,9 @@ export const AI_PROVIDER_MAPPINGS = {
   imagen4_preview_ultra: 'fal-ai',
   flux_pro_v1_1_ultra: 'fal-ai',
   flux_krea_lora: 'fal-ai',
+  nano_banana: 'fal-ai',
+  recraft_v3: 'fal-ai',
+  hidream_i1_full: 'fal-ai',
   letzai: 'letz-ai',
 } as const;
 
@@ -322,7 +328,7 @@ export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 export type FalVideoModel = (typeof VIDEO_MODELS)[keyof typeof VIDEO_MODELS];
 export type FalImageModel = (typeof IMAGE_MODELS)[keyof typeof IMAGE_MODELS];
 
-export const DEFAULT_IMAGE_MODEL = IMAGE_MODELS.flux_pro;
+export const DEFAULT_IMAGE_MODEL: keyof typeof IMAGE_MODELS = 'nano_banana';
 
 export const DEFAULT_VIDEO_MODEL: ImageToVideoModelKey = 'kling_v2_5_turbo_pro';
 
