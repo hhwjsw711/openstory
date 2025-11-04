@@ -229,7 +229,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         const scene = frame.metadata;
         const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
         const motionPrompt = scene?.prompts?.motion?.fullPrompt || '';
-        const duration = scene?.metadata?.durationSeconds || 3000;
+        const duration = scene?.metadata?.durationSeconds || 5; // Default to 5 seconds (not milliseconds)
         return {
           frameId: frame.id,
           prompt: visualPrompt,

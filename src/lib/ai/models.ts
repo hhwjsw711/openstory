@@ -203,6 +203,8 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 10,
       defaultDuration: 5,
       fpsRange: { min: 24, max: 60, default: 30 },
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
     },
     pricing: {
       estimatedCost: 0.35, // $0.35 for 5s + $0.07/s

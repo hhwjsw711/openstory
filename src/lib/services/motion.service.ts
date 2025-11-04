@@ -127,12 +127,26 @@ export async function generateMotionForFrame(
         break;
       }
 
+      case 'kling_v2_5_turbo_pro': {
+        // Kling v2.5 Turbo Pro - requires string duration ("5" or "10")
+        const klingDuration = duration <= 7 ? '5' : '10'; // Round to nearest supported value
+        result = await fal.run(modelConfig.id, {
+          input: {
+            prompt: enhancedPrompt,
+            image_url: options.imageUrl,
+            duration: klingDuration, // Must be string "5" or "10"
+            fps: fps,
+            seed: Math.floor(Math.random() * 1000000),
+          },
+        });
+        break;
+      }
+
       case 'wan_i2v':
       case 'kling_i2v':
       case 'veo3':
       case 'wan_v2':
       case 'veo3_1':
-      case 'kling_v2_5_turbo_pro':
       case 'wan_2_5':
       case 'sora_2': {
         // Generic image-to-video models with prompt support
