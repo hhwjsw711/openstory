@@ -55,14 +55,18 @@ export async function uploadVideoToStorage(
       throw new Error(`Storage upload failed: ${error.message}`);
     }
 
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('videos').getPublicUrl(storagePath);
+    // Generate signed URL for private bucket (1 year expiry)
+    const { data, error: signedUrlError } = await supabase.storage
+      .from('videos')
+      .createSignedUrl(storagePath, 31536000); // 1 year in seconds
+
+    if (signedUrlError) {
+      throw new Error(`Failed to create signed URL: ${signedUrlError.message}`);
+    }
 
     return {
       success: true,
-      url: publicUrl,
+      url: data.signedUrl,
       path: storagePath,
     };
   } catch (error) {
