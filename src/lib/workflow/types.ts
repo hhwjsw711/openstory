@@ -46,7 +46,7 @@ export interface VideoWorkflowInput extends UserWorkflowContext {
 /**
  * Frame generation workflow input
  */
-export interface FrameGenerationWorkflowInput extends UserWorkflowContext {
+export interface StoryboardWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
   options?: {
     framesPerScene?: number;
@@ -64,7 +64,7 @@ export interface MotionWorkflowInput extends UserWorkflowContext {
   frameId: string;
   sequenceId: string;
   thumbnailUrl: string;
-  prompt?: string;
+  prompt: string;
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
   fps?: number;

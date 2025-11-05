@@ -10,7 +10,7 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
-import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -125,7 +125,7 @@ export async function PATCH(
       }
 
       // Trigger frame generation workflow
-      const workflowInput: FrameGenerationWorkflowInput = {
+      const workflowInput: StoryboardWorkflowInput = {
         userId: user.id,
         teamId: existingSeq.teamId,
         sequenceId,

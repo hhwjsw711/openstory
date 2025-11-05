@@ -111,9 +111,6 @@ export const generateMotionWorkflow = createWorkflow(
           duration: input.duration,
           fps: input.fps,
           motionBucket: input.motionBucket,
-          styleStack:
-            (frame.sequence.style?.config as Record<string, unknown> | null) ||
-            undefined,
         });
 
         if (!result.success || !result.videoUrl) {
@@ -126,12 +123,6 @@ export const generateMotionWorkflow = createWorkflow(
           '[MotionWorkflow]',
           `Motion generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
-        // Update frame status on error
-        await updateFrame(input.frameId, {
-          videoStatus: 'generating',
-          videoError: error instanceof Error ? error.message : 'Unknown error',
-        });
-
         throw error; // Re-throw so QStash will retry
       }
     });

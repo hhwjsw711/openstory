@@ -7,7 +7,7 @@ import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { sequenceService } from '@/lib/services/sequence.service';
-import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -66,7 +66,7 @@ export async function POST(
     await sequenceService.updateSequenceStatus(sequenceId, 'processing');
 
     // Trigger frame generation workflow
-    const workflowInput: FrameGenerationWorkflowInput = {
+    const workflowInput: StoryboardWorkflowInput = {
       userId: user.id,
       teamId: sequence.teamId,
       sequenceId,

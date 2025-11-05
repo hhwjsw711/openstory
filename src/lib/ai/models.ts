@@ -22,13 +22,14 @@ export const IMAGE_TO_VIDEO_MODELS = {
   svd_lcm: {
     id: 'fal-ai/fast-svd-lcm',
     name: 'Fast Motion (SVD-LCM)',
-    provider: 'fal',
+    provider: 'stability',
     capabilities: {
       supportsPrompt: false, // Uses motion_bucket_id instead
       supportsAudio: false,
-      maxDuration: 4,
-      defaultDuration: 2,
-      fpsRange: { min: 7, max: 15, default: 7 },
+      maxDuration: 2.5, // 25 frames total
+      defaultDuration: 2.5,
+      fpsRange: { min: 1, max: 25, default: 10 }, // API allows 1-25 fps
+      fixedFrameCount: 25, // Always generates 25 frames
     },
     pricing: {
       estimatedCost: 0.1,
@@ -43,14 +44,16 @@ export const IMAGE_TO_VIDEO_MODELS = {
   // Balanced models - good quality/speed ratio
   wan_i2v: {
     id: 'fal-ai/wan-i2v',
-    name: 'Balanced Motion (WAN I2V)',
-    provider: 'fal',
+    name: 'Balanced Motion (WAN 2.1)',
+    provider: 'minimax',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
-      maxDuration: 5,
-      defaultDuration: 3,
-      fpsRange: { min: 12, max: 30, default: 24 },
+      maxDuration: 6.25, // 100 frames at 16fps
+      defaultDuration: 5.06, // 81 frames at 16fps (default)
+      fpsRange: { min: 5, max: 24, default: 16 }, // API: 5-24 fps, default 16
+      supportedResolutions: ['480p', '720p'],
+      supportedAspectRatios: ['auto', '16:9', '9:16', '1:1'],
     },
     pricing: {
       estimatedCost: 0.3,
@@ -65,7 +68,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
   kling_i2v: {
     id: 'fal-ai/kling-video-v1-5/standard/image-to-video',
     name: 'High Quality Motion (Kling I2V v1.5)',
-    provider: 'fal',
+    provider: 'kling',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
@@ -87,15 +90,24 @@ export const IMAGE_TO_VIDEO_MODELS = {
   seedance_v1_pro: {
     id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
     name: 'Premium Motion (Seedance Pro)',
-    provider: 'fal',
+    provider: 'seedance',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
-      maxDuration: 8,
+      maxDuration: 12,
       defaultDuration: 5,
-      fpsRange: { min: 15, max: 30, default: 25 },
-      aspectRatio: '16:9',
-      resolution: '1080p',
+      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 24fps per docs
+      supportedAspectRatios: [
+        '21:9',
+        '16:9',
+        '4:3',
+        '1:1',
+        '3:4',
+        '9:16',
+        'auto',
+      ],
+      supportedResolutions: ['480p', '720p', '1080p'],
+      supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
     pricing: {
       estimatedCost: 0.5,
@@ -110,18 +122,20 @@ export const IMAGE_TO_VIDEO_MODELS = {
   veo2_i2v: {
     id: 'fal-ai/veo2/image-to-video',
     name: 'Ultra Premium Motion (Google Veo 2)',
-    provider: 'fal',
+    provider: 'google',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 8,
-      fpsRange: { min: 24, max: 60, default: 30 },
-      aspectRatio: '16:9',
+      maxDuration: 8,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 720p output
+      supportedAspectRatios: ['auto', 'auto_prefer_portrait', '16:9', '9:16'],
+      supportedDurations: [5, 6, 7, 8],
+      fixedResolution: '720p',
     },
     pricing: {
       estimatedCost: 0.8,
-      unit: 'frame',
+      unit: 'second',
     },
     performance: {
       estimatedGenerationTime: 20,
@@ -132,17 +146,20 @@ export const IMAGE_TO_VIDEO_MODELS = {
   veo3: {
     id: 'fal-ai/veo3',
     name: 'Ultra Premium Motion with Audio (Google Veo 3)',
-    provider: 'fal',
+    provider: 'google',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
-      maxDuration: 12,
-      defaultDuration: 10,
-      fpsRange: { min: 24, max: 60, default: 30 },
+      maxDuration: 8,
+      defaultDuration: 8,
+      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed FPS
+      supportedAspectRatios: ['auto', '9:16', '16:9', '1:1'],
+      supportedResolutions: ['720p', '1080p'],
+      supportedDurations: [8], // Only 8s supported
     },
     pricing: {
       estimatedCost: 1.0,
-      unit: 'frame',
+      unit: 'second',
     },
     performance: {
       estimatedGenerationTime: 25,
@@ -153,7 +170,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
   wan_v2: {
     id: 'fal-ai/wan-v2-2-a14b',
     name: 'Cinematic Quality Motion (WAN 2.2)',
-    provider: 'fal',
+    provider: 'minimax',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
@@ -175,7 +192,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
   veo3_1: {
     id: 'fal-ai/veo3.1/reference-to-video',
     name: 'Latest Google Veo 3.1',
-    provider: 'fal',
+    provider: 'google',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
@@ -196,7 +213,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
   kling_v2_5_turbo_pro: {
     id: 'fal-ai/kling-video/v2.5-turbo/pro/image-to-video',
     name: 'Kling v2.5 Turbo Pro',
-    provider: 'fal',
+    provider: 'kling',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: false,
@@ -219,13 +236,15 @@ export const IMAGE_TO_VIDEO_MODELS = {
   wan_2_5: {
     id: 'fal-ai/wan-25-preview/image-to-video',
     name: 'WAN 2.5 Preview',
-    provider: 'fal',
+    provider: 'minimax',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
       maxDuration: 10,
       defaultDuration: 5,
-      fpsRange: { min: 24, max: 60, default: 30 },
+      fpsRange: { min: 24, max: 30, default: 30 }, // Fixed FPS at 30
+      supportedResolutions: ['480p', '720p', '1080p'],
+      supportedDurations: [5, 10],
     },
     pricing: {
       estimatedCost: 0.1, // $0.05-$0.15/s depending on resolution
@@ -240,7 +259,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
   sora_2: {
     id: 'fal-ai/sora-2/image-to-video',
     name: 'OpenAI Sora 2',
-    provider: 'fal',
+    provider: 'openai',
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
@@ -322,7 +341,7 @@ export type ImageToVideoModelConfig =
   (typeof IMAGE_TO_VIDEO_MODELS)[keyof typeof IMAGE_TO_VIDEO_MODELS];
 
 // Type for model keys
-export type ImageToVideoModelKey = keyof typeof IMAGE_TO_VIDEO_MODELS;
+export type ImageToVideoModel = keyof typeof IMAGE_TO_VIDEO_MODELS;
 
 // Helper type to extract model ID strings (for backward compatibility)
 export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
@@ -332,9 +351,9 @@ export type FalImageModel = (typeof IMAGE_MODELS)[keyof typeof IMAGE_MODELS];
 
 export const DEFAULT_IMAGE_MODEL: keyof typeof IMAGE_MODELS = 'nano_banana';
 
-export const DEFAULT_VIDEO_MODEL: ImageToVideoModelKey = 'kling_v2_5_turbo_pro';
+export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_5_turbo_pro';
 
 // Helper to get model ID from key (for backward compatibility)
-export function getModelId(modelKey: ImageToVideoModelKey): string {
+export function getModelId(modelKey: ImageToVideoModel): string {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
 }

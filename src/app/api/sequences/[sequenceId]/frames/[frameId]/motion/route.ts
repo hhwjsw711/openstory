@@ -67,7 +67,7 @@ export async function POST(
       frameId,
       sequenceId: frameData.sequenceId,
       thumbnailUrl: frameData.thumbnailUrl,
-      prompt: frameData.description || undefined,
+      prompt: frameData.description || '',
       model: validated.model,
       duration: validated.duration,
       fps: validated.fps,

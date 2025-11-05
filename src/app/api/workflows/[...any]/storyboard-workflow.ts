@@ -13,9 +13,9 @@ import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
 import type {
-  FrameGenerationWorkflowInput,
   ImageWorkflowInput,
   MotionWorkflowInput,
+  StoryboardWorkflowInput,
 } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import {
@@ -27,15 +27,15 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 export const generateStoryboardWorkflow = createWorkflow(
-  async (context: WorkflowContext<FrameGenerationWorkflowInput>) => {
+  async (context: WorkflowContext<StoryboardWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication
     validateWorkflowAuth(input);
 
     console.log(
-      '[FrameGenerationWorkflow]',
-      `Starting frame generation workflow for sequence ${input.sequenceId}`
+      '[StoryboardGenerationWorkflow]',
+      `Starting storyboard generation workflow for sequence ${input.sequenceId}`
     );
 
     // Step 1: Verify sequence and get data
@@ -227,12 +227,10 @@ export const generateStoryboardWorkflow = createWorkflow(
         const scene = frame.metadata;
         const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
         const motionPrompt = scene?.prompts?.motion?.fullPrompt || '';
-        const duration = scene?.metadata?.durationSeconds || 5; // Default to 5 seconds (not milliseconds)
         return {
           frameId: frame.id,
           prompt: visualPrompt,
           motionPrompt,
-          duration,
         };
       });
     });
@@ -240,11 +238,11 @@ export const generateStoryboardWorkflow = createWorkflow(
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
       await Promise.all(
-        frameIds.map(async ({ frameId, prompt, motionPrompt, duration }) => {
+        frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
           // Trigger image generation for all frames in parallel
           if (!prompt) {
             console.warn(
-              '[FrameGenerationWorkflow]',
+              '[StoryboardGenerationWorkflow]',
               `Frame ${frameId} has no description, skipping`
             );
             return null;
@@ -285,7 +283,6 @@ export const generateStoryboardWorkflow = createWorkflow(
             thumbnailUrl: imageBody.imageUrl,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
-            duration: duration,
           };
 
           await context.invoke('motion', {
@@ -305,13 +302,13 @@ export const generateStoryboardWorkflow = createWorkflow(
           .where(eq(sequences.id, input.sequenceId));
 
         console.log(
-          '[FrameGenerationWorkflow]',
+          '[StoryboardGenerationWorkflow]',
           'Sequence status updated to completed'
         );
         return { success: true };
       } catch (error) {
         console.error(
-          '[FrameGenerationWorkflow]',
+          '[StoryboardGenerationWorkflow]',
           `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         throw new Error(
@@ -319,11 +316,6 @@ export const generateStoryboardWorkflow = createWorkflow(
         );
       }
     });
-
-    console.log(
-      '[FrameGenerationWorkflow]',
-      'Frame generation workflow completed'
-    );
 
     return {
       sequenceId: input.sequenceId,

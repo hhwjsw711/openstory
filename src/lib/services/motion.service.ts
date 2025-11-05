@@ -4,23 +4,30 @@
  */
 
 import {
+  DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODELS,
-  type ImageToVideoModelKey,
+  type ImageToVideoModel,
+  type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
-import type { Json } from '@/types/database';
 
-// Re-export for backward compatibility
-export const MOTION_MODELS = IMAGE_TO_VIDEO_MODELS;
-export type MotionModel = ImageToVideoModelKey;
+// Re-export for tests
+export { IMAGE_TO_VIDEO_MODELS };
+
+import type { QueueStatus } from '@fal-ai/client';
+import { createFalClient } from '@fal-ai/client';
+
+// Configure fal client
+const fal = createFalClient({
+  credentials: process.env.FAL_KEY || '',
+});
 
 interface GenerateMotionOptions {
   imageUrl: string;
-  prompt?: string;
-  model?: MotionModel;
+  prompt: string;
+  model?: ImageToVideoModel;
   duration?: number;
   fps?: number;
   motionBucket?: number;
-  styleStack?: Json;
 }
 
 interface MotionResult {
@@ -28,217 +35,310 @@ interface MotionResult {
   videoUrl?: string;
   metadata?: Record<string, unknown>;
   error?: string;
+  // Queue status tracking (when using fal.subscribe)
+  requestId?: string;
+  statusUrl?: string;
+  responseUrl?: string;
+  cancelUrl?: string;
 }
 
 /**
- * Enhance prompt for motion generation based on frame context
+ * Provider-specific input builders
+ * Each provider has different API requirements
  */
-function enhanceMotionPrompt(
-  basePrompt: string | undefined,
-  styleStack: Json | undefined
-): string {
-  let enhancedPrompt = basePrompt || 'Create smooth, natural motion';
+type ProviderInputBuilder = (
+  options: GenerateMotionOptions,
+  modelConfig: ImageToVideoModelConfig
+) => Record<string, unknown>;
 
-  // Add style-specific motion hints
-  if (styleStack && typeof styleStack === 'object') {
-    const style = styleStack as Record<string, unknown>;
+const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
+  stability: (options, modelConfig) => {
+    // SVD-LCM: Always generates 25 frames, fps controls playback speed
+    const validatedFps = options.fps
+      ? Math.max(
+          modelConfig.capabilities.fpsRange.min,
+          Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
+        )
+      : modelConfig.capabilities.fpsRange.default;
 
-    // Add motion style hints based on the style stack
-    if (style.genre === 'action') {
-      enhancedPrompt += ', dynamic camera movement, fast-paced action';
-    } else if (style.genre === 'drama') {
-      enhancedPrompt += ', subtle movements, emotional expressions';
-    } else if (style.genre === 'sci-fi') {
-      enhancedPrompt += ', futuristic motion, smooth transitions';
+    const validatedMotionBucket = options.motionBucket
+      ? Math.max(1, Math.min(options.motionBucket, 255))
+      : 127;
+
+    return {
+      image_url: options.imageUrl,
+      motion_bucket_id: validatedMotionBucket,
+      cond_aug: 0.02, // Default conditioning augmentation
+      seed: Math.floor(Math.random() * 1000000),
+      steps: 4, // Default processing steps
+      fps: validatedFps,
+    };
+  },
+
+  kling: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+
+    // Kling requires string duration: "5" or "10"
+    const klingDuration = validatedDuration <= 7 ? '5' : '10';
+
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      duration: klingDuration, // Must be string enum
+      cfg_scale: 0.5, // Default CFG scale
+      negative_prompt: 'blur, distort, and low quality',
+    };
+  },
+
+  minimax: (options, modelConfig) => {
+    const modelId = modelConfig.id;
+
+    // WAN 2.1 (wan-i2v) has different params than WAN 2.5
+    if (modelId === 'fal-ai/wan-i2v') {
+      const validatedFps = options.fps
+        ? Math.max(
+            modelConfig.capabilities.fpsRange.min,
+            Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
+          )
+        : modelConfig.capabilities.fpsRange.default;
+
+      return {
+        prompt: options.prompt,
+        image_url: options.imageUrl,
+        frames_per_second: validatedFps,
+        num_frames: 81, // Default frame count
+        resolution: '720p',
+        aspect_ratio: 'auto',
+        enable_prompt_expansion: false,
+        enable_safety_checker: false,
+      };
     }
 
-    // Add mood-based motion
-    if (style.mood === 'tense') {
-      enhancedPrompt += ', slow deliberate movements';
-    } else if (style.mood === 'exciting') {
-      enhancedPrompt += ', energetic motion, quick cuts';
-    } else if (style.mood === 'peaceful') {
-      enhancedPrompt += ', gentle flowing movements';
-    }
-  }
+    // WAN 2.5
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
 
-  // Add general motion quality hints
-  enhancedPrompt +=
-    ', maintain visual consistency, smooth transitions, professional cinematography';
+    const duration = validatedDuration <= 7 ? '5' : '10'; // String enum
 
-  return enhancedPrompt;
-}
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      resolution: '1080p',
+      duration,
+      enable_prompt_expansion: true,
+      enable_safety_checker: true,
+    };
+  },
+
+  luma: (options, _modelConfig) => ({
+    prompt: options.prompt,
+    image_url: options.imageUrl,
+    aspect_ratio: '16:9',
+    loop: false,
+  }),
+
+  google: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+
+    // Veo 2 and Veo 3 have different duration formats
+    const modelId = modelConfig.id;
+    const durationValue =
+      modelId === 'fal-ai/veo2/image-to-video'
+        ? `${Math.round(validatedDuration)}s` // "5s", "6s", etc
+        : '8s'; // Veo 3 only supports 8s
+
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      aspect_ratio: 'auto',
+      duration: durationValue,
+      ...(modelId === 'fal-ai/veo3' && {
+        generate_audio: true,
+        resolution: '720p',
+      }),
+    };
+  },
+
+  seedance: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+
+    // Duration must be integer string enum
+    const duration = String(Math.round(validatedDuration));
+
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      aspect_ratio: 'auto',
+      resolution: '1080p',
+      duration,
+      camera_fixed: false,
+      seed: Math.floor(Math.random() * 1000000),
+      enable_safety_checker: true,
+    };
+  },
+
+  openai: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+
+    const validatedFps = options.fps
+      ? Math.max(
+          modelConfig.capabilities.fpsRange.min,
+          Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
+        )
+      : modelConfig.capabilities.fpsRange.default;
+
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      duration: validatedDuration,
+      fps: validatedFps,
+      seed: Math.floor(Math.random() * 1000000),
+    };
+  },
+};
 
 /**
  * Generate motion for a single frame using Fal.ai
+ * Uses fal.subscribe() for queue-based generation with status tracking
  */
 export async function generateMotionForFrame(
   options: GenerateMotionOptions
 ): Promise<MotionResult> {
   try {
-    const modelKey = options.model || 'svd_lcm';
-    const modelConfig = MOTION_MODELS[modelKey];
+    const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+    const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
 
     if (!modelConfig) {
       throw new Error(`Invalid model: ${modelKey}`);
     }
 
-    // Prepare the enhanced prompt
-    const enhancedPrompt = enhanceMotionPrompt(
-      options.prompt,
-      options.styleStack
-    );
+    // Get the provider-specific input builder
+    const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
-    // Validate and set parameters using new structure
-    const duration = Math.min(
-      options.duration || modelConfig.capabilities.defaultDuration,
-      modelConfig.capabilities.maxDuration
-    );
-    const fps = Math.max(
-      modelConfig.capabilities.fpsRange.min,
-      Math.min(
-        options.fps || modelConfig.capabilities.fpsRange.default,
-        modelConfig.capabilities.fpsRange.max
-      )
-    );
-    const motionBucket = options.motionBucket || 127; // 1-255, higher = more motion
+    if (!inputBuilder) {
+      throw new Error(
+        `No input builder found for provider: ${modelConfig.provider}`
+      );
+    }
 
-    // Import Fal.ai client dynamically to avoid initialization issues
-    const { fal } = await import('@/lib/ai/fal-client');
-
-    // Call the appropriate Fal.ai model
-    let result: unknown;
+    // Build provider-specific input
+    const input = inputBuilder(options, modelConfig);
 
     console.log(
       `[Motion Service] Generating motion with model: ${modelConfig.id}`,
       {
-        duration,
-        fps,
-        motionBucket,
-        promptLength: enhancedPrompt.length,
-        enhancedPrompt,
+        provider: modelConfig.provider,
+        promptLength: options.prompt?.length,
+        input,
       }
     );
 
-    switch (modelKey) {
-      case 'svd_lcm': {
-        // Fast SVD-LCM model - doesn't support prompts
-        result = await fal.run(modelConfig.id, {
-          input: {
-            image_url: options.imageUrl,
-            motion_bucket_id: motionBucket,
-            cond_aug: 0.02, // Conditioning augmentation
-            decoding_t: Math.round(duration * fps), // Number of frames
-            video_length: Math.round(duration * fps),
-            sizing_strategy: 'maintain_aspect_ratio',
-            frames_per_second: fps,
-            seed: Math.floor(Math.random() * 1000000),
-          },
-        });
-        break;
-      }
+    // Track queue status
+    let requestId: string | undefined;
+    let statusUrl: string | undefined;
+    let responseUrl: string | undefined;
+    let cancelUrl: string | undefined;
 
-      case 'kling_v2_5_turbo_pro': {
-        // Kling v2.5 Turbo Pro - requires string duration ("5" or "10")
-        const klingDuration = duration <= 7 ? '5' : '10'; // Round to nearest supported value
-        result = await fal.run(modelConfig.id, {
-          input: {
-            prompt: enhancedPrompt,
-            image_url: options.imageUrl,
-            duration: klingDuration, // Must be string "5" or "10"
-            // Note: fps and seed are not supported by this API endpoint
-            // Optional parameters that could be added: aspect_ratio, negative_prompt, cfg_scale
-          },
-        });
-        break;
-      }
+    // Call the Fal.ai model using subscribe for queue tracking
+    const result = await fal.subscribe(modelConfig.id, {
+      input,
+      logs: true,
+      pollInterval: 5000, // Poll every 5 seconds
+      onEnqueue: (reqId: string) => {
+        requestId = reqId;
+        console.log(`[Motion Service] Request enqueued: ${reqId}`);
+      },
+      onQueueUpdate: (update: QueueStatus) => {
+        // Capture URLs on first update
+        if (!statusUrl) {
+          statusUrl = update.status_url;
+          responseUrl = update.response_url;
+          cancelUrl = update.cancel_url;
 
-      case 'wan_i2v':
-      case 'kling_i2v':
-      case 'veo3':
-      case 'wan_v2':
-      case 'veo3_1':
-      case 'wan_2_5':
-      case 'sora_2': {
-        // Generic image-to-video models with prompt support
-        result = await fal.run(modelConfig.id, {
-          input: {
-            prompt: enhancedPrompt,
-            image_url: options.imageUrl,
-            duration: duration,
-            fps: fps,
-            seed: Math.floor(Math.random() * 1000000),
-          },
-        });
-        break;
-      }
+          console.log(`[Motion Service] Queue URLs available:`, {
+            statusUrl: update.status_url,
+            responseUrl: update.response_url,
+            cancelUrl: update.cancel_url,
+          });
+        }
 
-      case 'seedance_v1_pro': {
-        // Seedance 1.0 Pro model - uses specific aspect ratio and resolution
-        const seedanceConfig =
-          modelConfig.capabilities as typeof modelConfig.capabilities & {
-            aspectRatio?: string;
-            resolution?: string;
-          };
-        result = await fal.run(modelConfig.id, {
-          input: {
-            prompt: enhancedPrompt,
-            image_url: options.imageUrl,
-            aspect_ratio: seedanceConfig.aspectRatio || '16:9',
-            resolution: seedanceConfig.resolution || '1080p',
-            duration: duration,
-            seed: Math.floor(Math.random() * 1000000),
-          },
-        });
-        break;
-      }
+        // Log queue position
+        if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
+          console.log(
+            `[Motion Service] Queue position: ${update.queue_position}`
+          );
+        }
 
-      case 'veo2_i2v': {
-        // Google Veo 2 image-to-video model
-        const veo2Config =
-          modelConfig.capabilities as typeof modelConfig.capabilities & {
-            aspectRatio?: string;
-          };
-        result = await fal.run(modelConfig.id, {
-          input: {
-            prompt: enhancedPrompt,
-            image_url: options.imageUrl,
-            duration: duration,
-            aspect_ratio: veo2Config.aspectRatio || '16:9',
-            seed: Math.floor(Math.random() * 1000000),
-          },
-        });
-        break;
-      }
+        // Log progress
+        if (update.status === 'IN_PROGRESS') {
+          console.log(`[Motion Service] Generation in progress...`);
+          if (update.logs && update.logs.length > 0) {
+            update.logs.forEach((log) => {
+              console.log(`[Motion Service] ${log.level}: ${log.message}`);
+            });
+          }
+        }
 
-      default:
-        throw new Error(`Unsupported model: ${modelKey}`);
-    }
+        // Log completion
+        if (update.status === 'COMPLETED') {
+          console.log(
+            `[Motion Service] Generation completed in ${update.metrics?.inference_time || 'unknown'}s`
+          );
+        }
+      },
+    });
 
-    // Extract video URL from result
-    const videoUrl = (result as { video?: { url?: string } })?.video?.url;
+    console.log('[Motion Service] Result:', JSON.stringify(result, null, 2));
+
+    // Extract video URL from result (subscribe returns { data, requestId })
+    const data = (result as { data?: unknown }).data;
+    const videoUrl = (data as { video?: { url?: string } })?.video?.url;
 
     if (!videoUrl) {
       console.error('[Motion Service] No video URL in result:', result);
       throw new Error('No video URL returned from motion generation');
     }
 
+    // Capture requestId from result if not already captured in onEnqueue
+    if (!requestId && (result as { requestId?: string }).requestId) {
+      requestId = (result as { requestId: string }).requestId;
+    }
+
+    const validatedDuration =
+      options.duration || modelConfig.capabilities.defaultDuration;
+    const validatedFps =
+      options.fps || modelConfig.capabilities.fpsRange.default;
+
     return {
       success: true,
       videoUrl,
+      requestId,
+      statusUrl,
+      responseUrl,
+      cancelUrl,
       metadata: {
         model: modelConfig.id,
-        duration,
-        fps,
-        motionBucket,
-        totalFrames: Math.round(duration * fps),
+        provider: modelConfig.provider,
+        duration: validatedDuration,
+        fps: validatedFps,
+        motionBucket: options.motionBucket,
+        totalFrames: Math.round(validatedDuration * validatedFps),
         cost: modelConfig.pricing.estimatedCost,
         generatedAt: new Date().toISOString(),
       },
     };
   } catch (error) {
     console.error(
-      `[Motion Service] Generation failed for model ${options.model || 'svd_lcm'}:`,
+      `[Motion Service] Generation failed for model ${options.model || DEFAULT_VIDEO_MODEL}:`,
       {
         error: error instanceof Error ? error.message : String(error),
         imageUrl: options.imageUrl,
@@ -260,7 +360,7 @@ export function selectMotionModel(requirements: {
   speed?: 'fast' | 'balanced' | 'quality';
   budget?: 'low' | 'medium' | 'high';
   duration?: number;
-}): MotionModel {
+}): ImageToVideoModel {
   const { speed = 'balanced', budget = 'medium' } = requirements;
 
   // Speed priority
@@ -289,14 +389,14 @@ export function selectMotionModel(requirements: {
  */
 export function estimateMotionGeneration(
   frameCount: number,
-  model: MotionModel = 'svd_lcm'
+  model: ImageToVideoModel = 'svd_lcm'
 ): {
   totalCost: number;
   totalTime: number; // in seconds
   perFrameCost: number;
   perFrameTime: number;
 } {
-  const modelConfig = MOTION_MODELS[model];
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
 
   return {
     totalCost: frameCount * modelConfig.pricing.estimatedCost,
@@ -304,4 +404,87 @@ export function estimateMotionGeneration(
     perFrameCost: modelConfig.pricing.estimatedCost,
     perFrameTime: modelConfig.performance.estimatedGenerationTime,
   };
+}
+
+/**
+ * Check the status of a motion generation request
+ * @param statusUrl The status URL from the MotionResult
+ * @returns The current queue status
+ */
+export async function checkMotionStatus(
+  statusUrl: string
+): Promise<QueueStatus> {
+  const apiKey = process.env.FAL_KEY;
+
+  if (!apiKey) {
+    throw new Error('FAL_KEY environment variable is required');
+  }
+
+  const response = await fetch(statusUrl, {
+    headers: {
+      Authorization: `Key ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to check status: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json() as Promise<QueueStatus>;
+}
+
+/**
+ * Get the final result of a motion generation request
+ * @param responseUrl The response URL from the MotionResult
+ * @returns The completed video result
+ */
+export async function getMotionResult(
+  responseUrl: string
+): Promise<{ video: { url: string } }> {
+  const apiKey = process.env.FAL_KEY;
+
+  if (!apiKey) {
+    throw new Error('FAL_KEY environment variable is required');
+  }
+
+  const response = await fetch(responseUrl, {
+    headers: {
+      Authorization: `Key ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to get result: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Cancel a motion generation request
+ * @param cancelUrl The cancel URL from the MotionResult
+ */
+export async function cancelMotionGeneration(cancelUrl: string): Promise<void> {
+  const apiKey = process.env.FAL_KEY;
+
+  if (!apiKey) {
+    throw new Error('FAL_KEY environment variable is required');
+  }
+
+  const response = await fetch(cancelUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Key ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to cancel: ${response.status} ${response.statusText}`
+    );
+  }
 }
