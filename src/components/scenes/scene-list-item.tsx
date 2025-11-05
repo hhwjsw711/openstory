@@ -43,7 +43,7 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
   return (
     <Card
       className={cn(
-        '@container/scene cursor-pointer transition-all',
+        '@container/scene relative cursor-pointer transition-all',
         isActive ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
         variant === 'responsive' && '@[280px]/scene:py-3',
         variant === 'horizontal' && 'py-3',
@@ -51,26 +51,24 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
       )}
       onClick={onSelect}
     >
-      <CardHeader>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'h-6 w-6 rounded-full',
-              isCompleted
-                ? 'bg-success text-success-foreground hover:bg-success/90'
-                : 'border hover:border-primary'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleComplete();
-            }}
-          >
-            {isCompleted && <Check className="h-4 w-4" />}
-          </Button>
-        </CardAction>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'absolute right-4 top-4 z-10 h-6 w-6 rounded-full',
+          isCompleted
+            ? 'bg-success text-success-foreground hover:bg-success/90'
+            : 'border hover:border-primary'
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleComplete();
+        }}
+      >
+        {isCompleted && <Check className="h-4 w-4" />}
+      </Button>
 
+      <CardHeader>
         <div
           className={cn(
             'flex flex-col gap-3',

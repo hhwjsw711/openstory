@@ -200,3 +200,67 @@ export const MixedStates: Story = {
     mockFetchResponse(mixedFrames);
   },
 };
+
+// Width variations
+export const WidthMedium: Story = {
+  args: {
+    selectedFrameId: mockFrames[1]?.id ?? null,
+    completedFrameIds: new Set([mockFrames[3]?.id ?? '']),
+  },
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={queryClient}>
+        <div className="h-screen">
+          <div className="[&>div]:w-96">
+            <Story />
+          </div>
+        </div>
+      </QueryClientProvider>
+    ),
+  ],
+  beforeEach: () => {
+    mockFetchResponse(mockFrames);
+  },
+};
+
+export const WidthLarge: Story = {
+  args: {
+    selectedFrameId: mockFrames[1]?.id ?? null,
+    completedFrameIds: new Set([mockFrames[3]?.id ?? '']),
+  },
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={queryClient}>
+        <div className="h-screen">
+          <div className="[&>div]:w-[32rem]">
+            <Story />
+          </div>
+        </div>
+      </QueryClientProvider>
+    ),
+  ],
+  beforeEach: () => {
+    mockFetchResponse(mockFrames);
+  },
+};
+
+export const WidthExtraLarge: Story = {
+  args: {
+    selectedFrameId: mockFrames[1]?.id ?? null,
+    completedFrameIds: new Set([mockFrames[3]?.id ?? '']),
+  },
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={queryClient}>
+        <div className="h-screen">
+          <div className="[&>div]:w-[48rem]">
+            <Story />
+          </div>
+        </div>
+      </QueryClientProvider>
+    ),
+  ],
+  beforeEach: () => {
+    mockFetchResponse(mockFrames);
+  },
+};
