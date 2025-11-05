@@ -7,6 +7,7 @@ import {
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
 import { AI_PROVIDER_MAPPINGS, DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { Scene } from '@/lib/ai/scene-analysis.schema';
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
@@ -162,11 +163,21 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         try {
+          // Get existing frame to preserve metadata
+          const existingFrame = await db.query.frames.findFirst({
+            where: eq(frames.id, input.frameId),
+            columns: { metadata: true },
+          });
+
           await updateFrame(input.frameId, {
             thumbnailUrl: storageUrl,
             thumbnailStatus: 'completed',
             thumbnailGeneratedAt: new Date(),
             thumbnailError: null,
+            metadata: {
+              ...(existingFrame?.metadata as unknown as Scene),
+              sourceImageUrl: imageResult.imageUrls[0], // Store temporary FAL URL for API calls
+            },
           });
         } catch (error) {
           console.error(

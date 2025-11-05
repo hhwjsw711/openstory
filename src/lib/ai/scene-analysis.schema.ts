@@ -246,6 +246,7 @@ export const sceneSchema = z.object({
   prompts: promptsSchema,
   audioDesign: audioDesignSchema.optional(),
   continuity: continuitySchema.optional(),
+  sourceImageUrl: z.string().optional(), // Temporary FAL URL for API calls
 });
 
 // ============================================================================

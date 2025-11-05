@@ -16,6 +16,7 @@ import { generateMotionForFrame } from '@/lib/services/motion.service';
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { eq } from 'drizzle-orm';
+import { getImageUrlForApi } from '@/lib/utils/environment';
 
 /**
  * Motion generation workflow
@@ -104,8 +105,27 @@ export const generateMotionWorkflow = createWorkflow(
     // Step 3: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       try {
+        // Select appropriate image URL based on environment
+        // - Local dev: Use temporary FAL URL (publicly accessible)
+        // - Production: Use Supabase storage URL (publicly accessible)
+        const imageUrl = getImageUrlForApi(
+          frame.metadata?.sourceImageUrl,
+          input.thumbnailUrl
+        );
+
+        if (!imageUrl) {
+          throw new Error(
+            'No accessible image URL available for motion generation'
+          );
+        }
+
+        console.log(
+          '[MotionWorkflow]',
+          `Using image URL for motion generation: ${imageUrl.substring(0, 50)}...`
+        );
+
         const result = await generateMotionForFrame({
-          imageUrl: input.thumbnailUrl,
+          imageUrl,
           prompt: input.prompt,
           model: input.model || DEFAULT_VIDEO_MODEL,
           duration: input.duration,
