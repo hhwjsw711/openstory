@@ -85,6 +85,17 @@ export const generateImageWorkflow = createWorkflow(
           num_images: input.numImages || 1,
           seed: input.seed,
         });
+        console.log(
+          '[ImageWorkflow]',
+          'Response:',
+          JSON.stringify(resp, null, 2)
+        );
+        // Check if response has data
+        if (!resp.data) {
+          throw new Error(
+            resp.error || 'No data returned from image generation service'
+          );
+        }
 
         const respData = resp.data as unknown as
           | FalImageResponse
@@ -339,7 +350,7 @@ function resultByProvider(
     processingTimeMs: 0,
     provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
     metadata: {
-      prompt: resp.prompt,
+      prompt: (resp as { prompt?: string }).prompt || (data.prompt as string),
       model,
       dimensions: [] as { width: number; height: number }[],
       file_sizes: [] as number[],

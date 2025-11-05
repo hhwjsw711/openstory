@@ -101,6 +101,23 @@ export const StoryboardFrameWithScript: React.FC<
     frame.videoStatus === 'generating' || isGeneratingMotion;
   const isVideoPending = frame.videoStatus === 'pending';
 
+  // Compute overlay state (priority: thumbnail > video)
+  const overlayState = (() => {
+    if (isThumbnailPending) {
+      return { show: true, text: 'Queued for generation...', isPending: true };
+    }
+    if (isThumbnailGenerating) {
+      return { show: true, text: 'Generating image...', isPending: false };
+    }
+    if (isVideoPending) {
+      return { show: true, text: 'Queued for motion...', isPending: true };
+    }
+    if (isVideoGenerating) {
+      return { show: true, text: 'Generating motion...', isPending: false };
+    }
+    return { show: false, text: '', isPending: false };
+  })();
+
   console.log('[isVideoGenerating] isVideoGenerating', {
     frameVideoStatus: frame.videoStatus,
     isGeneratingMotion,
@@ -433,7 +450,7 @@ export const StoryboardFrameWithScript: React.FC<
           )}
 
           {/* Thumbnail image (shown when video not playing) */}
-          {(!showVideo || !hasVideo) && hasThumbnail ? (
+          {(!showVideo || !hasVideo) && hasThumbnail && (
             <Image
               src={frame.thumbnailUrl || ''}
               alt={`Frame ${frame.orderIndex + 1} preview`}
@@ -441,24 +458,6 @@ export const StoryboardFrameWithScript: React.FC<
               width={1920}
               height={1080}
             />
-          ) : (
-            !showVideo &&
-            !hasThumbnail && (
-              <div className="flex h-full w-full items-center justify-center bg-muted">
-                {isGeneratingPreview ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                    <span className="text-xs text-muted-foreground">
-                      Generating preview...
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    No preview available
-                  </span>
-                )}
-              </div>
-            )
           )}
 
           {/* Play button overlay */}
@@ -478,51 +477,23 @@ export const StoryboardFrameWithScript: React.FC<
             </Button>
           )}
 
-          {/* Thumbnail pending status */}
-          {isThumbnailPending && (
+          {/* Generation status overlay */}
+          {overlayState.show && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
               <div className="flex flex-col items-center gap-2 text-white">
-                <div className="h-6 w-6 rounded-full border-2 border-white/40 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-white/60" />
-                </div>
-                <span className="text-xs">Queued for generation...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Thumbnail generation status */}
-          {isThumbnailGenerating && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-              <div className="flex flex-col items-center gap-2 text-white">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
-                <span className="text-xs">Generating image...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Motion pending status */}
-          {isVideoPending && !isThumbnailPending && !isThumbnailGenerating && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-              <div className="flex flex-col items-center gap-2 text-white">
-                <div className="h-6 w-6 rounded-full border-2 border-white/40 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-white/60" />
-                </div>
-                <span className="text-xs">Queued for motion...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Motion generation status */}
-          {isVideoGenerating &&
-            !isThumbnailGenerating &&
-            !isThumbnailPending && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-                <div className="flex flex-col items-center gap-2 text-white">
+                {overlayState.isPending ? (
+                  <div className="h-6 w-6 rounded-full border-2 border-white/40 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-white/60" />
+                  </div>
+                ) : (
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
-                  <span className="text-xs">Generating motion...</span>
-                </div>
+                )}
+                <span className="text-xs [text-shadow:none]">
+                  {overlayState.text}
+                </span>
               </div>
-            )}
+            </div>
+          )}
 
           {/* Video indicator badge */}
           {hasVideo && (

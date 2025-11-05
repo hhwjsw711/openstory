@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Read",
       "Bash(bun lint:*)",
       "Bash(bun lint)",
       "Bash(bun lint:fix)",
