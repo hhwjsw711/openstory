@@ -1,8 +1,8 @@
-# Phase 1: Scene List Components
+# Phase 1: Scene List Components (Read-Only)
 
 ## Objective
 
-Create the scene list sidebar for desktop and bottom sheet for mobile, including drag-and-drop reordering, scene thumbnails, and completion tracking.
+Create the scene list sidebar for desktop and bottom sheet for mobile, including scene thumbnails, selection, and completion tracking. **Drag-and-drop reordering is deferred to Phase 1.5.**
 
 ## Dependencies
 
@@ -28,7 +28,7 @@ Create the scene list sidebar for desktop and bottom sheet for mobile, including
 ### TanStack Query Hooks
 
 ```typescript
-import { useFramesBySequence } from '@/lib/api/frames';
+import { useFramesBySequence } from '@/hooks/use-frames';
 // Returns: { data: Frame[], isLoading, error }
 ```
 
@@ -36,8 +36,20 @@ import { useFramesBySequence } from '@/lib/api/frames';
 
 ```typescript
 import type { Frame } from '@/types/database';
-// Frame includes: id, sequenceId, metadata (Scene), thumbnailUrl, videoUrl, thumbnailStatus, videoStatus
+// Frame includes:
+// - id, sequenceId, orderIndex
+// - metadata (Scene object with title, prompts, etc.)
+// - thumbnailUrl, thumbnailStatus ('pending' | 'generating' | 'completed' | 'failed')
+// - videoUrl, videoStatus ('pending' | 'generating' | 'completed' | 'failed')
+// - thumbnailError, videoError (error messages if failed)
 ```
+
+### Reference Implementation
+
+See existing storyboard components for patterns:
+
+- `src/components/sequence/storyboard-frame-with-script.tsx` - Status checking (lines 98-119)
+- `src/components/sequence/storyboard-frame.tsx` - Basic frame card with drag-and-drop
 
 ## Component Specifications
 
@@ -80,16 +92,33 @@ type SceneThumbnailProps = {
 type SceneListItemProps = {
   frame: Frame;
   isActive: boolean;
-  isCompleted: boolean;
+  isCompleted: boolean; // Computed from frame status + manual completion state
   onSelect: () => void;
   onToggleComplete: () => void;
-  dragHandleProps?: any; // For @dnd-kit
 };
+```
+
+**Computing `isCompleted` prop:**
+
+```typescript
+const isCompleted = (frame: Frame, completedFrameIds: Set<string>) => {
+  const isFullyGenerated =
+    frame.thumbnailStatus === 'completed' &&
+    frame.videoStatus === 'completed';
+  const isManuallyMarked = completedFrameIds.has(frame.id);
+  return isFullyGenerated || isManuallyMarked;
+};
+
+// Usage:
+<SceneListItem
+  frame={frame}
+  isCompleted={isCompleted(frame, completedFrameIds)}
+  // ...
+/>
 ```
 
 **Layout:**
 
-- Drag handle (desktop only) - GripVertical icon
 - Thumbnail (80x45px)
 - Scene number badge (e.g., "1", "2", "3")
 - Heading (from frame.metadata.metadata.title)
@@ -101,16 +130,15 @@ type SceneListItemProps = {
 - Active scene: `bg-primary/10 border-primary`
 - Inactive: `bg-muted/50 border-border/50 hover:bg-muted/70`
 - Completed checkbox: green background with check icon
-- Drag handle: only visible on desktop (`hidden md:block`)
+- Clickable card for selection
 
 **Responsive:**
 
-- Desktop: Show drag handle, smaller text
-- Mobile: Hide drag handle, slightly larger touch targets
+- Mobile: Slightly larger touch targets for better UX
 
 ### 3. SceneList Component
 
-**Purpose:** Container for all scene items with drag-and-drop
+**Purpose:** Container for all scene items
 
 **Props:**
 
@@ -126,11 +154,11 @@ type SceneListProps = {
 
 **Features:**
 
-- Fetch frames using `useFramesBySequence(sequenceId)`
-- Drag-and-drop reordering (desktop only) using @dnd-kit
+- Fetch frames using `useFramesBySequence(sequenceId)` from `@/hooks/use-frames`
 - Scrollable list with ScrollArea
 - Loading state with skeleton items
 - Empty state if no frames
+- Simple ordered list (reordering comes in Phase 1.5)
 
 **Desktop Layout:**
 
@@ -138,36 +166,13 @@ type SceneListProps = {
 - Full height with scroll
 - Editable story title at top
 - "Scenes" label
-- Action buttons at bottom: "Generate ALL Motion", "Add Scene"
 
 **Mobile:**
 
 - Not rendered (use MobileSceneSheet instead)
 - Hidden with `hidden md:block`
 
-**Drag-and-Drop Setup:**
-
-```typescript
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-```
-
-**Reordering:**
-
-- On drag end, calculate new order
-- Call API to update frame order (we'll need to create this mutation)
-- Optimistic UI update
+**Note:** Drag-and-drop reordering will be added in Phase 1.5.
 
 ### 4. MobileSceneSheet Component
 
@@ -222,7 +227,27 @@ type MobileSceneSheetProps = {
 
 ### Completion State
 
-Use a Set to track completed frame IDs:
+**Determining Frame Completion:**
+
+A frame is considered "completed" when BOTH thumbnail and video are fully generated:
+
+```typescript
+// Check frame generation status from database fields
+const isThumbnailComplete = frame.thumbnailStatus === 'completed';
+const isVideoComplete = frame.videoStatus === 'completed';
+
+// Frame is fully completed when both image and video are done
+const isFrameComplete = isThumbnailComplete && isVideoComplete;
+```
+
+**Status field values:**
+
+- `frame.thumbnailStatus`: `'pending' | 'generating' | 'completed' | 'failed'`
+- `frame.videoStatus`: `'pending' | 'generating' | 'completed' | 'failed'`
+
+**Client-side completion tracking:**
+
+Use a Set to track manually completed frame IDs (for UI-only "mark as done" feature):
 
 ```typescript
 const [completedFrameIds, setCompletedFrameIds] = useState<Set<string>>(
@@ -242,53 +267,29 @@ const handleToggleComplete = (frameId: string) => {
 };
 ```
 
-### Drag Handle with @dnd-kit
+**Visual completion logic:**
 
-```tsx
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+```typescript
+// Combine database status + manual completion for visual state
+const isCompleted = (frame: Frame, completedFrameIds: Set<string>) => {
+  const isFullyGenerated =
+    frame.thumbnailStatus === 'completed' && frame.videoStatus === 'completed';
+  const isManuallyMarked = completedFrameIds.has(frame.id);
 
-function SortableSceneItem({ frame, ...props }: Props) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: frame.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <div
-        {...attributes}
-        {...listeners}
-        className="hidden md:block cursor-grab active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4" />
-      </div>
-      {/* Rest of card */}
-    </div>
-  );
-}
+  // Frame is "complete" if either fully generated OR manually marked
+  return isFullyGenerated || isManuallyMarked;
+};
 ```
 
 ## Acceptance Criteria
 
 - [ ] Desktop scene list displays all frames in order
-- [ ] Drag-and-drop reordering works on desktop
 - [ ] Scene thumbnails show loading state when generating
 - [ ] Active scene is visually highlighted
 - [ ] Completion checkboxes toggle correctly
+- [ ] Clicking a scene selects it
 - [ ] Mobile bottom sheet opens and displays scenes
 - [ ] Clicking scene on mobile closes sheet and selects scene
-- [ ] No drag handle visible on mobile
 - [ ] Responsive breakpoint at 768px works correctly
 - [ ] All Storybook stories render without errors
 
@@ -423,23 +424,27 @@ Test completion state management logic separately in a utility file.
 ## Commit Message
 
 ```
-feat: add scene list components with drag-and-drop
+feat: add scene list components (read-only)
 
-- Create SceneList component with drag-and-drop reordering
+- Create SceneList component with scrollable scene display
 - Add SceneListItem with thumbnails and completion tracking
 - Implement SceneThumbnail with loading states
 - Add MobileSceneSheet for mobile navigation
 - Include Storybook stories for all components
 - Use CSS-only responsive design (no JS hooks)
+- Drag-and-drop reordering deferred to Phase 1.5
 ```
 
 ## Next Phase
 
-After committing this phase, proceed to **Phase 2: Image Preview & Video Controls**.
+After committing this phase, proceed to **Phase 1.5: Drag-and-Drop Reordering**.
 
 ## Notes
 
-- Drag-and-drop is desktop-only for better touch UX
-- Completion state is client-side only for now (can persist later)
-- Scene ordering mutation may need to be added to API hooks
+- **Completion state**: Uses database status fields (`thumbnailStatus` and `videoStatus`) to determine if frames are fully generated, plus optional client-side manual "mark as done" tracking
+- A frame is considered fully complete when both `thumbnailStatus === 'completed'` AND `videoStatus === 'completed'`
 - Mobile sheet auto-closes on selection for smoother UX
+- Drag-and-drop reordering functionality moved to Phase 1.5
+- Using existing `useFramesBySequence` hook from `@/hooks/use-frames`
+- Frame metadata contains complete Scene object for rendering titles/descriptions
+- See `storyboard-frame-with-script.tsx` for reference implementation of status checking (lines 98-119)
