@@ -1,9 +1,3 @@
-/**
- * Image generation workflow
- * Generates images using AI models and optionally updates frame thumbnails
- */
-
-import { serve } from '@upstash/workflow/nextjs';
 import {
   type FalImageGenerationParams,
   type FalImageResponse,
@@ -12,22 +6,22 @@ import {
 } from '@/lib/ai/fal-client';
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
-import { AI_PROVIDER_MAPPINGS } from '@/lib/ai/models';
+import { AI_PROVIDER_MAPPINGS, DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { Scene } from '@/lib/ai/scene-analysis.schema';
+import { db } from '@/lib/db/client';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { getSequenceById } from '@/lib/db/helpers/queries';
+import { frames, sequences } from '@/lib/db/schema';
 import type {
   LetzAIImageRequest,
   LetzAIImageResponse,
 } from '@/lib/schemas/letzai-request';
-import { LoggerService } from '@/lib/services/logger.service';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { db } from '@/lib/db/client';
-import { frames, sequences } from '@/lib/db/schema';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-import { updateFrame } from '@/lib/db/helpers/frames';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-
-const loggerService = new LoggerService('ImageWorkflow');
 
 const LETZAI_PRESET_DIMENSIONS: Record<
   string,
@@ -41,8 +35,8 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
-export const { POST } = serve<ImageWorkflowInput>(
-  async (context) => {
+export const generateImageWorkflow = createWorkflow(
+  async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication
@@ -55,7 +49,8 @@ export const { POST } = serve<ImageWorkflowInput>(
       );
     }
 
-    loggerService.logDebug(
+    console.log(
+      '[ImageWorkflow]',
       `Starting image generation workflow for user ${input.userId}`
     );
 
@@ -73,10 +68,11 @@ export const { POST } = serve<ImageWorkflowInput>(
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       // Determine model to use
-      let model = input.model as keyof typeof IMAGE_MODELS | undefined;
-      if (!model) model = 'flux_krea_lora'; // Default to fast model
+      let model = input.model;
+      if (!model) model = DEFAULT_IMAGE_MODEL;
 
-      loggerService.logDebug(
+      console.log(
+        '[ImageWorkflow]',
         `Generating image ${input.frameId} with model ${model}`
       );
 
@@ -89,6 +85,17 @@ export const { POST } = serve<ImageWorkflowInput>(
           num_images: input.numImages || 1,
           seed: input.seed,
         });
+        console.log(
+          '[ImageWorkflow]',
+          'Response:',
+          JSON.stringify(resp, null, 2)
+        );
+        // Check if response has data
+        if (!resp.data) {
+          throw new Error(
+            resp.error || 'No data returned from image generation service'
+          );
+        }
 
         const respData = resp.data as unknown as
           | FalImageResponse
@@ -113,7 +120,53 @@ export const { POST } = serve<ImageWorkflowInput>(
       }
     });
 
-    // Step 3: Update frame if frameId is provided
+    // Step 3: Upload image to storage if frameId is provided
+    let storageUrl = imageResult.imageUrls[0]; // Default to FAL URL if upload fails
+    if (input.frameId && imageResult.imageUrls.length > 0) {
+      storageUrl = await context.run('upload-to-storage', async () => {
+        if (!input.frameId || !input.sequenceId || !input.teamId) {
+          console.warn(
+            '[ImageWorkflow]',
+            'Missing required IDs for storage upload, using temporary URL'
+          );
+          return imageResult.imageUrls[0];
+        }
+
+        try {
+          const { uploadImageToStorage } = await import(
+            '@/lib/services/image-storage.service'
+          );
+
+          const result = await uploadImageToStorage({
+            imageUrl: imageResult.imageUrls[0],
+            teamId: input.teamId,
+            sequenceId: input.sequenceId,
+            frameId: input.frameId,
+          });
+
+          if (!result.success || !result.url) {
+            throw new Error(
+              result.error || 'Failed to upload image to storage'
+            );
+          }
+
+          console.log(
+            '[ImageWorkflow]',
+            `Image uploaded to storage: ${result.path}`
+          );
+          return result.url;
+        } catch (error) {
+          console.error(
+            '[ImageWorkflow]',
+            `Failed to upload image to storage: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          // Fall back to temporary FAL URL if storage upload fails
+          return imageResult.imageUrls[0];
+        }
+      });
+    }
+
+    // Step 4: Update frame if frameId is provided
     if (input.frameId && imageResult.imageUrls.length > 0) {
       await context.run('update-frame', async () => {
         if (!input.frameId) {
@@ -121,14 +174,25 @@ export const { POST } = serve<ImageWorkflowInput>(
         }
 
         try {
+          // Get existing frame to preserve metadata
+          const existingFrame = await db.query.frames.findFirst({
+            where: eq(frames.id, input.frameId),
+            columns: { metadata: true },
+          });
+
           await updateFrame(input.frameId, {
-            thumbnailUrl: imageResult.imageUrls[0],
+            thumbnailUrl: storageUrl,
             thumbnailStatus: 'completed',
             thumbnailGeneratedAt: new Date(),
             thumbnailError: null,
+            metadata: {
+              ...(existingFrame?.metadata as unknown as Scene),
+              sourceImageUrl: imageResult.imageUrls[0], // Store temporary FAL URL for API calls
+            },
           });
         } catch (error) {
-          loggerService.logError(
+          console.error(
+            '[ImageWorkflow]',
             `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
           throw error;
@@ -137,7 +201,7 @@ export const { POST } = serve<ImageWorkflowInput>(
         return { updated: true };
       });
 
-      // Step 3: Check if all frames are complete and update sequence
+      // Step 5: Check if all frames are complete and update sequence
       if (input.sequenceId) {
         await context.run('update-sequence-status', async () => {
           if (!input.sequenceId) {
@@ -191,7 +255,8 @@ export const { POST } = serve<ImageWorkflowInput>(
                     })
                     .where(eq(sequences.id, input.sequenceId));
                 } catch (error) {
-                  loggerService.logError(
+                  console.error(
+                    '[ImageWorkflow]',
                     `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
                   );
                 }
@@ -204,12 +269,12 @@ export const { POST } = serve<ImageWorkflowInput>(
       }
     }
 
-    loggerService.logDebug('Image generation workflow completed');
+    console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
     const result: ImageWorkflowResult = {
-      imageUrl: imageResult.imageUrls[0],
-      thumbnailUrl: imageResult.imageUrls[0],
+      imageUrl: storageUrl,
+      thumbnailUrl: storageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };
@@ -229,7 +294,8 @@ export const { POST } = serve<ImageWorkflowInput>(
           thumbnailError: failResponse,
         });
 
-        loggerService.logError(
+        console.error(
+          '[ImageWorkflow]',
           `Image generation failed for frame ${input.frameId}: ${failResponse}`
         );
       }
@@ -284,7 +350,7 @@ function resultByProvider(
     processingTimeMs: 0,
     provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
     metadata: {
-      prompt: resp.prompt,
+      prompt: (resp as { prompt?: string }).prompt || (data.prompt as string),
       model,
       dimensions: [] as { width: number; height: number }[],
       file_sizes: [] as number[],

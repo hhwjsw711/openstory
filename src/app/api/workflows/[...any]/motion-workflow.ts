@@ -3,20 +3,45 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
-import { serve } from '@upstash/workflow/nextjs';
-import { LoggerService } from '@/lib/services/logger.service';
+import { db } from '@/lib/db/client';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { frames } from '@/lib/db/schema';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { db } from '@/lib/db/client';
-import { frames } from '@/lib/db/schema';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
+// Import motion service
+import { generateMotionForFrame } from '@/lib/services/motion.service';
+
+import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { eq } from 'drizzle-orm';
-import { updateFrame } from '@/lib/db/helpers/frames';
+import { getImageUrlForApi } from '@/lib/utils/environment';
 
-const loggerService = new LoggerService('MotionWorkflow');
-
-export const { POST } = serve<MotionWorkflowInput>(
-  async (context) => {
+/**
+ * Motion generation workflow
+ * Generates video motion from static frame thumbnails (image-to-video)
+ * @param context - The workflow context. Input is in the request payload.
+ * - userId: string;
+ * - teamId: string;
+ * - frameId: string;
+ * - sequenceId: string;
+ * - thumbnailUrl: string;
+ * - prompt?: string;
+ * - model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
+ * - duration?: number;
+ * - fps?: number;
+ * - motionBucket?: number;
+ * @param  - The motion workflow input
+ * @returns The motion workflow result
+ * @throws WorkflowValidationError if the thumbnail URL is required for motion generation
+ * @throws WorkflowValidationError if the team ID is not authorized
+ * @throws WorkflowValidationError if the frame is not found
+ * @throws WorkflowValidationError if the frame is not authorized
+ * @throws WorkflowValidationError if the frame is not found
+ */
+export const generateMotionWorkflow = createWorkflow(
+  async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication
@@ -29,7 +54,8 @@ export const { POST } = serve<MotionWorkflowInput>(
       );
     }
 
-    loggerService.logDebug(
+    console.log(
+      '[MotionWorkflow]',
       `Starting motion generation workflow for frame ${input.frameId}`
     );
 
@@ -79,21 +105,32 @@ export const { POST } = serve<MotionWorkflowInput>(
     // Step 3: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       try {
-        // Import motion service
-        const { generateMotionForFrame } = await import(
-          '@/lib/services/motion.service'
+        // Select appropriate image URL based on environment
+        // - Local dev: Use temporary FAL URL (publicly accessible)
+        // - Production: Use Supabase storage URL (publicly accessible)
+        const imageUrl = getImageUrlForApi(
+          frame.metadata?.sourceImageUrl,
+          input.thumbnailUrl
+        );
+
+        if (!imageUrl) {
+          throw new Error(
+            'No accessible image URL available for motion generation'
+          );
+        }
+
+        console.log(
+          '[MotionWorkflow]',
+          `Using image URL for motion generation: ${imageUrl.substring(0, 50)}...`
         );
 
         const result = await generateMotionForFrame({
-          imageUrl: input.thumbnailUrl,
+          imageUrl,
           prompt: input.prompt,
-          model: input.model || 'veo3',
-          duration: input.duration || 2,
-          fps: input.fps || 7,
-          motionBucket: input.motionBucket || 127,
-          styleStack:
-            (frame.sequence.style?.config as Record<string, unknown> | null) ||
-            undefined,
+          model: input.model || DEFAULT_VIDEO_MODEL,
+          duration: input.duration,
+          fps: input.fps,
+          motionBucket: input.motionBucket,
         });
 
         if (!result.success || !result.videoUrl) {
@@ -102,15 +139,10 @@ export const { POST } = serve<MotionWorkflowInput>(
 
         return result;
       } catch (error) {
-        loggerService.logError(
+        console.error(
+          '[MotionWorkflow]',
           `Motion generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
-        // Update frame status on error
-        await updateFrame(input.frameId, {
-          videoStatus: 'generating',
-          videoError: error instanceof Error ? error.message : 'Unknown error',
-        });
-
         throw error; // Re-throw so QStash will retry
       }
     });
@@ -156,7 +188,7 @@ export const { POST } = serve<MotionWorkflowInput>(
       }
     });
 
-    loggerService.logDebug('Motion generation workflow completed');
+    console.log('[MotionWorkflow]', 'Motion generation workflow completed');
 
     // Return result
     const result: MotionWorkflowResult = {
@@ -179,7 +211,8 @@ export const { POST } = serve<MotionWorkflowInput>(
         videoError: failResponse,
       });
 
-      loggerService.logError(
+      console.error(
+        '[MotionWorkflow]',
         `Motion generation failed for frame ${input.frameId}: ${failResponse}`
       );
 

@@ -12,7 +12,7 @@ import {
   createSequenceSchema,
 } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
-import type { FrameGenerationWorkflowInput } from '@/lib/workflow';
+import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         await sequenceService.updateSequenceStatus(sequence.id, 'processing');
 
         // Generate frames asynchronously via workflow
-        const workflowInput: FrameGenerationWorkflowInput = {
+        const workflowInput: StoryboardWorkflowInput = {
           userId: user.id,
           teamId,
           sequenceId: sequence.id,

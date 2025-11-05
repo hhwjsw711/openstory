@@ -1,12 +1,12 @@
 /**
- * Video Storage Service
- * Handles uploading and managing videos in Supabase Storage
+ * Image Storage Service
+ * Handles uploading and managing images in Supabase Storage
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
 
-interface UploadVideoOptions {
-  videoUrl: string;
+interface UploadImageOptions {
+  imageUrl: string;
   teamId: string;
   sequenceId: string;
   frameId: string;
@@ -20,34 +20,37 @@ interface StorageResult {
 }
 
 /**
- * Upload a video from URL to Supabase Storage
+ * Upload an image from URL to Supabase Storage
  */
-export async function uploadVideoToStorage(
-  options: UploadVideoOptions
+export async function uploadImageToStorage(
+  options: UploadImageOptions
 ): Promise<StorageResult> {
   try {
-    const { videoUrl, teamId, sequenceId, frameId } = options;
+    const { imageUrl, teamId, sequenceId, frameId } = options;
     const supabase = createAdminClient();
 
     // Construct storage path
-    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/motion.mp4`;
+    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/thumbnail.jpg`;
 
-    // Download video from URL
-    const response = await fetch(videoUrl);
+    // Download image from URL
+    const response = await fetch(imageUrl);
 
     if (!response.ok) {
-      throw new Error(`Failed to download video: ${response.statusText}`);
+      throw new Error(`Failed to download image: ${response.statusText}`);
     }
 
-    const videoBlob = await response.blob();
-    const videoBuffer = await videoBlob.arrayBuffer();
-    const videoData = new Uint8Array(videoBuffer);
+    const imageBlob = await response.blob();
+    const imageBuffer = await imageBlob.arrayBuffer();
+    const imageData = new Uint8Array(imageBuffer);
+
+    // Determine content type from response or default to jpeg
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
 
     // Upload to Supabase Storage
     const { error } = await supabase.storage
-      .from('videos')
-      .upload(storagePath, videoData, {
-        contentType: 'video/mp4',
+      .from('thumbnails')
+      .upload(storagePath, imageData, {
+        contentType,
         upsert: true, // Overwrite if exists
       });
 
@@ -57,7 +60,7 @@ export async function uploadVideoToStorage(
 
     // Generate signed URL for private bucket (1 year expiry)
     const { data, error: signedUrlError } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .createSignedUrl(storagePath, 31536000); // 1 year in seconds
 
     if (signedUrlError) {
@@ -70,18 +73,18 @@ export async function uploadVideoToStorage(
       path: storagePath,
     };
   } catch (error) {
-    console.error('[Video Storage] Upload failed:', error);
+    console.error('[Image Storage] Upload failed:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to upload video',
+      error: error instanceof Error ? error.message : 'Failed to upload image',
     };
   }
 }
 
 /**
- * Generate a signed URL for temporary video access
+ * Generate a signed URL for temporary image access
  */
-export async function getSignedVideoUrl(
+export async function getSignedImageUrl(
   path: string,
   expiresIn: number = 3600 // 1 hour default
 ): Promise<StorageResult> {
@@ -89,7 +92,7 @@ export async function getSignedVideoUrl(
     const supabase = createAdminClient();
 
     const { data, error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .createSignedUrl(path, expiresIn);
 
     if (error) {
@@ -102,7 +105,7 @@ export async function getSignedVideoUrl(
       path,
     };
   } catch (error) {
-    console.error('[Video Storage] Failed to create signed URL:', error);
+    console.error('[Image Storage] Failed to create signed URL:', error);
     return {
       success: false,
       error:
@@ -112,39 +115,39 @@ export async function getSignedVideoUrl(
 }
 
 /**
- * Delete a video from storage
+ * Delete an image from storage
  */
-export async function deleteVideoFromStorage(
+export async function deleteImageFromStorage(
   path: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createAdminClient();
 
-    const { error } = await supabase.storage.from('videos').remove([path]);
+    const { error } = await supabase.storage.from('thumbnails').remove([path]);
 
     if (error) {
-      throw new Error(`Failed to delete video: ${error.message}`);
+      throw new Error(`Failed to delete image: ${error.message}`);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('[Video Storage] Failed to delete video:', error);
+    console.error('[Image Storage] Failed to delete image:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete video',
+      error: error instanceof Error ? error.message : 'Failed to delete image',
     };
   }
 }
 
 /**
- * List all videos for a sequence
+ * List all images for a sequence
  */
-export async function listSequenceVideos(
+export async function listSequenceImages(
   teamId: string,
   sequenceId: string
 ): Promise<{
   success: boolean;
-  videos?: Array<{ name: string; size: number; path: string }>;
+  images?: Array<{ name: string; size: number; path: string }>;
   error?: string;
 }> {
   try {
@@ -152,18 +155,24 @@ export async function listSequenceVideos(
     const folderPath = `teams/${teamId}/sequences/${sequenceId}/frames/`;
 
     const { data, error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .list(folderPath, {
         limit: 100,
         offset: 0,
       });
 
     if (error) {
-      throw new Error(`Failed to list videos: ${error.message}`);
+      throw new Error(`Failed to list images: ${error.message}`);
     }
 
-    const videos = data
-      ?.filter((file) => file.name.endsWith('.mp4'))
+    const images = data
+      ?.filter(
+        (file) =>
+          file.name.endsWith('.jpg') ||
+          file.name.endsWith('.jpeg') ||
+          file.name.endsWith('.png') ||
+          file.name.endsWith('.webp')
+      )
       .map((file) => ({
         name: file.name,
         size: file.metadata?.size || 0,
@@ -172,21 +181,21 @@ export async function listSequenceVideos(
 
     return {
       success: true,
-      videos: videos || [],
+      images: images || [],
     };
   } catch (error) {
-    console.error('[Video Storage] Failed to list videos:', error);
+    console.error('[Image Storage] Failed to list images:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to list videos',
+      error: error instanceof Error ? error.message : 'Failed to list images',
     };
   }
 }
 
 /**
- * Calculate total storage used by a team
+ * Calculate total image storage used by a team
  */
-export async function calculateTeamStorageUsage(teamId: string): Promise<{
+export async function calculateTeamImageStorageUsage(teamId: string): Promise<{
   success: boolean;
   totalBytes?: number;
   totalMB?: number;
@@ -197,7 +206,7 @@ export async function calculateTeamStorageUsage(teamId: string): Promise<{
     const folderPath = `teams/${teamId}/`;
 
     const { data, error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .list(folderPath, {
         limit: 1000,
         offset: 0,
@@ -218,7 +227,7 @@ export async function calculateTeamStorageUsage(teamId: string): Promise<{
       totalMB: totalBytes / (1024 * 1024),
     };
   } catch (error) {
-    console.error('[Video Storage] Failed to calculate storage:', error);
+    console.error('[Image Storage] Failed to calculate storage:', error);
     return {
       success: false,
       error:

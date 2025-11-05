@@ -100,7 +100,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       : null,
     durationMs: faker.number.int({ min: 3000, max: 10000 }),
     thumbnailStatus: faker.helpers.arrayElement([
-      'idle',
+      'pending',
       'generating',
       'completed',
       'failed',
@@ -109,7 +109,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     thumbnailGeneratedAt: faker.date.recent(),
     thumbnailError: null,
     videoStatus: faker.helpers.arrayElement([
-      'idle',
+      'pending',
       'generating',
       'completed',
       'failed',

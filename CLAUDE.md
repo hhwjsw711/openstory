@@ -161,6 +161,101 @@ All API routes follow this structure:
 - **Formatting**: Prettier
 - **AI Models**: Multiple providers (Fal.ai, Runway, Kling, etc.) via unified interface
 
+### Fal.ai API Documentation
+
+When working with fal.ai models, always verify API specifications using the `/llms.txt` endpoint:
+
+```bash
+# Get exact API specifications for any model
+https://fal.ai/models/{model-path}/api/llms.txt
+
+# Examples:
+https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video/llms.txt
+https://fal.ai/models/fal-ai/fast-svd-lcm/llms.txt
+https://fal.ai/models/fal-ai/wan-25-preview/image-to-video/llms.txt
+```
+
+**Why `/llms.txt`?**
+
+- Provides machine-readable, authoritative parameter specifications
+- Includes all required/optional parameters with types, defaults, and constraints
+- More reliable than HTML documentation which may be outdated
+- Essential for accurate model capability definitions in `src/lib/ai/models.ts`
+
+**Always verify before updating model configurations** to ensure capabilities match the actual API.
+
+### Motion Generation Status Checking
+
+The motion service uses fal.ai's queue-based `subscribe()` API for asynchronous video generation. When you generate motion with `generateMotionForFrame()`, you receive status URLs that can be used to check progress, get results, or cancel requests.
+
+**Status URLs returned from `generateMotionForFrame()`:**
+
+```typescript
+const result = await generateMotionForFrame({
+  imageUrl: 'https://example.com/image.jpg',
+  prompt: 'Camera pan left',
+  model: 'wan_i2v',
+});
+
+// result.requestId - Unique request identifier
+// result.statusUrl - Check current status
+// result.responseUrl - Get final result
+// result.cancelUrl - Cancel the request
+```
+
+**Programmatic status checking:**
+
+```typescript
+import {
+  checkMotionStatus,
+  getMotionResult,
+  cancelMotionGeneration,
+} from '@/lib/services/motion.service';
+
+// Check status
+const status = await checkMotionStatus(result.statusUrl);
+// status.status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED"
+// status.queue_position (when IN_QUEUE)
+// status.logs[] (when IN_PROGRESS or COMPLETED)
+// status.metrics.inference_time (when COMPLETED)
+
+// Get result once completed
+const video = await getMotionResult(result.responseUrl);
+// video.video.url - Final video URL
+
+// Cancel if needed
+await cancelMotionGeneration(result.cancelUrl);
+```
+
+**CLI status checking:**
+
+```bash
+# Check status
+bun scripts/check-motion-status.ts <status-url>
+
+# Get result
+bun scripts/check-motion-status.ts --result <response-url>
+
+# Cancel request
+bun scripts/check-motion-status.ts --cancel <cancel-url>
+
+# Example
+bun scripts/check-motion-status.ts https://queue.fal.run/fal-ai/fast-svd-lcm/requests/abc123/status
+```
+
+**Using curl directly:**
+
+```bash
+# Check status
+curl -H "Authorization: Key $FAL_KEY" https://queue.fal.run/fal-ai/fast-svd-lcm/requests/abc123/status
+
+# Get result
+curl -H "Authorization: Key $FAL_KEY" https://queue.fal.run/fal-ai/fast-svd-lcm/requests/abc123
+
+# Cancel
+curl -X PUT -H "Authorization: Key $FAL_KEY" https://queue.fal.run/fal-ai/fast-svd-lcm/requests/abc123/cancel
+```
+
 ### Import Alias
 
 Use `@/*` to import from src directory:
@@ -955,6 +1050,6 @@ beforeEach(async () => {
 - Mock external AI service calls to avoid real API usage during testing
 - Workflows use durable execution - steps are retried automatically on failure
 - Pass authentication (userId/teamId) through workflow context, not database lookups
-- Please create a rule that prevents claude from ever alterting files in components/ui
-- never manually create migrations
+- Never manually alter files in components/ui
+- **Database migrations**: Use Drizzle Kit to generate migrations (`bun db:generate`), never manually write migration SQL files
 - Use type instead of interface to define typescript types

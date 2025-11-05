@@ -1,44 +1,39 @@
 /**
  * Tests for motion generation service
+ *
+ * Run with: bun test --preload ./__mocks__/fal-client.mock.ts motion.service.test.ts
  */
 
-import type { Json } from '@/types/database';
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import {
+  mockSubscribe,
+  mockCreateFalClient,
+} from './__mocks__/fal-client.mock';
 import {
   estimateMotionGeneration,
   generateMotionForFrame,
-  MOTION_MODELS,
+  IMAGE_TO_VIDEO_MODELS,
   selectMotionModel,
 } from './motion.service';
 
-// Mock the module once at the top level
-mock.module('@/lib/ai/fal-client', () => ({
-  fal: {
-    run: mock(),
-  },
-}));
-
 describe('Motion Service', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     // Clear mocks before each test
-    const { fal } = await import('@/lib/ai/fal-client');
-    (fal.run as any).mockClear();
-  });
-
-  afterEach(() => {
-    // Restore mocks after each test
-    mock.restore();
+    mockSubscribe.mockClear();
+    mockCreateFalClient.mockClear();
   });
 
   describe('generateMotionForFrame', () => {
     it('should generate motion with SVD-LCM model', async () => {
       const mockVideoUrl = 'https://example.com/generated-video.mp4';
 
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockResolvedValue({
-        video: {
-          url: mockVideoUrl,
+      mockSubscribe.mockResolvedValue({
+        data: {
+          video: {
+            url: mockVideoUrl,
+          },
         },
+        requestId: 'test-request-id',
       });
 
       const result = await generateMotionForFrame({
@@ -52,32 +47,42 @@ describe('Motion Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.videoUrl).toBe(mockVideoUrl);
+      expect(result.requestId).toBe('test-request-id');
       expect(result.metadata).toMatchObject({
         model: 'fal-ai/fast-svd-lcm',
-        duration: 2,
+        provider: 'stability',
+        duration: 2, // User-provided duration (validated against max)
         fps: 7,
         motionBucket: 127,
-        totalFrames: 14,
         cost: 0.1,
       });
 
-      expect(fal.run).toHaveBeenCalledWith('fal-ai/fast-svd-lcm', {
-        input: expect.objectContaining({
-          image_url: 'https://example.com/image.jpg',
-          motion_bucket_id: 127,
-          frames_per_second: 7,
-        }),
-      });
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        'fal-ai/fast-svd-lcm',
+        expect.objectContaining({
+          input: expect.objectContaining({
+            image_url: 'https://example.com/image.jpg',
+            motion_bucket_id: 127,
+            fps: 7,
+            cond_aug: 0.02,
+            steps: 4,
+          }),
+          logs: true,
+          pollInterval: 5000,
+        })
+      );
     });
 
     it('should generate motion with WAN I2V model', async () => {
       const mockVideoUrl = 'https://example.com/wan-video.mp4';
 
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockResolvedValue({
-        video: {
-          url: mockVideoUrl,
+      mockSubscribe.mockResolvedValue({
+        data: {
+          video: {
+            url: mockVideoUrl,
+          },
         },
+        requestId: 'test-wan-request-id',
       });
 
       const result = await generateMotionForFrame({
@@ -97,11 +102,13 @@ describe('Motion Service', () => {
     it('should generate motion with Seedance Pro model', async () => {
       const mockVideoUrl = 'https://example.com/seedance-video.mp4';
 
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockResolvedValue({
-        video: {
-          url: mockVideoUrl,
+      mockSubscribe.mockResolvedValue({
+        data: {
+          video: {
+            url: mockVideoUrl,
+          },
         },
+        requestId: 'test-seedance-request-id',
       });
 
       const result = await generateMotionForFrame({
@@ -114,66 +121,30 @@ describe('Motion Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.videoUrl).toBe(mockVideoUrl);
-      expect(fal.run).toHaveBeenCalledWith(
+      expect(mockSubscribe).toHaveBeenCalledWith(
         'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-        {
+        expect.objectContaining({
           input: expect.objectContaining({
-            prompt: expect.stringContaining('Dynamic action sequence'),
+            prompt: 'Dynamic action sequence',
             image_url: 'https://example.com/image.jpg',
-            aspect_ratio: '16:9',
+            aspect_ratio: 'auto',
             resolution: '1080p',
+            duration: '5',
+            camera_fixed: false,
+            enable_safety_checker: true,
           }),
-        }
-      );
-    });
-
-    it('should enhance prompt based on style stack', async () => {
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockResolvedValue({
-        video: {
-          url: 'https://example.com/video.mp4',
-        },
-      });
-
-      const styleStack: Json = {
-        genre: 'action',
-        mood: 'exciting',
-      };
-
-      await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: 'Character movement',
-        model: 'svd_lcm',
-        styleStack,
-      });
-
-      // For Seedance Pro, the prompt should be enhanced
-      await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: 'Character movement',
-        model: 'seedance_v1_pro',
-        styleStack,
-      });
-
-      const seedanceCall = (fal.run as any).mock.calls.find(
-        (call: any[]) =>
-          call[0] === 'fal-ai/bytedance/seedance/v1/pro/image-to-video'
-      );
-
-      expect(seedanceCall).toBeDefined();
-      const prompt = seedanceCall[1].input.prompt;
-      // The enhanced prompt should be a complete concatenation
-      expect(prompt).toBe(
-        'Character movement, dynamic camera movement, fast-paced action, energetic motion, quick cuts, maintain visual consistency, smooth transitions, professional cinematography'
+          logs: true,
+          pollInterval: 5000,
+        })
       );
     });
 
     it('should handle generation failure', async () => {
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockRejectedValue(new Error('API error'));
+      mockSubscribe.mockRejectedValue(new Error('API error'));
 
       const result = await generateMotionForFrame({
         imageUrl: 'https://example.com/image.jpg',
+        prompt: '', // Required even though SVD doesn't use it
         model: 'svd_lcm',
       });
 
@@ -183,14 +154,17 @@ describe('Motion Service', () => {
     });
 
     it('should handle missing video URL in response', async () => {
-      const { fal } = await import('@/lib/ai/fal-client');
-      (fal.run as any).mockResolvedValue({
-        // No video field
-        error: 'Something went wrong',
+      mockSubscribe.mockResolvedValue({
+        data: {
+          // No video field
+          error: 'Something went wrong',
+        },
+        requestId: 'test-error-id',
       });
 
       const result = await generateMotionForFrame({
         imageUrl: 'https://example.com/image.jpg',
+        prompt: '', // Required even though SVD doesn't use it
         model: 'svd_lcm',
       });
 
@@ -270,25 +244,56 @@ describe('Motion Service', () => {
 
   describe('Model configurations', () => {
     it('should have correct model configurations', () => {
-      expect(MOTION_MODELS.svd_lcm).toMatchObject({
-        model: 'fal-ai/fast-svd-lcm',
-        cost: 0.1,
-        quality: 'good',
-        defaultDuration: 2,
+      expect(IMAGE_TO_VIDEO_MODELS.svd_lcm).toMatchObject({
+        id: 'fal-ai/fast-svd-lcm',
+        name: 'Fast Motion (SVD-LCM)',
+        provider: 'stability',
+        capabilities: {
+          supportsPrompt: false,
+          supportsAudio: false,
+          maxDuration: 2.5,
+          defaultDuration: 2.5,
+          fpsRange: { min: 1, max: 25, default: 10 },
+          fixedFrameCount: 25,
+        },
+        pricing: {
+          estimatedCost: 0.1,
+          unit: 'frame',
+        },
+        performance: {
+          estimatedGenerationTime: 5,
+          quality: 'good',
+        },
       });
 
-      expect(MOTION_MODELS.wan_i2v).toMatchObject({
-        model: 'fal-ai/wan-i2v',
-        cost: 0.3,
-        quality: 'better',
-        defaultDuration: 3,
+      expect(IMAGE_TO_VIDEO_MODELS.wan_i2v).toMatchObject({
+        id: 'fal-ai/wan-i2v',
+        name: 'Balanced Motion (WAN 2.1)',
+        provider: 'minimax',
+        capabilities: {
+          defaultDuration: 5.06,
+          fpsRange: { min: 5, max: 24, default: 16 },
+        },
+        pricing: {
+          estimatedCost: 0.3,
+        },
+        performance: {
+          quality: 'better',
+        },
       });
 
-      expect(MOTION_MODELS.seedance_v1_pro).toMatchObject({
-        model: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-        cost: 0.5,
-        quality: 'best',
-        defaultDuration: 5,
+      expect(IMAGE_TO_VIDEO_MODELS.seedance_v1_pro).toMatchObject({
+        id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
+        provider: 'seedance',
+        capabilities: {
+          defaultDuration: 5,
+        },
+        pricing: {
+          estimatedCost: 0.5,
+        },
+        performance: {
+          quality: 'best',
+        },
       });
     });
   });

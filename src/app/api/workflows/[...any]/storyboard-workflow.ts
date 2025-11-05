@@ -3,36 +3,39 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
+import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
+import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
+import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { frameService } from '@/lib/services/frame.service';
-import { LoggerService } from '@/lib/services/logger.service';
 import type {
-  FrameGenerationWorkflowInput,
   ImageWorkflowInput,
+  MotionWorkflowInput,
+  StoryboardWorkflowInput,
 } from '@/lib/workflow';
-import { triggerWorkflow, validateWorkflowAuth } from '@/lib/workflow';
+import { validateWorkflowAuth } from '@/lib/workflow';
 import {
   WorkflowValidationError,
   isInvalidScriptError,
 } from '@/lib/workflow/errors';
-import { serve } from '@upstash/workflow/nextjs';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
-const loggerService = new LoggerService('FrameGenerationWorkflow');
-
-export const { POST } = serve<FrameGenerationWorkflowInput>(
-  async (context) => {
+export const generateStoryboardWorkflow = createWorkflow(
+  async (context: WorkflowContext<StoryboardWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Validate authentication
     validateWorkflowAuth(input);
 
-    loggerService.logDebug(
-      `Starting frame generation workflow for sequence ${input.sequenceId}`
+    console.log(
+      '[StoryboardGenerationWorkflow]',
+      `Starting storyboard generation workflow for sequence ${input.sequenceId}`
     );
 
     // Step 1: Verify sequence and get data
@@ -223,52 +226,71 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
       return createdFrames.map((frame) => {
         const scene = frame.metadata;
         const visualPrompt = scene?.prompts?.visual?.fullPrompt || '';
-        return { frameId: frame.id, prompt: visualPrompt };
+        const motionPrompt = scene?.prompts?.motion?.fullPrompt || '';
+        return {
+          frameId: frame.id,
+          prompt: visualPrompt,
+          motionPrompt,
+        };
       });
     });
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
-      await context.run('generate-thumbnails', async () => {
-        // Trigger image generation for all frames in parallel
-        const promises = frameIds.map(async ({ frameId, prompt }) => {
+      await Promise.all(
+        frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
+          // Trigger image generation for all frames in parallel
           if (!prompt) {
-            loggerService.logWarning(
+            console.warn(
+              '[StoryboardGenerationWorkflow]',
               `Frame ${frameId} has no description, skipping`
             );
             return null;
           }
-
+          // Generate image for the frame
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
             prompt,
-            model: 'flux_krea_lora',
+            model: DEFAULT_IMAGE_MODEL,
             imageSize: 'landscape_16_9',
             numImages: 1,
             frameId,
             sequenceId: input.sequenceId,
           };
 
-          // Publish to QStash to trigger image workflow (fire and forget)
-          try {
-            const workflowRunId = await triggerWorkflow('/image', imageInput);
-            console.log(
-              '[generate-thumbnails] Workflow response:',
-              workflowRunId
-            );
-            return frameId;
-          } catch (error) {
-            loggerService.logError(
-              `Failed to trigger image workflow for frame ${frameId}: ${error instanceof Error ? error.message : 'Unknown'}`
-            );
-            return null;
-          }
-        });
+          const {
+            body: imageBody,
+            isFailed: imageIsFailed,
+            isCanceled: imageIsCanceled,
+          } = await context.invoke('image', {
+            workflow: generateImageWorkflow,
+            body: imageInput,
+          });
 
-        await Promise.all(promises);
-        return { triggered: promises.length };
-      });
+          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+            throw new WorkflowValidationError(
+              `Image generation failed for frame ${frameId}, skipping motion generation`
+            );
+          }
+
+          // Trigger motion generation workflow
+          const motionInput: MotionWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            frameId,
+            sequenceId: input.sequenceId,
+            thumbnailUrl: imageBody.imageUrl,
+            prompt: motionPrompt,
+            model: DEFAULT_VIDEO_MODEL,
+          };
+
+          await context.invoke('motion', {
+            workflow: generateMotionWorkflow,
+            body: motionInput,
+          });
+        })
+      );
     }
 
     // Step 9: Update sequence status to completed
@@ -279,10 +301,14 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
           .set({ status: 'completed', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
 
-        loggerService.logDebug('Sequence status updated to completed');
+        console.log(
+          '[StoryboardGenerationWorkflow]',
+          'Sequence status updated to completed'
+        );
         return { success: true };
       } catch (error) {
-        loggerService.logError(
+        console.error(
+          '[StoryboardGenerationWorkflow]',
           `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         throw new Error(
@@ -290,8 +316,6 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         );
       }
     });
-
-    loggerService.logDebug('Frame generation workflow completed');
 
     return {
       sequenceId: input.sequenceId,
@@ -320,7 +344,8 @@ export const { POST } = serve<FrameGenerationWorkflowInput>(
         { status: 'failed' }
       );
 
-      loggerService.logError(
+      console.error(
+        '[FrameGenerationWorkflow]',
         `Frame generation workflow failed for sequence ${input.sequenceId}: ${failResponse}`
       );
 

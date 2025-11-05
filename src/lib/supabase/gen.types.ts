@@ -425,6 +425,88 @@ export type Database = {
           },
         ]
       }
+      script_analysis_audit: {
+        Row: {
+          api_error: string | null
+          created_at: string
+          duration_ms: number
+          id: string
+          model: string
+          parse_error: string | null
+          parsed_output: Json | null
+          raw_output: string | null
+          sequence_id: string
+          status: string
+          style_config: Json
+          system_prompt_version: string
+          team_id: string
+          token_usage: Json | null
+          user_id: string
+          user_prompt: string
+          user_script: string
+        }
+        Insert: {
+          api_error?: string | null
+          created_at?: string
+          duration_ms: number
+          id?: string
+          model: string
+          parse_error?: string | null
+          parsed_output?: Json | null
+          raw_output?: string | null
+          sequence_id: string
+          status: string
+          style_config: Json
+          system_prompt_version: string
+          team_id: string
+          token_usage?: Json | null
+          user_id: string
+          user_prompt: string
+          user_script: string
+        }
+        Update: {
+          api_error?: string | null
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          model?: string
+          parse_error?: string | null
+          parsed_output?: Json | null
+          raw_output?: string | null
+          sequence_id?: string
+          status?: string
+          style_config?: Json
+          system_prompt_version?: string
+          team_id?: string
+          token_usage?: Json | null
+          user_id?: string
+          user_prompt?: string
+          user_script?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_analysis_audit_sequence_id_sequences_id_fk"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_analysis_audit_team_id_teams_id_fk"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_analysis_audit_user_id_user_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sequences: {
         Row: {
           analysis_duration_ms: number
@@ -433,9 +515,10 @@ export type Database = {
           created_by: string | null
           id: string
           metadata: Json | null
+          raw_analysis_output: string | null
           script: string | null
           status: Database["public"]["Enums"]["sequence_status"]
-          style_id: string
+          style_id: string | null
           team_id: string
           title: string
           updated_at: string
@@ -448,9 +531,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           metadata?: Json | null
+          raw_analysis_output?: string | null
           script?: string | null
           status?: Database["public"]["Enums"]["sequence_status"]
-          style_id: string
+          style_id?: string | null
           team_id: string
           title: string
           updated_at?: string
@@ -463,9 +547,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           metadata?: Json | null
+          raw_analysis_output?: string | null
           script?: string | null
           status?: Database["public"]["Enums"]["sequence_status"]
-          style_id?: string
+          style_id?: string | null
           team_id?: string
           title?: string
           updated_at?: string
@@ -591,7 +676,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
-          config?: Json
+          config: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -967,7 +1052,7 @@ export type Database = {
     }
     Enums: {
       fal_request_status: "pending" | "completed" | "failed"
-      frame_generation_status: "idle" | "generating" | "completed" | "failed"
+      frame_generation_status: "pending" | "generating" | "completed" | "failed"
       invitation_status: "pending" | "accepted" | "declined" | "expired"
       letzai_request_status: "pending" | "in_progress" | "completed" | "failed"
       sequence_status:
@@ -1113,7 +1198,7 @@ export const Constants = {
   public: {
     Enums: {
       fal_request_status: ["pending", "completed", "failed"],
-      frame_generation_status: ["idle", "generating", "completed", "failed"],
+      frame_generation_status: ["pending", "generating", "completed", "failed"],
       invitation_status: ["pending", "accepted", "declined", "expired"],
       letzai_request_status: ["pending", "in_progress", "completed", "failed"],
       sequence_status: [

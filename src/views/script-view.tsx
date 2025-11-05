@@ -126,6 +126,7 @@ export const ScriptView: FC<{
             onValueChange={setScript}
             placeholder="The camera pushes through a haze of orange light as the city wakes…"
             showCharacterCount={false}
+            maxLength={50000} // 50,000 characters is the maximum length of a script
           />
           <div className="flex flex-col gap-2">
             <Label className="whitespace-nowrap">Aspect Ratio</Label>

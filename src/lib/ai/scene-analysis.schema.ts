@@ -29,7 +29,6 @@ export const characterBibleEntrySchema = z.object({
 
 export const projectMetadataSchema = z.object({
   title: z.string(),
-  directorStyle: z.string().optional(),
   aspectRatio: z.string(),
   generatedAt: z.string(),
 });
@@ -247,6 +246,7 @@ export const sceneSchema = z.object({
   prompts: promptsSchema,
   audioDesign: audioDesignSchema.optional(),
   continuity: continuitySchema.optional(),
+  sourceImageUrl: z.string().optional(), // Temporary FAL URL for API calls
 });
 
 // ============================================================================

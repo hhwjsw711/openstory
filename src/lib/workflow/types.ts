@@ -2,14 +2,14 @@
  * Type definitions for QStash Workflows
  */
 
-import type { IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import type { Json } from '@/types/database';
 
 /**
  * Base workflow context that includes authentication
  * All workflows must include userId and teamId for authorization
  */
-export interface WorkflowContext {
+export interface UserWorkflowContext {
   userId: string;
   teamId: string;
 }
@@ -17,10 +17,10 @@ export interface WorkflowContext {
 /**
  * Image generation workflow input
  */
-export interface ImageWorkflowInput extends WorkflowContext {
+export interface ImageWorkflowInput extends UserWorkflowContext {
   prompt: string;
   style?: Json;
-  model?: string;
+  model?: keyof typeof IMAGE_MODELS;
   width?: number;
   height?: number;
   imageSize?: string;
@@ -33,20 +33,20 @@ export interface ImageWorkflowInput extends WorkflowContext {
 /**
  * Video generation workflow input
  */
-export interface VideoWorkflowInput extends WorkflowContext {
+export interface VideoWorkflowInput extends UserWorkflowContext {
   prompt?: string;
   imageUrl?: string; // For image-to-video
   imageData?: string; // Base64 encoded
-  model?: string;
+  model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
   aspectRatio?: string; // "16:9", "9:16", etc.
   enableAudio?: boolean;
 }
 
 /**
- * Frame generation workflow input
+ * Storyboard generation workflow input
  */
-export interface FrameGenerationWorkflowInput extends WorkflowContext {
+export interface StoryboardWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
   options?: {
     framesPerScene?: number;
@@ -60,11 +60,11 @@ export interface FrameGenerationWorkflowInput extends WorkflowContext {
 /**
  * Motion generation workflow input
  */
-export interface MotionWorkflowInput extends WorkflowContext {
+export interface MotionWorkflowInput extends UserWorkflowContext {
   frameId: string;
   sequenceId: string;
   thumbnailUrl: string;
-  prompt?: string;
+  prompt: string;
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
   fps?: number;
@@ -74,7 +74,7 @@ export interface MotionWorkflowInput extends WorkflowContext {
 /**
  * Batch motion generation workflow input
  */
-export interface BatchMotionWorkflowInput extends WorkflowContext {
+export interface BatchMotionWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
   frameIds?: string[]; // Optional: specific frames to process
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
@@ -86,7 +86,7 @@ export interface BatchMotionWorkflowInput extends WorkflowContext {
 /**
  * Script analysis workflow input
  */
-export interface ScriptWorkflowInput extends WorkflowContext {
+export interface ScriptWorkflowInput extends UserWorkflowContext {
   script: string;
   language?: string;
   genre?: string;
