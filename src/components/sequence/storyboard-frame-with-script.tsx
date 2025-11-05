@@ -98,8 +98,7 @@ export const StoryboardFrameWithScript: React.FC<
   const isThumbnailGenerating = frame.thumbnailStatus === 'generating';
   const isThumbnailPending = frame.thumbnailStatus === 'pending';
   const isVideoGenerating =
-    (frame.videoStatus ? frame.videoStatus === 'generating' : true) || // If the frame is new, we consider it generating
-    isGeneratingMotion;
+    frame.videoStatus === 'generating' || isGeneratingMotion;
   const isVideoPending = frame.videoStatus === 'pending';
 
   console.log('[isVideoGenerating] isVideoGenerating', {

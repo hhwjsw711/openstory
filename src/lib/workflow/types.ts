@@ -44,7 +44,7 @@ export interface VideoWorkflowInput extends UserWorkflowContext {
 }
 
 /**
- * Frame generation workflow input
+ * Storyboard generation workflow input
  */
 export interface StoryboardWorkflowInput extends UserWorkflowContext {
   sequenceId: string;
