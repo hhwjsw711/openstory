@@ -10,7 +10,7 @@
       "Bash(bun format:check)",
       "Bash(bunx oxlint:*)",
       "Bash(bunx prettier:*)",
-      "Bash(bun tsc --noEmit --skipLibCheck)",
+      "Bash(bun tsc:*)",
       "Bash(bun test)",
       "Bash(bun test --watch)",
       "Bash(bun test --coverage)",
@@ -18,8 +18,17 @@
       "Bash(rg:*)",
       "Bash(git status)",
       "Bash(bunx supabase status)",
-      "Bash(bunx supabase db diff:*)",
-      "Bash(bunx supabase migration:*)"
+      "Bash(bun db:generate)",
+      "Bash(bun db:migrate)",
+      "Bash(cat:*)",
+      "Bash(bun storybook:*)",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__chrome-devtools__list_pages"
     ],
     "deny": [],
     "ask": [
