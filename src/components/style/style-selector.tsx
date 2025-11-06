@@ -5,7 +5,7 @@ import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { StyleSelectionDialog } from './style-selection-dialog';
 
 interface StyleSelectorProps {
@@ -24,6 +24,8 @@ export function StyleSelector({
   disabled = false,
 }: StyleSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [focusableIndex, setFocusableIndex] = useState(0);
 
   // Always show max 10 items total (9 styles + More tile, or all styles + More tile if < 10)
   const GRID_SIZE = 10;
@@ -48,6 +50,86 @@ export function StyleSelector({
     ? reorderedStyles.slice(0, GRID_SIZE - 1)
     : reorderedStyles;
 
+  // Reset focusable index when styles change or selected style changes
+  useEffect(() => {
+    if (visibleStyles.length === 0) return;
+
+    // If a style is selected, make it focusable
+    const selectedIndex = visibleStyles.findIndex(
+      (s) => s.id === selectedStyleId
+    );
+    if (selectedIndex !== -1) {
+      setFocusableIndex(selectedIndex);
+    } else {
+      // Otherwise, first item is focusable
+      setFocusableIndex(0);
+    }
+  }, [selectedStyleId, visibleStyles]);
+
+  // Calculate grid columns based on responsive classes
+  const getColumnsCount = useCallback(() => {
+    if (!gridRef.current) return 5; // default
+
+    const width = gridRef.current.offsetWidth;
+    // Match Tailwind breakpoints from the grid classes
+    if (width >= 1536) return 12; // 2xl:grid-cols-12
+    if (width >= 1024) return 10; // lg:grid-cols-10
+    if (width >= 768) return 8; // md:grid-cols-8
+    if (width >= 640) return 6; // sm:grid-cols-6
+    return 5; // grid-cols-5
+  }, []);
+
+  // Handle arrow key navigation
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent, currentIndex: number) => {
+      // Total items = visible styles + "More" button
+      const totalItems = visibleStyles.length + 1;
+      let nextIndex = currentIndex;
+      const cols = getColumnsCount();
+
+      switch (event.key) {
+        case 'ArrowRight':
+          event.preventDefault();
+          nextIndex = Math.min(currentIndex + 1, totalItems - 1);
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          nextIndex = Math.max(currentIndex - 1, 0);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          nextIndex = Math.min(currentIndex + cols, totalItems - 1);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          nextIndex = Math.max(currentIndex - cols, 0);
+          break;
+        case 'Home':
+          event.preventDefault();
+          nextIndex = 0;
+          break;
+        case 'End':
+          event.preventDefault();
+          nextIndex = totalItems - 1;
+          break;
+        default:
+          return;
+      }
+
+      // Update focusable index and move focus
+      if (nextIndex !== currentIndex) {
+        setFocusableIndex(nextIndex);
+
+        // Focus the next button
+        const buttons = gridRef.current?.querySelectorAll('button');
+        if (buttons && buttons[nextIndex]) {
+          (buttons[nextIndex] as HTMLElement).focus();
+        }
+      }
+    },
+    [visibleStyles.length, getColumnsCount]
+  );
+
   const handleStyleSelect = (styleId: string) => {
     onStyleSelect(styleId);
     setDialogOpen(false);
@@ -55,16 +137,23 @@ export function StyleSelector({
 
   return (
     <>
-      <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-12 gap-3 overflow-hidden p-2">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-12 gap-3 overflow-hidden p-2"
+        role="grid"
+        aria-label="Style selection"
+      >
         {loading
           ? Array.from({ length: GRID_SIZE }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-lg" />
             ))
-          : visibleStyles.map((style) => (
+          : visibleStyles.map((style, index) => (
               <button
                 key={style.id}
                 type="button"
                 onClick={() => onStyleSelect(style.id)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                tabIndex={index === focusableIndex ? 0 : -1}
                 disabled={disabled}
                 className={cn(
                   'group relative aspect-square rounded-lg overflow-hidden',
@@ -110,6 +199,8 @@ export function StyleSelector({
           <button
             type="button"
             onClick={() => setDialogOpen(true)}
+            onKeyDown={(e) => handleKeyDown(e, visibleStyles.length)}
+            tabIndex={visibleStyles.length === focusableIndex ? 0 : -1}
             disabled={disabled}
             className={cn(
               'aspect-square rounded-lg overflow-hidden',

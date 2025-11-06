@@ -34,6 +34,21 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     [onValueChange, maxLength]
   );
 
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Cmd/Ctrl+Enter submits the form (per CLAUDE.md guidelines)
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        // Find the closest form and submit it
+        const form = event.currentTarget.closest('form');
+        if (form) {
+          form.requestSubmit();
+        }
+      }
+    },
+    []
+  );
+
   const isOverLimit = maxLength && value.length > maxLength;
   const hasError = Boolean(error) || isOverLimit;
 
@@ -43,6 +58,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         <Textarea
           value={loading ? 'Loading...' : value}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
           aria-invalid={hasError ? 'true' : 'false'}

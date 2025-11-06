@@ -127,5 +127,4 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
 /**
  * Default model to use when none is specified
  */
-export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
-  'cerebras/qwen-3-235b-a22b-instruct-2507';
+export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId = 'x-ai/grok-4-fast';

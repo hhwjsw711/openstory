@@ -1,3 +1,4 @@
+import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { UpdateSequenceInput } from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -88,9 +89,7 @@ export function useCreateSequence() {
           script: input.script,
           styleId: input.styleId,
           title: input.title || 'Untitled Sequence',
-          analysisModels: input.analysisModels || [
-            'anthropic/claude-haiku-4.5',
-          ],
+          analysisModels: input.analysisModels || [DEFAULT_ANALYSIS_MODEL],
           teamId: input.teamId,
         }),
       });

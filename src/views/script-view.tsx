@@ -21,7 +21,7 @@ import {
 import { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { Sequence } from '@/types/database';
 import { Zap } from 'lucide-react';
-import { useMemo, useState, type FC } from 'react';
+import { useMemo, useState, useEffect, type FC } from 'react';
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -64,6 +64,18 @@ export const ScriptView: FC<{
   // Get the styles from the database
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
+  // Auto-select first style if none is selected and styles are loaded
+  useEffect(() => {
+    if (
+      !isLoadingStyles &&
+      styles.length > 0 &&
+      !styleId &&
+      !sequence?.styleId
+    ) {
+      setStyleId(styles[0].id);
+    }
+  }, [styles, isLoadingStyles, styleId, sequence?.styleId]);
+
   // TanStack Query mutations
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
@@ -74,7 +86,11 @@ export const ScriptView: FC<{
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event?: React.FormEvent) => {
+    if (event) {
+      event.preventDefault();
+    }
+
     if (sequence?.id) {
       updateSequenceMutation.mutate(
         {
@@ -113,72 +129,76 @@ export const ScriptView: FC<{
     }
   };
 
+  // Check if form is valid and can be submitted
+  const isFormValid =
+    (script || sequence?.script) &&
+    (styleId || sequence?.styleId) &&
+    (analysisModels || sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL])
+      .length > 0;
+
+  const isSubmitting =
+    createSequenceMutation.isPending || updateSequenceMutation.isPending;
+
   return (
     <Card className={flat ? 'border-none' : ''}>
-      <CardHeader>
-        <CardTitle>Describe a moment, a mood, or a script</CardTitle>{' '}
-      </CardHeader>
-      <CardContent className="@container space-y-4">
-        <div className="flex flex-col @lg:flex-row gap-4">
-          <ScriptEditor
-            value={script || sequence?.script || ''}
-            loading={!!loading}
-            onValueChange={setScript}
-            placeholder="The camera pushes through a haze of orange light as the city wakes…"
-            showCharacterCount={false}
-            maxLength={50000} // 50,000 characters is the maximum length of a script
-          />
-          <div className="flex flex-col gap-2">
-            <Label className="whitespace-nowrap">Aspect Ratio</Label>
-            <AspectRatioSelect
-              value={aspectRatio}
-              onChange={setAspectRatio}
-              variant="vertical"
+      <form onSubmit={handleSubmit}>
+        <CardHeader>
+          <CardTitle>Describe a moment, a mood, or a script</CardTitle>{' '}
+        </CardHeader>
+        <CardContent className="@container space-y-4">
+          <div className="flex flex-col @lg:flex-row gap-4">
+            <ScriptEditor
+              value={script || sequence?.script || ''}
+              loading={!!loading}
+              onValueChange={setScript}
+              placeholder="The camera pushes through a haze of orange light as the city wakes…"
+              showCharacterCount={false}
+              maxLength={50000} // 50,000 characters is the maximum length of a script
             />
+            <div className="flex flex-col gap-2">
+              <Label className="whitespace-nowrap">Aspect Ratio</Label>
+              <AspectRatioSelect
+                value={aspectRatio}
+                onChange={setAspectRatio}
+                variant="vertical"
+              />
+            </div>
           </div>
-        </div>
 
-        <StyleSelector
-          styles={styles}
-          selectedStyleId={styleId || sequence?.styleId || null}
-          onStyleSelect={setStyleId}
-          loading={isLoadingStyles}
-        />
-        <ModelSelector
-          selectedModels={
-            analysisModels || sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
-          }
-          onModelsChange={(models) => setAnalysisModels(models)}
-          disabled={loading}
-          singleSelect={!!sequence?.id}
-        />
-      </CardContent>
-      <CardFooter className="flex flex-col gap-2 justify-center items-center w-full">
-        <div className="flex flex-row gap-2">
-          {sequence?.id && (
-            <Button variant="secondary" onClick={handleCancel}>
-              Cancel
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={handleSubmit}
-            disabled={
-              createSequenceMutation.isPending ||
-              updateSequenceMutation.isPending ||
-              !(script || sequence?.script) ||
-              !(styleId || sequence?.styleId) ||
-              (
-                analysisModels ||
-                sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
-              ).length === 0
+          <StyleSelector
+            styles={styles}
+            selectedStyleId={styleId || sequence?.styleId || null}
+            onStyleSelect={setStyleId}
+            loading={isLoadingStyles}
+          />
+          <ModelSelector
+            selectedModels={
+              analysisModels ||
+              sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
             }
-          >
-            <Zap className="size-4" />
-            Activate Crew
-          </Button>
-        </div>
-      </CardFooter>
+            onModelsChange={(models) => setAnalysisModels(models)}
+            disabled={loading}
+            singleSelect={!!sequence?.id}
+          />
+        </CardContent>
+        <CardFooter className="flex flex-col gap-2 justify-center items-center w-full">
+          <div className="flex flex-row gap-2">
+            {sequence?.id && (
+              <Button type="button" variant="secondary" onClick={handleCancel}>
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={!isFormValid || isSubmitting}
+            >
+              <Zap className="size-4" />
+              Activate Crew
+            </Button>
+          </div>
+        </CardFooter>
+      </form>
     </Card>
   );
 };
