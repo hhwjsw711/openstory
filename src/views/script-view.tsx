@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
@@ -21,7 +22,7 @@ import {
 import { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { Sequence } from '@/types/database';
 import { Zap } from 'lucide-react';
-import { useMemo, useState, useEffect, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -147,7 +148,7 @@ export const ScriptView: FC<{
 
   const isSubmitting =
     createSequenceMutation.isPending || updateSequenceMutation.isPending;
-
+  const isDisabled = !isFormValid || isSubmitting;
   return (
     <Card className={flat ? 'border-none' : ''}>
       <form onSubmit={handleSubmit}>
@@ -198,13 +199,16 @@ export const ScriptView: FC<{
                 Cancel
               </Button>
             )}
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={!isFormValid || isSubmitting}
-            >
+            <Button type="submit" variant="outline" disabled={isDisabled}>
               <Zap className="size-4" />
               Activate Crew
+              {!isDisabled && (
+                <KbdGroup>
+                  <Kbd>{'⌘'}</Kbd>
+                  <span className="text-muted-foreground">+</span>
+                  <Kbd>{'⏎'}</Kbd>
+                </KbdGroup>
+              )}
             </Button>
           </div>
         </CardFooter>
