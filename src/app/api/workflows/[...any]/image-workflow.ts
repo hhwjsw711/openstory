@@ -35,6 +35,8 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
+export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;

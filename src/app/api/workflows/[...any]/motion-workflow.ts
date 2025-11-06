@@ -18,6 +18,8 @@ import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { getImageUrlForApi } from '@/lib/utils/environment';
 import { eq } from 'drizzle-orm';
 
+export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+
 /**
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
