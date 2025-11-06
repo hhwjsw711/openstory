@@ -2,7 +2,7 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const conn = process.env.DATABASE_URL || process.env.DATABASE_URL;
+const conn = process.env.DATABASE_URL;
 if (!conn) {
   throw new Error('DATABASE_URL environment variable is required');
 }
