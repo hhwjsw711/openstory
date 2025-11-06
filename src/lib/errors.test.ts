@@ -90,13 +90,13 @@ describe('Custom Error Classes', () => {
   describe('ConfigurationError', () => {
     it('should create a configuration error with 500 status', () => {
       const error = new ConfigurationError('Missing environment variable', {
-        variable: 'DATABASE_URL',
+        variable: 'POSTGRES_URL',
       });
 
       expect(error.message).toBe('Missing environment variable');
       expect(error.code).toBe('CONFIGURATION_ERROR');
       expect(error.statusCode).toBe(500);
-      expect(error.details).toEqual({ variable: 'DATABASE_URL' });
+      expect(error.details).toEqual({ variable: 'POSTGRES_URL' });
       expect(error.name).toBe('ConfigurationError');
     });
   });

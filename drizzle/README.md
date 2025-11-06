@@ -70,11 +70,11 @@ await db.insert(users).values({
 
 ## Environment Variables
 
-Ensure `DATABASE_URL` is set in your environment:
+Ensure `POSTGRES_URL` is set in your environment:
 
 ```bash
 # .env.development.local or .env.local
-DATABASE_URL=postgresql://user:password@localhost:54322/postgres
+POSTGRES_URL=postgresql://user:password@localhost:54322/postgres
 ```
 
 ## Notes

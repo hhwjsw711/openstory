@@ -11,7 +11,15 @@ alwaysApply: false
 ## Schema Definition
 
 ```typescript
-import { pgTable, uuid, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  boolean,
+  jsonb,
+  integer,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const teams = pgTable('teams', {
@@ -33,8 +41,12 @@ export const sequences = pgTable('sequences', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   script: text('script'),
-  teamId: uuid('team_id').references(() => teams.id).notNull(),
-  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  teamId: uuid('team_id')
+    .references(() => teams.id)
+    .notNull(),
+  createdBy: uuid('created_by')
+    .references(() => users.id)
+    .notNull(),
   styleId: uuid('style_id').references(() => styles.id),
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -43,13 +55,17 @@ export const sequences = pgTable('sequences', {
 
 export const frames = pgTable('frames', {
   id: uuid('id').primaryKey().defaultRandom(),
-  sequenceId: uuid('sequence_id').references(() => sequences.id, { onDelete: 'cascade' }).notNull(),
+  sequenceId: uuid('sequence_id')
+    .references(() => sequences.id, { onDelete: 'cascade' })
+    .notNull(),
   order: integer('order').notNull(),
   description: text('description').notNull(),
   thumbnailUrl: text('thumbnail_url'),
   status: text('status').notNull().default('pending'), // pending, processing, completed, failed
   error: text('error'),
-  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdBy: uuid('created_by')
+    .references(() => users.id)
+    .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -58,9 +74,13 @@ export const styles = pgTable('styles', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   description: text('description'),
-  teamId: uuid('team_id').references(() => teams.id).notNull(),
+  teamId: uuid('team_id')
+    .references(() => teams.id)
+    .notNull(),
   styleData: jsonb('style_data').notNull(), // Style Stack JSON
-  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdBy: uuid('created_by')
+    .references(() => users.id)
+    .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -130,10 +150,10 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.POSTGRES_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is not set');
+  throw new Error('POSTGRES_URL environment variable is not set');
 }
 
 // Create PostgreSQL connection
@@ -174,9 +194,13 @@ export async function getSequenceWithFrames(sequenceId: string) {
 }
 
 // List with pagination
-export async function listSequences(teamId: string, page: number = 1, pageSize: number = 20) {
+export async function listSequences(
+  teamId: string,
+  page: number = 1,
+  pageSize: number = 20
+) {
   const offset = (page - 1) * pageSize;
-  
+
   const [items, totalCount] = await Promise.all([
     db.query.sequences.findMany({
       where: eq(sequences.teamId, teamId),
@@ -198,9 +222,12 @@ export async function listSequences(teamId: string, page: number = 1, pageSize: 
         },
       },
     }),
-    db.select({ count: count() }).from(sequences).where(eq(sequences.teamId, teamId)),
+    db
+      .select({ count: count() })
+      .from(sequences)
+      .where(eq(sequences.teamId, teamId)),
   ]);
-  
+
   return {
     items,
     total: totalCount[0].count,
@@ -270,7 +297,7 @@ export async function transferSequenceOwnership(
       .update(sequences)
       .set({ teamId: newTeamId, createdBy: newUserId, updatedAt: new Date() })
       .where(eq(sequences.id, sequenceId));
-      
+
     // Update all frames ownership
     await tx
       .update(frames)
@@ -286,16 +313,22 @@ export async function createSequenceWithFrames(
 ) {
   return db.transaction(async (tx) => {
     // Create sequence
-    const [sequence] = await tx.insert(sequences).values(sequenceData).returning();
-    
+    const [sequence] = await tx
+      .insert(sequences)
+      .values(sequenceData)
+      .returning();
+
     // Create frames
-    const createdFrames = await tx.insert(frames).values(
-      framesData.map(frame => ({
-        ...frame,
-        sequenceId: sequence.id,
-      }))
-    ).returning();
-    
+    const createdFrames = await tx
+      .insert(frames)
+      .values(
+        framesData.map((frame) => ({
+          ...frame,
+          sequenceId: sequence.id,
+        }))
+      )
+      .returning();
+
     return {
       sequence,
       frames: createdFrames,
@@ -315,7 +348,7 @@ export default {
   out: './src/db/migrations',
   driver: 'pg',
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL!,
+    connectionString: process.env.POSTGRES_URL!,
   },
 } satisfies Config;
 ```
@@ -362,9 +395,11 @@ import { sequences } from './schema';
 import { eq } from 'drizzle-orm';
 
 // Prepare statement for better performance
-const getSequenceById = db.query.sequences.findFirst({
-  where: eq(sequences.id, placeholder('id')),
-}).prepare('get_sequence_by_id');
+const getSequenceById = db.query.sequences
+  .findFirst({
+    where: eq(sequences.id, placeholder('id')),
+  })
+  .prepare('get_sequence_by_id');
 
 // Use prepared statement
 export async function findSequence(id: string) {
@@ -403,7 +438,7 @@ export async function getSequenceProgress(sequenceId: string) {
     })
     .from(frames)
     .where(eq(frames.sequenceId, sequenceId));
-    
+
   return result[0];
 }
 ```

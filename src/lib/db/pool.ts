@@ -2,9 +2,9 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const conn = process.env.DATABASE_URL;
+const conn = process.env.POSTGRES_URL;
 if (!conn) {
-  throw new Error('DATABASE_URL environment variable is required');
+  throw new Error('POSTGRES_URL environment variable is required');
 }
 
 const isLocalDevelopment =
