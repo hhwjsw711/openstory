@@ -1,6 +1,4 @@
-import pg from 'pg';
-
-const { Pool } = pg;
+import postgres from 'postgres';
 
 const conn = process.env.POSTGRES_URL;
 if (!conn) {
@@ -10,20 +8,13 @@ if (!conn) {
 const isLocalDevelopment =
   conn.includes('localhost') || conn.includes('127.0.0.1');
 
-const dbUrl = new URL(conn);
-
-// Only configure SSL for production (when not local)
-// Set in Pool connection
-dbUrl.searchParams.delete('sslmode');
-
-export const pgPool = new Pool({
-  connectionString: dbUrl.toString(),
-
+export const sql = postgres(conn, {
   // Serverless-optimized settings
   max: isLocalDevelopment ? 10 : 1, // Only 1 connection per serverless instance
-  idleTimeoutMillis: 20000, // Close idle connections after 20s
-  connectionTimeoutMillis: 10000, // Timeout if connection takes >10s
-  maxUses: 7500, // Recycle connection after 7500 uses (pgbouncer best practice)
-  // Only enable SSL for production connections
-  ssl: isLocalDevelopment ? false : { rejectUnauthorized: false },
+  idle_timeout: 20, // Close idle connections after 20s (in seconds for postgres.js)
+  connect_timeout: 10, // Timeout if connection takes >10s (in seconds)
+  max_lifetime: 60 * 30, // Recycle connection after 30 minutes
+  prepare: false, // Required for pgbouncer transaction mode
+  // SSL configuration
+  ssl: isLocalDevelopment ? false : 'require', // 'require' mode accepts self-signed certs
 });

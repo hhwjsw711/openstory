@@ -3,22 +3,22 @@
  * Comprehensive frame CRUD, ordering, and status operations using Drizzle ORM
  */
 
+import { db } from '@/lib/db/client';
+import type { Frame, NewFrame } from '@/lib/db/schema';
+import { frames } from '@/lib/db/schema';
 import {
-  eq,
   and,
-  desc,
   asc,
+  desc,
+  eq,
+  gt,
+  gte,
   inArray,
   isNull,
-  sql,
-  gt,
-  lte,
-  gte,
   lt,
+  lte,
+  sql,
 } from 'drizzle-orm';
-import { db } from '@/lib/db/client';
-import { frames } from '@/lib/db/schema';
-import type { Frame, NewFrame } from '@/lib/db/schema';
 
 /**
  * Frame with its parent sequence
@@ -214,7 +214,7 @@ export async function updateFrame(
  */
 export async function deleteFrame(frameId: string): Promise<boolean> {
   const result = await db.delete(frames).where(eq(frames.id, frameId));
-  return (result.rowCount ?? 0) > 0;
+  return (result.count ?? 0) > 0;
 }
 
 /**
@@ -235,7 +235,7 @@ export async function deleteSequenceFrames(
   const result = await db
     .delete(frames)
     .where(eq(frames.sequenceId, sequenceId));
-  return result.rowCount ?? 0;
+  return result.count ?? 0;
 }
 
 // ============================================================================
@@ -484,7 +484,7 @@ export async function updateFramesBulk(
  */
 export async function deleteFramesBulk(frameIds: string[]): Promise<number> {
   const result = await db.delete(frames).where(inArray(frames.id, frameIds));
-  return result.rowCount ?? 0;
+  return result.count ?? 0;
 }
 
 // ============================================================================

@@ -6,8 +6,8 @@
 import { styles, teams } from '@/lib/db/schema';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 
 const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -22,17 +22,11 @@ async function seed() {
     connectionString.includes('localhost') ||
     connectionString.includes('127.0.0.1');
 
-  const dbUrl = new URL(connectionString);
-
-  // Only configure SSL for production (when not local)
-  dbUrl.searchParams.delete('sslmode');
-
-  const pool = new Pool({
-    connectionString: dbUrl.toString(),
-    // Only enable SSL for production connections
-    ssl: isLocalDevelopment ? false : { rejectUnauthorized: false },
+  const sql = postgres(connectionString, {
+    max: 1,
+    ssl: isLocalDevelopment ? false : 'require',
   });
-  const db = drizzle(pool);
+  const db = drizzle(sql);
 
   try {
     console.log('🌱 Seeding database...\n');
@@ -81,7 +75,7 @@ async function seed() {
     console.error('❌ Error seeding database:', error);
     throw error;
   } finally {
-    await pool.end();
+    await sql.end();
   }
 }
 
