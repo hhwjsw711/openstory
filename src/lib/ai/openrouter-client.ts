@@ -3,6 +3,7 @@
  * Provides a unified interface to multiple AI models
  */
 
+import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { z } from 'zod';
 
 // OpenRouter API configuration
@@ -68,7 +69,7 @@ export const RECOMMENDED_MODELS = {
   structured: 'anthropic/claude-sonnet-4.5',
 
   // For fast responses with good quality
-  fast: 'anthropic/claude-haiku-4.5',
+  fast: DEFAULT_ANALYSIS_MODEL,
 
   // For highest quality (more expensive)
   premium: 'anthropic/claude-sonnet-4.5',

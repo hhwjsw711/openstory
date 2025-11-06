@@ -191,7 +191,7 @@ export const HomeView: FC = () => {
                   </div>
                 </div>
               </CardHeader>
-              <ScriptView onSuccess={handleSuccess} flat />
+              <ScriptView onSuccess={handleSuccess} flat autoFocus />
             </Card>
           </div>
         </div>

@@ -32,6 +32,34 @@ export const SCRIPT_ANALYSIS_MODELS = [
     tier: 'premium',
     description: 'Detailed analysis, higher quality',
   },
+  {
+    id: 'x-ai/grok-4-fast',
+    name: 'Grok 4 Fast',
+    provider: 'xAI',
+    tier: 'premium',
+    description: 'Fast analysis, higher quality',
+  },
+  {
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    provider: 'Google',
+    tier: 'premium',
+    description: 'High quality analysis, higher quality',
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    provider: 'Google',
+    tier: 'fast',
+    description: 'Fastest analysis, highest quality',
+  },
+  {
+    id: 'openai/gpt-5-pro',
+    name: 'GPT-5 Pro',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Fast analysis, highest quality',
+  },
   // Cerebras models - ultra-fast inference (1,400-3,000 tokens/second)
   {
     id: 'cerebras/llama3.1-8b',
@@ -99,5 +127,4 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
 /**
  * Default model to use when none is specified
  */
-export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
-  'cerebras/qwen-3-235b-a22b-instruct-2507';
+export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId = 'x-ai/grok-4-fast';
