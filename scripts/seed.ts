@@ -25,9 +25,7 @@ async function seed() {
   const dbUrl = new URL(connectionString);
 
   // Only configure SSL for production (when not local)
-  if (!isLocalDevelopment) {
-    dbUrl.searchParams.set('sslmode', 'no-verify');
-  }
+  dbUrl.searchParams.delete('sslmode');
 
   const pool = new Pool({
     connectionString: dbUrl.toString(),
