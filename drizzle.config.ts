@@ -1,10 +1,10 @@
 import { defineConfig } from 'drizzle-kit';
 
-const connectionString = process.env.POSTGRES_URL;
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error(
-    'POSTGRES_URL or POSTGRES_URL_NON_POOLING environment variable is required'
+    'DATABASE_URL or DATABASE_URL_NON_POOLING environment variable is required'
   );
 }
 

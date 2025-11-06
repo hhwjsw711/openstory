@@ -12,10 +12,10 @@ import { Pool } from 'pg';
 const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
 
 async function seed() {
-  const connectionString = process.env.POSTGRES_URL;
+  const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error('POSTGRES_URL environment variable is not set');
+    throw new Error('DATABASE_URL environment variable is not set');
   }
 
   const isLocalDevelopment =
