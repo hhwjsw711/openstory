@@ -156,7 +156,7 @@ export async function getFrameCount(sequenceId: string) {
   const result = await db.execute<{ count: number }>(
     sql`SELECT COUNT(*) as count FROM frames WHERE sequence_id = ${sequenceId}`
   );
-  return result.rows[0]?.count ?? 0;
+  return result.count ?? 0;
 }
 
 /**
