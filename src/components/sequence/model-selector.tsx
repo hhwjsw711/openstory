@@ -12,7 +12,7 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import { ChevronDown } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 interface ModelSelectorProps {
   selectedModels: AnalysisModelId[];
@@ -27,6 +27,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false,
   singleSelect = false,
 }) => {
+  // Control dropdown open state to prevent auto-closing on checkbox clicks
+  const [open, setOpen] = useState(false);
+
   const handleToggle = useCallback(
     (modelId: AnalysisModelId, checked: boolean) => {
       if (disabled) return;
@@ -72,7 +75,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <div className="space-y-2">
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
@@ -99,6 +102,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 key={model.id}
                 checked={isSelected}
                 onCheckedChange={(checked) => handleToggle(model.id, checked)}
+                onSelect={(e) => e.preventDefault()}
                 disabled={isDisabled}
                 className="cursor-pointer"
               >
