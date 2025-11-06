@@ -13,7 +13,7 @@ import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
 const requiredEnvVars = {
-  POSTGRES_URL: process.env.POSTGRES_URL || process.env.POSTGRES_URL,
+  POSTGRES_URL: process.env.POSTGRES_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   BETTER_AUTH_URL:
     process.env.BETTER_AUTH_URL ||

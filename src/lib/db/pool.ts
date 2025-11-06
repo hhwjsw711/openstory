@@ -12,6 +12,11 @@ const isLocalDevelopment =
 
 const dbUrl = new URL(conn);
 
+// Only configure SSL for production (when not local)
+if (!isLocalDevelopment) {
+  dbUrl.searchParams.set('sslmode', 'no-verify');
+}
+
 export const pgPool = new Pool({
   connectionString: dbUrl.toString(),
 
@@ -20,4 +25,6 @@ export const pgPool = new Pool({
   idleTimeoutMillis: 20000, // Close idle connections after 20s
   connectionTimeoutMillis: 10000, // Timeout if connection takes >10s
   maxUses: 7500, // Recycle connection after 7500 uses (pgbouncer best practice)
+  // Only enable SSL for production connections
+  ssl: isLocalDevelopment ? false : { rejectUnauthorized: true },
 });
