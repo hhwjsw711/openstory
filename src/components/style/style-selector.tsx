@@ -66,17 +66,36 @@ export function StyleSelector({
     }
   }, [selectedStyleId, visibleStyles]);
 
-  // Calculate grid columns based on responsive classes
+  // Calculate actual grid columns from the rendered layout
   const getColumnsCount = useCallback(() => {
     if (!gridRef.current) return 5; // default
 
-    const width = gridRef.current.offsetWidth;
-    // Match Tailwind breakpoints from the grid classes
-    if (width >= 1536) return 12; // 2xl:grid-cols-12
-    if (width >= 1024) return 10; // lg:grid-cols-10
-    if (width >= 768) return 8; // md:grid-cols-8
-    if (width >= 640) return 6; // sm:grid-cols-6
-    return 5; // grid-cols-5
+    // Get the first two buttons to calculate column count
+    const buttons = gridRef.current.querySelectorAll('button');
+    if (buttons.length < 2) return 1;
+
+    const firstButton = buttons[0] as HTMLElement;
+    const secondButton = buttons[1] as HTMLElement;
+
+    // Get the actual positions
+    const firstRect = firstButton.getBoundingClientRect();
+    const secondRect = secondButton.getBoundingClientRect();
+
+    // If they're on the same row (top positions are close), they're in different columns
+    if (Math.abs(firstRect.top - secondRect.top) < 5) {
+      // Calculate columns based on button width and container width
+      const containerRect = gridRef.current.getBoundingClientRect();
+      const buttonWidth = firstRect.width;
+      const gap = secondRect.left - firstRect.right;
+      const availableWidth = containerRect.width;
+
+      // Calculate how many buttons fit per row
+      const cols = Math.floor((availableWidth + gap) / (buttonWidth + gap));
+      return Math.max(1, cols);
+    }
+
+    // If second button is below the first, we have 1 column
+    return 1;
   }, []);
 
   // Handle arrow key navigation
