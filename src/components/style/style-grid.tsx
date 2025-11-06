@@ -150,16 +150,38 @@ export const StyleGrid: FC<StyleGridProps> = ({
     }
   }, [selectedStyleId, styles]);
 
-  // Calculate grid columns based on responsive classes
+  // Calculate actual grid columns from the rendered layout
   const getColumnsCount = useCallback(() => {
     if (!gridRef.current) return 2; // default
 
-    const width = gridRef.current.offsetWidth;
-    // Match Tailwind breakpoints: sm:640px, lg:1024px, xl:1280px
-    if (width >= 1280) return 6; // xl:grid-cols-6
-    if (width >= 1024) return 4; // lg:grid-cols-4
-    if (width >= 640) return 3; // sm:grid-cols-3
-    return 2; // grid-cols-2
+    // Get the first two cards to calculate column count
+    const cards = gridRef.current.querySelectorAll(
+      '[data-testid^="style-card-"]'
+    );
+    if (cards.length < 2) return 1;
+
+    const firstCard = cards[0] as HTMLElement;
+    const secondCard = cards[1] as HTMLElement;
+
+    // Get the actual positions
+    const firstRect = firstCard.getBoundingClientRect();
+    const secondRect = secondCard.getBoundingClientRect();
+
+    // If they're on the same row (top positions are close), they're in different columns
+    if (Math.abs(firstRect.top - secondRect.top) < 5) {
+      // Calculate columns based on card width and container width
+      const containerRect = gridRef.current.getBoundingClientRect();
+      const cardWidth = firstRect.width;
+      const gap = secondRect.left - firstRect.right;
+      const availableWidth = containerRect.width;
+
+      // Calculate how many cards fit per row
+      const cols = Math.floor((availableWidth + gap) / (cardWidth + gap));
+      return Math.max(1, cols);
+    }
+
+    // If second card is below the first, we have 1 column
+    return 1;
   }, []);
 
   // Handle arrow key navigation

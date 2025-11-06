@@ -36,7 +36,7 @@ export default function NewSequencePage() {
           Transform your script into a professional video sequence.
         </PageDescription>
       </PageHeader>
-      <ScriptView loading={false} onSuccess={handleSuccess} />
+      <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
     </PageContainer>
   );
 }

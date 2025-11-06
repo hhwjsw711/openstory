@@ -30,7 +30,16 @@ export const ScriptView: FC<{
   loading?: boolean;
   onSuccess?: (sequenceIds: string[]) => void; // called when the sequence is created or updated
   onCancel?: () => void; // called when the user cancels the script
-}> = ({ teamId, sequence, loading = false, onSuccess, flat, onCancel }) => {
+  autoFocus?: boolean; // if true, the script editor will be focused on mount
+}> = ({
+  teamId,
+  sequence,
+  loading = false,
+  onSuccess,
+  flat,
+  onCancel,
+  autoFocus = false,
+}) => {
   // The way state is managed is a bit confusing - but perfectly logical
   // Local state is undefined until the user makeas an edit.
   // We pass the value of local state to each field first
@@ -154,6 +163,7 @@ export const ScriptView: FC<{
               placeholder="The camera pushes through a haze of orange light as the city wakes…"
               showCharacterCount={false}
               maxLength={50000} // 50,000 characters is the maximum length of a script
+              autoFocus={autoFocus}
             />
             <div className="flex flex-col gap-2">
               <Label className="whitespace-nowrap">Aspect Ratio</Label>
