@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { TimelineScrubber } from './timeline-scrubber';
+import { VidstackTimelineScrubber } from './vidstack-timeline-scrubber';
 
-const meta: Meta<typeof TimelineScrubber> = {
-  title: 'Scenes/TimelineScrubber',
-  component: TimelineScrubber,
+const meta: Meta<typeof VidstackTimelineScrubber> = {
+  title: 'Scenes/VidstackTimelineScrubber',
+  component: VidstackTimelineScrubber,
   parameters: {
     layout: 'padded',
   },
@@ -17,7 +17,7 @@ const meta: Meta<typeof TimelineScrubber> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof TimelineScrubber>;
+type Story = StoryObj<typeof VidstackTimelineScrubber>;
 
 // Mock durations for 8 scenes (varying lengths)
 const mockDurations = {

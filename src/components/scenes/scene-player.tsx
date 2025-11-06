@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Frame } from '@/types/database';
 import { ScenePreview } from './scene-preview';
-import { TimelineScrubber } from './timeline-scrubber';
+import { VidstackTimelineScrubber } from './vidstack-timeline-scrubber';
 import { VideoControlsOverlay } from './video-controls-overlay';
 import { cn } from '@/lib/utils';
+import type { VidstackPlayerRef } from './vidstack-player';
 
 type ScenePlayerProps = {
   frames: Frame[];
@@ -24,7 +25,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   const [frameDurations, setFrameDurations] = useState<Record<number, number>>(
     {}
   );
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<VidstackPlayerRef>(null);
 
   const currentFrame = frames[currentSceneIndex] || null;
   const currentFrameHasVideo =
@@ -61,9 +62,14 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     // Set video time after frame switches
     setTimeout(() => {
       if (videoRef.current) {
-        videoRef.current.currentTime = timeInScene;
+        videoRef.current.seek(timeInScene);
       }
     }, 0);
+  };
+
+  // Handle time updates from video player
+  const handleTimeUpdate = (time: number) => {
+    setCurrentVideoTime(time);
   };
 
   // Reset video time when switching to image-only frame
@@ -72,19 +78,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       setCurrentVideoTime(0);
     }
   }, [currentSceneIndex, currentFrameHasVideo]);
-
-  // Update current video time
-  useEffect(() => {
-    if (!isPlaying || !currentFrameHasVideo || !videoRef.current) return;
-
-    const interval = setInterval(() => {
-      if (videoRef.current) {
-        setCurrentVideoTime(videoRef.current.currentTime);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentFrameHasVideo]);
 
   // Calculate total time
   const totalDuration = frames.reduce(
@@ -133,6 +126,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           frame={currentFrame}
           isPlaying={isPlaying}
           onEnded={handleNext}
+          onTimeUpdate={handleTimeUpdate}
           videoRef={videoRef}
         />
       </div>
@@ -140,7 +134,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       {/* Controls overlay */}
       <div className="bg-gradient-to-t from-black/60 via-black/40 to-transparent rounded-lg">
         <div className="px-4 py-2">
-          <TimelineScrubber
+          <VidstackTimelineScrubber
             currentSceneIndex={currentSceneIndex}
             totalScenes={frames.length}
             frameDurations={frameDurations}

@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import Image from 'next/image';
-import { useEffect } from 'react';
+import { VidstackPlayer, type VidstackPlayerRef } from './vidstack-player';
 
 type ScenePreviewProps = {
   frame: Frame | null;
@@ -12,7 +12,8 @@ type ScenePreviewProps = {
   isPlaying?: boolean;
   onEnded?: () => void;
   onLoadedMetadata?: (duration: number) => void;
-  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  onTimeUpdate?: (currentTime: number) => void;
+  videoRef?: React.RefObject<VidstackPlayerRef | null>;
 };
 
 export const ScenePreview: React.FC<ScenePreviewProps> = ({
@@ -21,58 +22,33 @@ export const ScenePreview: React.FC<ScenePreviewProps> = ({
   isPlaying = false,
   onEnded,
   onLoadedMetadata,
+  onTimeUpdate,
   videoRef,
 }) => {
   const hasVideo = frame?.videoUrl && frame.videoStatus === 'completed';
   const hasThumbnail = frame?.thumbnailUrl;
 
-  // Reset video when frame changes
-  useEffect(() => {
-    if (videoRef?.current && hasVideo) {
-      videoRef.current.currentTime = 0;
-    }
-  }, [frame?.id, hasVideo, videoRef]);
-
-  // Control video playback based on isPlaying state
-  useEffect(() => {
-    if (!videoRef?.current || !hasVideo) return;
-
-    if (isPlaying) {
-      videoRef.current.play().catch((error) => {
-        console.error('Failed to play video:', error);
-      });
-    } else {
-      videoRef.current.pause();
-    }
-  }, [isPlaying, hasVideo, videoRef]);
-
   return (
     <div className={cn('relative w-full max-w-3xl mx-auto', className)}>
       {frame ? (
         hasVideo ? (
-          <video
+          <VidstackPlayer
             ref={videoRef}
-            src={frame.videoUrl || undefined}
-            className="w-full aspect-video rounded-lg object-cover"
-            muted
-            loop
-            playsInline
+            src={frame.videoUrl}
+            posterSrc={frame.thumbnailUrl}
+            isPlaying={isPlaying}
             onEnded={onEnded}
-            onLoadedMetadata={(e) => {
-              if (onLoadedMetadata) {
-                const duration = e.currentTarget.duration;
-                // Only call if duration is valid
-                if (duration && isFinite(duration)) {
-                  onLoadedMetadata(duration);
-                }
-              }
-            }}
+            onLoadedMetadata={onLoadedMetadata}
+            onTimeUpdate={onTimeUpdate}
+            className="object-cover"
           />
         ) : hasThumbnail ? (
           <Image
             src={frame.thumbnailUrl || ''}
             alt="Scene"
             className="w-full aspect-video rounded-lg object-cover"
+            width={1280}
+            height={720}
           />
         ) : (
           <Skeleton className="w-full aspect-video rounded-lg" />
