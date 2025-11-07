@@ -217,6 +217,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         description: scene.originalScript.extract,
         orderIndex: index,
         metadata: scene, // Store Scene object directly
+        durationMs: Math.round((scene.metadata.durationSeconds || 3) * 1000), // Convert seconds to milliseconds
       }));
 
       // Bulk insert all frames at once
