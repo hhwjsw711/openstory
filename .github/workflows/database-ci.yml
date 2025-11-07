@@ -43,12 +43,12 @@ jobs:
       - name: Run migrations
         run: bun db:migrate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
       - name: Seed production database
         run: bun db:seed
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
   # Preview: Wait for Supabase Preview check, then seed database
   wait-for-preview:
