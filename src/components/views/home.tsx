@@ -12,7 +12,7 @@ import scene8 from '@/assets/community/scene8.jpg';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { ScriptView } from '@/views/script-view';
+import { ScriptView } from '@/components/views/script-view';
 import { Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -150,7 +150,7 @@ export const HomeView: FC = () => {
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
         // Navigate to storyboard page after successful generation
-        router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+        router.push(`/sequences/${sequenceIds[0]}/scenes`);
       }
     },
     [router]

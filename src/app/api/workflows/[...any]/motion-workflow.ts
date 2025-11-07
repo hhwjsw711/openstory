@@ -176,9 +176,16 @@ export const generateMotionWorkflow = createWorkflow(
     // Step 4: Update frame with video URL and status
     await context.run('update-frame', async () => {
       try {
+        // Use actual duration from motion generation metadata
+        const metadataDuration =
+          typeof videoResult.metadata?.duration === 'number'
+            ? videoResult.metadata.duration
+            : null;
+        const actualDuration = metadataDuration ?? input.duration ?? 2;
+
         await updateFrame(input.frameId, {
           videoUrl: storageUrl,
-          durationMs: (input.duration || 2) * 1000,
+          durationMs: actualDuration * 1000,
           videoStatus: 'completed',
           videoGeneratedAt: new Date(),
           videoError: null,
@@ -193,10 +200,15 @@ export const generateMotionWorkflow = createWorkflow(
     console.log('[MotionWorkflow]', 'Motion generation workflow completed');
 
     // Return result
+    const metadataDuration =
+      typeof videoResult.metadata?.duration === 'number'
+        ? videoResult.metadata.duration
+        : null;
+    const actualDuration = metadataDuration ?? input.duration ?? 2;
     const result: MotionWorkflowResult = {
       frameId: input.frameId,
       videoUrl: storageUrl,
-      duration: input.duration || 2,
+      duration: actualDuration,
     };
 
     return result;

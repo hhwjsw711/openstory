@@ -1,0 +1,178 @@
+import { generateMockFrames } from '@/lib/mocks/data-generators';
+import type { Meta, StoryObj } from '@storybook/react';
+import { SceneList } from './scene-list';
+
+const meta: Meta<typeof SceneList> = {
+  title: 'Scenes/SceneList',
+  component: SceneList,
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    layout: 'fullscreen',
+  },
+  args: {
+    frames: [],
+    selectedFrameId: undefined,
+    onSelectFrame: () => console.log('onSelectFrame'),
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof SceneList>;
+
+// Generate mock frames for different scenarios
+const mockFrames = generateMockFrames(5, 'mock-sequence-id');
+
+export const WithScenes: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: mockFrames[1]?.id ?? undefined,
+  },
+};
+
+export const NoSelectedScene: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: undefined,
+  },
+};
+
+export const MultipleCompleted: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: mockFrames[0]?.id ?? undefined,
+  },
+};
+
+export const AllCompleted: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: undefined,
+  },
+};
+
+export const Empty: Story = {
+  args: {
+    frames: [],
+    selectedFrameId: undefined,
+  },
+};
+
+export const ManyScenes: Story = {
+  args: {
+    frames: generateMockFrames(15, 'mock-sequence-id'),
+    selectedFrameId: undefined,
+  },
+};
+
+export const GeneratingThumbnails: Story = {
+  args: {
+    frames: mockFrames.map((frame, idx) => ({
+      ...frame,
+      thumbnailStatus:
+        idx < 3 ? ('generating' as const) : ('completed' as const),
+      thumbnailUrl: idx < 3 ? null : frame.thumbnailUrl,
+    })),
+    selectedFrameId: mockFrames[0]?.id ?? undefined,
+  },
+};
+
+export const WithFailures: Story = {
+  args: {
+    frames: mockFrames.map((frame, idx) => ({
+      ...frame,
+      thumbnailStatus: idx === 2 ? ('failed' as const) : ('completed' as const),
+      thumbnailUrl: idx === 2 ? null : frame.thumbnailUrl,
+      thumbnailError: idx === 2 ? 'Generation timeout' : null,
+    })),
+    selectedFrameId: undefined,
+  },
+};
+
+export const MixedStates: Story = {
+  args: {
+    frames: mockFrames.map((frame, idx) => {
+      if (idx === 0) {
+        return {
+          ...frame,
+          thumbnailStatus: 'pending' as const,
+          thumbnailUrl: null,
+        };
+      }
+      if (idx === 1) {
+        return {
+          ...frame,
+          thumbnailStatus: 'generating' as const,
+          thumbnailUrl: null,
+        };
+      }
+      if (idx === 2) {
+        return {
+          ...frame,
+          thumbnailStatus: 'failed' as const,
+          thumbnailUrl: null,
+          thumbnailError: 'API error',
+        };
+      }
+      return {
+        ...frame,
+        thumbnailStatus: 'completed' as const,
+      };
+    }),
+    selectedFrameId: mockFrames[1]?.id ?? undefined,
+  },
+};
+
+// Width variations
+export const WidthMedium: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: mockFrames[1]?.id ?? undefined,
+  },
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <div className="[&>div]:w-96">
+          <Story />
+        </div>
+      </div>
+    ),
+  ],
+};
+
+export const WidthLarge: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: mockFrames[1]?.id ?? undefined,
+  },
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <div className="[&>div]:w-[32rem]">
+          <Story />
+        </div>
+      </div>
+    ),
+  ],
+};
+
+export const WidthExtraLarge: Story = {
+  args: {
+    frames: mockFrames,
+    selectedFrameId: mockFrames[1]?.id ?? undefined,
+  },
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <div className="[&>div]:w-[48rem]">
+          <Story />
+        </div>
+      </div>
+    ),
+  ],
+};

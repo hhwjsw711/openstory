@@ -38,21 +38,23 @@ export default function StoryboardPage({ params }: StoryboardPageProps) {
   }, [sequenceId, router]);
 
   return (
-    <PageContainer data-testid="storyboard-page">
-      <PageHeader>
-        {isLoading && <PageHeading>Loading storyboard...</PageHeading>}
-        {error && <PageHeading>Error loading storyboard</PageHeading>}
-        {!isLoading && !error && (
-          <>
-            <PageHeading>Storyboard Generation</PageHeading>
-            <PageDescription>
-              Review and refine your AI-generated storyboard frames.
-            </PageDescription>
-          </>
-        )}
-      </PageHeader>
+    <div className="h-full overflow-auto">
+      <PageContainer data-testid="storyboard-page">
+        <PageHeader>
+          {isLoading && <PageHeading>Loading storyboard...</PageHeading>}
+          {error && <PageHeading>Error loading storyboard</PageHeading>}
+          {!isLoading && !error && (
+            <>
+              <PageHeading>Storyboard Generation</PageHeading>
+              <PageDescription>
+                Review and refine your AI-generated storyboard frames.
+              </PageDescription>
+            </>
+          )}
+        </PageHeader>
 
-      <StoryboardStep sequenceId={sequenceId} onPrevious={handlePrevious} />
-    </PageContainer>
+        <StoryboardStep sequenceId={sequenceId} onPrevious={handlePrevious} />
+      </PageContainer>
+    </div>
   );
 }

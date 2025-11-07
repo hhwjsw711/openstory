@@ -5,8 +5,8 @@ import {
   PageHeader,
   PageHeading,
 } from '@/components/typography';
+import { ScriptView } from '@/components/views/script-view';
 import { useUser } from '@/hooks/use-user';
-import { ScriptView } from '@/views/script-view';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
@@ -21,22 +21,24 @@ export default function NewSequencePage() {
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
         // Navigate to storyboard page after successful generation
-        router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+        router.push(`/sequences/${sequenceIds[0]}/scenes`);
       }
     },
     [router]
   );
 
   return (
-    <PageContainer maxWidth="narrow">
-      {/* Page Header */}
-      <PageHeader>
-        <PageHeading>Create a new sequence</PageHeading>
-        <PageDescription>
-          Transform your script into a professional video sequence.
-        </PageDescription>
-      </PageHeader>
-      <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
-    </PageContainer>
+    <div className="h-full overflow-auto">
+      <PageContainer maxWidth="narrow">
+        {/* Page Header */}
+        <PageHeader>
+          <PageHeading>Create a new sequence</PageHeading>
+          <PageDescription>
+            Transform your script into a professional video sequence.
+          </PageDescription>
+        </PageHeader>
+        <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
+      </PageContainer>
+    </div>
   );
 }

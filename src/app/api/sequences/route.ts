@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         // Revalidate paths for this sequence
         revalidatePath(`/sequences/${sequence.id}`);
         revalidatePath(`/sequences/${sequence.id}/script`);
-        revalidatePath(`/sequences/${sequence.id}/storyboard`);
+        revalidatePath(`/sequences/${sequence.id}/scenes`);
 
         return sequence;
       })

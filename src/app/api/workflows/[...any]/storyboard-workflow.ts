@@ -219,6 +219,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         description: scene.originalScript.extract,
         orderIndex: index,
         metadata: scene, // Store Scene object directly
+        durationMs: Math.round((scene.metadata.durationSeconds || 3) * 1000), // Convert seconds to milliseconds
       }));
 
       // Bulk insert all frames at once
@@ -268,6 +269,12 @@ export const generateStoryboardWorkflow = createWorkflow(
           } = await context.invoke('image', {
             workflow: generateImageWorkflow,
             body: imageInput,
+            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+              ? {
+                  'x-vercel-protection-bypass':
+                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+                }
+              : undefined,
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
@@ -290,6 +297,12 @@ export const generateStoryboardWorkflow = createWorkflow(
           await context.invoke('motion', {
             workflow: generateMotionWorkflow,
             body: motionInput,
+            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+              ? {
+                  'x-vercel-protection-bypass':
+                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+                }
+              : undefined,
           });
         })
       );

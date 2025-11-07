@@ -1,15 +1,15 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useSequences } from '@/hooks/use-sequences';
+import { getModelById } from '@/lib/ai/models.config';
+import { formatDistanceToNow } from '@/lib/utils';
+import { formatDuration } from '@/lib/utils/format-duration';
 import { Calendar, Clock, Timer, VideoIcon } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { useSequences } from '@/hooks/use-sequences';
-import { formatDistanceToNow } from '@/lib/utils';
-import { formatDuration } from '@/lib/utils/format-duration';
-import { getModelById } from '@/lib/ai/models.config';
 
 interface SequencesListProps {
   teamId?: string;
@@ -50,7 +50,7 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {sequences.map((sequence) => (
-        <Link key={sequence.id} href={`/sequences/${sequence.id}/storyboard`}>
+        <Link key={sequence.id} href={`/sequences/${sequence.id}/scenes`}>
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">

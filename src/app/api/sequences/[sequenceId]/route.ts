@@ -145,7 +145,7 @@ export async function PATCH(
     // Revalidate paths
     revalidatePath(`/sequences/${sequenceId}`);
     revalidatePath(`/sequences/${sequenceId}/script`);
-    revalidatePath(`/sequences/${sequenceId}/storyboard`);
+    revalidatePath(`/sequences/${sequenceId}/scenes`);
 
     return NextResponse.json(
       {

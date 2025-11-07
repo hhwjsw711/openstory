@@ -5,9 +5,9 @@ import {
   PageHeader,
   PageHeading,
 } from '@/components/typography';
+import { ScriptView } from '@/components/views/script-view';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
-import { ScriptView } from '@/views/script-view';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 
@@ -30,30 +30,32 @@ export default function ScriptPage({
   const handleSuccess = (sequenceIds: string[]) => {
     // Navigate to storyboard page after successful generation
     if (sequenceIds.length > 0) {
-      router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+      router.push(`/sequences/${sequenceIds[0]}/scenes`);
     }
   };
 
   const handleCancel = () => {
     // Navigate back to storyboard without making changes
-    router.push(`/sequences/${sequenceId}/storyboard`);
+    router.push(`/sequences/${sequenceId}/scenes`);
   };
 
   return (
-    <PageContainer maxWidth="narrow" data-testid="edit-script-page">
-      <PageHeader>
-        <PageHeading>Edit Script</PageHeading>
-        <PageDescription>
-          Update your script and regenerate the storyboard with new frames.
-        </PageDescription>
-      </PageHeader>
+    <div className="h-full overflow-hidden">
+      <PageContainer maxWidth="narrow" data-testid="edit-script-page">
+        <PageHeader>
+          <PageHeading>Edit Script</PageHeading>
+          <PageDescription>
+            Update your script and regenerate the storyboard with new frames.
+          </PageDescription>
+        </PageHeader>
 
-      <ScriptView
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-        sequence={sequence}
-        loading={isLoadingSequence || !sequence}
-      />
-    </PageContainer>
+        <ScriptView
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+          sequence={sequence}
+          loading={isLoadingSequence || !sequence}
+        />
+      </PageContainer>
+    </div>
   );
 }

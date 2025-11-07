@@ -1,6 +1,8 @@
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import { Style } from '@/types/database';
 import { http, HttpResponse } from 'msw';
+import { generateMockFrames } from './data-generators';
+import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 
 const stylePresets: Style[] = MOCK_SYSTEM_STYLES;
 
@@ -185,6 +187,51 @@ export const handlers = [
 
     return HttpResponse.json({
       success: true,
+    });
+  }),
+
+  // GET /api/sequences/:sequenceId/chapters.vtt - Chapter markers
+  http.get('/api/sequences/:sequenceId/chapters.vtt', ({ params }) => {
+    const { sequenceId } = params;
+
+    // Generate mock frames with scene metadata
+    const mockFrames = generateMockFrames(5, sequenceId as string).map(
+      (frame, index) => {
+        if (!frame.metadata) {
+          return frame;
+        }
+
+        return {
+          ...frame,
+          orderIndex: index,
+          durationMs: 5000, // 5 seconds per frame
+          metadata: {
+            ...frame.metadata,
+            sceneNumber: index + 1,
+            metadata: {
+              ...frame.metadata.metadata,
+              title: [
+                'Opening Scene',
+                'The Journey Begins',
+                'Rising Action',
+                'Climax',
+                'Resolution',
+              ][index],
+            },
+          },
+        };
+      }
+    );
+
+    // Generate chapters VTT
+    const vtt = generateChaptersVTT(mockFrames);
+
+    return new HttpResponse(vtt, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/vtt',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
     });
   }),
 ];
