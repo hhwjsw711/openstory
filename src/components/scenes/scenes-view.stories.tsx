@@ -1,4 +1,4 @@
-import { ScenesView } from '@/components/views/scenes-view';
+import { ScenesView } from '@/components/scenes/scenes-view';
 import type { Frame } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ type ScenesViewStoryProps = React.ComponentProps<typeof ScenesView> & {
 };
 
 const meta = {
-  title: 'Views/Scenes',
+  title: 'Scenes/ScenesView',
   component: ScenesView,
   parameters: {
     layout: 'fullscreen',

@@ -1,28 +1,33 @@
 'use client';
 
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
+import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import { VideoIcon } from 'lucide-react';
+import Image from 'next/image';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
-import { useMemo, useState, useCallback } from 'react';
-import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import Image from 'next/image';
 
 type ScenePlayerProps = {
   sequenceId: string;
-  frames: Frame[];
+  frames?: Frame[] | undefined;
+  selectedFrameId?: string;
+  onSelectFrame: (frameId: string) => void;
   className?: string;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
 };
 
 export const ScenePlayer: React.FC<ScenePlayerProps> = ({
-  frames,
+  frames = [],
   className,
+  selectedFrameId,
+  onSelectFrame,
   onTimeUpdate,
   onEnded,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
   // Filter frames with completed thumbnails (skip frames without thumbnails)
@@ -31,26 +36,44 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   }, [frames]);
 
   // Get current frame and next frame
-  const currentFrame = displayFrames[currentIndex];
-  const nextFrame = displayFrames[currentIndex + 1];
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(
+    frames.findIndex((frame) => frame.id === selectedFrameId)
+  );
+  useEffect(() => {
+    // We could use a useMemo here, but we want to support not having to have a callback to set the selected frame id
+    setCurrentFrameIndex(
+      frames.findIndex((frame) => frame.id === selectedFrameId)
+    );
+  }, [selectedFrameId, frames]);
+
+  const currentFrame =
+    currentFrameIndex >= 0 ? frames[currentFrameIndex] : undefined;
+  const nextFrame =
+    currentFrameIndex < frames.length - 1
+      ? frames.find(
+          (frame) => frame.videoStatus === 'completed' && frame.videoUrl,
+          currentFrameIndex + 1
+        )
+      : undefined;
 
   // Handle video end - move to next frame or call onEnded
   const handleEnded = useCallback(() => {
-    if (currentIndex < displayFrames.length - 1) {
+    if (nextFrame) {
       setShouldAutoPlay(true); // Enable autoplay for next video
-      setCurrentIndex((prev) => prev + 1);
+      // Select the next frame - not this may cause a re-render of the scene list
+      onSelectFrame(nextFrame.id);
     } else {
       onEnded?.();
     }
-  }, [currentIndex, displayFrames.length, onEnded]);
+  }, [currentFrameIndex, displayFrames.length, onEnded, onSelectFrame]);
 
   if (!currentFrame) {
     return (
-      <div className={cn('flex flex-col gap-4', className)}>
-        <div className="rounded-lg border border-muted bg-muted/10 p-4">
-          <p className="text-sm text-muted-foreground">No frames available</p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<VideoIcon />}
+        title={'No selected frame'}
+        description={'Please select a frame to play.'}
+      />
     );
   }
 

@@ -1,6 +1,6 @@
+import type { Frame } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import type { Frame } from '@/types/database';
 
 export interface CreateFrameInput {
   sequenceId: string;
@@ -63,7 +63,6 @@ export function useFramesBySequence(
       return result.data;
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
-    enabled: !!sequenceId,
     refetchInterval: options?.refetchInterval,
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus

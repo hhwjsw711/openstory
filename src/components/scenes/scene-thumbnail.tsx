@@ -23,9 +23,7 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
 
   return (
     <div className={cn('relative aspect-video overflow-hidden', className)}>
-      {isLoading && (
-        <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
-      )}
+      {isLoading && <Skeleton className="absolute h-full w-full rounded-md" />}
 
       {hasImage && (
         <Image

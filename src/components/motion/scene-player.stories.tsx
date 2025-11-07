@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
 import type { Frame } from '@/types/database';
+import type { Meta, StoryObj } from '@storybook/react';
 import { ScenePlayer } from './scene-player';
 
 const meta: Meta<typeof ScenePlayer> = {
@@ -151,6 +151,7 @@ const mockFrames: Frame[] = [
 export const WithMockSequence: Story = {
   args: {
     sequenceId: 'demo-sequence-123',
+    selectedFrameId: '1',
     frames: mockFrames,
   },
   parameters: {
@@ -166,6 +167,7 @@ export const WithMockSequence: Story = {
 export const AllVideoStates: Story = {
   args: {
     sequenceId: 'video-states-demo',
+    selectedFrameId: '1',
     frames: [
       {
         ...mockFrameBase,
@@ -251,6 +253,7 @@ export const AllVideoStates: Story = {
 export const OnlyPendingVideos: Story = {
   args: {
     sequenceId: 'pending-only',
+    selectedFrameId: '1',
     frames: [
       {
         ...mockFrameBase,

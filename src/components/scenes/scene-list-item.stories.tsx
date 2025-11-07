@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
 import type { Frame } from '@/types/database';
+import type { Meta, StoryObj } from '@storybook/react';
 import { SceneListItem } from './scene-list-item';
 
 const mockFrame: Frame = {
@@ -121,7 +121,6 @@ const meta: Meta<typeof SceneListItem> = {
   ],
   args: {
     onSelect: () => console.log('onSelect'),
-    onToggleComplete: () => console.log('onToggleComplete'),
   },
 };
 

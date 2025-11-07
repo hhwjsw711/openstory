@@ -1,44 +1,40 @@
-import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardAction,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { Check } from 'lucide-react';
 import { SceneThumbnail } from './scene-thumbnail';
 
 type SceneListItemProps = {
-  frame: Frame;
-  isActive: boolean;
-  isCompleted: boolean;
-  onSelect: () => void;
-  onToggleComplete: () => void;
+  frame?: Frame | undefined;
+  isActive?: boolean;
+  isCompleted?: boolean;
+  onSelect?: () => void;
   variant?: 'stacked' | 'horizontal' | 'responsive';
 };
 
 export const SceneListItem: React.FC<SceneListItemProps> = ({
   frame,
-  isActive,
-  isCompleted,
+  isActive = false,
+  isCompleted = false,
   onSelect,
-  onToggleComplete,
   variant = 'responsive',
 }) => {
   // Extract scene data from frame metadata
-  const metadata = frame.metadata as {
-    sceneNumber?: number;
-    metadata?: { title?: string };
-    originalScript?: { extract?: string };
-  } | null;
+  const metadata = frame?.metadata;
 
-  const sceneNumber = metadata?.sceneNumber ?? frame.orderIndex + 1;
-  const title = metadata?.metadata?.title ?? `Scene ${sceneNumber}`;
-  const scriptPreview =
-    metadata?.originalScript?.extract ?? frame.description ?? '';
+  const sceneNumber = metadata?.sceneNumber ?? (frame?.orderIndex ?? 0) + 1;
+  const title = !frame
+    ? undefined
+    : (metadata?.metadata?.title ?? `Scene ${sceneNumber}`);
+  const scriptPreview = !frame
+    ? undefined
+    : (metadata?.originalScript?.extract ?? frame?.description ?? '');
 
   return (
     <Card
@@ -51,22 +47,17 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
       )}
       onClick={onSelect}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          'absolute right-4 top-4 z-10 h-6 w-6 rounded-full',
-          isCompleted
-            ? 'bg-success text-success-foreground hover:bg-success/90'
-            : 'border hover:border-primary'
-        )}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleComplete();
-        }}
-      >
-        {isCompleted && <Check className="h-4 w-4" />}
-      </Button>
+      {isCompleted && (
+        <Check
+          className={cn(
+            'absolute right-4 top-4 z-10 h-6 w-6 p-1 rounded-full',
+            'bg-success text-success-foreground'
+          )}
+        />
+      )}
+      {frame && !isCompleted && (
+        <Skeleton className="absolute right-4 top-4 z-10 h-6 w-6 rounded-full" />
+      )}
 
       <CardHeader>
         <div
@@ -78,9 +69,9 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
           )}
         >
           <SceneThumbnail
-            thumbnailUrl={frame.thumbnailUrl}
-            thumbnailStatus={frame.thumbnailStatus ?? 'pending'}
-            alt={title}
+            thumbnailUrl={frame?.thumbnailUrl}
+            thumbnailStatus={frame?.thumbnailStatus ?? 'pending'}
+            alt={title ?? 'Scene thumbnail'}
             className={cn(
               'w-full rounded-md',
               variant === 'responsive' &&
@@ -90,9 +81,11 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
           />
 
           <div className="flex flex-col gap-1.5">
-            <CardTitle className="text-sm">{title}</CardTitle>
+            <CardTitle className="text-sm">
+              {title ?? <Skeleton className="w-24 h-4" />}
+            </CardTitle>
             <CardDescription className="line-clamp-2 text-xs leading-snug">
-              {scriptPreview}
+              {scriptPreview ?? <Skeleton className="w-full h-4" />}
             </CardDescription>
           </div>
         </div>

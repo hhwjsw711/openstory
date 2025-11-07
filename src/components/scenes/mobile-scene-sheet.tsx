@@ -70,7 +70,6 @@ export const MobileSceneSheet: React.FC<MobileSceneSheetProps> = ({
                   isActive={frame.id === selectedFrameId}
                   isCompleted={isCompleted(frame)}
                   onSelect={() => handleSelectFrame(frame.id)}
-                  onToggleComplete={() => onToggleComplete(frame.id)}
                 />
               ))
             )}

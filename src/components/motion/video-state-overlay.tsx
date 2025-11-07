@@ -1,5 +1,5 @@
-import { Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
 
 type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed' | null;
 
@@ -33,17 +33,15 @@ export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
         className
       )}
     >
-      <div className="flex flex-col items-center gap-3 rounded-lg bg-background/95 p-6 shadow-lg">
-        {isGeneratingFrame && (
+      <div className="flex flex-col items-center gap-3 rounded-lg bg-background/40 p-6 shadow-lg">
+        {!hasFailed && isGeneratingFrame && (
           <>
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm font-medium">Generating frame…</p>
           </>
         )}
 
-        {isGeneratingVideo && (
+        {!hasFailed && !isGeneratingFrame && isGeneratingVideo && (
           <>
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm font-medium">Generating video…</p>
           </>
         )}

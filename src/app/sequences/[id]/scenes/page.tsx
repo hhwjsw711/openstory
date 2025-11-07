@@ -1,8 +1,8 @@
 'use client';
-import { use, Suspense } from 'react';
-import { useUser } from '@/hooks/use-user';
-import { ScenesView } from '@/components/views/scenes-view';
+import { ScenesView } from '@/components/scenes/scenes-view';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@/hooks/use-user';
+import { Suspense, use } from 'react';
 
 export default function ScenesPage({
   params,
