@@ -34,7 +34,7 @@ export const SceneList: React.FC<SceneListProps> = ({
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col gap-3 p-4">
-          {frames === undefined &&
+          {(frames === undefined || frames.length === 0) &&
             [1, 2, 3].map((i) => (
               <SceneListItem
                 key={`frame-skeleton-${i}`}
