@@ -5,9 +5,9 @@ import {
   PageHeader,
   PageHeading,
 } from '@/components/typography';
+import { ScriptView } from '@/components/views/script-view';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
-import { ScriptView } from '@/views/script-view';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 

@@ -1,12 +1,8 @@
 'use client';
-import { use } from 'react';
-import { PageContainer } from '@/components/layout';
-import {
-  PageDescription,
-  PageHeader,
-  PageHeading,
-} from '@/components/typography';
+import { use, Suspense } from 'react';
 import { useUser } from '@/hooks/use-user';
+import { ScenesView } from '@/components/views/scenes-view';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ScenesPage({
   params,
@@ -19,13 +15,19 @@ export default function ScenesPage({
   useUser();
 
   return (
-    <PageContainer data-testid="scenes-page">
-      <PageHeader>
-        <PageHeading>Scenes Editor - Sequence {sequenceId}</PageHeading>
-        <PageDescription>
-          Scene components will be implemented in subsequent phases
-        </PageDescription>
-      </PageHeader>
-    </PageContainer>
+    <Suspense
+      fallback={
+        <div className="flex h-screen overflow-hidden">
+          <div className="w-80 border-r">
+            <Skeleton className="h-full w-full" />
+          </div>
+          <div className="flex flex-1 items-center justify-center p-8">
+            <Skeleton className="aspect-video w-full max-w-4xl" />
+          </div>
+        </div>
+      }
+    >
+      <ScenesView sequenceId={sequenceId} />
+    </Suspense>
   );
 }

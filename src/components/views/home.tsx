@@ -12,7 +12,7 @@ import scene8 from '@/assets/community/scene8.jpg';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { ScriptView } from '@/views/script-view';
+import { ScriptView } from '@/components/views/script-view';
 import { Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';

@@ -5,8 +5,8 @@ import {
   PageHeader,
   PageHeading,
 } from '@/components/typography';
+import { ScriptView } from '@/components/views/script-view';
 import { useUser } from '@/hooks/use-user';
-import { ScriptView } from '@/views/script-view';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 

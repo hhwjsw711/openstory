@@ -145,11 +145,8 @@ const mockFrames: Frame[] = [
   },
 ];
 
-// Note: This component uses sequential video playback - switching the video src when each video ends.
-// No chapter navigation UI - just seamless video-to-video transitions.
-//
-// Scene 3 is intentionally set to "pending" status and will be skipped during playback.
-// All other scenes use sample videos (Big Buck Bunny, Elephants Dream).
+// Note: This component now shows ALL frames with completed thumbnails, not just completed videos.
+// Frames with pending/generating/failed video status show poster frame with status overlay.
 
 export const WithMockSequence: Story = {
   args: {
@@ -160,22 +157,142 @@ export const WithMockSequence: Story = {
     docs: {
       description: {
         story:
-          'Demonstrates sequential video playback with Vidstack. The component automatically switches to the next video when each one ends. Scene 3 is skipped (pending status). No chapter navigation - just seamless transitions.',
+          'Demonstrates sequential playback with mixed video states. Scene 1-2 play videos, Scene 3 shows pending overlay on poster frame. Navigate through scenes to see different states.',
       },
     },
   },
 };
 
-export const MultipleScenes: Story = {
+export const AllVideoStates: Story = {
   args: {
-    sequenceId: 'multi-scene-demo',
-    frames: mockFrames,
+    sequenceId: 'video-states-demo',
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: 'https://picsum.photos/seed/state1/1280/720',
+        videoUrl:
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        thumbnailStatus: 'completed',
+        videoStatus: 'completed',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Completed Video',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '2',
+        orderIndex: 1,
+        thumbnailUrl: 'https://picsum.photos/seed/state2/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 2,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Pending Video',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '3',
+        orderIndex: 2,
+        thumbnailUrl: 'https://picsum.photos/seed/state3/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'generating',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 3,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Generating Video',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '4',
+        orderIndex: 3,
+        thumbnailUrl: 'https://picsum.photos/seed/state4/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'failed',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 4,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Failed Video',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Same demo but with different sequence ID. This shows how the component handles different sequences with seamless video transitions.',
+          'Shows all possible video states: completed (plays video), pending (clock icon), generating (spinner), and failed (error icon). Navigate through scenes to see each state overlay.',
+      },
+    },
+  },
+};
+
+export const OnlyPendingVideos: Story = {
+  args: {
+    sequenceId: 'pending-only',
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: 'https://picsum.photos/seed/pending1/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Pending Scene 1',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '2',
+        orderIndex: 1,
+        thumbnailUrl: 'https://picsum.photos/seed/pending2/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 2,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Pending Scene 2',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'All frames have completed thumbnails but pending videos. Shows how the player handles a sequence where no videos are ready yet.',
       },
     },
   },

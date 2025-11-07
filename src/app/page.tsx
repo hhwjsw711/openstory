@@ -1,4 +1,4 @@
-import { HomeView } from '@/views/home';
+import { HomeView } from '@/components/views/home';
 
 export default async function HomePage() {
   // For now, all users go to create new sequence
