@@ -32,7 +32,7 @@ export const SceneList: React.FC<SceneListProps> = ({
 
       {/* Scene list */}
 
-      <ScrollArea className="h-full">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col gap-3 p-4">
           {frames === undefined &&
             [1, 2, 3].map((i) => (

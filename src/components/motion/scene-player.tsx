@@ -50,7 +50,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   const nextFrame =
     currentFrameIndex < frames.length - 1
       ? frames.find(
-          (frame) => frame.videoStatus === 'completed' && frame.videoUrl,
+          (frame, index) =>
+            frame.videoStatus === 'completed' &&
+            frame.videoUrl &&
+            index > currentFrameIndex,
           currentFrameIndex + 1
         )
       : undefined;
@@ -80,6 +83,20 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   const hasCompletedVideo =
     currentFrame.videoStatus === 'completed' && currentFrame.videoUrl;
 
+  // Generate a descriptive filename for download
+  const title = currentFrame.metadata?.metadata?.title;
+  const sanitizedTitle = title
+    ? title
+        .replace(/[^a-z0-9\s-]/gi, '')
+        .replace(/\s+/g, '-')
+        .toLowerCase()
+        .substring(0, 100) // Limit length
+    : '';
+  const downloadFilename =
+    sanitizedTitle.length > 0
+      ? `${sanitizedTitle}.mp4`
+      : `scene-${currentFrame.id}.mp4`;
+
   return (
     <>
       {hasCompletedVideo ? (
@@ -89,6 +106,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           posterSrc={currentFrame.thumbnailUrl}
           className={className}
           autoPlay={shouldAutoPlay}
+          enableDownload={true}
+          downloadFilename={downloadFilename}
           onTimeUpdate={onTimeUpdate}
           onEnded={handleEnded}
         />

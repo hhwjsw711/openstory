@@ -28,15 +28,17 @@ export default function NewSequencePage() {
   );
 
   return (
-    <PageContainer maxWidth="narrow">
-      {/* Page Header */}
-      <PageHeader>
-        <PageHeading>Create a new sequence</PageHeading>
-        <PageDescription>
-          Transform your script into a professional video sequence.
-        </PageDescription>
-      </PageHeader>
-      <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
-    </PageContainer>
+    <div className="h-full overflow-auto">
+      <PageContainer maxWidth="narrow">
+        {/* Page Header */}
+        <PageHeader>
+          <PageHeading>Create a new sequence</PageHeading>
+          <PageDescription>
+            Transform your script into a professional video sequence.
+          </PageDescription>
+        </PageHeader>
+        <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
+      </PageContainer>
+    </div>
   );
 }

@@ -40,20 +40,22 @@ export default function ScriptPage({
   };
 
   return (
-    <PageContainer maxWidth="narrow" data-testid="edit-script-page">
-      <PageHeader>
-        <PageHeading>Edit Script</PageHeading>
-        <PageDescription>
-          Update your script and regenerate the storyboard with new frames.
-        </PageDescription>
-      </PageHeader>
+    <div className="h-full overflow-hidden">
+      <PageContainer maxWidth="narrow" data-testid="edit-script-page">
+        <PageHeader>
+          <PageHeading>Edit Script</PageHeading>
+          <PageDescription>
+            Update your script and regenerate the storyboard with new frames.
+          </PageDescription>
+        </PageHeader>
 
-      <ScriptView
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-        sequence={sequence}
-        loading={isLoadingSequence || !sequence}
-      />
-    </PageContainer>
+        <ScriptView
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+          sequence={sequence}
+          loading={isLoadingSequence || !sequence}
+        />
+      </PageContainer>
+    </div>
   );
 }

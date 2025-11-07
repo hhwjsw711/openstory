@@ -15,19 +15,21 @@ export default function ScenesPage({
   useUser();
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen overflow-hidden">
-          <div className="w-80 border-r">
-            <Skeleton className="h-full w-full" />
+    <div className="h-full overflow-hidden">
+      <Suspense
+        fallback={
+          <div className="flex h-full overflow-hidden">
+            <div className="w-80 border-r">
+              <Skeleton className="h-full w-full" />
+            </div>
+            <div className="flex flex-1 items-center justify-center p-8">
+              <Skeleton className="aspect-video w-full max-w-4xl" />
+            </div>
           </div>
-          <div className="flex flex-1 items-center justify-center p-8">
-            <Skeleton className="aspect-video w-full max-w-4xl" />
-          </div>
-        </div>
-      }
-    >
-      <ScenesView sequenceId={sequenceId} />
-    </Suspense>
+        }
+      >
+        <ScenesView sequenceId={sequenceId} />
+      </Suspense>
+    </div>
   );
 }

@@ -19,6 +19,8 @@ export type VideoPlayerProps = {
   posterSrc?: string | null;
   className?: string;
   autoPlay?: boolean;
+  enableDownload?: boolean;
+  downloadFilename?: string;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
@@ -30,11 +32,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   posterSrc,
   className,
   autoPlay = false,
+  enableDownload = false,
+  downloadFilename,
   onLoadedMetadata,
   onTimeUpdate,
   onEnded,
 }) => {
   const playerRef = useRef<MediaPlayerInstance>(null);
+
+  // Construct download info with explicit URL and filename
+  const downloadInfo =
+    enableDownload && downloadFilename
+      ? { url: src, filename: downloadFilename }
+      : enableDownload
+        ? true
+        : null;
 
   return (
     <MediaPlayer
@@ -64,7 +76,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {chaptersUrl && (
         <Track kind="chapters" src={chaptersUrl} type="vtt" default />
       )}
-      <DefaultVideoLayout icons={defaultLayoutIcons} />
+      <DefaultVideoLayout icons={defaultLayoutIcons} download={downloadInfo} />
     </MediaPlayer>
   );
 };

@@ -29,8 +29,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       />
 
       {/* Right: Scene Player */}
-      <div className="flex flex-1 flex-col items-center justify-start bg-muted/10 p-8 gap-8">
-        <div className="w-full max-w-4xl">
+      <div className="flex flex-1 flex-col items-center justify-start bg-muted/10 p-8 gap-8 overflow-auto">
+        <div className="w-full max-w-4xl flex items-center">
           <ScenePlayer
             frames={frames}
             selectedFrameId={selectedFrameId || frames?.[0]?.id}
@@ -39,7 +39,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           />
         </div>
         {frames && frames.length > 0 && (
-          <div className="w-full max-w-4xl overflow-auto p-4">
+          <div className="w-full max-w-4xl h-min-300 p-4">
             <SceneScriptPrompts
               frame={frames?.find((frame) => frame.id === selectedFrameId)}
             />
