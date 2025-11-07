@@ -150,7 +150,6 @@ const mockFrames: Frame[] = [
 
 export const WithMockSequence: Story = {
   args: {
-    sequenceId: 'demo-sequence-123',
     selectedFrameId: '1',
     frames: mockFrames,
   },
@@ -166,7 +165,6 @@ export const WithMockSequence: Story = {
 
 export const AllVideoStates: Story = {
   args: {
-    sequenceId: 'video-states-demo',
     selectedFrameId: '1',
     frames: [
       {
@@ -252,7 +250,6 @@ export const AllVideoStates: Story = {
 
 export const OnlyPendingVideos: Story = {
   args: {
-    sequenceId: 'pending-only',
     selectedFrameId: '1',
     frames: [
       {

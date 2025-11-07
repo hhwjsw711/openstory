@@ -11,7 +11,6 @@ import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
 
 type ScenePlayerProps = {
-  sequenceId: string;
   frames?: Frame[] | undefined;
   selectedFrameId?: string;
   onSelectFrame: (frameId: string) => void;

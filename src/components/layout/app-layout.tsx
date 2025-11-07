@@ -10,9 +10,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   ...props
 }) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
       <Header />
-      <main className={cn('', className)} {...props}>
+      <main className={cn('flex-1 overflow-hidden', className)} {...props}>
         {children}
       </main>
     </div>

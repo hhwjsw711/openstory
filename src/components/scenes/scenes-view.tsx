@@ -2,11 +2,12 @@
 
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
+import { SceneScriptPrompts } from '@/components/scenes/scene-script-prompts';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useState } from 'react';
 
 type ScenesViewProps = {
-  sequenceId: string;
+  sequenceId?: string | undefined;
 };
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
@@ -19,7 +20,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const { data: frames } = useFramesBySequence(sequenceId);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* Left: Scene List */}
       <SceneList
         frames={frames}
@@ -28,14 +29,18 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       />
 
       {/* Right: Scene Player */}
-      <div className="flex flex-1 items-center justify-center bg-muted/10 p-8">
+      <div className="flex flex-1 flex-col items-center justify-start bg-muted/10 p-8 gap-8">
         <div className="w-full max-w-4xl">
           <ScenePlayer
-            sequenceId={sequenceId}
             frames={frames}
             selectedFrameId={selectedFrameId || frames?.[0]?.id}
             onSelectFrame={setSelectedFrameId}
             className="w-full"
+          />
+        </div>
+        <div className="w-full max-w-4xl overflow-auto p-4">
+          <SceneScriptPrompts
+            frame={frames?.find((frame) => frame.id === selectedFrameId)}
           />
         </div>
       </div>

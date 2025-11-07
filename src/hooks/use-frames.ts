@@ -44,14 +44,14 @@ export const frameKeys = {
 
 // Hook for listing frames by sequence with optional auto-refresh
 export function useFramesBySequence(
-  sequenceId: string,
+  sequenceId?: string | undefined,
   options?: {
     refetchInterval?: number | false;
     staleTime?: number;
   }
 ) {
   return useQuery<Frame[]>({
-    queryKey: frameKeys.list(sequenceId),
+    queryKey: frameKeys.list(sequenceId ?? ''),
     queryFn: async () => {
       const response = await fetch(`/api/sequences/${sequenceId}/frames`);
       const result = await response.json();
@@ -66,6 +66,7 @@ export function useFramesBySequence(
     refetchInterval: options?.refetchInterval,
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus
+    enabled: !!sequenceId,
   });
 }
 
