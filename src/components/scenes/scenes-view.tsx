@@ -38,11 +38,13 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             className="w-full"
           />
         </div>
-        <div className="w-full max-w-4xl overflow-auto p-4">
-          <SceneScriptPrompts
-            frame={frames?.find((frame) => frame.id === selectedFrameId)}
-          />
-        </div>
+        {frames && frames.length > 0 && (
+          <div className="w-full max-w-4xl overflow-auto p-4">
+            <SceneScriptPrompts
+              frame={frames?.find((frame) => frame.id === selectedFrameId)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
