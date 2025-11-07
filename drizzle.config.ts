@@ -8,16 +8,7 @@ if (!connectionString) {
   );
 }
 
-const isLocalDevelopment =
-  connectionString.includes('localhost') ||
-  connectionString.includes('127.0.0.1');
-
 const dbUrl = new URL(connectionString);
-
-// Only configure SSL for production (when not local)
-if (!isLocalDevelopment) {
-  dbUrl.searchParams.set('sslmode', 'no-verify');
-}
 
 export default defineConfig({
   schema: './src/lib/db/schema/index.ts',

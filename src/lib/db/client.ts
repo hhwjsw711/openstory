@@ -1,18 +1,18 @@
 /**
  * Drizzle Database Client
- * Centralized database client using the shared PostgreSQL pool
+ * Centralized database client using postgres.js
  */
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { pgPool } from './pool';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { sql } from './pool';
 import { schema } from './schema';
 
 /**
  * Drizzle database instance
- * Uses the shared pgPool connection and includes all schema definitions
+ * Uses the postgres.js client and includes all schema definitions
  * Configured to use snake_case in database and camelCase in application
  */
-export const db = drizzle(pgPool, {
+export const db = drizzle(sql, {
   schema,
   logger: process.env.NODE_ENV === 'development',
   casing: 'snake_case',

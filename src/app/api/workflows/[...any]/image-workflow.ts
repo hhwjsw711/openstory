@@ -35,6 +35,8 @@ const LETZAI_PRESET_DIMENSIONS: Record<
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
 
+export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
@@ -284,6 +286,12 @@ export const generateImageWorkflow = createWorkflow(
   {
     retries: 3,
     retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+    flowControl: {
+      key: 'fal-requests', // Shared key for both image & motion
+      parallelism: process.env.FAL_CONCURRENCY_LIMIT
+        ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+        : 10,
+    },
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
