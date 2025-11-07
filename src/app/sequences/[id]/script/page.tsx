@@ -30,13 +30,13 @@ export default function ScriptPage({
   const handleSuccess = (sequenceIds: string[]) => {
     // Navigate to storyboard page after successful generation
     if (sequenceIds.length > 0) {
-      router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+      router.push(`/sequences/${sequenceIds[0]}/scenes`);
     }
   };
 
   const handleCancel = () => {
     // Navigate back to storyboard without making changes
-    router.push(`/sequences/${sequenceId}/storyboard`);
+    router.push(`/sequences/${sequenceId}/scenes`);
   };
 
   return (

@@ -150,7 +150,7 @@ export const HomeView: FC = () => {
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
         // Navigate to storyboard page after successful generation
-        router.push(`/sequences/${sequenceIds[0]}/storyboard`);
+        router.push(`/sequences/${sequenceIds[0]}/scenes`);
       }
     },
     [router]
