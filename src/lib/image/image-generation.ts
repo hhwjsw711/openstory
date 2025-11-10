@@ -1,4 +1,3 @@
-import type { FalImageResponse } from '@/lib/ai/fal-client';
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
 import { getTextToImageModelId, type TextToImageModel } from '@/lib/ai/models';
@@ -53,6 +52,27 @@ export type ImageGenerationParams = {
 };
 
 /**
+ * Result from image generation
+ */
+export type ImageGenerationResult = {
+  imageUrls: string[];
+  parameters: ImageGenerationParams;
+  generatedAt: string;
+  processingTimeMs: number;
+  provider: 'letzai' | 'fal';
+  metadata: {
+    prompt: string;
+    model: string;
+    dimensions: { width: number; height: number }[];
+    file_sizes: number[];
+    seed?: number;
+    has_nsfw_concepts?: boolean[];
+    cost?: number;
+    requestId?: string;
+  };
+};
+
+/**
  * Helper to convert ImageSize to aspect ratio string
  */
 function imageSizeToAspectRatio(imageSize: ImageSize): string {
@@ -68,7 +88,9 @@ function imageSizeToAspectRatio(imageSize: ImageSize): string {
  * Generate image using a switch statement to determine parameters by model type
  * Pure switch-statement approach with fully inlined fal.subscribe calls
  */
-export async function generateImageWithProvider(params: ImageGenerationParams) {
+export async function generateImageWithProvider(
+  params: ImageGenerationParams
+): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
 
   switch (params.model) {
@@ -124,11 +146,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'sdxl':
@@ -169,11 +187,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'imagen4_preview_ultra': {
@@ -192,11 +206,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'nano_banana': {
@@ -214,11 +224,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'recraft_v3': {
@@ -233,11 +239,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'hidream_i1_full': {
@@ -261,11 +263,7 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as FalImageResponse
-      );
+      return resultByProvider(params.model, params, resp.data);
     }
 
     case 'letzai': {
@@ -304,8 +302,8 @@ export async function generateImageWithProvider(params: ImageGenerationParams) {
 function resultByProvider(
   model: string,
   params: ImageGenerationParams,
-  resp: FalImageResponse | LetzAIImageResponse
-) {
+  resp: unknown
+): ImageGenerationResult {
   const result = {
     imageUrls: [] as string[],
     parameters: params,
@@ -344,7 +342,17 @@ function resultByProvider(
       },
     ];
   } else {
-    const falResp = resp as FalImageResponse;
+    const falResp = resp as {
+      images?: Array<{
+        url: string;
+        width?: number;
+        height?: number;
+        file_size?: number;
+      }>;
+      timings?: { inference?: number };
+      seed?: number;
+      has_nsfw_concepts?: boolean[];
+    };
     const images = falResp.images;
     const timings = falResp.timings;
     const latencyMs = (resp as { latencyMs?: number }).latencyMs;
