@@ -521,15 +521,22 @@ Transform the content within the USER_SCRIPT tags into a professional, visually 
 // This enhances the script if needed then breaks it into frames
 export const storyboardPrompt = (
   sanitizedScript: string,
-  styleConfig: DirectorDnaConfig
-) => `Use the style configuration within the STYLE_CONFIG tags to analyze the script within the USER_SCRIPT tags and divide it into logical scenes for storyboard generation.
+  styleConfig: DirectorDnaConfig,
+  aspectRatio: string
+) => `Use the style configuration within the STYLE_CONFIG tags to analyze the script within the USER_SCRIPT tags and divide it into logical scenes for storyboard generation using the aspect ratio specified in the ASPECT_RATIO tags.
 
 <STYLE_CONFIG>
 ${JSON.stringify(styleConfig)}
 </STYLE_CONFIG>
 
+<ASPECT_RATIO>
+${aspectRatio}
+</ASPECT_RATIO>
+
 <USER_SCRIPT>
 ${sanitizedScript}
 </USER_SCRIPT>
+
+IMPORTANT: Use the aspect ratio specified in the ASPECT_RATIO tags for all scene dimensions and visual prompt parameters.
 
 Respond with ONLY valid JSON.`;

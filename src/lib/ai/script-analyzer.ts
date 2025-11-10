@@ -51,12 +51,14 @@ type ScriptAnalysisAuditData = {
  * Analyze script to identify frame boundaries
  * @param script - The script content to analyze
  * @param styleConfig - The director DNA configuration to use
+ * @param aspectRatio - The aspect ratio to use for scene generation (e.g., '16:9', '9:16', '1:1')
  * @param model - The AI model to use for analysis (defaults to fast model)
  * @param auditContext - Optional context for creating audit trail (sequenceId, teamId, userId)
  */
 export async function analyzeScriptForFrames(
   script: string,
   styleConfig: DirectorDnaConfig,
+  aspectRatio: string,
   model: string = RECOMMENDED_MODELS.fast,
   auditContext?: { sequenceId: string; teamId: string; userId: string }
 ): Promise<{ analysis: SceneAnalysis; durationMs: number }> {
@@ -68,7 +70,11 @@ export async function analyzeScriptForFrames(
     systemPromptVersion: await getSystemPromptVersion(
       VELRO_UNIVERSAL_SYSTEM_PROMPT
     ),
-    userPrompt: storyboardPrompt(sanitizeScriptContent(script), styleConfig),
+    userPrompt: storyboardPrompt(
+      sanitizeScriptContent(script),
+      styleConfig,
+      aspectRatio
+    ),
     styleConfig: styleConfig as Record<string, unknown>,
     model,
     rawOutput: null,

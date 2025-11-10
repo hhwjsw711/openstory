@@ -26,8 +26,6 @@ import { user } from './auth';
 import { teams } from './teams';
 
 type ColorString = string;
-type AspectRatio = string;
-type FrameRate = string;
 
 type StyleConfig = {
   artStyle: string; // 'Neo-noir with stark contrasts and neon accents',
@@ -36,8 +34,6 @@ type StyleConfig = {
   cameraWork: string; // 'Dutch angles and voyeuristic framing',
   mood: string; // 'Tense and mysterious';
   referenceFilms: string[]; // ['Blade Runner', 'Sin City', 'Drive'],
-  aspectRatio: AspectRatio; // '2.39:1',
-  frameRate: FrameRate; // '24fps',
   colorGrading: string; // 'Desaturated with selective color pops',
 };
 /**

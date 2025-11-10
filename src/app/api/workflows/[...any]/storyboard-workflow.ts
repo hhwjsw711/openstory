@@ -130,6 +130,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           result = await analyzeScriptForFrames(
             sequence.script,
             styleConfig,
+            sequence.aspectRatio,
             analysisModel,
             {
               sequenceId: input.sequenceId,

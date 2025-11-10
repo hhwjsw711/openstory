@@ -35,7 +35,7 @@ export async function triggerWorkflow(url: string, body: object) {
   const qstash = getQStashClient();
   const baseUrl = getWorkflowBaseUrl();
   const response = await qstash.trigger({
-    url: `${baseUrl}${url}${process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? `?x-vercel-protection-bypass=${process.env.VERCEL_AUTOMATION_BYPASS_SECRET}` : ''}`,
+    url: `${baseUrl}${url}`,
     body: body,
     headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
       ? {
