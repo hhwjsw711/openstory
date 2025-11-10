@@ -5,6 +5,10 @@
 
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
+  AspectRatio,
+  DEFAULT_ASPECT_RATIO,
+} from '@/lib/constants/aspect-ratios';
+import {
   InferInsertModel,
   InferSelectModel,
   relations,
@@ -87,6 +91,10 @@ export const sequences = pgTable(
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
     styleId: uuid('style_id').notNull(),
+    aspectRatio: varchar('aspect_ratio', { length: 10 })
+      .$type<AspectRatio>()
+      .default(DEFAULT_ASPECT_RATIO)
+      .notNull(),
     analysisModel: varchar('analysis_model', { length: 100 })
       .default('anthropic/claude-haiku-4.5')
       .notNull(),

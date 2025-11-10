@@ -163,7 +163,20 @@ export function extractJSON<T>(content: string): T | null {
     // Try direct parse first
     return JSON.parse(content) as T;
   } catch (error) {
-    console.error('Failed to parse JSON from direct parse:', error);
+    if (error instanceof SyntaxError) {
+      console.error('Failed to parse JSON from markdown direct parse:', {
+        cause: error.cause,
+        message: error.message,
+        stack: error.stack,
+      });
+    } else if (error instanceof Error) {
+      console.error(
+        'Failed to parse JSON from markdown direct parse:',
+        error.message
+      );
+    } else {
+      console.error('Failed to parse JSON from markdown direct parse:', error);
+    }
     // Try to extract JSON from markdown code blocks
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
     if (jsonMatch) {
@@ -172,7 +185,23 @@ export function extractJSON<T>(content: string): T | null {
         console.log('parsed from markdown code blocks');
         return parsed;
       } catch (error) {
-        console.error('Failed to parse JSON from markdown code blocks:', error);
+        if (error instanceof SyntaxError) {
+          console.error('Failed to parse JSON from markdown code blocks:', {
+            cause: error.cause,
+            message: error.message,
+            stack: error.stack,
+          });
+        } else if (error instanceof Error) {
+          console.error(
+            'Failed to parse JSON from markdown code blocks:',
+            error.message
+          );
+        } else {
+          console.error(
+            'Failed to parse JSON from markdown code blocks:',
+            error
+          );
+        }
         // Continue to next attempt
       }
     }
@@ -183,7 +212,7 @@ export function extractJSON<T>(content: string): T | null {
       try {
         return JSON.parse(objectMatch[0]) as T;
       } catch {
-        console.error('Failed to parse JSON from object match:', content);
+        console.error('Failed to parse JSON from object match:', objectMatch);
         return null;
       }
     }

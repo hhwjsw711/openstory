@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
-import z from 'zod';
 import { calculateFalCost, calculateFalTime } from '@/lib/ai/fal-client';
-import { type FalImageModel, IMAGE_MODELS } from '@/lib/ai/models';
+import { IMAGE_MODELS } from '@/lib/ai/models';
 import {
   MODEL_KEYS,
   parseExtraParamsByModel,
 } from '@/lib/ai/models-validation';
 import { handleApiError } from '@/lib/errors';
+import { NextResponse } from 'next/server';
+import z from 'zod';
 
 const estimateImageCostSchema = z
   .object({
@@ -58,8 +58,8 @@ export async function POST(request: Request) {
     }
     const validatedData = parseResult.data;
 
-    const modelKey = validatedData.model as keyof typeof IMAGE_MODELS;
-    const model = IMAGE_MODELS[modelKey] as FalImageModel;
+    const modelKey = validatedData.model;
+    const model = IMAGE_MODELS[modelKey];
     // Normalize extra_params with per-model schema to inject defaults/coercions
     const normalizedResult = parseExtraParamsByModel({
       model: validatedData.model,

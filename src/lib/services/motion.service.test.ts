@@ -6,14 +6,12 @@
 
 import { beforeEach, describe, expect, it } from 'bun:test';
 import {
-  mockSubscribe,
   mockCreateFalClient,
+  mockSubscribe,
 } from './__mocks__/fal-client.mock';
 import {
-  estimateMotionGeneration,
   generateMotionForFrame,
   IMAGE_TO_VIDEO_MODELS,
-  selectMotionModel,
 } from './motion.service';
 
 describe('Motion Service', () => {
@@ -170,75 +168,6 @@ describe('Motion Service', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('No video URL returned');
-    });
-  });
-
-  describe('selectMotionModel', () => {
-    it('should select fast model for speed priority', () => {
-      const model = selectMotionModel({ speed: 'fast' });
-      expect(model).toBe('svd_lcm');
-    });
-
-    it('should select quality model for quality priority', () => {
-      const model = selectMotionModel({ speed: 'quality', budget: 'high' });
-      expect(model).toBe('veo2_i2v');
-    });
-
-    it('should select balanced model for medium budget', () => {
-      const model = selectMotionModel({ speed: 'balanced', budget: 'medium' });
-      expect(model).toBe('wan_i2v');
-    });
-
-    it('should respect budget constraints', () => {
-      const lowBudget = selectMotionModel({ speed: 'quality', budget: 'low' });
-      expect(lowBudget).toBe('seedance_v1_pro');
-
-      const highBudget = selectMotionModel({
-        speed: 'balanced',
-        budget: 'high',
-      });
-      expect(highBudget).toBe('veo2_i2v');
-    });
-
-    it('should default to wan_i2v for balanced approach', () => {
-      const model = selectMotionModel({});
-      expect(model).toBe('wan_i2v');
-    });
-  });
-
-  describe('estimateMotionGeneration', () => {
-    it('should calculate costs for SVD-LCM', () => {
-      const estimate = estimateMotionGeneration(10, 'svd_lcm');
-
-      expect(estimate.totalCost).toBe(1.0); // 10 frames * $0.10
-      expect(estimate.totalTime).toBe(50); // 10 frames * 5 seconds
-      expect(estimate.perFrameCost).toBe(0.1);
-      expect(estimate.perFrameTime).toBe(5);
-    });
-
-    it('should calculate costs for WAN I2V', () => {
-      const estimate = estimateMotionGeneration(10, 'wan_i2v');
-
-      expect(estimate.totalCost).toBe(3.0); // 10 frames * $0.30
-      expect(estimate.totalTime).toBe(100); // 10 frames * 10 seconds
-      expect(estimate.perFrameCost).toBe(0.3);
-      expect(estimate.perFrameTime).toBe(10);
-    });
-
-    it('should calculate costs for Seedance Pro', () => {
-      const estimate = estimateMotionGeneration(10, 'seedance_v1_pro');
-
-      expect(estimate.totalCost).toBe(5.0); // 10 frames * $0.50
-      expect(estimate.totalTime).toBe(120); // 10 frames * 12 seconds
-      expect(estimate.perFrameCost).toBe(0.5);
-      expect(estimate.perFrameTime).toBe(12);
-    });
-
-    it('should default to SVD-LCM if no model specified', () => {
-      const estimate = estimateMotionGeneration(5);
-
-      expect(estimate.totalCost).toBe(0.5); // 5 frames * $0.10 (SVD-LCM)
-      expect(estimate.totalTime).toBe(25); // 5 frames * 5 seconds
     });
   });
 

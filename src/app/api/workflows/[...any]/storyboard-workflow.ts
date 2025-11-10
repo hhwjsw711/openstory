@@ -7,6 +7,7 @@ import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workfl
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
+import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
@@ -240,6 +241,9 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
+      // Map aspect ratio to image size preset
+      const imageSize = aspectRatioToImageSize(sequence.aspectRatio);
+
       await Promise.all(
         frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
           // Trigger image generation for all frames in parallel
@@ -256,7 +260,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             teamId: input.teamId,
             prompt,
             model: DEFAULT_IMAGE_MODEL,
-            imageSize: 'landscape_16_9',
+            imageSize,
             numImages: 1,
             frameId,
             sequenceId: input.sequenceId,
@@ -292,6 +296,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             thumbnailUrl: imageBody.imageUrl,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
+            aspectRatio: sequence.aspectRatio,
           };
 
           await context.invoke('motion', {

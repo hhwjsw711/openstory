@@ -3,6 +3,7 @@
  */
 
 import type { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { ImageSize } from '@/lib/constants/aspect-ratios';
 import type { Json } from '@/types/database';
 
 /**
@@ -23,7 +24,7 @@ export interface ImageWorkflowInput extends UserWorkflowContext {
   model?: keyof typeof IMAGE_MODELS;
   width?: number;
   height?: number;
-  imageSize?: string;
+  imageSize?: ImageSize;
   numImages?: number;
   seed?: number;
   frameId?: string; // Optional: update frame thumbnail
@@ -69,6 +70,7 @@ export interface MotionWorkflowInput extends UserWorkflowContext {
   duration?: number;
   fps?: number;
   motionBucket?: number;
+  aspectRatio?: string; // "16:9", "9:16", "1:1"
 }
 
 /**

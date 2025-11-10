@@ -70,6 +70,7 @@ export async function POST(request: Request) {
           title: createSequenceInput.title,
           script: createSequenceInput.script,
           styleId: createSequenceInput.styleId,
+          aspectRatio: createSequenceInput.aspectRatio,
           analysisModel: modelId,
         };
         console.log(

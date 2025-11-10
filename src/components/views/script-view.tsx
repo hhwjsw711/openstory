@@ -124,6 +124,7 @@ export const ScriptView: FC<{
           teamId,
           script: script || '',
           styleId: styleId,
+          aspectRatio,
           analysisModels: analysisModels ||
             sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL],
         },

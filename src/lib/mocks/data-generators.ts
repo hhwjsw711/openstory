@@ -51,6 +51,7 @@ export const generateMockSequence = (
     ]),
     teamId: faker.string.uuid(),
     styleId: faker.string.uuid(),
+    aspectRatio: faker.helpers.arrayElement(['16:9', '9:16', '1:1']),
     analysisModel: faker.helpers.arrayElement([
       'anthropic/claude-haiku-4.5',
       'anthropic/claude-sonnet-4.5',

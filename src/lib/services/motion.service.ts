@@ -6,7 +6,7 @@
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODELS,
-  type ImageToVideoModel,
+  ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
 
@@ -28,6 +28,7 @@ interface GenerateMotionOptions {
   duration?: number;
   fps?: number;
   motionBucket?: number;
+  aspectRatio?: string; // "16:9", "9:16", "1:1"
 }
 
 interface MotionResult {
@@ -110,7 +111,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
         frames_per_second: validatedFps,
         num_frames: 81, // Default frame count
         resolution: '720p',
-        aspect_ratio: 'auto',
+        aspect_ratio: options.aspectRatio || 'auto',
         enable_prompt_expansion: false,
         enable_safety_checker: false,
       };
@@ -136,7 +137,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   luma: (options, _modelConfig) => ({
     prompt: options.prompt,
     image_url: options.imageUrl,
-    aspect_ratio: '16:9',
+    aspect_ratio: options.aspectRatio || '16:9',
     loop: false,
   }),
 
@@ -155,7 +156,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      aspect_ratio: 'auto',
+      aspect_ratio: options.aspectRatio || 'auto',
       duration: durationValue,
       ...(modelId === 'fal-ai/veo3' && {
         generate_audio: true,
@@ -175,7 +176,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      aspect_ratio: 'auto',
+      aspect_ratio: options.aspectRatio || 'auto',
       resolution: '1080p',
       duration,
       camera_fixed: false,
@@ -351,59 +352,6 @@ export async function generateMotionForFrame(
         error instanceof Error ? error.message : 'Motion generation failed',
     };
   }
-}
-
-/**
- * Select the best model based on requirements
- */
-export function selectMotionModel(requirements: {
-  speed?: 'fast' | 'balanced' | 'quality';
-  budget?: 'low' | 'medium' | 'high';
-  duration?: number;
-}): ImageToVideoModel {
-  const { speed = 'balanced', budget = 'medium' } = requirements;
-
-  // Speed priority
-  if (speed === 'fast') {
-    return 'svd_lcm';
-  }
-
-  if (speed === 'quality') {
-    return budget === 'high' ? 'veo2_i2v' : 'seedance_v1_pro';
-  }
-
-  // Balanced approach
-  if (budget === 'low') {
-    return 'svd_lcm';
-  }
-
-  if (budget === 'high') {
-    return 'veo2_i2v';
-  }
-
-  return 'wan_i2v';
-}
-
-/**
- * Calculate estimated cost and time for motion generation
- */
-export function estimateMotionGeneration(
-  frameCount: number,
-  model: ImageToVideoModel = 'svd_lcm'
-): {
-  totalCost: number;
-  totalTime: number; // in seconds
-  perFrameCost: number;
-  perFrameTime: number;
-} {
-  const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
-
-  return {
-    totalCost: frameCount * modelConfig.pricing.estimatedCost,
-    totalTime: frameCount * modelConfig.performance.estimatedGenerationTime,
-    perFrameCost: modelConfig.pricing.estimatedCost,
-    perFrameTime: modelConfig.performance.estimatedGenerationTime,
-  };
 }
 
 /**

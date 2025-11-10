@@ -2,12 +2,20 @@ import {
   type FalImageGenerationParams,
   type FalImageResponse,
   generateImage as generateImageFal,
-  IMAGE_MODELS,
 } from '@/lib/ai/fal-client';
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
-import { AI_PROVIDER_MAPPINGS, DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import {
+  AI_PROVIDER_MAPPINGS,
+  DEFAULT_IMAGE_MODEL,
+  getTextToImageModelId,
+  TextToImageModel,
+} from '@/lib/ai/models';
 import { Scene } from '@/lib/ai/scene-analysis.schema';
+import {
+  DEFAULT_IMAGE_SIZE,
+  type ImageSize,
+} from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
@@ -24,16 +32,29 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 const LETZAI_PRESET_DIMENSIONS: Record<
-  string,
+  ImageSize,
   { width: number; height: number }
 > = {
   square_hd: { width: 1024, height: 1024 },
-  square: { width: 768, height: 768 },
-  portrait_4_3: { width: 672, height: 896 },
   portrait_16_9: { width: 576, height: 1024 },
-  landscape_4_3: { width: 1024, height: 768 },
   landscape_16_9: { width: 1600, height: 900 },
 } as const;
+
+/**
+ * Parameters for image generation
+ */
+interface ImageGenerationParams {
+  model: TextToImageModel;
+  prompt: string;
+  imageSize?: ImageSize;
+  numImages?: number;
+  seed?: number;
+  quality?: number;
+  creativity?: number;
+  hasWatermark?: boolean;
+  systemVersion?: number;
+  mode?: LetzAIMode;
+}
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -80,13 +101,15 @@ export const generateImageWorkflow = createWorkflow(
 
       try {
         // Generate image using selected AI provider
-        const resp = await generateImageWithProvider({
-          model: IMAGE_MODELS[model],
+        const generationParams: ImageGenerationParams = {
+          model,
           prompt: input.prompt,
-          image_size: input.imageSize,
-          num_images: input.numImages || 1,
+          imageSize: input.imageSize || DEFAULT_IMAGE_SIZE,
+          numImages: input.numImages || 1,
           seed: input.seed,
-        });
+        };
+
+        const resp = await generateImageWithProvider(generationParams);
         console.log(
           '[ImageWorkflow]',
           'Response:',
@@ -102,11 +125,7 @@ export const generateImageWorkflow = createWorkflow(
         const respData = resp.data as unknown as
           | FalImageResponse
           | LetzAIImageResponse;
-        const result = resultByProvider(
-          model,
-          input as unknown as Record<string, unknown>,
-          respData
-        );
+        const result = resultByProvider(model, generationParams, respData);
 
         return result;
       } catch (error) {
@@ -316,30 +335,38 @@ export const generateImageWorkflow = createWorkflow(
 /**
  * Select AI provider based on model
  */
-function generateImageWithProvider(payload: Record<string, unknown>) {
-  switch (payload.model) {
-    case 'letzai/image': {
-      const sizePreset = payload.image_size as string | undefined;
+function generateImageWithProvider(params: ImageGenerationParams) {
+  switch (params.model) {
+    case 'letzai': {
       const { width, height } = LETZAI_PRESET_DIMENSIONS[
-        sizePreset ?? 'landscape_16_9'
+        params.imageSize ?? DEFAULT_IMAGE_SIZE
       ] ?? {
         width: 1600,
         height: 900,
       };
-      const letzaiPayload = {
-        prompt: payload.prompt as string,
+      const letzaiPayload: LetzAIImageRequest = {
+        prompt: params.prompt,
         width,
         height,
-        quality: payload.quality || (5 as number),
-        creativity: payload.creativity || (2 as number),
-        hasWatermark: payload.hasWatermark || (false as boolean),
-        systemVersion: payload.systemVersion || (3 as number),
-        mode: (payload.mode as LetzAIMode) || 'cinematic',
-      } as LetzAIImageRequest;
+        quality: params.quality ?? 5,
+        creativity: params.creativity ?? 2,
+        hasWatermark: params.hasWatermark ?? false,
+        systemVersion: params.systemVersion ?? 3,
+        mode: params.mode ?? 'cinematic',
+      };
       return generateImageLetzAI(letzaiPayload);
     }
-    default:
-      return generateImageFal(payload as unknown as FalImageGenerationParams);
+    default: {
+      // For FAL, convert our params to their expected format
+      const falParams: FalImageGenerationParams = {
+        model: getTextToImageModelId(params.model),
+        prompt: params.prompt,
+        image_size: params.imageSize,
+        num_images: params.numImages,
+        seed: params.seed,
+      };
+      return generateImageFal(falParams);
+    }
   }
 }
 
@@ -348,17 +375,17 @@ function generateImageWithProvider(payload: Record<string, unknown>) {
  */
 function resultByProvider(
   model: string,
-  data: Record<string, unknown>,
+  params: ImageGenerationParams,
   resp: FalImageResponse | LetzAIImageResponse
 ) {
   const result = {
     imageUrls: [] as string[],
-    parameters: data,
+    parameters: params,
     generatedAt: new Date().toISOString(),
     processingTimeMs: 0,
     provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
     metadata: {
-      prompt: (resp as { prompt?: string }).prompt || (data.prompt as string),
+      prompt: (resp as { prompt?: string }).prompt || params.prompt,
       model,
       dimensions: [] as { width: number; height: number }[],
       file_sizes: [] as number[],
@@ -375,10 +402,12 @@ function resultByProvider(
       const generationSettings =
         (resp as { generationSettings?: Record<string, number> })
           .generationSettings ?? ({} as Record<string, number>);
-      const reqDims = {
-        width: (data as { width?: number }).width,
-        height: (data as { height?: number }).height,
-      };
+
+      // Get dimensions from preset
+      const presetDims = params.imageSize
+        ? LETZAI_PRESET_DIMENSIONS[params.imageSize]
+        : LETZAI_PRESET_DIMENSIONS.landscape_16_9;
+
       result.imageUrls = [
         (resp as { imageVersions?: { original: string } }).imageVersions
           ?.original as string,
@@ -386,8 +415,8 @@ function resultByProvider(
       result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
       result.metadata.dimensions = [
         {
-          width: generationSettings.width ?? reqDims.width ?? 1600,
-          height: generationSettings.height ?? reqDims.height ?? 900,
+          width: generationSettings.width ?? presetDims.width,
+          height: generationSettings.height ?? presetDims.height,
         },
       ];
       break;

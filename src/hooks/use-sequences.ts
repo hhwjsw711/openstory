@@ -71,6 +71,7 @@ export function useCreateSequence() {
       title?: string;
       analysisModels?: string[];
       teamId?: string;
+      aspectRatio?: string;
     }
   >({
     mutationFn: async (input: {
@@ -79,6 +80,7 @@ export function useCreateSequence() {
       title?: string;
       analysisModels?: string[];
       teamId?: string;
+      aspectRatio?: string;
     }) => {
       const response = await fetch('/api/sequences', {
         method: 'POST',
@@ -91,6 +93,7 @@ export function useCreateSequence() {
           title: input.title || 'Untitled Sequence',
           analysisModels: input.analysisModels || [DEFAULT_ANALYSIS_MODEL],
           teamId: input.teamId,
+          aspectRatio: input.aspectRatio,
         }),
       });
 

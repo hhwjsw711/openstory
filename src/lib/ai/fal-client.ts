@@ -7,10 +7,13 @@
  */
 
 import {
-  type FalImageModel,
-  type FalVideoModel,
+  DEFAULT_VIDEO_MODEL,
   IMAGE_MODELS,
-  VIDEO_MODELS,
+  IMAGE_TO_VIDEO_MODELS,
+  type ImageToVideoModel,
+  ImageToVideoModelId,
+  type TextToImageModel,
+  TextToImageModelId,
 } from '@/lib/ai/models';
 import type { FalServiceResponse } from '@/lib/services/fal-service';
 import { getFalService } from '@/lib/services/fal-service';
@@ -57,19 +60,11 @@ const falImageResponseSchema = z.object({
 export type FalVideoResponse = z.infer<typeof falVideoResponseSchema>;
 export type FalImageResponse = z.infer<typeof falImageResponseSchema>;
 
-// Import model definitions from separate file to avoid circular dependencies
-export {
-  IMAGE_MODELS,
-  VIDEO_MODELS,
-  type FalImageModel,
-  type FalVideoModel,
-} from '@/lib/ai/models';
-
 /**
  * Parameters for video generation
  */
 export interface FalVideoGenerationParams {
-  model?: FalVideoModel;
+  model?: ImageToVideoModel;
   prompt?: string;
   image_url?: string; // For image-to-video models
   duration?: number; // Duration in seconds
@@ -86,7 +81,7 @@ export interface FalVideoGenerationParams {
  * Parameters for image generation
  */
 export interface FalImageGenerationParams {
-  model?: FalImageModel;
+  model?: TextToImageModelId;
   prompt: string;
   image_size?:
     | 'square_hd'
@@ -127,7 +122,7 @@ export async function generateVideo(
   }
 
   const falService = getFalService();
-  const model = params.model || VIDEO_MODELS.minimax_hailuo;
+  const model = params.model || DEFAULT_VIDEO_MODEL;
 
   const requestData: Record<string, unknown> = {};
 
@@ -139,7 +134,7 @@ export async function generateVideo(
   if (params.seed !== undefined) requestData.seed = params.seed;
 
   // Special handling for Veo3 which supports audio
-  if (model === VIDEO_MODELS.veo3 && params.enable_audio !== undefined) {
+  if (model === 'veo3_1' && params.enable_audio !== undefined) {
     requestData.enable_audio = params.enable_audio;
   }
 
@@ -332,7 +327,7 @@ function getMockImageResponse(
  */
 export const fal = {
   async run(
-    model: string,
+    model: TextToImageModelId | ImageToVideoModelId,
     params: { input: Record<string, unknown> }
   ): Promise<unknown> {
     const apiKey = process.env.FAL_KEY;
@@ -344,18 +339,18 @@ export const fal = {
 
     // Determine route based on known model lists first, then simple heuristics
     const isKnownImage = Object.values(IMAGE_MODELS).includes(
-      model as FalImageModel
+      model as TextToImageModelId
     );
-    const isKnownVideo = Object.values(VIDEO_MODELS).includes(
-      model as FalVideoModel
+    const isKnownVideo = Object.values(IMAGE_TO_VIDEO_MODELS).some(
+      (m) => m.id === model
     );
     const isImageHeuristic =
       !isKnownVideo && (model.includes('flux') || model.includes('sdxl'));
 
     if (isKnownImage || isImageHeuristic) {
       const result = await generateImage({
-        model: (isKnownImage ? (model as FalImageModel) : undefined) as
-          | FalImageModel
+        model: (isKnownImage ? model : undefined) as
+          | TextToImageModel
           | undefined,
         prompt: (params.input.prompt as string) || '',
         ...params.input,
@@ -365,8 +360,8 @@ export const fal = {
     }
 
     const result = await generateVideo({
-      model: (isKnownVideo ? (model as FalVideoModel) : undefined) as
-        | FalVideoModel
+      model: (isKnownVideo ? model : undefined) as
+        | ImageToVideoModel
         | undefined,
       prompt: (params.input.prompt as string) || '',
       ...params.input,
@@ -434,7 +429,7 @@ export async function checkFalStatus(): Promise<FalServiceResponse> {
  * Calculate the estimated cost for a Fal.ai request
  */
 export function calculateFalCost(
-  model: FalImageModel | FalVideoModel,
+  model: TextToImageModelId | ImageToVideoModelId,
   params: Record<string, unknown>
 ): number {
   const falService = getFalService();
@@ -445,7 +440,7 @@ export function calculateFalCost(
  * Calculate the estimated time for a Fal.ai request
  */
 export function calculateFalTime(
-  model: FalImageModel | FalVideoModel,
+  model: TextToImageModelId | ImageToVideoModelId,
   params: Record<string, unknown>
 ): number {
   const falService = getFalService();

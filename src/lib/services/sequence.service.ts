@@ -8,6 +8,10 @@
  * @module lib/services/sequence.service
  */
 
+import {
+  AspectRatio,
+  DEFAULT_ASPECT_RATIO,
+} from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import type { NewSequence, Sequence, SequenceStatus } from '@/lib/db/schema';
 import { sequences } from '@/lib/db/schema';
@@ -22,6 +26,7 @@ export interface CreateSequenceParams {
   script: string;
   styleId: string;
   analysisModel: string;
+  aspectRatio?: AspectRatio; // Optional - defaults to '16:9' in database
 }
 
 export interface UpdateSequenceParams {
@@ -33,6 +38,7 @@ export interface UpdateSequenceParams {
   status?: SequenceStatus;
   metadata?: Record<string, unknown>;
   analysisModel?: string;
+  aspectRatio?: AspectRatio;
 }
 
 export interface SequenceWithDetails extends Sequence {
@@ -67,6 +73,7 @@ export class SequenceService {
       title: params.title,
       script: params.script,
       styleId: params.styleId,
+      aspectRatio: params.aspectRatio ?? DEFAULT_ASPECT_RATIO, // Default to '16:9' if not provided
       analysisModel: params.analysisModel,
       status: 'draft',
     };
@@ -280,6 +287,7 @@ export class SequenceService {
       title: newName || `${original.title} (Copy)`,
       script: original.script,
       styleId: original.styleId,
+      aspectRatio: original.aspectRatio, // Preserve aspect ratio
       analysisModel: original.analysisModel,
       status: 'draft',
       metadata: original.metadata,

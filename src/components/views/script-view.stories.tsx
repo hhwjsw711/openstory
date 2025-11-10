@@ -28,6 +28,7 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   createdBy: null,
   updatedBy: null,
   styleId: 'style-1',
+  aspectRatio: '16:9',
   analysisModel: 'anthropic/claude-haiku-4.5',
   analysisDurationMs: 0,
 };

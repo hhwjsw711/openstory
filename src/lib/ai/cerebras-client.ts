@@ -61,7 +61,7 @@ export async function callCerebras(
     });
 
     // Since stream=false, response is always ChatCompletion (not a stream)
-    return response as CerebrasResponse;
+    return response;
   } catch (error) {
     console.error('[Cerebras] Request failed:', error);
     throw error;
