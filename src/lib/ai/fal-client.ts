@@ -6,7 +6,6 @@
  * service layer integration for new implementations.
  */
 
-import { z } from 'zod';
 import {
   type FalImageModel,
   type FalVideoModel,
@@ -15,6 +14,7 @@ import {
 } from '@/lib/ai/models';
 import type { FalServiceResponse } from '@/lib/services/fal-service';
 import { getFalService } from '@/lib/services/fal-service';
+import { z } from 'zod';
 
 // Response schema for FAL video generation
 const falVideoResponseSchema = z.object({
@@ -36,12 +36,12 @@ const falVideoResponseSchema = z.object({
 const falImageResponseSchema = z.object({
   images: z.array(
     z.object({
-      url: z.string().url(),
+      url: z.url(),
       content_type: z.string().nullable().optional(),
       file_name: z.string().nullable().optional(),
       file_size: z.number().nullable().optional(),
-      width: z.number().optional(),
-      height: z.number().optional(),
+      width: z.number().nullable().optional(),
+      height: z.number().nullable().optional(),
     })
   ),
   timings: z
@@ -59,10 +59,10 @@ export type FalImageResponse = z.infer<typeof falImageResponseSchema>;
 
 // Import model definitions from separate file to avoid circular dependencies
 export {
-  type FalImageModel,
-  type FalVideoModel,
   IMAGE_MODELS,
   VIDEO_MODELS,
+  type FalImageModel,
+  type FalVideoModel,
 } from '@/lib/ai/models';
 
 /**

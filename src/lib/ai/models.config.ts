@@ -127,4 +127,5 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
 /**
  * Default model to use when none is specified
  */
-export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId = 'x-ai/grok-4-fast';
+export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
+  'anthropic/claude-haiku-4.5';
