@@ -5,6 +5,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { Check } from 'lucide-react';
@@ -12,6 +13,7 @@ import { SceneThumbnail } from './scene-thumbnail';
 
 type SceneListItemProps = {
   frame?: Frame | undefined;
+  aspectRatio: AspectRatio;
   isActive?: boolean;
   isCompleted?: boolean;
   onSelect?: () => void;
@@ -20,6 +22,7 @@ type SceneListItemProps = {
 
 export const SceneListItem: React.FC<SceneListItemProps> = ({
   frame,
+  aspectRatio,
   isActive = false,
   isCompleted = false,
   onSelect,
@@ -72,11 +75,21 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
             thumbnailUrl={frame?.thumbnailUrl}
             thumbnailStatus={frame?.thumbnailStatus ?? 'pending'}
             alt={title ?? 'Scene thumbnail'}
+            aspectRatio={aspectRatio}
             className={cn(
               'w-full rounded-md',
-              variant === 'responsive' &&
-                '@[280px]/scene:w-32 @[280px]/scene:shrink-0',
-              variant === 'horizontal' && 'w-32 shrink-0'
+              // Portrait (9:16) uses smaller width to reduce height
+              aspectRatio === '9:16' && [
+                variant === 'responsive' &&
+                  '@[280px]/scene:w-20 @[280px]/scene:shrink-0',
+                variant === 'horizontal' && 'w-20 shrink-0',
+              ],
+              // Landscape (16:9) and square (1:1) use standard width
+              aspectRatio !== '9:16' && [
+                variant === 'responsive' &&
+                  '@[280px]/scene:w-32 @[280px]/scene:shrink-0',
+                variant === 'horizontal' && 'w-32 shrink-0',
+              ]
             )}
           />
 

@@ -1,4 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  type AspectRatio,
+  getAspectRatioClassName,
+} from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -7,6 +11,7 @@ type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
   thumbnailStatus?: 'pending' | 'generating' | 'completed' | 'failed';
   alt: string;
+  aspectRatio: AspectRatio;
   className?: string;
 };
 
@@ -14,6 +19,7 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
   thumbnailStatus = 'pending',
   alt,
+  aspectRatio,
   className,
 }) => {
   const isLoading =
@@ -22,7 +28,13 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
   const hasImage = thumbnailUrl && thumbnailStatus === 'completed';
 
   return (
-    <div className={cn('relative aspect-video overflow-hidden', className)}>
+    <div
+      className={cn(
+        'relative overflow-hidden',
+        getAspectRatioClassName(aspectRatio),
+        className
+      )}
+    >
       {isLoading && <Skeleton className="absolute h-full w-full rounded-md" />}
 
       {hasImage && (

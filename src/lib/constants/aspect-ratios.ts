@@ -42,3 +42,16 @@ export const aspectRatioToImageSize = (aspectRatio: AspectRatio): ImageSize => {
   };
   return mapping[aspectRatio] ?? 'landscape_16_9';
 };
+
+/**
+ * Maps aspect ratios to Tailwind CSS aspect ratio class names.
+ * Used for displaying images and videos in the UI with correct proportions.
+ */
+export const getAspectRatioClassName = (aspectRatio: AspectRatio): string => {
+  const mapping: Record<AspectRatio, string> = {
+    '16:9': 'aspect-video', // aspect-video is 16:9
+    '9:16': 'aspect-[9/16]', // portrait aspect ratio
+    '1:1': 'aspect-square', // square aspect ratio
+  };
+  return mapping[aspectRatio] ?? 'aspect-video';
+};

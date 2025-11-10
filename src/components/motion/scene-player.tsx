@@ -1,6 +1,10 @@
 'use client';
 
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  type AspectRatio,
+  getAspectRatioClassName,
+} from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
@@ -13,6 +17,7 @@ import { VideoStateOverlay } from './video-state-overlay';
 type ScenePlayerProps = {
   frames?: Frame[] | undefined;
   selectedFrameId?: string;
+  aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   className?: string;
   onTimeUpdate?: (currentTime: number) => void;
@@ -23,6 +28,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   frames = [],
   className,
   selectedFrameId,
+  aspectRatio,
   onSelectFrame,
   onTimeUpdate,
   onEnded,
@@ -104,6 +110,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           key={currentFrame.videoUrl} // Force re-render when video changes
           src={currentFrame.videoUrl!}
           posterSrc={currentFrame.thumbnailUrl}
+          aspectRatio={aspectRatio}
           className={className}
           autoPlay={shouldAutoPlay}
           enableDownload={true}
@@ -112,7 +119,13 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           onEnded={handleEnded}
         />
       ) : (
-        <div className={cn('relative aspect-video', className)}>
+        <div
+          className={cn(
+            'relative',
+            getAspectRatioClassName(aspectRatio),
+            className
+          )}
+        >
           {currentFrame.thumbnailUrl && (
             <Image
               src={currentFrame.thumbnailUrl}

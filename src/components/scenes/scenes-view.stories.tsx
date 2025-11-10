@@ -1,4 +1,5 @@
 import { ScenesView } from '@/components/scenes/scenes-view';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -133,6 +134,7 @@ const mockFrameBase = {
 export const MixedStates: Story = {
   args: {
     sequenceId: 'demo-sequence-123',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -233,6 +235,7 @@ export const MixedStates: Story = {
 export const AllCompleted: Story = {
   args: {
     sequenceId: 'all-completed',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -294,6 +297,7 @@ export const AllCompleted: Story = {
 export const AllPending: Story = {
   args: {
     sequenceId: 'all-pending',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -361,6 +365,7 @@ export const AllPending: Story = {
 export const FramesGenerating: Story = {
   args: {
     sequenceId: 'frames-generating',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -446,6 +451,7 @@ export const FramesGenerating: Story = {
 export const GenerationInProgress: Story = {
   args: {
     sequenceId: 'generating',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -513,6 +519,7 @@ export const GenerationInProgress: Story = {
 export const WithFailures: Story = {
   args: {
     sequenceId: 'with-failures',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [
@@ -581,6 +588,7 @@ export const WithFailures: Story = {
 export const EmptySequence: Story = {
   args: {
     sequenceId: 'empty-sequence',
+    aspectRatio: '16:9' as AspectRatio,
   },
   parameters: {
     frames: [],
