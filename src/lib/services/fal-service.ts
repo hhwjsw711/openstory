@@ -32,7 +32,6 @@ export const MODEL_COSTS: Record<string, number> = {
   [IMAGE_MODELS.flux_schnell]: 0.01,
   [IMAGE_MODELS.sdxl]: 0.02,
   [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08, // per image
   [IMAGE_MODELS.imagen4_preview_ultra]: 0.06, // per image
   [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06, // per image
   [IMAGE_MODELS.flux_krea_lora]: 0.035, // per mb
@@ -57,7 +56,6 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
   [IMAGE_MODELS.flux_schnell]: 0.01,
   [IMAGE_MODELS.sdxl]: 0.02,
   [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08,
   [IMAGE_MODELS.imagen4_preview_ultra]: 0.06,
   [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06,
   [IMAGE_MODELS.flux_krea_lora]: 0.035,

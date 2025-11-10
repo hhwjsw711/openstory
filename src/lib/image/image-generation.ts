@@ -1,103 +1,299 @@
-import {
-  type FalImageGenerationParams,
-  type FalImageResponse,
-} from '@/lib/ai/fal-client';
+import type { FalImageResponse } from '@/lib/ai/fal-client';
 import type { LetzAIMode } from '@/lib/ai/letzai-client';
 import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
-import {
-  AI_PROVIDER_MAPPINGS,
-  getTextToImageModelId,
-  TextToImageModel,
-} from '@/lib/ai/models';
+import { getTextToImageModelId, type TextToImageModel } from '@/lib/ai/models';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
-import type {
-  LetzAIImageRequest,
-  LetzAIImageResponse,
-} from '@/lib/schemas/letzai-request';
+import type { LetzAIImageResponse } from '@/lib/schemas/letzai-request';
 
 import { fal } from '@fal-ai/client';
 
-const LETZAI_PRESET_DIMENSIONS: Record<
-  ImageSize,
-  { width: number; height: number }
-> = {
-  square_hd: { width: 1024, height: 1024 },
-  portrait_16_9: { width: 576, height: 1024 },
-  landscape_16_9: { width: 1600, height: 900 },
-} as const;
-
 /**
- * Parameters for image generation
+ * Extended parameters for image generation
+ * Supports all parameters across different model families
  */
 export type ImageGenerationParams = {
+  // Core parameters (all models)
   model: TextToImageModel;
   prompt: string;
+
+  // Sizing - automatically converted to aspect_ratio for models that need it
   imageSize?: ImageSize;
+
+  // Common optional parameters
   numImages?: number;
   seed?: number;
+  outputFormat?: 'jpeg' | 'png' | 'webp';
+
+  // Quality control parameters
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  negativePrompt?: string;
+
+  // Advanced features
+  loras?: Array<{ path: string; scale: number }>;
+  embeddings?: Array<{ path: string; tokens: string[] }>;
+
+  // LetzAI-specific parameters
   quality?: number;
   creativity?: number;
   hasWatermark?: boolean;
   systemVersion?: number;
   mode?: LetzAIMode;
+
+  // Model-specific features
+  style?: string; // Recraft
+  colors?: Array<{ r: number; g: number; b: number }>; // Recraft
+  resolution?: '1K' | '2K'; // Imagen4
+  enhancePrompt?: boolean; // FLUX Pro
+  safetyTolerance?: number; // FLUX Pro
+  acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell
 };
+
 /**
- * Select AI provider based on model
+ * Helper to convert ImageSize to aspect ratio string
+ */
+function imageSizeToAspectRatio(imageSize: ImageSize): string {
+  const mapping: Record<ImageSize, string> = {
+    square_hd: '1:1',
+    portrait_16_9: '9:16',
+    landscape_16_9: '16:9',
+  };
+  return mapping[imageSize] ?? '16:9';
+}
+
+/**
+ * Generate image using a switch statement to determine parameters by model type
+ * Pure switch-statement approach with fully inlined fal.subscribe calls
  */
 export async function generateImageWithProvider(params: ImageGenerationParams) {
+  const modelId = getTextToImageModelId(params.model);
+
   switch (params.model) {
-    case 'letzai': {
-      const { width, height } = LETZAI_PRESET_DIMENSIONS[
-        params.imageSize ?? DEFAULT_IMAGE_SIZE
-      ] ?? {
-        width: 1600,
-        height: 900,
-      };
-      const letzaiPayload: LetzAIImageRequest = {
-        prompt: params.prompt,
-        width,
-        height,
-        quality: params.quality ?? 5,
-        creativity: params.creativity ?? 2,
-        hasWatermark: params.hasWatermark ?? false,
-        systemVersion: params.systemVersion ?? 3,
-        mode: params.mode ?? 'cinematic',
-      };
-      const resp = await generateImageLetzAI(letzaiPayload);
-      if (!resp.data) {
-        throw new Error('No data returned from LetzAI');
-      }
-      return resultByProvider(
-        params.model,
-        params,
-        resp.data as LetzAIImageResponse
-      );
-    }
-    default: {
-      // For FAL, convert our params to their expected format
-      const falParams: FalImageGenerationParams = {
-        model: getTextToImageModelId(params.model),
-        prompt: params.prompt,
-        image_size: params.imageSize,
-        num_images: params.numImages,
-        seed: params.seed,
-      };
-      const resp = await fal.subscribe(getTextToImageModelId(params.model), {
+    case 'flux_pro':
+    case 'flux_dev':
+    case 'flux_schnell':
+    case 'flux_krea_lora':
+    case 'flux_pro_v1_1_ultra': {
+      // FLUX family - shared parameters with model-specific variations
+      const isUltra = params.model === 'flux_pro_v1_1_ultra';
+      const defaultSteps = params.model === 'flux_schnell' ? 4 : 28;
+      const resp = await fal.subscribe(modelId, {
         input: {
           prompt: params.prompt,
+          // Sizing: Ultra uses aspect_ratio, others use image_size
+          ...(isUltra
+            ? {
+                aspect_ratio: imageSizeToAspectRatio(
+                  params.imageSize ?? DEFAULT_IMAGE_SIZE
+                ),
+              }
+            : { image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE }),
+          // Inference steps/guidance (not for Ultra)
+          ...(!isUltra && {
+            num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+            guidance_scale: params.guidanceScale ?? 3.5,
+          }),
+          // Model-specific features
+          ...(params.model !== 'flux_pro' && { enable_safety_checker: true }),
+          ...(isUltra && { raw: false }),
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          // FLUX Pro/Ultra specific
+          ...((params.model === 'flux_pro' || isUltra) &&
+            params.safetyTolerance !== undefined && {
+              safety_tolerance: params.safetyTolerance.toString(),
+            }),
+          ...((params.model === 'flux_pro' || isUltra) &&
+            params.enhancePrompt !== undefined && {
+              enhance_prompt: params.enhancePrompt,
+            }),
+          // FLUX Dev/Schnell specific
+          ...((params.model === 'flux_dev' ||
+            params.model === 'flux_schnell') &&
+            params.acceleration && { acceleration: params.acceleration }),
+          // FLUX Krea specific
+          ...(params.model === 'flux_krea_lora' &&
+            params.loras && { loras: params.loras }),
+          sync_mode: false,
         },
       });
-      if (!resp.data) {
-        throw new Error('No data returned from FAL');
-      }
+      if (!resp.data) throw new Error('No data returned from FAL');
       return resultByProvider(
         params.model,
         params,
         resp.data as FalImageResponse
       );
+    }
+
+    case 'sdxl':
+    case 'sdxl_lightning': {
+      // SDXL family - shared parameters with model-specific variations
+      const defaultSteps = params.model === 'sdxl_lightning' ? 4 : 25;
+      const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+          num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+          enable_safety_checker: true,
+          // SDXL specific
+          ...(params.model === 'sdxl' &&
+            params.guidanceScale !== undefined && {
+              guidance_scale: params.guidanceScale,
+            }),
+          ...(params.model === 'sdxl' &&
+            defaultGuidance !== undefined &&
+            params.guidanceScale === undefined && {
+              guidance_scale: defaultGuidance,
+            }),
+          ...(params.model === 'sdxl' &&
+            params.negativePrompt && {
+              negative_prompt: params.negativePrompt,
+            }),
+          ...(params.model === 'sdxl' &&
+            params.loras && { loras: params.loras }),
+          // Common optional params
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { format: params.outputFormat }), // Note: 'format' not 'output_format'
+          ...(params.embeddings && { embeddings: params.embeddings }),
+          sync_mode: false,
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(
+        params.model,
+        params,
+        resp.data as FalImageResponse
+      );
+    }
+
+    case 'imagen4_preview_ultra': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          aspect_ratio: imageSizeToAspectRatio(
+            params.imageSize ?? DEFAULT_IMAGE_SIZE
+          ),
+          resolution: params.resolution ?? '1K',
+          num_images: 1, // Imagen4 only supports 1 image
+          ...(params.negativePrompt && {
+            negative_prompt: params.negativePrompt,
+          }),
+          ...(params.seed !== undefined && { seed: params.seed }),
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(
+        params.model,
+        params,
+        resp.data as FalImageResponse
+      );
+    }
+
+    case 'nano_banana': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          aspect_ratio: imageSizeToAspectRatio(
+            params.imageSize ?? DEFAULT_IMAGE_SIZE
+          ),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          sync_mode: false,
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(
+        params.model,
+        params,
+        resp.data as FalImageResponse
+      );
+    }
+
+    case 'recraft_v3': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+          style: params.style ?? 'realistic_image',
+          enable_safety_checker: false, // Default false for Recraft
+          ...(params.colors &&
+            params.colors.length > 0 && { colors: params.colors }),
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(
+        params.model,
+        params,
+        resp.data as FalImageResponse
+      );
+    }
+
+    case 'hidream_i1_full': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          image_size: { width: 1024, height: 1024 }, // HiDream uses object
+          num_inference_steps: params.numInferenceSteps ?? 50,
+          guidance_scale: params.guidanceScale ?? 5,
+          enable_safety_checker: true,
+          ...(params.negativePrompt && {
+            negative_prompt: params.negativePrompt,
+          }),
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          ...(params.loras && { loras: params.loras }),
+          sync_mode: false,
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(
+        params.model,
+        params,
+        resp.data as FalImageResponse
+      );
+    }
+
+    case 'letzai': {
+      // LetzAI uses custom provider with different API
+      const presetDims = {
+        square_hd: { width: 1024, height: 1024 },
+        portrait_16_9: { width: 576, height: 1024 },
+        landscape_16_9: { width: 1600, height: 900 },
+      }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
+
+      const resp = await generateImageLetzAI({
+        prompt: params.prompt,
+        width: presetDims.width,
+        height: presetDims.height,
+        quality: params.quality ?? 5,
+        creativity: params.creativity ?? 2,
+        hasWatermark: params.hasWatermark ?? false,
+        systemVersion: params.systemVersion ?? 3,
+        mode: params.mode ?? 'cinematic',
+      });
+      if (!resp.data) throw new Error('No data returned from LetzAI');
+      return resultByProvider(params.model, params, resp.data);
+    }
+
+    default: {
+      // TypeScript exhaustiveness check
+      const _exhaustive: never = params.model;
+      throw new Error(`Unsupported model: ${String(_exhaustive)}`);
     }
   }
 }
@@ -115,7 +311,7 @@ function resultByProvider(
     parameters: params,
     generatedAt: new Date().toISOString(),
     processingTimeMs: 0,
-    provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
+    provider: model === 'letzai' ? ('letzai' as const) : ('fal' as const),
     metadata: {
       prompt: (resp as { prompt?: string }).prompt || params.prompt,
       model,
@@ -129,64 +325,45 @@ function resultByProvider(
     },
   };
 
-  switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
-    case 'letz-ai': {
-      const generationSettings =
-        (resp as { generationSettings?: Record<string, number> })
-          .generationSettings ?? ({} as Record<string, number>);
+  if (model === 'letzai') {
+    const letzaiResp = resp as LetzAIImageResponse;
 
-      // Get dimensions from preset
-      const presetDims = params.imageSize
-        ? LETZAI_PRESET_DIMENSIONS[params.imageSize]
-        : LETZAI_PRESET_DIMENSIONS.landscape_16_9;
+    // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
+    const presetDims = {
+      square_hd: { width: 1024, height: 1024 },
+      portrait_16_9: { width: 576, height: 1024 },
+      landscape_16_9: { width: 1600, height: 900 },
+    }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
 
-      result.imageUrls = [
-        (resp as { imageVersions?: { original: string } }).imageVersions
-          ?.original as string,
-      ];
-      result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
-      result.metadata.dimensions = [
-        {
-          width: generationSettings.width ?? presetDims.width,
-          height: generationSettings.height ?? presetDims.height,
-        },
-      ];
-      break;
-    }
-    default: {
-      const images = (
-        resp as {
-          images?: {
-            url: string;
-            width?: number;
-            height?: number;
-            file_size?: number;
-          }[];
-        }
-      ).images;
-      const timings = (resp as { timings?: { inference?: number } }).timings;
-      const latencyMs = (resp as { latencyMs?: number }).latencyMs;
-      const seed = (resp as { seed?: number }).seed;
-      const has_nsfw_concepts = (resp as { has_nsfw_concepts?: boolean[] })
-        .has_nsfw_concepts;
+    result.imageUrls = [letzaiResp.imageVersions?.original as string];
+    result.processingTimeMs = 0; // LetzAI response doesn't include timing info
+    result.metadata.dimensions = [
+      {
+        width: presetDims.width,
+        height: presetDims.height,
+      },
+    ];
+  } else {
+    const falResp = resp as FalImageResponse;
+    const images = falResp.images;
+    const timings = falResp.timings;
+    const latencyMs = (resp as { latencyMs?: number }).latencyMs;
 
-      result.imageUrls = Array.isArray(images)
-        ? images.map((img: { url: string }) => img.url)
-        : ([] as string[]);
-      result.processingTimeMs = timings?.inference || latencyMs || 0;
-      result.metadata.dimensions = Array.isArray(images)
-        ? images.map((img: { width?: number; height?: number }) => ({
-            width: img.width ?? 0,
-            height: img.height ?? 0,
-          }))
-        : ([] as { width: number; height: number }[]);
-      result.metadata.file_sizes = Array.isArray(images)
-        ? images.map((img: { file_size?: number }) => img.file_size ?? 0)
-        : ([] as number[]);
-      result.metadata.seed = seed;
-      result.metadata.has_nsfw_concepts = has_nsfw_concepts;
-      break;
-    }
+    result.imageUrls = Array.isArray(images)
+      ? images.map((img) => img.url)
+      : [];
+    result.processingTimeMs = timings?.inference || latencyMs || 0;
+    result.metadata.dimensions = Array.isArray(images)
+      ? images.map((img) => ({
+          width: img.width ?? 0,
+          height: img.height ?? 0,
+        }))
+      : [];
+    result.metadata.file_sizes = Array.isArray(images)
+      ? images.map((img) => img.file_size ?? 0)
+      : [];
+    result.metadata.seed = falResp.seed;
+    result.metadata.has_nsfw_concepts = falResp.has_nsfw_concepts;
   }
 
   return result;
