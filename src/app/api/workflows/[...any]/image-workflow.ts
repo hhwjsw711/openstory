@@ -1,60 +1,21 @@
-import {
-  type FalImageGenerationParams,
-  type FalImageResponse,
-  generateImage as generateImageFal,
-} from '@/lib/ai/fal-client';
-import type { LetzAIMode } from '@/lib/ai/letzai-client';
-import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
-import {
-  AI_PROVIDER_MAPPINGS,
-  DEFAULT_IMAGE_MODEL,
-  getTextToImageModelId,
-  TextToImageModel,
-} from '@/lib/ai/models';
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { Scene } from '@/lib/ai/scene-analysis.schema';
-import {
-  DEFAULT_IMAGE_SIZE,
-  type ImageSize,
-} from '@/lib/constants/aspect-ratios';
+import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { frames, sequences } from '@/lib/db/schema';
-import type {
-  LetzAIImageRequest,
-  LetzAIImageResponse,
-} from '@/lib/schemas/letzai-request';
+import {
+  generateImageWithProvider,
+  ImageGenerationParams,
+} from '@/lib/image/image-generation';
+import { uploadImageToStorage } from '@/lib/image/image-storage';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
-
-const LETZAI_PRESET_DIMENSIONS: Record<
-  ImageSize,
-  { width: number; height: number }
-> = {
-  square_hd: { width: 1024, height: 1024 },
-  portrait_16_9: { width: 576, height: 1024 },
-  landscape_16_9: { width: 1600, height: 900 },
-} as const;
-
-/**
- * Parameters for image generation
- */
-interface ImageGenerationParams {
-  model: TextToImageModel;
-  prompt: string;
-  imageSize?: ImageSize;
-  numImages?: number;
-  seed?: number;
-  quality?: number;
-  creativity?: number;
-  hasWatermark?: boolean;
-  systemVersion?: number;
-  mode?: LetzAIMode;
-}
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -78,67 +39,40 @@ export const generateImageWorkflow = createWorkflow(
     );
 
     // Step 1: Set status to generating if frameId is provided
-    if (input.frameId) {
-      await context.run('set-generating-status', async () => {
-        if (!input.frameId) return;
-        await updateFrame(input.frameId, {
-          thumbnailStatus: 'generating',
-          thumbnailWorkflowRunId: context.workflowRunId,
-        });
-      });
-    }
+    const generationParams: ImageGenerationParams = await context.run(
+      'set-generating-status',
+      async () => {
+        if (input.frameId) {
+          // update frame status to generating
+          await updateFrame(input.frameId, {
+            thumbnailStatus: 'generating',
+            thumbnailWorkflowRunId: context.workflowRunId,
+          });
+        }
 
-    // Step 2: Generate image
-    const imageResult = await context.run('generate-image', async () => {
-      // Determine model to use
-      let model = input.model;
-      if (!model) model = DEFAULT_IMAGE_MODEL;
+        // Return the generation params so it shows in the workflow context for debugging
+        let model = input.model;
+        if (!model) model = DEFAULT_IMAGE_MODEL;
 
-      console.log(
-        '[ImageWorkflow]',
-        `Generating image ${input.frameId} with model ${model}`
-      );
-
-      try {
         // Generate image using selected AI provider
-        const generationParams: ImageGenerationParams = {
+        return {
           model,
           prompt: input.prompt,
           imageSize: input.imageSize || DEFAULT_IMAGE_SIZE,
           numImages: input.numImages || 1,
           seed: input.seed,
         };
-
-        const resp = await generateImageWithProvider(generationParams);
-        console.log(
-          '[ImageWorkflow]',
-          'Response:',
-          JSON.stringify(resp, null, 2)
-        );
-        // Check if response has data
-        if (!resp.data) {
-          throw new Error(
-            resp.error || 'No data returned from image generation service'
-          );
-        }
-
-        const respData = resp.data as unknown as
-          | FalImageResponse
-          | LetzAIImageResponse;
-        const result = resultByProvider(model, generationParams, respData);
-
-        return result;
-      } catch (error) {
-        // Update status on error if frameId is provided
-        if (input.frameId) {
-          await updateFrame(input.frameId, {
-            thumbnailStatus: 'generating',
-            thumbnailError:
-              error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-        throw error; // Re-throw so QStash will retry
       }
+    );
+
+    // Step 2: Generate image
+    const imageResult = await context.run('generate-image', async () => {
+      console.log(
+        '[ImageWorkflow]',
+        `Generating image ${input.frameId} with model ${generationParams.model}`
+      );
+
+      return await generateImageWithProvider(generationParams);
     });
 
     // Step 3: Upload image to storage if frameId is provided
@@ -154,10 +88,6 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         try {
-          const { uploadImageToStorage } = await import(
-            '@/lib/services/image-storage.service'
-          );
-
           const result = await uploadImageToStorage({
             imageUrl: imageResult.imageUrls[0],
             teamId: input.teamId,
@@ -331,131 +261,3 @@ export const generateImageWorkflow = createWorkflow(
     },
   }
 );
-
-/**
- * Select AI provider based on model
- */
-function generateImageWithProvider(params: ImageGenerationParams) {
-  switch (params.model) {
-    case 'letzai': {
-      const { width, height } = LETZAI_PRESET_DIMENSIONS[
-        params.imageSize ?? DEFAULT_IMAGE_SIZE
-      ] ?? {
-        width: 1600,
-        height: 900,
-      };
-      const letzaiPayload: LetzAIImageRequest = {
-        prompt: params.prompt,
-        width,
-        height,
-        quality: params.quality ?? 5,
-        creativity: params.creativity ?? 2,
-        hasWatermark: params.hasWatermark ?? false,
-        systemVersion: params.systemVersion ?? 3,
-        mode: params.mode ?? 'cinematic',
-      };
-      return generateImageLetzAI(letzaiPayload);
-    }
-    default: {
-      // For FAL, convert our params to their expected format
-      const falParams: FalImageGenerationParams = {
-        model: getTextToImageModelId(params.model),
-        prompt: params.prompt,
-        image_size: params.imageSize,
-        num_images: params.numImages,
-        seed: params.seed,
-      };
-      return generateImageFal(falParams);
-    }
-  }
-}
-
-/**
- * Parse result by provider
- */
-function resultByProvider(
-  model: string,
-  params: ImageGenerationParams,
-  resp: FalImageResponse | LetzAIImageResponse
-) {
-  const result = {
-    imageUrls: [] as string[],
-    parameters: params,
-    generatedAt: new Date().toISOString(),
-    processingTimeMs: 0,
-    provider: AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS],
-    metadata: {
-      prompt: (resp as { prompt?: string }).prompt || params.prompt,
-      model,
-      dimensions: [] as { width: number; height: number }[],
-      file_sizes: [] as number[],
-      seed: (resp as { seed?: number }).seed,
-      has_nsfw_concepts: (resp as { has_nsfw_concepts?: boolean[] })
-        .has_nsfw_concepts,
-      cost: (resp as { cost?: number }).cost,
-      requestId: (resp as { requestId?: string }).requestId,
-    },
-  };
-
-  switch (AI_PROVIDER_MAPPINGS[model as keyof typeof AI_PROVIDER_MAPPINGS]) {
-    case 'letz-ai': {
-      const generationSettings =
-        (resp as { generationSettings?: Record<string, number> })
-          .generationSettings ?? ({} as Record<string, number>);
-
-      // Get dimensions from preset
-      const presetDims = params.imageSize
-        ? LETZAI_PRESET_DIMENSIONS[params.imageSize]
-        : LETZAI_PRESET_DIMENSIONS.landscape_16_9;
-
-      result.imageUrls = [
-        (resp as { imageVersions?: { original: string } }).imageVersions
-          ?.original as string,
-      ];
-      result.processingTimeMs = (resp as { latencyMs?: number }).latencyMs || 0;
-      result.metadata.dimensions = [
-        {
-          width: generationSettings.width ?? presetDims.width,
-          height: generationSettings.height ?? presetDims.height,
-        },
-      ];
-      break;
-    }
-    default: {
-      const images = (
-        resp as {
-          images?: {
-            url: string;
-            width?: number;
-            height?: number;
-            file_size?: number;
-          }[];
-        }
-      ).images;
-      const timings = (resp as { timings?: { inference?: number } }).timings;
-      const latencyMs = (resp as { latencyMs?: number }).latencyMs;
-      const seed = (resp as { seed?: number }).seed;
-      const has_nsfw_concepts = (resp as { has_nsfw_concepts?: boolean[] })
-        .has_nsfw_concepts;
-
-      result.imageUrls = Array.isArray(images)
-        ? images.map((img: { url: string }) => img.url)
-        : ([] as string[]);
-      result.processingTimeMs = timings?.inference || latencyMs || 0;
-      result.metadata.dimensions = Array.isArray(images)
-        ? images.map((img: { width?: number; height?: number }) => ({
-            width: img.width ?? 0,
-            height: img.height ?? 0,
-          }))
-        : ([] as { width: number; height: number }[]);
-      result.metadata.file_sizes = Array.isArray(images)
-        ? images.map((img: { file_size?: number }) => img.file_size ?? 0)
-        : ([] as number[]);
-      result.metadata.seed = seed;
-      result.metadata.has_nsfw_concepts = has_nsfw_concepts;
-      break;
-    }
-  }
-
-  return result;
-}

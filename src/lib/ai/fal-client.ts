@@ -183,15 +183,7 @@ export async function generateImage(
   const apiKey = process.env.FAL_KEY;
 
   if (!apiKey) {
-    console.warn(
-      '[FAL] No API key found, using mock response. Set FAL_KEY environment variable.'
-    );
-    return {
-      success: true,
-      data: getMockImageResponse(params),
-      latencyMs: 1000,
-      cost: 0,
-    };
+    throw new Error('FAL_KEY environment variable is required');
   }
 
   const falService = getFalService();
@@ -290,31 +282,6 @@ function getMockVideoResponse(
       inference: 15000, // 15 seconds
     },
     seed: params.seed || Math.floor(Math.random() * 1000000),
-  };
-}
-
-/**
- * Generate mock image response for testing
- */
-function getMockImageResponse(
-  params: FalImageGenerationParams
-): FalImageResponse {
-  return {
-    images: [
-      {
-        url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-        content_type: 'image/jpeg',
-        file_name: 'generated_image.jpg',
-        file_size: 780831,
-        width: 1920,
-        height: 1080,
-      },
-    ],
-    timings: {
-      inference: 3000, // 3 seconds
-    },
-    seed: params.seed || Math.floor(Math.random() * 1000000),
-    prompt: params.prompt,
   };
 }
 
