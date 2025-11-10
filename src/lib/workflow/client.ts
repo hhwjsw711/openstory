@@ -37,6 +37,7 @@ export async function triggerWorkflow(url: string, body: object) {
   const response = await qstash.trigger({
     url: `${baseUrl}${url}`,
     body: body,
+    keepTriggerConfig: true,
     headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
       ? {
           'x-vercel-protection-bypass':
