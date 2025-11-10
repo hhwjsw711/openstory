@@ -274,6 +274,14 @@ export const generateStoryboardWorkflow = createWorkflow(
           } = await context.invoke('image', {
             workflow: generateImageWorkflow,
             body: imageInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: {
+              key: 'fal-requests', // Shared key for both image & motion
+              parallelism: process.env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+                : 10,
+            },
             headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':
@@ -303,6 +311,14 @@ export const generateStoryboardWorkflow = createWorkflow(
           await context.invoke('motion', {
             workflow: generateMotionWorkflow,
             body: motionInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: {
+              key: 'fal-requests', // Shared key for both image & motion
+              parallelism: process.env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+                : 10,
+            },
             headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':

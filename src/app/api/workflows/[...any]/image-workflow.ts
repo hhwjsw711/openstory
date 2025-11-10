@@ -23,25 +23,25 @@ export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Validate authentication
-    validateWorkflowAuth(input);
-
-    // Validate required fields
-    if (!input.prompt || input.prompt.trim().length === 0) {
-      throw new WorkflowValidationError(
-        'Prompt is required for image generation'
-      );
-    }
-
-    console.log(
-      '[ImageWorkflow]',
-      `Starting image generation workflow for user ${input.userId}`
-    );
-
     // Step 1: Set status to generating if frameId is provided
     const generationParams: ImageGenerationParams = await context.run(
       'set-generating-status',
       async () => {
+        // Validate authentication
+        validateWorkflowAuth(input);
+
+        // Validate required fields
+        if (!input.prompt || input.prompt.trim().length === 0) {
+          throw new WorkflowValidationError(
+            'Prompt is required for image generation'
+          );
+        }
+
+        console.log(
+          '[ImageWorkflow]',
+          `Starting image generation workflow for user ${input.userId}`
+        );
+
         if (input.frameId) {
           // update frame status to generating
           await updateFrame(input.frameId, {
@@ -117,108 +117,98 @@ export const generateImageWorkflow = createWorkflow(
       });
     }
 
-    // Step 4: Update frame if frameId is provided
-    if (input.frameId && imageResult.imageUrls.length > 0) {
-      await context.run('update-frame', async () => {
-        if (!input.frameId) {
-          throw new Error('frameId is required for update-frame step');
-        }
+    await context.run('update-frame', async () => {
+      // Step 4: Update frame if frameId is provided
+      if (!input.frameId || imageResult.imageUrls.length === 0) {
+        return { updated: false };
+      }
 
-        try {
-          // Get existing frame to preserve metadata
-          const existingFrame = await db.query.frames.findFirst({
-            where: eq(frames.id, input.frameId),
-            columns: { metadata: true },
-          });
+      try {
+        // Get existing frame to preserve metadata
+        const existingFrame = await db.query.frames.findFirst({
+          where: eq(frames.id, input.frameId),
+          columns: { metadata: true },
+        });
 
-          await updateFrame(input.frameId, {
-            thumbnailUrl: storageUrl,
-            thumbnailStatus: 'completed',
-            thumbnailGeneratedAt: new Date(),
-            thumbnailError: null,
-            metadata: {
-              ...(existingFrame?.metadata as unknown as Scene),
-              sourceImageUrl: imageResult.imageUrls[0], // Store temporary FAL URL for API calls
-            },
-          });
-        } catch (error) {
-          console.error(
-            '[ImageWorkflow]',
-            `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-          throw error;
-        }
+        await updateFrame(input.frameId, {
+          thumbnailUrl: storageUrl,
+          thumbnailStatus: 'completed',
+          thumbnailGeneratedAt: new Date(),
+          thumbnailError: null,
+          metadata: {
+            ...(existingFrame?.metadata as unknown as Scene),
+            sourceImageUrl: imageResult.imageUrls[0], // Store temporary FAL URL for API calls
+          },
+        });
+      } catch (error) {
+        console.error(
+          '[ImageWorkflow]',
+          `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        throw error;
+      }
 
-        return { updated: true };
-      });
+      return { updated: true };
+    });
 
-      // Step 5: Check if all frames are complete and update sequence
-      if (input.sequenceId) {
-        await context.run('update-sequence-status', async () => {
-          if (!input.sequenceId) {
-            throw new Error(
-              'sequenceId is required for update-sequence-status step'
-            );
-          }
+    await context.run('update-sequence-status', async () => {
+      if (!input.sequenceId) {
+        return { updated: false };
+      }
+      // Check if all frames for this sequence now have thumbnails
+      const allFrames = await db
+        .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
+        .from(frames)
+        .where(eq(frames.sequenceId, input.sequenceId));
 
-          // Check if all frames for this sequence now have thumbnails
-          const allFrames = await db
-            .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
-            .from(frames)
-            .where(eq(frames.sequenceId, input.sequenceId));
+      if (allFrames.length > 0) {
+        const framesWithThumbnails = allFrames.filter(
+          (frame) => frame.thumbnailUrl
+        );
+        const allFramesHaveThumbnails =
+          framesWithThumbnails.length === allFrames.length;
 
-          if (allFrames.length > 0) {
-            const framesWithThumbnails = allFrames.filter(
-              (frame) => frame.thumbnailUrl
-            );
-            const allFramesHaveThumbnails =
-              framesWithThumbnails.length === allFrames.length;
+        if (allFramesHaveThumbnails) {
+          const sequence = await getSequenceById(input.sequenceId);
 
-            if (allFramesHaveThumbnails) {
-              const sequence = await getSequenceById(input.sequenceId);
+          if (sequence) {
+            const existingMetadata =
+              (sequence.metadata as Record<string, unknown>) || {};
+            const frameGeneration =
+              (existingMetadata.frameGeneration as Record<string, unknown>) ||
+              {};
 
-              if (sequence) {
-                const existingMetadata =
-                  (sequence.metadata as Record<string, unknown>) || {};
-                const frameGeneration =
-                  (existingMetadata.frameGeneration as Record<
-                    string,
-                    unknown
-                  >) || {};
+            const updatedMetadata = {
+              ...existingMetadata,
+              frameGeneration: {
+                ...frameGeneration,
+                status: 'completed',
+                completedAt: new Date().toISOString(),
+                thumbnailsGenerating: false,
+              },
+            };
 
-                const updatedMetadata = {
-                  ...existingMetadata,
-                  frameGeneration: {
-                    ...frameGeneration,
-                    status: 'completed',
-                    completedAt: new Date().toISOString(),
-                    thumbnailsGenerating: false,
-                  },
-                };
-
-                try {
-                  await db
-                    .update(sequences)
-                    .set({
-                      metadata: updatedMetadata,
-                      status: 'completed',
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(sequences.id, input.sequenceId));
-                } catch (error) {
-                  console.error(
-                    '[ImageWorkflow]',
-                    `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
-                  );
-                }
-              }
+            try {
+              await db
+                .update(sequences)
+                .set({
+                  metadata: updatedMetadata,
+                  status: 'completed',
+                  updatedAt: new Date(),
+                })
+                .where(eq(sequences.id, input.sequenceId));
+            } catch (error) {
+              console.error(
+                '[ImageWorkflow]',
+                `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+              );
             }
           }
-
-          return { updated: true };
-        });
+        }
       }
-    }
+
+      return { updated: true };
+    });
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
@@ -233,14 +223,6 @@ export const generateImageWorkflow = createWorkflow(
     return result;
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-    flowControl: {
-      key: 'fal-requests', // Shared key for both image & motion
-      parallelism: process.env.FAL_CONCURRENCY_LIMIT
-        ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
-        : 10,
-    },
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
