@@ -307,7 +307,6 @@ export const IMAGE_MODELS = {
   flux_schnell: 'fal-ai/flux/schnell',
   sdxl: 'fal-ai/fast-sdxl',
   sdxl_lightning: 'fal-ai/fast-lightning-sdxl',
-  flux_pro_kontext_max: 'fal-ai/flux-pro/kontext/max', // https://fal.ai/models/fal-ai/flux-pro/kontext/max/api#api-call-install
   imagen4_preview_ultra: 'fal-ai/imagen4/preview/ultra', // https://fal.ai/models/fal-ai/imagen4/preview/ultra/api#api-call-install
   flux_pro_v1_1_ultra: 'fal-ai/flux-pro/v1.1-ultra', // https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api#api-call-install
   flux_krea_lora: 'fal-ai/flux-krea-lora', // https://fal.ai/models/fal-ai/flux-krea-lora/api#api-call-install
@@ -317,43 +316,32 @@ export const IMAGE_MODELS = {
   letzai: 'letzai/image',
 } as const;
 
-/**
- * AI provider mappings
- */
-export const AI_PROVIDER_MAPPINGS = {
-  flux_pro: 'fal-ai',
-  flux_dev: 'fal-ai',
-  flux_schnell: 'fal-ai',
-  sdxl: 'fal-ai',
-  sdxl_lightning: 'fal-ai',
-  flux_pro_kontext_max: 'fal-ai',
-  imagen4_preview_ultra: 'fal-ai',
-  flux_pro_v1_1_ultra: 'fal-ai',
-  flux_krea_lora: 'fal-ai',
-  nano_banana: 'fal-ai',
-  recraft_v3: 'fal-ai',
-  hidream_i1_full: 'fal-ai',
-  letzai: 'letz-ai',
-} as const;
+// Text to image model types
+export type TextToImageModel = keyof typeof IMAGE_MODELS;
+export type TextToImageModelId = (typeof IMAGE_MODELS)[TextToImageModel];
 
-// Type for a model configuration object
-export type ImageToVideoModelConfig =
-  (typeof IMAGE_TO_VIDEO_MODELS)[keyof typeof IMAGE_TO_VIDEO_MODELS];
+export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana';
 
-// Type for model keys
+// Helper to get model ID from key (for backward compatibility)
+export function getTextToImageModelId(
+  modelKey: TextToImageModel
+): TextToImageModelId {
+  return IMAGE_MODELS[modelKey];
+}
+
+// Image to video model types
 export type ImageToVideoModel = keyof typeof IMAGE_TO_VIDEO_MODELS;
-
-// Helper type to extract model ID strings (for backward compatibility)
+// Type for the video model configuration object
+export type ImageToVideoModelConfig =
+  (typeof IMAGE_TO_VIDEO_MODELS)[ImageToVideoModel];
+// Type for the video model ID
 export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
-
-export type FalVideoModel = (typeof VIDEO_MODELS)[keyof typeof VIDEO_MODELS];
-export type FalImageModel = (typeof IMAGE_MODELS)[keyof typeof IMAGE_MODELS];
-
-export const DEFAULT_IMAGE_MODEL: keyof typeof IMAGE_MODELS = 'nano_banana';
 
 export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_5_turbo_pro';
 
 // Helper to get model ID from key (for backward compatibility)
-export function getModelId(modelKey: ImageToVideoModel): string {
+export function getImageToVideoModelId(
+  modelKey: ImageToVideoModel
+): ImageToVideoModelId {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
 }

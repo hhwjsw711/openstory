@@ -1,8 +1,17 @@
 'use client';
 import { ScenesView } from '@/components/scenes/scenes-view';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
 import { Suspense, use } from 'react';
+
+function ScenesViewWrapper({ sequenceId }: { sequenceId: string }) {
+  const { data: sequence } = useSequence(sequenceId);
+  const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
+
+  return <ScenesView sequenceId={sequenceId} aspectRatio={aspectRatio} />;
+}
 
 export default function ScenesPage({
   params,
@@ -28,7 +37,7 @@ export default function ScenesPage({
           </div>
         }
       >
-        <ScenesView sequenceId={sequenceId} />
+        <ScenesViewWrapper sequenceId={sequenceId} />
       </Suspense>
     </div>
   );

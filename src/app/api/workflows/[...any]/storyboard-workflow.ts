@@ -7,6 +7,7 @@ import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workfl
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { analyzeScriptForFrames } from '@/lib/ai/script-analyzer';
+import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
@@ -129,6 +130,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           result = await analyzeScriptForFrames(
             sequence.script,
             styleConfig,
+            sequence.aspectRatio,
             analysisModel,
             {
               sequenceId: input.sequenceId,
@@ -240,6 +242,9 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
+      // Map aspect ratio to image size preset
+      const imageSize = aspectRatioToImageSize(sequence.aspectRatio);
+
       await Promise.all(
         frameIds.map(async ({ frameId, prompt, motionPrompt }) => {
           // Trigger image generation for all frames in parallel
@@ -256,7 +261,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             teamId: input.teamId,
             prompt,
             model: DEFAULT_IMAGE_MODEL,
-            imageSize: 'landscape_16_9',
+            imageSize,
             numImages: 1,
             frameId,
             sequenceId: input.sequenceId,
@@ -269,6 +274,14 @@ export const generateStoryboardWorkflow = createWorkflow(
           } = await context.invoke('image', {
             workflow: generateImageWorkflow,
             body: imageInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: {
+              key: 'fal-requests', // Shared key for both image & motion
+              parallelism: process.env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+                : 10,
+            },
             headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':
@@ -292,11 +305,20 @@ export const generateStoryboardWorkflow = createWorkflow(
             thumbnailUrl: imageBody.imageUrl,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
+            aspectRatio: sequence.aspectRatio,
           };
 
           await context.invoke('motion', {
             workflow: generateMotionWorkflow,
             body: motionInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: {
+              key: 'fal-requests', // Shared key for both image & motion
+              parallelism: process.env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+                : 10,
+            },
             headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':

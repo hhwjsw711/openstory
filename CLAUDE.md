@@ -167,7 +167,7 @@ When working with fal.ai models, always verify API specifications using the `/ll
 
 ```bash
 # Get exact API specifications for any model
-https://fal.ai/models/{model-path}/api/llms.txt
+https://fal.ai/models/{model-path}/llms.txt
 
 # Examples:
 https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video/llms.txt

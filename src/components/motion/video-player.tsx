@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  getAspectRatioClassName,
+  type AspectRatio,
+} from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import {
   MediaPlayer,
@@ -17,6 +21,7 @@ export type VideoPlayerProps = {
   src: string;
   chaptersUrl?: string;
   posterSrc?: string | null;
+  aspectRatio: AspectRatio;
   className?: string;
   autoPlay?: boolean;
   enableDownload?: boolean;
@@ -30,6 +35,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   src,
   chaptersUrl,
   posterSrc,
+  aspectRatio,
   className,
   autoPlay = false,
   enableDownload = false,
@@ -39,6 +45,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onEnded,
 }) => {
   const playerRef = useRef<MediaPlayerInstance>(null);
+
+  // Convert aspect ratio format from "16:9" to "16/9" for Vidstack
+  const vidstackAspectRatio = aspectRatio.replace(':', '/');
 
   // Construct download info with explicit URL and filename
   const downloadInfo =
@@ -53,7 +62,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ref={playerRef}
       src={src}
       poster={posterSrc || undefined}
-      className={cn('w-full aspect-video rounded-lg', className)}
+      aspectRatio={vidstackAspectRatio}
+      className={cn('rounded-lg', className)}
       playsInline
       autoPlay={autoPlay}
       onLoadedMetadata={() => {

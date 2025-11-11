@@ -7,12 +7,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { SceneListItem } from './scene-list-item';
 
 type MobileSceneSheetProps = {
   frames: Frame[];
   selectedFrameId: string | null;
+  aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   completedFrameIds: Set<string>;
   onToggleComplete: (frameId: string) => void;
@@ -23,6 +25,7 @@ type MobileSceneSheetProps = {
 export const MobileSceneSheet: React.FC<MobileSceneSheetProps> = ({
   frames,
   selectedFrameId,
+  aspectRatio,
   onSelectFrame,
   completedFrameIds,
   onToggleComplete,
@@ -67,6 +70,7 @@ export const MobileSceneSheet: React.FC<MobileSceneSheetProps> = ({
                 <SceneListItem
                   key={frame.id}
                   frame={frame}
+                  aspectRatio={aspectRatio}
                   isActive={frame.id === selectedFrameId}
                   isCompleted={isCompleted(frame)}
                   onSelect={() => handleSelectFrame(frame.id)}

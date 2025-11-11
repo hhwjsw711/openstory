@@ -1,6 +1,6 @@
 {
-  "id": "98cad86f-e436-4d98-8afc-29b30ef841f2",
-  "prevId": "43b03556-3f36-4465-9e47-d00af2084fc3",
+  "id": "9733d317-ddd9-46ab-9140-451342b9caa4",
+  "prevId": "98cad86f-e436-4d98-8afc-29b30ef841f2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1426,6 +1426,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'16:9'"
         },
         "analysis_model": {
           "name": "analysis_model",

@@ -51,6 +51,7 @@ export const generateMockSequence = (
     ]),
     teamId: faker.string.uuid(),
     styleId: faker.string.uuid(),
+    aspectRatio: faker.helpers.arrayElement(['16:9', '9:16', '1:1']),
     analysisModel: faker.helpers.arrayElement([
       'anthropic/claude-haiku-4.5',
       'anthropic/claude-sonnet-4.5',
@@ -332,8 +333,6 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
         ],
         { min: 1, max: 3 }
       ),
-      aspectRatio: faker.helpers.arrayElement(aspectRatios),
-      frameRate: faker.helpers.arrayElement(frameRates),
       colorGrading: faker.helpers.arrayElement(colorGradings),
     },
     teamId: faker.string.uuid(),

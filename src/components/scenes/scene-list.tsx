@@ -1,12 +1,14 @@
 'use client';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { SceneListItem } from './scene-list-item';
 
 type SceneListProps = {
   frames?: Frame[] | undefined;
   selectedFrameId?: string;
+  aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
 };
 
@@ -19,6 +21,7 @@ const isCompleted = (frame: Frame) => {
 export const SceneList: React.FC<SceneListProps> = ({
   frames,
   selectedFrameId,
+  aspectRatio,
   onSelectFrame,
 }) => {
   return (
@@ -39,6 +42,7 @@ export const SceneList: React.FC<SceneListProps> = ({
               <SceneListItem
                 key={`frame-skeleton-${i}`}
                 frame={undefined}
+                aspectRatio={aspectRatio}
                 isActive={false}
                 isCompleted={false}
                 onSelect={function (): void {
@@ -52,6 +56,7 @@ export const SceneList: React.FC<SceneListProps> = ({
               <SceneListItem
                 key={frame.id}
                 frame={frame}
+                aspectRatio={aspectRatio}
                 isActive={frame.id === selectedFrameId}
                 isCompleted={isCompleted(frame)}
                 onSelect={() => onSelectFrame(frame.id)}

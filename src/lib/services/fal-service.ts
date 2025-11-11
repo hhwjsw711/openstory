@@ -1,10 +1,10 @@
-import { createFalClient } from '@fal-ai/client';
-import type { FalImageModel, FalVideoModel } from '@/lib/ai/models';
+import type { ImageToVideoModel, TextToImageModelId } from '@/lib/ai/models';
 import { IMAGE_MODELS, VIDEO_MODELS } from '@/lib/ai/models';
-import { VelroError, withRetry } from '@/lib/errors';
 import { db } from '@/lib/db/client';
 import { falRequests } from '@/lib/db/schema/tracking';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { VelroError, withRetry } from '@/lib/errors';
+import { createFalClient } from '@fal-ai/client';
+import { and, eq, gte, lte } from 'drizzle-orm';
 
 // Request/Response types
 export interface FalServiceRequest {
@@ -32,7 +32,6 @@ export const MODEL_COSTS: Record<string, number> = {
   [IMAGE_MODELS.flux_schnell]: 0.01,
   [IMAGE_MODELS.sdxl]: 0.02,
   [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08, // per image
   [IMAGE_MODELS.imagen4_preview_ultra]: 0.06, // per image
   [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06, // per image
   [IMAGE_MODELS.flux_krea_lora]: 0.035, // per mb
@@ -57,7 +56,6 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
   [IMAGE_MODELS.flux_schnell]: 0.01,
   [IMAGE_MODELS.sdxl]: 0.02,
   [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.flux_pro_kontext_max]: 0.08,
   [IMAGE_MODELS.imagen4_preview_ultra]: 0.06,
   [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06,
   [IMAGE_MODELS.flux_krea_lora]: 0.035,
@@ -98,7 +96,7 @@ export class FalService {
    * Generate image using Fal.ai with full service layer features
    */
   async generateImage(
-    model: FalImageModel,
+    model: TextToImageModelId,
     params: Record<string, unknown>,
     options?: {
       userId?: string;
@@ -120,7 +118,7 @@ export class FalService {
    * Generate video using Fal.ai with full service layer features
    */
   async generateVideo(
-    model: FalVideoModel,
+    model: ImageToVideoModel,
     params: Record<string, unknown>,
     options?: {
       userId?: string;

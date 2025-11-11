@@ -6,6 +6,7 @@
  */
 
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateSequenceSchema } from '@/lib/schemas/sequence.schemas';
@@ -112,6 +113,7 @@ export async function PATCH(
     const sequence = await sequenceService.updateSequence({
       id: sequenceId,
       userId: user.id,
+      aspectRatio: sequenceDetailsToUpdate.aspectRatio ?? DEFAULT_ASPECT_RATIO,
       ...sequenceDetailsToUpdate,
       metadata: sequenceDetailsToUpdate.metadata ?? undefined,
       status: needToRegenerateStoryboard ? 'processing' : undefined,
