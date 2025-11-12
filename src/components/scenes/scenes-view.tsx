@@ -40,7 +40,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         <ModelBadge model={sequence?.analysisModel} />
       </PageHeader>
 
-      <div className="flex h-full overflow-hidden">
+      <div className="flex h-full">
         {/* Left: Scene List */}
         <SceneList
           frames={frames}
@@ -50,8 +50,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         />
 
         {/* Right: Scene Player */}
-        <div className="flex-1">
-          <div className="flex flex-1 flex-col justify-start bg-muted/10 p-8 gap-8 overflow-auto">
+        <div className="flex-1 overflow-auto">
+          <div className="flex flex-col justify-start bg-muted/10 p-8 gap-8">
             <div className="w-full flex items-center justify-center">
               <ScenePlayer
                 frames={frames}
