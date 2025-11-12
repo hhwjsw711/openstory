@@ -114,7 +114,12 @@ export async function PATCH(
     await requireTeamMemberAccess(user.id, existingSeq.teamId);
 
     // Check if we need to regenerate the storyboard
-    const needToRegenerateStoryboard = true;
+    // Only regenerate when fields that affect storyboard content are changed
+    const needToRegenerateStoryboard =
+      sequenceDetailsToUpdate.script !== undefined ||
+      sequenceDetailsToUpdate.styleId !== undefined ||
+      sequenceDetailsToUpdate.aspectRatio !== undefined ||
+      sequenceDetailsToUpdate.analysisModel !== undefined;
 
     // Update sequence
     const sequence = await sequenceService.updateSequence({
