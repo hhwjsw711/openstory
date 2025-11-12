@@ -6,6 +6,7 @@ import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import { SceneScriptPrompts } from '@/components/scenes/scene-script-prompts';
 import { PageHeader, PageHeading } from '@/components/typography';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -40,7 +41,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         <ModelBadge model={sequence?.analysisModel} />
       </PageHeader>
 
-      <div className="flex h-full">
+      <div className="flex flex-row flex-1 min-h-0 w-full">
         {/* Left: Scene List */}
         <SceneList
           frames={frames}
@@ -50,7 +51,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         />
 
         {/* Right: Scene Player */}
-        <div className="flex-1 overflow-auto">
+        <ScrollArea className="flex-1">
           <div className="flex flex-col justify-start bg-muted/10 p-8 gap-8">
             <div className="w-full flex items-center justify-center">
               <ScenePlayer
@@ -61,11 +62,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
                 className="w-full h-full"
               />
             </div>
-            <div className="w-full h-min-300 p-4">
+            <div className="w-full p-4">
               <SceneScriptPrompts frame={selectedFrame} />
             </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
     </PageContainer>
   );
