@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Frame } from '@/types/database';
 import { CopyIcon } from 'lucide-react';
@@ -8,23 +9,81 @@ type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
 };
 
+type PromptTabContentProps = {
+  text: string | undefined;
+  isCopied: boolean;
+  onCopy: () => void;
+  showDuration?: boolean;
+  durationMs?: number | null;
+};
+
+const PromptTabContent: React.FC<PromptTabContentProps> = ({
+  text,
+  isCopied,
+  onCopy,
+  showDuration,
+  durationMs,
+}) => {
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div className="absolute right-0 top-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onCopy}
+            disabled={!text}
+            className="h-8 w-8 p-0"
+          >
+            {isCopied ? (
+              <span className="text-xs">✓</span>
+            ) : (
+              <CopyIcon className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        <div className="prose prose-sm max-w-none pr-10">
+          {text ? (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {text}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-10/12" />
+              <Skeleton className="h-4 w-9/12" />
+            </div>
+          )}
+        </div>
+      </div>
+      {showDuration &&
+        durationMs !== undefined &&
+        durationMs !== null &&
+        durationMs > 0 && (
+          <div className="text-xs text-muted-foreground">
+            Duration: {(durationMs / 1000).toFixed(1)}s
+          </div>
+        )}
+    </div>
+  );
+};
+
 export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   frame,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
 
   const handleCopy = useCallback(
-    async (text: string | undefined | null, tabName: string) => {
+    async (text: string | undefined, tabName: string) => {
       if (!text) return;
 
       try {
         await navigator.clipboard.writeText(text);
         setCopiedTab(tabName);
         setTimeout(() => setCopiedTab(null), 2000);
-        return true;
       } catch (error) {
         console.error('Failed to copy to clipboard:', error);
-        return false;
       }
     },
     []
@@ -42,87 +101,30 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <TabsTrigger value="motion-prompt">Motion Prompt</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="script" className="space-y-3">
-        <div className="relative">
-          <div className="absolute right-0 top-0">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleCopy(scriptText, 'script')}
-              disabled={!scriptText}
-              className="h-8 w-8 p-0"
-            >
-              {copiedTab === 'script' ? (
-                <span className="text-xs">✓</span>
-              ) : (
-                <CopyIcon className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div className="prose prose-sm max-w-none pr-10">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {scriptText || 'No script available'}
-            </p>
-          </div>
-        </div>
-        {frame &&
-          frame.durationMs !== undefined &&
-          frame.durationMs !== null &&
-          frame.durationMs > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Duration: {(frame.durationMs / 1000).toFixed(1)}s
-            </div>
-          )}
+      <TabsContent value="script">
+        <PromptTabContent
+          text={scriptText}
+          isCopied={copiedTab === 'script'}
+          onCopy={() => handleCopy(scriptText, 'script')}
+          showDuration={true}
+          durationMs={frame?.durationMs}
+        />
       </TabsContent>
 
-      <TabsContent value="image-prompt" className="space-y-3">
-        <div className="relative">
-          <div className="absolute right-0 top-0">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleCopy(imagePrompt, 'image-prompt')}
-              disabled={!imagePrompt}
-              className="h-8 w-8 p-0"
-            >
-              {copiedTab === 'image-prompt' ? (
-                <span className="text-xs">✓</span>
-              ) : (
-                <CopyIcon className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div className="prose prose-sm max-w-none pr-10">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {imagePrompt || 'No image prompt available'}
-            </p>
-          </div>
-        </div>
+      <TabsContent value="image-prompt">
+        <PromptTabContent
+          text={imagePrompt}
+          isCopied={copiedTab === 'image-prompt'}
+          onCopy={() => handleCopy(imagePrompt, 'image-prompt')}
+        />
       </TabsContent>
 
-      <TabsContent value="motion-prompt" className="space-y-3">
-        <div className="relative">
-          <div className="absolute right-0 top-0">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleCopy(motionPrompt, 'motion-prompt')}
-              disabled={!motionPrompt}
-              className="h-8 w-8 p-0"
-            >
-              {copiedTab === 'motion-prompt' ? (
-                <span className="text-xs">✓</span>
-              ) : (
-                <CopyIcon className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div className="prose prose-sm max-w-none pr-10">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {motionPrompt || 'No motion prompt available'}
-            </p>
-          </div>
-        </div>
+      <TabsContent value="motion-prompt">
+        <PromptTabContent
+          text={motionPrompt}
+          isCopied={copiedTab === 'motion-prompt'}
+          onCopy={() => handleCopy(motionPrompt, 'motion-prompt')}
+        />
       </TabsContent>
     </Tabs>
   );
