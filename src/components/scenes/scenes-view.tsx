@@ -50,30 +50,20 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         />
 
         {/* Right: Scene Player */}
-        <div>
+        <div className="flex-1">
           <div className="flex flex-1 flex-col justify-start bg-muted/10 p-8 gap-8 overflow-auto">
-            <div className="w-full max-w-4xl flex items-center justify-center">
-              <div
-                style={{
-                  maxHeight: '50vh',
-                  maxWidth: '100%',
-                  aspectRatio: aspectRatio.replace(':', '/'),
-                }}
-              >
-                <ScenePlayer
-                  frames={frames}
-                  selectedFrameId={curSelectedFrameId}
-                  aspectRatio={aspectRatio}
-                  onSelectFrame={setSelectedFrameId}
-                  className="w-full h-full"
-                />
-              </div>
+            <div className="w-full flex items-center justify-center">
+              <ScenePlayer
+                frames={frames}
+                selectedFrameId={curSelectedFrameId}
+                aspectRatio={aspectRatio}
+                onSelectFrame={setSelectedFrameId}
+                className="w-full h-full"
+              />
             </div>
-            {frames && frames.length > 0 && (
-              <div className="w-full max-w-4xl h-min-300 p-4">
-                <SceneScriptPrompts frame={selectedFrame} />
-              </div>
-            )}
+            <div className="w-full h-min-300 p-4">
+              <SceneScriptPrompts frame={selectedFrame} />
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   getAspectRatioClassName,
   type AspectRatio,
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   MediaPlayer,
   MediaProvider,
+  Poster,
   Track,
   type MediaPlayerInstance,
 } from '@vidstack/react';
@@ -46,6 +48,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const playerRef = useRef<MediaPlayerInstance>(null);
 
+  // Show skeleton when there's no video source and no poster
+  if (!src && !posterSrc) {
+    return (
+      <Skeleton
+        className={cn('w-full', getAspectRatioClassName(aspectRatio))}
+      />
+    );
+  }
+
   // Convert aspect ratio format from "16:9" to "16/9" for Vidstack
   const vidstackAspectRatio = aspectRatio.replace(':', '/');
 
@@ -63,8 +74,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       src={src}
       poster={posterSrc || undefined}
       aspectRatio={vidstackAspectRatio}
-      className={cn('rounded-lg', className)}
+      className={className}
       playsInline
+      load="visible"
+      posterLoad="visible"
       autoPlay={autoPlay}
       onLoadedMetadata={() => {
         if (onLoadedMetadata && playerRef.current) {
@@ -82,7 +95,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }
       }}
     >
-      <MediaProvider />
+      <MediaProvider>
+        {posterSrc && <Poster src={posterSrc} alt="video thumbnail" />}
+      </MediaProvider>
+
       {chaptersUrl && (
         <Track kind="chapters" src={chaptersUrl} type="vtt" default />
       )}

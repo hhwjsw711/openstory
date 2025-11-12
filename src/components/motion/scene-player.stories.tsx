@@ -152,6 +152,8 @@ export const WithMockSequence: Story = {
   args: {
     selectedFrameId: '1',
     frames: mockFrames,
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
   },
   parameters: {
     docs: {
@@ -166,6 +168,8 @@ export const WithMockSequence: Story = {
 export const AllVideoStates: Story = {
   args: {
     selectedFrameId: '1',
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
     frames: [
       {
         ...mockFrameBase,
@@ -251,6 +255,8 @@ export const AllVideoStates: Story = {
 export const OnlyPendingVideos: Story = {
   args: {
     selectedFrameId: '1',
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
     frames: [
       {
         ...mockFrameBase,
