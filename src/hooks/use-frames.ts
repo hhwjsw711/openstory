@@ -83,12 +83,11 @@ export function useFramesBySequence(
 
       // Phases 6-7: Image/video generation (rapid parallel updates)
       // Poll faster for snappier UI updates as thumbnails/videos complete
-      if (isGeneratingImages || isGeneratingVideos) {
-        return 5000; // 1 second
+      if (frames.length > 0 && !isGeneratingImages && !isGeneratingVideos) {
+        return false;
       }
 
-      // Idle - stop polling
-      return false;
+      return 2000; // 1 second
     },
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus

@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { AlertCircle, VideoIcon } from 'lucide-react';
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
-import Image from 'next/image';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -71,21 +71,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   }, [nextFrame, onEnded, onSelectFrame]);
 
   // Show skeleton when frames are loading
-  if (!frames) {
+  if (!frames || frames.length === 0) {
     return (
       <Skeleton
         className={cn('w-full', getAspectRatioClassName(aspectRatio))}
-      />
-    );
-  }
-
-  // Show empty state when no frames exist
-  if (frames.length === 0) {
-    return (
-      <EmptyState
-        icon={<VideoIcon />}
-        title={'No frames'}
-        description={'Create frames from your script to get started.'}
       />
     );
   }
