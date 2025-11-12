@@ -1,10 +1,9 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import { ModelBadge } from '@/components/common/model-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';
-import { getModelById } from '@/lib/ai/models.config';
 import { formatDistanceToNow } from '@/lib/utils';
 import { formatDuration } from '@/lib/utils/format-duration';
 import { Calendar, Clock, Timer, VideoIcon } from 'lucide-react';
@@ -60,19 +59,7 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
                     {sequence.title || 'Untitled Sequence'}
                   </h3>
                 </div>
-                {sequence.analysisModel && (
-                  <Badge
-                    variant={
-                      getModelById(sequence.analysisModel)?.tier === 'premium'
-                        ? 'default'
-                        : 'secondary'
-                    }
-                    className="text-xs"
-                  >
-                    {getModelById(sequence.analysisModel)?.name ||
-                      sequence.analysisModel}
-                  </Badge>
-                )}
+                <ModelBadge model={sequence.analysisModel} />
               </div>
             </div>
 

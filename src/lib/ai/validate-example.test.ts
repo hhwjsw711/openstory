@@ -32,13 +32,14 @@ describe('Scene Analysis Schema Validation', () => {
       expect(scene.metadata).toBeDefined();
       expect(scene.selectedVariant).toBeDefined();
       expect(scene.prompts).toBeDefined();
-      expect(scene.prompts.visual).toBeDefined();
-      expect(scene.prompts.motion).toBeDefined();
+      expect(scene.prompts?.visual).toBeDefined();
+      expect(scene.prompts?.motion).toBeDefined();
     }
   });
 
   test('visual prompts have all required components', () => {
     for (const scene of sceneAnalysisExample.scenes) {
+      if (!scene.prompts?.visual) continue;
       const { components } = scene.prompts.visual;
       expect(components.sceneDescription).toBeDefined();
       expect(components.subject).toBeDefined();
@@ -54,6 +55,7 @@ describe('Scene Analysis Schema Validation', () => {
 
   test('motion prompts have all required components', () => {
     for (const scene of sceneAnalysisExample.scenes) {
+      if (!scene.prompts?.motion) continue;
       const { components } = scene.prompts.motion;
       expect(components.cameraMovement).toBeDefined();
       expect(components.startPosition).toBeDefined();
@@ -77,8 +79,13 @@ describe('Scene Analysis Schema Validation', () => {
 
   test('selected variants reference valid variant IDs', () => {
     const scene1 = sceneAnalysisExample.scenes[0];
+    if (!scene1.selectedVariant) return;
     expect(['A1', 'A2', 'A3']).toContain(scene1.selectedVariant.cameraAngle);
-    expect(['B1', 'B2', 'B3']).toContain(scene1.selectedVariant.movementStyle);
+    if (scene1.selectedVariant.movementStyle) {
+      expect(['B1', 'B2', 'B3']).toContain(
+        scene1.selectedVariant.movementStyle
+      );
+    }
     expect(['C1', 'C2', 'C3']).toContain(scene1.selectedVariant.moodTreatment);
   });
 

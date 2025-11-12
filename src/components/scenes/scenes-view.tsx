@@ -1,11 +1,15 @@
 'use client';
 
+import { ModelBadge } from '@/components/common/model-badge';
+import { PageContainer } from '@/components/layout/page-container';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import { SceneScriptPrompts } from '@/components/scenes/scene-script-prompts';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { PageHeader, PageHeading } from '@/components/typography';
 import { useFramesBySequence } from '@/hooks/use-frames';
-import { useState } from 'react';
+import { useSequence } from '@/hooks/use-sequences';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string | undefined;
@@ -20,47 +24,49 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
     undefined
   );
-
+  const { data: sequence } = useSequence(sequenceId);
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);
 
+  const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
+  const selectedFrame = useMemo(
+    () => frames?.find((frame) => frame.id === curSelectedFrameId),
+    [frames, curSelectedFrameId]
+  );
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left: Scene List */}
-      <SceneList
-        frames={frames}
-        selectedFrameId={selectedFrameId || frames?.[0]?.id}
-        aspectRatio={aspectRatio}
-        onSelectFrame={setSelectedFrameId}
-      />
+    <PageContainer maxWidth="full" fullHeight={true} padding="none">
+      <PageHeader>
+        <PageHeading>{sequence?.title}</PageHeading>
+        <ModelBadge model={sequence?.analysisModel} />
+      </PageHeader>
 
-      {/* Right: Scene Player */}
-      <div className="flex flex-1 flex-col items-center justify-start bg-muted/10 p-8 gap-8 overflow-auto">
-        <div className="w-full max-w-4xl flex items-center justify-center">
-          <div
-            style={{
-              maxHeight: '50vh',
-              maxWidth: '100%',
-              aspectRatio: aspectRatio.replace(':', '/'),
-            }}
-          >
-            <ScenePlayer
-              frames={frames}
-              selectedFrameId={selectedFrameId || frames?.[0]?.id}
-              aspectRatio={aspectRatio}
-              onSelectFrame={setSelectedFrameId}
-              className="w-full h-full"
-            />
+      <div className="flex h-full">
+        {/* Left: Scene List */}
+        <SceneList
+          frames={frames}
+          selectedFrameId={curSelectedFrameId}
+          aspectRatio={aspectRatio}
+          onSelectFrame={setSelectedFrameId}
+        />
+
+        {/* Right: Scene Player */}
+        <div className="flex-1 overflow-auto">
+          <div className="flex flex-col justify-start bg-muted/10 p-8 gap-8">
+            <div className="w-full flex items-center justify-center">
+              <ScenePlayer
+                frames={frames}
+                selectedFrameId={curSelectedFrameId}
+                aspectRatio={aspectRatio}
+                onSelectFrame={setSelectedFrameId}
+                className="w-full h-full"
+              />
+            </div>
+            <div className="w-full h-min-300 p-4">
+              <SceneScriptPrompts frame={selectedFrame} />
+            </div>
           </div>
         </div>
-        {frames && frames.length > 0 && (
-          <div className="w-full max-w-4xl h-min-300 p-4">
-            <SceneScriptPrompts
-              frame={frames?.find((frame) => frame.id === selectedFrameId)}
-            />
-          </div>
-        )}
       </div>
-    </div>
+    </PageContainer>
   );
 };

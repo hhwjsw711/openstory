@@ -1,6 +1,7 @@
 'use client';
 
 import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   type AspectRatio,
   getAspectRatioClassName,
@@ -8,14 +9,13 @@ import {
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import { VideoIcon } from 'lucide-react';
+import { AlertCircle, VideoIcon } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
-import { VideoStateOverlay } from './video-state-overlay';
 
 type ScenePlayerProps = {
-  frames?: Frame[] | undefined;
+  frames?: Frame[];
   selectedFrameId?: string;
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
@@ -25,7 +25,7 @@ type ScenePlayerProps = {
 };
 
 export const ScenePlayer: React.FC<ScenePlayerProps> = ({
-  frames = [],
+  frames,
   className,
   selectedFrameId,
   aspectRatio,
@@ -35,26 +35,21 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
 }) => {
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
-  // Filter frames with completed thumbnails (skip frames without thumbnails)
-  const displayFrames = useMemo(() => {
-    return frames.filter((frame) => frame.thumbnailStatus === 'completed');
-  }, [frames]);
-
   // Get current frame and next frame
   const [currentFrameIndex, setCurrentFrameIndex] = useState(
-    frames.findIndex((frame) => frame.id === selectedFrameId)
+    frames?.findIndex((frame) => frame.id === selectedFrameId) ?? -1
   );
   useEffect(() => {
     // We could use a useMemo here, but we want to support not having to have a callback to set the selected frame id
     setCurrentFrameIndex(
-      frames.findIndex((frame) => frame.id === selectedFrameId)
+      frames?.findIndex((frame) => frame.id === selectedFrameId) ?? -1
     );
   }, [selectedFrameId, frames]);
 
   const currentFrame =
-    currentFrameIndex >= 0 ? frames[currentFrameIndex] : undefined;
+    frames && currentFrameIndex >= 0 ? frames[currentFrameIndex] : undefined;
   const nextFrame =
-    currentFrameIndex < frames.length - 1
+    frames && currentFrameIndex < frames.length - 1
       ? frames.find(
           (frame, index) =>
             frame.videoStatus === 'completed' &&
@@ -73,7 +68,16 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     } else {
       onEnded?.();
     }
-  }, [currentFrameIndex, displayFrames.length, onEnded, onSelectFrame]);
+  }, [nextFrame, onEnded, onSelectFrame]);
+
+  // Show skeleton when frames are loading
+  if (!frames || frames.length === 0) {
+    return (
+      <Skeleton
+        className={cn('w-full', getAspectRatioClassName(aspectRatio))}
+      />
+    );
+  }
 
   if (!currentFrame) {
     return (
@@ -85,9 +89,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Check if current frame has a completed video
+  // Check video status
   const hasCompletedVideo =
     currentFrame.videoStatus === 'completed' && currentFrame.videoUrl;
+  const hasFailedVideo = currentFrame.videoStatus === 'failed';
 
   // Generate a descriptive filename for download
   const title = currentFrame.metadata?.metadata?.title;
@@ -105,40 +110,54 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
 
   return (
     <>
-      {hasCompletedVideo ? (
+      {hasFailedVideo ? (
+        <div
+          className={cn(
+            'relative overflow-hidden',
+            getAspectRatioClassName(aspectRatio),
+            // Use bg-muted as fallback when no thumbnail
+            !currentFrame.thumbnailUrl && 'bg-muted',
+            className
+          )}
+        >
+          {/* Show thumbnail as background if available */}
+          {currentFrame.thumbnailUrl && (
+            <Image
+              src={currentFrame.thumbnailUrl}
+              alt={title || 'Scene thumbnail'}
+              className="h-full w-full object-cover"
+              width={1280}
+              height={720}
+            />
+          )}
+
+          {/* Error overlay */}
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center',
+              // Use semi-transparent overlay if thumbnail exists, solid bg if not
+              currentFrame.thumbnailUrl ? 'bg-muted/80' : 'bg-transparent'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-8 w-8" />
+              <span className="text-sm">Failed to generate video</span>
+            </div>
+          </div>
+        </div>
+      ) : (
         <VideoPlayer
           key={currentFrame.videoUrl} // Force re-render when video changes
-          src={currentFrame.videoUrl!}
+          src={currentFrame.videoUrl || ''}
           posterSrc={currentFrame.thumbnailUrl}
           aspectRatio={aspectRatio}
           className={className}
           autoPlay={shouldAutoPlay}
-          enableDownload={true}
+          enableDownload={!!currentFrame.videoUrl}
           downloadFilename={downloadFilename}
           onTimeUpdate={onTimeUpdate}
           onEnded={handleEnded}
         />
-      ) : (
-        <div
-          className={cn(
-            'relative',
-            getAspectRatioClassName(aspectRatio),
-            className
-          )}
-        >
-          {currentFrame.thumbnailUrl && (
-            <Image
-              src={currentFrame.thumbnailUrl}
-              alt="Frame thumbnail"
-              fill
-              className="object-cover"
-            />
-          )}
-          <VideoStateOverlay
-            thumbnailStatus={currentFrame.thumbnailStatus}
-            videoStatus={currentFrame.videoStatus}
-          />
-        </div>
       )}
 
       {/* Preload next video in background if it's completed */}

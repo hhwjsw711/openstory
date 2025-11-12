@@ -3,11 +3,11 @@
  * Core content creation entities for video sequences
  */
 
-import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
+import type { Scene } from '@/lib/script';
 import {
   InferInsertModel,
   InferSelectModel,
@@ -152,10 +152,8 @@ export const sequences = pgTable(
  *
  * Each frame represents one scene from script analysis and stores:
  * - Visual content (thumbnailUrl for image, videoUrl for motion)
- * - Complete scene data in metadata.sceneData (see FrameMetadata in frame.schema.ts)
+ * - Scene data in metadata field (populated progressively across 5 phases)
  * - Generation tracking information
- *
- * The metadata field stores structured Scene data
  *
  * @see src/lib/ai/scene-analysis.schema.ts for Scene structure
  */
@@ -189,10 +187,12 @@ export const frames = pgTable(
       mode: 'date',
     }),
     videoError: text('video_error'),
-    /** Stores Scene object from script analysis - see src/lib/ai/scene-analysis.schema.ts */
-    metadata: jsonb()
-      .$type<Scene>()
-      .default({} as Scene),
+    /**
+     * Stores Scene data at various stages of progressive analysis.
+     * Fields are populated progressively across 5 phases.
+     * @see src/lib/ai/scene-analysis.schema.ts for Scene structure
+     */
+    metadata: jsonb().$type<Scene>(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -264,8 +264,16 @@ export type Sequence = InferSelectModel<typeof sequences>;
 export type NewSequence = InferInsertModel<typeof sequences>;
 export type UpdateSequence = Partial<Sequence>;
 
-export type Frame = InferSelectModel<typeof frames>;
-export type NewFrame = InferInsertModel<typeof frames>;
+// Override the inferred Frame type to use Scene for metadata
+type InferredFrame = InferSelectModel<typeof frames>;
+export type Frame = Omit<InferredFrame, 'metadata'> & {
+  metadata: Scene | null; // Nullable until script analysis completes, fields populate progressively
+};
+
+type InferredNewFrame = InferInsertModel<typeof frames>;
+export type NewFrame = Omit<InferredNewFrame, 'metadata'> & {
+  metadata?: Scene | null; // Optional - can be null initially, populated during script analysis
+};
 
 // Enum type exports
 export type SequenceStatus = (typeof sequenceStatus.enumValues)[number];

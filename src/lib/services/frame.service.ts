@@ -287,3 +287,112 @@ export class FrameService {
 
 // Singleton instance
 export const frameService = new FrameService();
+
+// ============================================================================
+// Scene Completion Tracking Helpers (Functional)
+// ============================================================================
+
+/**
+ * Status of each phase in the scene analysis pipeline
+ */
+export interface SceneCompletionStatus {
+  hasBasicScene: boolean; // Phase 1: Scene split with metadata
+  hasVisualPrompts: boolean; // Phase 3: Visual prompts + variants + continuity
+  hasMotionPrompts: boolean; // Phase 4: Motion prompts + movement variants
+  hasAudioDesign: boolean; // Phase 5: Audio design
+  isComplete: boolean; // All phases complete
+}
+
+/**
+ * Check if a frame has complete scene data (all phases done)
+ *
+ * @param frame - The frame to check
+ * @returns True if frame has all required scene data
+ */
+export function isSceneComplete(frame: Frame): boolean {
+  const scene = frame.metadata;
+
+  if (!scene) {
+    return false;
+  }
+
+  // Check all required fields for a complete scene
+  const hasBasicScene = !!(
+    scene.sceneId &&
+    scene.sceneNumber &&
+    scene.originalScript &&
+    scene.metadata
+  );
+
+  const hasVisualPrompts = !!(
+    scene.prompts?.visual?.fullPrompt &&
+    scene.variants?.cameraAngles &&
+    scene.variants?.moodTreatments &&
+    scene.continuity
+  );
+
+  const hasMotionPrompts = !!(
+    scene.prompts?.motion?.fullPrompt && scene.variants?.movementStyles
+  );
+
+  const hasAudioDesign = !!scene.audioDesign;
+
+  return (
+    hasBasicScene && hasVisualPrompts && hasMotionPrompts && hasAudioDesign
+  );
+}
+
+/**
+ * Get detailed completion status for a frame's scene data
+ *
+ * @param frame - The frame to check
+ * @returns Completion status for each phase
+ */
+export function getSceneCompletionStatus(frame: Frame): SceneCompletionStatus {
+  const scene = frame.metadata;
+
+  if (!scene) {
+    return {
+      hasBasicScene: false,
+      hasVisualPrompts: false,
+      hasMotionPrompts: false,
+      hasAudioDesign: false,
+      isComplete: false,
+    };
+  }
+
+  // Phase 1: Basic scene data
+  const hasBasicScene = !!(
+    scene.sceneId &&
+    scene.sceneNumber &&
+    scene.originalScript &&
+    scene.metadata
+  );
+
+  // Phase 3: Visual prompts (also includes variants and continuity)
+  const hasVisualPrompts = !!(
+    scene.prompts?.visual?.fullPrompt &&
+    scene.variants?.cameraAngles &&
+    scene.variants?.moodTreatments &&
+    scene.continuity
+  );
+
+  // Phase 4: Motion prompts (also includes movement variants)
+  const hasMotionPrompts = !!(
+    scene.prompts?.motion?.fullPrompt && scene.variants?.movementStyles
+  );
+
+  // Phase 5: Audio design
+  const hasAudioDesign = !!scene.audioDesign;
+
+  const isComplete =
+    hasBasicScene && hasVisualPrompts && hasMotionPrompts && hasAudioDesign;
+
+  return {
+    hasBasicScene,
+    hasVisualPrompts,
+    hasMotionPrompts,
+    hasAudioDesign,
+    isComplete,
+  };
+}

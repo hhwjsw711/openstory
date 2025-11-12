@@ -61,7 +61,7 @@ export const moodTreatmentVariantSchema = z.object({
 
 export const variantsSchema = z.object({
   cameraAngles: z.array(cameraAngleVariantSchema).length(3),
-  movementStyles: z.array(movementStyleVariantSchema).length(3),
+  movementStyles: z.array(movementStyleVariantSchema).length(3).optional(), // Added in phase 4
   moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
 });
 
@@ -71,9 +71,9 @@ export const variantsSchema = z.object({
 
 export const selectedVariantSchema = z.object({
   cameraAngle: z.enum(['A1', 'A2', 'A3']),
-  movementStyle: z.enum(['B1', 'B2', 'B3']),
+  movementStyle: z.enum(['B1', 'B2', 'B3']).optional(), // Added in phase 4
   moodTreatment: z.enum(['C1', 'C2', 'C3']),
-  rationale: z.string(),
+  rationale: z.string().optional(), // Complete only when all selections made
 });
 
 // ============================================================================
@@ -148,8 +148,8 @@ export const motionPromptSchema = z.object({
 });
 
 export const promptsSchema = z.object({
-  visual: visualPromptSchema,
-  motion: motionPromptSchema,
+  visual: visualPromptSchema.optional(), // Added in phase 3
+  motion: motionPromptSchema.optional(), // Added in phase 4
 });
 
 // ============================================================================
@@ -241,11 +241,11 @@ export const sceneSchema = z.object({
   sceneNumber: z.number(),
   originalScript: originalScriptSchema,
   metadata: sceneMetadataSchema,
-  variants: variantsSchema.optional(),
-  selectedVariant: selectedVariantSchema,
-  prompts: promptsSchema,
-  audioDesign: audioDesignSchema.optional(),
-  continuity: continuitySchema.optional(),
+  variants: variantsSchema.optional(), // Added progressively in phases 3-4
+  selectedVariant: selectedVariantSchema.optional(), // Added in phase 3, completed in phase 4
+  prompts: promptsSchema.optional(), // Added progressively in phases 3-4
+  audioDesign: audioDesignSchema.optional(), // Added in phase 5
+  continuity: continuitySchema.optional(), // Added in phase 3
   sourceImageUrl: z.string().optional(), // Temporary FAL URL for API calls
 });
 

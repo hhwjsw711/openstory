@@ -24,10 +24,10 @@ export default function ScenesPage({
   useUser();
 
   return (
-    <div className="h-full overflow-hidden">
+    <div className="h-full">
       <Suspense
         fallback={
-          <div className="flex h-full overflow-hidden">
+          <div className="flex h-full">
             <div className="w-80 border-r">
               <Skeleton className="h-full w-full" />
             </div>
