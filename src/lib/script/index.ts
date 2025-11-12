@@ -11,13 +11,10 @@ export { generateMotionPromptsForScenes } from './motion-prompts';
 export { splitScriptIntoScenes } from './scene-splitting';
 export type {
   AudioDesignGenerationResult,
-  BasicScene,
   CharacterExtractionResult,
-  CompleteScene,
   MotionPromptGenerationResult,
+  Scene,
   SceneSplittingResult,
-  SceneWithMotionPrompts,
-  SceneWithVisualPrompts,
   VisualPromptGenerationResult,
 } from './types';
 export { generateVisualPromptsForScenes } from './visual-prompts';

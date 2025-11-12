@@ -12,58 +12,21 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
 import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type {
-  AudioDesignGenerationResult,
-  SceneWithMotionPrompts,
-} from './types';
+import type { AudioDesignGenerationResult } from './types';
 
 /**
- * Simplified schema for audio design generation validation
+ * Schema for audio design generation validation
+ * Uses canonical schemas from scene-analysis.schema.ts
  */
 const audioDesignGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
   scenes: z.array(
     z.object({
       sceneId: z.string(),
-      audioDesign: z.object({
-        music: z.object({
-          presence: z.enum(['none', 'minimal', 'moderate', 'full']),
-          style: z.string().optional(),
-          mood: z.string().optional(),
-          rationale: z.string().optional(),
-        }),
-        soundEffects: z.array(
-          z.object({
-            sfxId: z.string(),
-            type: z.enum(['ambient', 'foley', 'mechanical', 'natural']),
-            description: z.string(),
-            timing: z.string(),
-            volume: z.enum(['low', 'medium', 'high']),
-            spatialPosition: z.enum([
-              'left',
-              'center',
-              'right',
-              'wide',
-              'surround',
-            ]),
-          })
-        ),
-        dialogue: z.object({
-          presence: z.boolean(),
-          lines: z.array(
-            z.object({
-              character: z.string().nullable(),
-              line: z.string(),
-            })
-          ),
-        }),
-        ambient: z.object({
-          roomTone: z.string(),
-          atmosphere: z.string(),
-        }),
-      }),
+      audioDesign: audioDesignSchema,
     })
   ),
 });
@@ -76,7 +39,7 @@ const audioDesignGenerationResultSchema = z.object({
  * @returns Audio design generation result
  */
 export async function generateAudioDesignForScenes(
-  scenes: SceneWithMotionPrompts[],
+  scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
 ): Promise<AudioDesignGenerationResult> {
   // Build user prompt with scenes (including visual/motion for context)
@@ -132,8 +95,28 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
 
-  // Validate with Zod
-  const validated = audioDesignGenerationResultSchema.parse(parsed);
+  // Validate with Zod (validates only the enrichment data)
+  const validatedAudioDesignResult =
+    audioDesignGenerationResultSchema.parse(parsed);
 
-  return validated;
+  // Merge enrichment data back into input scenes
+  const enrichedScenes: Scene[] = scenes.map((scene) => {
+    const enrichment = validatedAudioDesignResult.scenes.find(
+      (s) => s.sceneId === scene.sceneId
+    );
+    if (!enrichment) {
+      throw new Error(
+        `Scene with ID ${scene.sceneId} not found in audio design result`
+      );
+    }
+    return {
+      ...scene,
+      audioDesign: enrichment.audioDesign,
+    };
+  });
+
+  return {
+    status: 'success',
+    scenes: enrichedScenes,
+  };
 }

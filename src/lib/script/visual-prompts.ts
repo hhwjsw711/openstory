@@ -12,15 +12,22 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
+import {
+  cameraAngleVariantSchema,
+  type CharacterBibleEntry,
+  continuitySchema,
+  moodTreatmentVariantSchema,
+  type Scene,
+  visualPromptSchema,
+} from '@/lib/ai/scene-analysis.schema';
 import { VISUAL_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
-import type { BasicScene, VisualPromptGenerationResult } from './types';
+import type { VisualPromptGenerationResult } from './types';
 
 /**
- * Simplified schema for visual prompt generation validation
- * (validates the enrichment data that gets added to scenes)
+ * Schema for visual prompt generation validation
+ * Uses canonical schemas from scene-analysis.schema.ts
  */
 const visualPromptGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
@@ -28,68 +35,18 @@ const visualPromptGenerationResultSchema = z.object({
     z.object({
       sceneId: z.string(),
       variants: z.object({
-        cameraAngles: z
-          .array(
-            z.object({
-              id: z.enum(['A1', 'A2', 'A3']),
-              description: z.string(),
-              effect: z.string(),
-            })
-          )
-          .length(3),
-        moodTreatments: z
-          .array(
-            z.object({
-              id: z.enum(['C1', 'C2', 'C3']),
-              description: z.string(),
-              tone: z.string(),
-            })
-          )
-          .length(3),
+        cameraAngles: z.array(cameraAngleVariantSchema).length(3),
+        moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
       }),
       selectedVariant: z.object({
         cameraAngle: z.enum(['A1', 'A2', 'A3']),
         moodTreatment: z.enum(['C1', 'C2', 'C3']),
-        rationale: z.string(),
+        rationale: z.string().optional(),
       }),
       prompts: z.object({
-        visual: z.object({
-          fullPrompt: z.string(),
-          negativePrompt: z.string(),
-          components: z.object({
-            sceneDescription: z.string(),
-            subject: z.string(),
-            environment: z.string(),
-            lighting: z.string(),
-            camera: z.string(),
-            composition: z.string(),
-            style: z.string(),
-            technical: z.string(),
-            atmosphere: z.string(),
-          }),
-          parameters: z.object({
-            dimensions: z.object({
-              width: z.number(),
-              height: z.number(),
-              aspectRatio: z.string(),
-            }),
-            quality: z.object({
-              steps: z.number(),
-              guidance: z.number(),
-            }),
-            control: z.object({
-              seed: z.number().nullable(),
-            }),
-          }),
-        }),
+        visual: visualPromptSchema,
       }),
-      continuity: z.object({
-        characterTags: z.array(z.string()),
-        environmentTag: z.string(),
-        colorPalette: z.string(),
-        lightingSetup: z.string(),
-        styleTag: z.string().optional(),
-      }),
+      continuity: continuitySchema,
     })
   ),
 });
@@ -97,14 +54,14 @@ const visualPromptGenerationResultSchema = z.object({
 /**
  * Generate visual prompts for a batch of scenes
  *
- * @param scenes - Basic scenes to generate visual prompts for
+ * @param scenes - Scenes to generate visual prompts for
  * @param characterBible - Character bible for consistency
  * @param styleConfig - Director DNA configuration
  * @param model - AI model to use (defaults to fast model)
  * @returns Visual prompt generation result
  */
 export async function generateVisualPromptsForScenes(
-  scenes: BasicScene[],
+  scenes: Scene[],
   characterBible: CharacterBibleEntry[],
   styleConfig: DirectorDnaConfig,
   model: string = RECOMMENDED_MODELS.fast
@@ -158,14 +115,36 @@ Respond with ONLY valid JSON matching the schema.`;
   }
 
   // Extract JSON from response
-  const parsed = extractJSON<VisualPromptGenerationResult>(content);
+  const parsed = extractJSON(content);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
 
-  // Validate with Zod
+  // Validate with Zod (validates only the enrichment data)
   const validated = visualPromptGenerationResultSchema.parse(parsed);
 
-  return validated;
+  // Merge enrichment data back into input scenes
+  const enrichedScenes: Scene[] = scenes.map((scene) => {
+    const enrichment = validated.scenes.find(
+      (s) => s.sceneId === scene.sceneId
+    );
+    if (!enrichment) {
+      throw new Error(
+        `Scene with ID ${scene.sceneId} not found in visual prompt result`
+      );
+    }
+    return {
+      ...scene,
+      variants: enrichment.variants,
+      selectedVariant: enrichment.selectedVariant,
+      prompts: enrichment.prompts,
+      continuity: enrichment.continuity,
+    };
+  });
+
+  return {
+    status: 'success',
+    scenes: enrichedScenes,
+  };
 }

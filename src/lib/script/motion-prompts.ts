@@ -12,15 +12,18 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import {
+  motionPromptSchema,
+  movementStyleVariantSchema,
+  type Scene,
+} from '@/lib/ai/scene-analysis.schema';
 import { MOTION_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type {
-  MotionPromptGenerationResult,
-  SceneWithVisualPrompts,
-} from './types';
+import type { MotionPromptGenerationResult } from './types';
 
 /**
- * Simplified schema for motion prompt generation validation
+ * Schema for motion prompt generation validation
+ * Uses canonical schemas from scene-analysis.schema.ts
  */
 const motionPromptGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
@@ -28,56 +31,14 @@ const motionPromptGenerationResultSchema = z.object({
     z.object({
       sceneId: z.string(),
       variants: z.object({
-        movementStyles: z
-          .array(
-            z.object({
-              id: z.enum(['B1', 'B2', 'B3']),
-              description: z.string(),
-              energy: z
-                .string()
-                .transform((v) => v.toLowerCase())
-                .pipe(z.enum(['low', 'medium', 'high']))
-                .catch('medium'),
-            })
-          )
-          .length(3),
+        movementStyles: z.array(movementStyleVariantSchema).length(3),
       }),
       selectedVariant: z.object({
         movementStyle: z.enum(['B1', 'B2', 'B3']),
         rationale: z.string().optional(),
       }),
       prompts: z.object({
-        motion: z.object({
-          fullPrompt: z.string(),
-          components: z.object({
-            cameraMovement: z.string(),
-            startPosition: z.string(),
-            endPosition: z.string(),
-            durationSeconds: z.number(),
-            speed: z.string(),
-            smoothness: z.string(),
-            subjectTracking: z.string(),
-            equipment: z.string(),
-          }),
-          parameters: z.object({
-            durationSeconds: z.number(),
-            fps: z.number(),
-            motionAmount: z.enum(['low', 'medium', 'high']),
-            cameraControl: z.object({
-              pan: z.number(),
-              tilt: z.number(),
-              zoom: z.number(),
-              movement: z.enum([
-                'static',
-                'dolly',
-                'pan',
-                'tilt',
-                'tracking',
-                'crane',
-              ]),
-            }),
-          }),
-        }),
+        motion: motionPromptSchema,
       }),
     })
   ),
@@ -91,7 +52,7 @@ const motionPromptGenerationResultSchema = z.object({
  * @returns Motion prompt generation result
  */
 export async function generateMotionPromptsForScenes(
-  scenes: SceneWithVisualPrompts[],
+  scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
 ): Promise<MotionPromptGenerationResult> {
   // Build user prompt with scenes (including visual prompts for context)
@@ -133,14 +94,60 @@ Respond with ONLY valid JSON matching the schema.`;
   }
 
   // Extract JSON from response
-  const parsed = extractJSON<MotionPromptGenerationResult>(content);
+  const parsed = extractJSON(content);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
   }
 
-  // Validate with Zod
+  // Validate with Zod (validates only the enrichment data)
   const validated = motionPromptGenerationResultSchema.parse(parsed);
 
-  return validated;
+  // Merge enrichment data back into input scenes
+  const enrichedScenes: Scene[] = scenes.map((scene) => {
+    const enrichment = validated.scenes.find(
+      (s) => s.sceneId === scene.sceneId
+    );
+    if (!enrichment) {
+      throw new Error(
+        `Scene with ID ${scene.sceneId} not found in motion prompt result`
+      );
+    }
+
+    // At this point (phase 4), scene must have visual prompt data from phase 3
+    if (
+      !scene.variants?.cameraAngles ||
+      !scene.variants?.moodTreatments ||
+      !scene.selectedVariant?.cameraAngle ||
+      !scene.selectedVariant?.moodTreatment
+    ) {
+      throw new Error(
+        `Scene ${scene.sceneId} missing visual variants from phase 3`
+      );
+    }
+
+    return {
+      ...scene,
+      variants: {
+        cameraAngles: scene.variants.cameraAngles,
+        moodTreatments: scene.variants.moodTreatments,
+        movementStyles: enrichment.variants.movementStyles,
+      },
+      selectedVariant: {
+        cameraAngle: scene.selectedVariant.cameraAngle,
+        moodTreatment: scene.selectedVariant.moodTreatment,
+        movementStyle: enrichment.selectedVariant.movementStyle,
+        rationale: enrichment.selectedVariant.rationale,
+      },
+      prompts: {
+        ...scene.prompts,
+        motion: enrichment.prompts.motion,
+      },
+    };
+  });
+
+  return {
+    status: 'success',
+    scenes: enrichedScenes,
+  };
 }

@@ -15,7 +15,7 @@ import {
 import { characterBibleEntrySchema } from '@/lib/ai/scene-analysis.schema';
 import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type { BasicScene, CharacterExtractionResult } from './types';
+import type { CharacterExtractionResult, Scene } from './types';
 
 /**
  * Zod schema for validating character extraction results
@@ -28,12 +28,12 @@ const characterExtractionResultSchema = z.object({
 /**
  * Extract character bible from scenes
  *
- * @param scenes - Basic scenes to analyze for characters
+ * @param scenes - Scenes to analyze for characters
  * @param model - AI model to use (defaults to fast model)
  * @returns Character extraction result with complete character bible
  */
 export async function extractCharacterBible(
-  scenes: BasicScene[],
+  scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
 ): Promise<CharacterExtractionResult> {
   // Build user prompt with scenes
