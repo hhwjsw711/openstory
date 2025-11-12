@@ -13,9 +13,9 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
 import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type { SceneSplittingResult } from './types';
 
 /**
  * Zod schema for validating scene splitting results
@@ -61,13 +61,13 @@ const sceneSplittingResultSchema = z.object({
  * @param script - The script content to analyze
  * @param aspectRatio - The aspect ratio for the project (e.g., '16:9', '9:16', '1:1')
  * @param model - AI model to use (defaults to fast model)
- * @returns Scene splitting result with basic scenes
+ * @returns Project metadata and basic scenes
  */
 export async function splitScriptIntoScenes(
   script: string,
   aspectRatio: string,
   model: string = RECOMMENDED_MODELS.fast
-): Promise<SceneSplittingResult> {
+): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
   // Sanitize script content
   const sanitizedScript = sanitizeScriptContent(script);
 
@@ -99,7 +99,8 @@ Respond with ONLY valid JSON matching the schema.`;
   }
 
   // Extract JSON from response
-  const parsed = extractJSON<SceneSplittingResult>(content);
+  const parsed =
+    extractJSON<z.infer<typeof sceneSplittingResultSchema>>(content);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -108,5 +109,9 @@ Respond with ONLY valid JSON matching the schema.`;
   // Validate with Zod
   const validated = sceneSplittingResultSchema.parse(parsed);
 
-  return validated;
+  // Extract and return project metadata and scenes
+  return {
+    projectMetadata: validated.projectMetadata,
+    scenes: validated.scenes,
+  };
 }

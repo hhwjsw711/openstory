@@ -12,10 +12,13 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
-import { characterBibleEntrySchema } from '@/lib/ai/scene-analysis.schema';
+import {
+  characterBibleEntrySchema,
+  type CharacterBibleEntry,
+} from '@/lib/ai/scene-analysis.schema';
 import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type { CharacterExtractionResult, Scene } from './types';
+import type { Scene } from './types';
 
 /**
  * Zod schema for validating character extraction results
@@ -30,12 +33,12 @@ const characterExtractionResultSchema = z.object({
  *
  * @param scenes - Scenes to analyze for characters
  * @param model - AI model to use (defaults to fast model)
- * @returns Character extraction result with complete character bible
+ * @returns Character bible array
  */
 export async function extractCharacterBible(
   scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
-): Promise<CharacterExtractionResult> {
+): Promise<CharacterBibleEntry[]> {
   // Build user prompt with scenes
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -70,7 +73,8 @@ Respond with ONLY valid JSON matching the schema.`;
   }
 
   // Extract JSON from response
-  const parsed = extractJSON<CharacterExtractionResult>(content);
+  const parsed =
+    extractJSON<z.infer<typeof characterExtractionResultSchema>>(content);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -79,5 +83,6 @@ Respond with ONLY valid JSON matching the schema.`;
   // Validate with Zod
   const validated = characterExtractionResultSchema.parse(parsed);
 
-  return validated;
+  // Extract and return character bible directly
+  return validated.characterBible;
 }

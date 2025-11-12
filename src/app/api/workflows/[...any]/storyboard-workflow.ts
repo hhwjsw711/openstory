@@ -12,14 +12,11 @@ import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
 import {
-  AudioDesignGenerationResult,
   extractCharacterBible,
   generateAudioDesignForScenes,
   generateMotionPromptsForScenes,
   generateVisualPromptsForScenes,
-  MotionPromptGenerationResult,
   splitScriptIntoScenes,
-  VisualPromptGenerationResult,
 } from '@/lib/script';
 import { Scene } from '@/lib/script/types';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
@@ -198,9 +195,10 @@ export const generateStoryboardWorkflow = createWorkflow(
     const characterBible = await context.run(
       'extract-character-bible',
       async () => {
-        const result = await extractCharacterBible(basicScenes, analysisModel);
-
-        const characterBible = result.characterBible;
+        const characterBible = await extractCharacterBible(
+          basicScenes,
+          analysisModel
+        );
 
         // Store character bible in sequence metadata
         await updateSequenceMetadata(input.sequenceId, {
@@ -227,25 +225,22 @@ export const generateStoryboardWorkflow = createWorkflow(
     );
 
     // Step 5: Generate visual prompts for each batch
-    const visualPromptResults: VisualPromptGenerationResult[] =
-      await Promise.all(
-        basicSceneBatches.map(async (batch, batchIndex) => {
-          return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
-            return await generateVisualPromptsForScenes(
-              batch,
-              characterBible,
-              styleConfig,
-              analysisModel
-            );
-          });
-        })
-      );
+    const visualPromptResults: Scene[][] = await Promise.all(
+      basicSceneBatches.map(async (batch, batchIndex) => {
+        return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
+          return await generateVisualPromptsForScenes(
+            batch,
+            characterBible,
+            styleConfig,
+            analysisModel
+          );
+        });
+      })
+    );
 
     // Update frames with visual prompt data (Phase 3)
     await context.run('update-frames-after-visual-prompts', async () => {
-      const scenesWithVisualPrompts = visualPromptResults
-        .map((result) => result.scenes)
-        .flat();
+      const scenesWithVisualPrompts = visualPromptResults.flat();
 
       await Promise.all(
         scenesWithVisualPrompts.map(async (scene) => {
@@ -263,23 +258,20 @@ export const generateStoryboardWorkflow = createWorkflow(
     });
 
     // Step 6: Generate motion prompts for each batch
-    const motionPromptResults: MotionPromptGenerationResult[] =
-      await Promise.all(
-        visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
-          return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-            return await generateMotionPromptsForScenes(
-              batchWithVisualPrompts.scenes,
-              analysisModel
-            );
-          });
-        })
-      );
+    const motionPromptResults: Scene[][] = await Promise.all(
+      visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
+        return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
+          return await generateMotionPromptsForScenes(
+            batchWithVisualPrompts,
+            analysisModel
+          );
+        });
+      })
+    );
 
     // Update frames with motion prompt data (Phase 4)
     await context.run('update-frames-after-motion-prompts', async () => {
-      const scenesWithMotionPrompts = motionPromptResults
-        .map((result) => result.scenes)
-        .flat();
+      const scenesWithMotionPrompts = motionPromptResults.flat();
 
       await Promise.all(
         scenesWithMotionPrompts.map(async (scene) => {
@@ -297,20 +289,18 @@ export const generateStoryboardWorkflow = createWorkflow(
     });
 
     // Step 7: Generate audio design for each batch
-    const audioDesignResults: AudioDesignGenerationResult[] = await Promise.all(
+    const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
         return context.run(`audio-design-batch-${batchIndex}`, async () => {
           return await generateAudioDesignForScenes(
-            batchWithMotionPrompts.scenes,
+            batchWithMotionPrompts,
             analysisModel
           );
         });
       })
     );
 
-    const completeScenes: Scene[] = audioDesignResults
-      .map((result) => result.scenes)
-      .flat();
+    const completeScenes: Scene[] = audioDesignResults.flat();
 
     // Update frames with audio design data (Phase 5)
     await context.run('update-frames-after-audio-design', async () => {

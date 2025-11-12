@@ -15,7 +15,6 @@ import {
 import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
 import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type { AudioDesignGenerationResult } from './types';
 
 /**
  * Schema for audio design generation validation
@@ -36,12 +35,12 @@ const audioDesignGenerationResultSchema = z.object({
  *
  * @param scenes - Scenes with visual and motion prompts to generate audio design for
  * @param model - AI model to use (defaults to fast model)
- * @returns Audio design generation result
+ * @returns Enriched scenes with audio design
  */
 export async function generateAudioDesignForScenes(
   scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
-): Promise<AudioDesignGenerationResult> {
+): Promise<Scene[]> {
   // Build user prompt with scenes (including visual/motion for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -89,7 +88,8 @@ Respond with ONLY valid JSON matching the schema.`;
   }
 
   // Extract JSON from response
-  const parsed = extractJSON<AudioDesignGenerationResult>(content);
+  const parsed =
+    extractJSON<z.infer<typeof audioDesignGenerationResultSchema>>(content);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -115,8 +115,5 @@ Respond with ONLY valid JSON matching the schema.`;
     };
   });
 
-  return {
-    status: 'success',
-    scenes: enrichedScenes,
-  };
+  return enrichedScenes;
 }

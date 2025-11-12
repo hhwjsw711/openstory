@@ -19,7 +19,6 @@ import {
 } from '@/lib/ai/scene-analysis.schema';
 import { MOTION_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
-import type { MotionPromptGenerationResult } from './types';
 
 /**
  * Schema for motion prompt generation validation
@@ -49,12 +48,12 @@ const motionPromptGenerationResultSchema = z.object({
  *
  * @param scenes - Scenes with visual prompts to generate motion for
  * @param model - AI model to use (defaults to fast model)
- * @returns Motion prompt generation result
+ * @returns Enriched scenes with motion prompts
  */
 export async function generateMotionPromptsForScenes(
   scenes: Scene[],
   model: string = RECOMMENDED_MODELS.fast
-): Promise<MotionPromptGenerationResult> {
+): Promise<Scene[]> {
   // Build user prompt with scenes (including visual prompts for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -146,8 +145,5 @@ Respond with ONLY valid JSON matching the schema.`;
     };
   });
 
-  return {
-    status: 'success',
-    scenes: enrichedScenes,
-  };
+  return enrichedScenes;
 }

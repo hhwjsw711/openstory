@@ -23,7 +23,6 @@ import {
 import { VISUAL_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
-import type { VisualPromptGenerationResult } from './types';
 
 /**
  * Schema for visual prompt generation validation
@@ -58,14 +57,14 @@ const visualPromptGenerationResultSchema = z.object({
  * @param characterBible - Character bible for consistency
  * @param styleConfig - Director DNA configuration
  * @param model - AI model to use (defaults to fast model)
- * @returns Visual prompt generation result
+ * @returns Enriched scenes with visual prompts
  */
 export async function generateVisualPromptsForScenes(
   scenes: Scene[],
   characterBible: CharacterBibleEntry[],
   styleConfig: DirectorDnaConfig,
   model: string = RECOMMENDED_MODELS.fast
-): Promise<VisualPromptGenerationResult> {
+): Promise<Scene[]> {
   // Build user prompt with scenes, character bible, and style config
   const scenesJson = JSON.stringify(scenes, null, 2);
   const characterBibleJson = JSON.stringify(characterBible, null, 2);
@@ -143,8 +142,5 @@ Respond with ONLY valid JSON matching the schema.`;
     };
   });
 
-  return {
-    status: 'success',
-    scenes: enrichedScenes,
-  };
+  return enrichedScenes;
 }

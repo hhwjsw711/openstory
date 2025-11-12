@@ -9,12 +9,5 @@ export { generateAudioDesignForScenes } from './audio-design';
 export { extractCharacterBible } from './character-extraction';
 export { generateMotionPromptsForScenes } from './motion-prompts';
 export { splitScriptIntoScenes } from './scene-splitting';
-export type {
-  AudioDesignGenerationResult,
-  CharacterExtractionResult,
-  MotionPromptGenerationResult,
-  Scene,
-  SceneSplittingResult,
-  VisualPromptGenerationResult,
-} from './types';
+export type { Scene } from './types';
 export { generateVisualPromptsForScenes } from './visual-prompts';
