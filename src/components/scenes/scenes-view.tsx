@@ -9,7 +9,7 @@ import { PageHeader, PageHeading } from '@/components/typography';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string | undefined;
@@ -28,6 +28,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);
 
+  const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
+  const selectedFrame = useMemo(
+    () => frames?.find((frame) => frame.id === curSelectedFrameId),
+    [frames, curSelectedFrameId]
+  );
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
@@ -39,7 +44,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         {/* Left: Scene List */}
         <SceneList
           frames={frames}
-          selectedFrameId={selectedFrameId || frames?.[0]?.id}
+          selectedFrameId={curSelectedFrameId}
           aspectRatio={aspectRatio}
           onSelectFrame={setSelectedFrameId}
         />
@@ -57,7 +62,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
               >
                 <ScenePlayer
                   frames={frames}
-                  selectedFrameId={selectedFrameId || frames?.[0]?.id}
+                  selectedFrameId={curSelectedFrameId}
                   aspectRatio={aspectRatio}
                   onSelectFrame={setSelectedFrameId}
                   className="w-full h-full"
@@ -66,9 +71,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
             </div>
             {frames && frames.length > 0 && (
               <div className="w-full max-w-4xl h-min-300 p-4">
-                <SceneScriptPrompts
-                  frame={frames?.find((frame) => frame.id === selectedFrameId)}
-                />
+                <SceneScriptPrompts frame={selectedFrame} />
               </div>
             )}
           </div>
