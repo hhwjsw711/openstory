@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ sequenceId: string }> }
 ) {
   try {
@@ -42,7 +42,14 @@ export async function GET(
       await requireTeamMemberAccess(user.id, seq.teamId);
     }
 
-    const sequence = await sequenceService.getSequence(sequenceId, true);
+    // Parse search params to determine if frames should be included
+    const url = new URL(request.url);
+    const includeFrames = url.searchParams.get('frames') === 'true';
+
+    const sequence = await sequenceService.getSequence(
+      sequenceId,
+      includeFrames
+    );
 
     return NextResponse.json(
       {

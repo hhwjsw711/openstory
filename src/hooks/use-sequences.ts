@@ -52,7 +52,27 @@ export function useSequence(
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
-    refetchInterval: options?.refetchInterval,
+    refetchInterval: (query) => {
+      if (!query.state.data) return false;
+
+      const sequence = query.state.data;
+
+      // Phase-aware polling using existing status fields:
+      // - Phases 1-5 (Script Analysis): sequence.status === 'processing' with no image/video generation
+      // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
+      // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
+      const isAnalyzing =
+        sequence?.status === 'draft' || sequence?.status === 'processing';
+
+      // Phases 1-5: Script analysis (batch processing, infrequent updates)
+      // Poll slower to reduce API calls during metadata enrichment
+      if (isAnalyzing) {
+        return 1000; // 1 second
+      }
+
+      // Idle - stop polling
+      return false;
+    },
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus
   });

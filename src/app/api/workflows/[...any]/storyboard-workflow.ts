@@ -10,7 +10,7 @@ import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences } from '@/lib/db/schema';
-import { SequenceMetadata } from '@/lib/db/schema/sequences';
+import { Sequence } from '@/lib/db/schema/sequences';
 import {
   AudioDesignGenerationResult,
   extractCharacterBible,
@@ -118,7 +118,7 @@ export const generateStoryboardWorkflow = createWorkflow(
     );
 
     // Step 2: Split script into basic scenes and store in sequence metadata
-    const basicScenes = await context.run(
+    const { scenes: basicScenes, title } = await context.run(
       'split-script-into-scenes',
       async () => {
         if (!sequence.script) {
@@ -137,7 +137,10 @@ export const generateStoryboardWorkflow = createWorkflow(
           );
         }
 
-        return result.scenes;
+        return {
+          scenes: result.scenes,
+          title: result.projectMetadata?.title || 'Untitled',
+        };
       }
     );
 
@@ -147,31 +150,24 @@ export const generateStoryboardWorkflow = createWorkflow(
     const frameMap: { sceneId: string; frameId: string }[] = await context.run(
       'update-title-and-create-frames',
       async () => {
-        const updateData: {
-          title?: string;
-          updatedAt: Date;
-          metadata?: SequenceMetadata;
-        } = {
+        const updateData: Partial<Sequence> = {
           updatedAt: new Date(),
+          title,
+          metadata: {
+            ...sequence.metadata,
+            frameGeneration: {
+              ...sequence.metadata?.frameGeneration,
+              expectedFrameCount: frameCount,
+              completedFrameCount: 0,
+              error: null,
+              failedAt: null,
+              thumbnailsGenerating: true,
+            },
+            title,
+          },
         };
 
-        // Set title from first scene's metadata if available
-        if (basicScenes.length > 0 && basicScenes[0]?.metadata?.title) {
-          updateData.title = basicScenes[0].metadata.title;
-        }
         // Add the updated metadata to the sequence
-        updateData.metadata = {
-          ...sequence.metadata,
-          frameGeneration: {
-            ...sequence.metadata?.frameGeneration,
-            expectedFrameCount: frameCount,
-            completedFrameCount: 0,
-            error: null,
-            failedAt: null,
-            thumbnailsGenerating: true,
-          },
-          title: basicScenes[0]?.metadata?.title,
-        };
 
         await db
           .update(sequences)

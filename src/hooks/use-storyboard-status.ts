@@ -99,18 +99,32 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
 
       const { sequence, frames } = query.state.data;
 
-      // Check if any workflows are active (vanilla TypeScript logic)
-      // - Parent storyboard workflow: sequence.status === 'processing'
-      // - Child image workflows: any frame has thumbnailStatus === 'generating'
-      // - Child video workflows: any frame has videoStatus === 'generating'
-      const isParentWorkflowActive = sequence?.status === 'processing';
-      const hasActiveChildWorkflows = frames.some(
-        (f: Frame) =>
-          f.thumbnailStatus === 'generating' || f.videoStatus === 'generating'
+      // Phase-aware polling using existing status fields:
+      // - Phases 1-5 (Script Analysis): sequence.status === 'processing' with no image/video generation
+      // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
+      // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
+      const isAnalyzing = sequence?.status === 'processing';
+      const isGeneratingImages = frames.some(
+        (f: Frame) => f.thumbnailStatus === 'generating'
+      );
+      const isGeneratingVideos = frames.some(
+        (f: Frame) => f.videoStatus === 'generating'
       );
 
-      const isGenerating = isParentWorkflowActive || hasActiveChildWorkflows;
-      return isGenerating ? 2000 : false;
+      // Phases 1-5: Script analysis (batch processing, infrequent updates)
+      // Poll slower to reduce API calls during metadata enrichment
+      if (isAnalyzing && !isGeneratingImages && !isGeneratingVideos) {
+        return 5000; // 5 seconds
+      }
+
+      // Phases 6-7: Image/video generation (rapid parallel updates)
+      // Poll faster for snappier UI updates as thumbnails/videos complete
+      if (isGeneratingImages || isGeneratingVideos) {
+        return 1000; // 1 second
+      }
+
+      // Idle - stop polling
+      return false;
     },
   });
 
@@ -139,10 +153,8 @@ export function useStoryboardStatus(sequenceId: string): StoryboardStatus {
 
     const { sequence, frames } = data;
 
-    // Check if any workflows are active (vanilla TypeScript logic)
-    // - Parent storyboard workflow: sequence.status === 'processing'
-    // - Child image workflows: any frame has thumbnailStatus === 'generating'
-    // - Child video workflows: any frame has videoStatus === 'generating'
+    // Check if any workflows are active
+    // Combines all phases: script analysis + image generation + video generation
     const isParentWorkflowActive = sequence?.status === 'processing';
     const hasActiveChildWorkflows = frames.some(
       (f: Frame) =>

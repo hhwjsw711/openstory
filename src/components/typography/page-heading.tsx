@@ -1,6 +1,7 @@
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
-import { cn } from '@/lib/utils';
 
 const pageHeadingVariants = cva('font-bold tracking-tight', {
   variants: {
@@ -16,6 +17,13 @@ const pageHeadingVariants = cva('font-bold tracking-tight', {
   },
 });
 
+const skeletonSizes = {
+  small: 'h-8 w-[180px]',
+  medium: 'h-9 w-[220px]',
+  large: 'h-10 w-[280px]',
+  hero: 'h-10 sm:h-14 w-[320px] sm:w-[480px]',
+} as const;
+
 export interface PageHeadingProps
   extends React.HTMLAttributes<HTMLHeadingElement>,
     VariantProps<typeof pageHeadingVariants> {
@@ -29,12 +37,14 @@ export const PageHeading: React.FC<PageHeadingProps> = ({
   children,
   ...props
 }) => {
+  const effectiveSize = size ?? 'medium';
+
   return (
     <Component
       className={cn(pageHeadingVariants({ size }), className)}
       {...props}
     >
-      {children}
+      {children ?? <Skeleton className={skeletonSizes[effectiveSize]} />}
     </Component>
   );
 };
