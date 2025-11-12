@@ -9,7 +9,8 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
-import { accessCodePlugin } from './access-code-plugin';
+import { eq } from 'drizzle-orm';
+import { isValidAccessCode } from './access-codes';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
@@ -110,9 +111,6 @@ export const auth = betterAuth({
 
   // Configure plugins
   plugins: [
-    // Access code validation for signup
-    accessCodePlugin(),
-
     // Anonymous user support with account linking
     anonymous({
       onLinkAccount: async ({ anonymousUser, newUser }) => {
@@ -180,6 +178,73 @@ export const auth = betterAuth({
     database: {
       // Generate user ID compatible with existing UUID format
       generateId: () => crypto.randomUUID(),
+    },
+    hooks: {
+      before: [
+        {
+          // Validate access code before signup
+          matcher: (context: {
+            path: string;
+            method: string;
+          }): context is { path: string; method: string } =>
+            context.path === '/sign-up/email' && context.method === 'POST',
+          handler: async (context: {
+            body: Record<string, unknown>;
+            [key: string]: unknown;
+          }) => {
+            const body = context.body;
+            const accessCode = body?.accessCode as string | undefined;
+
+            // Validate access code
+            if (!accessCode || !isValidAccessCode(accessCode)) {
+              throw new Error(
+                'Valid access code required. Please enter a valid access code to sign up.'
+              );
+            }
+
+            // Normalize the code
+            body.accessCode = accessCode.toUpperCase().trim();
+
+            return context;
+          },
+        },
+      ],
+      after: [
+        {
+          // Store access code after successful signup
+          matcher: (context: {
+            path: string;
+            method: string;
+          }): context is { path: string; method: string } =>
+            context.path === '/sign-up/email' && context.method === 'POST',
+          handler: async (context: {
+            body: Record<string, unknown>;
+            [key: string]: unknown;
+          }) => {
+            const body = context.body;
+            const accessCode = body?.accessCode as string | undefined;
+            const contextAny = context as Record<string, unknown>;
+            const returned = contextAny.returned as
+              | { user?: { id?: string } }
+              | undefined;
+            const userId = returned?.user?.id;
+
+            if (accessCode && userId) {
+              await db
+                .update(user)
+                .set({ accessCode })
+                .where(eq(user.id, userId));
+
+              console.log('[AccessCode] Stored access code for user', {
+                userId,
+                accessCode,
+              });
+            }
+
+            return context;
+          },
+        },
+      ],
     },
   },
 });
