@@ -67,14 +67,14 @@ export function UserBadge() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await authClient.signOut({
-        fetchOptions: {
-          onSuccess: () => {
-            // Redirect to home after successful signout
-            window.location.href = '/';
-          },
-        },
-      });
+      // Sign out - this should clear the session cookie
+      // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
+      // where useSession doesn't update after server-side signOut until page refresh
+      await authClient.signOut();
+
+      // Force a full page reload to clear all client state
+      // Use replace to prevent back button from returning to authenticated state
+      window.location.replace('/');
     } catch (error) {
       console.error('Sign out error:', error);
       setIsSigningOut(false);

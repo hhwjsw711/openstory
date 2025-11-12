@@ -64,9 +64,10 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 90, // 90 days (reasonable for anonymous work)
     updateAge: 60 * 60 * 24, // Update session daily
+    // Disable cookie cache to prevent sign-out issues
+    // Cookie cache was causing sessions to persist after signOut()
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60, // 5-minute cache
+      enabled: false,
     },
   },
 
