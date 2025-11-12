@@ -3,207 +3,126 @@
  * Team management, members, and invitations
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
-  InferInsertModel,
-  InferSelectModel,
-  relations,
-  sql,
-} from 'drizzle-orm';
-import {
-  foreignKey,
+  integer,
+  sqliteTable,
+  text,
   index,
-  pgEnum,
-  pgPolicy,
-  pgTable,
   primaryKey,
-  timestamp,
-  unique,
-  uniqueIndex,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+} from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 import { user } from './auth';
 
-// Enums
-export const teamMemberRole = pgEnum('team_member_role', [
-  'owner',
-  'admin',
-  'member',
-  'viewer',
-]);
+// Enum values as constants (SQLite doesn't have native enums)
+export const TEAM_MEMBER_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+export type TeamMemberRole = (typeof TEAM_MEMBER_ROLES)[number];
 
-export const invitationStatus = pgEnum('invitation_status', [
+export const INVITATION_STATUSES = [
   'pending',
   'accepted',
   'declined',
   'expired',
-]);
+] as const;
+export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
 
 /**
  * Teams table
  * Core organization entity for collaboration
  */
-export const teams = pgTable(
+export const teams = sqliteTable(
   'teams',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    name: varchar({ length: 255 }).notNull(),
-    slug: varchar({ length: 255 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    name: text({ length: 255 }).notNull(),
+    slug: text({ length: 255 }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
-  (table) => [
-    index('idx_teams_slug').using(
-      'btree',
-      table.slug.asc().nullsLast().op('text_ops')
-    ),
-    unique('teams_slug_key').on(table.slug),
-    unique('teams_slug_unique').on(table.slug),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
+  (table) => ({
+    slugIdx: index('idx_teams_slug').on(table.slug).unique(),
+  })
 );
 
 /**
  * Team members junction table
  * Links users to teams with roles
  */
-export const teamMembers = pgTable(
+export const teamMembers = sqliteTable(
   'team_members',
   {
-    teamId: uuid('team_id').notNull(),
-    userId: uuid('user_id').notNull(),
-    role: teamMemberRole().default('member').notNull(),
-    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text().$type<TeamMemberRole>().default('member').notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => [
-    index('idx_team_members_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_team_members_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'team_members_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'team_members_user_id_fkey',
-    }).onDelete('cascade'),
-    primaryKey({
-      columns: [table.teamId, table.userId],
-      name: 'team_members_pkey',
-    }),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
+  (table) => ({
+    pk: primaryKey({ columns: [table.teamId, table.userId] }),
+    teamIdIdx: index('idx_team_members_team_id').on(table.teamId),
+    userIdIdx: index('idx_team_members_user_id').on(table.userId),
+  })
 );
 
 /**
  * Team invitations table
  * Manages pending, accepted, and declined team invitations
  */
-export const teamInvitations = pgTable(
+export const teamInvitations = sqliteTable(
   'team_invitations',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    email: varchar({ length: 255 }).notNull(),
-    role: teamMemberRole().default('member').notNull(),
-    invitedBy: uuid('invited_by').notNull(),
-    status: invitationStatus().default('pending').notNull(),
-    token: varchar({ length: 255 }).notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
-      .default(sql`(now() + '7 days'::interval)`)
-      .notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    teamId: text('team_id')
       .notNull()
-      .$onUpdate(() => new Date()),
-    acceptedAt: timestamp('accepted_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    declinedAt: timestamp('declined_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    email: text({ length: 255 }).notNull(),
+    role: text().$type<TeamMemberRole>().default('member').notNull(),
+    invitedBy: text('invited_by')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text().$type<InvitationStatus>().default('pending').notNull(),
+    token: text({ length: 255 }).notNull(),
+    // Default expiration: 7 days from now (handle in application code)
+    expiresAt: integer('expires_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
+    declinedAt: integer('declined_at', { mode: 'timestamp' }),
   },
-  (table) => [
-    index('idx_team_invitations_email').using(
-      'btree',
-      table.email.asc().nullsLast().op('text_ops')
+  (table) => ({
+    emailIdx: index('idx_team_invitations_email').on(table.email),
+    expiresAtIdx: index('idx_team_invitations_expires_at').on(table.expiresAt),
+    statusIdx: index('idx_team_invitations_status').on(table.status),
+    teamIdIdx: index('idx_team_invitations_team_id').on(table.teamId),
+    tokenIdx: index('idx_team_invitations_token').on(table.token).unique(),
+    // Note: Partial unique index not supported in SQLite the same way
+    // Enforce unique pending invitations in application logic or trigger
+    uniquePendingIdx: index('idx_team_invitations_unique_pending').on(
+      table.teamId,
+      table.email
     ),
-    index('idx_team_invitations_expires_at').using(
-      'btree',
-      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
-    ),
-    index('idx_team_invitations_status').using(
-      'btree',
-      table.status.asc().nullsLast().op('enum_ops')
-    ),
-    index('idx_team_invitations_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_team_invitations_token').using(
-      'btree',
-      table.token.asc().nullsLast().op('text_ops')
-    ),
-    uniqueIndex('idx_team_invitations_unique_pending')
-      .using(
-        'btree',
-        table.teamId.asc().nullsLast().op('uuid_ops'),
-        table.email.asc().nullsLast().op('text_ops')
-      )
-      .where(sql`(status = 'pending'::invitation_status)`),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'team_invitations_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.invitedBy],
-      foreignColumns: [user.id],
-      name: 'team_invitations_invited_by_fkey',
-    }).onDelete('cascade'),
-    unique('team_invitations_token_key').on(table.token),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
+  })
 );
 
 // Relations
@@ -246,7 +165,3 @@ export type NewTeamMember = InferInsertModel<typeof teamMembers>;
 
 export type TeamInvitation = InferSelectModel<typeof teamInvitations>;
 export type NewTeamInvitation = InferInsertModel<typeof teamInvitations>;
-
-// Enum type exports
-export type TeamMemberRole = (typeof teamMemberRole.enumValues)[number];
-export type InvitationStatus = (typeof invitationStatus.enumValues)[number];
