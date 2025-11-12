@@ -20,7 +20,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useUser } from '@/hooks/use-user';
-import { authClient, useSession } from '@/lib/auth/client';
+import { useSession } from '@/lib/auth/client';
+import { authClient } from '@/lib/auth/client';
 
 export function UserBadge() {
   const { data: userData, isLoading } = useUser();
@@ -66,9 +67,14 @@ export function UserBadge() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await authClient.signOut();
-      // Refresh the page to clear state
-      window.location.href = '/sequences';
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            // Redirect to home after successful signout
+            window.location.href = '/';
+          },
+        },
+      });
     } catch (error) {
       console.error('Sign out error:', error);
       setIsSigningOut(false);
