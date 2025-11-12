@@ -9,6 +9,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
+import { accessCodePlugin } from './access-code-plugin';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
@@ -109,6 +110,9 @@ export const auth = betterAuth({
 
   // Configure plugins
   plugins: [
+    // Access code validation for signup
+    accessCodePlugin(),
+
     // Anonymous user support with account linking
     anonymous({
       onLinkAccount: async ({ anonymousUser, newUser }) => {
@@ -163,6 +167,10 @@ export const auth = betterAuth({
         type: 'boolean',
         required: false,
         defaultValue: false,
+      },
+      accessCode: {
+        type: 'string',
+        required: false,
       },
     },
   },

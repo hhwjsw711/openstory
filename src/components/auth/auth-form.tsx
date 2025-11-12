@@ -25,15 +25,25 @@ import { isGoogleOAuthEnabled } from '@/lib/utils/environment';
 interface AuthFormProps {
   mode: 'signin' | 'signup';
   redirectTo?: string;
+  defaultAccessCode?: string;
 }
 
-export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  redirectTo = '/sequences',
+  defaultAccessCode = '',
+}: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessCode, setAccessCode] = useState(defaultAccessCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [codeValidation, setCodeValidation] = useState<{
+    isValid: boolean;
+    message?: string;
+  } | null>(null);
 
   const isSignup = mode === 'signup';
   const title = isSignup ? 'Create Account' : 'Sign In';
@@ -42,6 +52,31 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
     : 'Enter your credentials to access your account';
 
   const showGoogleAuth = isGoogleOAuthEnabled();
+
+  // Validate access code on the client side for UX feedback
+  const validateAccessCode = async (code: string) => {
+    if (!code) {
+      setCodeValidation(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/access-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+
+      const result = await response.json();
+      setCodeValidation(result);
+    } catch (err) {
+      console.error('[AuthForm] Code validation error:', err);
+      setCodeValidation({
+        isValid: false,
+        message: 'Failed to validate code',
+      });
+    }
+  };
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +87,19 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
     try {
       if (isSignup) {
         // Sign up with email and password
-        const result = await authClient.signUp.email({
-          email,
-          password,
-          name: '',
-          callbackURL: redirectTo,
-        });
+        const result = await authClient.signUp.email(
+          {
+            email,
+            password,
+            name: '',
+            callbackURL: redirectTo,
+          },
+          {
+            body: {
+              accessCode, // Include access code in signup body
+            },
+          }
+        );
 
         if (result.error) {
           setError(result.error.message || 'Failed to create account');
@@ -217,6 +259,40 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
               required
             />
           </div>
+
+          {/* Access Code Field - Only for signup */}
+          {isSignup && (
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="access-code">Access Code</Label>
+                {codeValidation?.isValid && (
+                  <span className="text-xs text-green-600">✓ Valid</span>
+                )}
+              </div>
+              <Input
+                id="access-code"
+                type="text"
+                placeholder="COSMIC-FALCON-2847"
+                value={accessCode}
+                onChange={(e) => {
+                  const newCode = e.target.value.toUpperCase();
+                  setAccessCode(newCode);
+                  void validateAccessCode(newCode);
+                }}
+                disabled={isLoading}
+                required
+                autoComplete="off"
+              />
+              {codeValidation && !codeValidation.isValid && (
+                <p className="text-sm text-destructive">
+                  {codeValidation.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Don't have a code? Contact us for early access.
+              </p>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading
