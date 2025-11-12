@@ -9,9 +9,10 @@ import {
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import { VideoIcon } from 'lucide-react';
+import { AlertCircle, VideoIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
+import Image from 'next/image';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -99,9 +100,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Check if current frame has a completed video
+  // Check video status
   const hasCompletedVideo =
     currentFrame.videoStatus === 'completed' && currentFrame.videoUrl;
+  const hasFailedVideo = currentFrame.videoStatus === 'failed';
 
   // Generate a descriptive filename for download
   const title = currentFrame.metadata?.metadata?.title;
@@ -119,18 +121,55 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
 
   return (
     <>
-      <VideoPlayer
-        key={currentFrame.videoUrl} // Force re-render when video changes
-        src={currentFrame.videoUrl || ''}
-        posterSrc={currentFrame.thumbnailUrl}
-        aspectRatio={aspectRatio}
-        className={className}
-        autoPlay={shouldAutoPlay}
-        enableDownload={!!currentFrame.videoUrl}
-        downloadFilename={downloadFilename}
-        onTimeUpdate={onTimeUpdate}
-        onEnded={handleEnded}
-      />
+      {hasFailedVideo ? (
+        <div
+          className={cn(
+            'relative overflow-hidden',
+            getAspectRatioClassName(aspectRatio),
+            // Use bg-muted as fallback when no thumbnail
+            !currentFrame.thumbnailUrl && 'bg-muted',
+            className
+          )}
+        >
+          {/* Show thumbnail as background if available */}
+          {currentFrame.thumbnailUrl && (
+            <Image
+              src={currentFrame.thumbnailUrl}
+              alt={title || 'Scene thumbnail'}
+              className="h-full w-full object-cover"
+              width={1280}
+              height={720}
+            />
+          )}
+
+          {/* Error overlay */}
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center',
+              // Use semi-transparent overlay if thumbnail exists, solid bg if not
+              currentFrame.thumbnailUrl ? 'bg-muted/80' : 'bg-transparent'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-8 w-8" />
+              <span className="text-sm">Failed to generate video</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <VideoPlayer
+          key={currentFrame.videoUrl} // Force re-render when video changes
+          src={currentFrame.videoUrl || ''}
+          posterSrc={currentFrame.thumbnailUrl}
+          aspectRatio={aspectRatio}
+          className={className}
+          autoPlay={shouldAutoPlay}
+          enableDownload={!!currentFrame.videoUrl}
+          downloadFilename={downloadFilename}
+          onTimeUpdate={onTimeUpdate}
+          onEnded={handleEnded}
+        />
+      )}
 
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (

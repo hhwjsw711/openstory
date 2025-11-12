@@ -303,3 +303,76 @@ export const OnlyPendingVideos: Story = {
     },
   },
 };
+
+export const FailedVideoWithThumbnail: Story = {
+  args: {
+    selectedFrameId: '1',
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: 'https://picsum.photos/seed/failed-thumb/1280/720',
+        videoUrl: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'failed',
+        videoError: 'Model generation timeout',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Failed Video Generation',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Video generation failed but thumbnail succeeded. Shows error overlay with semi-transparent background over the thumbnail image.',
+      },
+    },
+  },
+};
+
+export const FailedVideoWithoutThumbnail: Story = {
+  args: {
+    selectedFrameId: '1',
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: null,
+        videoUrl: null,
+        thumbnailStatus: 'failed',
+        videoStatus: 'failed',
+        thumbnailError: 'Image generation failed',
+        videoError: 'Cannot generate video without thumbnail',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Complete Failure',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Both thumbnail and video generation failed. Shows error overlay on a solid muted background since there is no thumbnail to display.',
+      },
+    },
+  },
+};
