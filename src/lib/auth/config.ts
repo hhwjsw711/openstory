@@ -7,8 +7,10 @@ import { db } from '@/lib/db/client';
 import { account, session, user, verification } from '@/lib/db/schema';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
+import { isValidAccessCode } from './access-codes';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
@@ -62,9 +64,20 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 90, // 90 days (reasonable for anonymous work)
     updateAge: 60 * 60 * 24, // Update session daily
+    // Disable cookie cache to prevent sign-out issues
+    // Cookie cache was causing sessions to persist after signOut()
     cookieCache: {
+      enabled: false,
+    },
+  },
+
+  // Account linking configuration
+  // Allows users to link multiple authentication methods to one account
+  account: {
+    accountLinking: {
       enabled: true,
-      maxAge: 5 * 60, // 5-minute cache
+      trustedProviders: ['google', 'email-password'],
+      allowDifferentEmails: false, // Only link accounts with matching emails
     },
   },
 
@@ -104,6 +117,9 @@ export const auth = betterAuth({
         !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) &&
         (process.env.VERCEL_ENV === 'production' ||
           process.env.NODE_ENV === 'development'),
+      // Disable sign-up via Google during closed beta
+      // Existing users can sign in, but new accounts must use email/password with access code
+      disableSignUp: true,
     },
   },
 
@@ -164,7 +180,39 @@ export const auth = betterAuth({
         required: false,
         defaultValue: false,
       },
+      accessCode: {
+        type: 'string',
+        required: false,
+      },
     },
+  },
+
+  // Hooks for access code validation
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Only validate for signup endpoint
+      if (ctx.path !== '/sign-up/email') {
+        return;
+      }
+
+      const accessCode = ctx.body?.accessCode as string | undefined;
+
+      // Validate access code
+      if (!accessCode || !isValidAccessCode(accessCode)) {
+        throw new APIError('BAD_REQUEST', {
+          message:
+            'Valid access code required. Please enter a valid access code to sign up.',
+        });
+      }
+
+      // Normalize the code
+      ctx.body.accessCode = accessCode.toUpperCase().trim();
+
+      return { context: ctx };
+    }),
+    // No 'after' hook needed - Better Auth automatically stores additionalFields
+    // when input: true (default). The accessCode field is defined in user.additionalFields
+    // with input: true, so it's automatically persisted when passed in signup body.
   },
 
   // Advanced configuration

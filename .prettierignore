@@ -11,4 +11,6 @@ yarn.lock
 gen.types.ts
 
 # Mock Service Worker
-public/mockServiceWorker.js
+**/mockServiceWorker.js
+
+.vscode/**

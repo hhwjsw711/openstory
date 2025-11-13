@@ -18,6 +18,7 @@ import {
   timestamp,
   unique,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -43,6 +44,7 @@ export const user = pgTable(
     fullName: text(),
     avatarUrl: text(),
     onboardingCompleted: boolean().default(false),
+    accessCode: varchar({ length: 100 }),
   },
   (table) => [
     unique('user_email_key').on(table.email),

@@ -376,6 +376,7 @@ export const generateMockUser = (
     fullName,
     avatarUrl: faker.image.avatar(),
     onboardingCompleted: null,
+    accessCode: null,
     ...overrides,
   };
 };

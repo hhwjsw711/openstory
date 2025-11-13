@@ -5,9 +5,6 @@
 
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,16 +18,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
 import { isGoogleOAuthEnabled } from '@/lib/utils/environment';
+import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface AuthFormProps {
   mode: 'signin' | 'signup';
   redirectTo?: string;
+  defaultAccessCode?: string;
 }
 
-export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  redirectTo = '/sequences',
+  defaultAccessCode = '',
+}: AuthFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessCode, setAccessCode] = useState(defaultAccessCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -52,12 +60,19 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
     try {
       if (isSignup) {
         // Sign up with email and password
-        const result = await authClient.signUp.email({
-          email,
-          password,
-          name: '',
-          callbackURL: redirectTo,
-        });
+        const result = await authClient.signUp.email(
+          {
+            email,
+            password,
+            name: '',
+            callbackURL: redirectTo,
+          },
+          {
+            body: {
+              accessCode, // Include access code in signup body
+            },
+          }
+        );
 
         if (result.error) {
           setError(result.error.message || 'Failed to create account');
@@ -65,8 +80,14 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
           return;
         }
 
+        // Invalidate auth-related queries to fetch fresh user data
+        setSuccess('Account created! Loading your profile...');
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+        // Wait for queries to refetch before redirecting
         setSuccess('Account created! Redirecting...');
-        setTimeout(() => router.push(redirectTo), 1500);
+        router.push(redirectTo);
       } else {
         // Sign in with email and password
         const result = await authClient.signIn.email({
@@ -81,8 +102,14 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
           return;
         }
 
+        // Invalidate auth-related queries to fetch fresh user data
+        setSuccess('Signed in! Loading your profile...');
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+        // Wait for queries to refetch before redirecting
         setSuccess('Signed in! Redirecting...');
-        setTimeout(() => router.push(redirectTo), 1500);
+        router.push(redirectTo);
       }
     } catch (err) {
       console.error('[AuthForm] Error:', err);
@@ -129,8 +156,8 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
           </Alert>
         )}
 
-        {/* OAuth Providers - Only show when enabled */}
-        {showGoogleAuth && (
+        {/* OAuth Providers - Only show on sign-in (not sign-up during closed beta) */}
+        {showGoogleAuth && !isSignup && (
           <>
             <div className="space-y-2">
               <Button
@@ -217,6 +244,29 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
               required
             />
           </div>
+
+          {/* Access Code Field - Only for signup */}
+          {isSignup && (
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="access-code">Access Code</Label>
+              <Input
+                id="access-code"
+                type="text"
+                placeholder="MY-ACCESS-CODE"
+                value={accessCode}
+                onChange={(e) => {
+                  const newCode = e.target.value.toUpperCase();
+                  setAccessCode(newCode);
+                }}
+                disabled={isLoading}
+                required
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Don't have a code? Contact us for early access.
+              </p>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading

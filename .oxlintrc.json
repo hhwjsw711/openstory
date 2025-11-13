@@ -10,6 +10,7 @@
     "oxc"
   ],
   "extends": ["recommended"],
+  "ignorePatterns": ["**/mockServiceWorker.js"],
   "rules": {
     "typescript/no-explicit-any": "error",
     "typescript/consistent-type-assertions": "warn",
