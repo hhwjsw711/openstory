@@ -6,6 +6,7 @@ import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import { SceneScriptPrompts } from '@/components/scenes/scene-script-prompts';
 import { PageHeader, PageHeading } from '@/components/typography';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -16,6 +17,14 @@ type ScenesViewProps = {
   aspectRatio: AspectRatio;
 };
 
+export const getPlayerMaxClassNameByAspectRatio = (
+  aspectRatio: AspectRatio
+) => {
+  if (aspectRatio === '9:16') {
+    return 'max-w-[calc(50vh*9/16)] max-h-[50vh]';
+  }
+  return 'max-h-[50vh] max-w-full';
+};
 export const ScenesView: React.FC<ScenesViewProps> = ({
   sequenceId,
   aspectRatio,
@@ -40,7 +49,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         <ModelBadge model={sequence?.analysisModel} />
       </PageHeader>
 
-      <div className="flex h-full">
+      <div className="flex flex-1 min-h-0">
         {/* Left: Scene List */}
         <SceneList
           frames={frames}
@@ -50,22 +59,18 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         />
 
         {/* Right: Scene Player */}
-        <div className="flex-1 overflow-auto">
-          <div className="flex flex-col justify-start bg-muted/10 p-8 gap-8">
-            <div className="w-full flex items-center justify-center">
-              <ScenePlayer
-                frames={frames}
-                selectedFrameId={curSelectedFrameId}
-                aspectRatio={aspectRatio}
-                onSelectFrame={setSelectedFrameId}
-                className="w-full h-full"
-              />
-            </div>
-            <div className="w-full h-min-300 p-4">
-              <SceneScriptPrompts frame={selectedFrame} />
-            </div>
+        <ScrollArea className="flex-1 p-8 gap-8 flex flex-col">
+          <div className="flex flex-1 min-h-0 justify-center p-4">
+            <ScenePlayer
+              frames={frames}
+              selectedFrameId={curSelectedFrameId}
+              aspectRatio={aspectRatio}
+              onSelectFrame={setSelectedFrameId}
+              className={getPlayerMaxClassNameByAspectRatio(aspectRatio)}
+            />
           </div>
-        </div>
+          <SceneScriptPrompts frame={selectedFrame} />
+        </ScrollArea>
       </div>
     </PageContainer>
   );

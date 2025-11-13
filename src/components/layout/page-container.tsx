@@ -17,7 +17,7 @@ const pageContainerVariants = cva('container mx-auto px-4', {
       full: '',
     },
     fullHeight: {
-      true: 'h-screen overflow-hidden flex flex-col',
+      true: 'flex flex-col h-full overflow-hidden',
       false: '',
     },
   },
