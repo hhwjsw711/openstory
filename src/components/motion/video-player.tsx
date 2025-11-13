@@ -96,12 +96,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }}
     >
       <MediaProvider>
-        {posterSrc && <Poster src={posterSrc} alt="video thumbnail" />}
+        {/* Show poster if there is no video source and a poster source is provided. Still not 100% sure if this is the best way to do this. */}
+        {posterSrc && !src && <Poster src={posterSrc} alt="video thumbnail" />}
       </MediaProvider>
 
       {chaptersUrl && (
         <Track kind="chapters" src={chaptersUrl} type="vtt" default />
       )}
+
       <DefaultVideoLayout icons={defaultLayoutIcons} download={downloadInfo} />
     </MediaPlayer>
   );
