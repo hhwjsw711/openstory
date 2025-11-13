@@ -34,6 +34,53 @@ type MigrationStats = {
 };
 
 /**
+ * Recursively list all files in a Supabase bucket, including nested folders
+ */
+async function listAllFiles(
+  supabase: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  prefix: string = ''
+): Promise<Array<{ name: string; path: string; size: number }>> {
+  const allFiles: Array<{ name: string; path: string; size: number }> = [];
+
+  const { data: items, error } = await supabase.storage
+    .from(bucket)
+    .list(prefix, {
+      limit: 1000,
+      offset: 0,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+
+  if (error) {
+    throw new Error(`Failed to list files at ${prefix}: ${error.message}`);
+  }
+
+  if (!items) {
+    return allFiles;
+  }
+
+  for (const item of items) {
+    const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+
+    // Check if this is a folder (Supabase returns folders with id null)
+    if (item.id === null) {
+      // Recursively list files in this folder
+      const nestedFiles = await listAllFiles(supabase, bucket, itemPath);
+      allFiles.push(...nestedFiles);
+    } else {
+      // This is a file
+      allFiles.push({
+        name: item.name,
+        path: itemPath,
+        size: item.metadata?.size || 0,
+      });
+    }
+  }
+
+  return allFiles;
+}
+
+/**
  * Migrate files from a Supabase Storage bucket to R2
  */
 async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
@@ -55,21 +102,11 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
   try {
     const supabase = createAdminClient();
 
-    // List all files in the Supabase bucket
-    console.log(`📋 Listing files in ${bucket}...`);
-    const { data: files, error: listError } = await supabase.storage
-      .from(bucket)
-      .list('', {
-        limit: 1000,
-        offset: 0,
-        sortBy: { column: 'name', order: 'asc' },
-      });
+    // List all files in the Supabase bucket (including nested folders)
+    console.log(`📋 Listing all files in ${bucket} (including subfolders)...`);
+    const files = await listAllFiles(supabase, bucket);
 
-    if (listError) {
-      throw new Error(`Failed to list files: ${listError.message}`);
-    }
-
-    if (!files || files.length === 0) {
+    if (files.length === 0) {
       console.log(`ℹ️  No files found in ${bucket}`);
       return stats;
     }
@@ -80,23 +117,23 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
     // Migrate each file
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const fileName = file.name;
+      const filePath = file.path;
 
       try {
         console.log(
-          `[${i + 1}/${files.length}] ${dryRun ? 'Would migrate' : 'Migrating'}: ${fileName}`
+          `[${i + 1}/${files.length}] ${dryRun ? 'Would migrate' : 'Migrating'}: ${filePath}`
         );
 
         if (dryRun) {
           stats.skippedCount++;
-          stats.totalBytes += file.metadata?.size || 0;
+          stats.totalBytes += file.size;
           continue;
         }
 
         // Download file from Supabase
         const { data: fileData, error: downloadError } = await supabase.storage
           .from(bucket)
-          .download(fileName);
+          .download(filePath);
 
         if (downloadError) {
           throw new Error(`Download failed: ${downloadError.message}`);
@@ -108,22 +145,22 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
 
         // Determine content type
         const contentType =
-          fileData.type || getContentTypeFromFileName(fileName);
+          fileData.type || getContentTypeFromFileName(filePath);
 
-        // Upload to R2
-        await uploadFile(bucket, fileName, fileData, {
+        // Upload to R2 (using full path to maintain folder structure)
+        await uploadFile(bucket, filePath, fileData, {
           contentType,
           upsert: true,
         });
 
         stats.successCount++;
-        stats.totalBytes += file.metadata?.size || 0;
+        stats.totalBytes += file.size;
         console.log(`  ✅ Success`);
       } catch (error) {
         stats.failureCount++;
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        stats.errors.push({ file: fileName, error: errorMessage });
+        stats.errors.push({ file: filePath, error: errorMessage });
         console.error(`  ❌ Failed: ${errorMessage}`);
       }
     }
