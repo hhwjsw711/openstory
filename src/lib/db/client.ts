@@ -1,18 +1,34 @@
 /**
  * Drizzle Database Client
- * Centralized database client using postgres.js
+ * Centralized database client using libSQL (Turso)
  */
 
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { sql } from './pool';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 import { schema } from './schema';
+
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!tursoUrl || !tursoToken) {
+  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
+}
+
+/**
+ * libSQL client instance
+ * Connects to Turso database
+ */
+const client = createClient({
+  url: tursoUrl,
+  authToken: tursoToken,
+});
 
 /**
  * Drizzle database instance
- * Uses the postgres.js client and includes all schema definitions
+ * Uses the libSQL client and includes all schema definitions
  * Configured to use snake_case in database and camelCase in application
  */
-export const db = drizzle(sql, {
+export const db = drizzle(client, {
   schema,
   logger: process.env.NODE_ENV === 'development',
   casing: 'snake_case',

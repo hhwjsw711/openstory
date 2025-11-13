@@ -5,6 +5,7 @@
 
 import { db } from '@/lib/db/client';
 import { account, session, user, verification } from '@/lib/db/schema';
+import { generateId } from '@/lib/db/id';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
@@ -13,7 +14,8 @@ import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
 const requiredEnvVars = {
-  POSTGRES_URL: process.env.POSTGRES_URL,
+  TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
+  TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   BETTER_AUTH_URL:
     process.env.BETTER_AUTH_URL ||
@@ -31,7 +33,7 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: 'sqlite',
     schema: {
       user: user,
       session: session,
@@ -170,8 +172,8 @@ export const auth = betterAuth({
   // Advanced configuration
   advanced: {
     database: {
-      // Generate user ID compatible with existing UUID format
-      generateId: () => crypto.randomUUID(),
+      // Generate ULID for user IDs (time-ordered, better performance)
+      generateId: () => generateId(),
     },
   },
 });

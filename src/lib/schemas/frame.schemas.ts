@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { frames } from '@/lib/db/schema/sequences';
 import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 /**
  * Shared Zod schemas for frame operations
@@ -32,11 +33,11 @@ export const updateFrameSchema = createUpdateSchema(frames, {
 });
 
 export const deleteFrameSchema = z.object({
-  id: z.string().uuid(),
+  id: ulidSchema,
 });
 
 export const generateFramesSchema = z.object({
-  sequenceId: z.string().uuid(),
+  sequenceId: ulidSchema,
   options: z
     .object({
       framesPerScene: z.number().min(1).max(10).optional(),
