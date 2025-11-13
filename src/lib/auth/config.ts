@@ -7,9 +7,9 @@ import { db } from '@/lib/db/client';
 import { account, session, user, verification } from '@/lib/db/schema';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { anonymous } from 'better-auth/plugins';
-import { eq } from 'drizzle-orm';
 import { isValidAccessCode } from './access-codes';
 import { migrateAnonymousUserData } from './migrate-user-data';
 
@@ -71,6 +71,16 @@ export const auth = betterAuth({
     },
   },
 
+  // Account linking configuration
+  // Allows users to link multiple authentication methods to one account
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ['google', 'email-password'],
+      allowDifferentEmails: false, // Only link accounts with matching emails
+    },
+  },
+
   // Email and password authentication
   emailAndPassword: {
     enabled: true,
@@ -107,6 +117,9 @@ export const auth = betterAuth({
         !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) &&
         (process.env.VERCEL_ENV === 'production' ||
           process.env.NODE_ENV === 'development'),
+      // Disable sign-up via Google during closed beta
+      // Existing users can sign in, but new accounts must use email/password with access code
+      disableSignUp: true,
     },
   },
 
@@ -174,78 +187,39 @@ export const auth = betterAuth({
     },
   },
 
+  // Hooks for access code validation
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Only validate for signup endpoint
+      if (ctx.path !== '/sign-up/email') {
+        return;
+      }
+
+      const accessCode = ctx.body?.accessCode as string | undefined;
+
+      // Validate access code
+      if (!accessCode || !isValidAccessCode(accessCode)) {
+        throw new APIError('BAD_REQUEST', {
+          message:
+            'Valid access code required. Please enter a valid access code to sign up.',
+        });
+      }
+
+      // Normalize the code
+      ctx.body.accessCode = accessCode.toUpperCase().trim();
+
+      return { context: ctx };
+    }),
+    // No 'after' hook needed - Better Auth automatically stores additionalFields
+    // when input: true (default). The accessCode field is defined in user.additionalFields
+    // with input: true, so it's automatically persisted when passed in signup body.
+  },
+
   // Advanced configuration
   advanced: {
     database: {
       // Generate user ID compatible with existing UUID format
       generateId: () => crypto.randomUUID(),
-    },
-    hooks: {
-      before: [
-        {
-          // Validate access code before signup
-          matcher: (context: {
-            path: string;
-            method: string;
-          }): context is { path: string; method: string } =>
-            context.path === '/sign-up/email' && context.method === 'POST',
-          handler: async (context: {
-            body: Record<string, unknown>;
-            [key: string]: unknown;
-          }) => {
-            const body = context.body;
-            const accessCode = body?.accessCode as string | undefined;
-
-            // Validate access code
-            if (!accessCode || !isValidAccessCode(accessCode)) {
-              throw new Error(
-                'Valid access code required. Please enter a valid access code to sign up.'
-              );
-            }
-
-            // Normalize the code
-            body.accessCode = accessCode.toUpperCase().trim();
-
-            return context;
-          },
-        },
-      ],
-      after: [
-        {
-          // Store access code after successful signup
-          matcher: (context: {
-            path: string;
-            method: string;
-          }): context is { path: string; method: string } =>
-            context.path === '/sign-up/email' && context.method === 'POST',
-          handler: async (context: {
-            body: Record<string, unknown>;
-            [key: string]: unknown;
-          }) => {
-            const body = context.body;
-            const accessCode = body?.accessCode as string | undefined;
-            const contextAny = context as Record<string, unknown>;
-            const returned = contextAny.returned as
-              | { user?: { id?: string } }
-              | undefined;
-            const userId = returned?.user?.id;
-
-            if (accessCode && userId) {
-              await db
-                .update(user)
-                .set({ accessCode })
-                .where(eq(user.id, userId));
-
-              console.log('[AccessCode] Stored access code for user', {
-                userId,
-                accessCode,
-              });
-            }
-
-            return context;
-          },
-        },
-      ],
     },
   },
 });

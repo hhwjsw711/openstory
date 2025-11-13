@@ -5,9 +5,6 @@
 
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
 import { isGoogleOAuthEnabled } from '@/lib/utils/environment';
+import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface AuthFormProps {
   mode: 'signin' | 'signup';
@@ -34,16 +35,13 @@ export function AuthForm({
   defaultAccessCode = '',
 }: AuthFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState(defaultAccessCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [codeValidation, setCodeValidation] = useState<{
-    isValid: boolean;
-    message?: string;
-  } | null>(null);
 
   const isSignup = mode === 'signup';
   const title = isSignup ? 'Create Account' : 'Sign In';
@@ -52,31 +50,6 @@ export function AuthForm({
     : 'Enter your credentials to access your account';
 
   const showGoogleAuth = isGoogleOAuthEnabled();
-
-  // Validate access code on the client side for UX feedback
-  const validateAccessCode = async (code: string) => {
-    if (!code) {
-      setCodeValidation(null);
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/access-codes/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-
-      const result = await response.json();
-      setCodeValidation(result);
-    } catch (err) {
-      console.error('[AuthForm] Code validation error:', err);
-      setCodeValidation({
-        isValid: false,
-        message: 'Failed to validate code',
-      });
-    }
-  };
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,8 +80,14 @@ export function AuthForm({
           return;
         }
 
+        // Invalidate auth-related queries to fetch fresh user data
+        setSuccess('Account created! Loading your profile...');
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+        // Wait for queries to refetch before redirecting
         setSuccess('Account created! Redirecting...');
-        setTimeout(() => router.push(redirectTo), 1500);
+        router.push(redirectTo);
       } else {
         // Sign in with email and password
         const result = await authClient.signIn.email({
@@ -123,8 +102,14 @@ export function AuthForm({
           return;
         }
 
+        // Invalidate auth-related queries to fetch fresh user data
+        setSuccess('Signed in! Loading your profile...');
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+        // Wait for queries to refetch before redirecting
         setSuccess('Signed in! Redirecting...');
-        setTimeout(() => router.push(redirectTo), 1500);
+        router.push(redirectTo);
       }
     } catch (err) {
       console.error('[AuthForm] Error:', err);
@@ -171,8 +156,8 @@ export function AuthForm({
           </Alert>
         )}
 
-        {/* OAuth Providers - Only show when enabled */}
-        {showGoogleAuth && (
+        {/* OAuth Providers - Only show on sign-in (not sign-up during closed beta) */}
+        {showGoogleAuth && !isSignup && (
           <>
             <div className="space-y-2">
               <Button
@@ -263,31 +248,20 @@ export function AuthForm({
           {/* Access Code Field - Only for signup */}
           {isSignup && (
             <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="access-code">Access Code</Label>
-                {codeValidation?.isValid && (
-                  <span className="text-xs text-green-600">✓ Valid</span>
-                )}
-              </div>
+              <Label htmlFor="access-code">Access Code</Label>
               <Input
                 id="access-code"
                 type="text"
-                placeholder="COSMIC-FALCON-2847"
+                placeholder="MY-ACCESS-CODE"
                 value={accessCode}
                 onChange={(e) => {
                   const newCode = e.target.value.toUpperCase();
                   setAccessCode(newCode);
-                  void validateAccessCode(newCode);
                 }}
                 disabled={isLoading}
                 required
                 autoComplete="off"
               />
-              {codeValidation && !codeValidation.isValid && (
-                <p className="text-sm text-destructive">
-                  {codeValidation.message}
-                </p>
-              )}
               <p className="text-xs text-muted-foreground">
                 Don't have a code? Contact us for early access.
               </p>
