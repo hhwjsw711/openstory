@@ -1,9 +1,11 @@
 'use client';
 
 import { ModelBadge } from '@/components/common/model-badge';
+import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';
+import { getAspectRatioData } from '@/lib/constants/aspect-ratios';
 import { formatDistanceToNow } from '@/lib/utils';
 import { formatDuration } from '@/lib/utils/format-duration';
 import { Calendar, Clock, Timer, VideoIcon } from 'lucide-react';
@@ -48,46 +50,65 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {sequences.map((sequence) => (
-        <Link key={sequence.id} href={`/sequences/${sequence.id}/scenes`}>
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <VideoIcon className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-lg line-clamp-1">
-                    {sequence.title || 'Untitled Sequence'}
-                  </h3>
-                </div>
-                <ModelBadge model={sequence.analysisModel} />
-              </div>
-            </div>
+      {sequences.map((sequence) => {
+        const ratioData = getAspectRatioData(sequence.aspectRatio);
 
-            {sequence.script && (
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                {sequence.script}
-              </p>
-            )}
+        return (
+          <Link key={sequence.id} href={`/sequences/${sequence.id}/scenes`}>
+            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <VideoIcon className="h-5 w-5 text-primary" />
 
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span>{formatDistanceToNow(new Date(sequence.createdAt))}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{formatDistanceToNow(new Date(sequence.updatedAt))}</span>
-              </div>
-              {sequence.analysisDurationMs > 0 && (
-                <div className="flex items-center gap-1">
-                  <Timer className="h-3 w-3" />
-                  <span>{formatDuration(sequence.analysisDurationMs)}</span>
+                    <h3 className="font-semibold text-lg line-clamp-1">
+                      {sequence.title || 'Untitled Sequence'}
+                    </h3>
+                  </div>
+                  <ModelBadge model={sequence.analysisModel} />
                 </div>
+              </div>
+
+              {sequence.script && (
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                  {sequence.script}
+                </p>
               )}
-            </div>
-          </Card>
-        </Link>
-      ))}
+
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>
+                    {formatDistanceToNow(new Date(sequence.createdAt))}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>
+                    {formatDistanceToNow(new Date(sequence.updatedAt))}
+                  </span>
+                </div>
+                {sequence.analysisDurationMs > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Timer className="h-3 w-3" />
+                    <span>{formatDuration(sequence.analysisDurationMs)}</span>
+                  </div>
+                )}
+                {ratioData && (
+                  <div className="flex items-center gap-1">
+                    <AspectRatioIcon
+                      width={ratioData.width}
+                      height={ratioData.height}
+                      size="sm"
+                    />
+                    <span>{ratioData.label}</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </Link>
+        );
+      })}
     </div>
   );
 };
