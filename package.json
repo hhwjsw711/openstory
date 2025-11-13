@@ -33,6 +33,8 @@
     "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.930.0",
+    "@aws-sdk/s3-request-presigner": "^3.930.0",
     "@better-auth/client": "^0.0.2-alpha.3",
     "@better-fetch/fetch": "^1.1.18",
     "@cerebras/cerebras_cloud_sdk": "^1.56.1",
@@ -113,7 +115,8 @@
     "supabase": "^2.48.3",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.47.0"
   },
   "engines": {
     "node": ">=22",

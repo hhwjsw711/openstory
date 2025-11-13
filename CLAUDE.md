@@ -53,6 +53,39 @@ bun setup:env          # Create .env.development.local with Supabase credentials
 - Types are generated from your local Supabase instance (must be running)
 - Use the convenience exports from `@/types/database` for cleaner imports
 
+### Cloudflare R2 Storage
+
+```bash
+bun scripts/setup-r2-buckets.sh    # Create R2 buckets (interactive)
+```
+
+**R2 Setup Steps**:
+
+1. Run `bunx wrangler login` to authenticate with Cloudflare
+2. Run `bun scripts/setup-r2-buckets.sh` to create buckets
+3. Create an R2 API token in Cloudflare Dashboard
+4. Add R2 credentials to `.env.development.local`:
+
+```bash
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
+R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for production
+```
+
+**Migrating from Supabase Storage** (one-time):
+
+```bash
+# Preview migration (dry run)
+bun scripts/migrate-supabase-to-r2.ts --all --dry-run
+
+# Migrate specific bucket
+bun scripts/migrate-supabase-to-r2.ts --bucket thumbnails
+
+# Migrate all buckets
+bun scripts/migrate-supabase-to-r2.ts --all
+```
+
 ### TypeScript
 
 ```bash
@@ -73,6 +106,10 @@ bun build-storybook   # Build Storybook for production
 1. **Install dependencies**: `bun install`
 2. **Start Supabase**: `bun supabase:start`
 3. **Setup environment**: `bun setup:env` (automatically configures Supabase + QStash with local dev credentials)
+4. **Setup R2 Storage**:
+   - `bunx wrangler login` (authenticate with Cloudflare)
+   - `bun scripts/setup-r2-buckets.sh` (create R2 buckets)
+   - Add R2 credentials to `.env.development.local`
 
 ### Daily Development (3 Terminal Setup)
 
