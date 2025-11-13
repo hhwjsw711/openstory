@@ -140,8 +140,8 @@ export async function uploadFile(
 
     await client.send(command);
 
-    // Generate a signed URL (7 days expiry - R2 maximum)
-    const publicUrl = await getSignedUrl(bucket, path, 604800);
+    // Generate a signed URL (1 hour default expiry for security)
+    const publicUrl = await getSignedUrl(bucket, path);
 
     return {
       path: key,

@@ -9,6 +9,8 @@
  *   bun scripts/migrate-supabase-to-r2.ts --all --dry-run  # Preview without migrating
  */
 
+import { createHash } from 'crypto';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   uploadFile,
@@ -30,8 +32,84 @@ type MigrationStats = {
   failureCount: number;
   skippedCount: number;
   totalBytes: number;
+  checksumMismatchCount: number;
   errors: Array<{ file: string; error: string }>;
 };
+
+/**
+ * Calculate SHA-256 hash of file data for integrity verification
+ */
+async function calculateChecksum(data: Blob | ArrayBuffer): Promise<string> {
+  let buffer: Buffer;
+  if (data instanceof ArrayBuffer) {
+    buffer = Buffer.from(data);
+  } else {
+    // data is Blob
+    const arrayBuffer = await data.arrayBuffer();
+    buffer = Buffer.from(arrayBuffer);
+  }
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+/**
+ * Verify uploaded file in R2 by downloading and comparing checksums
+ */
+async function verifyR2Upload(
+  bucket: StorageBucket,
+  path: string,
+  expectedChecksum: string
+): Promise<boolean> {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_BUCKET_NAME;
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+    throw new Error('Missing R2 environment variables');
+  }
+
+  const client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
+
+  try {
+    const key = `${bucket}/${path}`;
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    const response = await client.send(command);
+    if (!response.Body) {
+      return false;
+    }
+
+    // Read the stream and calculate checksum
+    const chunks: Uint8Array[] = [];
+    const reader = response.Body.transformToWebStream().getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+
+    const buffer = Buffer.concat(chunks);
+    const actualChecksum = createHash('sha256').update(buffer).digest('hex');
+
+    return actualChecksum === expectedChecksum;
+  } catch (error) {
+    console.error(
+      `  ⚠️  Verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+    return false;
+  }
+}
 
 /**
  * Recursively list all files in a Supabase bucket, including nested folders
@@ -91,6 +169,7 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
     failureCount: 0,
     skippedCount: 0,
     totalBytes: 0,
+    checksumMismatchCount: 0,
     errors: [],
   };
 
@@ -143,6 +222,12 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
           throw new Error('No data returned from download');
         }
 
+        // Calculate checksum of source file
+        const sourceChecksum = await calculateChecksum(fileData);
+        console.log(
+          `  🔐 Source checksum: ${sourceChecksum.substring(0, 16)}...`
+        );
+
         // Determine content type
         const contentType =
           fileData.type || getContentTypeFromFileName(filePath);
@@ -153,9 +238,20 @@ async function migrateBucket(bucket: StorageBucket): Promise<MigrationStats> {
           upsert: true,
         });
 
+        // Verify upload by comparing checksums
+        console.log(`  🔍 Verifying upload integrity...`);
+        const isValid = await verifyR2Upload(bucket, filePath, sourceChecksum);
+
+        if (!isValid) {
+          stats.checksumMismatchCount++;
+          throw new Error(
+            'Checksum mismatch - uploaded file differs from source'
+          );
+        }
+
         stats.successCount++;
         stats.totalBytes += file.size;
-        console.log(`  ✅ Success`);
+        console.log(`  ✅ Success (verified)`);
       } catch (error) {
         stats.failureCount++;
         const errorMessage =
@@ -214,6 +310,8 @@ function printSummary(allStats: MigrationStats[]): void {
       failureCount: acc.failureCount + stats.failureCount,
       skippedCount: acc.skippedCount + stats.skippedCount,
       totalBytes: acc.totalBytes + stats.totalBytes,
+      checksumMismatchCount:
+        acc.checksumMismatchCount + stats.checksumMismatchCount,
       errorCount: acc.errorCount + stats.errors.length,
     }),
     {
@@ -222,6 +320,7 @@ function printSummary(allStats: MigrationStats[]): void {
       failureCount: 0,
       skippedCount: 0,
       totalBytes: 0,
+      checksumMismatchCount: 0,
       errorCount: 0,
     }
   );
@@ -235,6 +334,11 @@ function printSummary(allStats: MigrationStats[]): void {
     } else {
       console.log(`   ✅ Successful: ${stats.successCount}`);
       console.log(`   ❌ Failed: ${stats.failureCount}`);
+      if (stats.checksumMismatchCount > 0) {
+        console.log(
+          `   ⚠️  Checksum mismatches: ${stats.checksumMismatchCount}`
+        );
+      }
     }
     console.log(
       `   Total size: ${(stats.totalBytes / (1024 * 1024)).toFixed(2)} MB`
@@ -250,6 +354,11 @@ function printSummary(allStats: MigrationStats[]): void {
   } else {
     console.log(`   ✅ Successful: ${totals.successCount}`);
     console.log(`   ❌ Failed: ${totals.failureCount}`);
+    if (totals.checksumMismatchCount > 0) {
+      console.log(
+        `   ⚠️  Checksum mismatches: ${totals.checksumMismatchCount}`
+      );
+    }
   }
   console.log(
     `   Total size: ${(totals.totalBytes / (1024 * 1024)).toFixed(2)} MB`
