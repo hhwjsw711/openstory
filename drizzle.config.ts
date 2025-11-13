@@ -12,7 +12,7 @@ const dbUrl = new URL(connectionString);
 
 export default defineConfig({
   schema: './src/lib/db/schema/index.ts',
-  out: './drizzle/migrations',
+  out: './supabase/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: dbUrl.toString(),
