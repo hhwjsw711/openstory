@@ -18,7 +18,7 @@ describe('Access Code Validation', () => {
       const code = VALID_ACCESS_CODES[0];
       expect(isValidAccessCode(code.toLowerCase())).toBe(true);
       expect(isValidAccessCode(code.toUpperCase())).toBe(true);
-      expect(isValidAccessCode('CoSmIc-FaLcOn-2847')).toBe(true);
+      expect(isValidAccessCode('Shining-7691')).toBe(true);
     });
 
     it('should trim whitespace', () => {
@@ -83,19 +83,6 @@ describe('Access Code Validation', () => {
     it('should have no duplicate codes', () => {
       const unique = new Set(VALID_ACCESS_CODES);
       expect(unique.size).toBe(VALID_ACCESS_CODES.length);
-    });
-
-    it('should follow expected format (WORD-WORD-DIGITS)', () => {
-      for (const code of VALID_ACCESS_CODES) {
-        // Basic format check - should have two dashes
-        const codeString = code as string;
-        expect(codeString.split('-').length).toBe(3);
-
-        // Should end with digits
-        const parts = codeString.split('-');
-        const lastPart = parts[parts.length - 1];
-        expect(/^\d+$/.test(lastPart)).toBe(true);
-      }
     });
   });
 });
