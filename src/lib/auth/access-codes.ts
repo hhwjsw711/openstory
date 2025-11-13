@@ -5,7 +5,7 @@
 export const VALID_ACCESS_CODES = [
   // Tom's fave's
   'DARK-KNIGHT-4927',
-  'INTERSTELLAR-7691',
+  'SHINING-7691',
   'JURASSIC-PARK-3721',
   // Recent Best Picture winners & nominees
   'EVERYTHING-EVERYWHERE-2847',
