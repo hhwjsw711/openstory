@@ -86,9 +86,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   // Show skeleton when frames are loading
   if (!frames || frames.length === 0) {
     return (
-      <Skeleton
-        className={cn(className, getAspectRatioClassName(aspectRatio))}
-      />
+      <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
+        <Skeleton className="w-full h-full" />
+      </div>
     );
   }
 

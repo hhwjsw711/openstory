@@ -55,7 +55,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   if (!src && !posterSrc) {
     return (
       <Skeleton
-        className={cn('w-full', getAspectRatioClassName(aspectRatio))}
+        className={cn(
+          'w-full',
+          className,
+          getAspectRatioClassName(aspectRatio)
+        )}
       />
     );
   }
