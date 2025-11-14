@@ -52,21 +52,27 @@ export function isLocalDevelopment(): boolean {
 /**
  * Select the appropriate image URL for external API calls
  * - Local development: Use temporary FAL URL (publicly accessible)
- * - Production: Use Supabase storage URL (publicly accessible)
+ * - Production: Generate signed URL from R2 storage path
  *
  * @param sourceImageUrl - Temporary FAL URL from image generation
- * @param storageImageUrl - Supabase storage URL
- * @returns The URL that should be used for external API calls
+ * @param storagePathOrUrl - R2 storage path or legacy storage URL
+ * @returns The URL that should be used for external API calls (may be async in production)
  */
-export function getImageUrlForApi(
+export async function getImageUrlForApi(
   sourceImageUrl: string | undefined | null,
-  storageImageUrl: string | undefined | null
-): string | null {
+  storagePathOrUrl: string | undefined | null
+): Promise<string | null> {
   if (isLocalDevelopment()) {
     // In local dev, prefer temporary FAL URL (publicly accessible)
-    return sourceImageUrl || storageImageUrl || null;
+    return sourceImageUrl || storagePathOrUrl || null;
   }
 
-  // In production, use Supabase storage URL (should be publicly accessible)
-  return storageImageUrl || sourceImageUrl || null;
+  // In production, check if we have a storage path (not a URL)
+  if (storagePathOrUrl && !storagePathOrUrl.startsWith('http')) {
+    // It's a storage path - generate a signed URL
+    const { getSignedImageUrl } = await import('@/lib/image/image-storage');
+    return await getSignedImageUrl(storagePathOrUrl, 7200); // 2 hour expiry
+  }
+
+  return storagePathOrUrl || sourceImageUrl || null;
 }

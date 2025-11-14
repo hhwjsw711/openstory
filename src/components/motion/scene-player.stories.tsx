@@ -104,8 +104,10 @@ const mockFrames: Frame[] = [
     id: '1',
     orderIndex: 0,
     thumbnailUrl: 'https://picsum.photos/seed/scene1/1280/720',
+    thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
     videoUrl:
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    videoPath: 'teams/mock/sequences/mock/frames/1/motion.mp4',
     thumbnailStatus: 'completed',
     videoStatus: 'completed',
     metadata: {
@@ -119,8 +121,10 @@ const mockFrames: Frame[] = [
     id: '2',
     orderIndex: 1,
     thumbnailUrl: 'https://picsum.photos/seed/scene2/1280/720',
+    thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
     videoUrl:
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    videoPath: 'teams/mock/sequences/mock/frames/2/motion.mp4',
     thumbnailStatus: 'completed',
     videoStatus: 'completed',
     metadata: {
@@ -134,7 +138,9 @@ const mockFrames: Frame[] = [
     id: '3',
     orderIndex: 2,
     thumbnailUrl: 'https://picsum.photos/seed/scene3/1280/720',
+    thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
     videoUrl: null,
+    videoPath: null,
     thumbnailStatus: 'completed',
     videoStatus: 'pending',
     metadata: {
@@ -176,8 +182,10 @@ export const AllVideoStates: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/state1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/state1/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/state1/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -194,7 +202,9 @@ export const AllVideoStates: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/state2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/state2/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -211,7 +221,9 @@ export const AllVideoStates: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: 'https://picsum.photos/seed/state3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/state3/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'generating',
         metadata: {
@@ -228,7 +240,9 @@ export const AllVideoStates: Story = {
         id: '4',
         orderIndex: 3,
         thumbnailUrl: 'https://picsum.photos/seed/state4/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/state4/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'failed',
         metadata: {
@@ -263,7 +277,10 @@ export const OnlyPendingVideos: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/pending1/1280/720',
+        thumbnailPath:
+          'teams/mock/sequences/mock/frames/pending1/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -280,7 +297,10 @@ export const OnlyPendingVideos: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/pending2/1280/720',
+        thumbnailPath:
+          'teams/mock/sequences/mock/frames/pending2/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -315,7 +335,9 @@ export const FailedVideoWithThumbnail: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/failed-thumb/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/failed/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'failed',
         videoError: 'Model generation timeout',
@@ -351,7 +373,9 @@ export const FailedVideoWithoutThumbnail: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'failed',
         videoStatus: 'failed',
         thumbnailError: 'Image generation failed',

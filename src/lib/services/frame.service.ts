@@ -283,6 +283,81 @@ export class FrameService {
   hasSceneMetadata(frame: Frame): boolean {
     return frame.metadata !== null;
   }
+
+  /**
+   * Enrich a frame with fresh signed URLs from its storage paths
+   * Generates temporary signed URLs from permanent R2 paths stored in the database
+   *
+   * @param frame - The frame to enrich
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Frame with videoUrl and thumbnailUrl populated from paths
+   */
+  async enrichFrameWithSignedUrls(
+    frame: Frame,
+    expiresIn: number = 3600
+  ): Promise<Frame> {
+    const { getSignedUrl, STORAGE_BUCKETS } = await import(
+      '@/lib/db/helpers/storage'
+    );
+
+    // Generate signed URL for video if videoPath exists
+    let videoUrl = frame.videoUrl;
+    if (frame.videoPath) {
+      try {
+        videoUrl = await getSignedUrl(
+          STORAGE_BUCKETS.VIDEOS,
+          frame.videoPath,
+          expiresIn
+        );
+      } catch (error) {
+        console.error(
+          `Failed to generate signed URL for video path ${frame.videoPath}:`,
+          error
+        );
+        // Keep existing URL if generation fails
+      }
+    }
+
+    // Generate signed URL for thumbnail if thumbnailPath exists
+    let thumbnailUrl = frame.thumbnailUrl;
+    if (frame.thumbnailPath) {
+      try {
+        thumbnailUrl = await getSignedUrl(
+          STORAGE_BUCKETS.THUMBNAILS,
+          frame.thumbnailPath,
+          expiresIn
+        );
+      } catch (error) {
+        console.error(
+          `Failed to generate signed URL for thumbnail path ${frame.thumbnailPath}:`,
+          error
+        );
+        // Keep existing URL if generation fails
+      }
+    }
+
+    return {
+      ...frame,
+      videoUrl,
+      thumbnailUrl,
+    };
+  }
+
+  /**
+   * Enrich multiple frames with fresh signed URLs
+   *
+   * @param frames - Array of frames to enrich
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Array of frames with signed URLs
+   */
+  async enrichFramesWithSignedUrls(
+    frames: Frame[],
+    expiresIn: number = 3600
+  ): Promise<Frame[]> {
+    return Promise.all(
+      frames.map((frame) => this.enrichFrameWithSignedUrls(frame, expiresIn))
+    );
+  }
 }
 
 // Singleton instance

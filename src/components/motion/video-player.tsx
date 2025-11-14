@@ -28,6 +28,7 @@ export type VideoPlayerProps = {
   autoPlay?: boolean;
   enableDownload?: boolean;
   downloadFilename?: string;
+  downloadUrl?: string;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
@@ -42,6 +43,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   autoPlay = false,
   enableDownload = false,
   downloadFilename,
+  downloadUrl,
   onLoadedMetadata,
   onTimeUpdate,
   onEnded,
@@ -60,13 +62,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Convert aspect ratio format from "16:9" to "16/9" for Vidstack
   const vidstackAspectRatio = aspectRatio.replace(':', '/');
 
-  // Construct download info with explicit URL and filename
-  const downloadInfo =
-    enableDownload && downloadFilename
-      ? { url: src, filename: downloadFilename }
-      : enableDownload
-        ? true
-        : null;
+  // Construct download info
+  // If downloadUrl is provided, use it (it has Content-Disposition embedded via AWS ResponseContentDisposition)
+  // The filename in Content-Disposition will be used by the browser, but Vidstack still requires
+  // a filename parameter in the object. We provide a dummy filename that won't be used.
+  // Otherwise fall back to the old behavior with src + filename
+  const downloadInfo = enableDownload
+    ? downloadUrl
+      ? { url: downloadUrl, filename: 'video.mp4' } // Dummy filename, actual comes from Content-Disposition header
+      : downloadFilename
+        ? { url: src, filename: downloadFilename }
+        : true
+    : null;
 
   return (
     <MediaPlayer

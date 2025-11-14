@@ -53,7 +53,9 @@ export async function POST(
     // Verify user has access to this frame
     await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
-    if (!frameData.thumbnailUrl) {
+    // Check for thumbnail (either URL or path)
+    const thumbnailPath = frameData.thumbnailPath;
+    if (!thumbnailPath) {
       return createErrorResponse(
         'Frame has no thumbnail to generate motion from',
         400
@@ -66,7 +68,7 @@ export async function POST(
       teamId: frameData.sequence.teamId,
       frameId,
       sequenceId: frameData.sequenceId,
-      thumbnailUrl: frameData.thumbnailUrl,
+      thumbnailPath: thumbnailPath, // Can be either path or URL
       prompt: frameData.description || '',
       model: validated.model,
       duration: validated.duration,

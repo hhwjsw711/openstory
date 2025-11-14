@@ -85,6 +85,20 @@
       "when": 1762919912415,
       "tag": "0011_talented_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1763089876857,
+      "tag": "0012_sticky_black_panther",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1763089906775,
+      "tag": "0013_whole_vargas",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
 import {
   type AspectRatio,
   getAspectRatioClassName,
@@ -58,6 +59,19 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         )
       : undefined;
 
+  // Check video status
+  const hasCompletedVideo =
+    currentFrame &&
+    currentFrame.videoStatus === 'completed' &&
+    currentFrame.videoUrl;
+  const hasFailedVideo = currentFrame && currentFrame.videoStatus === 'failed';
+
+  // Fetch download URL with proper Content-Disposition header
+  const { data: downloadData } = useFrameDownloadUrl(
+    currentFrame?.id,
+    !!hasCompletedVideo // Only fetch when video is available
+  );
+
   // Handle video end - move to next frame or call onEnded
   const handleEnded = useCallback(() => {
     if (nextFrame) {
@@ -88,12 +102,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Check video status
-  const hasCompletedVideo =
-    currentFrame.videoStatus === 'completed' && currentFrame.videoUrl;
-  const hasFailedVideo = currentFrame.videoStatus === 'failed';
-
-  // Generate a descriptive filename for download
+  // Generate a descriptive filename for download (fallback if API fails)
   const title = currentFrame.metadata?.metadata?.title;
   const sanitizedTitle = title
     ? title
@@ -104,8 +113,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     : '';
   const downloadFilename =
     sanitizedTitle.length > 0
-      ? `${sanitizedTitle}.mp4`
-      : `scene-${currentFrame.id}.mp4`;
+      ? `${sanitizedTitle}_velro.mp4`
+      : `scene-${currentFrame.id}_velro.mp4`;
 
   return (
     <>
@@ -152,6 +161,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           autoPlay={shouldAutoPlay}
           enableDownload={!!currentFrame.videoUrl}
           downloadFilename={downloadFilename}
+          downloadUrl={downloadData?.downloadUrl}
           onTimeUpdate={onTimeUpdate}
           onEnded={handleEnded}
         />

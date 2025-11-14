@@ -87,7 +87,7 @@ export async function POST(
     for (const frame of framesWithThumbnails) {
       try {
         // TypeScript guard - we already filtered for frames with thumbnails
-        if (!frame.thumbnailUrl) continue;
+        if (!frame.thumbnailPath) continue;
 
         // Use description or empty string as fallback
         const prompt = frame.description || '';
@@ -98,7 +98,7 @@ export async function POST(
           teamId: membership.teamId,
           frameId: frame.id,
           sequenceId,
-          thumbnailUrl: frame.thumbnailUrl,
+          thumbnailPath: frame.thumbnailPath,
           prompt,
           model: validatedData.model,
           duration: validatedData.duration,
