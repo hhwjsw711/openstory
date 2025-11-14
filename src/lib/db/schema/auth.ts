@@ -4,7 +4,13 @@
  */
 
 import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
-import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 
 /**
@@ -29,15 +35,18 @@ export const user = sqliteTable(
       .notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
     isAnonymous: integer('is_anonymous', { mode: 'boolean' }).default(false),
     fullName: text('full_name'),
     avatarUrl: text('avatar_url'),
-    onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
-      .default(false),
+    onboardingCompleted: integer('onboarding_completed', {
+      mode: 'boolean',
+    }).default(false),
+    accessCode: text(),
   },
   (table) => ({
-    emailIdx: index('user_email_key').on(table.email).unique(),
+    emailIdx: uniqueIndex('idx_user_email').on(table.email),
   })
 );
 
@@ -65,7 +74,7 @@ export const session = sqliteTable(
   },
   (table) => ({
     expiresAtIdx: index('idx_session_expires_at').on(table.expiresAt),
-    tokenIdx: index('idx_session_token').on(table.token).unique(),
+    tokenIdx: uniqueIndex('idx_session_token').on(table.token),
     userIdIdx: index('idx_session_user_id').on(table.userId),
   })
 );
@@ -102,9 +111,10 @@ export const account = sqliteTable(
       .notNull(),
   },
   (table) => ({
-    providerIdx: index('idx_account_provider')
-      .on(table.providerId, table.accountId)
-      .unique(),
+    providerIdx: uniqueIndex('idx_account_provider').on(
+      table.providerId,
+      table.accountId
+    ),
     userIdIdx: index('idx_account_user_id').on(table.userId),
   })
 );

@@ -94,7 +94,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const motionPrompt = frame?.metadata?.prompts?.motion?.fullPrompt;
 
   return (
-    <Tabs defaultValue="script" className="w-full overflow-hidden">
+    <Tabs defaultValue="script" className="w-full">
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="image-prompt">Image Prompt</TabsTrigger>

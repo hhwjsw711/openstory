@@ -5,6 +5,7 @@ This document outlines the complete migration from Supabase (PostgreSQL + Storag
 ## Overview
 
 **What we're migrating:**
+
 - ✅ Database: PostgreSQL (Supabase) → SQLite (Turso)
 - ✅ IDs: UUID v4 → ULID
 - ✅ Storage: Supabase Storage → Cloudflare R2
@@ -22,6 +23,7 @@ This document outlines the complete migration from Supabase (PostgreSQL + Storag
 ### 1. Infrastructure Setup
 
 **Turso Database:**
+
 ```bash
 # Install Turso CLI
 brew install tursodatabase/tap/turso
@@ -43,6 +45,7 @@ turso db tokens create velro-production
 ```
 
 **Cloudflare R2:**
+
 ```bash
 # Install Wrangler
 bun add -g wrangler
@@ -100,6 +103,7 @@ Create `src/lib/db/id.ts` with the ULID utility from the example doc.
 ### Step 2: Convert Schema Files
 
 Convert all 7 schema files to SQLite + ULID:
+
 - `src/lib/db/schema/auth.ts`
 - `src/lib/db/schema/teams.ts`
 - `src/lib/db/schema/sequences.ts`
@@ -109,6 +113,7 @@ Convert all 7 schema files to SQLite + ULID:
 - `src/lib/db/schema/audit.ts`
 
 Key changes per file:
+
 ```typescript
 // Change imports
 import { pgTable, uuid, timestamp, jsonb } from 'drizzle-orm/pg-core';
@@ -236,7 +241,7 @@ const idSchema = z.string().refine(isValidId, {
 
 // Update all API route schemas
 export const createSequenceSchema = z.object({
-  teamId: idSchema,  // was: z.string().uuid()
+  teamId: idSchema, // was: z.string().uuid()
   styleId: idSchema,
   // ...
 });
@@ -254,7 +259,7 @@ import { generateId } from '@/lib/db/id';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'sqlite',  // Changed from 'pg'
+    provider: 'sqlite', // Changed from 'pg'
     schema: {
       user: user,
       session: session,
@@ -267,7 +272,7 @@ export const auth = betterAuth({
 
   advanced: {
     database: {
-      generateId: () => generateId(),  // Use ULID
+      generateId: () => generateId(), // Use ULID
     },
   },
 });
@@ -320,7 +325,7 @@ async function migrateData() {
   // Connect to Supabase (source)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!  // Need service role for full access
+    process.env.SUPABASE_SERVICE_ROLE_KEY! // Need service role for full access
   );
 
   // Connect to Turso (destination)
@@ -343,7 +348,9 @@ async function migrateData() {
 
     // Step 3: Export team members
     console.log('📤 Exporting team members...');
-    const { data: teamMembers } = await supabase.from('team_members').select('*');
+    const { data: teamMembers } = await supabase
+      .from('team_members')
+      .select('*');
     console.log(`Found ${teamMembers?.length || 0} team members`);
 
     // Step 4: Export styles
@@ -421,16 +428,20 @@ async function migrateData() {
         id: convertId(frame.id),
         sequenceId: convertId(frame.sequence_id),
         // Update storage URLs: Supabase → R2
-        thumbnailUrl: frame.thumbnail_url ?
-          frame.thumbnail_url.replace(
-            process.env.NEXT_PUBLIC_SUPABASE_URL + '/storage/v1/object/public/',
-            process.env.R2_PUBLIC_URL + '/'
-          ) : null,
-        videoUrl: frame.video_url ?
-          frame.video_url.replace(
-            process.env.NEXT_PUBLIC_SUPABASE_URL + '/storage/v1/object/public/',
-            process.env.R2_PUBLIC_URL + '/'
-          ) : null,
+        thumbnailUrl: frame.thumbnail_url
+          ? frame.thumbnail_url.replace(
+              process.env.NEXT_PUBLIC_SUPABASE_URL +
+                '/storage/v1/object/public/',
+              process.env.R2_PUBLIC_URL + '/'
+            )
+          : null,
+        videoUrl: frame.video_url
+          ? frame.video_url.replace(
+              process.env.NEXT_PUBLIC_SUPABASE_URL +
+                '/storage/v1/object/public/',
+              process.env.R2_PUBLIC_URL + '/'
+            )
+          : null,
         createdAt: new Date(frame.created_at),
         updatedAt: new Date(frame.updated_at),
       }));
@@ -443,11 +454,7 @@ async function migrateData() {
 
     // Save ID mapping for reference
     console.log('\n💾 Saving ID mapping...');
-    const mappingJson = JSON.stringify(
-      Array.from(idMap.entries()),
-      null,
-      2
-    );
+    const mappingJson = JSON.stringify(Array.from(idMap.entries()), null, 2);
     await Bun.write(
       `backups/${new Date().toISOString().split('T')[0]}/id-mapping.json`,
       mappingJson
@@ -455,7 +462,6 @@ async function migrateData() {
 
     console.log('\n✅ Migration completed successfully!');
     console.log(`Total IDs converted: ${idMap.size}`);
-
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
     throw error;
@@ -482,9 +488,20 @@ Create `scripts/migrate-storage.ts`:
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
 
-const BUCKETS = ['thumbnails', 'videos', 'audio', 'styles', 'characters', 'vfx'];
+const BUCKETS = [
+  'thumbnails',
+  'videos',
+  'audio',
+  'styles',
+  'characters',
+  'vfx',
+];
 
 async function migrateStorage() {
   console.log('🚀 Starting storage migration...\n');
@@ -542,9 +559,8 @@ async function migrateStorage() {
 
         try {
           // Download from Supabase
-          const { data: fileData, error: downloadError } = await supabase.storage
-            .from(bucket)
-            .download(filePath);
+          const { data: fileData, error: downloadError } =
+            await supabase.storage.from(bucket).download(filePath);
 
           if (downloadError || !fileData) {
             console.error(`    ❌ Download failed: ${downloadError?.message}`);
@@ -621,12 +637,14 @@ migrateStorage().catch(console.error);
 ### Execution Steps
 
 **1. Maintenance Mode (Optional)**
+
 ```bash
 # If needed, enable maintenance mode in production
 # to prevent new data during migration
 ```
 
 **2. Push Schema to Turso**
+
 ```bash
 # Push new schema
 bun db:push
@@ -636,6 +654,7 @@ turso db shell velro-production ".tables"
 ```
 
 **3. Migrate Data**
+
 ```bash
 # Run data migration script
 SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-data.ts
@@ -648,6 +667,7 @@ SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-data.ts
 ```
 
 **4. Migrate Storage**
+
 ```bash
 # Run storage migration script
 SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-storage.ts
@@ -659,6 +679,7 @@ SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-storage.ts
 ```
 
 **5. Update Environment Variables**
+
 ```bash
 # Update production environment (Vercel/your platform)
 # Remove:
@@ -677,6 +698,7 @@ SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-storage.ts
 ```
 
 **6. Deploy**
+
 ```bash
 # Deploy new code
 git push origin main
@@ -686,6 +708,7 @@ vercel --prod
 ```
 
 **7. Verify**
+
 ```bash
 # Test critical flows:
 # - User login
@@ -734,23 +757,27 @@ rm -rf supabase/
 If migration fails:
 
 **1. Revert Code**
+
 ```bash
 git revert HEAD
 git push origin main
 ```
 
 **2. Restore Environment Variables**
+
 ```bash
 # Re-add Supabase credentials
 # Remove Turso/R2 credentials
 ```
 
 **3. Redeploy**
+
 ```bash
 vercel --prod
 ```
 
 **4. Investigate**
+
 - Review migration logs
 - Check ID mapping file
 - Verify data integrity
@@ -760,17 +787,20 @@ vercel --prod
 ## Risk Mitigation
 
 **Data Loss Prevention:**
+
 - ✅ Full database backup before migration
 - ✅ ID mapping file saved
 - ✅ Storage files copied (not moved)
 - ✅ Keep Supabase active for 2 weeks post-migration
 
 **Downtime Minimization:**
+
 - ✅ Migration scripts run offline
 - ✅ Quick deployment after migration
 - ✅ Can run during low-traffic period
 
 **Testing:**
+
 - ✅ Test on staging environment first (if available)
 - ✅ Dry run of migration scripts
 - ✅ Verify all critical paths work
@@ -778,6 +808,7 @@ vercel --prod
 ## Success Criteria
 
 Migration is successful when:
+
 - ✅ All data migrated to Turso with new ULIDs
 - ✅ All storage files accessible via R2
 - ✅ Application works without errors
@@ -789,6 +820,7 @@ Migration is successful when:
 ## Support
 
 If issues arise:
+
 1. Check migration logs
 2. Review ID mapping file
 3. Verify environment variables

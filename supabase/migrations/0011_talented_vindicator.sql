@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "access_code" varchar(100);

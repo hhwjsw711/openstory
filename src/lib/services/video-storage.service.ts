@@ -1,9 +1,15 @@
 /**
  * Video Storage Service
- * Handles uploading and managing videos in Supabase Storage
+ * Handles uploading and managing videos in R2 Storage
  */
 
-import { createAdminClient } from '@/lib/supabase/server';
+import {
+  uploadFile,
+  getSignedUrl,
+  deleteFile,
+  listFiles,
+  STORAGE_BUCKETS,
+} from '@/lib/db/helpers/storage';
 
 interface UploadVideoOptions {
   videoUrl: string;
@@ -20,14 +26,13 @@ interface StorageResult {
 }
 
 /**
- * Upload a video from URL to Supabase Storage
+ * Upload a video from URL to R2 Storage
  */
 export async function uploadVideoToStorage(
   options: UploadVideoOptions
 ): Promise<StorageResult> {
   try {
     const { videoUrl, teamId, sequenceId, frameId } = options;
-    const supabase = createAdminClient();
 
     // Construct storage path
     const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/motion.mp4`;
@@ -40,33 +45,21 @@ export async function uploadVideoToStorage(
     }
 
     const videoBlob = await response.blob();
-    const videoBuffer = await videoBlob.arrayBuffer();
-    const videoData = new Uint8Array(videoBuffer);
 
-    // Upload to Supabase Storage
-    const { error } = await supabase.storage
-      .from('videos')
-      .upload(storagePath, videoData, {
+    // Upload to R2 Storage
+    const result = await uploadFile(
+      STORAGE_BUCKETS.VIDEOS,
+      storagePath,
+      videoBlob,
+      {
         contentType: 'video/mp4',
         upsert: true, // Overwrite if exists
-      });
-
-    if (error) {
-      throw new Error(`Storage upload failed: ${error.message}`);
-    }
-
-    // Generate signed URL for private bucket (1 year expiry)
-    const { data, error: signedUrlError } = await supabase.storage
-      .from('videos')
-      .createSignedUrl(storagePath, 31536000); // 1 year in seconds
-
-    if (signedUrlError) {
-      throw new Error(`Failed to create signed URL: ${signedUrlError.message}`);
-    }
+      }
+    );
 
     return {
       success: true,
-      url: data.signedUrl,
+      url: result.publicUrl,
       path: storagePath,
     };
   } catch (error) {
@@ -86,19 +79,11 @@ export async function getSignedVideoUrl(
   expiresIn: number = 3600 // 1 hour default
 ): Promise<StorageResult> {
   try {
-    const supabase = createAdminClient();
-
-    const { data, error } = await supabase.storage
-      .from('videos')
-      .createSignedUrl(path, expiresIn);
-
-    if (error) {
-      throw new Error(`Failed to create signed URL: ${error.message}`);
-    }
+    const url = await getSignedUrl(STORAGE_BUCKETS.VIDEOS, path, expiresIn);
 
     return {
       success: true,
-      url: data.signedUrl,
+      url,
       path,
     };
   } catch (error) {
@@ -118,13 +103,7 @@ export async function deleteVideoFromStorage(
   path: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createAdminClient();
-
-    const { error } = await supabase.storage.from('videos').remove([path]);
-
-    if (error) {
-      throw new Error(`Failed to delete video: ${error.message}`);
-    }
+    await deleteFile(STORAGE_BUCKETS.VIDEOS, path);
 
     return { success: true };
   } catch (error) {
@@ -148,31 +127,23 @@ export async function listSequenceVideos(
   error?: string;
 }> {
   try {
-    const supabase = createAdminClient();
     const folderPath = `teams/${teamId}/sequences/${sequenceId}/frames/`;
 
-    const { data, error } = await supabase.storage
-      .from('videos')
-      .list(folderPath, {
-        limit: 100,
-        offset: 0,
-      });
+    const files = await listFiles(STORAGE_BUCKETS.VIDEOS, folderPath, {
+      limit: 100,
+    });
 
-    if (error) {
-      throw new Error(`Failed to list videos: ${error.message}`);
-    }
-
-    const videos = data
-      ?.filter((file) => file.name.endsWith('.mp4'))
+    const videos = files
+      .filter((file) => file.name.endsWith('.mp4'))
       .map((file) => ({
         name: file.name,
-        size: file.metadata?.size || 0,
-        path: `${folderPath}${file.name}`,
+        size: file.metadata.size,
+        path: file.id,
       }));
 
     return {
       success: true,
-      videos: videos || [],
+      videos,
     };
   } catch (error) {
     console.error('[Video Storage] Failed to list videos:', error);
@@ -193,24 +164,15 @@ export async function calculateTeamStorageUsage(teamId: string): Promise<{
   error?: string;
 }> {
   try {
-    const supabase = createAdminClient();
     const folderPath = `teams/${teamId}/`;
 
-    const { data, error } = await supabase.storage
-      .from('videos')
-      .list(folderPath, {
-        limit: 1000,
-        offset: 0,
-      });
+    const files = await listFiles(STORAGE_BUCKETS.VIDEOS, folderPath, {
+      limit: 1000,
+    });
 
-    if (error) {
-      throw new Error(`Failed to calculate storage: ${error.message}`);
-    }
-
-    const totalBytes =
-      data?.reduce((sum, file) => {
-        return sum + (file.metadata?.size || 0);
-      }, 0) || 0;
+    const totalBytes = files.reduce((sum, file) => {
+      return sum + file.metadata.size;
+    }, 0);
 
     return {
       success: true,

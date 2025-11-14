@@ -21,11 +21,11 @@
  *   TURSO_AUTH_TOKEN        - Target Turso auth token
  */
 
-import { createClient } from '@libsql/client';
-import postgres from 'postgres';
 import { generateId } from '@/lib/db/id';
+import { createClient } from '@libsql/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import postgres from 'postgres';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -227,10 +227,14 @@ async function migrateAccounts() {
           account.refresh_token,
           account.id_token,
           account.access_token_expires_at
-            ? Math.floor(new Date(account.access_token_expires_at).getTime() / 1000)
+            ? Math.floor(
+                new Date(account.access_token_expires_at).getTime() / 1000
+              )
             : null,
           account.refresh_token_expires_at
-            ? Math.floor(new Date(account.refresh_token_expires_at).getTime() / 1000)
+            ? Math.floor(
+                new Date(account.refresh_token_expires_at).getTime() / 1000
+              )
             : null,
           account.scope,
           account.password,
@@ -313,8 +317,7 @@ async function migrateTeams() {
 async function migrateTeamMembers() {
   console.log('👤 Migrating team members...');
 
-  const members =
-    await sourceDb`SELECT * FROM team_members ORDER BY joined_at`;
+  const members = await sourceDb`SELECT * FROM team_members ORDER BY joined_at`;
   console.log(`  Found ${members.length} team members`);
 
   if (!isDryRun) {

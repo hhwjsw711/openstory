@@ -20,7 +20,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useUser } from '@/hooks/use-user';
-import { authClient, useSession } from '@/lib/auth/client';
+import { useSession } from '@/lib/auth/client';
+import { authClient } from '@/lib/auth/client';
 
 export function UserBadge() {
   const { data: userData, isLoading } = useUser();
@@ -66,9 +67,14 @@ export function UserBadge() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
+      // Sign out - this should clear the session cookie
+      // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
+      // where useSession doesn't update after server-side signOut until page refresh
       await authClient.signOut();
-      // Refresh the page to clear state
-      window.location.href = '/sequences';
+
+      // Force a full page reload to clear all client state
+      // Use replace to prevent back button from returning to authenticated state
+      window.location.replace('/');
     } catch (error) {
       console.error('Sign out error:', error);
       setIsSigningOut(false);

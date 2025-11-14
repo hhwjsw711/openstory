@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { AlertCircle, VideoIcon } from 'lucide-react';
-import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 
@@ -74,7 +73,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   if (!frames || frames.length === 0) {
     return (
       <Skeleton
-        className={cn('w-full', getAspectRatioClassName(aspectRatio))}
+        className={cn(className, getAspectRatioClassName(aspectRatio))}
       />
     );
   }
@@ -122,12 +121,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         >
           {/* Show thumbnail as background if available */}
           {currentFrame.thumbnailUrl && (
-            <Image
+            <img
               src={currentFrame.thumbnailUrl}
               alt={title || 'Scene thumbnail'}
-              className="h-full w-full object-cover"
-              width={1280}
-              height={720}
+              className={cn(' object-cover', className)}
             />
           )}
 
