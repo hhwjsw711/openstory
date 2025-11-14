@@ -4,7 +4,6 @@
  */
 
 import { NextResponse } from 'next/server';
-import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
 import { getUserRole } from '@/lib/auth/permissions';
 import type { Session, User } from './config';
 import { auth } from './config';
@@ -138,80 +137,6 @@ export async function getOptionalUser(
     console.error('[API Auth] Optional auth error:', error);
     return null;
   }
-}
-
-/**
- * Check if user is anonymous
- */
-export function isAnonymousUser(user: User): boolean {
-  // BetterAuth stores isAnonymous as a field on the user object
-  return user.isAnonymous === true;
-}
-
-/**
- * Check if user is authenticated (not anonymous)
- */
-export function isAuthenticatedUser(user: User): boolean {
-  return !isAnonymousUser(user);
-}
-
-/**
- * Validate if user can generate motion (shared logic for both Server Actions and API routes)
- * @throws Error with message if validation fails
- */
-export function validateMotionAccess(user: User): void {
-  if (isAnonymousUser(user)) {
-    throw new Error(MOTION_ACCESS_DENIED_MESSAGE);
-  }
-}
-
-/**
- * Require authenticated (non-anonymous) user
- */
-export async function requireAuthenticatedUser(
-  request: Request
-): Promise<AuthResult> {
-  const authResult = await requireAuth(request);
-
-  if (isAnonymousUser(authResult.user)) {
-    throw NextResponse.json(
-      {
-        success: false,
-        message: 'Account required: please sign up or sign in',
-        status: 401,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 401 }
-    );
-  }
-
-  return authResult;
-}
-
-/**
- * Require authenticated user for motion generation (API route version)
- * Returns specific error message for motion generation
- */
-export async function requireAuthenticatedUserForMotion(
-  request: Request
-): Promise<AuthResult> {
-  const authResult = await requireAuth(request);
-
-  try {
-    validateMotionAccess(authResult.user);
-  } catch (error) {
-    throw NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : 'Access denied',
-        status: 401,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 401 }
-    );
-  }
-
-  return authResult;
 }
 
 /**

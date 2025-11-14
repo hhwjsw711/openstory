@@ -372,7 +372,6 @@ export const generateMockUser = (
     image: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    isAnonymous: null,
     fullName,
     avatarUrl: faker.image.avatar(),
     onboardingCompleted: null,

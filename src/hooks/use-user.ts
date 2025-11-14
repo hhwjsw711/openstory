@@ -1,22 +1,20 @@
 'use client';
 
-import { authClient, useSession } from '@/lib/auth/client';
+import { useSession } from '@/lib/auth/client';
 import type { UserProfile } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
 
 interface UserData {
   user: UserProfile;
   isAuthenticated: boolean;
-  isAnonymous: boolean;
   teamId?: string;
   teamRole?: string;
   teamName?: string;
 }
 
 /**
- * Simple hook for client components that need user data
- * Automatically handles both authenticated and anonymous users with BetterAuth
- * Creates anonymous session if needed before fetching user data
+ * Hook for client components that need user data
+ * Requires authenticated session - unauthenticated users redirected by middleware
  */
 export function useUser() {
   // Check client-side session state (no HTTP request)
@@ -25,17 +23,7 @@ export function useUser() {
   return useQuery({
     queryKey: ['current-user'],
     queryFn: async (): Promise<UserData> => {
-      // If no session exists, create anonymous session first
-      if (!session) {
-        const { error } = await authClient.signIn.anonymous();
-        if (error) {
-          throw new Error(
-            error.message || 'Failed to create anonymous session'
-          );
-        }
-      }
-
-      // Fetch user data (will succeed since session now exists)
+      // Fetch user data - session guaranteed by middleware
       const response = await fetch('/api/user/me');
       const result = await response.json();
 
@@ -49,7 +37,7 @@ export function useUser() {
 
       return result.data;
     },
-    enabled: !isSessionPending, // Wait for session check to complete
+    enabled: !isSessionPending && !!session, // Only fetch if session exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Retry once on failure
     refetchOnWindowFocus: false, // Prevent refetch on focus to avoid session conflicts

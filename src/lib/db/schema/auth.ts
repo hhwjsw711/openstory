@@ -40,7 +40,6 @@ export const user = pgTable(
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
-    isAnonymous: boolean().default(false),
     fullName: text(),
     avatarUrl: text(),
     onboardingCompleted: boolean().default(false),

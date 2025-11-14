@@ -85,6 +85,13 @@
       "when": 1762919912415,
       "tag": "0011_talented_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1763097423788,
+      "tag": "0012_huge_reavers",
+      "breakpoints": true
     }
   ]
 }
