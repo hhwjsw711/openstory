@@ -39,6 +39,7 @@ export async function GET(
         sequenceId: frames.sequenceId,
         metadata: frames.metadata,
         teamId: sequences.teamId,
+        sequenceTitle: sequences.title,
       })
       .from(frames)
       .innerJoin(sequences, eq(frames.sequenceId, sequences.id))
@@ -75,20 +76,33 @@ export async function GET(
       frame.videoPath ||
       `teams/${frame.teamId}/sequences/${frame.sequenceId}/frames/${frame.id}/motion.mp4`;
 
-    // Generate filename from scene title
-    const title = (frame.metadata as { metadata?: { title?: string } })
-      ?.metadata?.title;
-    const sanitizedTitle = title
-      ? title
-          .replace(/[^a-z0-9\s-]/gi, '')
-          .replace(/\s+/g, '-')
-          .toLowerCase()
-          .substring(0, 100)
+    // Generate filename from sequence title and scene title
+    const sanitizeForFilename = (text: string) =>
+      text
+        .replace(/[^a-z0-9\s-]/gi, '')
+        .replace(/\s+/g, '-')
+        .toLowerCase()
+        .substring(0, 50); // Limit each part to 50 chars
+
+    const sanitizedSequenceTitle = frame.sequenceTitle
+      ? sanitizeForFilename(frame.sequenceTitle)
       : '';
+
+    const sceneTitle = (frame.metadata as { metadata?: { title?: string } })
+      ?.metadata?.title;
+    const sanitizedSceneTitle = sceneTitle
+      ? sanitizeForFilename(sceneTitle)
+      : '';
+
+    // Construct filename: sequenceTitle_sceneTitle_velro.mp4
     const downloadFilename =
-      sanitizedTitle.length > 0
-        ? `${sanitizedTitle}_velro.mp4`
-        : `scene-${frame.id}_velro.mp4`;
+      sanitizedSequenceTitle && sanitizedSceneTitle
+        ? `${sanitizedSequenceTitle}_${sanitizedSceneTitle}_velro.mp4`
+        : sanitizedSequenceTitle
+          ? `${sanitizedSequenceTitle}_scene-${frame.id}_velro.mp4`
+          : sanitizedSceneTitle
+            ? `${sanitizedSceneTitle}_velro.mp4`
+            : `scene-${frame.id}_velro.mp4`;
 
     // Generate signed download URL with Content-Disposition
     const url = await getVideoDownloadUrl(videoPath, downloadFilename, 3600);

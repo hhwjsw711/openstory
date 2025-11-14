@@ -18,6 +18,7 @@ import {
   DefaultVideoLayout,
 } from '@vidstack/react/player/layouts/default';
 import { useRef } from 'react';
+import { CustomDownloadButton } from './custom-download-button';
 
 export type VideoPlayerProps = {
   src: string;
@@ -62,18 +63,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Convert aspect ratio format from "16:9" to "16/9" for Vidstack
   const vidstackAspectRatio = aspectRatio.replace(':', '/');
 
-  // Construct download info
-  // If downloadUrl is provided, use it (it has Content-Disposition embedded via AWS ResponseContentDisposition)
-  // The filename in Content-Disposition will be used by the browser, but Vidstack still requires
-  // a filename parameter in the object. We provide a dummy filename that won't be used.
-  // Otherwise fall back to the old behavior with src + filename
-  const downloadInfo = enableDownload
-    ? downloadUrl
-      ? { url: downloadUrl, filename: 'video.mp4' } // Dummy filename, actual comes from Content-Disposition header
-      : downloadFilename
+  // Construct download slots
+  // Use custom download button when we have a signed URL to avoid vidstack adding query params
+  // which would break the AWS signature
+  const downloadSlots =
+    enableDownload && downloadUrl && downloadFilename
+      ? {
+          downloadButton: (
+            <CustomDownloadButton
+              downloadUrl={downloadUrl}
+              downloadFilename={downloadFilename}
+            />
+          ),
+        }
+      : {};
+
+  // Fallback download info for when downloadUrl is not provided
+  // This uses vidstack's default download button (which adds query params)
+  const fallbackDownloadInfo =
+    enableDownload && !downloadUrl
+      ? downloadFilename
         ? { url: src, filename: downloadFilename }
         : true
-    : null;
+      : null;
 
   return (
     <MediaPlayer
@@ -111,7 +123,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <Track kind="chapters" src={chaptersUrl} type="vtt" default />
       )}
 
-      <DefaultVideoLayout icons={defaultLayoutIcons} download={downloadInfo} />
+      <DefaultVideoLayout
+        icons={defaultLayoutIcons}
+        download={fallbackDownloadInfo}
+        slots={downloadSlots}
+      />
     </MediaPlayer>
   );
 };

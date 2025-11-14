@@ -102,19 +102,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Generate a descriptive filename for download (fallback if API fails)
-  const title = currentFrame.metadata?.metadata?.title;
-  const sanitizedTitle = title
-    ? title
-        .replace(/[^a-z0-9\s-]/gi, '')
-        .replace(/\s+/g, '-')
-        .toLowerCase()
-        .substring(0, 100) // Limit length
-    : '';
+  // Use filename from API (includes sequence + scene title) or generate fallback
   const downloadFilename =
-    sanitizedTitle.length > 0
-      ? `${sanitizedTitle}_velro.mp4`
-      : `scene-${currentFrame.id}_velro.mp4`;
+    downloadData?.filename || `scene-${currentFrame.id}_velro.mp4`;
+
+  // Get scene title for alt text
+  const title = currentFrame.metadata?.metadata?.title;
 
   return (
     <>
@@ -166,7 +159,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           onEnded={handleEnded}
         />
       )}
-
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">
