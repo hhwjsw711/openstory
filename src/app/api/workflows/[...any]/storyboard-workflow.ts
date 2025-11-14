@@ -382,7 +382,7 @@ export const generateStoryboardWorkflow = createWorkflow(
               : undefined,
           });
 
-          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+          if (imageIsFailed || imageIsCanceled || !imageBody.thumbnailPath) {
             throw new WorkflowValidationError(
               `Image generation failed for frame ${frameId}, skipping motion generation`
             );
@@ -404,7 +404,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             teamId: input.teamId,
             frameId,
             sequenceId: input.sequenceId,
-            thumbnailUrl: imageBody.imageUrl,
+            thumbnailPath: imageBody.thumbnailPath,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
             aspectRatio: sequence.aspectRatio,

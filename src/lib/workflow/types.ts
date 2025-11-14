@@ -64,7 +64,7 @@ export interface StoryboardWorkflowInput extends UserWorkflowContext {
 export interface MotionWorkflowInput extends UserWorkflowContext {
   frameId: string;
   sequenceId: string;
-  thumbnailUrl: string;
+  thumbnailPath: string;
   prompt: string;
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
@@ -120,16 +120,9 @@ export interface FrameGenerationResult {
  * Workflow result types
  */
 export interface ImageWorkflowResult {
-  imageUrl?: string;
-  thumbnailUrl?: string;
+  thumbnailPath: string;
   frameId?: string;
   sequenceId?: string;
-}
-
-export interface VideoWorkflowResult {
-  videoUrl: string;
-  thumbnailUrl?: string;
-  duration?: number;
 }
 
 export interface MotionWorkflowResult {

@@ -1,5 +1,4 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { Scene } from '@/lib/ai/scene-analysis.schema';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
@@ -75,80 +74,40 @@ export const generateImageWorkflow = createWorkflow(
       return await generateImageWithProvider(generationParams);
     });
 
-    // Step 3: Upload image to storage if frameId is provided
-    let storageUrl = imageResult.imageUrls[0]; // Default to FAL URL if upload fails
-    if (input.frameId && imageResult.imageUrls.length > 0) {
-      storageUrl = await context.run('upload-to-storage', async () => {
-        if (!input.frameId || !input.sequenceId || !input.teamId) {
-          console.warn(
-            '[ImageWorkflow]',
-            'Missing required IDs for storage upload, using temporary URL'
-          );
-          return imageResult.imageUrls[0];
-        }
+    const storageResult = await context.run('upload-to-storage', async () => {
+      if (
+        !input.frameId ||
+        !input.sequenceId ||
+        !input.teamId ||
+        !imageResult.imageUrls[0]
+      ) {
+        throw new Error('Missing required IDs for storage upload');
+      }
 
-        try {
-          const result = await uploadImageToStorage({
-            imageUrl: imageResult.imageUrls[0],
-            teamId: input.teamId,
-            sequenceId: input.sequenceId,
-            frameId: input.frameId,
-          });
-
-          if (!result.success || !result.url) {
-            throw new Error(
-              result.error || 'Failed to upload image to storage'
-            );
-          }
-
-          console.log(
-            '[ImageWorkflow]',
-            `Image uploaded to storage: ${result.path}`
-          );
-          return result.url;
-        } catch (error) {
-          console.error(
-            '[ImageWorkflow]',
-            `Failed to upload image to storage: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-          // Fall back to temporary FAL URL if storage upload fails
-          return imageResult.imageUrls[0];
-        }
+      const result = await uploadImageToStorage({
+        imageUrl: imageResult.imageUrls[0],
+        teamId: input.teamId,
+        sequenceId: input.sequenceId,
+        frameId: input.frameId,
       });
-    }
 
-    await context.run('update-frame', async () => {
-      // Step 4: Update frame if frameId is provided
-      if (!input.frameId || imageResult.imageUrls.length === 0) {
-        return { updated: false };
+      if (!result.url) {
+        throw new Error('Failed to upload image to storage');
       }
 
-      try {
-        // Get existing frame to preserve metadata
-        const existingFrame = await db.query.frames.findFirst({
-          where: eq(frames.id, input.frameId),
-          columns: { metadata: true },
-        });
+      await updateFrame(input.frameId, {
+        thumbnailPath: result.path || null, // Store R2 path (permanent)
+        thumbnailUrl: null, // Don't store signed URLs in DB (they expire)
+        thumbnailStatus: 'completed',
+        thumbnailGeneratedAt: new Date(),
+        thumbnailError: null,
+      });
 
-        await updateFrame(input.frameId, {
-          thumbnailUrl: storageUrl,
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-          thumbnailError: null,
-          metadata: {
-            ...(existingFrame?.metadata as unknown as Scene),
-            sourceImageUrl: imageResult.imageUrls[0], // Store temporary FAL URL for API calls
-          },
-        });
-      } catch (error) {
-        console.error(
-          '[ImageWorkflow]',
-          `Failed to update frame ${input.frameId} with image URL: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        throw error;
-      }
-
-      return { updated: true };
+      console.log(
+        '[ImageWorkflow]',
+        `Image uploaded to storage: ${result.path}`
+      );
+      return { url: result.url, path: result.path };
     });
 
     await context.run('update-sequence-status', async () => {
@@ -214,8 +173,7 @@ export const generateImageWorkflow = createWorkflow(
 
     // Return workflow result
     const result: ImageWorkflowResult = {
-      imageUrl: storageUrl,
-      thumbnailUrl: storageUrl,
+      thumbnailPath: storageResult.path,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };

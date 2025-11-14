@@ -49,10 +49,14 @@ export async function GET(
     // Verify team access
     await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
+    // Enrich frame with fresh signed URLs
+    const enrichedFrame =
+      await frameService.enrichFrameWithSignedUrls(frameData);
+
     return NextResponse.json(
       {
         success: true,
-        data: frameData,
+        data: enrichedFrame,
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
