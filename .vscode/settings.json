@@ -8,7 +8,9 @@
     },
     "zsh": {
       "path": "/bin/zsh",
-      "args": ["-l"],
+      "args": [
+        "-l"
+      ],
       "icon": "terminal"
     }
   },
@@ -19,7 +21,9 @@
     },
     "zsh": {
       "path": "/bin/zsh",
-      "args": ["-l"],
+      "args": [
+        "-l"
+      ],
       "icon": "terminal"
     }
   },

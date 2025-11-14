@@ -20,10 +20,7 @@ type ScenesViewProps = {
 export const getPlayerMaxClassNameByAspectRatio = (
   aspectRatio: AspectRatio
 ) => {
-  if (aspectRatio === '9:16') {
-    return 'max-w-[calc(50vh*9/16)] max-h-[50vh]';
-  }
-  return 'max-h-[50vh] max-w-full';
+  return `max-w-[calc(50vh*${aspectRatio.split(':')[0]}/${aspectRatio.split(':')[1]})] max-h-[50vh]`;
 };
 export const ScenesView: React.FC<ScenesViewProps> = ({
   sequenceId,
@@ -59,8 +56,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
         />
 
         {/* Right: Scene Player */}
-        <ScrollArea className="flex-1 p-8 gap-8 flex flex-col">
-          <div className="flex flex-1 min-h-0 justify-center p-4">
+        <ScrollArea className="flex-1 px-8 gap-8 flex flex-col">
+          <div className="flex flex-1 min-h-0 justify-center pb-8">
             <ScenePlayer
               frames={frames}
               selectedFrameId={curSelectedFrameId}

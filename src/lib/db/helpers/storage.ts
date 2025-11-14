@@ -215,6 +215,53 @@ export async function getSignedUrl(
 }
 
 /**
+ * Get a signed URL for downloading a file with a custom filename
+ * Uses AWS ResponseContentDisposition to force browser download with specified filename
+ *
+ * @param bucket - The storage bucket name
+ * @param path - The file path within the bucket
+ * @param filename - The filename to use for download (e.g., 'my-video_velro.mp4')
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+ * @returns Signed URL with Content-Disposition header for download
+ * @throws Error if signing fails
+ *
+ * @example
+ * ```ts
+ * const url = await getSignedUrlWithDownload(
+ *   STORAGE_BUCKETS.VIDEOS,
+ *   'teams/123/video.mp4',
+ *   'desert-scene_velro.mp4',
+ *   7200
+ * );
+ * ```
+ */
+export async function getSignedUrlWithDownload(
+  bucket: StorageBucket,
+  path: string,
+  filename: string,
+  expiresIn = 3600
+): Promise<string> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${filename}"`,
+    });
+
+    const url = await getS3SignedUrl(client, command, { expiresIn });
+    return url;
+  } catch (error) {
+    throw new Error(
+      `Failed to create download URL for ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
  * Delete a file from storage
  *
  * @param bucket - The storage bucket name

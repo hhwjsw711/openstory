@@ -169,7 +169,9 @@ export const frames = pgTable(
     description: text(),
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
+    thumbnailPath: text('thumbnail_path'), // R2 storage path (not signed URL)
     videoUrl: text('video_url'),
+    videoPath: text('video_path'), // R2 storage path (not signed URL)
     // Thumbnail generation status tracking
     thumbnailStatus:
       frameGenerationStatus('thumbnail_status').default('pending'),
