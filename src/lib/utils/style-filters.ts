@@ -42,7 +42,7 @@ export function filterStyles(
       const nameMatch = style.name.toLowerCase().includes(query);
       const descMatch = style.description?.toLowerCase().includes(query);
       const categoryMatch = style.category?.toLowerCase().includes(query);
-      const tagsMatch = style.tags?.some((tag) =>
+      const tagsMatch = style.tags?.some((tag: string) =>
         tag.toLowerCase().includes(query)
       );
 
