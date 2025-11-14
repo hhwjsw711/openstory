@@ -19,7 +19,13 @@ function getQStashClient(): Client {
     );
   }
 
-  return new Client({ token });
+  return new Client({
+    token,
+    headers: {
+      'x-vercel-protection-bypass':
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? '',
+    },
+  });
 }
 
 /**

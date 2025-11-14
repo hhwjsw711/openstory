@@ -1,14 +1,24 @@
 /**
  * Storage Helpers
- * Utilities for working with Supabase Storage
- * Storage operations remain with Supabase - only database queries migrate to Drizzle
+ * Utilities for working with Cloudflare R2 Storage
+ * Migrated from Supabase Storage to R2 for better performance and cost efficiency
  */
 
-import { createServerClient } from '@/lib/supabase/server';
+import { S3Client } from '@aws-sdk/client-s3';
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
+  CopyObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
  * Storage bucket names
- * Centralized constants to avoid magic strings throughout the codebase
+ * These are now used as prefixes in a single R2 bucket
  */
 export const STORAGE_BUCKETS = {
   THUMBNAILS: 'thumbnails',
@@ -32,26 +42,52 @@ export type UploadResult = {
 };
 
 /**
- * Get the Supabase storage client
- * Wrapper for consistency with other helpers
- *
- * @returns Supabase storage client
- *
- * @example
- * ```ts
- * const storage = getStorageClient();
- * const { data } = await storage.from('thumbnails').list();
- * ```
+ * Create an S3 client configured for Cloudflare R2
  */
-export function getStorageClient() {
-  const supabase = createServerClient();
-  return supabase.storage;
+function createR2Client(): S3Client {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error(
+      'Missing required R2 environment variables: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY'
+    );
+  }
+
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
 }
 
 /**
- * Upload a file to Supabase Storage
+ * Get the R2 bucket name from environment
+ */
+function getR2BucketName(): string {
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!bucketName) {
+    throw new Error('R2_BUCKET_NAME environment variable is not set');
+  }
+  return bucketName;
+}
+
+/**
+ * Build the full R2 key with bucket prefix
+ * R2 uses a single bucket with prefixes instead of multiple buckets
+ */
+function buildR2Key(bucket: StorageBucket, path: string): string {
+  return `${bucket}/${path}`;
+}
+
+/**
+ * Upload a file to R2 Storage
  *
- * @param bucket - The storage bucket name
+ * @param bucket - The storage bucket name (used as prefix)
  * @param path - The file path within the bucket (e.g., 'team-id/sequence-id/frame-id.jpg')
  * @param file - The file to upload (File, Blob, or ArrayBuffer)
  * @param options - Optional upload options (upsert, content type, etc.)
@@ -79,50 +115,65 @@ export async function uploadFile(
     cacheControl?: string;
   }
 ): Promise<UploadResult> {
-  const storage = getStorageClient();
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
 
-  const { data, error } = await storage.from(bucket).upload(path, file, {
-    upsert: options?.upsert ?? false,
-    contentType: options?.contentType,
-    cacheControl: options?.cacheControl ?? '3600',
-  });
+  try {
+    // Convert file to Buffer if needed
+    let body: Buffer | Uint8Array;
+    if (file instanceof ArrayBuffer) {
+      body = Buffer.from(file);
+    } else {
+      // file is Blob or File
+      const arrayBuffer = await file.arrayBuffer();
+      body = Buffer.from(arrayBuffer);
+    }
 
-  if (error) {
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: body,
+      ContentType: options?.contentType,
+      CacheControl: options?.cacheControl ?? 'public, max-age=31536000', // 1 year default
+    });
+
+    await client.send(command);
+
+    // Generate a signed URL (1 hour default expiry for security)
+    const publicUrl = await getSignedUrl(bucket, path);
+
+    return {
+      path: key,
+      publicUrl,
+      fullPath: key,
+    };
+  } catch (error) {
     throw new Error(
-      `Failed to upload file to ${bucket}/${path}: ${error.message}`
+      `Failed to upload file to ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
-
-  if (!data) {
-    throw new Error(`No data returned from upload to ${bucket}/${path}`);
-  }
-
-  const publicUrl = getPublicUrl(bucket, data.path);
-
-  return {
-    path: data.path,
-    publicUrl,
-    fullPath: data.fullPath,
-  };
 }
 
 /**
  * Get the public URL for a file in storage
- * This works for public buckets. For private buckets, use getSignedUrl instead.
+ * For R2, we use signed URLs since buckets are private
  *
  * @param bucket - The storage bucket name
  * @param path - The file path within the bucket
- * @returns Public URL for the file
+ * @returns Public URL for the file (signed URL with 1 hour expiry)
  *
  * @example
  * ```ts
  * const url = getPublicUrl(STORAGE_BUCKETS.THUMBNAILS, 'team-id/frame.jpg');
  * ```
  */
-export function getPublicUrl(bucket: StorageBucket, path: string): string {
-  const storage = getStorageClient();
-  const { data } = storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+export function getPublicUrl(_bucket: StorageBucket, _path: string): string {
+  // For R2, we need to use signed URLs, but this is a sync function
+  // so we return a placeholder. Use getSignedUrl instead for actual URLs.
+  throw new Error(
+    'getPublicUrl is not supported with R2. Use getSignedUrl instead.'
+  );
 }
 
 /**
@@ -144,22 +195,23 @@ export async function getSignedUrl(
   path: string,
   expiresIn = 3600
 ): Promise<string> {
-  const storage = getStorageClient();
-  const { data, error } = await storage
-    .from(bucket)
-    .createSignedUrl(path, expiresIn);
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
 
-  if (error) {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    const url = await getS3SignedUrl(client, command, { expiresIn });
+    return url;
+  } catch (error) {
     throw new Error(
-      `Failed to create signed URL for ${bucket}/${path}: ${error.message}`
+      `Failed to create signed URL for ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
-
-  if (!data?.signedUrl) {
-    throw new Error(`No signed URL returned for ${bucket}/${path}`);
-  }
-
-  return data.signedUrl;
 }
 
 /**
@@ -178,12 +230,20 @@ export async function deleteFile(
   bucket: StorageBucket,
   path: string
 ): Promise<void> {
-  const storage = getStorageClient();
-  const { error } = await storage.from(bucket).remove([path]);
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
 
-  if (error) {
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    await client.send(command);
+  } catch (error) {
     throw new Error(
-      `Failed to delete file from ${bucket}/${path}: ${error.message}`
+      `Failed to delete file from ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -207,11 +267,24 @@ export async function deleteFiles(
   bucket: StorageBucket,
   paths: string[]
 ): Promise<void> {
-  const storage = getStorageClient();
-  const { error } = await storage.from(bucket).remove(paths);
+  if (paths.length === 0) return;
 
-  if (error) {
-    throw new Error(`Failed to delete files from ${bucket}: ${error.message}`);
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+
+  try {
+    const command = new DeleteObjectsCommand({
+      Bucket: bucketName,
+      Delete: {
+        Objects: paths.map((path) => ({ Key: buildR2Key(bucket, path) })),
+      },
+    });
+
+    await client.send(command);
+  } catch (error) {
+    throw new Error(
+      `Failed to delete files from ${bucket}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -239,20 +312,44 @@ export async function listFiles(
     sortBy?: { column: string; order: 'asc' | 'desc' };
   }
 ) {
-  const storage = getStorageClient();
-  const { data, error } = await storage.from(bucket).list(path, options);
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const prefix = buildR2Key(bucket, path);
 
-  if (error) {
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: prefix,
+      MaxKeys: options?.limit,
+    });
+
+    const response = await client.send(command);
+
+    return (
+      response.Contents?.map((item) => ({
+        name: item.Key?.replace(`${prefix}/`, '') ?? '',
+        id: item.Key ?? '',
+        updated_at: item.LastModified?.toISOString() ?? '',
+        created_at: item.LastModified?.toISOString() ?? '',
+        last_accessed_at: item.LastModified?.toISOString() ?? '',
+        metadata: {
+          size: item.Size ?? 0,
+          mimetype: '',
+          cacheControl: '',
+          eTag: item.ETag ?? '',
+        },
+      })) ?? []
+    );
+  } catch (error) {
     throw new Error(
-      `Failed to list files in ${bucket}/${path}: ${error.message}`
+      `Failed to list files in ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
-
-  return data ?? [];
 }
 
 /**
  * Move or rename a file
+ * In R2, this is implemented as copy + delete
  *
  * @param bucket - The storage bucket name
  * @param fromPath - Current file path
@@ -273,14 +370,8 @@ export async function moveFile(
   fromPath: string,
   toPath: string
 ): Promise<void> {
-  const storage = getStorageClient();
-  const { error } = await storage.from(bucket).move(fromPath, toPath);
-
-  if (error) {
-    throw new Error(
-      `Failed to move file from ${fromPath} to ${toPath}: ${error.message}`
-    );
-  }
+  await copyFile(bucket, fromPath, toPath);
+  await deleteFile(bucket, fromPath);
 }
 
 /**
@@ -305,12 +396,22 @@ export async function copyFile(
   fromPath: string,
   toPath: string
 ): Promise<void> {
-  const storage = getStorageClient();
-  const { error } = await storage.from(bucket).copy(fromPath, toPath);
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const sourceKey = buildR2Key(bucket, fromPath);
+  const destKey = buildR2Key(bucket, toPath);
 
-  if (error) {
+  try {
+    const command = new CopyObjectCommand({
+      Bucket: bucketName,
+      CopySource: `${bucketName}/${sourceKey}`,
+      Key: destKey,
+    });
+
+    await client.send(command);
+  } catch (error) {
     throw new Error(
-      `Failed to copy file from ${fromPath} to ${toPath}: ${error.message}`
+      `Failed to copy file from ${fromPath} to ${toPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -333,17 +434,18 @@ export async function fileExists(
   bucket: StorageBucket,
   path: string
 ): Promise<boolean> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
   try {
-    const storage = getStorageClient();
-    const { data, error } = await storage.from(bucket).list(path, {
-      limit: 1,
+    const command = new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
     });
 
-    if (error) {
-      return false;
-    }
-
-    return (data?.length ?? 0) > 0;
+    await client.send(command);
+    return true;
   } catch {
     return false;
   }

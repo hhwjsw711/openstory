@@ -11,16 +11,16 @@
 
 // Team Permission Helpers
 export {
-  getUserTeam,
-  getUserDefaultTeam,
   canAccessTeam,
   canManageTeam,
   getTeamMembers,
+  getUserDefaultTeam,
+  getUserTeam,
   getUserTeams,
   requireTeamAccess,
   requireTeamManagement,
-  type UserTeamMembership,
   type TeamMemberWithDetails,
+  type UserTeamMembership,
 } from './team-permissions';
 
 // User and Team Creation
@@ -31,82 +31,81 @@ export {
 
 // Storage Helpers
 export {
-  getStorageClient,
-  uploadFile,
-  getPublicUrl,
-  getSignedUrl,
+  copyFile,
   deleteFile,
   deleteFiles,
+  fileExists,
+  getPublicUrl,
+  getSignedUrl,
   listFiles,
   moveFile,
-  copyFile,
-  fileExists,
   STORAGE_BUCKETS,
+  uploadFile,
   type StorageBucket,
   type UploadResult,
 } from './storage';
 
 // Transaction Utilities
 export {
-  withTransaction,
   withBatchTransaction,
-  withRetryTransaction,
   withIsolationLevel,
+  withRetryTransaction,
   withSavepoint,
-  type TransactionCallback,
+  withTransaction,
   type IsolationLevel,
+  type TransactionCallback,
 } from './transactions';
 
 // Common Queries
 export {
+  countTeamSequences,
+  getCharacterById,
+  getPublicStyles,
+  getRecentlyUsedStyles,
+  getSequenceById,
+  getSequencesWithoutStyle,
   getSequenceWithFrames,
+  getStyleById,
+  getTeamAndPublicStyles,
+  getTeamAudio,
+  getTeamById,
+  getTeamCharacters,
+  getTeamLibrary,
   getTeamSequences,
   getTeamStyles,
-  getPublicStyles,
-  getTeamAndPublicStyles,
-  getTeamCharacters,
   getTeamVfx,
-  getTeamAudio,
-  getSequenceById,
-  getStyleById,
-  getCharacterById,
-  getTeamById,
-  getTeamLibrary,
-  countTeamSequences,
-  getSequencesWithoutStyle,
-  getRecentlyUsedStyles,
   type SequenceWithFrames,
 } from './queries';
 
 // Frame Operations
 export {
-  // Core CRUD
-  getFrameById,
-  getSequenceFrames,
+  countSequenceFrames,
   createFrame,
-  updateFrame,
-  deleteFrame,
-  deleteSequenceFrames,
-  // Frame Ordering
-  reorderFrames,
-  moveFrame,
-  swapFrames,
   // Bulk Operations
   createFramesBulk,
-  updateFramesBulk,
+  deleteFrame,
   deleteFramesBulk,
-  // Status/Content Operations
-  updateFrameThumbnail,
-  updateFrameVideo,
-  markFrameComplete,
+  deleteSequenceFrames,
+  // Core CRUD
+  getFrameById,
   getFramesWithoutThumbnails,
   getFramesWithoutVideo,
   // Advanced Queries
   getFrameWithSequence,
-  countSequenceFrames,
   getIncompleteFrames,
+  getSequenceFrames,
+  markFrameComplete,
+  moveFrame,
+  // Frame Ordering
+  reorderFrames,
+  swapFrames,
+  updateFrame,
+  updateFramesBulk,
+  // Status/Content Operations
+  updateFrameThumbnail,
+  updateFrameVideo,
+  type FrameFilters,
+  type FrameOrderBy,
   // Types
   type FrameWithSequence,
-  type FrameOrderBy,
-  type FrameFilters,
 } from './frames';

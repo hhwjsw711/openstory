@@ -87,6 +87,13 @@ BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 # GOOGLE_CLIENT_ID=your-google-client-id
 # GOOGLE_CLIENT_SECRET=your-google-client-secret
 
+# Cloudflare R2 Storage
+# R2_ACCOUNT_ID=your-cloudflare-account-id
+# R2_ACCESS_KEY_ID=your-r2-access-key-id
+# R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+# R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for production
+# R2_PUBLIC_URL=https://pub-xxxxx.r2.dev  # optional, for custom domain
+
 # Optional: AI Service Keys (add as needed)
 # OPENROUTER_KEY=
 # CEREBRAS_API_KEY=
@@ -110,6 +117,14 @@ if [ -n "$QSTASH_TUNNEL_URL" ]; then
     echo "  QStash Tunnel URL: $QSTASH_TUNNEL_URL"
 fi
 echo ""
-echo -e "${YELLOW}💡 Tip: You can override QStash values by setting them as environment variables before running this script${NC}"
-echo -e "${YELLOW}Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
+echo -e "${YELLOW}💡 Tips:${NC}"
+echo -e "${YELLOW}   • You can override QStash values by setting them as environment variables before running this script${NC}"
+echo -e "${YELLOW}   • Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
+echo -e "${YELLOW}   • Don't forget to set up R2 credentials for file storage (see R2 section in .env)${NC}"
+echo ""
+echo -e "${BLUE}Next steps for R2 setup:${NC}"
+echo "   1. Run: bun scripts/setup-r2-buckets.sh"
+echo "   2. Create R2 API token in Cloudflare dashboard"
+echo "   3. Add R2 credentials to $ENV_FILE"
+echo ""
 echo -e "${GREEN}Setup complete! You can now run 'bun dev'${NC}"
