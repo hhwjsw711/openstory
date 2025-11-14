@@ -1,4 +1,3 @@
-import { AppLayout } from '@/components/layout';
 import { Providers } from '@/components/providers';
 import type { Metadata } from 'next';
 import './global.css';
@@ -17,9 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        <Providers>
-          <AppLayout>{children}</AppLayout>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

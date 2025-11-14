@@ -1,10 +1,5 @@
 'use client';
 import { PageContainer } from '@/components/layout';
-import {
-  PageDescription,
-  PageHeader,
-  PageHeading,
-} from '@/components/typography';
 import { ScriptView } from '@/components/views/script-view';
 import { useUser } from '@/hooks/use-user';
 import { useRouter } from 'next/navigation';
@@ -31,12 +26,7 @@ export default function NewSequencePage() {
     <div className="h-full overflow-auto">
       <PageContainer maxWidth="narrow">
         {/* Page Header */}
-        <PageHeader>
-          <PageHeading>Create a new sequence</PageHeading>
-          <PageDescription>
-            Transform your script into a professional video sequence.
-          </PageDescription>
-        </PageHeader>
+
         <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
       </PageContainer>
     </div>
