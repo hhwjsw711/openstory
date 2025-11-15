@@ -46,6 +46,7 @@ export const auth = betterAuth({
   // Production uses custom domain, previews use Vercel URLs
   trustedOrigins: [
     'https://app.velro.ai', // Production custom domain
+    'https://railway.velro.ai', // Railway custom domain
     'https://velro-*.vercel.app', // Production deployments
     'https://velro-git-*.vercel.app', // Branch preview deployments
     ...(process.env.NODE_ENV === 'development'
