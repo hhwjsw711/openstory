@@ -1,14 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
-import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useEstimateImageCostByFal } from '@/hooks/use-fal-models';
 import { cn } from '@/lib/utils';
 import type { Frame, Style } from '@/types/database';
 import { Copy, Play, Video } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 import type * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 
@@ -80,9 +77,6 @@ export const StoryboardFrameWithScript: React.FC<
     },
     []
   );
-
-  // Auth navigation for redirect preservation
-  const { loginUrl } = useAuthNavigation();
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -518,14 +512,6 @@ export const StoryboardFrameWithScript: React.FC<
           (frame.videoError && frame.videoStatus === 'failed')) && (
           <div className="text-xs text-destructive mt-1">
             {motionError || frame.videoError}
-            {motionError === MOTION_ACCESS_DENIED_MESSAGE && (
-              <Link
-                href={loginUrl}
-                className="ml-2 underline text-primary hover:text-primary/80"
-              >
-                Sign in
-              </Link>
-            )}
           </div>
         )}
 

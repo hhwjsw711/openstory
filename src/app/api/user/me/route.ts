@@ -13,11 +13,11 @@ export async function GET() {
     const session = await getSession();
 
     if (!session?.user) {
-      // No session exists - signal client to create anonymous session
+      // No session exists - authentication required
       return NextResponse.json(
         {
           success: false,
-          message: 'REQUIRES_CLIENT_AUTH',
+          message: 'Authentication required',
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -25,7 +25,6 @@ export async function GET() {
     }
 
     const authUser = session.user;
-    const isAnonymous = authUser.isAnonymous === true;
 
     // Ensure user and team exist - this handles both:
     // 1. User doesn't exist in database (creates user + team)
@@ -52,8 +51,7 @@ export async function GET() {
         success: true,
         data: {
           user: ensureResult.data,
-          isAuthenticated: !isAnonymous,
-          isAnonymous,
+          isAuthenticated: true,
           teamId: teamMembership?.teamId,
           teamRole: teamMembership?.role,
           teamName: teamMembership?.teamName,

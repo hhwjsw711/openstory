@@ -309,16 +309,6 @@ export function AuthForm({
             </p>
           )}
         </div>
-
-        {/* Continue as guest */}
-        <div className="text-center pt-4 border-t">
-          <Link
-            href="/sequences"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Continue as guest →
-          </Link>
-        </div>
       </CardContent>
     </Card>
   );

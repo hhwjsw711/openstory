@@ -154,7 +154,9 @@ export const ScriptView: FC<{
     <Card className={flat ? 'border-none' : ''}>
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle>Describe a moment, a mood, or a script</CardTitle>{' '}
+          <CardTitle className="text-2xl font-extralight pb-8">
+            Tell your story
+          </CardTitle>
         </CardHeader>
         <CardContent className="@container space-y-4">
           <div className="flex flex-col @lg:flex-row gap-4">

@@ -3,14 +3,11 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/motion
  */
 
-import {
-  requireTeamMemberAccess,
-  requireUser,
-  validateMotionAccess,
-} from '@/lib/auth/action-utils';
+import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import {
   createErrorResponse,
   createSuccessResponse,
+  requireAuth,
 } from '@/lib/auth/api-utils';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { ValidationError } from '@/lib/errors';
@@ -39,9 +36,9 @@ export async function POST(
     const body = await request.json();
     const validated = generateMotionSchema.parse(body);
 
-    // Authenticate user (motion requires authenticated users)
-    const user = await requireUser();
-    validateMotionAccess(user);
+    // Authenticate user
+    const authResult = await requireAuth(request);
+    const user = authResult.user;
 
     // Get frame with sequence info
     const frameData = await getFrameWithSequence(frameId);
