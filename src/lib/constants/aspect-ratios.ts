@@ -44,6 +44,21 @@ export const aspectRatioToImageSize = (aspectRatio: AspectRatio): ImageSize => {
 };
 
 /**
+ * Maps aspect ratios to image size presets for image generation.
+ * Defaults to landscape_16_9 if aspect ratio is not recognized.
+ */
+export const aspectRatioToDimensions = (
+  aspectRatio: AspectRatio
+): { width: number; height: number } => {
+  const mapping: Record<AspectRatio, { width: number; height: number }> = {
+    '16:9': { width: 1600, height: 900 },
+    '9:16': { width: 900, height: 1600 },
+    '1:1': { width: 1000, height: 1000 },
+  };
+  return mapping[aspectRatio] ?? { width: 1600, height: 900 };
+};
+
+/**
  * Maps aspect ratios to Tailwind CSS aspect ratio class names.
  * Used for displaying images and videos in the UI with correct proportions.
  */

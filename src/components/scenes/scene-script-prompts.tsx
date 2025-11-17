@@ -110,6 +110,36 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     if (!frame?.id || !frame?.sequenceId) return;
 
     setIsRegenerating(true);
+
+    // Optimistic update for frame list query
+    queryClient.setQueryData<Frame[]>(
+      ['frames', frame.sequenceId],
+      (oldFrames) => {
+        if (!oldFrames) return oldFrames;
+        return oldFrames.map((f) =>
+          f.id === frame.id
+            ? {
+                ...f,
+                thumbnailStatus: 'generating' as const,
+                imagePrompt: editedPrompt || f.imagePrompt,
+                imageModel: selectedModel || f.imageModel,
+              }
+            : f
+        );
+      }
+    );
+
+    // Optimistic update for individual frame query
+    queryClient.setQueryData<Frame>(['frame', frame.id], (oldFrame) => {
+      if (!oldFrame) return oldFrame;
+      return {
+        ...oldFrame,
+        thumbnailStatus: 'generating' as const,
+        imagePrompt: editedPrompt || oldFrame.imagePrompt,
+        imageModel: selectedModel || oldFrame.imageModel,
+      };
+    });
+
     try {
       const response = await fetch(
         `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate`,
@@ -127,15 +157,17 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         throw new Error('Failed to regenerate image');
       }
 
-      // Invalidate frame query to refresh status
+      // Don't invalidate immediately - let auto-polling pick up server updates
+      // The optimistic update shows 'generating' instantly, and the workflow
+      // will update the server status which auto-polling will detect
+    } catch (error) {
+      console.error('Failed to regenerate image:', error);
+
+      // Rollback on error - set status to failed
       await queryClient.invalidateQueries({
         queryKey: ['frames', frame.sequenceId],
       });
-      await queryClient.invalidateQueries({
-        queryKey: ['frame', frame.id],
-      });
-    } catch (error) {
-      console.error('Failed to regenerate image:', error);
+      await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
     } finally {
       setIsRegenerating(false);
     }

@@ -5,12 +5,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
 import {
   type AspectRatio,
+  aspectRatioToDimensions,
   getAspectRatioClassName,
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { AlertCircle, VideoIcon } from 'lucide-react';
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 
@@ -39,6 +41,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
 }) => {
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
+  const imageDimensions = aspectRatioToDimensions(aspectRatio);
   // Get current frame and next frame
   const [currentFrameIndex, setCurrentFrameIndex] = useState(
     frames?.findIndex((frame) => frame.id === selectedFrameId) ?? -1
@@ -118,30 +121,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   // Get scene title for alt text
   const title = currentFrame.metadata?.metadata?.title;
 
-  // If image tab is selected, show only the thumbnail
-  if (selectedTab === 'image-prompt') {
-    return (
-      <div
-        className={cn(
-          'relative overflow-hidden',
-          getAspectRatioClassName(aspectRatio),
-          !currentFrame.thumbnailUrl && 'bg-muted',
-          className
-        )}
-      >
-        {currentFrame.thumbnailUrl ? (
-          <img
-            src={currentFrame.thumbnailUrl}
-            alt={title || 'Scene thumbnail'}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <Skeleton className="w-full h-full" />
-        )}
-      </div>
-    );
-  }
-
   return (
     <>
       {hasFailedVideo ? (
@@ -156,10 +135,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         >
           {/* Show thumbnail as background if available */}
           {currentFrame.thumbnailUrl && (
-            <img
+            <Image
               src={currentFrame.thumbnailUrl}
               alt={title || 'Scene thumbnail'}
               className={cn(' object-cover', className)}
+              width={imageDimensions.width}
+              height={imageDimensions.height}
             />
           )}
 
@@ -180,7 +161,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       ) : (
         <VideoPlayer
           key={currentFrame.videoUrl} // Force re-render when video changes
-          src={currentFrame.videoUrl || ''}
+          src={
+            selectedTab === 'image-prompt' ? '' : currentFrame.videoUrl || ''
+          }
           posterSrc={currentFrame.thumbnailUrl}
           aspectRatio={aspectRatio}
           className={className}

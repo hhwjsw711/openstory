@@ -6,6 +6,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { memo } from 'react';
 
 type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
@@ -15,7 +16,7 @@ type SceneThumbnailProps = {
   className?: string;
 };
 
-export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
+const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
   thumbnailStatus = 'pending',
   alt,
@@ -58,3 +59,20 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
     </div>
   );
 };
+
+// Custom equality check to prevent unnecessary re-renders during polling
+// Only re-render when thumbnail-related fields actually change
+const areEqual = (
+  prevProps: SceneThumbnailProps,
+  nextProps: SceneThumbnailProps
+): boolean => {
+  return (
+    prevProps.thumbnailUrl === nextProps.thumbnailUrl &&
+    prevProps.thumbnailStatus === nextProps.thumbnailStatus &&
+    prevProps.alt === nextProps.alt &&
+    prevProps.aspectRatio === nextProps.aspectRatio &&
+    prevProps.className === nextProps.className
+  );
+};
+
+export const SceneThumbnail = memo(SceneThumbnailComponent, areEqual);
