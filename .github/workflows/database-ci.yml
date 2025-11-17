@@ -192,6 +192,7 @@ jobs:
           fi
 
           echo "Configuring Railway environment variables via GraphQL API..."
+          echo "Project ID: ${RAILWAY_PROJECT_ID:0:8}..."
 
           ENV_NAME="velro-pr-${{ github.event.pull_request.number }}"
           echo "Target environment: $ENV_NAME"
@@ -201,6 +202,18 @@ jobs:
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"query":"query($projectId:String!){project(id:$projectId){services{edges{node{id}}}environments{edges{node{id name}}}}}","variables":{"projectId":"'"$RAILWAY_PROJECT_ID"'"}}')
+
+          # Check for GraphQL errors
+          if echo "$PROJECT_RESPONSE" | grep -q '"errors"'; then
+            echo "Error: Railway API returned an error"
+            echo "Response: $PROJECT_RESPONSE"
+            echo ""
+            echo "Troubleshooting:"
+            echo "1. Verify RAILWAY_PROJECT_ID is correct (check Railway dashboard URL)"
+            echo "2. Ensure RAILWAY_API_TOKEN is a workspace-level token with project access"
+            echo "3. Check that the token hasn't expired"
+            exit 1
+          fi
 
           # Get service ID (first service in project)
           SERVICE_ID=$(echo "$PROJECT_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
