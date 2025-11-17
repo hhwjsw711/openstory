@@ -52,16 +52,7 @@ export const frameGenerationStatus = pgEnum('frame_generation_status', [
  * Type for sequence metadata JSONB field
  */
 export type SequenceMetadata = {
-  frameGeneration?: {
-    startedAt?: string;
-    expectedFrameCount?: number | null;
-    completedFrameCount?: number;
-    options?: Record<string, unknown>;
-    error?: string | null;
-    failedAt?: string | null;
-    thumbnailsGenerating?: boolean;
-    completedAt?: string;
-  };
+  characterBible?: unknown; // Character bible structure from script analysis
   [key: string]: unknown; // Allow other fields
 };
 

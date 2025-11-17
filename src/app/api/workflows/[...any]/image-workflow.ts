@@ -1,9 +1,6 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-import { frames, sequences } from '@/lib/db/schema';
 import {
   generateImageWithProvider,
   ImageGenerationParams,
@@ -14,7 +11,6 @@ import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
-import { eq } from 'drizzle-orm';
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -108,65 +104,6 @@ export const generateImageWorkflow = createWorkflow(
         `Image uploaded to storage: ${result.path}`
       );
       return { url: result.url, path: result.path };
-    });
-
-    await context.run('update-sequence-status', async () => {
-      if (!input.sequenceId) {
-        return { updated: false };
-      }
-      // Check if all frames for this sequence now have thumbnails
-      const allFrames = await db
-        .select({ id: frames.id, thumbnailUrl: frames.thumbnailUrl })
-        .from(frames)
-        .where(eq(frames.sequenceId, input.sequenceId));
-
-      if (allFrames.length > 0) {
-        const framesWithThumbnails = allFrames.filter(
-          (frame) => frame.thumbnailUrl
-        );
-        const allFramesHaveThumbnails =
-          framesWithThumbnails.length === allFrames.length;
-
-        if (allFramesHaveThumbnails) {
-          const sequence = await getSequenceById(input.sequenceId);
-
-          if (sequence) {
-            const existingMetadata =
-              (sequence.metadata as Record<string, unknown>) || {};
-            const frameGeneration =
-              (existingMetadata.frameGeneration as Record<string, unknown>) ||
-              {};
-
-            const updatedMetadata = {
-              ...existingMetadata,
-              frameGeneration: {
-                ...frameGeneration,
-                status: 'completed',
-                completedAt: new Date().toISOString(),
-                thumbnailsGenerating: false,
-              },
-            };
-
-            try {
-              await db
-                .update(sequences)
-                .set({
-                  metadata: updatedMetadata,
-                  status: 'completed',
-                  updatedAt: new Date(),
-                })
-                .where(eq(sequences.id, input.sequenceId));
-            } catch (error) {
-              console.error(
-                '[ImageWorkflow]',
-                `Failed to update sequence ${input.sequenceId}: ${error instanceof Error ? error.message : 'Unknown error'}`
-              );
-            }
-          }
-        }
-      }
-
-      return { updated: true };
     });
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');

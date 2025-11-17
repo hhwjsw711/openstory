@@ -83,9 +83,6 @@ export async function POST(request: Request) {
           analysisModel: sequence.analysisModel,
         });
 
-        // Set status to 'processing' before triggering workflow
-        await sequenceService.updateSequenceStatus(sequence.id, 'processing');
-
         // Generate frames asynchronously via workflow
         const workflowInput: StoryboardWorkflowInput = {
           userId: user.id,
@@ -100,20 +97,13 @@ export async function POST(request: Request) {
           },
         };
 
-        try {
-          await triggerWorkflow('/storyboard', workflowInput);
-          console.log(
-            `[POST /api/sequences] Workflow triggered for sequence ${sequence.id}`
-          );
-        } catch (workflowError) {
-          // If workflow publish fails, mark sequence as failed
-          console.error(
-            `[POST /api/sequences] Failed to publish workflow for sequence ${sequence.id}:`,
-            workflowError
-          );
-          await sequenceService.updateSequenceStatus(sequence.id, 'failed');
-          throw workflowError;
-        }
+        // Trigger workflow with deduplication to prevent duplicates
+        await triggerWorkflow('/storyboard', workflowInput, {
+          deduplicationId: `storyboard-${sequence.id}`,
+        });
+        console.log(
+          `[POST /api/sequences] Workflow triggered for sequence ${sequence.id}`
+        );
 
         // Revalidate paths for this sequence
         revalidatePath(`/sequences/${sequence.id}`);
