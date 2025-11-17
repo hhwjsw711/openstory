@@ -8,25 +8,19 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}Setting up .env.development.local...${NC}"
+echo ""
+echo -e "${YELLOW}💡 Optional: Pull environment variables from your deployment platform${NC}"
+echo -e "${YELLOW}   • Vercel: vercel env pull .env.development.local${NC}"
+echo -e "${YELLOW}   • Railway: railway variables --kv > .env.development.local${NC}"
+echo -e "${YELLOW}   • Or continue to set up local defaults${NC}"
+echo ""
+read -p "Press Enter to continue with local setup, or Ctrl+C to cancel and pull from deployment platform..."
+echo ""
 
-# Check if Supabase is running
-echo -e "${BLUE}Checking Supabase status...${NC}"
-SUPABASE_STATUS=$(bunx supabase status 2>&1)
-
-if echo "$SUPABASE_STATUS" | grep -q "supabase local development setup"; then
-    echo -e "${GREEN}✓ Supabase is running${NC}"
-    
-    # Extract Supabase values
-    SUPABASE_URL=$(echo "$SUPABASE_STATUS" | grep "API URL" | awk '{print $3}')
-    SUPABASE_ANON_KEY=$(echo "$SUPABASE_STATUS" | grep "anon key" | awk '{print $3}')
-    SUPABASE_SERVICE_KEY=$(echo "$SUPABASE_STATUS" | grep "service_role key" | awk '{print $3}')
-    
-    # Database URL is typically: postgresql://postgres:postgres@localhost:54322/postgres
-    POSTGRES_URL="postgresql://postgres:postgres@localhost:54322/postgres"
-else
-    echo -e "${RED}✗ Supabase is not running. Please run: bun supabase:start${NC}"
-    exit 1
-fi
+# Setup local SQLite database with Turso
+echo -e "${BLUE}Setting up local SQLite database (Turso)...${NC}"
+TURSO_DATABASE_URL="file:local.db"
+echo -e "${GREEN}✓ Database configured for local development${NC}"
 
 # Setup QStash for local development
 echo -e "${BLUE}Setting up QStash for local development...${NC}"
@@ -50,11 +44,11 @@ read -p "Tunnel URL (optional): " QSTASH_TUNNEL_URL
 ENV_FILE=".env.development.local"
 
 cat > $ENV_FILE << EOF
-# Supabase (Local Development)
-NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_KEY
-POSTGRES_URL=$POSTGRES_URL
+# Turso (Local Development)
+# Using local SQLite file for development (fast, no network latency)
+# For production, use https:// URL with TURSO_AUTH_TOKEN
+TURSO_DATABASE_URL=$TURSO_DATABASE_URL
+# TURSO_AUTH_TOKEN not needed for local file: URLs
 
 # QStash
 QSTASH_URL=$QSTASH_URL
@@ -107,8 +101,7 @@ EOF
 echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
 echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
-echo "  Supabase URL: $SUPABASE_URL"
-echo "  Database URL: $POSTGRES_URL"
+echo "  Database: local.db (SQLite via Turso)"
 echo "  QStash URL: $QSTASH_URL"
 echo "  QStash Token: defaultUser (local dev defaults)"
 echo "  Upstash Workflow URL: $UPSTASH_WORKFLOW_URL"
@@ -122,9 +115,9 @@ echo -e "${YELLOW}   • You can override QStash values by setting them as envir
 echo -e "${YELLOW}   • Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
 echo -e "${YELLOW}   • Don't forget to set up R2 credentials for file storage (see R2 section in .env)${NC}"
 echo ""
-echo -e "${BLUE}Next steps for R2 setup:${NC}"
-echo "   1. Run: bun scripts/setup-r2-buckets.sh"
-echo "   2. Create R2 API token in Cloudflare dashboard"
+echo -e "${BLUE}Next steps:${NC}"
+echo "   1. Initialize database: bun db:setup"
+echo "   2. Setup R2 storage: bun scripts/setup-r2-buckets.sh"
 echo "   3. Add R2 credentials to $ENV_FILE"
 echo ""
-echo -e "${GREEN}Setup complete! You can now run 'bun dev'${NC}"
+echo -e "${GREEN}Setup complete! Run 'bun db:setup' then 'bun dev' to start${NC}"
