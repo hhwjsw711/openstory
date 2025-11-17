@@ -9,13 +9,19 @@ import {
   sqliteTable,
   text,
   index,
+  uniqueIndex,
   primaryKey,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
 
 // Enum values as constants (SQLite doesn't have native enums)
-export const TEAM_MEMBER_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+export const TEAM_MEMBER_ROLES = [
+  'owner',
+  'admin',
+  'member',
+  'viewer',
+] as const;
 export type TeamMemberRole = (typeof TEAM_MEMBER_ROLES)[number];
 
 export const INVITATION_STATUSES = [
@@ -46,9 +52,7 @@ export const teams = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    slugIdx: index('idx_teams_slug').on(table.slug).unique(),
-  })
+  (table) => [uniqueIndex('idx_teams_slug').on(table.slug)]
 );
 
 /**
@@ -69,11 +73,11 @@ export const teamMembers = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.teamId, table.userId] }),
-    teamIdIdx: index('idx_team_members_team_id').on(table.teamId),
-    userIdIdx: index('idx_team_members_user_id').on(table.userId),
-  })
+  (table) => [
+    primaryKey({ columns: [table.teamId, table.userId] }),
+    index('idx_team_members_team_id').on(table.teamId),
+    index('idx_team_members_user_id').on(table.userId),
+  ]
 );
 
 /**
@@ -110,19 +114,16 @@ export const teamInvitations = sqliteTable(
     acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
     declinedAt: integer('declined_at', { mode: 'timestamp' }),
   },
-  (table) => ({
-    emailIdx: index('idx_team_invitations_email').on(table.email),
-    expiresAtIdx: index('idx_team_invitations_expires_at').on(table.expiresAt),
-    statusIdx: index('idx_team_invitations_status').on(table.status),
-    teamIdIdx: index('idx_team_invitations_team_id').on(table.teamId),
-    tokenIdx: index('idx_team_invitations_token').on(table.token).unique(),
+  (table) => [
+    index('idx_team_invitations_email').on(table.email),
+    index('idx_team_invitations_expires_at').on(table.expiresAt),
+    index('idx_team_invitations_status').on(table.status),
+    index('idx_team_invitations_team_id').on(table.teamId),
+    uniqueIndex('idx_team_invitations_token').on(table.token),
     // Note: Partial unique index not supported in SQLite the same way
     // Enforce unique pending invitations in application logic or trigger
-    uniquePendingIdx: index('idx_team_invitations_unique_pending').on(
-      table.teamId,
-      table.email
-    ),
-  })
+    index('idx_team_invitations_unique_pending').on(table.teamId, table.email),
+  ]
 );
 
 // Relations

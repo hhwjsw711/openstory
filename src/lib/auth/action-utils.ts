@@ -7,7 +7,6 @@
  * @module lib/auth/action-utils
  */
 
-import { MOTION_ACCESS_DENIED_MESSAGE } from '@/constants';
 import type { User } from '@/lib/auth/config';
 import type { TeamRole } from '@/lib/auth/constants';
 import { hasMinimumRole } from '@/lib/auth/constants';
@@ -31,31 +30,6 @@ export async function requireUser(): Promise<User> {
 
   if (!user) {
     throw new Error('Authentication required');
-  }
-
-  return user;
-}
-
-/**
- * Get the current authenticated non-anonymous user
- *
- * Anonymous users are blocked from certain operations (e.g., motion generation).
- * This function ensures the user has a full account.
- *
- * @throws {Error} If no user session exists or user is anonymous
- * @returns {Promise<User>} The authenticated non-anonymous user object
- *
- * @example
- * ```typescript
- * const user = await requireAuthenticatedUser();
- * // User is guaranteed to have a full account (not anonymous)
- * ```
- */
-export async function requireAuthenticatedUser(): Promise<User> {
-  const user = await requireUser();
-
-  if (user.isAnonymous === true) {
-    throw new Error('Account required: please sign up or sign in to continue');
   }
 
   return user;
@@ -147,28 +121,6 @@ export async function requireTeamOwnerAccess(
 }
 
 /**
- * Verify user can generate motion (authenticated, non-anonymous)
- *
- * Motion generation requires a full account (not anonymous).
- * This function validates the user meets this requirement.
- *
- * @param {User} user - The user object to validate
- * @throws {Error} If user is anonymous (with specific motion access denied message)
- *
- * @example
- * ```typescript
- * const user = await requireUser();
- * validateMotionAccess(user);
- * // User can now generate motion
- * ```
- */
-export function validateMotionAccess(user: User): void {
-  if (user.isAnonymous === true) {
-    throw new Error(MOTION_ACCESS_DENIED_MESSAGE);
-  }
-}
-
-/**
  * Get authenticated user and verify team access in one call
  *
  * Convenience function that combines user authentication and team access verification.
@@ -190,33 +142,6 @@ export async function requireUserWithTeamAccess(
   minRole: TeamRole = 'member'
 ): Promise<{ user: User; role: TeamRole }> {
   const user = await requireUser();
-  const role = await requireTeamMemberAccess(user.id, teamId, minRole);
-
-  return { user, role };
-}
-
-/**
- * Get authenticated non-anonymous user and verify team access
- *
- * Combines authenticated user check and team access verification.
- * Useful for operations that require both a full account and team membership.
- *
- * @param {string} teamId - The team ID to check access for
- * @param {TeamRole} minRole - Minimum required role (default: "member")
- * @throws {Error} If user is anonymous or doesn't have team access
- * @returns {Promise<{ user: User; role: TeamRole }>} User and their role
- *
- * @example
- * ```typescript
- * const { user, role } = await requireAuthenticatedUserWithTeamAccess(teamId);
- * // User has full account and is a team member
- * ```
- */
-export async function requireAuthenticatedUserWithTeamAccess(
-  teamId: string,
-  minRole: TeamRole = 'member'
-): Promise<{ user: User; role: TeamRole }> {
-  const user = await requireAuthenticatedUser();
   const role = await requireTeamMemberAccess(user.id, teamId, minRole);
 
   return { user, role };

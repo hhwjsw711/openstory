@@ -4,11 +4,12 @@
  */
 
 import {
-  uploadFile,
-  getSignedUrl,
   deleteFile,
+  getSignedUrl,
+  getSignedUrlWithDownload,
   listFiles,
   STORAGE_BUCKETS,
+  uploadFile,
 } from '@/lib/db/helpers/storage';
 
 interface UploadVideoOptions {
@@ -18,12 +19,16 @@ interface UploadVideoOptions {
   frameId: string;
 }
 
-interface StorageResult {
-  success: boolean;
-  url?: string;
-  path?: string;
-  error?: string;
-}
+type StorageResult =
+  | {
+      success: true;
+      url: string;
+      path: string;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
 /**
  * Upload a video from URL to R2 Storage
@@ -94,6 +99,29 @@ export async function getSignedVideoUrl(
         error instanceof Error ? error.message : 'Failed to create signed URL',
     };
   }
+}
+
+/**
+ * Generate a signed download URL with custom filename
+ * Uses AWS ResponseContentDisposition to force browser download
+ *
+ * @param path - R2 storage path (e.g., 'teams/123/sequences/456/frames/789/motion.mp4')
+ * @param filename - Download filename (e.g., 'desert-scene_velro.mp4')
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+ */
+export async function getVideoDownloadUrl(
+  path: string,
+  filename: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const url = await getSignedUrlWithDownload(
+    STORAGE_BUCKETS.VIDEOS,
+    path,
+    filename,
+    expiresIn
+  );
+
+  return url;
 }
 
 /**

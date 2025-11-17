@@ -6,27 +6,24 @@
 import { styles, teams } from '@/lib/db/schema';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 
 const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
 
 async function seed() {
-  const connectionString = process.env.POSTGRES_URL;
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (!connectionString) {
-    throw new Error('POSTGRES_URL environment variable is not set');
+  if (!tursoUrl || !tursoToken) {
+    throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
   }
 
-  const isLocalDevelopment =
-    connectionString.includes('localhost') ||
-    connectionString.includes('127.0.0.1');
-
-  const sql = postgres(connectionString, {
-    max: 1,
-    ssl: isLocalDevelopment ? false : 'require',
+  const client = createClient({
+    url: tursoUrl,
+    authToken: tursoToken,
   });
-  const db = drizzle(sql);
+  const db = drizzle(client);
 
   try {
     console.log('🌱 Seeding database...\n');
@@ -75,7 +72,7 @@ async function seed() {
     console.error('❌ Error seeding database:', error);
     throw error;
   } finally {
-    await sql.end();
+    client.close();
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
 import {
   type AspectRatio,
   getAspectRatioClassName,
@@ -58,6 +59,19 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         )
       : undefined;
 
+  // Check video status
+  const hasCompletedVideo =
+    currentFrame &&
+    currentFrame.videoStatus === 'completed' &&
+    currentFrame.videoUrl;
+  const hasFailedVideo = currentFrame && currentFrame.videoStatus === 'failed';
+
+  // Fetch download URL with proper Content-Disposition header
+  const { data: downloadData } = useFrameDownloadUrl(
+    currentFrame?.id,
+    !!hasCompletedVideo // Only fetch when video is available
+  );
+
   // Handle video end - move to next frame or call onEnded
   const handleEnded = useCallback(() => {
     if (nextFrame) {
@@ -72,9 +86,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   // Show skeleton when frames are loading
   if (!frames || frames.length === 0) {
     return (
-      <Skeleton
-        className={cn(className, getAspectRatioClassName(aspectRatio))}
-      />
+      <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
+        <Skeleton className="w-full h-full" />
+      </div>
     );
   }
 
@@ -88,24 +102,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Check video status
-  const hasCompletedVideo =
-    currentFrame.videoStatus === 'completed' && currentFrame.videoUrl;
-  const hasFailedVideo = currentFrame.videoStatus === 'failed';
-
-  // Generate a descriptive filename for download
-  const title = currentFrame.metadata?.metadata?.title;
-  const sanitizedTitle = title
-    ? title
-        .replace(/[^a-z0-9\s-]/gi, '')
-        .replace(/\s+/g, '-')
-        .toLowerCase()
-        .substring(0, 100) // Limit length
-    : '';
+  // Use filename from API (includes sequence + scene title) or generate fallback
   const downloadFilename =
-    sanitizedTitle.length > 0
-      ? `${sanitizedTitle}.mp4`
-      : `scene-${currentFrame.id}.mp4`;
+    downloadData?.filename || `scene-${currentFrame.id}_velro.mp4`;
+
+  // Get scene title for alt text
+  const title = currentFrame.metadata?.metadata?.title;
 
   return (
     <>
@@ -152,11 +154,11 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           autoPlay={shouldAutoPlay}
           enableDownload={!!currentFrame.videoUrl}
           downloadFilename={downloadFilename}
+          downloadUrl={downloadData?.downloadUrl}
           onTimeUpdate={onTimeUpdate}
           onEnded={handleEnded}
         />
       )}
-
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">

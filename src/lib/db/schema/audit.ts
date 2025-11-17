@@ -1,9 +1,5 @@
-import {
-  integer,
-  sqliteTable,
-  text,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { desc } from 'drizzle-orm';
+import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { sequences } from './sequences';
 import { teams } from './teams';
@@ -60,16 +56,12 @@ export const scriptAnalysisAudit = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    sequenceIdIdx: index('script_analysis_audit_sequence_id_idx').on(
-      table.sequenceId
-    ),
-    teamIdIdx: index('script_analysis_audit_team_id_idx').on(table.teamId),
-    createdAtIdx: index('script_analysis_audit_created_at_idx').on(
-      table.createdAt.desc()
-    ),
-    statusIdx: index('script_analysis_audit_status_idx').on(table.status),
-  })
+  (table) => [
+    index('script_analysis_audit_sequence_id_idx').on(table.sequenceId),
+    index('script_analysis_audit_team_id_idx').on(table.teamId),
+    index('script_analysis_audit_created_at_idx').on(desc(table.createdAt)),
+    index('script_analysis_audit_status_idx').on(table.status),
+  ]
 );
 
 export type ScriptAnalysisAudit = typeof scriptAnalysisAudit.$inferSelect;

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { LogIn, LogOut, User, UserPlus } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { useUser } from '@/hooks/use-user';
 import { useSession } from '@/lib/auth/client';
 import { authClient } from '@/lib/auth/client';
@@ -26,34 +25,13 @@ import { authClient } from '@/lib/auth/client';
 export function UserBadge() {
   const { data: userData, isLoading } = useUser();
   const { data: session } = useSession();
-  const { loginUrl, signupUrl } = useAuthNavigation();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state or no user data
+  if (isLoading || !userData) {
     return (
       <div className="flex items-center gap-2">
         <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-      </div>
-    );
-  }
-
-  // Anonymous user - show login/signup buttons
-  if (!userData || userData.isAnonymous) {
-    return (
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={loginUrl}>
-            <LogIn className="h-4 w-4 mr-2" />
-            Sign In
-          </Link>
-        </Button>
-        <Button size="sm" asChild>
-          <Link href={signupUrl}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Sign Up
-          </Link>
-        </Button>
       </div>
     );
   }

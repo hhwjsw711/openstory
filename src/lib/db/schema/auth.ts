@@ -37,17 +37,14 @@ export const user = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull()
       .$onUpdate(() => new Date()),
-    isAnonymous: integer('is_anonymous', { mode: 'boolean' }).default(false),
-    fullName: text('full_name'),
-    avatarUrl: text('avatar_url'),
+    fullName: text(),
+    avatarUrl: text(),
     onboardingCompleted: integer('onboarding_completed', {
       mode: 'boolean',
     }).default(false),
     accessCode: text(),
   },
-  (table) => ({
-    emailIdx: uniqueIndex('idx_user_email').on(table.email),
-  })
+  (table) => [uniqueIndex('idx_user_email').on(table.email)]
 );
 
 /**
@@ -72,11 +69,11 @@ export const session = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => ({
-    expiresAtIdx: index('idx_session_expires_at').on(table.expiresAt),
-    tokenIdx: uniqueIndex('idx_session_token').on(table.token),
-    userIdIdx: index('idx_session_user_id').on(table.userId),
-  })
+  (table) => [
+    index('idx_session_expires_at').on(table.expiresAt),
+    uniqueIndex('idx_session_token').on(table.token),
+    index('idx_session_user_id').on(table.userId),
+  ]
 );
 
 /**
@@ -110,13 +107,10 @@ export const account = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    providerIdx: uniqueIndex('idx_account_provider').on(
-      table.providerId,
-      table.accountId
-    ),
-    userIdIdx: index('idx_account_user_id').on(table.userId),
-  })
+  (table) => [
+    uniqueIndex('idx_account_provider').on(table.providerId, table.accountId),
+    index('idx_account_user_id').on(table.userId),
+  ]
 );
 
 /**
@@ -137,10 +131,10 @@ export const verification = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    expiresAtIdx: index('idx_verification_expires_at').on(table.expiresAt),
-    identifierIdx: index('idx_verification_identifier').on(table.identifier),
-  })
+  (table) => [
+    index('idx_verification_expires_at').on(table.expiresAt),
+    index('idx_verification_identifier').on(table.identifier),
+  ]
 );
 
 // Relations

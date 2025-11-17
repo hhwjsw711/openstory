@@ -54,10 +54,10 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 }
 
 // Create database connections
-const sourceDb = postgres(requiredEnvVars.POSTGRES_URL);
+const sourceDb = postgres(requiredEnvVars.POSTGRES_URL!);
 const targetDb = createClient({
-  url: requiredEnvVars.TURSO_DATABASE_URL,
-  authToken: requiredEnvVars.TURSO_AUTH_TOKEN,
+  url: requiredEnvVars.TURSO_DATABASE_URL!,
+  authToken: requiredEnvVars.TURSO_AUTH_TOKEN!,
 });
 
 // UUID to ULID mapping for maintaining relationships
@@ -93,7 +93,7 @@ async function createBackup() {
 
   const backup = {
     timestamp: new Date().toISOString(),
-    tables: {} as Record<string, any[]>,
+    tables: {} as Record<string, unknown[]>,
   };
 
   // Backup all tables

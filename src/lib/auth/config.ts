@@ -10,9 +10,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
-import { anonymous } from 'better-auth/plugins';
 import { isValidAccessCode } from './access-codes';
-import { migrateAnonymousUserData } from './migrate-user-data';
 
 // Environment validation
 const requiredEnvVars = {
@@ -50,6 +48,7 @@ export const auth = betterAuth({
   // Production uses custom domain, previews use Vercel URLs
   trustedOrigins: [
     'https://app.velro.ai', // Production custom domain
+    'https://railway.velro.ai', // Railway custom domain
     'https://velro-*.vercel.app', // Production deployments
     'https://velro-git-*.vercel.app', // Branch preview deployments
     ...(process.env.NODE_ENV === 'development'
@@ -57,14 +56,13 @@ export const auth = betterAuth({
       : []), // Local development only
   ],
 
-  // Session configuration optimized for anonymous users
-  // SECURITY: Reduced from 1 year to 90 days to
-  //  mitigate:
+  // Session configuration
+  // SECURITY: 90-day expiration mitigates:
   // - Session fixation attacks
-  // - Database bloat from long-lived anonymous sessions
+  // - Database bloat from long-lived sessions
   // - GDPR compliance concerns
   session: {
-    expiresIn: 60 * 60 * 24 * 90, // 90 days (reasonable for anonymous work)
+    expiresIn: 60 * 60 * 24 * 90, // 90 days
     updateAge: 60 * 60 * 24, // Update session daily
     // Disable cookie cache to prevent sign-out issues
     // Cookie cache was causing sessions to persist after signOut()
@@ -127,42 +125,7 @@ export const auth = betterAuth({
 
   // Configure plugins
   plugins: [
-    // Anonymous user support with account linking
-    anonymous({
-      onLinkAccount: async ({ anonymousUser, newUser }) => {
-        console.log('[BetterAuth] Linking anonymous account', {
-          anonymousUserId: anonymousUser.user.id,
-          newUserId: newUser.user.id,
-        });
-
-        // Transfer anonymous user data to authenticated account
-        try {
-          // Migrate all anonymous user data to the authenticated account
-          // All data transfer happens atomically - either all succeeds or all fails
-          const result = await migrateAnonymousUserData(
-            anonymousUser.user.id,
-            newUser.user.id
-          );
-
-          // Log successful migration with details
-          console.log('[BetterAuth] Successfully linked anonymous account', {
-            migrationType: result.migrationType,
-            targetTeamId: result.targetTeamId,
-            sequencesTransferred: result.sequencesTransferred,
-            stylesTransferred: result.stylesTransferred,
-            creditsMerged: result.creditsMerged,
-          });
-        } catch (error) {
-          console.error(
-            '[BetterAuth] Failed to link anonymous account:',
-            error
-          );
-          throw error;
-        }
-      },
-    }),
-
-    // Next.js cookie integration (must be last)
+    // Next.js cookie integration
     nextCookies(),
   ],
 
@@ -234,5 +197,4 @@ export type User = typeof auth.$Infer.Session.user & {
   teamRole?: string | null;
   teamName?: string | null;
   teamSlug?: string | null;
-  isAnonymous?: boolean | null; // From BetterAuth anonymous plugin
 };

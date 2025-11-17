@@ -93,13 +93,14 @@ export async function PATCH(
     const validated = updateStyleSchema.parse(body);
 
     // Update style with Drizzle
-    const [style] = await db
+    const result = await db
       .update(styles)
       .set(validated)
       .where(
         and(eq(styles.id, styleId), eq(styles.teamId, teamMembership.teamId))
       )
       .returning();
+    const style = Array.isArray(result) ? result[0] : undefined;
 
     if (!style) {
       throw new ValidationError(

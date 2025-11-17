@@ -3,7 +3,12 @@
  * Tracks Fal.ai and LetzAI API usage for cost calculation and monitoring
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  desc,
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import {
   integer,
   sqliteTable,
@@ -43,7 +48,7 @@ export const falRequests = sqliteTable(
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     model: text({ length: 255 }).notNull(),
     requestPayload: text('request_payload', { mode: 'json' })
-      .default('{}')
+      .$defaultFn(() => ({}))
       .notNull(),
     responseData: text('response_data', { mode: 'json' }),
     // Use real (float) for cost since SQLite doesn't have decimal/numeric
@@ -58,16 +63,14 @@ export const falRequests = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    createdAtIdx: index('idx_fal_requests_created_at').on(
-      table.createdAt.desc()
-    ),
-    jobIdIdx: index('idx_fal_requests_job_id').on(table.jobId),
-    modelIdx: index('idx_fal_requests_model').on(table.model),
-    statusIdx: index('idx_fal_requests_status').on(table.status),
-    teamIdIdx: index('idx_fal_requests_team_id').on(table.teamId),
-    userIdIdx: index('idx_fal_requests_user_id').on(table.userId),
-  })
+  (table) => [
+    index('idx_fal_requests_created_at').on(desc(table.createdAt)),
+    index('idx_fal_requests_job_id').on(table.jobId),
+    index('idx_fal_requests_model').on(table.model),
+    index('idx_fal_requests_status').on(table.status),
+    index('idx_fal_requests_team_id').on(table.teamId),
+    index('idx_fal_requests_user_id').on(table.userId),
+  ]
 );
 
 /**
@@ -102,20 +105,20 @@ export const letzaiRequests = sqliteTable(
       mode: 'timestamp',
     }),
   },
-  (table) => ({
-    createdAtIdx: index('idx_letzai_requests_created_at').on(table.createdAt),
-    endpointIdx: index('idx_letzai_requests_endpoint').on(table.endpoint),
-    jobIdIdx: index('idx_letzai_requests_job_id').on(table.jobId),
-    statusIdx: index('idx_letzai_requests_status').on(table.status),
-    teamIdIdx: index('idx_letzai_requests_team_id').on(table.teamId),
+  (table) => [
+    index('idx_letzai_requests_created_at').on(table.createdAt),
+    index('idx_letzai_requests_endpoint').on(table.endpoint),
+    index('idx_letzai_requests_job_id').on(table.jobId),
+    index('idx_letzai_requests_status').on(table.status),
+    index('idx_letzai_requests_team_id').on(table.teamId),
     // Compound index for team + status + created queries
-    teamStatusCreatedIdx: index('idx_letzai_requests_team_status_created').on(
+    index('idx_letzai_requests_team_status_created').on(
       table.teamId,
       table.status,
       table.createdAt
     ),
-    userIdIdx: index('idx_letzai_requests_user_id').on(table.userId),
-  })
+    index('idx_letzai_requests_user_id').on(table.userId),
+  ]
 );
 
 // Relations

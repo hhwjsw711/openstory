@@ -8,8 +8,8 @@
 import { sequences } from '@/lib/db/schema';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 
 const sequenceId = process.argv[2];
 const aspectRatio = process.argv[3] as AspectRatio;
@@ -34,21 +34,18 @@ if (!validAspectRatios.includes(aspectRatio)) {
 }
 
 async function updateAspectRatio() {
-  const connectionString = process.env.POSTGRES_URL;
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (!connectionString) {
-    throw new Error('POSTGRES_URL environment variable is not set');
+  if (!tursoUrl || !tursoToken) {
+    throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
   }
 
-  const isLocalDevelopment =
-    connectionString.includes('localhost') ||
-    connectionString.includes('127.0.0.1');
-
-  const sql = postgres(connectionString, {
-    max: 1,
-    ssl: isLocalDevelopment ? false : 'require',
+  const client = createClient({
+    url: tursoUrl,
+    authToken: tursoToken,
   });
-  const db = drizzle(sql);
+  const db = drizzle(client);
 
   try {
     // Check if sequence exists and get current aspect ratio
@@ -64,7 +61,7 @@ async function updateAspectRatio() {
 
     if (!sequence) {
       console.error(`❌ Sequence not found: ${sequenceId}`);
-      await sql.end();
+      client.close();
       process.exit(1);
     }
 
@@ -87,10 +84,10 @@ async function updateAspectRatio() {
     console.log('\n💡 Refresh your browser to see the changes.');
   } catch (error) {
     console.error('❌ Error updating aspect ratio:', error);
-    await sql.end();
+    client.close();
     process.exit(1);
   } finally {
-    await sql.end();
+    client.close();
     process.exit(0);
   }
 }

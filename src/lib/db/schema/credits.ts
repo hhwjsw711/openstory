@@ -3,7 +3,13 @@
  * User credit balances and transaction history for billing
  */
 
-import { InferInsertModel, InferSelectModel, relations, sql } from 'drizzle-orm';
+import {
+  desc,
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+  sql,
+} from 'drizzle-orm';
 import {
   integer,
   sqliteTable,
@@ -41,10 +47,10 @@ export const credits = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
+  (table) => [
     // Check constraint: balance must be non-negative
-    positiveBalance: check('positive_balance', sql`${table.balance} >= 0`),
-  })
+    check('positive_balance', sql`${table.balance} >= 0`),
+  ]
 );
 
 /**
@@ -64,19 +70,17 @@ export const transactions = sqliteTable(
     type: text().$type<TransactionType>().notNull(),
     amount: real().notNull(),
     balanceAfter: real('balance_after').notNull(),
-    metadata: text({ mode: 'json' }).default('{}'),
+    metadata: text({ mode: 'json' }).$defaultFn(() => ({})),
     description: text(),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
-    createdAtIdx: index('idx_transactions_created_at').on(
-      table.createdAt.desc()
-    ),
-    typeIdx: index('idx_transactions_type').on(table.type),
-    userIdIdx: index('idx_transactions_user_id').on(table.userId),
-  })
+  (table) => [
+    index('idx_transactions_created_at').on(desc(table.createdAt)),
+    index('idx_transactions_type').on(table.type),
+    index('idx_transactions_user_id').on(table.userId),
+  ]
 );
 
 // Relations

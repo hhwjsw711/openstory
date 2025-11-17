@@ -9,7 +9,7 @@ import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
-import { sequences } from '@/lib/db/schema';
+import { sequences, styles } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
 import {
   extractCharacterBible,
@@ -52,9 +52,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       async () => {
         const sequence = await db.query.sequences.findFirst({
           where: eq(sequences.id, input.sequenceId),
-          with: {
-            style: true,
-          },
         });
 
         if (!sequence) {
@@ -71,7 +68,11 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('Sequence has no style selected');
         }
 
-        if (!sequence.style) {
+        const style = await db.query.styles.findFirst({
+          where: eq(styles.id, sequence.styleId),
+        });
+
+        if (!style) {
           throw new WorkflowValidationError('No style found');
         }
 
@@ -102,9 +103,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           );
         }
 
-        const styleConfig = DirectorDnaConfigSchema.parse(
-          sequence.style.config
-        );
+        const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
         // Use the sequence's analysisModel for script analysis
         const analysisModel =
@@ -382,7 +381,7 @@ export const generateStoryboardWorkflow = createWorkflow(
               : undefined,
           });
 
-          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+          if (imageIsFailed || imageIsCanceled || !imageBody.thumbnailPath) {
             throw new WorkflowValidationError(
               `Image generation failed for frame ${frameId}, skipping motion generation`
             );
@@ -404,7 +403,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             teamId: input.teamId,
             frameId,
             sequenceId: input.sequenceId,
-            thumbnailUrl: imageBody.imageUrl,
+            thumbnailPath: imageBody.thumbnailPath,
             prompt: motionPrompt,
             model: DEFAULT_VIDEO_MODEL,
             aspectRatio: sequence.aspectRatio,

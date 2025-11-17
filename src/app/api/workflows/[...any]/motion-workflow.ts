@@ -15,7 +15,7 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 import { generateMotionForFrame } from '@/lib/services/motion.service';
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { getImageUrlForApi } from '@/lib/utils/environment';
+import { getSignedImageUrl } from '@/lib/image/image-storage';
 import { eq } from 'drizzle-orm';
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
@@ -50,9 +50,9 @@ export const generateMotionWorkflow = createWorkflow(
     validateWorkflowAuth(input);
 
     // Validate required fields
-    if (!input.thumbnailUrl || input.thumbnailUrl.trim().length === 0) {
+    if (!input.thumbnailPath || input.thumbnailPath.trim().length === 0) {
       throw new WorkflowValidationError(
-        'Thumbnail URL is required for motion generation'
+        'Thumbnail Path is required for motion generation'
       );
     }
 
@@ -89,7 +89,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       // Verify team authorization
-      if (data.sequence.teamId !== input.teamId) {
+      if ((data.sequence as { teamId: string }).teamId !== input.teamId) {
         throw new WorkflowValidationError('Unauthorized: Team ID mismatch');
       }
 
@@ -109,11 +109,8 @@ export const generateMotionWorkflow = createWorkflow(
       try {
         // Select appropriate image URL based on environment
         // - Local dev: Use temporary FAL URL (publicly accessible)
-        // - Production: Use Supabase storage URL (publicly accessible)
-        const imageUrl = getImageUrlForApi(
-          frame.metadata?.sourceImageUrl,
-          input.thumbnailUrl
-        );
+        // - Production: Generate signed URL from R2 storage path
+        const imageUrl = await getSignedImageUrl(input.thumbnailPath);
 
         if (!imageUrl) {
           throw new Error(
@@ -151,7 +148,7 @@ export const generateMotionWorkflow = createWorkflow(
     });
 
     // Step 3: Upload video to storage
-    const storageUrl = await context.run('upload-to-storage', async () => {
+    const storageResult = await context.run('upload-to-storage', async () => {
       if (!videoResult.videoUrl) {
         throw new Error('No video URL from generation step');
       }
@@ -167,14 +164,14 @@ export const generateMotionWorkflow = createWorkflow(
         frameId: input.frameId,
       });
 
-      if (!result.success || !result.url) {
-        throw new Error(result.error || 'Failed to upload video');
+      if (!result.success || !result.path) {
+        throw new Error('Failed to upload video');
       }
 
-      return result.url;
+      return { path: result.path, url: result.url };
     });
 
-    // Step 4: Update frame with video URL and status
+    // Step 4: Update frame with video path, URL, and status
     await context.run('update-frame', async () => {
       try {
         // Use actual duration from motion generation metadata
@@ -185,7 +182,8 @@ export const generateMotionWorkflow = createWorkflow(
         const actualDuration = metadataDuration ?? input.duration ?? 2;
 
         await updateFrame(input.frameId, {
-          videoUrl: storageUrl,
+          videoPath: storageResult.path, // Store R2 path (permanent)
+          videoUrl: null, // Don't store signed URLs in DB (they expire)
           durationMs: actualDuration * 1000,
           videoStatus: 'completed',
           videoGeneratedAt: new Date(),
@@ -208,7 +206,7 @@ export const generateMotionWorkflow = createWorkflow(
     const actualDuration = metadataDuration ?? input.duration ?? 2;
     const result: MotionWorkflowResult = {
       frameId: input.frameId,
-      videoUrl: storageUrl,
+      videoUrl: storageResult.url || '', // Return signed URL for backward compatibility
       duration: actualDuration,
     };
 

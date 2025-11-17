@@ -1090,3 +1090,4 @@ beforeEach(async () => {
 - Never manually alter files in components/ui
 - **Database migrations**: Use Drizzle Kit to generate migrations (`bun db:generate`), never manually write migration SQL files
 - Use type instead of interface to define typescript types
+- Throw errors instead of returning success true / false

@@ -57,13 +57,15 @@ export async function GET(
     // Verify team access
     await requireTeamMemberAccess(user.id, sequence.teamId);
 
-    // Get frames
+    // Get frames and enrich with fresh signed URLs
     const frames = await frameService.getFramesBySequence(sequenceId);
+    const enrichedFrames =
+      await frameService.enrichFramesWithSignedUrls(frames);
 
     return NextResponse.json(
       {
         success: true,
-        data: frames,
+        data: enrichedFrames,
         timestamp: new Date().toISOString(),
       },
       { status: 200 }

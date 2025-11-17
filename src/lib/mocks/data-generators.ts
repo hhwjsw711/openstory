@@ -96,8 +96,12 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       '1506905925346-21bda4d32df4', // Mountain landscape
       '1507003211169-0a1dd7228f2d', // Portrait
     ])}/1920/1080`,
+    thumbnailPath: `teams/${faker.string.uuid()}/sequences/${faker.string.uuid()}/frames/${faker.string.uuid()}/thumbnail.jpg`,
     videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
+      : null,
+    videoPath: faker.datatype.boolean()
+      ? `teams/${faker.string.uuid()}/sequences/${faker.string.uuid()}/frames/${faker.string.uuid()}/motion.mp4`
       : null,
     durationMs: faker.number.int({ min: 3000, max: 10000 }),
     thumbnailStatus: faker.helpers.arrayElement([
@@ -239,8 +243,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
     'Intense and thrilling',
     'Peaceful and serene',
   ];
-  const aspectRatios = ['16:9', '2.35:1', '2.39:1', '1.85:1', '2.66:1'];
-  const frameRates = ['24fps', '30fps', '60fps'];
+
   const colorGradings = [
     'Warm highlights with cool shadows',
     'Desaturated with selective color pops',
@@ -372,7 +375,6 @@ export const generateMockUser = (
     image: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    isAnonymous: null,
     fullName,
     avatarUrl: faker.image.avatar(),
     onboardingCompleted: null,

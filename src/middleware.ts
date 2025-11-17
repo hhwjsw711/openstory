@@ -1,6 +1,6 @@
 /**
  * Next.js middleware for BetterAuth route protection
- * Lightweight middleware for Velro's anonymous-first approach
+ * Requires authentication for all routes except login/signup
  */
 
 import { auth } from '@/lib/auth/config';
@@ -8,11 +8,8 @@ import { headers } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-// Routes that require full authentication (not anonymous)
-const authRequiredRoutes = ['/settings', '/billing'];
-
-// Routes that authenticated users should skip
-const authOnlyRoutes = ['/login', '/signup'];
+// Routes that unauthenticated users can access
+const publicRoutes = ['/login', '/signup', '/forgot-password'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -34,33 +31,24 @@ export async function middleware(request: NextRequest) {
   });
 
   const hasSession = !!session;
-  const isAnonymous = session?.user?.isAnonymous ?? true;
-
-  // For Velro's anonymous-first approach:
-  // - Allow access to most routes without authentication
-  // - Only protect truly sensitive routes (settings, billing)
-  // - Let components handle showing upgrade prompts for anonymous users
-
-  // Redirect authenticated (non-anonymous) users away from auth pages
-  const isAuthOnlyRoute = authOnlyRoutes.some((route) =>
+  const isPublicRoute = publicRoutes.some((route) =>
     pathname.startsWith(route)
   );
-  if (hasSession && !isAnonymous && isAuthOnlyRoute) {
+
+  // Redirect authenticated users away from login/signup pages
+  if (hasSession && isPublicRoute) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Protect sensitive routes that require full authentication (not anonymous)
-  const isAuthRequired = authRequiredRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-  if (isAuthRequired && (!hasSession || isAnonymous)) {
+  // Require authentication for all routes except public routes
+  if (!hasSession && !isPublicRoute) {
     // Preserve the original URL for redirect after login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Allow all other routes - anonymous users can create sequences
+  // Allow access to the route
   return NextResponse.next();
 }
 

@@ -8,12 +8,18 @@ import {
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
 import type { Scene } from '@/lib/script';
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  desc,
+  InferInsertModel,
+  InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import {
   integer,
   sqliteTable,
   text,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
@@ -74,7 +80,7 @@ export const sequences = sqliteTable(
     status: text().$type<SequenceStatus>().default('draft').notNull(),
     metadata: text({ mode: 'json' })
       .$type<SequenceMetadata>()
-      .default('{}'),
+      .$defaultFn(() => ({})),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -99,12 +105,12 @@ export const sequences = sqliteTable(
       .notNull(),
     analysisDurationMs: integer('analysis_duration_ms').default(0).notNull(),
   },
-  (table) => ({
-    createdAtIdx: index('idx_sequences_created_at').on(table.createdAt.desc()),
-    statusIdx: index('idx_sequences_status').on(table.status),
-    styleIdIdx: index('idx_sequences_style_id').on(table.styleId),
-    teamIdIdx: index('idx_sequences_team_id').on(table.teamId),
-  })
+  (table) => [
+    index('idx_sequences_created_at').on(desc(table.createdAt)),
+    index('idx_sequences_status').on(table.status),
+    index('idx_sequences_style_id').on(table.styleId),
+    index('idx_sequences_team_id').on(table.teamId),
+  ]
 );
 
 /**
@@ -132,7 +138,9 @@ export const frames = sqliteTable(
     description: text(),
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
+    thumbnailPath: text('thumbnail_path'), // R2 storage path (not signed URL)
     videoUrl: text('video_url'),
+    videoPath: text('video_path'), // R2 storage path (not signed URL)
     // Thumbnail generation status tracking
     thumbnailStatus: text('thumbnail_status')
       .$type<FrameGenerationStatus>()
@@ -164,15 +172,16 @@ export const frames = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => ({
+  (table) => [
     // Compound index for efficient ordering queries
-    orderIdx: index('idx_frames_order').on(table.sequenceId, table.orderIndex),
-    sequenceIdIdx: index('idx_frames_sequence_id').on(table.sequenceId),
+    index('idx_frames_order').on(table.sequenceId, table.orderIndex),
+    index('idx_frames_sequence_id').on(table.sequenceId),
     // Unique constraint: one frame per sequence/order combination
-    uniqueOrderIdx: index('frames_sequence_id_order_index_key')
-      .on(table.sequenceId, table.orderIndex)
-      .unique(),
-  })
+    uniqueIndex('frames_sequence_id_order_index_key').on(
+      table.sequenceId,
+      table.orderIndex
+    ),
+  ]
 );
 
 // Relations
