@@ -425,11 +425,6 @@ export function getImageModelDisplayName(modelId: string): string {
   return model?.name ?? modelId;
 }
 
-// Get all image model configs as array (for UI components)
-export function getAllImageModels(): ImageModelConfig[] {
-  return Object.values(IMAGE_MODELS);
-}
-
 // Image to video model types
 export type ImageToVideoModel = keyof typeof IMAGE_TO_VIDEO_MODELS;
 // Type for the video model configuration object

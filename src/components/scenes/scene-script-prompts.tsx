@@ -1,12 +1,13 @@
 import { ImageModelSelector } from '@/components/sequence/image-model-selector';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { DEFAULT_IMAGE_MODEL, type TextToImageModelId } from '@/lib/ai/models';
+import { DEFAULT_IMAGE_MODEL, TextToImageModel } from '@/lib/ai/models';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
-import { CopyIcon, Loader2 } from 'lucide-react';
+import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
@@ -85,9 +86,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
   const [editedPrompt, setEditedPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<
-    TextToImageModelId | undefined
+    TextToImageModel | undefined
   >(undefined);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isShortening, setIsShortening] = useState(false);
+  const [shortenError, setShortenError] = useState<string | null>(null);
+  const [shortenSuccess, setShortenSuccess] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const handleCopy = useCallback(
@@ -104,6 +108,57 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     },
     []
   );
+
+  // Get imagePrompt early so it can be used in handleShortenPrompt
+  const scriptText = frame?.metadata?.originalScript?.extract;
+  const imageModel = frame?.imageModel as TextToImageModel;
+  const imagePrompt =
+    frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
+
+  const handleShortenPrompt = useCallback(async () => {
+    setShortenError(null);
+    setShortenSuccess(null);
+
+    const currentPrompt = editedPrompt || imagePrompt;
+    if (!currentPrompt || currentPrompt.length < 20) {
+      setShortenError('Prompt is too short to shorten');
+      return;
+    }
+
+    setIsShortening(true);
+
+    try {
+      const response = await fetch('/api/prompts/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: currentPrompt }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to shorten prompt');
+      }
+
+      if (result.success && result.data?.shortenedPrompt) {
+        setEditedPrompt(result.data.shortenedPrompt);
+        setShortenSuccess(
+          `Prompt shortened by ${result.data.reductionPercent}% (${result.data.originalLength} → ${result.data.shortenedLength} chars)`
+        );
+        // Clear success message after 5 seconds
+        setTimeout(() => setShortenSuccess(null), 5000);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Failed to shorten prompt:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to shorten prompt';
+      setShortenError(errorMessage);
+    } finally {
+      setIsShortening(false);
+    }
+  }, [editedPrompt, imagePrompt]);
 
   const handleRegenerate = useCallback(async () => {
     if (!frame?.id || !frame?.sequenceId) return;
@@ -172,10 +227,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     }
   }, [frame, selectedModel, editedPrompt, queryClient]);
 
-  const scriptText = frame?.metadata?.originalScript?.extract;
-  const imageModel = frame?.imageModel as TextToImageModelId;
-  const imagePrompt =
-    frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
   // Update local state when frame image prompt changes
   useEffect(() => {
     setEditedPrompt(imagePrompt || '');
@@ -184,7 +235,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   // Update local state when frame changes
   useEffect(() => {
     const currentModel =
-      (frame?.imageModel as TextToImageModelId) || DEFAULT_IMAGE_MODEL;
+      (frame?.imageModel as TextToImageModel) || DEFAULT_IMAGE_MODEL;
     setSelectedModel(currentModel);
   }, [frame?.imageModel]);
 
@@ -218,6 +269,19 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       <TabsContent value="image-prompt">
         <div className="space-y-4">
+          {/* Error/Success Messages */}
+          {shortenError && (
+            <Alert variant="destructive">
+              <AlertDescription>{shortenError}</AlertDescription>
+            </Alert>
+          )}
+
+          {shortenSuccess && (
+            <Alert>
+              <AlertDescription>{shortenSuccess}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Editable prompt */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -227,7 +291,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               </span>
             </div>
             <Textarea
-              value={editedPrompt || imagePrompt}
+              value={editedPrompt || imagePrompt || ''}
               onChange={(e) => setEditedPrompt(e.target.value)}
               placeholder="Enter image prompt…"
               className="min-h-[120px] resize-y"
@@ -239,12 +303,29 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
             <ImageModelSelector
-              selectedModel={imageModel || selectedModel}
+              selectedModel={selectedModel || imageModel}
               onModelChange={setSelectedModel}
               disabled={isGenerating}
               promptLength={(editedPrompt || imagePrompt || '').length}
             />
           </div>
+
+          {/* Shorten button */}
+          <Button
+            variant="outline"
+            onClick={handleShortenPrompt}
+            disabled={
+              isShortening ||
+              isGenerating ||
+              !editedPrompt ||
+              editedPrompt.length < 20
+            }
+            className="w-full"
+          >
+            {isShortening && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!isShortening && <Minimize2 className="mr-2 h-4 w-4" />}
+            {isShortening ? 'Shortening…' : 'Shorten Prompt'}
+          </Button>
 
           {/* Regenerate button */}
           <Button

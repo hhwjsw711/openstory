@@ -87,7 +87,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Fallback download info for when downloadUrl is not provided
   // This uses vidstack's default download button (which adds query params)
   const fallbackDownloadInfo =
-    enableDownload && !downloadUrl
+    enableDownload && !downloadUrl && src
       ? downloadFilename
         ? { url: src, filename: downloadFilename }
         : true

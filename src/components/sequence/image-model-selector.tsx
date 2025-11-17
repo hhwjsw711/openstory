@@ -7,13 +7,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getAllImageModels, type TextToImageModelId } from '@/lib/ai/models';
+import { IMAGE_MODELS, type TextToImageModel } from '@/lib/ai/models';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 type ImageModelSelectorProps = {
-  selectedModel: TextToImageModelId;
-  onModelChange: (model: TextToImageModelId) => void;
+  selectedModel: TextToImageModel;
+  onModelChange: (model: TextToImageModel) => void;
   disabled?: boolean;
   promptLength?: number;
 };
@@ -28,7 +28,7 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
   const [open, setOpen] = useState(false);
 
   const handleSelect = useCallback(
-    (modelId: TextToImageModelId) => {
+    (modelId: TextToImageModel) => {
       if (disabled) return;
       onModelChange(modelId);
       setOpen(false); // Close dropdown after selection
@@ -38,17 +38,18 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
 
   // Filter models based on prompt length
   const availableModels = useMemo(() => {
-    return getAllImageModels().map((model) => ({
+    return Object.entries(IMAGE_MODELS).map(([key, model]) => ({
       ...model,
+      id: key as TextToImageModel,
       isAvailable: promptLength <= model.maxPromptLength,
     }));
   }, [promptLength]);
 
   // Display label for button
   const displayLabel = useMemo(() => {
-    const model = getAllImageModels().find((m) => m.id === selectedModel);
+    const model = availableModels.find((m) => m.id === selectedModel);
     return model?.name ?? 'Select model';
-  }, [selectedModel]);
+  }, [availableModels, selectedModel]);
 
   return (
     <div className="space-y-2">
