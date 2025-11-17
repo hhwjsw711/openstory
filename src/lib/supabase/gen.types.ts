@@ -279,11 +279,13 @@ export type Database = {
           description: string | null
           duration_ms: number | null
           id: string
+          image_model: string | null
           metadata: Json | null
           order_index: number
           sequence_id: string
           thumbnail_error: string | null
           thumbnail_generated_at: string | null
+          thumbnail_path: string | null
           thumbnail_status:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -292,6 +294,7 @@ export type Database = {
           updated_at: string
           video_error: string | null
           video_generated_at: string | null
+          video_path: string | null
           video_status:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -303,11 +306,13 @@ export type Database = {
           description?: string | null
           duration_ms?: number | null
           id?: string
+          image_model?: string | null
           metadata?: Json | null
           order_index: number
           sequence_id: string
           thumbnail_error?: string | null
           thumbnail_generated_at?: string | null
+          thumbnail_path?: string | null
           thumbnail_status?:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -316,6 +321,7 @@ export type Database = {
           updated_at?: string
           video_error?: string | null
           video_generated_at?: string | null
+          video_path?: string | null
           video_status?:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -327,11 +333,13 @@ export type Database = {
           description?: string | null
           duration_ms?: number | null
           id?: string
+          image_model?: string | null
           metadata?: Json | null
           order_index?: number
           sequence_id?: string
           thumbnail_error?: string | null
           thumbnail_generated_at?: string | null
+          thumbnail_path?: string | null
           thumbnail_status?:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -340,6 +348,7 @@ export type Database = {
           updated_at?: string
           video_error?: string | null
           video_generated_at?: string | null
+          video_path?: string | null
           video_status?:
             | Database["public"]["Enums"]["frame_generation_status"]
             | null
@@ -511,6 +520,7 @@ export type Database = {
         Row: {
           analysis_duration_ms: number
           analysis_model: string
+          aspect_ratio: string
           created_at: string
           created_by: string | null
           id: string
@@ -527,6 +537,7 @@ export type Database = {
         Insert: {
           analysis_duration_ms?: number
           analysis_model?: string
+          aspect_ratio?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -543,6 +554,7 @@ export type Database = {
         Update: {
           analysis_duration_ms?: number
           analysis_model?: string
+          aspect_ratio?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -897,6 +909,7 @@ export type Database = {
       }
       user: {
         Row: {
+          access_code: string | null
           avatar_url: string | null
           created_at: string
           email: string
@@ -904,12 +917,12 @@ export type Database = {
           full_name: string | null
           id: string
           image: string | null
-          is_anonymous: boolean | null
           name: string | null
           onboarding_completed: boolean | null
           updated_at: string
         }
         Insert: {
+          access_code?: string | null
           avatar_url?: string | null
           created_at?: string
           email: string
@@ -917,12 +930,12 @@ export type Database = {
           full_name?: string | null
           id?: string
           image?: string | null
-          is_anonymous?: boolean | null
           name?: string | null
           onboarding_completed?: boolean | null
           updated_at?: string
         }
         Update: {
+          access_code?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
@@ -930,7 +943,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           image?: string | null
-          is_anonymous?: boolean | null
           name?: string | null
           onboarding_completed?: boolean | null
           updated_at?: string

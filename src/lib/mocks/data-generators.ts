@@ -113,6 +113,11 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     thumbnailWorkflowRunId: faker.string.uuid(),
     thumbnailGeneratedAt: faker.date.recent(),
     thumbnailError: null,
+    imageModel: faker.helpers.arrayElement([
+      'flux_pro',
+      'flux_dev',
+      'nano_banana',
+    ]),
     videoStatus: faker.helpers.arrayElement([
       'pending',
       'generating',

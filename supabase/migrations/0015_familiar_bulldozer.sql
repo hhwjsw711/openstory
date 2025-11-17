@@ -1,0 +1,1 @@
+ALTER TABLE "frames" ADD COLUMN "image_model" varchar(100) DEFAULT 'nano_banana' NOT NULL;

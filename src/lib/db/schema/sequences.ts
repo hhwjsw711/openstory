@@ -7,6 +7,7 @@ import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/script';
 import {
   InferInsertModel,
@@ -172,6 +173,9 @@ export const frames = pgTable(
       mode: 'date',
     }),
     thumbnailError: text('thumbnail_error'),
+    imageModel: varchar('image_model', { length: 100 })
+      .default(DEFAULT_IMAGE_MODEL)
+      .notNull(), // Model used for image generation
     // Video/motion generation status tracking
     videoStatus: frameGenerationStatus('video_status').default('pending'),
     videoWorkflowRunId: text('video_workflow_run_id'),
