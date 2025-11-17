@@ -3,16 +3,13 @@
  * Provides client-side authentication methods and hooks
  */
 
+import { NEXT_PUBLIC_APP_URL } from '@/lib/utils/environment';
 import { createAuthClient } from 'better-auth/react';
 
 // Create the auth client
 export const authClient = createAuthClient({
-  // Use runtime domain detection to support multiple Vercel domains
-  // This prevents CORS errors when accessing from preview deployments
-  baseURL:
-    typeof window !== 'undefined'
-      ? window.location.origin // Use current domain in browser
-      : process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000', // SSR fallback
+  // Use centralized URL constant with runtime domain detection
+  baseURL: NEXT_PUBLIC_APP_URL,
 });
 
 // Export hooks and methods for easy use

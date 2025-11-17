@@ -6,6 +6,7 @@
 import { db } from '@/lib/db/client';
 import { account, session, user, verification } from '@/lib/db/schema';
 import { generateId } from '@/lib/db/id';
+import { APP_URL } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
@@ -16,11 +17,7 @@ import { isValidAccessCode } from './access-codes';
 const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL:
-    process.env.BETTER_AUTH_URL ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'),
+  BETTER_AUTH_URL: APP_URL,
 } as const;
 
 // Validate environment variables

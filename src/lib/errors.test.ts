@@ -62,13 +62,13 @@ describe('Custom Error Classes', () => {
   describe('ConnectionError', () => {
     it('should create a connection error with 503 status', () => {
       const error = new ConnectionError('Service unavailable', {
-        service: 'supabase',
+        service: 'some-service',
       });
 
       expect(error.message).toBe('Service unavailable');
       expect(error.code).toBe('CONNECTION_ERROR');
       expect(error.statusCode).toBe(503);
-      expect(error.details).toEqual({ service: 'supabase' });
+      expect(error.details).toEqual({ service: 'some-service' });
       expect(error.name).toBe('ConnectionError');
     });
   });
