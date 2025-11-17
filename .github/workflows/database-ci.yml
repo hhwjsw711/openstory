@@ -193,11 +193,11 @@ jobs:
           # Set environment variables for PR environment using Railway CLI
           railway variables \
             --set "TURSO_DATABASE_URL=${{ steps.create_db.outputs.db_url }}" \
-            --environment "pr-${{ github.event.pull_request.number }}"
+            --environment "velro-pr-${{ github.event.pull_request.number }}"
 
           railway variables \
             --set "TURSO_AUTH_TOKEN=${{ steps.create_db.outputs.db_token }}" \
-            --environment "pr-${{ github.event.pull_request.number }}"
+            --environment "velro-pr-${{ github.event.pull_request.number }}"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
