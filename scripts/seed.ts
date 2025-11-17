@@ -3,8 +3,8 @@
  * Seeds the database with initial template styles and system team
  */
 
-import { styles, teams } from '@/lib/db/schema';
-import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
+import { styles, teams, type Style } from '@/lib/db/schema';
+import { DEFAULT_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
@@ -15,13 +15,13 @@ async function seed() {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (!tursoUrl || !tursoToken) {
-    throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
+  if (!tursoUrl) {
+    throw new Error('TURSO_DATABASE_URL is required');
   }
 
   const client = createClient({
     url: tursoUrl,
-    authToken: tursoToken,
+    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
   });
   const db = drizzle(client);
 
@@ -56,14 +56,14 @@ async function seed() {
       // 3. Insert template film styles
       console.log('Inserting template styles...');
       await db.insert(styles).values(
-        DEFAULT_STYLE_TEMPLATES.map((style) => ({
+        DEFAULT_SYSTEM_STYLES.map((style) => ({
           ...style,
-          teamId: SYSTEM_TEAM_ID,
-        }))
+          createdBy: null, // No user for system templates
+        })) as Array<typeof styles.$inferInsert>
       );
 
       console.log(
-        `✅ Inserted ${DEFAULT_STYLE_TEMPLATES.length} template styles\n`
+        `✅ Inserted ${DEFAULT_SYSTEM_STYLES.length} template styles\n`
       );
     }
 

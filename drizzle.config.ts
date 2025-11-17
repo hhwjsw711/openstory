@@ -3,10 +3,8 @@ import { defineConfig } from 'drizzle-kit';
 const tursoUrl = process.env.TURSO_DATABASE_URL;
 const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!tursoUrl || !tursoToken) {
-  throw new Error(
-    'TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables are required'
-  );
+if (!tursoUrl) {
+  throw new Error('TURSO_DATABASE_URL environment variable is required');
 }
 
 export default defineConfig({
@@ -15,7 +13,7 @@ export default defineConfig({
   dialect: 'turso',
   dbCredentials: {
     url: tursoUrl,
-    authToken: tursoToken,
+    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
   },
   verbose: true,
   strict: true,

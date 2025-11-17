@@ -15,7 +15,6 @@ import { isValidAccessCode } from './access-codes';
 // Environment validation
 const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
-  TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   BETTER_AUTH_URL:
     process.env.BETTER_AUTH_URL ||
@@ -25,6 +24,7 @@ const requiredEnvVars = {
 } as const;
 
 // Validate environment variables
+// Note: TURSO_AUTH_TOKEN is optional for local development (file: URLs)
 for (const [key, value] of Object.entries(requiredEnvVars)) {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);

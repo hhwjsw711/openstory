@@ -1,1 +1,0 @@
-ALTER TABLE "frames" ADD COLUMN "thumbnail_path" text;

@@ -10,17 +10,19 @@ import { schema } from './schema';
 const tursoUrl = process.env.TURSO_DATABASE_URL;
 const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!tursoUrl || !tursoToken) {
-  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
+if (!tursoUrl) {
+  throw new Error('TURSO_DATABASE_URL is required');
 }
 
 /**
  * libSQL client instance
- * Connects to Turso database
+ * Connects to Turso database (cloud) or local SQLite file
+ * - For local development: use file: URLs (e.g., file:local.db)
+ * - For production: use https:// URLs with auth token
  */
 const client = createClient({
   url: tursoUrl,
-  authToken: tursoToken,
+  ...(tursoToken && { authToken: tursoToken }), // Only include if defined
 });
 
 /**
