@@ -9,13 +9,13 @@ import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { updateSequenceSchema } from '@/lib/schemas/sequence.schemas';
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 export async function GET(
   request: Request,
@@ -24,10 +24,9 @@ export async function GET(
   try {
     const { sequenceId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
     try {
-      uuidSchema.parse(sequenceId);
+      ulidSchema.parse(sequenceId);
     } catch {
       throw new ValidationError('Invalid sequence ID format');
     }
@@ -82,10 +81,9 @@ export async function PATCH(
   try {
     const { sequenceId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
     try {
-      uuidSchema.parse(sequenceId);
+      ulidSchema.parse(sequenceId);
     } catch {
       throw new ValidationError('Invalid sequence ID format');
     }
@@ -192,10 +190,9 @@ export async function DELETE(
   try {
     const { sequenceId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
     try {
-      uuidSchema.parse(sequenceId);
+      ulidSchema.parse(sequenceId);
     } catch {
       throw new ValidationError('Invalid sequence ID format');
     }

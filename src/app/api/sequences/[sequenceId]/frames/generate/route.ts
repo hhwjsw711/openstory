@@ -10,7 +10,7 @@ import { sequenceService } from '@/lib/services/sequence.service';
 import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
   _request: Request,
@@ -19,10 +19,10 @@ export async function POST(
   try {
     const { sequenceId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(sequenceId);
+      ulidSchema.parse(sequenceId);
     } catch {
       throw new ValidationError('Invalid sequence ID format');
     }

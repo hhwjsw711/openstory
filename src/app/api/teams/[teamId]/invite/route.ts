@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { requireTeamAdminAccess, requireUser } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { teamService } from '@/lib/services/team.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const inviteRequestSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -22,10 +23,10 @@ export async function POST(
   try {
     const { teamId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(teamId);
+      ulidSchema.parse(teamId);
     } catch {
       throw new ValidationError('Invalid team ID format');
     }

@@ -3,9 +3,9 @@
  * Utilities for checking team access and permissions using Drizzle ORM
  */
 
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { teamMembers } from '@/lib/db/schema';
+import { teamMembers, teams, user } from '@/lib/db/schema';
 import type { TeamMemberRole } from '@/lib/db/schema/teams';
 
 /**
@@ -47,27 +47,19 @@ export async function getUserTeam(
   userId: string,
   teamId: string
 ): Promise<UserTeamMembership | null> {
-  const result = await db.query.teamMembers.findFirst({
-    where: and(eq(teamMembers.userId, userId), eq(teamMembers.teamId, teamId)),
-    with: {
-      team: {
-        columns: {
-          name: true,
-        },
-      },
-    },
-  });
+  const [result] = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+      teamName: teams.name,
+      joinedAt: teamMembers.joinedAt,
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(and(eq(teamMembers.userId, userId), eq(teamMembers.teamId, teamId)))
+    .limit(1);
 
-  if (!result) {
-    return null;
-  }
-
-  return {
-    teamId: result.teamId,
-    role: result.role,
-    teamName: result.team.name,
-    joinedAt: result.joinedAt,
-  };
+  return result ?? null;
 }
 
 /**
@@ -89,36 +81,28 @@ export async function getUserDefaultTeam(
   userId: string
 ): Promise<UserTeamMembership | null> {
   // Query with role ordering - owner first, viewer last
-  const result = await db.query.teamMembers.findFirst({
-    where: eq(teamMembers.userId, userId),
-    with: {
-      team: {
-        columns: {
-          name: true,
-        },
-      },
-    },
-    orderBy: (teamMembers, { sql }) => [
+  const [result] = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+      teamName: teams.name,
+      joinedAt: teamMembers.joinedAt,
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(eq(teamMembers.userId, userId))
+    .orderBy(
       sql`CASE
         WHEN ${teamMembers.role} = 'owner' THEN 1
         WHEN ${teamMembers.role} = 'admin' THEN 2
         WHEN ${teamMembers.role} = 'member' THEN 3
         WHEN ${teamMembers.role} = 'viewer' THEN 4
         ELSE 5
-      END`,
-    ],
-  });
+      END`
+    )
+    .limit(1);
 
-  if (!result) {
-    return null;
-  }
-
-  return {
-    teamId: result.teamId,
-    role: result.role,
-    teamName: result.team.name,
-    joinedAt: result.joinedAt,
-  };
+  return result ?? null;
 }
 
 /**
@@ -186,16 +170,17 @@ export async function canManageTeam(
 export async function getTeamMembers(
   teamId: string
 ): Promise<TeamMemberWithDetails[]> {
-  const members = await db.query.teamMembers.findMany({
-    where: eq(teamMembers.teamId, teamId),
-    with: {
-      user: {
-        columns: {
-          fullName: true,
-        },
-      },
-    },
-    orderBy: (teamMembers, { sql }) => [
+  const members = await db
+    .select({
+      userId: teamMembers.userId,
+      role: teamMembers.role,
+      joinedAt: teamMembers.joinedAt,
+      fullName: user.fullName,
+    })
+    .from(teamMembers)
+    .innerJoin(user, eq(teamMembers.userId, user.id))
+    .where(eq(teamMembers.teamId, teamId))
+    .orderBy(
       // Order by role (owner first, viewer last)
       sql`CASE
         WHEN ${teamMembers.role} = 'owner' THEN 1
@@ -205,16 +190,10 @@ export async function getTeamMembers(
         ELSE 5
       END`,
       // Then by join date
-      teamMembers.joinedAt,
-    ],
-  });
+      teamMembers.joinedAt
+    );
 
-  return members.map((member) => ({
-    userId: member.userId,
-    role: member.role,
-    joinedAt: member.joinedAt,
-    fullName: member.user.fullName,
-  }));
+  return members;
 }
 
 /**
@@ -232,16 +211,17 @@ export async function getTeamMembers(
 export async function getUserTeams(
   userId: string
 ): Promise<UserTeamMembership[]> {
-  const memberships = await db.query.teamMembers.findMany({
-    where: eq(teamMembers.userId, userId),
-    with: {
-      team: {
-        columns: {
-          name: true,
-        },
-      },
-    },
-    orderBy: (teamMembers, { sql }) => [
+  const memberships = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+      teamName: teams.name,
+      joinedAt: teamMembers.joinedAt,
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(eq(teamMembers.userId, userId))
+    .orderBy(
       // Order by role (owner first, viewer last)
       sql`CASE
         WHEN ${teamMembers.role} = 'owner' THEN 1
@@ -249,16 +229,10 @@ export async function getUserTeams(
         WHEN ${teamMembers.role} = 'member' THEN 3
         WHEN ${teamMembers.role} = 'viewer' THEN 4
         ELSE 5
-      END`,
-    ],
-  });
+      END`
+    );
 
-  return memberships.map((membership) => ({
-    teamId: membership.teamId,
-    role: membership.role,
-    teamName: membership.team.name,
-    joinedAt: membership.joinedAt,
-  }));
+  return memberships;
 }
 
 /**

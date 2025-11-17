@@ -4,114 +4,72 @@
  */
 
 import {
+  desc,
   InferInsertModel,
   InferSelectModel,
   relations,
-  sql,
 } from 'drizzle-orm';
 import {
-  foreignKey,
-  index,
   integer,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgPolicy,
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+  real,
+  index,
+} from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 import { user } from './auth';
 import { teams } from './teams';
 
-// Enums
-export const falRequestStatus = pgEnum('fal_request_status', [
-  'pending',
-  'completed',
-  'failed',
-]);
+// Enum values as constants (SQLite doesn't have native enums)
+export const FAL_REQUEST_STATUSES = ['pending', 'completed', 'failed'] as const;
+export type FalRequestStatus = (typeof FAL_REQUEST_STATUSES)[number];
 
-export const letzaiRequestStatus = pgEnum('letzai_request_status', [
+export const LETZAI_REQUEST_STATUSES = [
   'pending',
   'in_progress',
   'completed',
   'failed',
-]);
+] as const;
+export type LetzaiRequestStatus = (typeof LETZAI_REQUEST_STATUSES)[number];
 
 /**
  * Fal.ai requests tracking
  * Tracks all requests to Fal.ai for usage monitoring and cost calculation
  */
-export const falRequests = pgTable(
+export const falRequests = sqliteTable(
   'fal_requests',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    jobId: uuid('job_id'),
-    teamId: uuid('team_id'),
-    userId: uuid('user_id'),
-    model: varchar({ length: 255 }).notNull(),
-    requestPayload: jsonb('request_payload').default({}).notNull(),
-    responseData: jsonb('response_data'),
-    costCredits: numeric('cost_credits', { precision: 10, scale: 4 }).default(
-      '0'
-    ),
-    latencyMs: integer('latency_ms'),
-    status: falRequestStatus().default('pending').notNull(),
-    error: text(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    jobId: text('job_id'),
+    teamId: text('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+    model: text({ length: 255 }).notNull(),
+    requestPayload: text('request_payload', { mode: 'json' })
+      .$defaultFn(() => ({}))
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
+    responseData: text('response_data', { mode: 'json' }),
+    // Use real (float) for cost since SQLite doesn't have decimal/numeric
+    costCredits: real('cost_credits').default(0),
+    latencyMs: integer('latency_ms'),
+    status: text().$type<FalRequestStatus>().default('pending').notNull(),
+    error: text(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
   (table) => [
-    index('idx_fal_requests_created_at').using(
-      'btree',
-      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-    ),
-    index('idx_fal_requests_job_id').using(
-      'btree',
-      table.jobId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_fal_requests_model').using(
-      'btree',
-      table.model.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_fal_requests_status').using(
-      'btree',
-      table.status.asc().nullsLast().op('enum_ops')
-    ),
-    index('idx_fal_requests_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_fal_requests_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'fal_requests_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'fal_requests_user_id_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_fal_requests_created_at').on(desc(table.createdAt)),
+    index('idx_fal_requests_job_id').on(table.jobId),
+    index('idx_fal_requests_model').on(table.model),
+    index('idx_fal_requests_status').on(table.status),
+    index('idx_fal_requests_team_id').on(table.teamId),
+    index('idx_fal_requests_user_id').on(table.userId),
   ]
 );
 
@@ -119,80 +77,47 @@ export const falRequests = pgTable(
  * LetzAI requests tracking
  * Tracks all requests to LetzAI for usage monitoring and cost calculation
  */
-export const letzaiRequests = pgTable(
+export const letzaiRequests = sqliteTable(
   'letzai_requests',
   {
-    id: uuid().defaultRandom().primaryKey().notNull(),
+    id: text()
+      .$defaultFn(() => generateId())
+      .primaryKey()
+      .notNull(),
     jobId: text('job_id'),
-    teamId: uuid('team_id'),
-    userId: uuid('user_id'),
+    teamId: text('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     endpoint: text().notNull(),
     model: text(),
-    requestPayload: jsonb('request_payload').notNull(),
-    status: letzaiRequestStatus().default('pending').notNull(),
-    responseData: jsonb('response_data'),
+    requestPayload: text('request_payload', { mode: 'json' }).notNull(),
+    status: text().$type<LetzaiRequestStatus>().default('pending').notNull(),
+    responseData: text('response_data', { mode: 'json' }),
     error: text(),
-    costCredits: numeric('cost_credits', { precision: 10, scale: 4 }),
+    costCredits: real('cost_credits'),
     latencyMs: integer('latency_ms'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-    completedAt: timestamp('completed_at', {
-      withTimezone: true,
-      mode: 'date',
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    completedAt: integer('completed_at', {
+      mode: 'timestamp',
     }),
   },
   (table) => [
-    index('idx_letzai_requests_created_at').using(
-      'btree',
-      table.createdAt.asc().nullsLast().op('timestamptz_ops')
+    index('idx_letzai_requests_created_at').on(table.createdAt),
+    index('idx_letzai_requests_endpoint').on(table.endpoint),
+    index('idx_letzai_requests_job_id').on(table.jobId),
+    index('idx_letzai_requests_status').on(table.status),
+    index('idx_letzai_requests_team_id').on(table.teamId),
+    // Compound index for team + status + created queries
+    index('idx_letzai_requests_team_status_created').on(
+      table.teamId,
+      table.status,
+      table.createdAt
     ),
-    index('idx_letzai_requests_endpoint').using(
-      'btree',
-      table.endpoint.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_letzai_requests_job_id').using(
-      'btree',
-      table.jobId.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_letzai_requests_status').using(
-      'btree',
-      table.status.asc().nullsLast().op('enum_ops')
-    ),
-    index('idx_letzai_requests_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_letzai_requests_team_status_created').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops'),
-      table.status.asc().nullsLast().op('enum_ops'),
-      table.createdAt.asc().nullsLast().op('timestamptz_ops')
-    ),
-    index('idx_letzai_requests_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'letzai_requests_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'letzai_requests_user_id_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_letzai_requests_user_id').on(table.userId),
   ]
 );
 
@@ -225,8 +150,3 @@ export type NewFalRequest = InferInsertModel<typeof falRequests>;
 
 export type LetzaiRequest = InferSelectModel<typeof letzaiRequests>;
 export type NewLetzaiRequest = InferInsertModel<typeof letzaiRequests>;
-
-// Enum type exports
-export type FalRequestStatus = (typeof falRequestStatus.enumValues)[number];
-export type LetzaiRequestStatus =
-  (typeof letzaiRequestStatus.enumValues)[number];

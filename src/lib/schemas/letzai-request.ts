@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod';
+import { ulidSchema, ulidSchemaOptional } from '@/lib/schemas/id.schemas';
 
 // LetzAI request status enum
 export const letzaiRequestStatusSchema = z.enum([
@@ -140,17 +141,17 @@ export const letzaiModelResponseSchema = z.object({
 export const letzaiServiceRequestSchema = z.object({
   endpoint: letzaiEndpointSchema,
   parameters: z.record(z.string(), z.unknown()),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  userId: ulidSchemaOptional,
+  teamId: ulidSchemaOptional,
   jobId: z.string().optional(),
 });
 
 // Database record schema
 export const letzaiRequestDbSchema = z.object({
-  id: z.string().uuid(),
+  id: ulidSchema,
   job_id: z.string().nullable(),
-  team_id: z.string().uuid().nullable(),
-  user_id: z.string().uuid().nullable(),
+  team_id: ulidSchema.nullable(),
+  user_id: ulidSchema.nullable(),
   endpoint: z.string(),
   model: z.string().nullable(),
   request_payload: z.record(z.string(), z.unknown()),

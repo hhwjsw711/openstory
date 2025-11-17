@@ -1,101 +1,519 @@
-# Supabase Storage to Cloudflare R2 Migration Plan
+# Complete Migration Plan: Supabase → Turso + R2
+
+This document outlines the complete migration from Supabase (PostgreSQL + Storage) to Turso (SQLite) + Cloudflare R2, including UUID → ULID conversion.
 
 ## Overview
 
-Migrate from Supabase Storage to Cloudflare R2 for all file storage operations (thumbnails, videos, audio, styles, characters, vfx). This migration will reduce costs and improve performance with Cloudflare's global CDN.
+**What we're migrating:**
 
-## Goals
+- ✅ Database: PostgreSQL (Supabase) → SQLite (Turso)
+- ✅ IDs: UUID v4 → ULID
+- ✅ Storage: Supabase Storage → Cloudflare R2
+- ✅ Data: All existing production data
+- ✅ Files: All production files (images, videos, audio, etc.)
 
-- Migrate all existing files from Supabase Storage to R2
-- Update all storage operations to use R2 going forward
-- Maintain file access for authenticated users via signed URLs
-- Use Cloudflare CDN for optimized delivery
-- Support local development, preview, and production environments
+**Complexity:** High - involves data transformation, ID mapping, and storage migration
 
-## R2 Bucket Structure
+**Estimated time:** 8-12 hours
 
-### Option A: Single Bucket with Prefixes (Recommended)
+**Risk level:** Medium-High (but reversible with proper backups)
 
-- **Production**: `velro-storage`
-  - `thumbnails/teams/{teamId}/...`
-  - `videos/teams/{teamId}/...`
-  - `audio/teams/{teamId}/...`
-  - `styles/teams/{teamId}/...`
-  - `characters/teams/{teamId}/...`
-  - `vfx/teams/{teamId}/...`
+## Prerequisites
 
-- **Development/Preview**: `velro-storage-dev`
-  - Same structure as production
+### 1. Infrastructure Setup
 
-### Option B: Separate Buckets per Environment
-
-- `velro-thumbnails-prod`, `velro-videos-prod`, etc.
-- `velro-thumbnails-dev`, `velro-videos-dev`, etc.
-
-**Recommendation**: Use Option A (single bucket with prefixes) for simplicity and cost efficiency.
-
-## R2 Setup Steps
-
-### 1. Create Cloudflare R2 Buckets
+**Turso Database:**
 
 ```bash
-# In Cloudflare Dashboard:
-# 1. Navigate to R2 Object Storage
-# 2. Create bucket: velro-storage (production)
-# 3. Create bucket: velro-storage-dev (development/preview)
+# Install Turso CLI
+brew install tursodatabase/tap/turso
+# or: curl -sSfL https://get.tur.so/install.sh | bash
+
+# Login
+turso auth login
+
+# Create database
+turso db create velro-production --location ord  # Choose closest region
+
+# Get connection details
+turso db show velro-production --url
+turso db tokens create velro-production
+
+# Save these for .env:
+# TURSO_DATABASE_URL=libsql://velro-production-<org>.turso.io
+# TURSO_AUTH_TOKEN=<token>
 ```
 
-### 2. Create API Tokens
+**Cloudflare R2:**
 
 ```bash
-# In Cloudflare Dashboard:
-# 1. Navigate to R2 > Manage R2 API Tokens
-# 2. Create API Token with:
-#    - Permissions: Object Read & Write
-#    - Buckets: velro-storage, velro-storage-dev
-# 3. Save: Access Key ID, Secret Access Key, Account ID
+# Install Wrangler
+bun add -g wrangler
+
+# Login
+wrangler login
+
+# Create bucket
+wrangler r2 bucket create velro-production
+
+# Create API token
+# Go to Cloudflare Dashboard → R2 → Manage R2 API Tokens
+# Or use: wrangler r2 token create velro-api-token
+
+# Save for .env:
+# R2_ACCOUNT_ID=<account-id>
+# R2_ACCESS_KEY_ID=<access-key>
+# R2_SECRET_ACCESS_KEY=<secret-key>
+# R2_BUCKET_NAME=velro-production
 ```
 
-### 3. Configure Custom Domain for CDN (Optional)
+### 2. Backup Current Production
 
 ```bash
-# In Cloudflare Dashboard:
-# 1. R2 bucket settings > Public Access
-# 2. Connect custom domain (e.g., cdn.velro.ai)
-# 3. Configure CORS if needed
+# Create backup directory
+mkdir -p backups/$(date +%Y%m%d)
+
+# Export Supabase database
+# Via Supabase Dashboard: Database → Backups → Manual backup
+# Or via SQL dump:
+pg_dump "$POSTGRES_URL" > backups/$(date +%Y%m%d)/supabase-dump.sql
+
+# Document current state
+echo "Backup created: $(date)" > backups/$(date +%Y%m%d)/README.txt
+echo "Tables:" >> backups/$(date +%Y%m%d)/README.txt
+# List table counts
 ```
 
-## Technical Implementation
-
-### 1. Install Dependencies
+### 3. Install Dependencies
 
 ```bash
-bun add @aws-sdk/client-s3
-bun add @aws-sdk/s3-request-presigner
+# Add new dependencies
+bun add @libsql/client ulid @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+# Remove old dependencies (after migration complete)
+# bun remove @supabase/supabase-js @supabase/ssr postgres
 ```
 
-### 2. Environment Variables
+## Phase 1: Code Changes (No Data Yet)
 
-Add to `.env.development.local` and production environment:
+### Step 1: Create ULID Utility
 
-```bash
-# Cloudflare R2
-R2_ACCOUNT_ID=your-account-id
-R2_ACCESS_KEY_ID=your-access-key-id
-R2_SECRET_ACCESS_KEY=your-secret-access-key
-R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for prod
-R2_PUBLIC_URL=https://pub-xxxxx.r2.dev  # R2 public URL
-```
+Create `src/lib/db/id.ts` with the ULID utility from the example doc.
 
-### 3. Create R2 Storage Service
+### Step 2: Convert Schema Files
 
-**File**: `src/lib/storage/r2-client.ts`
+Convert all 7 schema files to SQLite + ULID:
+
+- `src/lib/db/schema/auth.ts`
+- `src/lib/db/schema/teams.ts`
+- `src/lib/db/schema/sequences.ts`
+- `src/lib/db/schema/libraries.ts`
+- `src/lib/db/schema/tracking.ts`
+- `src/lib/db/schema/credits.ts`
+- `src/lib/db/schema/audit.ts`
+
+Key changes per file:
 
 ```typescript
-import { S3Client } from '@aws-sdk/client-s3';
+// Change imports
+import { pgTable, uuid, timestamp, jsonb } from 'drizzle-orm/pg-core';
+// ↓
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 
-export function createR2Client() {
-  return new S3Client({
+// Change table function
+export const users = pgTable(...)
+// ↓
+export const users = sqliteTable(...)
+
+// Change ID columns
+id: uuid().default(sql`uuid_generate_v4()`)
+// ↓
+id: text().$defaultFn(() => generateId())
+
+// Change timestamps
+createdAt: timestamp({ withTimezone: true, mode: 'date' }).defaultNow()
+// ↓
+createdAt: integer({ mode: 'timestamp' }).$defaultFn(() => new Date())
+
+// Change JSONB
+metadata: jsonb().$type<T>()
+// ↓
+metadata: text({ mode: 'json' }).$type<T>()
+
+// Remove $onUpdate (handle in app code - already doing this!)
+updatedAt: timestamp().$onUpdate(() => new Date())
+// ↓
+updatedAt: integer({ mode: 'timestamp' }).$defaultFn(() => new Date())
+
+// Change enums to text with types
+export const status = pgEnum('status', ['draft', 'active'])
+// ↓
+export const STATUS_VALUES = ['draft', 'active'] as const;
+export type Status = typeof STATUS_VALUES[number];
+status: text().$type<Status>().default('draft')
+
+// Simplify indexes (remove .using() and .op())
+index('idx').using('btree', col.asc().op('uuid_ops'))
+// ↓
+index('idx').on(col)
+
+// Remove pgPolicy (no RLS in SQLite)
+pgPolicy(...) // Delete entirely
+```
+
+### Step 3: Update Database Client
+
+**Replace `src/lib/db/pool.ts` and `src/lib/db/client.ts`:**
+
+```typescript
+// src/lib/db/client.ts
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
+import { schema } from './schema';
+
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!tursoUrl || !tursoToken) {
+  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
+}
+
+const client = createClient({
+  url: tursoUrl,
+  authToken: tursoToken,
+});
+
+export const db = drizzle(client, {
+  schema,
+  logger: process.env.NODE_ENV === 'development',
+  casing: 'snake_case',
+});
+
+export type Database = typeof db;
+```
+
+**Delete `src/lib/db/pool.ts`** (no longer needed)
+
+### Step 4: Update Drizzle Config
+
+```typescript
+// drizzle.config.ts
+import { defineConfig } from 'drizzle-kit';
+
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!tursoUrl || !tursoToken) {
+  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required');
+}
+
+export default defineConfig({
+  schema: './src/lib/db/schema/index.ts',
+  out: './drizzle/migrations',
+  dialect: 'turso',
+  dbCredentials: {
+    url: tursoUrl,
+    authToken: tursoToken,
+  },
+  verbose: true,
+  strict: true,
+  casing: 'snake_case',
+});
+```
+
+### Step 5: Update Validation Schemas
+
+Find and update all Zod schemas that validate UUIDs:
+
+```typescript
+// Before
+import { z } from 'zod';
+const uuidSchema = z.string().uuid();
+
+// After
+import { z } from 'zod';
+import { isValidId } from '@/lib/db/id';
+
+const idSchema = z.string().refine(isValidId, {
+  message: 'Invalid ID format',
+});
+
+// Update all API route schemas
+export const createSequenceSchema = z.object({
+  teamId: idSchema, // was: z.string().uuid()
+  styleId: idSchema,
+  // ...
+});
+```
+
+### Step 6: Update Storage Helper
+
+Replace `src/lib/db/helpers/storage.ts` with R2 implementation from the R2 migration doc.
+
+### Step 7: Update Better Auth Config
+
+```typescript
+// src/lib/auth/config.ts
+import { generateId } from '@/lib/db/id';
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'sqlite', // Changed from 'pg'
+    schema: {
+      user: user,
+      session: session,
+      account: account,
+      verification: verification,
+    },
+  }),
+
+  // ... rest of config
+
+  advanced: {
+    database: {
+      generateId: () => generateId(), // Use ULID
+    },
+  },
+});
+```
+
+### Step 8: Generate Migrations
+
+```bash
+# Generate new SQLite migrations
+bun db:generate
+
+# Review the generated migration in drizzle/migrations/
+# Should create all tables with TEXT ids, INTEGER timestamps, etc.
+```
+
+## Phase 2: Data Migration Script
+
+Create `scripts/migrate-data.ts`:
+
+```typescript
+/**
+ * Data Migration Script: Supabase → Turso (UUID → ULID)
+ *
+ * This script:
+ * 1. Exports all data from Supabase PostgreSQL
+ * 2. Converts UUID → ULID with mapping table
+ * 3. Imports data into Turso with new IDs
+ * 4. Updates storage URLs in database (Supabase → R2)
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import { createClient as createTursoClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
+import { generateId } from '@/lib/db/id';
+import { schema } from '@/lib/db/schema';
+
+// UUID → ULID mapping
+const idMap = new Map<string, string>();
+
+function convertId(oldUuid: string): string {
+  if (!idMap.has(oldUuid)) {
+    idMap.set(oldUuid, generateId());
+  }
+  return idMap.get(oldUuid)!;
+}
+
+async function migrateData() {
+  console.log('🚀 Starting data migration...\n');
+
+  // Connect to Supabase (source)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY! // Need service role for full access
+  );
+
+  // Connect to Turso (destination)
+  const tursoClient = createTursoClient({
+    url: process.env.TURSO_DATABASE_URL!,
+    authToken: process.env.TURSO_AUTH_TOKEN!,
+  });
+  const turso = drizzle(tursoClient, { schema });
+
+  try {
+    // Step 1: Export users
+    console.log('📤 Exporting users...');
+    const { data: users } = await supabase.from('user').select('*');
+    console.log(`Found ${users?.length || 0} users`);
+
+    // Step 2: Export teams
+    console.log('📤 Exporting teams...');
+    const { data: teams } = await supabase.from('teams').select('*');
+    console.log(`Found ${teams?.length || 0} teams`);
+
+    // Step 3: Export team members
+    console.log('📤 Exporting team members...');
+    const { data: teamMembers } = await supabase
+      .from('team_members')
+      .select('*');
+    console.log(`Found ${teamMembers?.length || 0} team members`);
+
+    // Step 4: Export styles
+    console.log('📤 Exporting styles...');
+    const { data: styles } = await supabase.from('styles').select('*');
+    console.log(`Found ${styles?.length || 0} styles`);
+
+    // Step 5: Export sequences
+    console.log('📤 Exporting sequences...');
+    const { data: sequences } = await supabase.from('sequences').select('*');
+    console.log(`Found ${sequences?.length || 0} sequences`);
+
+    // Step 6: Export frames
+    console.log('📤 Exporting frames...');
+    const { data: frames } = await supabase.from('frames').select('*');
+    console.log(`Found ${frames?.length || 0} frames`);
+
+    // Step 7: Export other tables (characters, vfx, audio, etc.)
+    // ... similar exports
+
+    console.log('\n🔄 Converting IDs and importing to Turso...\n');
+
+    // Import users with new ULIDs
+    if (users && users.length > 0) {
+      console.log('📥 Importing users...');
+      const convertedUsers = users.map((user: any) => ({
+        ...user,
+        id: convertId(user.id),
+        createdAt: new Date(user.created_at),
+        updatedAt: new Date(user.updated_at),
+      }));
+
+      await turso.insert(schema.user).values(convertedUsers);
+      console.log(`✅ Imported ${convertedUsers.length} users`);
+    }
+
+    // Import teams with new ULIDs
+    if (teams && teams.length > 0) {
+      console.log('📥 Importing teams...');
+      const convertedTeams = teams.map((team: any) => ({
+        ...team,
+        id: convertId(team.id),
+        ownerId: convertId(team.owner_id),
+        createdAt: new Date(team.created_at),
+        updatedAt: new Date(team.updated_at),
+      }));
+
+      await turso.insert(schema.teams).values(convertedTeams);
+      console.log(`✅ Imported ${convertedTeams.length} teams`);
+    }
+
+    // Import sequences with storage URL updates
+    if (sequences && sequences.length > 0) {
+      console.log('📥 Importing sequences...');
+      const convertedSequences = sequences.map((seq: any) => ({
+        ...seq,
+        id: convertId(seq.id),
+        teamId: convertId(seq.team_id),
+        styleId: convertId(seq.style_id),
+        createdBy: seq.created_by ? convertId(seq.created_by) : null,
+        updatedBy: seq.updated_by ? convertId(seq.updated_by) : null,
+        createdAt: new Date(seq.created_at),
+        updatedAt: new Date(seq.updated_at),
+      }));
+
+      await turso.insert(schema.sequences).values(convertedSequences);
+      console.log(`✅ Imported ${convertedSequences.length} sequences`);
+    }
+
+    // Import frames with storage URL updates
+    if (frames && frames.length > 0) {
+      console.log('📥 Importing frames...');
+      const convertedFrames = frames.map((frame: any) => ({
+        ...frame,
+        id: convertId(frame.id),
+        sequenceId: convertId(frame.sequence_id),
+        // Update storage URLs: Supabase → R2
+        thumbnailUrl: frame.thumbnail_url
+          ? frame.thumbnail_url.replace(
+              process.env.NEXT_PUBLIC_SUPABASE_URL +
+                '/storage/v1/object/public/',
+              process.env.R2_PUBLIC_URL + '/'
+            )
+          : null,
+        videoUrl: frame.video_url
+          ? frame.video_url.replace(
+              process.env.NEXT_PUBLIC_SUPABASE_URL +
+                '/storage/v1/object/public/',
+              process.env.R2_PUBLIC_URL + '/'
+            )
+          : null,
+        createdAt: new Date(frame.created_at),
+        updatedAt: new Date(frame.updated_at),
+      }));
+
+      await turso.insert(schema.frames).values(convertedFrames);
+      console.log(`✅ Imported ${convertedFrames.length} frames`);
+    }
+
+    // Continue for all other tables...
+
+    // Save ID mapping for reference
+    console.log('\n💾 Saving ID mapping...');
+    const mappingJson = JSON.stringify(Array.from(idMap.entries()), null, 2);
+    await Bun.write(
+      `backups/${new Date().toISOString().split('T')[0]}/id-mapping.json`,
+      mappingJson
+    );
+
+    console.log('\n✅ Migration completed successfully!');
+    console.log(`Total IDs converted: ${idMap.size}`);
+  } catch (error) {
+    console.error('\n❌ Migration failed:', error);
+    throw error;
+  }
+}
+
+// Run migration
+migrateData().catch(console.error);
+```
+
+## Phase 3: Storage Migration Script
+
+Create `scripts/migrate-storage.ts`:
+
+```typescript
+/**
+ * Storage Migration Script: Supabase Storage → Cloudflare R2
+ *
+ * This script:
+ * 1. Lists all files in Supabase Storage buckets
+ * 2. Downloads each file
+ * 3. Uploads to R2 with same path structure
+ * 4. Verifies successful migration
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
+
+const BUCKETS = [
+  'thumbnails',
+  'videos',
+  'audio',
+  'styles',
+  'characters',
+  'vfx',
+];
+
+async function migrateStorage() {
+  console.log('🚀 Starting storage migration...\n');
+
+  // Supabase Storage client
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // R2 client
+  const r2 = new S3Client({
     region: 'auto',
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
@@ -103,245 +521,321 @@ export function createR2Client() {
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
     },
   });
-}
-```
 
-### 4. Update Storage Helpers
+  let totalFiles = 0;
+  let migratedFiles = 0;
+  let failedFiles = 0;
 
-**File**: `src/lib/db/helpers/storage.ts`
+  for (const bucket of BUCKETS) {
+    console.log(`\n📦 Processing bucket: ${bucket}`);
 
-- Replace Supabase storage client with R2 S3 client
-- Implement S3 operations: `PutObjectCommand`, `GetObjectCommand`, `DeleteObjectCommand`
-- Generate presigned URLs using `@aws-sdk/s3-request-presigner`
-- Maintain same API interface for backward compatibility
+    try {
+      // List all files in Supabase bucket
+      const { data: files, error } = await supabase.storage
+        .from(bucket)
+        .list('', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'name', order: 'asc' },
+        });
 
-### 5. Update Image Storage Service
+      if (error) {
+        console.error(`❌ Error listing files in ${bucket}:`, error);
+        continue;
+      }
 
-**File**: `src/lib/image/image-storage.ts`
+      if (!files || files.length === 0) {
+        console.log(`  ℹ️  No files in ${bucket}`);
+        continue;
+      }
 
-- Update `uploadImageToStorage()` to use R2
-- Update `getSignedImageUrl()` to generate R2 presigned URLs
-- Update `deleteImageFromStorage()` to use R2
-- Maintain same function signatures
+      console.log(`  Found ${files.length} files`);
+      totalFiles += files.length;
 
-### 6. Update Video Storage Service
+      // Process each file
+      for (const file of files) {
+        const filePath = file.name;
+        console.log(`  📄 Migrating: ${filePath}`);
 
-**File**: `src/lib/services/video-storage.service.ts`
+        try {
+          // Download from Supabase
+          const { data: fileData, error: downloadError } =
+            await supabase.storage.from(bucket).download(filePath);
 
-- Update `uploadVideoToStorage()` to use R2
-- Update `getSignedVideoUrl()` to generate R2 presigned URLs
-- Update `deleteVideoFromStorage()` to use R2
-- Maintain same function signatures
+          if (downloadError || !fileData) {
+            console.error(`    ❌ Download failed: ${downloadError?.message}`);
+            failedFiles++;
+            continue;
+          }
 
-## Migration Strategy
+          // Convert to Buffer
+          const buffer = Buffer.from(await fileData.arrayBuffer());
 
-### Phase 1: Implementation (Week 1)
+          // Upload to R2
+          const key = `${bucket}/${filePath}`;
+          await r2.send(
+            new PutObjectCommand({
+              Bucket: process.env.R2_BUCKET_NAME!,
+              Key: key,
+              Body: buffer,
+              ContentType: fileData.type || 'application/octet-stream',
+              CacheControl: 'public, max-age=31536000',
+            })
+          );
 
-1. Create R2 buckets and configure API tokens
-2. Implement R2 storage service layer
-3. Update storage helpers to use R2
-4. Update image and video storage services
-5. Update workflows to use new storage
-6. Add environment variables to all environments
+          // Verify upload
+          await r2.send(
+            new HeadObjectCommand({
+              Bucket: process.env.R2_BUCKET_NAME!,
+              Key: key,
+            })
+          );
 
-### Phase 2: Testing (Week 1)
-
-1. Test file uploads in local development
-2. Test file retrieval via presigned URLs
-3. Test file deletion
-4. Test workflows end-to-end
-5. Verify CORS configuration
-6. Test in preview environment (PR branch)
-
-### Phase 3: Data Migration (Week 2)
-
-1. Create migration script to copy all files from Supabase to R2
-2. Run migration script against production data
-3. Verify all files transferred successfully
-4. Update database records with new R2 URLs (if needed)
-
-### Phase 4: Production Deployment (Week 2)
-
-1. Deploy R2 storage changes to production
-2. Monitor for errors
-3. Verify new uploads work correctly
-4. Keep Supabase Storage as backup for 30 days
-5. After 30 days, delete Supabase Storage buckets
-
-## Migration Script
-
-**File**: `scripts/migrate-supabase-to-r2.ts`
-
-```typescript
-/**
- * Migration script to copy files from Supabase Storage to R2
- *
- * Usage:
- *   bun scripts/migrate-supabase-to-r2.ts --bucket thumbnails
- *   bun scripts/migrate-supabase-to-r2.ts --bucket videos
- *   bun scripts/migrate-supabase-to-r2.ts --all
- */
-
-// Process:
-// 1. List all files in Supabase bucket
-// 2. For each file:
-//    a. Download from Supabase
-//    b. Upload to R2
-//    c. Verify upload
-//    d. Log progress
-// 3. Generate migration report
-```
-
-## Testing Checklist
-
-- [ ] Local development: Upload thumbnail image
-- [ ] Local development: Upload video
-- [ ] Local development: Display image in browser
-- [ ] Local development: Play video in browser
-- [ ] Local development: Delete file
-- [ ] Preview environment: Upload and display files
-- [ ] Preview environment: Workflows complete successfully
-- [ ] Production: Run migration script for thumbnails
-- [ ] Production: Run migration script for videos
-- [ ] Production: Verify all files accessible
-- [ ] Production: New uploads work correctly
-- [ ] Production: Monitor error logs for 48 hours
-
-## Rollback Plan
-
-Since there's no dual-write strategy, rollback requires:
-
-1. Revert code deployment
-2. Files uploaded to R2 during deployment will need to be re-uploaded to Supabase
-3. Keep Supabase Storage active for 30 days as safety net
-
-**Note**: Database records store URLs, so changing storage provider requires URL updates or regeneration.
-
-## Cost Comparison
-
-### Supabase Storage
-
-- $0.021/GB storage per month
-- Egress costs vary
-
-### Cloudflare R2
-
-- $0.015/GB storage per month
-- **Zero egress fees**
-- Class A operations: $4.50 per million
-- Class B operations: $0.36 per million
-
-**Expected Savings**: ~30% on storage + 100% on egress
-
-## Security Considerations
-
-1. **Private Buckets**: All buckets remain private
-2. **Presigned URLs**: Generate time-limited signed URLs (default: 1 hour)
-3. **Authentication**: Verify user authentication before generating signed URLs
-4. **CORS**: Restrict to velro.ai domains only
-5. **API Keys**: Store in environment variables, never commit to git
-
-## CORS Configuration
-
-```json
-[
-  {
-    "AllowedOrigins": [
-      "https://velro.ai",
-      "https://*.velro.ai",
-      "http://localhost:3000"
-    ],
-    "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
+          console.log(`    ✅ Migrated successfully`);
+          migratedFiles++;
+        } catch (error) {
+          console.error(`    ❌ Migration failed:`, error);
+          failedFiles++;
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error processing bucket ${bucket}:`, error);
+    }
   }
-]
+
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 Migration Summary');
+  console.log('='.repeat(60));
+  console.log(`Total files found:    ${totalFiles}`);
+  console.log(`Successfully migrated: ${migratedFiles}`);
+  console.log(`Failed:               ${failedFiles}`);
+  console.log('='.repeat(60));
+
+  if (failedFiles > 0) {
+    console.log('\n⚠️  Some files failed to migrate. Review logs above.');
+    process.exit(1);
+  } else {
+    console.log('\n✅ All files migrated successfully!');
+  }
+}
+
+// Run migration
+migrateStorage().catch(console.error);
 ```
 
-## File Structure After Migration
+## Phase 4: Execution Plan
 
+### Pre-migration Checklist
+
+- [ ] Turso database created and credentials saved
+- [ ] R2 bucket created and credentials saved
+- [ ] All code changes completed and tested locally
+- [ ] Backup of production database completed
+- [ ] ID mapping strategy understood
+- [ ] Rollback plan documented
+
+### Execution Steps
+
+**1. Maintenance Mode (Optional)**
+
+```bash
+# If needed, enable maintenance mode in production
+# to prevent new data during migration
 ```
-src/
-├── lib/
-│   ├── storage/
-│   │   ├── r2-client.ts          # R2 client configuration
-│   │   ├── r2-storage.ts         # Core R2 operations
-│   │   └── r2-storage.test.ts    # Tests
-│   ├── db/
-│   │   └── helpers/
-│   │       └── storage.ts         # Updated to use R2
-│   ├── image/
-│   │   └── image-storage.ts       # Updated to use R2
-│   └── services/
-│       └── video-storage.service.ts  # Updated to use R2
-scripts/
-└── migrate-supabase-to-r2.ts     # Migration script
+
+**2. Push Schema to Turso**
+
+```bash
+# Push new schema
+bun db:push
+
+# Verify tables created
+turso db shell velro-production ".tables"
 ```
 
-## Implementation Order
+**3. Migrate Data**
 
-1. **Setup R2 Infrastructure**
-   - Create buckets
-   - Generate API tokens
-   - Configure environment variables
+```bash
+# Run data migration script
+SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-data.ts
 
-2. **Create R2 Storage Layer**
-   - Install AWS SDK
-   - Create R2 client
-   - Implement core operations (upload, download, delete, presign)
+# This will:
+# - Export all data from Supabase
+# - Convert UUID → ULID
+# - Import to Turso
+# - Save ID mapping file
+```
 
-3. **Update Storage Services**
-   - Update `storage.ts` helpers
-   - Update `image-storage.ts`
-   - Update `video-storage.service.ts`
+**4. Migrate Storage**
 
-4. **Update Workflows**
-   - Ensure workflows use updated storage services
-   - Test workflow execution end-to-end
+```bash
+# Run storage migration script
+SUPABASE_SERVICE_ROLE_KEY=<key> bun run scripts/migrate-storage.ts
 
-5. **Create Migration Script**
-   - Implement Supabase → R2 copy logic
-   - Add progress tracking and error handling
+# This will:
+# - Copy all files from Supabase Storage to R2
+# - Maintain folder structure
+# - Verify uploads
+```
 
-6. **Test Thoroughly**
-   - Local development testing
-   - Preview environment testing
-   - Verify all file operations
+**5. Update Environment Variables**
 
-7. **Migrate Data**
-   - Run migration script
-   - Verify data integrity
+```bash
+# Update production environment (Vercel/your platform)
+# Remove:
+# - POSTGRES_URL
+# - NEXT_PUBLIC_SUPABASE_URL
+# - NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-8. **Deploy to Production**
-   - Deploy code changes
-   - Monitor for issues
-   - Keep Supabase as backup
+# Add:
+# - TURSO_DATABASE_URL
+# - TURSO_AUTH_TOKEN
+# - R2_ACCOUNT_ID
+# - R2_ACCESS_KEY_ID
+# - R2_SECRET_ACCESS_KEY
+# - R2_BUCKET_NAME
+# - R2_PUBLIC_URL
+```
+
+**6. Deploy**
+
+```bash
+# Deploy new code
+git push origin main
+
+# Or manual deployment
+vercel --prod
+```
+
+**7. Verify**
+
+```bash
+# Test critical flows:
+# - User login
+# - Sequence creation
+# - Frame generation
+# - File uploads
+# - File access
+```
+
+## Phase 5: Post-Migration
+
+### Verification Checklist
+
+- [ ] All users can log in
+- [ ] All sequences visible
+- [ ] All frames display correctly
+- [ ] Thumbnails load properly
+- [ ] Videos play correctly
+- [ ] New uploads work
+- [ ] Workflows execute successfully
+- [ ] No console errors
+
+### Cleanup
+
+```bash
+# Once verified (wait 1-2 weeks):
+
+# 1. Remove Supabase dependencies
+bun remove @supabase/supabase-js @supabase/ssr postgres supabase
+
+# 2. Delete Supabase-related files
+rm -rf src/lib/supabase
+rm -rf supabase/
+
+# 3. Remove Supabase scripts from package.json
+# Delete: supabase:start, supabase:stop, supabase:types
+
+# 4. Delete old storage (carefully!)
+# Via Supabase Dashboard: Storage → Empty buckets → Delete buckets
+
+# 5. Cancel Supabase subscription
+```
+
+## Rollback Strategy
+
+If migration fails:
+
+**1. Revert Code**
+
+```bash
+git revert HEAD
+git push origin main
+```
+
+**2. Restore Environment Variables**
+
+```bash
+# Re-add Supabase credentials
+# Remove Turso/R2 credentials
+```
+
+**3. Redeploy**
+
+```bash
+vercel --prod
+```
+
+**4. Investigate**
+
+- Review migration logs
+- Check ID mapping file
+- Verify data integrity
+- Fix issues
+- Try again
+
+## Risk Mitigation
+
+**Data Loss Prevention:**
+
+- ✅ Full database backup before migration
+- ✅ ID mapping file saved
+- ✅ Storage files copied (not moved)
+- ✅ Keep Supabase active for 2 weeks post-migration
+
+**Downtime Minimization:**
+
+- ✅ Migration scripts run offline
+- ✅ Quick deployment after migration
+- ✅ Can run during low-traffic period
+
+**Testing:**
+
+- ✅ Test on staging environment first (if available)
+- ✅ Dry run of migration scripts
+- ✅ Verify all critical paths work
 
 ## Success Criteria
 
-- All existing files successfully migrated to R2
-- New uploads go directly to R2
-- Signed URLs work correctly for authenticated users
-- Videos play in browser without CORS issues
-- Images display correctly
-- Workflows complete successfully
-- No increase in error rates
-- Cost reduction visible after 30 days
+Migration is successful when:
+
+- ✅ All data migrated to Turso with new ULIDs
+- ✅ All storage files accessible via R2
+- ✅ Application works without errors
+- ✅ No data loss
+- ✅ No broken references
+- ✅ Performance is acceptable
+- ✅ Users can work normally
+
+## Support
+
+If issues arise:
+
+1. Check migration logs
+2. Review ID mapping file
+3. Verify environment variables
+4. Test database connectivity
+5. Check storage URLs
+6. Review Better Auth logs
+7. Check Turso dashboard
+8. Check R2 dashboard
 
 ## Timeline
 
-- **Week 1**: Implementation + Testing (Days 1-7)
-- **Week 2**: Data Migration + Production Deployment (Days 8-14)
-- **Week 3-6**: Monitoring + Optimization (Days 15-42)
-- **Day 43**: Remove Supabase Storage (if no issues)
+- **Day 1**: Infrastructure setup + code changes
+- **Day 2**: Migration scripts + local testing
+- **Day 3**: Production migration + verification
+- **Week 2**: Monitor and stabilize
+- **Week 3-4**: Cleanup old infrastructure
 
-## Questions / Decisions
-
-- [x] Use single bucket or multiple buckets per type? → Single bucket with prefixes
-- [x] Public or private buckets? → Private with signed URLs
-- [x] Custom domain for CDN? → Yes, optional (can add later)
-- [x] Separate dev/prod buckets? → Yes (velro-storage-dev, velro-storage)
-- [ ] Presigned URL expiration time? → Default 1 hour (configurable per use case)
-- [ ] Migration script: batch size? → 100 files at a time
-- [ ] Keep Supabase Storage backup for how long? → 30 days
+Let's go! 🚀

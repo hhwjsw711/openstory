@@ -13,6 +13,7 @@ import {
 } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { teamService } from '@/lib/services/team.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const updateRoleSchema = z.object({
   role: z.enum(['owner', 'admin', 'member', 'viewer']),
@@ -26,10 +27,10 @@ export async function DELETE(
     const { teamId, userId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(teamId);
-      uuidSchema.parse(userId);
+      ulidSchema.parse(teamId);
+      ulidSchema.parse(userId);
     } catch {
       throw new ValidationError('Invalid team ID or user ID format');
     }
@@ -79,10 +80,10 @@ export async function PATCH(
     const { teamId, userId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(teamId);
-      uuidSchema.parse(userId);
+      ulidSchema.parse(teamId);
+      ulidSchema.parse(userId);
     } catch {
       throw new ValidationError('Invalid team ID or user ID format');
     }

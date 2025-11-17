@@ -60,5 +60,10 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "oxc.typeAware": true,
   "oxc.lint.run": "onSave",
-  "oxc.configPath": ""
+  "oxc.configPath": "",
+  "git.repositoryScanIgnoredFolders": [
+    "node_modules",
+    ".conductor",
+    ".trees"
+  ]
 }

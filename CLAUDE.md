@@ -21,15 +21,19 @@ bun format            # Format code with Prettier
 bun format:check      # Check formatting without making changes
 ```
 
-### Supabase
+### Database (Turso/SQLite)
 
 ```bash
-bunx supabase start     # Start local Supabase
-bunx supabase stop      # Stop local Supabase
-bunx supabase db reset  # Reset database
-bunx supabase status    # Check local services status
-bun supabase:types     # Generate TypeScript types from database
+bun db:generate         # Generate migrations from schema
+bun db:migrate          # Apply migrations to database
+bun db:seed             # Seed database with initial data (system team + style templates)
+bun db:setup            # Run migrate + seed together (recommended for first-time setup)
+bun db:push             # Push schema changes to database
+bun db:studio           # Open Drizzle Studio (database GUI)
+bun db:check            # Check for schema issues
 ```
+
+**Note**: Local development uses a local SQLite file (`local.db`) via Turso's libSQL client. Production uses Turso cloud database. Both use the same libSQL driver for dev/prod parity.
 
 ### QStash Development
 
@@ -42,16 +46,15 @@ bun qstash:dev         # Start QStash tunnel for local webhooks
 ### Environment Setup
 
 ```bash
-bun setup:env          # Create .env.development.local with Supabase credentials
+bun setup:env          # Create .env.development.local with database and QStash credentials
 ```
 
-**Note**: Database types (`src/lib/gen.types.ts`) are auto-generated:
+**Note**: Database types are managed by Drizzle ORM:
 
-- Generated automatically on `bun install` via postinstall hook
-- Can be manually regenerated with `bun supabase:types`
-- File is gitignored to ensure types always match local database schema
-- Types are generated from your local Supabase instance (must be running)
-- Use the convenience exports from `@/types/database` for cleaner imports
+- Schema defined in `src/lib/db/schema/`
+- Types automatically inferred by Drizzle
+- Use `bun db:generate` to create migrations from schema changes
+- Use `bun db:migrate` to apply migrations to your local database
 
 ### Cloudflare R2 Storage
 
@@ -73,19 +76,6 @@ R2_SECRET_ACCESS_KEY=your-secret-access-key
 R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for production
 ```
 
-**Migrating from Supabase Storage** (one-time):
-
-```bash
-# Preview migration (dry run)
-bun scripts/migrate-supabase-to-r2.ts --all --dry-run
-
-# Migrate specific bucket
-bun scripts/migrate-supabase-to-r2.ts --bucket thumbnails
-
-# Migrate all buckets
-bun scripts/migrate-supabase-to-r2.ts --all
-```
-
 ### TypeScript
 
 ```bash
@@ -104,18 +94,19 @@ bun build-storybook   # Build Storybook for production
 ### First Time Setup
 
 1. **Install dependencies**: `bun install`
-2. **Start Supabase**: `bun supabase:start`
-3. **Setup environment**: `bun setup:env` (automatically configures Supabase + QStash with local dev credentials)
+2. **Setup environment**: `bun setup:env` (automatically configures database + QStash with local dev credentials)
+3. **Initialize database**: `bun db:setup` (creates local.db with schema + seeds initial data)
 4. **Setup R2 Storage**:
    - `bunx wrangler login` (authenticate with Cloudflare)
    - `bun scripts/setup-r2-buckets.sh` (create R2 buckets)
    - Add R2 credentials to `.env.development.local`
 
-### Daily Development (3 Terminal Setup)
+### Daily Development (2 Terminal Setup)
 
-1. **Terminal 1 - Supabase**: `bun supabase:start` (if not already running)
-2. **Terminal 2 - QStash**: `bun qstash:dev` (for async job testing)
-3. **Terminal 3 - Next.js**: `bun dev`
+1. **Terminal 1 - QStash**: `bun qstash:dev` (for async job testing)
+2. **Terminal 2 - Next.js**: `bun dev`
+
+**Note**: No database server needed - local SQLite file (`local.db`) is used automatically.
 
 ### Before Committing
 
@@ -141,7 +132,7 @@ This is a Next.js 15 headless API application for AI-powered video sequence crea
 
 ### Core Design Principles
 
-- **Backend-only database access**: All Supabase DB operations go through API routes. Never use Supabase client directly in components to avoid RLS complexity.
+- **Backend-only database access**: All database operations go through API routes. Database client is only used server-side for security and consistency.
 - **Anonymous-first**: Users can start creating without signup, then upgrade to save work via email login.
 - **Team-based**: All resources (sequences, styles, characters, vfx, audio) belong to teams for collaboration.
 - **Script-driven**: Everything generates from the script to maintain consistency.
@@ -190,7 +181,9 @@ All API routes follow this structure:
 
 - **Runtime**: Bun (migrated from Node.js/pnpm)
 - **Framework**: Next.js 15 with App Router and Turbopack
-- **Database**: Supabase (PostgreSQL + Better Auth + Storage + Realtime)
+- **Database**: Turso (libSQL/SQLite) with Drizzle ORM
+- **Authentication**: Better Auth with Drizzle adapter
+- **Storage**: Cloudflare R2 (S3-compatible)
 - **Workflows**: QStash Workflow (Upstash) for durable, serverless AI task orchestration
 - **Styling**: Tailwind CSS v4 with shadcn/ui
 - **Testing**: Bun test (migrated from Vitest)

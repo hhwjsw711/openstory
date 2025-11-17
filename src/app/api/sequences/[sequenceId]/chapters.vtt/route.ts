@@ -9,7 +9,7 @@ import { handleApiError, ValidationError } from '@/lib/errors';
 import { frameService } from '@/lib/services/frame.service';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,
@@ -18,10 +18,10 @@ export async function GET(
   try {
     const { sequenceId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(sequenceId);
+      ulidSchema.parse(sequenceId);
     } catch {
       throw new ValidationError('Invalid sequence ID format');
     }

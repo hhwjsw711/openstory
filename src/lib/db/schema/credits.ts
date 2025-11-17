@@ -4,61 +4,52 @@
  */
 
 import {
+  desc,
   InferInsertModel,
   InferSelectModel,
   relations,
   sql,
 } from 'drizzle-orm';
 import {
-  check,
-  foreignKey,
-  index,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgPolicy,
-  pgTable,
+  integer,
+  sqliteTable,
   text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core';
+  real,
+  index,
+  check,
+} from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 import { user } from './auth';
 
-// Enums
-export const transactionType = pgEnum('transaction_type', [
+// Enum values as constants (SQLite doesn't have native enums)
+export const TRANSACTION_TYPES = [
   'credit_purchase',
   'credit_usage',
   'credit_refund',
   'credit_adjustment',
-]);
+] as const;
+export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
 /**
  * Credits table
  * Stores user credit balances
  */
-export const credits = pgTable(
+export const credits = sqliteTable(
   'credits',
   {
-    userId: uuid('user_id').primaryKey().notNull(),
-    balance: numeric({ precision: 10, scale: 2 }).default('0.00').notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    userId: text('user_id')
+      .primaryKey()
       .notNull()
-      .$onUpdate(() => new Date()),
+      .references(() => user.id, { onDelete: 'cascade' }),
+    // Use real (float) for monetary values in SQLite
+    balance: real().default(0.0).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
   (table) => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'credits_user_id_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-    check('positive_balance', sql`balance >= (0)::numeric`),
+    // Check constraint: balance must be non-negative
+    check('positive_balance', sql`${table.balance} >= 0`),
   ]
 );
 
@@ -66,50 +57,29 @@ export const credits = pgTable(
  * Transactions table
  * Credit transaction history for auditing and billing
  */
-export const transactions = pgTable(
+export const transactions = sqliteTable(
   'transactions',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    userId: uuid('user_id').notNull(),
-    type: transactionType().notNull(),
-    amount: numeric({ precision: 10, scale: 2 }).notNull(),
-    balanceAfter: numeric('balance_after', {
-      precision: 10,
-      scale: 2,
-    }).notNull(),
-    metadata: jsonb().default({}),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: text().$type<TransactionType>().notNull(),
+    amount: real().notNull(),
+    balanceAfter: real('balance_after').notNull(),
+    metadata: text({ mode: 'json' }).$defaultFn(() => ({})),
     description: text(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
   },
   (table) => [
-    index('idx_transactions_created_at').using(
-      'btree',
-      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-    ),
-    index('idx_transactions_type').using(
-      'btree',
-      table.type.asc().nullsLast().op('enum_ops')
-    ),
-    index('idx_transactions_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'transactions_user_id_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_transactions_created_at').on(desc(table.createdAt)),
+    index('idx_transactions_type').on(table.type),
+    index('idx_transactions_user_id').on(table.userId),
   ]
 );
 
@@ -134,6 +104,3 @@ export type NewCredit = InferInsertModel<typeof credits>;
 
 export type Transaction = InferSelectModel<typeof transactions>;
 export type NewTransaction = InferInsertModel<typeof transactions>;
-
-// Enum type exports
-export type TransactionType = (typeof transactionType.enumValues)[number];

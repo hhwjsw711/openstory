@@ -8,9 +8,10 @@ import { z } from 'zod';
 import { getUser } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
 import { canAccessTeam } from '@/lib/db/helpers';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const checkAccessSchema = z.object({
-  teamId: z.string().uuid(),
+  teamId: ulidSchema,
 });
 
 export async function POST(request: Request) {

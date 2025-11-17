@@ -18,6 +18,7 @@ import { updateStyleSchema } from '@/lib/schemas/style.schemas';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,
@@ -26,10 +27,10 @@ export async function GET(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }
@@ -71,10 +72,10 @@ export async function PATCH(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }
@@ -93,13 +94,14 @@ export async function PATCH(
     const validated = updateStyleSchema.parse(body);
 
     // Update style with Drizzle
-    const [style] = await db
+    const result = await db
       .update(styles)
       .set(validated)
       .where(
         and(eq(styles.id, styleId), eq(styles.teamId, teamMembership.teamId))
       )
       .returning();
+    const style = Array.isArray(result) ? result[0] : undefined;
 
     if (!style) {
       throw new ValidationError(
@@ -151,10 +153,10 @@ export async function DELETE(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }

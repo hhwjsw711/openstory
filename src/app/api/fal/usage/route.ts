@@ -8,11 +8,12 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth/config';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { getFalService } from '@/lib/services/fal-service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 // Query parameters schema
 const usageQuerySchema = z.object({
-  teamId: z.string().uuid().optional(),
-  userId: z.string().uuid().optional(),
+  teamId: ulidSchema.optional(),
+  userId: ulidSchema.optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   period: z.enum(['day', 'week', 'month', 'year']).optional().default('month'),

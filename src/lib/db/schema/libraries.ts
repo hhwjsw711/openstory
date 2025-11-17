@@ -4,24 +4,13 @@
  */
 
 import {
+  desc,
   InferInsertModel,
   InferSelectModel,
   relations,
-  sql,
 } from 'drizzle-orm';
-import {
-  boolean,
-  foreignKey,
-  index,
-  integer,
-  jsonb,
-  pgPolicy,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 import { user } from './auth';
 import { teams } from './teams';
 
@@ -36,96 +25,62 @@ type StyleConfig = {
   referenceFilms: string[]; // ['Blade Runner', 'Sin City', 'Drive'],
   colorGrading: string; // 'Desaturated with selective color pops',
 };
+
 /**
  * Styles library
  * Style Stacks - JSON configurations for consistent AI-generated content
+ *
+ * Note: TypeScript shows implicit 'any' warning due to self-referencing parentId field.
+ * This is a known limitation with circular references in Drizzle ORM.
+ * The type resolves correctly after export and doesn't affect runtime or query type inference.
  */
-export const styles = pgTable(
+// @ts-expect-error - Self-referencing table creates circular type dependency
+export const styles = sqliteTable(
   'styles',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    name: varchar({ length: 255 }).notNull(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    name: text({ length: 255 }).notNull(),
     description: text(),
-    config: jsonb().$type<StyleConfig>().notNull(),
-    category: varchar({ length: 100 }),
-    tags: text().array().default(['']),
-    isPublic: boolean('is_public').default(false),
-    isTemplate: boolean('is_template').default(false),
+    config: text({ mode: 'json' }).$type<StyleConfig>().notNull(),
+    category: text({ length: 100 }),
+    // SQLite doesn't have array type - store as JSON array
+    tags: text({ mode: 'json' })
+      .$type<string[]>()
+      .$defaultFn(() => []),
+    isPublic: integer('is_public', { mode: 'boolean' }).default(false),
+    isTemplate: integer('is_template', { mode: 'boolean' }).default(false),
     version: integer().default(1),
-    parentId: uuid('parent_id'),
+    // @ts-expect-error - Self-referencing field creates circular type dependency
+    parentId: text('parent_id').references(() => styles.id, {
+      onDelete: 'set null',
+    }),
     previewUrl: text('preview_url'),
     usageCount: integer('usage_count').default(0),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by'),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
-    index('idx_styles_category').using(
-      'btree',
-      table.category.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_styles_created_at').using(
-      'btree',
-      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-    ),
-    index('idx_styles_is_public').using(
-      'btree',
-      table.isPublic.asc().nullsLast().op('bool_ops')
-    ),
-    index('idx_styles_is_template').using(
-      'btree',
-      table.isTemplate.asc().nullsLast().op('bool_ops')
-    ),
-    index('idx_styles_name_gin').using(
-      'gin',
-      table.name.asc().nullsLast().op('gin_trgm_ops')
-    ),
-    index('idx_styles_parent_id').using(
-      'btree',
-      table.parentId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_styles_tags_gin').using(
-      'gin',
-      table.tags.asc().nullsLast().op('array_ops')
-    ),
-    index('idx_styles_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_styles_usage_count').using(
-      'btree',
-      table.usageCount.desc().nullsFirst().op('int4_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'styles_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.parentId],
-      foreignColumns: [table.id],
-      name: 'styles_parent_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: 'styles_created_by_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_styles_category').on(table.category),
+    index('idx_styles_created_at').on(desc(table.createdAt)),
+    index('idx_styles_is_public').on(table.isPublic),
+    index('idx_styles_is_template').on(table.isTemplate),
+    index('idx_styles_name').on(table.name),
+    index('idx_styles_parent_id').on(table.parentId),
+    index('idx_styles_team_id').on(table.teamId),
+    index('idx_styles_usage_count').on(desc(table.usageCount)),
   ]
 );
 
@@ -133,42 +88,31 @@ export const styles = pgTable(
  * Style adaptations
  * Model-specific configurations for different AI providers
  */
-export const styleAdaptations = pgTable(
+export const styleAdaptations = sqliteTable(
   'style_adaptations',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    styleId: uuid('style_id').notNull(),
-    modelProvider: varchar('model_provider', { length: 100 }).notNull(),
-    modelName: varchar('model_name', { length: 100 }).notNull(),
-    adaptedConfig: jsonb('adapted_config').default({}).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    styleId: text('style_id')
+      .notNull()
+      .references(() => styles.id, { onDelete: 'cascade' }),
+    modelProvider: text('model_provider', { length: 100 }).notNull(),
+    modelName: text('model_name', { length: 100 }).notNull(),
+    adaptedConfig: text('adapted_config', { mode: 'json' })
+      .default('{}')
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
   },
   (table) => [
-    index('idx_style_adaptations_provider_model').using(
-      'btree',
-      table.modelProvider.asc().nullsLast().op('text_ops'),
-      table.modelName.asc().nullsLast().op('text_ops')
+    index('idx_style_adaptations_provider_model').on(
+      table.modelProvider,
+      table.modelName
     ),
-    index('idx_style_adaptations_style_id').using(
-      'btree',
-      table.styleId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.styleId],
-      foreignColumns: [styles.id],
-      name: 'style_adaptations_style_id_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_style_adaptations_style_id').on(table.styleId),
   ]
 );
 
@@ -176,52 +120,33 @@ export const styleAdaptations = pgTable(
  * Characters library
  * LoRA models and character definitions
  */
-export const characters = pgTable(
+export const characters = sqliteTable(
   'characters',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    name: varchar({ length: 255 }).notNull(),
-    loraUrl: text('lora_url'),
-    config: jsonb().default({}),
-    previewUrl: text('preview_url'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    teamId: text('team_id')
       .notNull()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by'),
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    name: text({ length: 255 }).notNull(),
+    loraUrl: text('lora_url'),
+    config: text({ mode: 'json' }).default('{}'),
+    previewUrl: text('preview_url'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
-    index('idx_characters_name').using(
-      'btree',
-      table.name.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_characters_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'characters_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: 'characters_created_by_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_characters_name').on(table.name),
+    index('idx_characters_team_id').on(table.teamId),
   ]
 );
 
@@ -229,51 +154,34 @@ export const characters = pgTable(
  * VFX library
  * Visual effects presets and configurations
  */
-export const vfx = pgTable(
+export const vfx = sqliteTable(
   'vfx',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    name: varchar({ length: 255 }).notNull(),
-    presetConfig: jsonb('preset_config').default({}).notNull(),
-    previewUrl: text('preview_url'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    teamId: text('team_id')
       .notNull()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by'),
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    name: text({ length: 255 }).notNull(),
+    presetConfig: text('preset_config', { mode: 'json' })
+      .default('{}')
+      .notNull(),
+    previewUrl: text('preview_url'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
-    index('idx_vfx_name').using(
-      'btree',
-      table.name.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_vfx_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'vfx_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: 'vfx_created_by_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_vfx_name').on(table.name),
+    index('idx_vfx_team_id').on(table.teamId),
   ]
 );
 
@@ -281,52 +189,33 @@ export const vfx = pgTable(
  * Audio library
  * Sound effects and music tracks
  */
-export const audio = pgTable(
+export const audio = sqliteTable(
   'audio',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    name: varchar({ length: 255 }).notNull(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    name: text({ length: 255 }).notNull(),
     fileUrl: text('file_url').notNull(),
     durationMs: integer('duration_ms'),
-    metadata: jsonb().default({}),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    metadata: text({ mode: 'json' }).default('{}'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by'),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
-    index('idx_audio_name').using(
-      'btree',
-      table.name.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_audio_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'audio_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: 'audio_created_by_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_audio_name').on(table.name),
+    index('idx_audio_team_id').on(table.teamId),
   ]
 );
 
