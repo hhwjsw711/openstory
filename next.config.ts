@@ -62,13 +62,6 @@ const nextConfig: NextConfig = {
         port: '54321',
         pathname: '/storage/v1/**',
       },
-      // Supabase Storage (production - update with your project URL)
-      {
-        protocol: 'https',
-        hostname: '**.supabase.co',
-        port: '',
-        pathname: '/storage/v1/**',
-      },
       // Cloudflare R2 Storage
       {
         protocol: 'https',
