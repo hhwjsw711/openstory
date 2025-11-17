@@ -335,7 +335,7 @@ export class LetzAIService {
         endpoint: request.endpoint,
         requestPayload: request.parameters,
         status: 'pending',
-        costCredits: estimatedCost.toString(),
+        costCredits: estimatedCost,
       })
       .returning({ id: letzaiRequests.id });
 

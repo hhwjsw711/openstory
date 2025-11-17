@@ -3,54 +3,50 @@
  * Core content creation entities for video sequences
  */
 
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
-import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/script';
 import {
+  desc,
   InferInsertModel,
   InferSelectModel,
   relations,
-  sql,
 } from 'drizzle-orm';
 import {
-  foreignKey,
   index,
   integer,
-  jsonb,
-  pgEnum,
-  pgPolicy,
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
-  unique,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 import { user } from './auth';
 import { styles } from './libraries';
 import { teams } from './teams';
 
-// Enums
-export const sequenceStatus = pgEnum('sequence_status', [
+// Enum values as constants (SQLite doesn't have native enums)
+export const SEQUENCE_STATUSES = [
   'draft',
   'processing',
   'completed',
   'failed',
   'archived',
-]);
+] as const;
+export type SequenceStatus = (typeof SEQUENCE_STATUSES)[number];
 
-export const frameGenerationStatus = pgEnum('frame_generation_status', [
+export const FRAME_GENERATION_STATUSES = [
   'pending',
   'generating',
   'completed',
   'failed',
-]);
+] as const;
+export type FrameGenerationStatus = (typeof FRAME_GENERATION_STATUSES)[number];
 
 /**
- * Type for sequence metadata JSONB field
+ * Type for sequence metadata JSON field
  */
 export type SequenceMetadata = {
   characterBible?: unknown; // Character bible structure from script analysis
@@ -61,80 +57,51 @@ export type SequenceMetadata = {
  * Sequences table
  * Main video sequence/project entity
  */
-export const sequences = pgTable(
+export const sequences = sqliteTable(
   'sequences',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: uuid('team_id').notNull(),
-    title: varchar({ length: 500 }).notNull(),
-    script: text(),
-    status: sequenceStatus().default('draft').notNull(),
-    metadata: jsonb().$type<SequenceMetadata>().default({}),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    teamId: text('team_id')
       .notNull()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by'),
-    updatedBy: uuid('updated_by'),
-    styleId: uuid('style_id').notNull(),
-    aspectRatio: varchar('aspect_ratio', { length: 10 })
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    title: text({ length: 500 }).notNull(),
+    script: text(),
+    status: text().$type<SequenceStatus>().default('draft').notNull(),
+    metadata: text({ mode: 'json' })
+      .$type<SequenceMetadata>()
+      .$defaultFn(() => ({})),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    createdBy: text('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    updatedBy: text('updated_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    styleId: text('style_id')
+      .notNull()
+      .references(() => styles.id, { onDelete: 'set null' }),
+    aspectRatio: text('aspect_ratio', { length: 10 })
       .$type<AspectRatio>()
       .default(DEFAULT_ASPECT_RATIO)
       .notNull(),
-    analysisModel: varchar('analysis_model', { length: 100 })
+    analysisModel: text('analysis_model', { length: 100 })
       .default('anthropic/claude-haiku-4.5')
       .notNull(),
     analysisDurationMs: integer('analysis_duration_ms').default(0).notNull(),
   },
   (table) => [
-    index('idx_sequences_created_at').using(
-      'btree',
-      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-    ),
-    index('idx_sequences_status').using(
-      'btree',
-      table.status.asc().nullsLast().op('enum_ops')
-    ),
-    index('idx_sequences_style_id').using(
-      'btree',
-      table.styleId.asc().nullsLast().op('uuid_ops')
-    ),
-    index('idx_sequences_team_id').using(
-      'btree',
-      table.teamId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: 'sequences_team_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: 'sequences_created_by_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.updatedBy],
-      foreignColumns: [user.id],
-      name: 'sequences_updated_by_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.styleId],
-      foreignColumns: [styles.id],
-      name: 'sequences_style_id_fkey',
-    }).onDelete('set null'),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_sequences_created_at').on(desc(table.createdAt)),
+    index('idx_sequences_status').on(table.status),
+    index('idx_sequences_style_id').on(table.styleId),
+    index('idx_sequences_team_id').on(table.teamId),
   ]
 );
 
@@ -149,14 +116,16 @@ export const sequences = pgTable(
  *
  * @see src/lib/ai/scene-analysis.schema.ts for Scene structure
  */
-export const frames = pgTable(
+export const frames = sqliteTable(
   'frames',
   {
-    id: uuid()
-      .default(sql`uuid_generate_v4()`)
+    id: text()
+      .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    sequenceId: uuid('sequence_id').notNull(),
+    sequenceId: text('sequence_id')
+      .notNull()
+      .references(() => sequences.id, { onDelete: 'cascade' }),
     orderIndex: integer('order_index').notNull(),
     description: text(),
     durationMs: integer('duration_ms').default(3000),
@@ -165,24 +134,25 @@ export const frames = pgTable(
     videoUrl: text('video_url'),
     videoPath: text('video_path'), // R2 storage path (not signed URL)
     // Thumbnail generation status tracking
-    thumbnailStatus:
-      frameGenerationStatus('thumbnail_status').default('pending'),
+    thumbnailStatus: text('thumbnail_status')
+      .$type<FrameGenerationStatus>()
+      .default('pending'),
     thumbnailWorkflowRunId: text('thumbnail_workflow_run_id'),
-    thumbnailGeneratedAt: timestamp('thumbnail_generated_at', {
-      withTimezone: true,
-      mode: 'date',
+    thumbnailGeneratedAt: integer('thumbnail_generated_at', {
+      mode: 'timestamp',
     }),
     thumbnailError: text('thumbnail_error'),
-    imageModel: varchar('image_model', { length: 100 })
+    imageModel: text('image_model', { length: 100 })
       .default(DEFAULT_IMAGE_MODEL)
       .notNull(), // Model used for image generation
     imagePrompt: text('image_prompt'), // User-updated image prompt (overrides AI-generated prompt from metadata)
     // Video/motion generation status tracking
-    videoStatus: frameGenerationStatus('video_status').default('pending'),
+    videoStatus: text('video_status')
+      .$type<FrameGenerationStatus>()
+      .default('pending'),
     videoWorkflowRunId: text('video_workflow_run_id'),
-    videoGeneratedAt: timestamp('video_generated_at', {
-      withTimezone: true,
-      mode: 'date',
+    videoGeneratedAt: integer('video_generated_at', {
+      mode: 'timestamp',
     }),
     videoError: text('video_error'),
     /**
@@ -190,40 +160,23 @@ export const frames = pgTable(
      * Fields are populated progressively across 5 phases.
      * @see src/lib/ai/scene-analysis.schema.ts for Scene structure
      */
-    metadata: jsonb().$type<Scene>(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+    metadata: text({ mode: 'json' }).$type<Scene>(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
   (table) => [
-    index('idx_frames_order').using(
-      'btree',
-      table.sequenceId.asc().nullsLast().op('uuid_ops'),
-      table.orderIndex.asc().nullsLast().op('int4_ops')
-    ),
-    index('idx_frames_sequence_id').using(
-      'btree',
-      table.sequenceId.asc().nullsLast().op('uuid_ops')
-    ),
-    foreignKey({
-      columns: [table.sequenceId],
-      foreignColumns: [sequences.id],
-      name: 'frames_sequence_id_fkey',
-    }).onDelete('cascade'),
-    unique('frames_sequence_id_order_index_key').on(
+    // Compound index for efficient ordering queries
+    index('idx_frames_order').on(table.sequenceId, table.orderIndex),
+    index('idx_frames_sequence_id').on(table.sequenceId),
+    // Unique constraint: one frame per sequence/order combination
+    uniqueIndex('frames_sequence_id_order_index_key').on(
       table.sequenceId,
       table.orderIndex
     ),
-    pgPolicy('Service role bypass', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
   ]
 );
 
@@ -272,6 +225,3 @@ type InferredNewFrame = InferInsertModel<typeof frames>;
 export type NewFrame = Omit<InferredNewFrame, 'metadata'> & {
   metadata?: Scene | null; // Optional - can be null initially, populated during script analysis
 };
-
-// Enum type exports
-export type SequenceStatus = (typeof sequenceStatus.enumValues)[number];

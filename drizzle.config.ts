@@ -1,21 +1,19 @@
 import { defineConfig } from 'drizzle-kit';
 
-const connectionString = process.env.POSTGRES_URL;
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!connectionString) {
-  throw new Error(
-    'POSTGRES_URL or POSTGRES_URL_NON_POOLING environment variable is required'
-  );
+if (!tursoUrl) {
+  throw new Error('TURSO_DATABASE_URL environment variable is required');
 }
-
-const dbUrl = new URL(connectionString);
 
 export default defineConfig({
   schema: './src/lib/db/schema/index.ts',
-  out: './supabase/migrations',
-  dialect: 'postgresql',
+  out: './drizzle/migrations',
+  dialect: 'turso',
   dbCredentials: {
-    url: dbUrl.toString(),
+    url: tursoUrl,
+    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
   },
   verbose: true,
   strict: true,

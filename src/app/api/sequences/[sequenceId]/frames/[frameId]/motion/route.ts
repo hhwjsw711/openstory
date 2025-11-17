@@ -14,7 +14,7 @@ import { ValidationError } from '@/lib/errors';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
-import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
   request: Request,
@@ -24,10 +24,10 @@ export async function POST(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }

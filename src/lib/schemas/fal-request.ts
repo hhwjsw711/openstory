@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod';
+import { ulidSchema, ulidSchemaOptional } from '@/lib/schemas/id.schemas';
 
 // Fal request status enum schema
 export const falRequestStatusSchema = z.enum([
@@ -13,10 +14,10 @@ export const falRequestStatusSchema = z.enum([
 
 // Base Fal request schema
 export const falRequestSchema = z.object({
-  id: z.string().uuid(),
-  job_id: z.string().uuid().nullable(),
-  team_id: z.string().uuid().nullable(),
-  user_id: z.string().uuid().nullable(),
+  id: ulidSchema,
+  job_id: ulidSchema.nullable(),
+  team_id: ulidSchema.nullable(),
+  user_id: ulidSchema.nullable(),
   model: z.string().min(1).max(255),
   request_payload: z.record(z.string(), z.unknown()).default({}),
   response_data: z.record(z.string(), z.unknown()).nullable(),
@@ -70,9 +71,9 @@ export const falImageGenerationRequestSchema = z.object({
   num_images: z.number().int().min(1).max(4).optional(),
   enable_safety_checker: z.boolean().optional(),
   seed: z.number().int().min(0).optional(),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
-  jobId: z.string().uuid().optional(),
+  userId: ulidSchemaOptional,
+  teamId: ulidSchemaOptional,
+  jobId: ulidSchemaOptional,
 });
 
 export const falVideoGenerationRequestSchema = z.object({
@@ -83,15 +84,15 @@ export const falVideoGenerationRequestSchema = z.object({
   aspect_ratio: z.enum(['16:9', '9:16', '1:1', '4:3', '3:4']).optional(),
   enable_audio: z.boolean().optional(),
   seed: z.number().int().min(0).optional(),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
-  jobId: z.string().uuid().optional(),
+  userId: ulidSchemaOptional,
+  teamId: ulidSchemaOptional,
+  jobId: ulidSchemaOptional,
 });
 
 // Usage statistics request schema
 export const falUsageStatsRequestSchema = z.object({
-  teamId: z.string().uuid().optional(),
-  userId: z.string().uuid().optional(),
+  teamId: ulidSchemaOptional,
+  userId: ulidSchemaOptional,
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   period: z.enum(['day', 'week', 'month', 'year']).default('month'),

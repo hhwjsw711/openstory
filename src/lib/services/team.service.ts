@@ -13,14 +13,9 @@ import type { TeamRole } from '@/lib/auth/permissions';
 import { getUserRole } from '@/lib/auth/permissions';
 import type { Database } from '@/lib/db/client';
 import { db } from '@/lib/db/client';
-import {
-  teamInvitations,
-  teamMembers,
-  user,
-  type TeamMemberRole,
-} from '@/lib/db/schema';
+import { teamInvitations, teamMembers, user } from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import crypto from 'node:crypto';
 
 // Type definitions
@@ -228,7 +223,7 @@ export class TeamService {
     await this.database.insert(teamMembers).values({
       teamId: invitation.teamId,
       userId: params.userId,
-      role: invitation.role as TeamMemberRole,
+      role: invitation.role,
     });
 
     // Mark invitation as accepted
@@ -312,7 +307,7 @@ export class TeamService {
     // Update the role
     await this.database
       .update(teamMembers)
-      .set({ role: params.newRole as TeamMemberRole })
+      .set({ role: params.newRole })
       .where(
         and(
           eq(teamMembers.teamId, params.teamId),
@@ -329,38 +324,25 @@ export class TeamService {
    * @returns Array of team members with their details
    */
   async getMembers(teamId: string): Promise<TeamMember[]> {
-    // Get team members with Velro user data
-    const members = await this.database.query.teamMembers.findMany({
-      where: eq(teamMembers.teamId, teamId),
-      with: {
-        user: {
-          columns: {
-            fullName: true,
-            avatarUrl: true,
-          },
-        },
-      },
-      orderBy: (teamMembers, { asc }) => [asc(teamMembers.joinedAt)],
-    });
-
-    // Get emails from BetterAuth user table
-    const userIds = members.map((m) => m.userId);
-    const users = await this.database.query.user.findMany({
-      where: (user, { inArray }) => inArray(user.id, userIds),
-      columns: {
-        id: true,
-        email: true,
-      },
-    });
-
-    // Create email lookup map
-    const emailMap = new Map(users.map((u) => [u.id, u.email] as const));
+    const members = await this.database
+      .select({
+        userId: teamMembers.userId,
+        email: user.email,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        role: teamMembers.role,
+        joinedAt: teamMembers.joinedAt,
+      })
+      .from(teamMembers)
+      .innerJoin(user, eq(teamMembers.userId, user.id))
+      .where(eq(teamMembers.teamId, teamId))
+      .orderBy(asc(teamMembers.joinedAt));
 
     return members.map((m) => ({
       userId: m.userId,
-      email: emailMap.get(m.userId) || '',
-      fullName: m.user.fullName,
-      avatarUrl: m.user.avatarUrl,
+      email: m.email,
+      fullName: m.fullName,
+      avatarUrl: m.avatarUrl,
       role: m.role,
       joinedAt: m.joinedAt.toISOString(),
     }));

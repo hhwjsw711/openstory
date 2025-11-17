@@ -5,6 +5,7 @@
 
 import { db } from '@/lib/db/client';
 import { account, session, user, verification } from '@/lib/db/schema';
+import { generateId } from '@/lib/db/id';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
@@ -13,7 +14,7 @@ import { isValidAccessCode } from './access-codes';
 
 // Environment validation
 const requiredEnvVars = {
-  POSTGRES_URL: process.env.POSTGRES_URL,
+  TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   BETTER_AUTH_URL:
     process.env.BETTER_AUTH_URL ||
@@ -23,6 +24,7 @@ const requiredEnvVars = {
 } as const;
 
 // Validate environment variables
+// Note: TURSO_AUTH_TOKEN is optional for local development (file: URLs)
 for (const [key, value] of Object.entries(requiredEnvVars)) {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -31,7 +33,7 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: 'sqlite',
     schema: {
       user: user,
       session: session,
@@ -181,8 +183,8 @@ export const auth = betterAuth({
   // Advanced configuration
   advanced: {
     database: {
-      // Generate user ID compatible with existing UUID format
-      generateId: () => crypto.randomUUID(),
+      // Generate ULID for user IDs (time-ordered, better performance)
+      generateId: () => generateId(),
     },
   },
 });

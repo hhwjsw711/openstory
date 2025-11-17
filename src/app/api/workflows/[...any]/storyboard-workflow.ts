@@ -9,7 +9,7 @@ import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
-import { sequences } from '@/lib/db/schema';
+import { sequences, styles } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
 import {
   extractCharacterBible,
@@ -52,9 +52,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       async () => {
         const sequence = await db.query.sequences.findFirst({
           where: eq(sequences.id, input.sequenceId),
-          with: {
-            style: true,
-          },
         });
 
         if (!sequence) {
@@ -71,7 +68,11 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('Sequence has no style selected');
         }
 
-        if (!sequence.style) {
+        const style = await db.query.styles.findFirst({
+          where: eq(styles.id, sequence.styleId),
+        });
+
+        if (!style) {
           throw new WorkflowValidationError('No style found');
         }
 
@@ -92,9 +93,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           .set({ status: 'processing', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
 
-        const styleConfig = DirectorDnaConfigSchema.parse(
-          sequence.style.config
-        );
+        const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
         // Use the sequence's analysisModel for script analysis
         const analysisModel =

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const validated = createStyleSchema.parse(body);
 
     // Create style with Drizzle
-    const [style] = await db
+    const result = await db
       .insert(styles)
       .values({
         teamId: teamMembership.teamId,
@@ -47,6 +47,8 @@ export async function POST(request: Request) {
         createdBy: user.id,
       })
       .returning();
+    // Handle ambiguous return type due to self-referencing styles table
+    const style = Array.isArray(result) ? result[0] : result.rows[0];
 
     return NextResponse.json(
       {

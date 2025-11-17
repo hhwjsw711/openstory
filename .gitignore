@@ -44,6 +44,14 @@ cerebras-validation-error.json
 # generated types (auto-generated on postinstall)
 # src/lib/gen.types.ts
 
+# local database (SQLite)
+local.db
+local.db-shm
+local.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
 #pnpm
 .pnpm-store/
 

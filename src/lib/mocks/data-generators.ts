@@ -249,8 +249,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
     'Intense and thrilling',
     'Peaceful and serene',
   ];
-  const aspectRatios = ['16:9', '2.35:1', '2.39:1', '1.85:1', '2.66:1'];
-  const frameRates = ['24fps', '30fps', '60fps'];
+
   const colorGradings = [
     'Warm highlights with cool shadows',
     'Desaturated with selective color pops',

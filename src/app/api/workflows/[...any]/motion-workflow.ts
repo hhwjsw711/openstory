@@ -89,7 +89,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       // Verify team authorization
-      if (data.sequence.teamId !== input.teamId) {
+      if ((data.sequence as { teamId: string }).teamId !== input.teamId) {
         throw new WorkflowValidationError('Unauthorized: Team ID mismatch');
       }
 

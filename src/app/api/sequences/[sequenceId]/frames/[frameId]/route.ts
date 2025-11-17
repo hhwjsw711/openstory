@@ -12,6 +12,7 @@ import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateFrameSchema } from '@/lib/schemas/frame.schemas';
 import { frameService } from '@/lib/services/frame.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,
@@ -21,10 +22,10 @@ export async function GET(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }
@@ -88,10 +89,10 @@ export async function PATCH(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }
@@ -179,10 +180,10 @@ export async function DELETE(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }

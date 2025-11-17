@@ -3,100 +3,76 @@
  * Better Auth tables and user-related tables
  */
 
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
 import {
-  InferInsertModel,
-  InferSelectModel,
-  relations,
-  sql,
-} from 'drizzle-orm';
-import {
-  boolean,
   index,
-  pgPolicy,
-  pgTable,
+  integer,
+  sqliteTable,
   text,
-  timestamp,
-  unique,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
+import { generateId } from '../id';
 
 /**
  * Better Auth user table
- * Core authentication identity table using UUID for Velro compatibility
+ * Core authentication identity table using ULID
  */
-export const user = pgTable(
+export const user = sqliteTable(
   'user',
   {
-    id: uuid().defaultRandom().primaryKey().notNull(),
+    id: text()
+      .$defaultFn(() => generateId())
+      .primaryKey()
+      .notNull(),
     email: text().notNull(),
-    emailVerified: boolean().default(false).notNull(),
+    emailVerified: integer('email_verified', { mode: 'boolean' })
+      .default(false)
+      .notNull(),
     name: text(),
     image: text(),
-    createdAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull()
       .$onUpdate(() => new Date()),
     fullName: text(),
     avatarUrl: text(),
-    onboardingCompleted: boolean().default(false),
-    accessCode: varchar({ length: 100 }),
+    onboardingCompleted: integer('onboarding_completed', {
+      mode: 'boolean',
+    }).default(false),
+    accessCode: text(),
   },
-  (table) => [
-    unique('user_email_key').on(table.email),
-    pgPolicy('Service role full access', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
-  ]
+  (table) => [uniqueIndex('idx_user_email').on(table.email)]
 );
 
 /**
  * Better Auth session table
  * Tracks active user sessions
  */
-export const session = pgTable(
+export const session = sqliteTable(
   'session',
   {
     id: text().primaryKey().notNull(),
-    expiresAt: timestamp({ withTimezone: true, mode: 'date' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
     token: text().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    userId: text('user_id')
       .notNull()
-      .$onUpdate(() => new Date()),
-    ipAddress: text(),
-    userAgent: text(),
-    userId: uuid().notNull(),
+      .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
-    index('idx_session_expires_at').using(
-      'btree',
-      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
-    ),
-    index('idx_session_token').using(
-      'btree',
-      table.token.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_session_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    unique('session_token_key').on(table.token),
-    pgPolicy('Service role full access', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_session_expires_at').on(table.expiresAt),
+    uniqueIndex('idx_session_token').on(table.token),
+    index('idx_session_user_id').on(table.userId),
   ]
 );
 
@@ -104,44 +80,36 @@ export const session = pgTable(
  * Better Auth account table
  * Links users to auth providers (OAuth, email/password, etc)
  */
-export const account = pgTable(
+export const account = sqliteTable(
   'account',
   {
     id: text().primaryKey().notNull(),
-    accountId: text().notNull(),
-    providerId: text().notNull(),
-    userId: uuid().notNull(),
-    accessToken: text(),
-    refreshToken: text(),
-    idToken: text(),
-    accessTokenExpiresAt: timestamp({ withTimezone: true, mode: 'date' }),
-    refreshTokenExpiresAt: timestamp({ withTimezone: true, mode: 'date' }),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: integer('access_token_expires_at', {
+      mode: 'timestamp',
+    }),
+    refreshTokenExpiresAt: integer('refresh_token_expires_at', {
+      mode: 'timestamp',
+    }),
     scope: text(),
     password: text(),
-    createdAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
   (table) => [
-    index('idx_account_provider').using(
-      'btree',
-      table.providerId.asc().nullsLast().op('text_ops'),
-      table.accountId.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_account_user_id').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops')
-    ),
-    pgPolicy('Service role full access', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    uniqueIndex('idx_account_provider').on(table.providerId, table.accountId),
+    index('idx_account_user_id').on(table.userId),
   ]
 );
 
@@ -149,36 +117,23 @@ export const account = pgTable(
  * Better Auth verification table
  * Manages email verification tokens
  */
-export const verification = pgTable(
+export const verification = sqliteTable(
   'verification',
   {
     id: text().primaryKey().notNull(),
     identifier: text().notNull(),
     value: text().notNull(),
-    expiresAt: timestamp({ withTimezone: true, mode: 'date' }).notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: timestamp({ withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
   },
   (table) => [
-    index('idx_verification_expires_at').using(
-      'btree',
-      table.expiresAt.asc().nullsLast().op('timestamptz_ops')
-    ),
-    index('idx_verification_identifier').using(
-      'btree',
-      table.identifier.asc().nullsLast().op('text_ops')
-    ),
-    pgPolicy('Service role full access', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`true`,
-    }),
+    index('idx_verification_expires_at').on(table.expiresAt),
+    index('idx_verification_identifier').on(table.identifier),
   ]
 );
 

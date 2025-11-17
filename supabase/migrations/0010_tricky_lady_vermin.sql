@@ -1,1 +1,0 @@
-ALTER TABLE "sequences" ADD COLUMN "aspect_ratio" varchar(10) DEFAULT '16:9' NOT NULL;

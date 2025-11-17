@@ -214,7 +214,7 @@ export async function updateFrame(
  */
 export async function deleteFrame(frameId: string): Promise<boolean> {
   const result = await db.delete(frames).where(eq(frames.id, frameId));
-  return (result.count ?? 0) > 0;
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 /**
@@ -235,7 +235,7 @@ export async function deleteSequenceFrames(
   const result = await db
     .delete(frames)
     .where(eq(frames.sequenceId, sequenceId));
-  return result.count ?? 0;
+  return result.rowsAffected ?? 0;
 }
 
 // ============================================================================
@@ -484,7 +484,7 @@ export async function updateFramesBulk(
  */
 export async function deleteFramesBulk(frameIds: string[]): Promise<number> {
   const result = await db.delete(frames).where(inArray(frames.id, frameIds));
-  return result.count ?? 0;
+  return result.rowsAffected ?? 0;
 }
 
 // ============================================================================

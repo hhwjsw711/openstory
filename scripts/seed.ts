@@ -3,30 +3,27 @@
  * Seeds the database with initial template styles and system team
  */
 
-import { styles, teams } from '@/lib/db/schema';
-import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
+import { styles, teams, type Style } from '@/lib/db/schema';
+import { DEFAULT_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 
 const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
 
 async function seed() {
-  const connectionString = process.env.POSTGRES_URL;
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (!connectionString) {
-    throw new Error('POSTGRES_URL environment variable is not set');
+  if (!tursoUrl) {
+    throw new Error('TURSO_DATABASE_URL is required');
   }
 
-  const isLocalDevelopment =
-    connectionString.includes('localhost') ||
-    connectionString.includes('127.0.0.1');
-
-  const sql = postgres(connectionString, {
-    max: 1,
-    ssl: isLocalDevelopment ? false : 'require',
+  const client = createClient({
+    url: tursoUrl,
+    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
   });
-  const db = drizzle(sql);
+  const db = drizzle(client);
 
   try {
     console.log('🌱 Seeding database...\n');
@@ -39,6 +36,8 @@ async function seed() {
         id: SYSTEM_TEAM_ID,
         name: 'System Templates',
         slug: 'system-templates',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .onConflictDoNothing();
     console.log('✅ System team created\n');
@@ -59,14 +58,14 @@ async function seed() {
       // 3. Insert template film styles
       console.log('Inserting template styles...');
       await db.insert(styles).values(
-        DEFAULT_STYLE_TEMPLATES.map((style) => ({
+        DEFAULT_SYSTEM_STYLES.map((style) => ({
           ...style,
-          teamId: SYSTEM_TEAM_ID,
-        }))
+          createdBy: null, // No user for system templates
+        })) as Array<typeof styles.$inferInsert>
       );
 
       console.log(
-        `✅ Inserted ${DEFAULT_STYLE_TEMPLATES.length} template styles\n`
+        `✅ Inserted ${DEFAULT_SYSTEM_STYLES.length} template styles\n`
       );
     }
 
@@ -75,7 +74,7 @@ async function seed() {
     console.error('❌ Error seeding database:', error);
     throw error;
   } finally {
-    await sql.end();
+    client.close();
   }
 }
 

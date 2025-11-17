@@ -1,23 +1,24 @@
 import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 /**
  * Shared Zod schemas for team operations
  */
 
 export const inviteMemberSchema = z.object({
-  teamId: z.string().uuid(),
+  teamId: ulidSchema,
   email: z.string().email(),
   role: z.enum(['member', 'admin', 'viewer']).default('member'),
 });
 
 export const removeMemberSchema = z.object({
-  teamId: z.string().uuid(),
-  userId: z.string().uuid(),
+  teamId: ulidSchema,
+  userId: ulidSchema,
 });
 
 export const updateRoleSchema = z.object({
-  teamId: z.string().uuid(),
-  userId: z.string().uuid(),
+  teamId: ulidSchema,
+  userId: ulidSchema,
   newRole: z.enum(['owner', 'admin', 'member', 'viewer']),
 });
 

@@ -337,7 +337,7 @@ export class FalService {
           status: 'completed',
           responseData: result as Record<string, unknown>,
           latencyMs: latencyMs,
-          costCredits: cost.toString(),
+          costCredits: cost,
           updatedAt: new Date(),
         })
         .where(eq(falRequests.id, dbRecord.id));
