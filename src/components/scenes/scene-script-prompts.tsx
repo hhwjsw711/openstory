@@ -222,7 +222,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         queryKey: ['frames', frame.sequenceId],
       });
       await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
-    } finally {
+
+      // Only clear isRegenerating on error - on success, let thumbnailStatus drive the loading state
       setIsRegenerating(false);
     }
   }, [frame, selectedModel, editedPrompt, queryClient]);
@@ -238,6 +239,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       (frame?.imageModel as TextToImageModel) || DEFAULT_IMAGE_MODEL;
     setSelectedModel(currentModel);
   }, [frame?.imageModel]);
+
+  // Clear isRegenerating once the optimistic update is reflected in frame status
+  useEffect(() => {
+    if (frame?.thumbnailStatus === 'generating' && isRegenerating) {
+      setIsRegenerating(false);
+    }
+  }, [frame?.thumbnailStatus, isRegenerating]);
 
   const motionPrompt = frame?.metadata?.prompts?.motion?.fullPrompt;
 

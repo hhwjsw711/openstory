@@ -15,6 +15,7 @@ import { AlertCircle, VideoIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
+import { VideoStateOverlay } from './video-state-overlay';
 
 export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
@@ -159,22 +160,29 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <VideoPlayer
-          key={currentFrame.videoUrl} // Force re-render when video changes
-          src={
-            selectedTab === 'image-prompt' ? '' : currentFrame.videoUrl || ''
-          }
-          posterSrc={currentFrame.thumbnailUrl}
-          aspectRatio={aspectRatio}
-          className={className}
-          autoPlay={shouldAutoPlay}
-          enableDownload={!!currentFrame.videoUrl}
-          downloadFilename={downloadFilename}
-          downloadUrl={downloadData?.downloadUrl}
-          onTimeUpdate={onTimeUpdate}
-          onPause={handlePause}
-          onEnded={handleEnded}
-        />
+        <div className="relative">
+          <VideoPlayer
+            key={currentFrame.videoUrl} // Force re-render when video changes
+            src={
+              selectedTab === 'image-prompt' ? '' : currentFrame.videoUrl || ''
+            }
+            posterSrc={currentFrame.thumbnailUrl}
+            aspectRatio={aspectRatio}
+            className={className}
+            autoPlay={shouldAutoPlay}
+            enableDownload={!!currentFrame.videoUrl}
+            downloadFilename={downloadFilename}
+            downloadUrl={downloadData?.downloadUrl}
+            onTimeUpdate={onTimeUpdate}
+            onPause={handlePause}
+            onEnded={handleEnded}
+          />
+          {/* Show overlay for image/video generation states */}
+          <VideoStateOverlay
+            thumbnailStatus={currentFrame.thumbnailStatus ?? null}
+            videoStatus={currentFrame.videoStatus ?? null}
+          />
+        </div>
       )}
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (

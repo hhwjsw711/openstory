@@ -23,10 +23,17 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   aspectRatio,
   className,
 }) => {
-  const isLoading =
-    thumbnailStatus === 'pending' || thumbnailStatus === 'generating';
+  // Show skeleton only when there's no image yet (initial loading)
+  const isInitialLoading =
+    (thumbnailStatus === 'pending' || thumbnailStatus === 'generating') &&
+    !thumbnailUrl;
+  // Show loading overlay when regenerating an existing image
+  const isRegenerating = thumbnailStatus === 'generating' && thumbnailUrl;
   const isFailed = thumbnailStatus === 'failed';
-  const hasImage = thumbnailUrl && thumbnailStatus === 'completed';
+  // Show image if we have a URL and it's either completed or being regenerated
+  const hasImage =
+    thumbnailUrl &&
+    (thumbnailStatus === 'completed' || thumbnailStatus === 'generating');
 
   return (
     <div
@@ -36,16 +43,25 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
         className
       )}
     >
-      {isLoading && <Skeleton className="absolute h-full w-full rounded-md" />}
+      {isInitialLoading && (
+        <Skeleton className="absolute h-full w-full rounded-md" />
+      )}
 
       {hasImage && (
-        <Image
-          src={thumbnailUrl}
-          alt={alt}
-          className="h-full w-full object-cover"
-          width={320}
-          height={180}
-        />
+        <>
+          <Image
+            src={thumbnailUrl}
+            alt={alt}
+            className="h-full w-full object-cover"
+            width={320}
+            height={180}
+          />
+          {isRegenerating && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+              <Skeleton className="h-full w-full rounded-md opacity-50" />
+            </div>
+          )}
+        </>
       )}
 
       {isFailed && (
