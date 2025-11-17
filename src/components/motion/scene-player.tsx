@@ -14,12 +14,15 @@ import { AlertCircle, VideoIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 
+export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
+
 type ScenePlayerProps = {
   frames?: Frame[];
   selectedFrameId?: string;
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   className?: string;
+  selectedTab?: TabValue;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
 };
@@ -29,6 +32,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   className,
   selectedFrameId,
   aspectRatio,
+  selectedTab,
   onSelectFrame,
   onTimeUpdate,
   onEnded,
@@ -113,6 +117,30 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
 
   // Get scene title for alt text
   const title = currentFrame.metadata?.metadata?.title;
+
+  // If image tab is selected, show only the thumbnail
+  if (selectedTab === 'image-prompt') {
+    return (
+      <div
+        className={cn(
+          'relative overflow-hidden',
+          getAspectRatioClassName(aspectRatio),
+          !currentFrame.thumbnailUrl && 'bg-muted',
+          className
+        )}
+      >
+        {currentFrame.thumbnailUrl ? (
+          <img
+            src={currentFrame.thumbnailUrl}
+            alt={title || 'Scene thumbnail'}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Skeleton className="w-full h-full" />
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

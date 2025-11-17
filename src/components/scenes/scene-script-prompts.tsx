@@ -10,8 +10,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
+export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
+
 type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
+  selectedTab: TabValue;
+  onTabChange: (tab: TabValue) => void;
 };
 
 type PromptTabContentProps = {
@@ -76,6 +80,8 @@ const PromptTabContent: React.FC<PromptTabContentProps> = ({
 
 export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   frame,
+  selectedTab,
+  onTabChange,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
   const [editedPrompt, setEditedPrompt] = useState<string>('');
@@ -159,7 +165,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     frame?.thumbnailStatus === 'generating' || isRegenerating;
 
   return (
-    <Tabs defaultValue="script" className="w-full">
+    <Tabs
+      value={selectedTab}
+      onValueChange={(value) => onTabChange(value as TabValue)}
+      className="w-full"
+    >
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
