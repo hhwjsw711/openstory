@@ -3,13 +3,13 @@
  * Seeds the database with initial template styles and system team
  */
 
-import { styles, teams, type Style } from '@/lib/db/schema';
+import { styles, teams } from '@/lib/db/schema';
 import { DEFAULT_SYSTEM_STYLES } from '@/lib/style/style-templates';
+import { createClient } from '@libsql/client';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
 
-const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
+const SYSTEM_TEAM_SLUG = 'system-templates';
 
 async function seed() {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
@@ -28,26 +28,36 @@ async function seed() {
   try {
     console.log('🌱 Seeding database...\n');
 
-    // 1. Create system team if it doesn't exist
-    console.log('Creating system team...');
-    await db
-      .insert(teams)
-      .values({
-        id: SYSTEM_TEAM_ID,
-        name: 'System Templates',
-        slug: 'system-templates',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoNothing();
-    console.log('✅ System team created\n');
+    // 1. Find or create system team
+    console.log('Finding or creating system team...');
+    let [systemTeam] = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(eq(teams.slug, SYSTEM_TEAM_SLUG));
+
+    if (!systemTeam) {
+      console.log('System team not found, creating...');
+      const [newTeam] = await db
+        .insert(teams)
+        .values({
+          name: 'System Templates',
+          slug: SYSTEM_TEAM_SLUG,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: teams.id });
+      systemTeam = newTeam;
+      console.log(`✅ System team created with ID: ${systemTeam.id}\n`);
+    } else {
+      console.log(`✅ System team found with ID: ${systemTeam.id}\n`);
+    }
 
     // 2. Check if template styles already exist
     console.log('Checking existing template styles...');
     const existingTemplates = await db
       .select()
       .from(styles)
-      .where(eq(styles.teamId, SYSTEM_TEAM_ID));
+      .where(eq(styles.teamId, systemTeam.id));
 
     if (existingTemplates.length > 0) {
       console.log(
@@ -60,6 +70,7 @@ async function seed() {
       await db.insert(styles).values(
         DEFAULT_SYSTEM_STYLES.map((style) => ({
           ...style,
+          teamId: systemTeam.id, // Add system team ID
           createdBy: null, // No user for system templates
         })) as Array<typeof styles.$inferInsert>
       );
@@ -74,7 +85,12 @@ async function seed() {
     console.error('❌ Error seeding database:', error);
     throw error;
   } finally {
-    client.close();
+    // Close client safely - HTTP clients may not need explicit close
+    try {
+      client.close?.();
+    } catch (closeError) {
+      console.warn('Warning: Could not close client cleanly:', closeError);
+    }
   }
 }
 
