@@ -15,6 +15,7 @@ import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
   request: Request,

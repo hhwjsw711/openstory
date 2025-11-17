@@ -12,6 +12,7 @@ import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { updateFrameSchema } from '@/lib/schemas/frame.schemas';
 import { frameService } from '@/lib/services/frame.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,

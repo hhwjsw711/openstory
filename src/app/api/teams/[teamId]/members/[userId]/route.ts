@@ -13,6 +13,7 @@ import {
 } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { teamService } from '@/lib/services/team.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const updateRoleSchema = z.object({
   role: z.enum(['owner', 'admin', 'member', 'viewer']),

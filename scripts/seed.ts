@@ -36,6 +36,8 @@ async function seed() {
         id: SYSTEM_TEAM_ID,
         name: 'System Templates',
         slug: 'system-templates',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .onConflictDoNothing();
     console.log('✅ System team created\n');

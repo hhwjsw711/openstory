@@ -10,7 +10,7 @@ import { handleApiError, ValidationError } from '@/lib/errors';
 import { getVideoDownloadUrl } from '@/lib/services/video-storage.service';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   request: Request,
@@ -19,10 +19,10 @@ export async function GET(
   try {
     const { frameId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid frame ID format');
     }

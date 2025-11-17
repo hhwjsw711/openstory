@@ -18,6 +18,7 @@ import { updateStyleSchema } from '@/lib/schemas/style.schemas';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,
@@ -26,10 +27,10 @@ export async function GET(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }
@@ -71,10 +72,10 @@ export async function PATCH(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }
@@ -152,10 +153,10 @@ export async function DELETE(
   try {
     const { styleId } = await params;
 
-    // Validate UUID
-    const uuidSchema = z.string().uuid();
+    // Validate ULID
+
     try {
-      uuidSchema.parse(styleId);
+      ulidSchema.parse(styleId);
     } catch {
       throw new ValidationError('Invalid style ID format');
     }

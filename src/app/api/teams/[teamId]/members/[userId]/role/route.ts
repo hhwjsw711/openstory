@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { requireTeamOwnerAccess, requireUser } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { teamService } from '@/lib/services/team.service';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const updateRoleSchema = z.object({
   newRole: z.enum(['owner', 'admin', 'member', 'viewer']),

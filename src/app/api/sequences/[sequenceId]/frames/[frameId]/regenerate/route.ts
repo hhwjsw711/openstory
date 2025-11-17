@@ -11,6 +11,7 @@ import type { ImageWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
   request: Request,
