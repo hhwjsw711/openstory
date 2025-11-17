@@ -12,7 +12,7 @@ import { frameService } from '@/lib/services/frame.service';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 const frameOrderSchema = z.object({
-  id: z.string().uuid(),
+  id: ulidSchema,
   order_index: z.number().int(),
 });
 

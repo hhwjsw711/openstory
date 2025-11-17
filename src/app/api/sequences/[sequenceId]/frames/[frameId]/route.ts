@@ -22,10 +22,10 @@ export async function GET(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }
@@ -89,10 +89,10 @@ export async function PATCH(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }
@@ -180,10 +180,10 @@ export async function DELETE(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }

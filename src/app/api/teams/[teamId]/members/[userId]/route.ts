@@ -27,10 +27,10 @@ export async function DELETE(
     const { teamId, userId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(teamId);
-      uuidSchema.parse(userId);
+      ulidSchema.parse(teamId);
+      ulidSchema.parse(userId);
     } catch {
       throw new ValidationError('Invalid team ID or user ID format');
     }
@@ -80,10 +80,10 @@ export async function PATCH(
     const { teamId, userId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(teamId);
-      uuidSchema.parse(userId);
+      ulidSchema.parse(teamId);
+      ulidSchema.parse(userId);
     } catch {
       throw new ValidationError('Invalid team ID or user ID format');
     }

@@ -10,7 +10,6 @@ import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
 import type { ImageWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
@@ -21,10 +20,10 @@ export async function POST(
     const { sequenceId, frameId } = await params;
 
     // Validate UUIDs
-    const uuidSchema = z.string().uuid();
+
     try {
-      uuidSchema.parse(sequenceId);
-      uuidSchema.parse(frameId);
+      ulidSchema.parse(sequenceId);
+      ulidSchema.parse(frameId);
     } catch {
       throw new ValidationError('Invalid sequence or frame ID format');
     }

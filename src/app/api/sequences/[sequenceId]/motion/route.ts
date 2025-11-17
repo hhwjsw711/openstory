@@ -27,7 +27,7 @@ const requestSchema = z.object({
   duration: z.number().min(1).max(10).optional(),
   fps: z.number().min(7).max(30).optional(),
   motionBucket: z.number().min(1).max(255).optional(),
-  frameIds: z.array(z.string().uuid()).optional(), // Optional: specific frames to generate
+  frameIds: z.array(ulidSchema).optional(), // Optional: specific frames to generate
 });
 
 export async function POST(
