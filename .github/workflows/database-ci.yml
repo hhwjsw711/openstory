@@ -204,7 +204,7 @@ jobs:
             -d '{"query":"query($projectId:String!){project(id:$projectId){services{edges{node{id}}}environments{edges{node{id name}}}}}","variables":{"projectId":"'"$RAILWAY_PROJECT_ID"'"}}')
 
           # Check for GraphQL errors
-          if echo "$PROJECT_RESPONSE" | grep -q '"errors"'; then
+          if echo "$PROJECT_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
             echo "Error: Railway API returned an error"
             echo "Response: $PROJECT_RESPONSE"
             echo ""
@@ -215,10 +215,10 @@ jobs:
             exit 1
           fi
 
-          # Get service ID (first service in project)
-          SERVICE_ID=$(echo "$PROJECT_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          # Get service ID (first service in project) using jq
+          SERVICE_ID=$(echo "$PROJECT_RESPONSE" | jq -r '.data.project.services.edges[0].node.id')
 
-          if [ -z "$SERVICE_ID" ]; then
+          if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" = "null" ]; then
             echo "Error: Could not find service in project"
             echo "Response: $PROJECT_RESPONSE"
             exit 1
@@ -226,20 +226,20 @@ jobs:
 
           echo "Found service: $SERVICE_ID"
 
-          # Find environment by name
-          ENVIRONMENT_ID=$(echo "$PROJECT_RESPONSE" | grep -B1 "\"name\":\"$ENV_NAME\"" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          # Find environment by name using jq
+          ENVIRONMENT_ID=$(echo "$PROJECT_RESPONSE" | jq -r ".data.project.environments.edges[] | select(.node.name == \"$ENV_NAME\") | .node.id")
 
           # If environment doesn't exist, create it
-          if [ -z "$ENVIRONMENT_ID" ]; then
+          if [ -z "$ENVIRONMENT_ID" ] || [ "$ENVIRONMENT_ID" = "null" ]; then
             echo "Environment $ENV_NAME not found, creating it..."
             CREATE_ENV_RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
               -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
               -H "Content-Type: application/json" \
               -d '{"query":"mutation($input:EnvironmentCreateInput!){environmentCreate(input:$input){id}}","variables":{"input":{"projectId":"'"$RAILWAY_PROJECT_ID"'","name":"'"$ENV_NAME"'"}}}')
 
-            ENVIRONMENT_ID=$(echo "$CREATE_ENV_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+            ENVIRONMENT_ID=$(echo "$CREATE_ENV_RESPONSE" | jq -r '.data.environmentCreate.id')
 
-            if [ -z "$ENVIRONMENT_ID" ]; then
+            if [ -z "$ENVIRONMENT_ID" ] || [ "$ENVIRONMENT_ID" = "null" ]; then
               echo "Error: Failed to create environment"
               echo "Response: $CREATE_ENV_RESPONSE"
               exit 1
