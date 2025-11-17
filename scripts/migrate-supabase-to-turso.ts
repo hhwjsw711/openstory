@@ -21,6 +21,7 @@
  * - Credits: Renamed from user_credits, simplified structure
  * - Transactions: Renamed from credit_transactions
  * - All library tables: characters, vfx, audio, style_adaptations
+ * - Audit: script_analysis_audit for tracking script analysis operations
  *
  * Usage:
  *   bun scripts/migrate-supabase-to-turso.ts [--dry-run] [--backup]
@@ -127,6 +128,7 @@ async function createBackup() {
     'fal_requests',
     'letzai_requests',
     'audit_logs',
+    'script_analysis_audit',
   ];
 
   for (const table of tables) {
@@ -837,6 +839,66 @@ async function migrateLetzaiRequests() {
 }
 
 /**
+ * Migrate script_analysis_audit table (or audit_logs if that's the source name)
+ */
+async function migrateScriptAnalysisAudit() {
+  console.log('📋 Migrating script analysis audit...');
+
+  // Try both table names - Supabase might have it as audit_logs or script_analysis_audit
+  let auditRecords;
+  try {
+    auditRecords =
+      await sourceDb`SELECT * FROM script_analysis_audit ORDER BY created_at`;
+  } catch (e) {
+    // Try alternate name
+    try {
+      auditRecords =
+        await sourceDb`SELECT * FROM audit_logs ORDER BY created_at`;
+    } catch (e2) {
+      throw e; // Throw original error
+    }
+  }
+
+  console.log(`  Found ${auditRecords.length} audit records`);
+
+  if (!isDryRun) {
+    for (const audit of auditRecords) {
+      const ulid = getUlid(audit.id);
+
+      await targetDb.execute({
+        sql: `INSERT INTO script_analysis_audit (
+          id, sequence_id, team_id, user_id, user_script, system_prompt_version,
+          user_prompt, style_config, model, raw_output, parsed_output,
+          api_error, parse_error, token_usage, duration_ms, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          ulid,
+          getUlid(audit.sequence_id),
+          getUlid(audit.team_id),
+          getUlid(audit.user_id),
+          audit.user_script,
+          audit.system_prompt_version,
+          audit.user_prompt,
+          JSON.stringify(audit.style_config),
+          audit.model,
+          audit.raw_output,
+          JSON.stringify(audit.parsed_output || null),
+          audit.api_error,
+          audit.parse_error,
+          JSON.stringify(audit.token_usage || null),
+          audit.duration_ms,
+          audit.status,
+          Math.floor(new Date(audit.created_at).getTime() / 1000),
+        ],
+      });
+    }
+  }
+
+  console.log(`  ✓ Migrated ${auditRecords.length} audit records\n`);
+  return auditRecords.length;
+}
+
+/**
  * Helper to safely run migration functions, skipping missing tables
  */
 async function safeMigrate(
@@ -886,6 +948,7 @@ async function migrate() {
       transactions: 0,
       falRequests: 0,
       letzaiRequests: 0,
+      scriptAnalysisAudit: 0,
     };
 
     // Migrate in order to maintain referential integrity
@@ -929,6 +992,12 @@ async function migrate() {
     stats.letzaiRequests = await safeMigrate(
       'letzaiRequests',
       migrateLetzaiRequests
+    );
+
+    // Audit
+    stats.scriptAnalysisAudit = await safeMigrate(
+      'scriptAnalysisAudit',
+      migrateScriptAnalysisAudit
     );
 
     // Print summary
