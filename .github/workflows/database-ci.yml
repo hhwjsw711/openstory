@@ -191,46 +191,67 @@ jobs:
             exit 0
           fi
 
-          if [ -z "$RAILWAY_ENVIRONMENT_ID" ]; then
-            echo "RAILWAY_ENVIRONMENT_ID not configured, skipping"
-            exit 0
-          fi
-
           echo "Configuring Railway environment variables via GraphQL API..."
 
-          # Get service ID (first service in project)
-          SERVICE_RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
+          ENV_NAME="velro-pr-${{ github.event.pull_request.number }}"
+          echo "Target environment: $ENV_NAME"
+
+          # Get project details including service and environments
+          PROJECT_RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"query($projectId:String!){project(id:$projectId){services{edges{node{id}}}}}","variables":{"projectId":"'"$RAILWAY_PROJECT_ID"'"}}')
+            -d '{"query":"query($projectId:String!){project(id:$projectId){services{edges{node{id}}}environments{edges{node{id name}}}}}","variables":{"projectId":"'"$RAILWAY_PROJECT_ID"'"}}')
 
-          SERVICE_ID=$(echo "$SERVICE_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          # Get service ID (first service in project)
+          SERVICE_ID=$(echo "$PROJECT_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
           if [ -z "$SERVICE_ID" ]; then
             echo "Error: Could not find service in project"
-            echo "Response: $SERVICE_RESPONSE"
+            echo "Response: $PROJECT_RESPONSE"
             exit 1
           fi
 
           echo "Found service: $SERVICE_ID"
 
+          # Find environment by name
+          ENVIRONMENT_ID=$(echo "$PROJECT_RESPONSE" | grep -B1 "\"name\":\"$ENV_NAME\"" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+
+          # If environment doesn't exist, create it
+          if [ -z "$ENVIRONMENT_ID" ]; then
+            echo "Environment $ENV_NAME not found, creating it..."
+            CREATE_ENV_RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
+              -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"query":"mutation($input:EnvironmentCreateInput!){environmentCreate(input:$input){id}}","variables":{"input":{"projectId":"'"$RAILWAY_PROJECT_ID"'","name":"'"$ENV_NAME"'"}}}')
+
+            ENVIRONMENT_ID=$(echo "$CREATE_ENV_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+            if [ -z "$ENVIRONMENT_ID" ]; then
+              echo "Error: Failed to create environment"
+              echo "Response: $CREATE_ENV_RESPONSE"
+              exit 1
+            fi
+            echo "Created environment with ID: $ENVIRONMENT_ID"
+          else
+            echo "Found existing environment with ID: $ENVIRONMENT_ID"
+          fi
+
           # Set TURSO_DATABASE_URL
           curl -s -X POST "https://backboard.railway.app/graphql/v2" \
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$RAILWAY_ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_DATABASE_URL","value":"${{ steps.create_db.outputs.db_url }}"}}}'
+            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_DATABASE_URL","value":"${{ steps.create_db.outputs.db_url }}"}}}'
 
           # Set TURSO_AUTH_TOKEN
           curl -s -X POST "https://backboard.railway.app/graphql/v2" \
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$RAILWAY_ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_AUTH_TOKEN","value":"${{ steps.create_db.outputs.db_token }}"}}}'
+            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_AUTH_TOKEN","value":"${{ steps.create_db.outputs.db_token }}"}}}'
 
-          echo "Railway environment variables configured successfully"
+          echo "Railway environment variables configured successfully for $ENV_NAME"
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
 
       - name: Configure Vercel preview environment
         continue-on-error: true
