@@ -186,9 +186,9 @@ jobs:
             exit 0
           fi
 
-          # Skip if service not specified
-          if [ -z "$RAILWAY_SERVICE" ]; then
-            echo "RAILWAY_SERVICE not configured, skipping"
+          # Skip if project ID not specified
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            echo "RAILWAY_PROJECT_ID not configured, skipping"
             exit 0
           fi
 
@@ -196,18 +196,34 @@ jobs:
           curl -fsSL https://railway.app/install.sh | sh
           export PATH="$HOME/.railway/bin:$PATH"
 
-          # Set environment variables for PR environment using Railway CLI
-          railway variables \
-            --service "$RAILWAY_SERVICE" \
-            --set "TURSO_DATABASE_URL=${{ steps.create_db.outputs.db_url }}" \
-            --environment "velro-pr-${{ github.event.pull_request.number }}"
+          # Link to Railway project
+          railway link "$RAILWAY_PROJECT_ID"
 
-          railway variables \
-            --service "$RAILWAY_SERVICE" \
-            --set "TURSO_AUTH_TOKEN=${{ steps.create_db.outputs.db_token }}" \
-            --environment "velro-pr-${{ github.event.pull_request.number }}"
+          # Set environment variables for PR environment using Railway CLI
+          ENV_NAME="velro-pr-${{ github.event.pull_request.number }}"
+
+          if [ -n "$RAILWAY_SERVICE" ]; then
+            railway variables \
+              --service "$RAILWAY_SERVICE" \
+              --environment "$ENV_NAME" \
+              --set "TURSO_DATABASE_URL=${{ steps.create_db.outputs.db_url }}"
+
+            railway variables \
+              --service "$RAILWAY_SERVICE" \
+              --environment "$ENV_NAME" \
+              --set "TURSO_AUTH_TOKEN=${{ steps.create_db.outputs.db_token }}"
+          else
+            railway variables \
+              --environment "$ENV_NAME" \
+              --set "TURSO_DATABASE_URL=${{ steps.create_db.outputs.db_url }}"
+
+            railway variables \
+              --environment "$ENV_NAME" \
+              --set "TURSO_AUTH_TOKEN=${{ steps.create_db.outputs.db_token }}"
+          fi
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
 
       - name: Configure Vercel preview environment
