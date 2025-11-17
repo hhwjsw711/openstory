@@ -54,6 +54,7 @@ export const regenerateFrameSchema = z.object({
   model: z
     .enum(Object.keys(IMAGE_MODELS) as [keyof typeof IMAGE_MODELS])
     .optional(),
+  prompt: z.string().optional(),
 });
 
 export const generateMotionSchema = z.object({

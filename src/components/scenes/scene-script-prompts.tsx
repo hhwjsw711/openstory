@@ -1,9 +1,14 @@
+import { ImageModelSelector } from '@/components/sequence/image-model-selector';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import type { ImageGenerationModelId } from '@/lib/ai/models.config';
+import { DEFAULT_IMAGE_GENERATION_MODEL } from '@/lib/ai/models.config';
 import { Frame } from '@/types/database';
-import { CopyIcon } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CopyIcon, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
@@ -73,6 +78,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   frame,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
+  const [editedPrompt, setEditedPrompt] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<
+    ImageGenerationModelId | undefined
+  >(undefined);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -89,17 +100,70 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     []
   );
 
+  const handleRegenerate = useCallback(async () => {
+    if (!frame?.id || !frame?.sequenceId) return;
+
+    setIsRegenerating(true);
+    try {
+      const response = await fetch(
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: selectedModel,
+            prompt: editedPrompt || undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate image');
+      }
+
+      // Invalidate frame query to refresh status
+      await queryClient.invalidateQueries({
+        queryKey: ['frames', frame.sequenceId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['frame', frame.id],
+      });
+    } catch (error) {
+      console.error('Failed to regenerate image:', error);
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [frame, selectedModel, editedPrompt, queryClient]);
+
   const scriptText = frame?.metadata?.originalScript?.extract;
+  const imageModel = frame?.imageModel as ImageGenerationModelId;
   const imagePrompt =
     frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
+  // Update local state when frame image prompt changes
+  useEffect(() => {
+    setEditedPrompt(imagePrompt || '');
+  }, [imagePrompt]);
+
+  // Update local state when frame changes
+  useEffect(() => {
+    const currentModel =
+      (frame?.imageModel as ImageGenerationModelId) ||
+      DEFAULT_IMAGE_GENERATION_MODEL;
+    setSelectedModel(currentModel);
+  }, [frame?.imageModel]);
+
   const motionPrompt = frame?.metadata?.prompts?.motion?.fullPrompt;
+
+  // Check if image is currently generating
+  const isGenerating =
+    frame?.thumbnailStatus === 'generating' || isRegenerating;
 
   return (
     <Tabs defaultValue="script" className="w-full">
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
-        <TabsTrigger value="image-prompt">Image Prompt</TabsTrigger>
-        <TabsTrigger value="motion-prompt">Motion Prompt</TabsTrigger>
+        <TabsTrigger value="image-prompt">Image</TabsTrigger>
+        <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">
@@ -113,11 +177,59 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       </TabsContent>
 
       <TabsContent value="image-prompt">
-        <PromptTabContent
-          text={imagePrompt}
-          isCopied={copiedTab === 'image-prompt'}
-          onCopy={() => handleCopy(imagePrompt, 'image-prompt')}
-        />
+        <div className="space-y-4">
+          {/* Editable prompt */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Prompt</label>
+            <Textarea
+              value={editedPrompt || imagePrompt}
+              onChange={(e) => setEditedPrompt(e.target.value)}
+              placeholder="Enter image prompt…"
+              className="min-h-[120px] resize-y"
+              disabled={isGenerating}
+            />
+          </div>
+
+          {/* Model selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model</label>
+            <ImageModelSelector
+              selectedModel={imageModel || selectedModel}
+              onModelChange={setSelectedModel}
+              disabled={isGenerating}
+            />
+          </div>
+
+          {/* Regenerate button */}
+          <Button
+            onClick={handleRegenerate}
+            disabled={isGenerating || !frame}
+            className="w-full"
+          >
+            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isGenerating ? 'Generating…' : 'Regenerate Image'}
+          </Button>
+
+          {/* Copy button for current prompt */}
+          <Button
+            variant="outline"
+            onClick={() =>
+              handleCopy(editedPrompt || imagePrompt, 'image-prompt')
+            }
+            disabled={!imagePrompt}
+            className="w-full"
+          >
+            {copiedTab === 'image-prompt' ? (
+              <span className="flex items-center gap-2">
+                <span className="text-xs">✓</span> Copied
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <CopyIcon className="h-4 w-4" /> Copy Prompt
+              </span>
+            )}
+          </Button>
+        </div>
       </TabsContent>
 
       <TabsContent value="motion-prompt">
