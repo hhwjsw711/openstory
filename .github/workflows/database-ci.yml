@@ -186,20 +186,29 @@ jobs:
             exit 0
           fi
 
+          # Skip if service not specified
+          if [ -z "$RAILWAY_SERVICE" ]; then
+            echo "RAILWAY_SERVICE not configured, skipping"
+            exit 0
+          fi
+
           # Install Railway CLI
           curl -fsSL https://railway.app/install.sh | sh
           export PATH="$HOME/.railway/bin:$PATH"
 
           # Set environment variables for PR environment using Railway CLI
           railway variables \
+            --service "$RAILWAY_SERVICE" \
             --set "TURSO_DATABASE_URL=${{ steps.create_db.outputs.db_url }}" \
             --environment "velro-pr-${{ github.event.pull_request.number }}"
 
           railway variables \
+            --service "$RAILWAY_SERVICE" \
             --set "TURSO_AUTH_TOKEN=${{ steps.create_db.outputs.db_token }}" \
             --environment "velro-pr-${{ github.event.pull_request.number }}"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
 
       - name: Configure Vercel preview environment
         continue-on-error: true
