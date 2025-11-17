@@ -102,18 +102,50 @@ jobs:
             echo "created=true" >> $GITHUB_OUTPUT
           fi
 
-          # Get database details
-          DB_INFO=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
-            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME")
+          # Wait for database to be ready (poll until ready)
+          echo "Waiting for database to be ready..."
+          MAX_RETRIES=30
+          RETRY_COUNT=0
+          DB_HOSTNAME=""
 
-          DB_URL=$(echo "$DB_INFO" | jq -r '.database.Hostname' | sed 's/^/libsql:\/\//')
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            DB_INFO=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+              "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME")
+
+            DB_HOSTNAME=$(echo "$DB_INFO" | jq -r '.database.Hostname // empty')
+
+            if [ -n "$DB_HOSTNAME" ] && [ "$DB_HOSTNAME" != "null" ]; then
+              echo "Database is ready!"
+              break
+            fi
+
+            echo "Database not ready yet (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES), waiting..."
+            sleep 2
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+
+          if [ -z "$DB_HOSTNAME" ] || [ "$DB_HOSTNAME" = "null" ]; then
+            echo "Error: Database did not become ready in time"
+            echo "Last API Response: $DB_INFO"
+            exit 1
+          fi
+
+          DB_URL="libsql://${DB_HOSTNAME}"
+          echo "Database URL: $DB_URL"
 
           # Create auth token for the database
-          DB_TOKEN=$(curl -s -X POST \
+          TOKEN_RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
-            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME/auth/tokens" \
-            | jq -r '.jwt')
+            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME/auth/tokens")
+
+          DB_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.jwt')
+
+          if [ -z "$DB_TOKEN" ] || [ "$DB_TOKEN" = "null" ]; then
+            echo "Error: Failed to create database token"
+            echo "API Response: $TOKEN_RESPONSE"
+            exit 1
+          fi
 
           echo "db_url=$DB_URL" >> $GITHUB_OUTPUT
           echo "::add-mask::$DB_TOKEN"
