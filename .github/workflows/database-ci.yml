@@ -66,20 +66,14 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Install Turso CLI
-        run: |
-          curl -sSfL https://get.tur.so/install.sh | bash
-          echo "$HOME/.turso/bin" >> $GITHUB_PATH
-
-      - name: Authenticate with Turso
-        run: turso auth api-token ${{ secrets.TURSO_API_TOKEN }}
-
-      - name: Sanitize branch name for Turso
-        id: sanitize
+      - name: Generate sanitized branch name
+        id: branch_name
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
-          # Convert to lowercase and replace special chars with hyphens
-          SANITIZED=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          # Convert to lowercase, remove non-alphanumeric, limit to 32 chars
+          SANITIZED=$(echo "$BRANCH_NAME" | tr -cd '[:alnum:]-' | sed 's/./\L&/g' | cut -c 1-32)
+          # Remove trailing hyphens
+          SANITIZED=$(echo "$SANITIZED" | sed 's/-*$//')
           DB_NAME="velro-preview-${SANITIZED}"
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
           echo "Preview database name: $DB_NAME"
@@ -87,21 +81,39 @@ jobs:
       - name: Create Turso branch database
         id: create_db
         run: |
-          DB_NAME="${{ steps.sanitize.outputs.db_name }}"
+          DB_NAME="${{ steps.branch_name.outputs.db_name }}"
 
           # Check if database already exists
-          if turso db show "$DB_NAME" 2>/dev/null; then
+          EXISTING_DB=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME" \
+            | jq -r '.database.Name // empty')
+
+          if [ "$EXISTING_DB" = "$DB_NAME" ]; then
             echo "Database $DB_NAME already exists, skipping creation"
             echo "created=false" >> $GITHUB_OUTPUT
           else
-            echo "Creating database $DB_NAME"
-            turso db create "$DB_NAME" --org ${{ secrets.TURSO_ORG }}
+            echo "Creating database $DB_NAME seeded from production"
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"$DB_NAME\", \"group\": \"default\", \"seed\": {\"type\": \"database\", \"name\": \"${{ secrets.TURSO_PRODUCTION_DB_NAME }}\"}}" \
+              "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases"
             echo "created=true" >> $GITHUB_OUTPUT
           fi
 
-          # Get database URL and auth token
-          DB_URL=$(turso db show "$DB_NAME" --url)
-          DB_TOKEN=$(turso db tokens create "$DB_NAME")
+          # Get database details
+          DB_INFO=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME")
+
+          DB_URL=$(echo "$DB_INFO" | jq -r '.database.Hostname' | sed 's/^/libsql:\/\//')
+
+          # Create auth token for the database
+          DB_TOKEN=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME/auth/tokens" \
+            | jq -r '.jwt')
 
           echo "db_url=$DB_URL" >> $GITHUB_OUTPUT
           echo "::add-mask::$DB_TOKEN"
@@ -109,12 +121,6 @@ jobs:
 
       - name: Run migrations on preview database
         run: bun db:migrate
-        env:
-          TURSO_DATABASE_URL: ${{ steps.create_db.outputs.db_url }}
-          TURSO_AUTH_TOKEN: ${{ steps.create_db.outputs.db_token }}
-
-      - name: Seed preview database
-        run: bun db:seed
         env:
           TURSO_DATABASE_URL: ${{ steps.create_db.outputs.db_url }}
           TURSO_AUTH_TOKEN: ${{ steps.create_db.outputs.db_token }}
@@ -175,13 +181,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const dbName = '${{ steps.sanitize.outputs.db_name }}';
+            const dbName = '${{ steps.branch_name.outputs.db_name }}';
             const created = '${{ steps.create_db.outputs.created }}' === 'true';
 
             const body = `## 🗄️ Preview Database ${created ? 'Created' : 'Updated'}
 
             **Database**: \`${dbName}\`
-            **Status**: ${created ? 'Created and seeded' : 'Migrations and seeding applied'}
+            **Status**: ${created ? 'Seeded from production + migrations applied' : 'Migrations applied'}
 
             The preview database has been configured for Railway and Vercel preview environments.
 
@@ -199,32 +205,27 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - name: Install Turso CLI
-        run: |
-          curl -sSfL https://get.tur.so/install.sh | bash
-          echo "$HOME/.turso/bin" >> $GITHUB_PATH
-
-      - name: Authenticate with Turso
-        run: turso auth api-token ${{ secrets.TURSO_API_TOKEN }}
-
-      - name: Sanitize branch name
-        id: sanitize
+      - name: Generate sanitized branch name
+        id: branch_name
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
-          SANITIZED=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          # Convert to lowercase, remove non-alphanumeric, limit to 32 chars
+          SANITIZED=$(echo "$BRANCH_NAME" | tr -cd '[:alnum:]-' | sed 's/./\L&/g' | cut -c 1-32)
+          # Remove trailing hyphens
+          SANITIZED=$(echo "$SANITIZED" | sed 's/-*$//')
           DB_NAME="velro-preview-${SANITIZED}"
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
 
       - name: Destroy Turso branch database
         continue-on-error: true
         run: |
-          DB_NAME="${{ steps.sanitize.outputs.db_name }}"
-          if turso db show "$DB_NAME" 2>/dev/null; then
-            echo "Destroying database $DB_NAME"
-            turso db destroy "$DB_NAME" --yes
-          else
-            echo "Database $DB_NAME does not exist, skipping"
-          fi
+          DB_NAME="${{ steps.branch_name.outputs.db_name }}"
+
+          # Delete the database using Turso API
+          echo "Destroying database $DB_NAME"
+          curl -X DELETE \
+            -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
+            "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases/$DB_NAME"
 
       - name: Comment on PR
         uses: actions/github-script@v7
