@@ -253,12 +253,18 @@ export class FrameService {
   }
 
   /**
-   * Get visual prompt from frame's scene data
+   * Get visual prompt from frame
+   * Prioritizes user-updated prompt over AI-generated prompt
    *
    * @param frame - The frame with metadata
    * @returns Visual prompt string or null if not available
    */
   getVisualPrompt(frame: Frame): string | null {
+    // Prioritize user-updated prompt
+    if (frame.imagePrompt) {
+      return frame.imagePrompt;
+    }
+    // Fall back to AI-generated prompt from scene analysis
     const scene = frame.metadata;
     return scene?.prompts?.visual?.fullPrompt || null;
   }

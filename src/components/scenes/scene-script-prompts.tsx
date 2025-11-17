@@ -90,7 +90,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   );
 
   const scriptText = frame?.metadata?.originalScript?.extract;
-  const imagePrompt = frame?.metadata?.prompts?.visual?.fullPrompt;
+  const imagePrompt =
+    frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
   const motionPrompt = frame?.metadata?.prompts?.motion?.fullPrompt;
 
   return (

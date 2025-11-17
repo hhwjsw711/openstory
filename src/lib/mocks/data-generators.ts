@@ -118,6 +118,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'flux_dev',
       'nano_banana',
     ]),
+    imagePrompt: null,
     videoStatus: faker.helpers.arrayElement([
       'pending',
       'generating',

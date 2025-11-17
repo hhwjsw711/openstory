@@ -23,6 +23,7 @@ const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   thumbnailGeneratedAt: null,
   thumbnailError: null,
   imageModel: 'nano_banana',
+  imagePrompt: null,
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,

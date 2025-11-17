@@ -37,24 +37,24 @@ export const generateImageWorkflow = createWorkflow(
           `Starting image generation workflow for user ${input.userId}`
         );
 
+        const model = input.model || DEFAULT_IMAGE_MODEL;
+
         if (input.frameId) {
-          // update frame status to generating
+          // update frame status to generating and store user prompt
           await updateFrame(input.frameId, {
             thumbnailStatus: 'generating',
             thumbnailWorkflowRunId: context.workflowRunId,
+            imageModel: model,
+            imagePrompt: input.prompt,
           });
         }
 
         // Return the generation params so it shows in the workflow context for debugging
-        let model = input.model;
-        if (!model) model = DEFAULT_IMAGE_MODEL;
-
-        // Generate image using selected AI provider
         return {
           model,
           prompt: input.prompt,
-          imageSize: input.imageSize || DEFAULT_IMAGE_SIZE,
-          numImages: input.numImages || 1,
+          imageSize: input.imageSize ?? DEFAULT_IMAGE_SIZE,
+          numImages: input.numImages ?? 1,
           seed: input.seed,
         };
       }

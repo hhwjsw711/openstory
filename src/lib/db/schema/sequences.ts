@@ -176,6 +176,7 @@ export const frames = pgTable(
     imageModel: varchar('image_model', { length: 100 })
       .default(DEFAULT_IMAGE_MODEL)
       .notNull(), // Model used for image generation
+    imagePrompt: text('image_prompt'), // User-updated image prompt (overrides AI-generated prompt from metadata)
     // Video/motion generation status tracking
     videoStatus: frameGenerationStatus('video_status').default('pending'),
     videoWorkflowRunId: text('video_workflow_run_id'),
