@@ -299,34 +299,135 @@ export const VIDEO_MODELS = {
 } as const;
 
 /**
- * Available FAL models for image generation
+ * Available models for image generation with rich metadata
  */
 export const IMAGE_MODELS = {
-  flux_pro: 'fal-ai/flux-pro',
-  flux_dev: 'fal-ai/flux/dev',
-  flux_schnell: 'fal-ai/flux/schnell',
-  sdxl: 'fal-ai/fast-sdxl',
-  sdxl_lightning: 'fal-ai/fast-lightning-sdxl',
-  imagen4_preview_ultra: 'fal-ai/imagen4/preview/ultra', // https://fal.ai/models/fal-ai/imagen4/preview/ultra/api#api-call-install
-  flux_pro_v1_1_ultra: 'fal-ai/flux-pro/v1.1-ultra', // https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api#api-call-install
-  flux_krea_lora: 'fal-ai/flux-krea-lora', // https://fal.ai/models/fal-ai/flux-krea-lora/api#api-call-install
-  nano_banana: 'fal-ai/nano-banana', // https://fal.ai/models/fal-ai/nano-banana
-  recraft_v3: 'fal-ai/recraft/v3/text-to-image', // https://fal.ai/models/fal-ai/recraft/v3/text-to-image
-  hidream_i1_full: 'fal-ai/hidream-i1-full', // https://fal.ai/models/fal-ai/hidream-i1-full
-  letzai: 'letzai/image',
+  nano_banana: {
+    id: 'fal-ai/nano-banana' as const,
+    name: 'Nano Banana',
+    provider: 'Fal.ai',
+    tier: 'ultra-fast',
+    description: 'Fastest generation, good for iteration',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  flux_schnell: {
+    id: 'fal-ai/flux/schnell' as const,
+    name: 'Flux Schnell',
+    provider: 'Black Forest Labs',
+    tier: 'fast',
+    description: 'Fast high-quality images',
+    maxPromptLength: 1000, // ~256 tokens (Schnell uses shorter prompts)
+  },
+  flux_dev: {
+    id: 'fal-ai/flux/dev' as const,
+    name: 'Flux Dev',
+    provider: 'Black Forest Labs',
+    tier: 'balanced',
+    description: 'Balance of speed and quality',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  flux_pro: {
+    id: 'fal-ai/flux-pro' as const,
+    name: 'Flux Pro',
+    provider: 'Black Forest Labs',
+    tier: 'premium',
+    description: 'Professional quality images',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  flux_pro_v1_1_ultra: {
+    id: 'fal-ai/flux-pro/v1.1-ultra' as const,
+    name: 'Flux Pro v1.1 Ultra',
+    provider: 'Black Forest Labs',
+    tier: 'premium',
+    description: 'Highest quality Flux model',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  flux_krea_lora: {
+    id: 'fal-ai/flux-krea-lora' as const,
+    name: 'Flux Krea LoRA',
+    provider: 'Black Forest Labs',
+    tier: 'premium',
+    description: 'Flux with creative LoRA',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  sdxl_lightning: {
+    id: 'fal-ai/fast-lightning-sdxl' as const,
+    name: 'SDXL Lightning',
+    provider: 'Stability AI',
+    tier: 'fast',
+    description: 'Fast SDXL variant',
+    maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
+  },
+  sdxl: {
+    id: 'fal-ai/fast-sdxl' as const,
+    name: 'SDXL',
+    provider: 'Stability AI',
+    tier: 'balanced',
+    description: 'Stable Diffusion XL',
+    maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
+  },
+  imagen4_preview_ultra: {
+    id: 'fal-ai/imagen4/preview/ultra' as const,
+    name: 'Imagen 4 Ultra',
+    provider: 'Google',
+    tier: 'premium',
+    description: 'Google latest image model',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  recraft_v3: {
+    id: 'fal-ai/recraft/v3/text-to-image' as const,
+    name: 'Recraft v3',
+    provider: 'Recraft',
+    tier: 'premium',
+    description: 'Design-focused generation',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  hidream_i1_full: {
+    id: 'fal-ai/hidream-i1-full' as const,
+    name: 'HiDream I1 Full',
+    provider: 'HiDream',
+    tier: 'premium',
+    description: 'High detail rendering',
+    maxPromptLength: 2000, // ~512 tokens
+  },
+  letzai: {
+    id: 'letzai/image' as const,
+    name: 'LetzAI',
+    provider: 'LetzAI',
+    tier: 'balanced',
+    description: 'Alternative provider',
+    maxPromptLength: 2000, // ~512 tokens
+  },
 } as const;
 
 // Text to image model types
 export type TextToImageModel = keyof typeof IMAGE_MODELS;
-export type TextToImageModelId = (typeof IMAGE_MODELS)[TextToImageModel];
+export type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
+export type TextToImageModelId = ImageModelConfig['id'];
 
 export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana';
 
-// Helper to get model ID from key (for backward compatibility)
+// Helper to get model ID from key
 export function getTextToImageModelId(
   modelKey: TextToImageModel
 ): TextToImageModelId {
-  return IMAGE_MODELS[modelKey];
+  return IMAGE_MODELS[modelKey].id;
+}
+
+// Helper to get model config by ID
+export function getImageModelById(id: string): ImageModelConfig | undefined {
+  return Object.values(IMAGE_MODELS).find((model) => model.id === id);
+}
+
+// Helper to get model display name
+export function getImageModelDisplayName(modelId: string): string {
+  const model = getImageModelById(modelId);
+  return model?.name ?? modelId;
+}
+
+// Get all image model configs as array (for UI components)
+export function getAllImageModels(): ImageModelConfig[] {
+  return Object.values(IMAGE_MODELS);
 }
 
 // Image to video model types

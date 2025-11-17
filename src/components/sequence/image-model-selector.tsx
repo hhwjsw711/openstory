@@ -7,29 +7,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  IMAGE_GENERATION_MODELS,
-  type ImageGenerationModelId,
-} from '@/lib/ai/models.config';
+import { getAllImageModels, type TextToImageModelId } from '@/lib/ai/models';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 type ImageModelSelectorProps = {
-  selectedModel: ImageGenerationModelId;
-  onModelChange: (model: ImageGenerationModelId) => void;
+  selectedModel: TextToImageModelId;
+  onModelChange: (model: TextToImageModelId) => void;
   disabled?: boolean;
+  promptLength?: number;
 };
 
 export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
   selectedModel,
   onModelChange,
   disabled = false,
+  promptLength = 0,
 }) => {
   // Control dropdown open state to prevent auto-closing on checkbox clicks
   const [open, setOpen] = useState(false);
 
   const handleSelect = useCallback(
-    (modelId: ImageGenerationModelId) => {
+    (modelId: TextToImageModelId) => {
       if (disabled) return;
       onModelChange(modelId);
       setOpen(false); // Close dropdown after selection
@@ -37,9 +36,17 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
     [onModelChange, disabled]
   );
 
+  // Filter models based on prompt length
+  const availableModels = useMemo(() => {
+    return getAllImageModels().map((model) => ({
+      ...model,
+      isAvailable: promptLength <= model.maxPromptLength,
+    }));
+  }, [promptLength]);
+
   // Display label for button
   const displayLabel = useMemo(() => {
-    const model = IMAGE_GENERATION_MODELS.find((m) => m.id === selectedModel);
+    const model = getAllImageModels().find((m) => m.id === selectedModel);
     return model?.name ?? 'Select model';
   }, [selectedModel]);
 
@@ -61,8 +68,9 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
             Image Models
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {IMAGE_GENERATION_MODELS.map((model) => {
+          {availableModels.map((model) => {
             const isSelected = selectedModel === model.id;
+            const isDisabledByPromptLength = !model.isAvailable;
 
             return (
               <DropdownMenuCheckboxItem
@@ -70,7 +78,7 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
                 checked={isSelected}
                 onCheckedChange={() => handleSelect(model.id)}
                 onSelect={(e) => e.preventDefault()}
-                disabled={isSelected}
+                disabled={isSelected || isDisabledByPromptLength}
                 className="cursor-pointer"
               >
                 <div className="flex flex-col gap-0.5">
@@ -81,7 +89,9 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
                     </span>
                   </div>
                   <span className="text-[11px] text-muted-foreground">
-                    {model.description}
+                    {isDisabledByPromptLength
+                      ? `Prompt too long (max ${model.maxPromptLength} chars)`
+                      : model.description}
                   </span>
                 </div>
               </DropdownMenuCheckboxItem>

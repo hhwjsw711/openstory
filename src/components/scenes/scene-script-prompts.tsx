@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import type { ImageGenerationModelId } from '@/lib/ai/models.config';
-import { DEFAULT_IMAGE_GENERATION_MODEL } from '@/lib/ai/models.config';
+import { DEFAULT_IMAGE_MODEL, type TextToImageModelId } from '@/lib/ai/models';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2 } from 'lucide-react';
@@ -86,7 +85,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
   const [editedPrompt, setEditedPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<
-    ImageGenerationModelId | undefined
+    TextToImageModelId | undefined
   >(undefined);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const queryClient = useQueryClient();
@@ -174,7 +173,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   }, [frame, selectedModel, editedPrompt, queryClient]);
 
   const scriptText = frame?.metadata?.originalScript?.extract;
-  const imageModel = frame?.imageModel as ImageGenerationModelId;
+  const imageModel = frame?.imageModel as TextToImageModelId;
   const imagePrompt =
     frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
   // Update local state when frame image prompt changes
@@ -185,8 +184,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   // Update local state when frame changes
   useEffect(() => {
     const currentModel =
-      (frame?.imageModel as ImageGenerationModelId) ||
-      DEFAULT_IMAGE_GENERATION_MODEL;
+      (frame?.imageModel as TextToImageModelId) || DEFAULT_IMAGE_MODEL;
     setSelectedModel(currentModel);
   }, [frame?.imageModel]);
 
@@ -222,7 +220,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <div className="space-y-4">
           {/* Editable prompt */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Prompt</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Prompt</label>
+              <span className="text-xs text-muted-foreground">
+                {(editedPrompt || imagePrompt || '').length} characters
+              </span>
+            </div>
             <Textarea
               value={editedPrompt || imagePrompt}
               onChange={(e) => setEditedPrompt(e.target.value)}
@@ -239,6 +242,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               selectedModel={imageModel || selectedModel}
               onModelChange={setSelectedModel}
               disabled={isGenerating}
+              promptLength={(editedPrompt || imagePrompt || '').length}
             />
           </div>
 
