@@ -249,17 +249,49 @@ jobs:
             echo "Found existing environment with ID: $ENVIRONMENT_ID"
           fi
 
-          # Set TURSO_DATABASE_URL
-          curl -s -X POST "https://backboard.railway.app/graphql/v2" \
-            -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_DATABASE_URL","value":"${{ steps.create_db.outputs.db_url }}"}}}'
+          # Set TURSO_DATABASE_URL using jq for proper JSON escaping
+          PAYLOAD=$(jq -n \
+            --arg envId "$ENVIRONMENT_ID" \
+            --arg svcId "$SERVICE_ID" \
+            --arg dbUrl "${{ steps.create_db.outputs.db_url }}" \
+            '{
+              query: "mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}",
+              variables: {
+                input: {
+                  environmentId: $envId,
+                  serviceId: $svcId,
+                  name: "TURSO_DATABASE_URL",
+                  value: $dbUrl
+                }
+              }
+            }')
 
-          # Set TURSO_AUTH_TOKEN
           curl -s -X POST "https://backboard.railway.app/graphql/v2" \
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}","variables":{"input":{"environmentId":"'"$ENVIRONMENT_ID"'","serviceId":"'"$SERVICE_ID"'","name":"TURSO_AUTH_TOKEN","value":"${{ steps.create_db.outputs.db_token }}"}}}'
+            -d "$PAYLOAD"
+
+          # Set TURSO_AUTH_TOKEN using jq for proper JSON escaping
+          PAYLOAD=$(jq -n \
+            --arg envId "$ENVIRONMENT_ID" \
+            --arg svcId "$SERVICE_ID" \
+            --arg dbToken "${{ steps.create_db.outputs.db_token }}" \
+            '{
+              query: "mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}",
+              variables: {
+                input: {
+                  environmentId: $envId,
+                  serviceId: $svcId,
+                  name: "TURSO_AUTH_TOKEN",
+                  value: $dbToken
+                }
+              }
+            }')
+
+          curl -s -X POST "https://backboard.railway.app/graphql/v2" \
+            -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
 
           echo "Railway environment variables configured successfully for $ENV_NAME"
         env:
