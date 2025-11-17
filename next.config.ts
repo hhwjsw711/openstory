@@ -5,12 +5,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname, '../..'),
   },
-  serverExternalPackages: [
-    '@libsql/client',
-    '@libsql/hrana-client',
-    '@libsql/isomorphic-ws',
-    '@libsql/isomorphic-fetch',
-  ],
   images: {
     remotePatterns: [
       {
