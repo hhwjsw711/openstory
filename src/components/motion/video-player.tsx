@@ -32,6 +32,7 @@ export type VideoPlayerProps = {
   downloadUrl?: string;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
+  onPause?: () => void;
   onEnded?: () => void;
 };
 
@@ -47,6 +48,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   downloadUrl,
   onLoadedMetadata,
   onTimeUpdate,
+  onPause,
   onEnded,
 }) => {
   const playerRef = useRef<MediaPlayerInstance>(null);
@@ -110,6 +112,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       onTimeUpdate={() => {
         if (onTimeUpdate && playerRef.current) {
           onTimeUpdate(playerRef.current.state.currentTime);
+        }
+      }}
+      onPause={() => {
+        if (onPause) {
+          onPause();
         }
       }}
       onEnded={() => {

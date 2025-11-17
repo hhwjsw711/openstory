@@ -72,6 +72,11 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     !!hasCompletedVideo // Only fetch when video is available
   );
 
+  // Handle video pause - disable autoplay when user manually pauses
+  const handlePause = useCallback(() => {
+    setShouldAutoPlay(false);
+  }, []);
+
   // Handle video end - move to next frame or call onEnded
   const handleEnded = useCallback(() => {
     if (nextFrame) {
@@ -156,6 +161,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           downloadFilename={downloadFilename}
           downloadUrl={downloadData?.downloadUrl}
           onTimeUpdate={onTimeUpdate}
+          onPause={handlePause}
           onEnded={handleEnded}
         />
       )}
