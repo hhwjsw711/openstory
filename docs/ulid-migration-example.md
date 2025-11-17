@@ -12,7 +12,7 @@ bun add ulid
 
 **`src/lib/db/id.ts`** (new file):
 
-```typescript
+````typescript
 /**
  * ID Generation Utilities
  * Centralized ID generation for all database entities
@@ -104,11 +104,12 @@ export function isValidId(id: string): boolean {
   const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
   return ulidRegex.test(id);
 }
-```
+````
 
 ## 2. Updated Schema Example: `sequences.ts`
 
 **Before (UUID version):**
+
 ```typescript
 import { uuid } from 'drizzle-orm/pg-core';
 
@@ -124,6 +125,7 @@ export const sequences = pgTable('sequences', {
 ```
 
 **After (ULID version with SQLite):**
+
 ```typescript
 /**
  * Sequences and Frames Schema
@@ -135,17 +137,8 @@ import {
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
 import type { Scene } from '@/lib/script';
-import {
-  InferInsertModel,
-  InferSelectModel,
-  relations,
-} from 'drizzle-orm';
-import {
-  integer,
-  sqliteTable,
-  text,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
 import { styles } from './libraries';
@@ -207,13 +200,8 @@ export const sequences = sqliteTable(
       .references(() => teams.id, { onDelete: 'cascade' }),
     title: text({ length: 500 }).notNull(),
     script: text(),
-    status: text()
-      .$type<SequenceStatus>()
-      .default('draft')
-      .notNull(),
-    metadata: text({ mode: 'json' })
-      .$type<SequenceMetadata>()
-      .default('{}'),
+    status: text().$type<SequenceStatus>().default('draft').notNull(),
+    metadata: text({ mode: 'json' }).$type<SequenceMetadata>().default('{}'),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -351,23 +339,15 @@ export type NewFrame = Omit<InferInsertModel<typeof frames>, 'metadata'> & {
 ## 3. Updated Schema Example: `auth.ts`
 
 **After (ULID version with SQLite):**
+
 ```typescript
 /**
  * Authentication Schema
  * Better Auth tables and user-related tables
  */
 
-import {
-  InferInsertModel,
-  InferSelectModel,
-  relations,
-} from 'drizzle-orm';
-import {
-  integer,
-  sqliteTable,
-  text,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 
 /**
@@ -394,8 +374,9 @@ export const user = sqliteTable(
     isAnonymous: integer({ mode: 'boolean' }).default(false),
     fullName: text('full_name'),
     avatarUrl: text('avatar_url'),
-    onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
-      .default(false),
+    onboardingCompleted: integer('onboarding_completed', {
+      mode: 'boolean',
+    }).default(false),
   },
   (table) => ({
     emailIdx: index('user_email_key').on(table.email).unique(),
@@ -485,10 +466,12 @@ export const verification = sqliteTable('verification', {
   identifier: text().notNull(),
   value: text().notNull(),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
-    .$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(
+    () => new Date()
+  ),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(
+    () => new Date()
+  ),
 });
 
 // Relations
@@ -599,15 +582,15 @@ export type Database = typeof db;
 
 ## Key Differences: UUID vs ULID
 
-| Feature | UUID v4 | ULID |
-|---------|---------|------|
-| **Format** | `550e8400-e29b-41d4-a716-446655440000` | `01HF5Z8XKQYC5N8Z3KQXR6TBQM` |
-| **Length** | 36 characters | 26 characters |
-| **Sortable** | ❌ No (random) | ✅ Yes (time-ordered) |
-| **Index Performance** | 😐 Acceptable | ✅ Better (less fragmentation) |
-| **Timestamp** | ❌ No | ✅ Yes (first 48 bits) |
-| **Uniqueness** | ✅ Cryptographically random | ✅ Time + random |
-| **URL-friendly** | ⚠️ Contains hyphens | ✅ Base32 (no special chars) |
+| Feature               | UUID v4                                | ULID                           |
+| --------------------- | -------------------------------------- | ------------------------------ |
+| **Format**            | `550e8400-e29b-41d4-a716-446655440000` | `01HF5Z8XKQYC5N8Z3KQXR6TBQM`   |
+| **Length**            | 36 characters                          | 26 characters                  |
+| **Sortable**          | ❌ No (random)                         | ✅ Yes (time-ordered)          |
+| **Index Performance** | 😐 Acceptable                          | ✅ Better (less fragmentation) |
+| **Timestamp**         | ❌ No                                  | ✅ Yes (first 48 bits)         |
+| **Uniqueness**        | ✅ Cryptographically random            | ✅ Time + random               |
+| **URL-friendly**      | ⚠️ Contains hyphens                    | ✅ Base32 (no special chars)   |
 
 ## Migration Benefits
 
@@ -617,6 +600,7 @@ export type Database = typeof db;
    - Better cache locality
 
 2. **Built-in Timestamps**
+
    ```typescript
    import { getTimestampFromId } from '@/lib/db/id';
 
@@ -638,12 +622,14 @@ export type Database = typeof db;
 ## When to Use ULID vs UUID
 
 **Use ULID if:**
+
 - ✅ Building new tables/systems
 - ✅ Want better index performance
 - ✅ Need sortable IDs
 - ✅ Want built-in timestamps
 
 **Use UUID if:**
+
 - ✅ Already have UUIDs (migration cost)
 - ✅ Need specific UUID versions (v5, v7, etc.)
 - ✅ Ecosystem requires UUIDs

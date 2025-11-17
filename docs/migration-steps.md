@@ -5,6 +5,7 @@ This document outlines the steps to migrate from Supabase (PostgreSQL + UUID) to
 ## Prerequisites
 
 1. **Turso Account & Database**
+
    ```bash
    # Install Turso CLI
    curl -sSfL https://get.tur.so/install.sh | bash
@@ -23,6 +24,7 @@ This document outlines the steps to migrate from Supabase (PostgreSQL + UUID) to
 2. **Environment Variables**
 
    Update your `.env.local` or `.env.production` with:
+
    ```bash
    # Turso Database
    TURSO_DATABASE_URL="libsql://your-database.turso.io"
@@ -45,6 +47,7 @@ bun install
 ```
 
 This will install the new dependencies:
+
 - `@libsql/client` - Turso/libSQL database client
 - `ulid` - ULID generation library
 
@@ -75,6 +78,7 @@ This creates a JSON backup of all your Supabase data in `backups/` without makin
 ### Step 5: Migrate Data
 
 **Dry Run First:**
+
 ```bash
 bun scripts/migrate-supabase-to-turso.ts --dry-run
 ```
@@ -82,11 +86,13 @@ bun scripts/migrate-supabase-to-turso.ts --dry-run
 Review the output to ensure everything looks correct.
 
 **Actual Migration:**
+
 ```bash
 bun scripts/migrate-supabase-to-turso.ts --backup
 ```
 
 This will:
+
 - Create a backup of your Supabase data
 - Migrate all data to Turso
 - Convert all UUIDs to ULIDs
@@ -95,6 +101,7 @@ This will:
 ### Step 6: Verify Migration
 
 1. **Check data integrity:**
+
    ```bash
    bun db:studio
    ```
@@ -105,6 +112,7 @@ This will:
    - Relationships are preserved
 
 2. **Test your application:**
+
    ```bash
    bun dev
    ```
@@ -148,6 +156,7 @@ If you need to rollback:
 The migration script (`scripts/migrate-supabase-to-turso.ts`) handles:
 
 ### Tables Migrated
+
 - **Auth:** `user`, `session`, `account`, `verification`
 - **Teams:** `teams`, `team_members`, `team_invitations`
 - **Content:** `sequences`, `frames`
@@ -155,6 +164,7 @@ The migration script (`scripts/migrate-supabase-to-turso.ts`) handles:
 - **Tracking:** `user_credits`, `credit_transactions`, `fal_requests`, `letzai_requests`, `audit_logs`
 
 ### Data Transformations
+
 - **UUID → ULID:** All primary and foreign keys
 - **Timestamps:** PostgreSQL `timestamp with timezone` → SQLite `integer` (Unix timestamp)
 - **Booleans:** PostgreSQL `boolean` → SQLite `integer` (0/1)
@@ -162,7 +172,9 @@ The migration script (`scripts/migrate-supabase-to-turso.ts`) handles:
 - **Arrays:** PostgreSQL `array` → SQLite `text` (JSON array string)
 
 ### Validation
+
 The script maintains referential integrity by:
+
 1. Creating a UUID → ULID mapping
 2. Migrating tables in dependency order
 3. Using the same ULID for related records
@@ -170,21 +182,27 @@ The script maintains referential integrity by:
 ## Troubleshooting
 
 ### "Missing required environment variable"
+
 Ensure all environment variables are set in your `.env.local` file.
 
 ### "Migration failed: foreign key constraint"
+
 The script migrates tables in the correct order. If you see this error, check:
+
 1. Are all source tables accessible?
 2. Are all target tables created?
 
 ### "Duplicate entry" errors
+
 If running multiple times, you may need to clear Turso database first:
+
 ```bash
 turso db shell velro-production
 sqlite> DELETE FROM user; -- Repeat for all tables
 ```
 
 Or recreate the database:
+
 ```bash
 turso db destroy velro-production
 turso db create velro-production
@@ -192,7 +210,9 @@ bun db:push
 ```
 
 ### Performance Issues
+
 For large datasets:
+
 1. Run migration script on a server close to both databases
 2. Consider batching inserts (modify script to use transactions)
 3. Disable foreign key constraints during migration (re-enable after)
@@ -219,6 +239,7 @@ After successful migration:
 ## Questions?
 
 If you encounter issues:
+
 1. Check the migration script logs
 2. Review the backup files
 3. Verify environment variables

@@ -7,12 +7,14 @@ This PR migrates the entire database infrastructure from Supabase (PostgreSQL wi
 ## Motivation
 
 **Why Turso?**
+
 - **Edge-first database**: Turso replicates data globally for lower latency
 - **Cost-effective**: No connection pooling needed, pay for what you use
 - **Built for serverless**: Native HTTP API, no persistent connections
 - **SQLite compatibility**: Leverage SQLite's simplicity and performance
 
 **Why ULID over UUID?**
+
 - **Time-ordered**: ULIDs are lexicographically sortable by creation time
 - **Better indexing**: Sequential IDs improve B-tree index performance
 - **Shorter**: 26 characters vs 36 for UUIDs (better storage/bandwidth)
@@ -21,6 +23,7 @@ This PR migrates the entire database infrastructure from Supabase (PostgreSQL wi
 ## Changes Made
 
 ### 1. Database Schema Conversion (7 files)
+
 Converted all Drizzle schemas from PostgreSQL to SQLite:
 
 - **`auth.ts`** - Users, sessions, accounts, verification tables
@@ -32,6 +35,7 @@ Converted all Drizzle schemas from PostgreSQL to SQLite:
 - **`audit.ts`** - Audit logging
 
 **Key Schema Changes:**
+
 - `uuid()` → `text()` with ULID generation
 - `timestamp({ withTimezone: true })` → `integer({ mode: 'timestamp' })`
 - `boolean()` → `integer({ mode: 'boolean' })`
@@ -40,18 +44,21 @@ Converted all Drizzle schemas from PostgreSQL to SQLite:
 - Removed PostgreSQL-specific features (RLS policies, `$onUpdate`, GIN indexes)
 
 ### 2. Database Client & Configuration
+
 - **Created** `src/lib/db/id.ts` - ULID generation and validation utilities
 - **Updated** `src/lib/db/client.ts` - Switched from `postgres.js` to `@libsql/client`
 - **Updated** `drizzle.config.ts` - Changed dialect from `postgresql` to `turso`
 - **Deleted** `src/lib/db/pool.ts` - No longer needed with libSQL
 
 ### 3. Authentication Updates
+
 - **Updated** `src/lib/auth/config.ts`:
   - Changed Better Auth provider from `'pg'` to `'sqlite'`
   - Updated ID generation to use `generateId()` (ULID)
   - Updated environment validation for Turso credentials
 
 ### 4. Validation Schema Updates
+
 - **Created** `src/lib/schemas/id.schemas.ts` - Shared ULID validation schemas
 - **Updated** 5 Zod schema files to use ULID validation:
   - `sequence.schemas.ts`
@@ -61,6 +68,7 @@ Converted all Drizzle schemas from PostgreSQL to SQLite:
   - `team.schemas.ts`
 
 ### 5. Data Migration
+
 - **Created** `scripts/migrate-supabase-to-turso.ts`:
   - Migrates all 19+ database tables
   - Converts UUIDs to ULIDs with consistent mapping
@@ -69,11 +77,13 @@ Converted all Drizzle schemas from PostgreSQL to SQLite:
   - Handles all data type conversions automatically
 
 ### 6. Dependencies
+
 - **Added** `@libsql/client` ^0.14.0 - Turso database client
 - **Added** `ulid` ^2.3.0 - ULID generation
 - **Kept** `postgres` ^3.4.7 - Only for migration script
 
 ### 7. Documentation
+
 - **Created** `docs/migration-steps.md` - Comprehensive migration guide:
   - Turso setup instructions
   - Step-by-step migration process
@@ -104,6 +114,7 @@ Before merging, verify:
 See `docs/migration-steps.md` for detailed instructions.
 
 **Quick Start:**
+
 ```bash
 # 1. Setup Turso
 turso auth login
@@ -129,6 +140,7 @@ bun db:studio
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert environment variables to use Supabase
 2. Restore from backup created by migration script
 3. Checkout main branch and redeploy
@@ -145,6 +157,7 @@ If issues arise:
 ## Performance Impact
 
 **Expected improvements:**
+
 - ✅ Faster queries with ULID-ordered indexes
 - ✅ Lower latency with edge replication
 - ✅ Reduced costs (no connection pooling needed)
@@ -171,6 +184,7 @@ Closes #[issue number if applicable]
 ---
 
 **Deployment Timeline:**
+
 1. Merge to main after testing
 2. Set up production Turso database
 3. Run migration during maintenance window

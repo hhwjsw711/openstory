@@ -5,6 +5,7 @@ This guide explains how to migrate file storage from Supabase Storage to Cloudfl
 ## Why Cloudflare R2?
 
 **Benefits:**
+
 - **Zero egress fees** - No charges for bandwidth (vs. AWS S3's high egress costs)
 - **S3-compatible API** - Drop-in replacement with minimal code changes
 - **Global edge network** - Fast delivery worldwide via Cloudflare's CDN
@@ -12,6 +13,7 @@ This guide explains how to migrate file storage from Supabase Storage to Cloudfl
 - **Simple pricing** - $0.015/GB storage after free tier
 
 **Alternatives considered:**
+
 - AWS S3: High egress fees make it expensive for video delivery
 - Vercel Blob: Good but vendor lock-in and higher costs at scale
 - Uploadthing: Great DX but limited to file uploads, not general storage
@@ -32,6 +34,7 @@ npx wrangler r2 bucket create velro-development
 ```
 
 **Via Dashboard (alternative):**
+
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Navigate to R2 → Create bucket
 3. Name: `velro-production`
@@ -41,6 +44,7 @@ npx wrangler r2 bucket create velro-development
 ### 2. Create API Token
 
 **Via Dashboard:**
+
 1. Go to R2 → Manage R2 API Tokens
 2. Click "Create API Token"
 3. Name: `velro-api-token`
@@ -54,6 +58,7 @@ npx wrangler r2 bucket create velro-development
    - Endpoint (jurisdiction-specific URL)
 
 **Via CLI (alternative):**
+
 ```bash
 npx wrangler r2 token create velro-api-token --jurisdiction auto
 ```
@@ -61,6 +66,7 @@ npx wrangler r2 token create velro-api-token --jurisdiction auto
 ### 3. Get Bucket Configuration
 
 You'll need:
+
 - **Account ID**: Found in Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>/`)
 - **Jurisdiction endpoint**: Auto-selected or from token creation
 - **Bucket name**: `velro-production`
@@ -84,6 +90,7 @@ R2_PUBLIC_URL=https://cdn.velro.ai  # Or R2.dev subdomain
 ```
 
 **Development environment:**
+
 ```bash
 # .env.development.local
 R2_BUCKET_NAME=velro-development
@@ -544,6 +551,7 @@ Same - if it uses the storage helper functions, it just works.
 5. Set `R2_PUBLIC_URL=https://cdn.velro.ai` in environment
 
 **Benefits:**
+
 - Custom branding
 - Better SEO
 - Potential for additional CDN features
@@ -556,6 +564,7 @@ Same - if it uses the storage helper functions, it just works.
 4. Set as `R2_PUBLIC_URL` or leave empty (code will auto-generate)
 
 **Trade-offs:**
+
 - No custom domain
 - Still fast via Cloudflare edge
 - Good for development/testing
@@ -565,6 +574,7 @@ Same - if it uses the storage helper functions, it just works.
 Don't enable public access - use `getSignedUrl()` for all file access.
 
 **Best for:**
+
 - Private content
 - User-specific files
 - Temporary access
@@ -695,6 +705,7 @@ bun run scripts/test-r2-storage.ts
 ### Deployment
 
 1. **Deploy code changes**
+
    ```bash
    git add .
    git commit -m "Migrate storage from Supabase to R2"
@@ -702,6 +713,7 @@ bun run scripts/test-r2-storage.ts
    ```
 
 2. **Set environment variables in Vercel/your platform**
+
    ```bash
    vercel env add R2_ACCOUNT_ID production
    vercel env add R2_ACCESS_KEY_ID production
@@ -747,12 +759,14 @@ bun run scripts/test-r2-storage.ts
 ## Cost Estimation
 
 **R2 Pricing:**
+
 - Storage: Free for first 10 GB, then $0.015/GB/month
 - Class A operations (PUT, POST): $4.50 per million (after 1M free)
 - Class B operations (GET, HEAD): $0.36 per million (after 10M free)
 - Egress: **FREE** (this is the big win!)
 
 **Example monthly costs for 100 GB storage:**
+
 - Storage: 100 GB × $0.015 = $1.50/month
 - Operations: Within free tier for most apps
 - Egress: $0 (vs. AWS S3: ~$9/GB = $900 for 100 GB egress)
@@ -764,6 +778,7 @@ bun run scripts/test-r2-storage.ts
 **Problem:** Cannot upload/read files
 
 **Solution:**
+
 - Verify API token has correct permissions
 - Check token hasn't expired
 - Ensure `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` are correct
@@ -774,6 +789,7 @@ bun run scripts/test-r2-storage.ts
 **Problem:** Files upload successfully but URLs return 404
 
 **Solutions:**
+
 1. Enable Public Access on bucket (R2 Dashboard → Settings)
 2. Configure custom domain properly
 3. Or use signed URLs for private buckets
@@ -783,6 +799,7 @@ bun run scripts/test-r2-storage.ts
 **Problem:** S3 client signature mismatch
 
 **Solution:**
+
 - Verify endpoint format: `https://<account-id>.r2.cloudflarestorage.com`
 - Check region is set to `'auto'`
 - Ensure credentials don't have extra whitespace
@@ -792,6 +809,7 @@ bun run scripts/test-r2-storage.ts
 **Problem:** Uploads taking too long
 
 **Solutions:**
+
 1. Use Cloudflare Workers for edge uploads (advanced)
 2. Implement multipart upload for large files
 3. Compress files before uploading
@@ -800,6 +818,7 @@ bun run scripts/test-r2-storage.ts
 ## Next Steps
 
 After R2 migration:
+
 1. Monitor usage in R2 dashboard
 2. Set up alerting for storage quota
 3. Implement CDN caching strategies
