@@ -251,6 +251,7 @@ jobs:
 
           # Set TURSO_DATABASE_URL using jq for proper JSON escaping
           PAYLOAD=$(jq -n \
+            --arg projId "$RAILWAY_PROJECT_ID" \
             --arg envId "$ENVIRONMENT_ID" \
             --arg svcId "$SERVICE_ID" \
             --arg dbUrl "${{ steps.create_db.outputs.db_url }}" \
@@ -258,6 +259,7 @@ jobs:
               query: "mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}",
               variables: {
                 input: {
+                  projectId: $projId,
                   environmentId: $envId,
                   serviceId: $svcId,
                   name: "TURSO_DATABASE_URL",
@@ -273,6 +275,7 @@ jobs:
 
           # Set TURSO_AUTH_TOKEN using jq for proper JSON escaping
           PAYLOAD=$(jq -n \
+            --arg projId "$RAILWAY_PROJECT_ID" \
             --arg envId "$ENVIRONMENT_ID" \
             --arg svcId "$SERVICE_ID" \
             --arg dbToken "${{ steps.create_db.outputs.db_token }}" \
@@ -280,6 +283,7 @@ jobs:
               query: "mutation($input:VariableUpsertInput!){variableUpsert(input:$input)}",
               variables: {
                 input: {
+                  projectId: $projId,
                   environmentId: $envId,
                   serviceId: $svcId,
                   name: "TURSO_AUTH_TOKEN",
