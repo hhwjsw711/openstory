@@ -22,7 +22,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   # Production: Run migrations on main branch
@@ -82,6 +82,7 @@ jobs:
         id: create_db
         run: |
           DB_NAME="${{ steps.branch_name.outputs.db_name }}"
+          PROD_DB_NAME="${{ secrets.TURSO_PRODUCTION_DB_NAME }}"
 
           # Check if database already exists
           EXISTING_DB=$(curl -s \
@@ -93,12 +94,31 @@ jobs:
             echo "Database $DB_NAME already exists, skipping creation"
             echo "created=false" >> $GITHUB_OUTPUT
           else
-            echo "Creating database $DB_NAME seeded from production"
-            curl -X POST \
+            echo "Creating database $DB_NAME"
+
+            # Build the request body - only include seed if production DB name is set
+            if [ -n "$PROD_DB_NAME" ]; then
+              echo "Seeding from production database: $PROD_DB_NAME"
+              REQUEST_BODY="{\"name\": \"$DB_NAME\", \"group\": \"default\", \"seed\": {\"type\": \"database\", \"name\": \"$PROD_DB_NAME\"}}"
+            else
+              echo "Warning: TURSO_PRODUCTION_DB_NAME not set, creating empty database"
+              REQUEST_BODY="{\"name\": \"$DB_NAME\", \"group\": \"default\"}"
+            fi
+
+            CREATE_RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer ${{ secrets.TURSO_API_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d "{\"name\": \"$DB_NAME\", \"group\": \"default\", \"seed\": {\"type\": \"database\", \"name\": \"${{ secrets.TURSO_PRODUCTION_DB_NAME }}\"}}" \
-              "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases"
+              -d "$REQUEST_BODY" \
+              "https://api.turso.tech/v1/organizations/${{ secrets.TURSO_ORG }}/databases")
+
+            # Check for errors in response
+            ERROR=$(echo "$CREATE_RESPONSE" | jq -r '.error // empty')
+            if [ -n "$ERROR" ]; then
+              echo "Error creating database: $ERROR"
+              echo "Full response: $CREATE_RESPONSE"
+              exit 1
+            fi
+
             echo "created=true" >> $GITHUB_OUTPUT
           fi
 
@@ -264,7 +284,7 @@ jobs:
         continue-on-error: true
         with:
           script: |
-            const dbName = '${{ steps.sanitize.outputs.db_name }}';
+            const dbName = '${{ steps.branch_name.outputs.db_name }}';
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
