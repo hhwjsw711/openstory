@@ -44,6 +44,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     new Set()
   );
 
+  console.log('regeneratingImages', regeneratingImages);
+  console.log('regeneratingMotion', regeneratingMotion);
   const { data: sequence } = useSequence(sequenceId);
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);
@@ -68,6 +70,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
 
   const handleRegenerateEnd = useCallback(
     (frameId: string, type: 'image' | 'motion') => {
+      console.log('handleRegenerateEnd', frameId, type);
       if (type === 'image') {
         setRegeneratingImages((prev) => {
           const next = new Set(prev);
@@ -85,28 +88,25 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     []
   );
 
-  // Auto-remove frames from regenerating Sets when database status updates to 'generating'
-  // This means the optimistic update has been confirmed by the server
+  // Auto-remove frames from regenerating Sets when generation completes or fails
+  // Keep frames in Set while status is 'generating' to maintain UI feedback
   useEffect(() => {
     if (!frames) return;
 
     frames.forEach((frame) => {
-      // Remove from image regenerating set if thumbnail status is now 'generating' or beyond
+      // Remove from image regenerating set only when generation completes or fails
       if (
         regeneratingImages.has(frame.id) &&
-        (frame.thumbnailStatus === 'generating' ||
-          frame.thumbnailStatus === 'completed' ||
+        (frame.thumbnailStatus === 'completed' ||
           frame.thumbnailStatus === 'failed')
       ) {
         handleRegenerateEnd(frame.id, 'image');
       }
 
-      // Remove from motion regenerating set if video status is now 'generating' or beyond
+      // Remove from motion regenerating set only when generation completes or fails
       if (
         regeneratingMotion.has(frame.id) &&
-        (frame.videoStatus === 'generating' ||
-          frame.videoStatus === 'completed' ||
-          frame.videoStatus === 'failed')
+        (frame.videoStatus === 'completed' || frame.videoStatus === 'failed')
       ) {
         handleRegenerateEnd(frame.id, 'motion');
       }
