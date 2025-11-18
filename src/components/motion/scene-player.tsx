@@ -160,7 +160,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative flex flex-1">
           <VideoPlayer
             key={currentFrame.videoUrl} // Force re-render when video changes
             src={
