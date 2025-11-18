@@ -3,8 +3,8 @@
  * Centralized database client using libSQL (Turso)
  */
 
+import { createClient } from '@libsql/client/web';
 import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
 import { schema } from './schema';
 
 const tursoUrl = process.env.TURSO_DATABASE_URL;
