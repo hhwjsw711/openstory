@@ -34,7 +34,7 @@ NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
 # Create .env.development.local file
 ENV_FILE=".env.development.local"
 
-cat >> $ENV_FILE << EOF
+cat > $ENV_FILE << EOF
 # Turso (Local Development)
 # Using local SQLite file for development (fast, no network latency)
 # For production, use https:// URL with TURSO_AUTH_TOKEN
