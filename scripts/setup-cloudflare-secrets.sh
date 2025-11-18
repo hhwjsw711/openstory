@@ -49,7 +49,7 @@ if [ "$PRODUCTION" = true ]; then
   ENV_NAME="production"
   echo -e "${YELLOW}📦 Setting up PRODUCTION environment${NC}"
 else
-  ENV_FILE=".env.development.local"
+  ENV_FILE=".env.local"
   ENV_NAME="preview"
   echo -e "${YELLOW}📦 Setting up PREVIEW environment${NC}"
 fi
@@ -88,12 +88,7 @@ OPTIONAL_SECRETS=(
   "GOOGLE_CLIENT_ID"
   "GOOGLE_CLIENT_SECRET"
   "FAL_KEY"
-  "OPENROUTER_API_KEY"
   "CEREBRAS_API_KEY"
-  "RUNWAY_API_SECRET"
-  "KLING_ACCESS_KEY"
-  "OPENAI_API_KEY"
-  "ANTHROPIC_API_KEY"
   "RESEND_API_KEY"
 )
 

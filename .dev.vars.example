@@ -1,6 +1,10 @@
 # Cloudflare Workers Local Development Environment Variables
 # Copy this file to .dev.vars and fill in your values
 # .dev.vars is gitignored and used by wrangler for local development
+#
+# Note: This file is for wrangler (Cloudflare Workers) local dev
+# For Next.js development, use .env.development.local (created by bun setup:env)
+# To sync these secrets to Cloudflare preview environment, run: bun setup:cloudflare-secrets
 
 # Database (Turso/SQLite)
 TURSO_DATABASE_URL=file:local.db

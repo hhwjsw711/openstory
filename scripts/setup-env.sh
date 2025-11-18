@@ -7,11 +7,36 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up .env.local...${NC}"
+echo -e "${GREEN}Setting up .env.development.local...${NC}"
 echo ""
-echo -e "${BLUE}Pulling environment variables from Railway...${NC}"
-railway variables --kv -e development > .env.local
-echo -e "${GREEN}✓ Environment variables pulled from Railway${NC}"
+
+# Check if wrangler is authenticated
+echo -e "${BLUE}Checking Cloudflare Wrangler authentication...${NC}"
+if bunx wrangler whoami > /dev/null 2>&1; then
+  echo -e "${GREEN}✓ Wrangler authenticated${NC}"
+  echo ""
+
+  # List secrets from Cloudflare preview environment
+  echo -e "${BLUE}Listing secrets from Cloudflare preview environment...${NC}"
+  PROJECT_NAME="velro"
+
+  # Get list of secrets (names only - values are not readable for security)
+  echo -e "${BLUE}Secrets configured in Cloudflare preview:${NC}"
+  if bunx wrangler pages secret list --project-name="$PROJECT_NAME" --env="preview" 2>/dev/null | grep -v "^$" | tail -n +2; then
+    echo ""
+    echo -e "${GREEN}✓ Connected to Cloudflare project: $PROJECT_NAME${NC}"
+    echo -e "${YELLOW}Note: Secret values cannot be read from Cloudflare (write-only for security)${NC}"
+    echo -e "${YELLOW}Make sure your .env.development.local matches these secrets${NC}"
+  else
+    echo -e "${YELLOW}⚠ Could not list secrets from Cloudflare${NC}"
+    echo -e "${YELLOW}This is normal if the project doesn't exist yet${NC}"
+    echo -e "${YELLOW}Continuing with default local development setup...${NC}"
+  fi
+else
+  echo -e "${YELLOW}⚠ Wrangler not authenticated${NC}"
+  echo -e "${YELLOW}Run 'bunx wrangler login' to connect to Cloudflare${NC}"
+  echo -e "${YELLOW}Continuing with default local development setup...${NC}"
+fi
 echo ""
 
 # Setup local SQLite database with Turso
@@ -93,10 +118,13 @@ echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "${YELLOW}   • You can override QStash values by setting them as environment variables before running this script${NC}"
 echo -e "${YELLOW}   • Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
 echo -e "${YELLOW}   • Don't forget to set up R2 credentials for file storage (see R2 section in .env)${NC}"
+echo -e "${YELLOW}   • To sync secrets to Cloudflare: bun setup:cloudflare-secrets${NC}"
+echo -e "${YELLOW}   • To list Cloudflare secrets: bunx wrangler pages secret list --project-name=velro${NC}"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "   1. Initialize database: bun db:setup"
 echo "   2. Setup R2 storage: bun scripts/setup-r2-buckets.sh"
 echo "   3. Add R2 credentials to $ENV_FILE"
+echo "   4. Sync secrets to Cloudflare: bun setup:cloudflare-secrets"
 echo ""
 echo -e "${GREEN}Setup complete! Run 'bun db:setup' then 'bun dev' to start${NC}"
