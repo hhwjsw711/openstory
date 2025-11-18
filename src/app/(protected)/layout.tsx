@@ -1,9 +1,18 @@
 import { AppLayout } from '@/components/layout';
+import { getSession } from '@/lib/auth/server';
+import { redirect } from 'next/navigation';
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+
+  if (!session?.user) {
+    // Redirect to login - middleware already handles redirectTo for initial requests
+    redirect('/login');
+  }
+
   return <AppLayout>{children}</AppLayout>;
 }

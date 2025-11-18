@@ -70,5 +70,9 @@ storybook-static
 # conductor
 .conductor/
 
+# cloudflare
+.dev.vars
+!.dev.vars.example
+
 # opennext
 .open-next
