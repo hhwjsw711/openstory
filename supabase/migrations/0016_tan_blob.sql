@@ -1,1 +1,0 @@
-ALTER TABLE "frames" ADD COLUMN "image_prompt" text;
