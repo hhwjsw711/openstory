@@ -60,8 +60,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Edge runtime is compatible with Cloudflare Workers, Vercel Edge, and Node.js
-  runtime: 'edge',
+  // Middleware automatically runs on Edge runtime in Next.js 15
+  // No need to specify runtime explicitly
   matcher: [
     /*
      * Match all request paths except for the ones starting with:

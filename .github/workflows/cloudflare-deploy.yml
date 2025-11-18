@@ -1,7 +1,11 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  push:
+  # Trigger after Database CI workflow completes successfully
+  workflow_run:
+    workflows: ['Database CI', 'Test']
+    types:
+      - completed
     branches:
       - main
   pull_request:
@@ -14,10 +18,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Wait for required workflows to complete before deploying
+  wait-for-checks:
+    name: Wait for Tests and Database
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Wait for Test workflow
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: 'test'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Wait for Database CI workflow
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: 'preview-database'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
   deploy:
     name: Deploy to Cloudflare Pages
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # For PRs: wait for checks. For other triggers: run immediately
+    needs: [wait-for-checks]
+    if: |
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' && needs.wait-for-checks.result == 'success') ||
+       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
     permissions:
       contents: read
       deployments: write
@@ -35,15 +68,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run linter
-        run: bun lint
-
-      - name: Run type check
-        run: bun tsc --noEmit
-
-      - name: Run tests
-        run: bun test
-        continue-on-error: true # Don't block deployment on test failures
+      # Tests, linting, and type checking are handled by the Test workflow
+      # This workflow only runs after Test workflow completes successfully
 
       - name: Build Next.js application
         run: bun run build
