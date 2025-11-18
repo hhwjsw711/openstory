@@ -31,7 +31,7 @@ QSTASH_NEXT_SIGNING_KEY="${QSTASH_NEXT_SIGNING_KEY:-sig_5ZB6DVzB1wjE8S6rZ7eenA8P
 NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
 
 # Append to .env.local file
-ENV_FILE=".env.local"
+ENV_FILE=".env.development.local"
 
 cat >> $ENV_FILE << EOF
 # Turso (Local Development)
