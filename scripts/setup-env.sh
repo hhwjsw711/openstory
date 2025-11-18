@@ -7,14 +7,11 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up .env.development.local...${NC}"
+echo -e "${GREEN}Setting up .env.local...${NC}"
 echo ""
-echo -e "${YELLOW}💡 Optional: Pull environment variables from your deployment platform${NC}"
-echo -e "${YELLOW}   • Vercel: vercel env pull .env.development.local${NC}"
-echo -e "${YELLOW}   • Railway: railway variables --kv > .env.development.local${NC}"
-echo -e "${YELLOW}   • Or continue to set up local defaults${NC}"
-echo ""
-read -p "Press Enter to continue with local setup, or Ctrl+C to cancel and pull from deployment platform..."
+echo -e "${BLUE}Pulling environment variables from Railway...${NC}"
+railway variables --kv -e development > .env.local
+echo -e "${GREEN}✓ Environment variables pulled from Railway${NC}"
 echo ""
 
 # Setup local SQLite database with Turso
@@ -31,19 +28,12 @@ QSTASH_URL="${QSTASH_URL:-http://127.0.0.1:8080}"
 QSTASH_TOKEN="${QSTASH_TOKEN:-eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=}"
 QSTASH_CURRENT_SIGNING_KEY="${QSTASH_CURRENT_SIGNING_KEY:-sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r}"
 QSTASH_NEXT_SIGNING_KEY="${QSTASH_NEXT_SIGNING_KEY:-sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs}"
-UPSTASH_WORKFLOW_URL="${UPSTASH_WORKFLOW_URL:-http://host.docker.internal:3000}"
 NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
 
-# Get the tunnel URL if needed
-echo -e "${BLUE}Setting up tunnel for QStash callbacks...${NC}"
-echo -e "${YELLOW}If you have a tunnel running (e.g., ngrok), enter the URL${NC}"
-echo -e "${YELLOW}Otherwise, press Enter to use localhost:${NC}"
-read -p "Tunnel URL (optional): " QSTASH_TUNNEL_URL
+# Append to .env.local file
+ENV_FILE=".env.local"
 
-# Create .env.development.local file
-ENV_FILE=".env.development.local"
-
-cat > $ENV_FILE << EOF
+cat >> $ENV_FILE << EOF
 # Turso (Local Development)
 # Using local SQLite file for development (fast, no network latency)
 # For production, use https:// URL with TURSO_AUTH_TOKEN
@@ -56,18 +46,9 @@ QSTASH_TOKEN=$QSTASH_TOKEN
 QSTASH_CURRENT_SIGNING_KEY=$QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 
-# Upstash Workflow - URL that QStash can reach (from inside Docker)
-UPSTASH_WORKFLOW_URL=$UPSTASH_WORKFLOW_URL
-
 # App URL (for QStash callbacks)
 NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-
-# QStash tunnel URL (when using cloud QStash)
 EOF
-
-if [ -n "$QSTASH_TUNNEL_URL" ]; then
-    echo "QSTASH_TUNNEL_URL=$QSTASH_TUNNEL_URL" >> $ENV_FILE
-fi
 
 # Generate a random secret for BetterAuth
 BETTER_AUTH_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)
@@ -98,17 +79,13 @@ BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 # ANTHROPIC_API_KEY=
 EOF
 
-echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
+echo -e "${GREEN}✓ Updated $ENV_FILE${NC}"
 echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Database: local.db (SQLite via Turso)"
 echo "  QStash URL: $QSTASH_URL"
 echo "  QStash Token: defaultUser (local dev defaults)"
-echo "  Upstash Workflow URL: $UPSTASH_WORKFLOW_URL"
 echo "  App URL: $NEXT_PUBLIC_APP_URL"
-if [ -n "$QSTASH_TUNNEL_URL" ]; then
-    echo "  QStash Tunnel URL: $QSTASH_TUNNEL_URL"
-fi
 echo ""
 echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "${YELLOW}   • You can override QStash values by setting them as environment variables before running this script${NC}"
