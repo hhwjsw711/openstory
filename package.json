@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
     "build": "bun run --bun next build",
-    "start": "bun run --bun next start",
+    "start": "next start",
     "lint": "bunx oxlint --type-aware",
     "lint:fix": "bunx oxlint --type-aware --fix",
     "format": "bunx prettier --write .",
