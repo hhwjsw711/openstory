@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { memo } from 'react';
 import { SceneThumbnail } from './scene-thumbnail';
 
@@ -19,6 +19,8 @@ type SceneListItemProps = {
   isCompleted?: boolean;
   onSelect?: () => void;
   variant?: 'stacked' | 'horizontal' | 'responsive';
+  isRegeneratingImage?: boolean;
+  isRegeneratingMotion?: boolean;
 };
 
 const SceneListItemComponent: React.FC<SceneListItemProps> = ({
@@ -28,6 +30,8 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
   isCompleted = false,
   onSelect,
   variant = 'responsive',
+  isRegeneratingImage = false,
+  isRegeneratingMotion = false,
 }) => {
   // Extract scene data from frame metadata
   const metadata = frame?.metadata;
@@ -59,9 +63,22 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
           )}
         />
       )}
-      {frame && !isCompleted && (
-        <Skeleton className="absolute right-4 top-4 z-10 h-6 w-6 rounded-full" />
-      )}
+      {frame &&
+        !isCompleted &&
+        (isRegeneratingImage || isRegeneratingMotion) && (
+          <Loader2
+            className={cn(
+              'absolute right-4 top-4 z-10 h-6 w-6 p-1 rounded-full animate-spin',
+              'bg-primary/10 text-primary'
+            )}
+          />
+        )}
+      {frame &&
+        !isCompleted &&
+        !isRegeneratingImage &&
+        !isRegeneratingMotion && (
+          <Skeleton className="absolute right-4 top-4 z-10 h-6 w-6 rounded-full" />
+        )}
 
       <CardHeader>
         <div
@@ -119,7 +136,9 @@ const areEqual = (
     prevProps.aspectRatio !== nextProps.aspectRatio ||
     prevProps.isActive !== nextProps.isActive ||
     prevProps.isCompleted !== nextProps.isCompleted ||
-    prevProps.variant !== nextProps.variant
+    prevProps.variant !== nextProps.variant ||
+    prevProps.isRegeneratingImage !== nextProps.isRegeneratingImage ||
+    prevProps.isRegeneratingMotion !== nextProps.isRegeneratingMotion
   ) {
     return false;
   }

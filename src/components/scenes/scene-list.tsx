@@ -11,6 +11,8 @@ type SceneListProps = {
   selectedFrameId?: string;
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
+  regeneratingImages: Set<string>;
+  regeneratingMotion: Set<string>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -24,6 +26,8 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   selectedFrameId,
   aspectRatio,
   onSelectFrame,
+  regeneratingImages,
+  regeneratingMotion,
 }) => {
   return (
     <div className="flex h-full w-80 flex-col border-r bg-background">
@@ -61,6 +65,8 @@ const SceneListComponent: React.FC<SceneListProps> = ({
                 isActive={frame.id === selectedFrameId}
                 isCompleted={isCompleted(frame)}
                 onSelect={() => onSelectFrame(frame.id)}
+                isRegeneratingImage={regeneratingImages.has(frame.id)}
+                isRegeneratingMotion={regeneratingMotion.has(frame.id)}
               />
             ))}
         </div>
@@ -79,6 +85,14 @@ const areEqual = (
   if (
     prevProps.selectedFrameId !== nextProps.selectedFrameId ||
     prevProps.aspectRatio !== nextProps.aspectRatio
+  ) {
+    return false;
+  }
+
+  // Compare regenerating Sets by reference (parent creates new Set on change)
+  if (
+    prevProps.regeneratingImages !== nextProps.regeneratingImages ||
+    prevProps.regeneratingMotion !== nextProps.regeneratingMotion
   ) {
     return false;
   }

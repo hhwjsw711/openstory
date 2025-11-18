@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string | undefined;
@@ -35,6 +35,15 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     undefined
   );
   const [selectedTab, setSelectedTab] = useState<TabValue>('script');
+
+  // Track which frames are currently regenerating (UI state)
+  const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
+    new Set()
+  );
+  const [regeneratingMotion, setRegeneratingMotion] = useState<Set<string>>(
+    new Set()
+  );
+
   const { data: sequence } = useSequence(sequenceId);
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);
@@ -44,6 +53,66 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     () => frames?.find((frame) => frame.id === curSelectedFrameId),
     [frames, curSelectedFrameId]
   );
+
+  // Helper functions to manage regeneration state
+  const handleRegenerateStart = useCallback(
+    (frameId: string, type: 'image' | 'motion') => {
+      if (type === 'image') {
+        setRegeneratingImages((prev) => new Set(prev).add(frameId));
+      } else {
+        setRegeneratingMotion((prev) => new Set(prev).add(frameId));
+      }
+    },
+    []
+  );
+
+  const handleRegenerateEnd = useCallback(
+    (frameId: string, type: 'image' | 'motion') => {
+      if (type === 'image') {
+        setRegeneratingImages((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else {
+        setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      }
+    },
+    []
+  );
+
+  // Auto-remove frames from regenerating Sets when database status updates to 'generating'
+  // This means the optimistic update has been confirmed by the server
+  useEffect(() => {
+    if (!frames) return;
+
+    frames.forEach((frame) => {
+      // Remove from image regenerating set if thumbnail status is now 'generating' or beyond
+      if (
+        regeneratingImages.has(frame.id) &&
+        (frame.thumbnailStatus === 'generating' ||
+          frame.thumbnailStatus === 'completed' ||
+          frame.thumbnailStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'image');
+      }
+
+      // Remove from motion regenerating set if video status is now 'generating' or beyond
+      if (
+        regeneratingMotion.has(frame.id) &&
+        (frame.videoStatus === 'generating' ||
+          frame.videoStatus === 'completed' ||
+          frame.videoStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'motion');
+      }
+    });
+  }, [frames, regeneratingImages, regeneratingMotion, handleRegenerateEnd]);
+
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
@@ -58,6 +127,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
           selectedFrameId={curSelectedFrameId}
           aspectRatio={aspectRatio}
           onSelectFrame={setSelectedFrameId}
+          regeneratingImages={regeneratingImages}
+          regeneratingMotion={regeneratingMotion}
         />
 
         {/* Right: Scene Player */}
@@ -76,6 +147,9 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
             frame={selectedFrame}
             selectedTab={selectedTab}
             onTabChange={setSelectedTab}
+            regeneratingImages={regeneratingImages}
+            regeneratingMotion={regeneratingMotion}
+            onRegenerateStart={handleRegenerateStart}
           />
         </ScrollArea>
       </div>

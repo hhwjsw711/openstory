@@ -155,6 +155,7 @@ export const frames = sqliteTable(
       mode: 'timestamp',
     }),
     videoError: text('video_error'),
+    motionPrompt: text('motion_prompt'), // User-updated motion prompt (overrides AI-generated prompt from metadata)
     /**
      * Stores Scene data at various stages of progressive analysis.
      * Fields are populated progressively across 5 phases.

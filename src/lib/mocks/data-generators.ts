@@ -125,6 +125,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'completed',
       'failed',
     ]),
+    motionPrompt: null,
     videoWorkflowRunId: faker.string.uuid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,

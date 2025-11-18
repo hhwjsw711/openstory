@@ -27,6 +27,7 @@ const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  motionPrompt: null,
   ...overrides,
 });
 

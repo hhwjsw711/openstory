@@ -1,10 +1,16 @@
 import { ImageModelSelector } from '@/components/sequence/image-model-selector';
+import { MotionModelSelector } from '@/components/motion/motion-model-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { DEFAULT_IMAGE_MODEL, TextToImageModel } from '@/lib/ai/models';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  TextToImageModel,
+  ImageToVideoModel,
+} from '@/lib/ai/models';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -16,6 +22,9 @@ type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
   selectedTab: TabValue;
   onTabChange: (tab: TabValue) => void;
+  regeneratingImages: Set<string>;
+  regeneratingMotion: Set<string>;
+  onRegenerateStart: (frameId: string, type: 'image' | 'motion') => void;
 };
 
 type PromptTabContentProps = {
@@ -82,16 +91,25 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   frame,
   selectedTab,
   onTabChange,
+  regeneratingImages,
+  regeneratingMotion,
+  onRegenerateStart,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
   const [editedPrompt, setEditedPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<
     TextToImageModel | undefined
   >(undefined);
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isShortening, setIsShortening] = useState(false);
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenSuccess, setShortenSuccess] = useState<string | null>(null);
+
+  // Motion regeneration state
+  const [editedMotionPrompt, setEditedMotionPrompt] = useState<string>('');
+  const [selectedMotionModel, setSelectedMotionModel] = useState<
+    ImageToVideoModel | undefined
+  >(undefined);
+
   const queryClient = useQueryClient();
 
   const handleCopy = useCallback(
@@ -163,7 +181,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const handleRegenerate = useCallback(async () => {
     if (!frame?.id || !frame?.sequenceId) return;
 
-    setIsRegenerating(true);
+    onRegenerateStart(frame.id, 'image');
 
     // Optimistic update for frame list query
     queryClient.setQueryData<Frame[]>(
@@ -222,11 +240,75 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         queryKey: ['frames', frame.sequenceId],
       });
       await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
-
-      // Only clear isRegenerating on error - on success, let thumbnailStatus drive the loading state
-      setIsRegenerating(false);
     }
-  }, [frame, selectedModel, editedPrompt, queryClient]);
+  }, [frame, selectedModel, editedPrompt, queryClient, onRegenerateStart]);
+
+  const handleRegenerateMotion = useCallback(async () => {
+    if (!frame?.id || !frame?.sequenceId) return;
+
+    onRegenerateStart(frame.id, 'motion');
+
+    // Optimistic update for frame list query
+    queryClient.setQueryData<Frame[]>(
+      ['frames', frame.sequenceId],
+      (oldFrames) => {
+        if (!oldFrames) return oldFrames;
+        return oldFrames.map((f) =>
+          f.id === frame.id
+            ? {
+                ...f,
+                videoStatus: 'generating' as const,
+                motionPrompt: editedMotionPrompt || f.motionPrompt,
+              }
+            : f
+        );
+      }
+    );
+
+    // Optimistic update for individual frame query
+    queryClient.setQueryData<Frame>(['frame', frame.id], (oldFrame) => {
+      if (!oldFrame) return oldFrame;
+      return {
+        ...oldFrame,
+        videoStatus: 'generating' as const,
+        motionPrompt: editedMotionPrompt || oldFrame.motionPrompt,
+      };
+    });
+
+    try {
+      const response = await fetch(
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate-motion`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: selectedMotionModel,
+            prompt: editedMotionPrompt || undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate motion');
+      }
+
+      // Don't invalidate immediately - let auto-polling pick up server updates
+    } catch (error) {
+      console.error('Failed to regenerate motion:', error);
+
+      // Rollback on error
+      await queryClient.invalidateQueries({
+        queryKey: ['frames', frame.sequenceId],
+      });
+      await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
+    }
+  }, [
+    frame,
+    selectedMotionModel,
+    editedMotionPrompt,
+    queryClient,
+    onRegenerateStart,
+  ]);
 
   // Update local state when frame image prompt changes
   useEffect(() => {
@@ -240,18 +322,29 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setSelectedModel(currentModel);
   }, [frame?.imageModel]);
 
-  // Clear isRegenerating once the optimistic update is reflected in frame status
-  useEffect(() => {
-    if (frame?.thumbnailStatus === 'generating' && isRegenerating) {
-      setIsRegenerating(false);
-    }
-  }, [frame?.thumbnailStatus, isRegenerating]);
+  const motionPrompt =
+    frame?.motionPrompt || frame?.metadata?.prompts?.motion?.fullPrompt;
 
-  const motionPrompt = frame?.metadata?.prompts?.motion?.fullPrompt;
+  // Update local state when frame motion prompt changes
+  useEffect(() => {
+    setEditedMotionPrompt(motionPrompt || '');
+  }, [motionPrompt]);
+
+  // Update local motion model state when frame changes
+  useEffect(() => {
+    // Note: Currently there's no motionModel field on frame, so use default model
+    setSelectedMotionModel(DEFAULT_VIDEO_MODEL);
+  }, [frame?.id]);
 
   // Check if image is currently generating
   const isGenerating =
-    frame?.thumbnailStatus === 'generating' || isRegenerating;
+    frame?.thumbnailStatus === 'generating' ||
+    (frame?.id ? regeneratingImages.has(frame.id) : false);
+
+  // Check if motion is currently generating
+  const isGeneratingMotion =
+    frame?.videoStatus === 'generating' ||
+    (frame?.id ? regeneratingMotion.has(frame.id) : false);
 
   return (
     <Tabs
@@ -368,11 +461,66 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       </TabsContent>
 
       <TabsContent value="motion-prompt">
-        <PromptTabContent
-          text={motionPrompt}
-          isCopied={copiedTab === 'motion-prompt'}
-          onCopy={() => handleCopy(motionPrompt, 'motion-prompt')}
-        />
+        <div className="space-y-4">
+          {/* Editable motion prompt */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Prompt</label>
+              <span className="text-xs text-muted-foreground">
+                {(editedMotionPrompt || motionPrompt || '').length} characters
+              </span>
+            </div>
+            <Textarea
+              value={editedMotionPrompt || motionPrompt || ''}
+              onChange={(e) => setEditedMotionPrompt(e.target.value)}
+              placeholder="Enter motion prompt…"
+              className="min-h-[120px] resize-y"
+              disabled={isGenerating || isGeneratingMotion}
+            />
+          </div>
+
+          {/* Model selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model</label>
+            <MotionModelSelector
+              selectedModel={selectedMotionModel || DEFAULT_VIDEO_MODEL}
+              onModelChange={setSelectedMotionModel}
+              disabled={isGenerating || isGeneratingMotion}
+            />
+          </div>
+
+          {/* Regenerate button */}
+          <Button
+            onClick={handleRegenerateMotion}
+            disabled={isGenerating || isGeneratingMotion || !frame}
+            className="w-full"
+          >
+            {isGeneratingMotion && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {isGeneratingMotion ? 'Generating…' : 'Regenerate Motion'}
+          </Button>
+
+          {/* Copy button for current prompt */}
+          <Button
+            variant="outline"
+            onClick={() =>
+              handleCopy(editedMotionPrompt || motionPrompt, 'motion-prompt')
+            }
+            disabled={!motionPrompt}
+            className="w-full"
+          >
+            {copiedTab === 'motion-prompt' ? (
+              <span className="flex items-center gap-2">
+                <span className="text-xs">✓</span> Copied
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <CopyIcon className="h-4 w-4" /> Copy Prompt
+              </span>
+            )}
+          </Button>
+        </div>
       </TabsContent>
     </Tabs>
   );

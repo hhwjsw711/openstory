@@ -22,6 +22,7 @@ const mockFrame: Frame = {
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  motionPrompt: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,
