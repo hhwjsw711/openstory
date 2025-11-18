@@ -235,20 +235,23 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   },
 ];
 
-const SYSTEM_TEAM_ID = '00000000-0000-0000-0000-000000000000';
+// Slug for the system templates team
+export const SYSTEM_TEAM_SLUG = 'system-templates';
 
-export const DEFAULT_SYSTEM_STYLES: Omit<Style, 'id'>[] =
+// System styles without teamId - teamId will be added during seeding
+export const DEFAULT_SYSTEM_STYLES: Omit<Style, 'id' | 'teamId'>[] =
   DEFAULT_STYLE_TEMPLATES.map((style) => ({
     ...style,
-    teamId: SYSTEM_TEAM_ID,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: 'system',
   }));
 
+// Mock styles for testing - includes mock IDs and teamId
 export const MOCK_SYSTEM_STYLES: Style[] = DEFAULT_SYSTEM_STYLES.map(
   (style) => ({
     ...style,
     id: style.name.replace(/\s+/g, '-').toLowerCase(),
+    teamId: 'mock-system-team-id', // Mock team ID for testing
   })
 );

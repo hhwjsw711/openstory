@@ -404,6 +404,8 @@ export const generateStoryboardWorkflow = createWorkflow(
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
             flowControl: {
               key: 'fal-requests', // Shared key for both image & motion
+              rate: 10,
+              period: 5,
               parallelism: process.env.FAL_CONCURRENCY_LIMIT
                 ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
                 : 10,

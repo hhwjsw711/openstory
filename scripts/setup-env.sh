@@ -28,9 +28,10 @@ QSTASH_URL="${QSTASH_URL:-http://127.0.0.1:8080}"
 QSTASH_TOKEN="${QSTASH_TOKEN:-eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=}"
 QSTASH_CURRENT_SIGNING_KEY="${QSTASH_CURRENT_SIGNING_KEY:-sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r}"
 QSTASH_NEXT_SIGNING_KEY="${QSTASH_NEXT_SIGNING_KEY:-sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs}"
+APP_URL="${APP_URL:-http://localhost:3000}"
 NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
 
-# Append to .env.local file
+# Create .env.development.local file
 ENV_FILE=".env.development.local"
 
 cat >> $ENV_FILE << EOF
@@ -46,7 +47,8 @@ QSTASH_TOKEN=$QSTASH_TOKEN
 QSTASH_CURRENT_SIGNING_KEY=$QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 
-# App URL (for QStash callbacks)
+# App URL - used by QStash webhooks, Better Auth, and internal API calls
+APP_URL=$APP_URL
 NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 EOF
 
@@ -85,7 +87,7 @@ echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Database: local.db (SQLite via Turso)"
 echo "  QStash URL: $QSTASH_URL"
 echo "  QStash Token: defaultUser (local dev defaults)"
-echo "  App URL: $NEXT_PUBLIC_APP_URL"
+echo "  App URL: $APP_URL"
 echo ""
 echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "${YELLOW}   • You can override QStash values by setting them as environment variables before running this script${NC}"

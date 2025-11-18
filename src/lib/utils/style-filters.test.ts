@@ -2,12 +2,9 @@ import type { Style } from '@/types/database';
 import { describe, expect, test } from 'bun:test';
 import { filterStyles } from './style-filters';
 
-import { DEFAULT_SYSTEM_STYLES } from '../style/style-templates';
-// Mock style data for testing
-const mockStyles = DEFAULT_SYSTEM_STYLES.map((style) => ({
-  ...style,
-  id: style.name.replace(/\s+/g, '-').toLowerCase(),
-}));
+import { MOCK_SYSTEM_STYLES } from '../style/style-templates';
+// Use MOCK_SYSTEM_STYLES which includes id and teamId
+const mockStyles = MOCK_SYSTEM_STYLES;
 
 describe('filterStyles', () => {
   describe('category filtering', () => {
