@@ -1,10 +1,7 @@
 import type { NextConfig } from 'next';
-import path from 'node:path';
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname, '../..'),
-  },
+  // Remove turbopack.root - Next.js will use the project root by default
   images: {
     remotePatterns: [
       {
