@@ -139,7 +139,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             <Image
               src={currentFrame.thumbnailUrl}
               alt={title || 'Scene thumbnail'}
-              className={cn(' object-cover', className)}
+              className="w-full h-full object-cover"
               width={imageDimensions.width}
               height={imageDimensions.height}
             />
@@ -160,7 +160,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative flex flex-1">
+        <div className={cn('relative flex flex-1', className)}>
           <VideoPlayer
             key={currentFrame.videoUrl} // Force re-render when video changes
             src={
@@ -168,7 +168,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             }
             posterSrc={currentFrame.thumbnailUrl}
             aspectRatio={aspectRatio}
-            className={className}
+            className="w-full h-full"
             autoPlay={shouldAutoPlay}
             enableDownload={!!currentFrame.videoUrl}
             downloadFilename={downloadFilename}

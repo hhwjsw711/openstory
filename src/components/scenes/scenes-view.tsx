@@ -22,8 +22,15 @@ type ScenesViewProps = {
 
 export const getPlayerMaxClassNameByAspectRatio = (
   aspectRatio: AspectRatio
-) => {
-  return `max-w-[calc(50vh*${aspectRatio.split(':')[0]}/${aspectRatio.split(':')[1]})] max-h-[50vh]`;
+): string => {
+  // Use Tailwind arbitrary values - map each aspect ratio to its specific classes
+  // Tailwind JIT needs to see the full class names at build time
+  const classMap: Record<AspectRatio, string> = {
+    '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
+    '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
+    '1:1': 'max-h-[50vh] max-w-[50vh]',
+  };
+  return classMap[aspectRatio] || classMap['16:9'];
 };
 
 export const ScenesView: React.FC<ScenesViewProps> = ({
