@@ -42,6 +42,7 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+
     nextjs: {
       appDirectory: true,
       // Configure Next.js Image component for Storybook
@@ -49,16 +50,28 @@ const preview: Preview = {
         unoptimized: true, // Disable image optimization in Storybook
       },
     },
+
     backgrounds: {
       disable: true, // Disable default backgrounds addon since we're using theme colors
     },
-    layout: 'padded', // Adds default padding around components
+
+    // Adds default padding around components
+    layout: 'padded',
+
     viewport: {
       defaultViewport: 'responsive', // Default viewport size
     },
+
     // Configure MSW handlers globally for all stories
     msw: {
       handlers,
+    },
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: 'todo',
     },
   },
   loaders: [mswLoader],

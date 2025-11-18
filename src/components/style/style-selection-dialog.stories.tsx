@@ -163,10 +163,8 @@ export const CategoryFilters: Story = {
 
 export const MobileView: Story = {
   render: () => <InteractiveStyleDialog />,
+
   parameters: {
-    viewport: {
-      defaultViewport: 'mobile1',
-    },
     docs: {
       description: {
         story:
@@ -174,33 +172,50 @@ export const MobileView: Story = {
       },
     },
   },
+
+  globals: {
+    viewport: {
+      value: 'mobile1',
+      isRotated: false,
+    },
+  },
 };
 
 export const TabletView: Story = {
   render: () => <InteractiveStyleDialog />,
+
   parameters: {
-    viewport: {
-      defaultViewport: 'tablet',
-    },
     docs: {
       description: {
         story: 'Dialog on tablet-sized screens showing 3-4 column grid layout.',
       },
     },
   },
+
+  globals: {
+    viewport: {
+      value: 'tablet',
+      isRotated: false,
+    },
+  },
 };
 
 export const DesktopView: Story = {
   render: () => <InteractiveStyleDialog />,
+
   parameters: {
-    viewport: {
-      defaultViewport: 'desktop',
-    },
     docs: {
       description: {
         story:
           'Full desktop view with 5-column grid layout for browsing many styles.',
       },
+    },
+  },
+
+  globals: {
+    viewport: {
+      value: 'desktop',
+      isRotated: false,
     },
   },
 };

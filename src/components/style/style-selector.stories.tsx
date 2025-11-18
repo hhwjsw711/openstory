@@ -1,7 +1,7 @@
 import { generateMockStyles } from '@/lib/mocks/data-generators';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { fn } from 'storybook/internal/test';
+import { fn } from 'storybook/test';
 import { StyleSelector } from './style-selector';
 
 const meta = {
