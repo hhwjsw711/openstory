@@ -23,6 +23,9 @@ jobs:
     name: Wait for Tests and Database
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      checks: read # Required to read check run status
+      contents: read
     steps:
       - name: Wait for Test workflow
         uses: lewagon/wait-on-check-action@v1.3.4
