@@ -108,7 +108,10 @@ export async function POST(
         };
 
         // Publish to QStash to trigger the workflow
-        const workflowRunId = await triggerWorkflow('/motion', workflowInput);
+        // Use deduplicationId to prevent duplicate motion workflows for the same frame
+        const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
+          deduplicationId: `motion-${frame.id}`,
+        });
 
         workflows.push({
           frameId: frame.id,

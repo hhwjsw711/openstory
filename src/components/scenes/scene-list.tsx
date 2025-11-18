@@ -3,6 +3,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
+import { memo } from 'react';
 import { SceneListItem } from './scene-list-item';
 
 type SceneListProps = {
@@ -10,6 +11,8 @@ type SceneListProps = {
   selectedFrameId?: string;
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
+  regeneratingImages: Set<string>;
+  regeneratingMotion: Set<string>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -18,11 +21,13 @@ const isCompleted = (frame: Frame) => {
   return isFullyGenerated;
 };
 
-export const SceneList: React.FC<SceneListProps> = ({
+const SceneListComponent: React.FC<SceneListProps> = ({
   frames,
   selectedFrameId,
   aspectRatio,
   onSelectFrame,
+  regeneratingImages,
+  regeneratingMotion,
 }) => {
   return (
     <div className="flex h-full w-80 flex-col border-r bg-background">
@@ -60,6 +65,8 @@ export const SceneList: React.FC<SceneListProps> = ({
                 isActive={frame.id === selectedFrameId}
                 isCompleted={isCompleted(frame)}
                 onSelect={() => onSelectFrame(frame.id)}
+                isRegeneratingImage={regeneratingImages.has(frame.id)}
+                isRegeneratingMotion={regeneratingMotion.has(frame.id)}
               />
             ))}
         </div>
@@ -67,3 +74,54 @@ export const SceneList: React.FC<SceneListProps> = ({
     </div>
   );
 };
+
+// Custom equality check to prevent unnecessary re-renders during polling
+// Relies on TanStack Query's structural sharing to preserve frame object references
+const areEqual = (
+  prevProps: SceneListProps,
+  nextProps: SceneListProps
+): boolean => {
+  // Compare primitive props
+  if (
+    prevProps.selectedFrameId !== nextProps.selectedFrameId ||
+    prevProps.aspectRatio !== nextProps.aspectRatio
+  ) {
+    return false;
+  }
+
+  // Compare regenerating Sets by reference (parent creates new Set on change)
+  if (
+    prevProps.regeneratingImages !== nextProps.regeneratingImages ||
+    prevProps.regeneratingMotion !== nextProps.regeneratingMotion
+  ) {
+    return false;
+  }
+
+  // Compare frames array
+  // TanStack Query's structural sharing should maintain the same array reference
+  // if the content hasn't changed, so reference equality check is sufficient
+  if (prevProps.frames === nextProps.frames) {
+    return true;
+  }
+
+  // If one is undefined and the other isn't, they're not equal
+  if (!prevProps.frames || !nextProps.frames) {
+    return false;
+  }
+
+  // If array lengths differ, they're not equal
+  if (prevProps.frames.length !== nextProps.frames.length) {
+    return false;
+  }
+
+  // Check if frame object references have changed (structural sharing preserves refs)
+  for (let i = 0; i < prevProps.frames.length; i++) {
+    if (prevProps.frames[i] !== nextProps.frames[i]) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const SceneList = memo(SceneListComponent, areEqual);

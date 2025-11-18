@@ -210,26 +210,6 @@ export class SequenceService {
   }
 
   /**
-   * Update sequence status
-   *
-   * @param sequenceId - The sequence ID
-   * @param status - The new status
-   * @throws {Error} If database operation fails
-   */
-  async updateSequenceStatus(
-    sequenceId: string,
-    status: SequenceStatus
-  ): Promise<void> {
-    await db
-      .update(sequences)
-      .set({
-        status,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequenceId));
-  }
-
-  /**
    * Update sequence metadata
    *
    * @param sequenceId - The sequence ID

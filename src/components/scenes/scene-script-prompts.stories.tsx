@@ -17,9 +17,12 @@ const mockFrame: Frame = {
   thumbnailWorkflowRunId: null,
   thumbnailGeneratedAt: null,
   thumbnailError: null,
+  imageModel: 'nano_banana',
+  imagePrompt: null,
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  motionPrompt: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,

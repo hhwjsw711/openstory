@@ -59,7 +59,8 @@ export async function POST(request: Request) {
     const validatedData = parseResult.data;
 
     const modelKey = validatedData.model;
-    const model = IMAGE_MODELS[modelKey];
+    const modelConfig = IMAGE_MODELS[modelKey];
+    const model = modelConfig.id;
     // Normalize extra_params with per-model schema to inject defaults/coercions
     const normalizedResult = parseExtraParamsByModel({
       model: validatedData.model,

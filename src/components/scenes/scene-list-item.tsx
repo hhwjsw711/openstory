@@ -8,7 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { memo } from 'react';
 import { SceneThumbnail } from './scene-thumbnail';
 
 type SceneListItemProps = {
@@ -18,15 +19,19 @@ type SceneListItemProps = {
   isCompleted?: boolean;
   onSelect?: () => void;
   variant?: 'stacked' | 'horizontal' | 'responsive';
+  isRegeneratingImage?: boolean;
+  isRegeneratingMotion?: boolean;
 };
 
-export const SceneListItem: React.FC<SceneListItemProps> = ({
+const SceneListItemComponent: React.FC<SceneListItemProps> = ({
   frame,
   aspectRatio,
   isActive = false,
   isCompleted = false,
   onSelect,
   variant = 'responsive',
+  isRegeneratingImage = false,
+  isRegeneratingMotion = false,
 }) => {
   // Extract scene data from frame metadata
   const metadata = frame?.metadata;
@@ -58,9 +63,22 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
           )}
         />
       )}
-      {frame && !isCompleted && (
-        <Skeleton className="absolute right-4 top-4 z-10 h-6 w-6 rounded-full" />
-      )}
+      {frame &&
+        !isCompleted &&
+        (isRegeneratingImage || isRegeneratingMotion) && (
+          <Loader2
+            className={cn(
+              'absolute right-4 top-4 z-10 h-6 w-6 p-1 rounded-full animate-spin',
+              'bg-primary/10 text-primary'
+            )}
+          />
+        )}
+      {frame &&
+        !isCompleted &&
+        !isRegeneratingImage &&
+        !isRegeneratingMotion && (
+          <Skeleton className="absolute right-4 top-4 z-10 h-6 w-6 rounded-full" />
+        )}
 
       <CardHeader>
         <div
@@ -106,3 +124,93 @@ export const SceneListItem: React.FC<SceneListItemProps> = ({
     </Card>
   );
 };
+
+// Custom equality check to prevent unnecessary re-renders during polling
+// Only re-render if the fields that affect the UI actually change
+const areEqual = (
+  prevProps: SceneListItemProps,
+  nextProps: SceneListItemProps
+): boolean => {
+  // Compare primitive props
+  if (
+    prevProps.aspectRatio !== nextProps.aspectRatio ||
+    prevProps.isActive !== nextProps.isActive ||
+    prevProps.isCompleted !== nextProps.isCompleted ||
+    prevProps.variant !== nextProps.variant ||
+    prevProps.isRegeneratingImage !== nextProps.isRegeneratingImage ||
+    prevProps.isRegeneratingMotion !== nextProps.isRegeneratingMotion
+  ) {
+    return false;
+  }
+
+  // If both frames are undefined, they're equal
+  if (!prevProps.frame && !nextProps.frame) {
+    return true;
+  }
+
+  // If one is undefined and the other isn't, they're not equal
+  if (!prevProps.frame || !nextProps.frame) {
+    return false;
+  }
+
+  // Compare frame fields that affect rendering
+  const prevFrame = prevProps.frame;
+  const nextFrame = nextProps.frame;
+
+  // Check if frame identity changed
+  if (prevFrame.id !== nextFrame.id) {
+    return false;
+  }
+
+  // Check thumbnail-related fields
+  if (
+    prevFrame.thumbnailUrl !== nextFrame.thumbnailUrl ||
+    prevFrame.thumbnailStatus !== nextFrame.thumbnailStatus
+  ) {
+    return false;
+  }
+
+  // Check video-related fields (for skeleton/completion state)
+  if (
+    prevFrame.videoUrl !== nextFrame.videoUrl ||
+    prevFrame.videoStatus !== nextFrame.videoStatus
+  ) {
+    return false;
+  }
+
+  // Check metadata fields used in render
+  if (prevFrame.orderIndex !== nextFrame.orderIndex) {
+    return false;
+  }
+
+  if (prevFrame.description !== nextFrame.description) {
+    return false;
+  }
+
+  // Check metadata object (scene data)
+  const prevMetadata = prevFrame.metadata;
+  const nextMetadata = nextFrame.metadata;
+
+  if (!prevMetadata && !nextMetadata) {
+    return true;
+  }
+
+  if (!prevMetadata || !nextMetadata) {
+    return false;
+  }
+
+  // Compare the metadata fields we use: sceneNumber, title, script extract
+  if (
+    prevMetadata.sceneNumber !== nextMetadata.sceneNumber ||
+    prevMetadata.metadata?.title !== nextMetadata.metadata?.title ||
+    prevMetadata.originalScript?.extract !==
+      nextMetadata.originalScript?.extract
+  ) {
+    return false;
+  }
+
+  // All checks passed - props are equal
+  return true;
+};
+
+export const SceneListItem = memo(SceneListItemComponent, areEqual);

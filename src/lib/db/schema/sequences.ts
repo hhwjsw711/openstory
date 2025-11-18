@@ -3,6 +3,7 @@
  * Core content creation entities for video sequences
  */
 
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
@@ -15,10 +16,10 @@ import {
   relations,
 } from 'drizzle-orm';
 import {
+  index,
   integer,
   sqliteTable,
   text,
-  index,
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
@@ -48,16 +49,7 @@ export type FrameGenerationStatus = (typeof FRAME_GENERATION_STATUSES)[number];
  * Type for sequence metadata JSON field
  */
 export type SequenceMetadata = {
-  frameGeneration?: {
-    startedAt?: string;
-    expectedFrameCount?: number | null;
-    completedFrameCount?: number;
-    options?: Record<string, unknown>;
-    error?: string | null;
-    failedAt?: string | null;
-    thumbnailsGenerating?: boolean;
-    completedAt?: string;
-  };
+  characterBible?: unknown; // Character bible structure from script analysis
   [key: string]: unknown; // Allow other fields
 };
 
@@ -150,6 +142,10 @@ export const frames = sqliteTable(
       mode: 'timestamp',
     }),
     thumbnailError: text('thumbnail_error'),
+    imageModel: text('image_model', { length: 100 })
+      .default(DEFAULT_IMAGE_MODEL)
+      .notNull(), // Model used for image generation
+    imagePrompt: text('image_prompt'), // User-updated image prompt (overrides AI-generated prompt from metadata)
     // Video/motion generation status tracking
     videoStatus: text('video_status')
       .$type<FrameGenerationStatus>()
@@ -159,6 +155,7 @@ export const frames = sqliteTable(
       mode: 'timestamp',
     }),
     videoError: text('video_error'),
+    motionPrompt: text('motion_prompt'), // User-updated motion prompt (overrides AI-generated prompt from metadata)
     /**
      * Stores Scene data at various stages of progressive analysis.
      * Fields are populated progressively across 5 phases.

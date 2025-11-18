@@ -187,7 +187,7 @@ export async function generateImage(
   }
 
   const falService = getFalService();
-  const model = params.model || IMAGE_MODELS.flux_krea_lora;
+  const model = params.model || IMAGE_MODELS.flux_krea_lora.id;
 
   const requestData: Record<string, unknown> = {
     prompt: params.prompt,
@@ -305,8 +305,8 @@ export const fal = {
     }
 
     // Determine route based on known model lists first, then simple heuristics
-    const isKnownImage = Object.values(IMAGE_MODELS).includes(
-      model as TextToImageModelId
+    const isKnownImage = Object.values(IMAGE_MODELS).some(
+      (config) => config.id === model
     );
     const isKnownVideo = Object.values(IMAGE_TO_VIDEO_MODELS).some(
       (m) => m.id === model

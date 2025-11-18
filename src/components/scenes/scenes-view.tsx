@@ -4,13 +4,16 @@ import { ModelBadge } from '@/components/common/model-badge';
 import { PageContainer } from '@/components/layout/page-container';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
-import { SceneScriptPrompts } from '@/components/scenes/scene-script-prompts';
+import {
+  SceneScriptPrompts,
+  type TabValue,
+} from '@/components/scenes/scene-script-prompts';
 import { PageHeader, PageHeading } from '@/components/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string | undefined;
@@ -19,9 +22,17 @@ type ScenesViewProps = {
 
 export const getPlayerMaxClassNameByAspectRatio = (
   aspectRatio: AspectRatio
-) => {
-  return `max-w-[calc(50vh*${aspectRatio.split(':')[0]}/${aspectRatio.split(':')[1]})] max-h-[50vh]`;
+): string => {
+  // Use Tailwind arbitrary values - map each aspect ratio to its specific classes
+  // Tailwind JIT needs to see the full class names at build time
+  const classMap: Record<AspectRatio, string> = {
+    '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
+    '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
+    '1:1': 'max-h-[50vh] max-w-[50vh]',
+  };
+  return classMap[aspectRatio] || classMap['16:9'];
 };
+
 export const ScenesView: React.FC<ScenesViewProps> = ({
   sequenceId,
   aspectRatio,
@@ -30,6 +41,18 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
     undefined
   );
+  const [selectedTab, setSelectedTab] = useState<TabValue>('script');
+
+  // Track which frames are currently regenerating (UI state)
+  const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
+    new Set()
+  );
+  const [regeneratingMotion, setRegeneratingMotion] = useState<Set<string>>(
+    new Set()
+  );
+
+  console.log('regeneratingImages', regeneratingImages);
+  console.log('regeneratingMotion', regeneratingMotion);
   const { data: sequence } = useSequence(sequenceId);
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);
@@ -39,6 +62,64 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     () => frames?.find((frame) => frame.id === curSelectedFrameId),
     [frames, curSelectedFrameId]
   );
+
+  // Helper functions to manage regeneration state
+  const handleRegenerateStart = useCallback(
+    (frameId: string, type: 'image' | 'motion') => {
+      if (type === 'image') {
+        setRegeneratingImages((prev) => new Set(prev).add(frameId));
+      } else {
+        setRegeneratingMotion((prev) => new Set(prev).add(frameId));
+      }
+    },
+    []
+  );
+
+  const handleRegenerateEnd = useCallback(
+    (frameId: string, type: 'image' | 'motion') => {
+      console.log('handleRegenerateEnd', frameId, type);
+      if (type === 'image') {
+        setRegeneratingImages((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else {
+        setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      }
+    },
+    []
+  );
+
+  // Auto-remove frames from regenerating Sets when generation completes or fails
+  // Keep frames in Set while status is 'generating' to maintain UI feedback
+  useEffect(() => {
+    if (!frames) return;
+
+    frames.forEach((frame) => {
+      // Remove from image regenerating set only when generation completes or fails
+      if (
+        regeneratingImages.has(frame.id) &&
+        (frame.thumbnailStatus === 'completed' ||
+          frame.thumbnailStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'image');
+      }
+
+      // Remove from motion regenerating set only when generation completes or fails
+      if (
+        regeneratingMotion.has(frame.id) &&
+        (frame.videoStatus === 'completed' || frame.videoStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'motion');
+      }
+    });
+  }, [frames, regeneratingImages, regeneratingMotion, handleRegenerateEnd]);
+
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
@@ -53,6 +134,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
           selectedFrameId={curSelectedFrameId}
           aspectRatio={aspectRatio}
           onSelectFrame={setSelectedFrameId}
+          regeneratingImages={regeneratingImages}
+          regeneratingMotion={regeneratingMotion}
         />
 
         {/* Right: Scene Player */}
@@ -63,10 +146,18 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
               selectedFrameId={curSelectedFrameId}
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
+              selectedTab={selectedTab}
               className={getPlayerMaxClassNameByAspectRatio(aspectRatio)}
             />
           </div>
-          <SceneScriptPrompts frame={selectedFrame} />
+          <SceneScriptPrompts
+            frame={selectedFrame}
+            selectedTab={selectedTab}
+            onTabChange={setSelectedTab}
+            regeneratingImages={regeneratingImages}
+            regeneratingMotion={regeneratingMotion}
+            onRegenerateStart={handleRegenerateStart}
+          />
         </ScrollArea>
       </div>
     </PageContainer>

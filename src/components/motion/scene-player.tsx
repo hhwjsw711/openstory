@@ -5,14 +5,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
 import {
   type AspectRatio,
+  aspectRatioToDimensions,
   getAspectRatioClassName,
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { AlertCircle, VideoIcon } from 'lucide-react';
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
+import { VideoStateOverlay } from './video-state-overlay';
+
+export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -20,6 +25,7 @@ type ScenePlayerProps = {
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   className?: string;
+  selectedTab?: TabValue;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
 };
@@ -29,12 +35,14 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   className,
   selectedFrameId,
   aspectRatio,
+  selectedTab,
   onSelectFrame,
   onTimeUpdate,
   onEnded,
 }) => {
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
+  const imageDimensions = aspectRatioToDimensions(aspectRatio);
   // Get current frame and next frame
   const [currentFrameIndex, setCurrentFrameIndex] = useState(
     frames?.findIndex((frame) => frame.id === selectedFrameId) ?? -1
@@ -71,6 +79,11 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     currentFrame?.id,
     !!hasCompletedVideo // Only fetch when video is available
   );
+
+  // Handle video pause - disable autoplay when user manually pauses
+  const handlePause = useCallback(() => {
+    setShouldAutoPlay(false);
+  }, []);
 
   // Handle video end - move to next frame or call onEnded
   const handleEnded = useCallback(() => {
@@ -123,10 +136,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         >
           {/* Show thumbnail as background if available */}
           {currentFrame.thumbnailUrl && (
-            <img
+            <Image
               src={currentFrame.thumbnailUrl}
               alt={title || 'Scene thumbnail'}
-              className={cn(' object-cover', className)}
+              className="w-full h-full object-cover"
+              width={imageDimensions.width}
+              height={imageDimensions.height}
             />
           )}
 
@@ -145,19 +160,29 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <VideoPlayer
-          key={currentFrame.videoUrl} // Force re-render when video changes
-          src={currentFrame.videoUrl || ''}
-          posterSrc={currentFrame.thumbnailUrl}
-          aspectRatio={aspectRatio}
-          className={className}
-          autoPlay={shouldAutoPlay}
-          enableDownload={!!currentFrame.videoUrl}
-          downloadFilename={downloadFilename}
-          downloadUrl={downloadData?.downloadUrl}
-          onTimeUpdate={onTimeUpdate}
-          onEnded={handleEnded}
-        />
+        <div className={cn('relative flex flex-1', className)}>
+          <VideoPlayer
+            key={currentFrame.videoUrl} // Force re-render when video changes
+            src={
+              selectedTab === 'image-prompt' ? '' : currentFrame.videoUrl || ''
+            }
+            posterSrc={currentFrame.thumbnailUrl}
+            aspectRatio={aspectRatio}
+            className="w-full h-full"
+            autoPlay={shouldAutoPlay}
+            enableDownload={!!currentFrame.videoUrl}
+            downloadFilename={downloadFilename}
+            downloadUrl={downloadData?.downloadUrl}
+            onTimeUpdate={onTimeUpdate}
+            onPause={handlePause}
+            onEnded={handleEnded}
+          />
+          {/* Show overlay for image/video generation states */}
+          <VideoStateOverlay
+            thumbnailStatus={currentFrame.thumbnailStatus ?? null}
+            videoStatus={currentFrame.videoStatus ?? null}
+          />
+        </div>
       )}
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (

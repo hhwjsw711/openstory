@@ -27,14 +27,14 @@ export interface FalServiceResponse<T = unknown> {
 // Cost calculation mapping (in USD)
 export const MODEL_COSTS: Record<string, number> = {
   // Image models
-  [IMAGE_MODELS.flux_pro]: 0.05,
-  [IMAGE_MODELS.flux_dev]: 0.025,
-  [IMAGE_MODELS.flux_schnell]: 0.01,
-  [IMAGE_MODELS.sdxl]: 0.02,
-  [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.imagen4_preview_ultra]: 0.06, // per image
-  [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06, // per image
-  [IMAGE_MODELS.flux_krea_lora]: 0.035, // per mb
+  [IMAGE_MODELS.flux_pro.id]: 0.05,
+  [IMAGE_MODELS.flux_dev.id]: 0.025,
+  [IMAGE_MODELS.flux_schnell.id]: 0.01,
+  [IMAGE_MODELS.sdxl.id]: 0.02,
+  [IMAGE_MODELS.sdxl_lightning.id]: 0.015,
+  [IMAGE_MODELS.imagen4_preview_ultra.id]: 0.06, // per image
+  [IMAGE_MODELS.flux_pro_v1_1_ultra.id]: 0.06, // per image
+  [IMAGE_MODELS.flux_krea_lora.id]: 0.035, // per mb
 
   // Video models
   [VIDEO_MODELS.minimax_hailuo]: 0.3,
@@ -51,14 +51,14 @@ export const MODEL_COSTS: Record<string, number> = {
 
 export const MODEL_TIME_ESTIMATES: Record<string, number> = {
   // Image models
-  [IMAGE_MODELS.flux_pro]: 0.05,
-  [IMAGE_MODELS.flux_dev]: 0.025,
-  [IMAGE_MODELS.flux_schnell]: 0.01,
-  [IMAGE_MODELS.sdxl]: 0.02,
-  [IMAGE_MODELS.sdxl_lightning]: 0.015,
-  [IMAGE_MODELS.imagen4_preview_ultra]: 0.06,
-  [IMAGE_MODELS.flux_pro_v1_1_ultra]: 0.06,
-  [IMAGE_MODELS.flux_krea_lora]: 0.035,
+  [IMAGE_MODELS.flux_pro.id]: 0.05,
+  [IMAGE_MODELS.flux_dev.id]: 0.025,
+  [IMAGE_MODELS.flux_schnell.id]: 0.01,
+  [IMAGE_MODELS.sdxl.id]: 0.02,
+  [IMAGE_MODELS.sdxl_lightning.id]: 0.015,
+  [IMAGE_MODELS.imagen4_preview_ultra.id]: 0.06,
+  [IMAGE_MODELS.flux_pro_v1_1_ultra.id]: 0.06,
+  [IMAGE_MODELS.flux_krea_lora.id]: 0.035,
 
   // Video models
   [VIDEO_MODELS.minimax_hailuo]: 0.3,
@@ -204,8 +204,14 @@ export class FalService {
     image: Record<string, string>;
     video: Record<string, string>;
   } {
+    // Convert IMAGE_MODELS from object configs to string IDs
+    const imageModels: Record<string, string> = {};
+    for (const [key, config] of Object.entries(IMAGE_MODELS)) {
+      imageModels[key] = config.id;
+    }
+
     return {
-      image: IMAGE_MODELS,
+      image: imageModels,
       video: VIDEO_MODELS,
     };
   }

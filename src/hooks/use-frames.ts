@@ -68,8 +68,7 @@ export function useFramesBySequence(
 
       const frames = query.state.data;
 
-      // Phase-aware polling using existing status fields:
-      // - Phases 1-5 (Script Analysis): sequence.status === 'processing' with no image/video generation
+      // Phase-aware polling using frame status fields:
       // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
       // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
       const isGeneratingImages = frames.some(

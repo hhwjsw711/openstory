@@ -76,22 +76,6 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('No style found');
         }
 
-        // Update sequence status to processing
-        await updateSequenceMetadata(
-          input.sequenceId,
-          {
-            frameGeneration: {
-              startedAt: new Date().toISOString(),
-              expectedFrameCount: null,
-              completedFrameCount: 0,
-              options: input.options,
-              error: null,
-              failedAt: null,
-            },
-          },
-          { status: 'processing' }
-        );
-
         // Delete existing frames
         const existingFrames = await frameService.getFramesBySequence(
           input.sequenceId
@@ -102,6 +86,12 @@ export const generateStoryboardWorkflow = createWorkflow(
             existingFrames.map((frame) => frameService.deleteFrame(frame.id))
           );
         }
+
+        // Set sequence status to processing
+        await db
+          .update(sequences)
+          .set({ status: 'processing', updatedAt: new Date() })
+          .where(eq(sequences.id, input.sequenceId));
 
         const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
@@ -151,14 +141,6 @@ export const generateStoryboardWorkflow = createWorkflow(
           title,
           metadata: {
             ...sequence.metadata,
-            frameGeneration: {
-              ...sequence.metadata?.frameGeneration,
-              expectedFrameCount: frameCount,
-              completedFrameCount: 0,
-              error: null,
-              failedAt: null,
-              thumbnailsGenerating: true,
-            },
             title,
           },
         };
@@ -203,6 +185,12 @@ export const generateStoryboardWorkflow = createWorkflow(
         await updateSequenceMetadata(input.sequenceId, {
           characterBible,
         });
+
+        // Set sequence status to completed
+        await db
+          .update(sequences)
+          .set({ status: 'completed', updatedAt: new Date() })
+          .where(eq(sequences.id, input.sequenceId));
 
         return characterBible;
       }
@@ -433,30 +421,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       );
     }
 
-    // Step 9: Update sequence status to completed
-    await context.run('update-sequence-status', async () => {
-      try {
-        await db
-          .update(sequences)
-          .set({ status: 'completed', updatedAt: new Date() })
-          .where(eq(sequences.id, input.sequenceId));
-
-        console.log(
-          '[StoryboardGenerationWorkflow]',
-          'Sequence status updated to completed'
-        );
-        return { success: true };
-      } catch (error) {
-        console.error(
-          '[StoryboardGenerationWorkflow]',
-          `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        throw new Error(
-          `Failed to update sequence status: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    });
-
     return {
       sequenceId: input.sequenceId,
       frameCount,
@@ -469,27 +433,5 @@ export const generateStoryboardWorkflow = createWorkflow(
   {
     retries: 3,
     retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-    failureFunction: async ({ context, failResponse }) => {
-      const input = context.requestPayload;
-
-      // Set status to 'failed' after all retries exhausted
-      await updateSequenceMetadata(
-        input.sequenceId,
-        {
-          frameGeneration: {
-            error: failResponse,
-            failedAt: new Date().toISOString(),
-          },
-        },
-        { status: 'failed' }
-      );
-
-      console.error(
-        '[FrameGenerationWorkflow]',
-        `Frame generation workflow failed for sequence ${input.sequenceId}: ${failResponse}`
-      );
-
-      return `Frame generation failed for sequence ${input.sequenceId}`;
-    },
   }
 );

@@ -6,7 +6,6 @@
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { sequenceService } from '@/lib/services/sequence.service';
 import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
@@ -47,24 +46,6 @@ export async function POST(
     // Verify user has access to this sequence
     await requireTeamMemberAccess(user.id, sequence.teamId);
 
-    // Check if sequence is already processing
-    if (sequence.status === 'processing') {
-      console.log('[generateFrames] Sequence already processing', {
-        sequenceId,
-      });
-      return NextResponse.json(
-        {
-          success: true,
-          message: 'Frame generation already in progress',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 200 }
-      );
-    }
-
-    // Update sequence status to processing
-    await sequenceService.updateSequenceStatus(sequenceId, 'processing');
-
     // Trigger frame generation workflow
     const workflowInput: StoryboardWorkflowInput = {
       userId: user.id,
@@ -80,7 +61,10 @@ export async function POST(
     };
 
     // Publish to QStash to trigger the workflow
-    const workflowRunId = await triggerWorkflow('/storyboard', workflowInput);
+    // Use deduplicationId to prevent duplicate workflows for the same sequence
+    const workflowRunId = await triggerWorkflow('/storyboard', workflowInput, {
+      deduplicationId: `storyboard-${sequenceId}`,
+    });
 
     console.log('[generateFrames] Frame generation workflow triggered', {
       sequenceId,

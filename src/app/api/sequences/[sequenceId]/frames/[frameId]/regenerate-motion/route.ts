@@ -1,14 +1,13 @@
 /**
- * Regenerate Frame API Endpoint
- * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
+ * Regenerate Motion API Endpoint
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate-motion - Regenerate a single frame's motion video
  */
 
-import { DEFAULT_IMAGE_MODEL, TextToImageModel } from '@/lib/ai/models';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
-import type { ImageWorkflowInput } from '@/lib/workflow';
+import { regenerateMotionSchema } from '@/lib/schemas/frame.schemas';
+import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
@@ -20,8 +19,7 @@ export async function POST(
   try {
     const { sequenceId, frameId } = await params;
 
-    // Validate UUIDs
-
+    // Validate ULIDs
     try {
       ulidSchema.parse(sequenceId);
       ulidSchema.parse(frameId);
@@ -31,7 +29,7 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    const validatedBody = regenerateFrameSchema.parse(body);
+    const validatedBody = regenerateMotionSchema.parse(body);
 
     // Authenticate user
     const user = await requireUser();
@@ -53,45 +51,44 @@ export async function POST(
     // Verify user has access to this frame
     await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
-    // Determine which prompt to use (priority: provided > stored > AI-generated > description)
-    const promptToUse =
-      validatedBody.prompt ||
-      frameData.imagePrompt ||
-      (frameData.metadata as { prompts?: { visual?: { fullPrompt?: string } } })
-        ?.prompts?.visual?.fullPrompt ||
-      frameData.description;
-
-    if (!promptToUse) {
+    // Check for thumbnail (required for motion generation)
+    const thumbnailPath = frameData.thumbnailPath;
+    if (!thumbnailPath) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Frame has no prompt or description to regenerate from',
+          message: 'Frame has no thumbnail to generate motion from',
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
       );
     }
 
-    // Determine which model to use
-    const modelToUse =
-      validatedBody.model ||
-      (frameData.imageModel as TextToImageModel | undefined) ||
-      DEFAULT_IMAGE_MODEL;
+    // Determine which prompt to use (priority: provided > stored > AI-generated > description)
+    const promptToUse =
+      validatedBody.prompt ||
+      frameData.motionPrompt ||
+      (frameData.metadata as { prompts?: { motion?: { fullPrompt?: string } } })
+        ?.prompts?.motion?.fullPrompt ||
+      frameData.description ||
+      '';
 
-    // Trigger image generation workflow with deduplication
-    const workflowInput: ImageWorkflowInput = {
+    // Trigger motion generation workflow with deduplication
+    const workflowInput: MotionWorkflowInput = {
       userId: user.id,
       teamId: frameData.sequence.teamId,
-      prompt: promptToUse,
-      model: modelToUse,
-      imageSize: 'landscape_16_9',
-      numImages: 1,
       frameId,
       sequenceId: frameData.sequenceId,
+      thumbnailPath,
+      prompt: promptToUse,
+      model: validatedBody.model,
+      duration: validatedBody.duration,
+      fps: validatedBody.fps,
+      motionBucket: validatedBody.motionBucket,
     };
 
-    const workflowRunId = await triggerWorkflow('/image', workflowInput, {
-      deduplicationId: `image-${frameId}`, // Prevent duplicate workflows
+    const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
+      deduplicationId: `motion-${frameId}`, // Prevent duplicate workflows
     });
 
     return NextResponse.json(
@@ -100,7 +97,7 @@ export async function POST(
         data: {
           workflowRunId,
           frameId,
-          message: 'Frame regeneration started',
+          message: 'Motion regeneration started',
         },
         timestamp: new Date().toISOString(),
       },
@@ -108,7 +105,7 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      '[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:',
+      '[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate-motion] Error:',
       error
     );
 
@@ -116,7 +113,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: 'Failed to regenerate frame',
+        message: 'Failed to regenerate motion',
         error: handledError.toJSON(),
         timestamp: new Date().toISOString(),
       },

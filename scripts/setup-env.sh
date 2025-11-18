@@ -7,14 +7,11 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up .env.development.local...${NC}"
+echo -e "${GREEN}Setting up .env.local...${NC}"
 echo ""
-echo -e "${YELLOW}💡 Optional: Pull environment variables from your deployment platform${NC}"
-echo -e "${YELLOW}   • Vercel: vercel env pull .env.development.local${NC}"
-echo -e "${YELLOW}   • Railway: railway variables --kv > .env.development.local${NC}"
-echo -e "${YELLOW}   • Or continue to set up local defaults${NC}"
-echo ""
-read -p "Press Enter to continue with local setup, or Ctrl+C to cancel and pull from deployment platform..."
+echo -e "${BLUE}Pulling environment variables from Railway...${NC}"
+railway variables --kv -e development > .env.local
+echo -e "${GREEN}✓ Environment variables pulled from Railway${NC}"
 echo ""
 
 # Setup local SQLite database with Turso
@@ -53,8 +50,6 @@ QSTASH_NEXT_SIGNING_KEY=$QSTASH_NEXT_SIGNING_KEY
 # App URL - used by QStash webhooks, Better Auth, and internal API calls
 APP_URL=$APP_URL
 NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-
-# QStash tunnel URL (when using cloud QStash, optional)
 EOF
 
 # Generate a random secret for BetterAuth
@@ -86,7 +81,7 @@ BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 # ANTHROPIC_API_KEY=
 EOF
 
-echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
+echo -e "${GREEN}✓ Updated $ENV_FILE${NC}"
 echo ""
 echo -e "${BLUE}Environment variables configured:${NC}"
 echo "  Database: local.db (SQLite via Turso)"

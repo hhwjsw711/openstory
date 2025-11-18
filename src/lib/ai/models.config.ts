@@ -129,3 +129,9 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
  */
 export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
   'anthropic/claude-haiku-4.5';
+
+/**
+ * Image generation models are now in src/lib/ai/models.ts
+ * Use IMAGE_MODELS, TextToImageModelId, and related helpers from there instead.
+ * @deprecated Import from @/lib/ai/models instead
+ */

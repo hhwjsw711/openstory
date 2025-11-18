@@ -23,19 +23,11 @@ export async function updateSequenceMetadata(
 
   const existingMetadata = existing?.metadata || {};
 
-  // Merge metadata deeply
+  // Merge metadata
   const updatedMetadata: SequenceMetadata = {
     ...existingMetadata,
     ...metadataUpdates,
   };
-
-  // Merge frameGeneration if provided
-  if (metadataUpdates.frameGeneration) {
-    updatedMetadata.frameGeneration = {
-      ...existingMetadata.frameGeneration,
-      ...metadataUpdates.frameGeneration,
-    };
-  }
 
   // Update sequence
   await db

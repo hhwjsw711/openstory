@@ -6,6 +6,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { memo } from 'react';
 
 type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
@@ -15,17 +16,24 @@ type SceneThumbnailProps = {
   className?: string;
 };
 
-export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
+const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
   thumbnailStatus = 'pending',
   alt,
   aspectRatio,
   className,
 }) => {
-  const isLoading =
-    thumbnailStatus === 'pending' || thumbnailStatus === 'generating';
+  // Show skeleton only when there's no image yet (initial loading)
+  const isInitialLoading =
+    (thumbnailStatus === 'pending' || thumbnailStatus === 'generating') &&
+    !thumbnailUrl;
+  // Show loading overlay when regenerating an existing image
+  const isRegenerating = thumbnailStatus === 'generating' && thumbnailUrl;
   const isFailed = thumbnailStatus === 'failed';
-  const hasImage = thumbnailUrl && thumbnailStatus === 'completed';
+  // Show image if we have a URL and it's either completed or being regenerated
+  const hasImage =
+    thumbnailUrl &&
+    (thumbnailStatus === 'completed' || thumbnailStatus === 'generating');
 
   return (
     <div
@@ -35,16 +43,25 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
         className
       )}
     >
-      {isLoading && <Skeleton className="absolute h-full w-full rounded-md" />}
+      {isInitialLoading && (
+        <Skeleton className="absolute h-full w-full rounded-md" />
+      )}
 
       {hasImage && (
-        <Image
-          src={thumbnailUrl}
-          alt={alt}
-          className="h-full w-full object-cover"
-          width={320}
-          height={180}
-        />
+        <>
+          <Image
+            src={thumbnailUrl}
+            alt={alt}
+            className="h-full w-full object-cover"
+            width={320}
+            height={180}
+          />
+          {isRegenerating && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+              <Skeleton className="h-full w-full rounded-md opacity-50" />
+            </div>
+          )}
+        </>
       )}
 
       {isFailed && (
@@ -58,3 +75,20 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
     </div>
   );
 };
+
+// Custom equality check to prevent unnecessary re-renders during polling
+// Only re-render when thumbnail-related fields actually change
+const areEqual = (
+  prevProps: SceneThumbnailProps,
+  nextProps: SceneThumbnailProps
+): boolean => {
+  return (
+    prevProps.thumbnailUrl === nextProps.thumbnailUrl &&
+    prevProps.thumbnailStatus === nextProps.thumbnailStatus &&
+    prevProps.alt === nextProps.alt &&
+    prevProps.aspectRatio === nextProps.aspectRatio &&
+    prevProps.className === nextProps.className
+  );
+};
+
+export const SceneThumbnail = memo(SceneThumbnailComponent, areEqual);

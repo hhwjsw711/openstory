@@ -37,13 +37,23 @@ function getWorkflowBaseUrl(): string {
   return `${apiUrl}/api/workflows`;
 }
 
-export async function triggerWorkflow(url: string, body: object) {
+export async function triggerWorkflow(
+  url: string,
+  body: object,
+  options?: {
+    deduplicationId?: string;
+  }
+) {
   const qstash = getQStashClient();
   const baseUrl = getWorkflowBaseUrl();
+
   const response = await qstash.trigger({
     url: `${baseUrl}${url}`,
     body: body,
     keepTriggerConfig: true,
+    // Use deduplicationId as workflowRunId to prevent duplicate runs
+    // Each workflow run must have a unique ID - if the ID exists, no duplicate is created
+    workflowRunId: options?.deduplicationId,
     headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
       ? {
           'x-vercel-protection-bypass':
