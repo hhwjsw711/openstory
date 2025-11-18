@@ -27,7 +27,12 @@
     "bash:setup:env": "bash ./scripts/setup-env.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy"
+    "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy",
+    "deploy:cloudflare": "./scripts/deploy-cloudflare.sh",
+    "deploy:cloudflare:production": "./scripts/deploy-cloudflare.sh --production",
+    "setup:cloudflare-secrets": "./scripts/setup-cloudflare-secrets.sh",
+    "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
+    "build:cloudflare": "bun run build && bunx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.930.0",
@@ -83,6 +88,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.1",
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@faker-js/faker": "^10.0.0",
     "@storybook/addon-a11y": "^9.1.3",
     "@storybook/addon-docs": "^9.1.3",

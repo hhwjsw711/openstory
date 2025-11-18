@@ -67,4 +67,9 @@ const nextConfig: NextConfig = {
   },
 };
 
+// Cloudflare Pages build uses @cloudflare/next-on-pages adapter
+// The adapter runs post-build to transform Next.js output for Workers
+// See: scripts/build-cloudflare.sh and .github/workflows/cloudflare-deploy.yml
+// For Cloudflare Image Optimization, see: https://developers.cloudflare.com/images/
+
 export default nextConfig;
