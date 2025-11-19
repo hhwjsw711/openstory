@@ -1,5 +1,4 @@
-import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
@@ -80,15 +79,3 @@ export const verification = sqliteTable('verification', {
     .$onUpdate(() => new Date())
     .notNull(),
 });
-// Type exports
-export type User = InferSelectModel<typeof user>;
-export type NewUser = InferInsertModel<typeof user>;
-
-export type Session = InferSelectModel<typeof session>;
-export type NewSession = InferInsertModel<typeof session>;
-
-export type Account = InferSelectModel<typeof account>;
-export type NewAccount = InferInsertModel<typeof account>;
-
-export type Verification = InferSelectModel<typeof verification>;
-export type NewVerification = InferInsertModel<typeof verification>;

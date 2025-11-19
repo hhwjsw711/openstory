@@ -4,15 +4,7 @@
  */
 
 // Better Auth tables
-export {
-  account,
-  accountRelations,
-  session,
-  sessionRelations,
-  user,
-  userRelations,
-  verification,
-} from './auth';
+export { account, session, user, verification } from './auth';
 
 export type {
   Account,
@@ -28,9 +20,9 @@ export type {
 // Teams
 export {
   INVITATION_STATUSES,
+  TEAM_MEMBER_ROLES,
   teamInvitations,
   teamInvitationsRelations,
-  TEAM_MEMBER_ROLES,
   teamMembers,
   teamMembersRelations,
   teams,
@@ -53,9 +45,9 @@ export {
   FRAME_GENERATION_STATUSES,
   frames,
   framesRelations,
+  SEQUENCE_STATUSES,
   sequences,
   sequencesRelations,
-  SEQUENCE_STATUSES,
 } from './sequences';
 
 export type {
@@ -96,12 +88,12 @@ export type {
 
 // API Request Tracking
 export {
+  FAL_REQUEST_STATUSES,
   falRequests,
   falRequestsRelations,
-  FAL_REQUEST_STATUSES,
+  LETZAI_REQUEST_STATUSES,
   letzaiRequests,
   letzaiRequestsRelations,
-  LETZAI_REQUEST_STATUSES,
 } from './tracking';
 
 export type {
@@ -117,9 +109,9 @@ export type {
 export {
   credits,
   creditsRelations,
+  TRANSACTION_TYPES,
   transactions,
   transactionsRelations,
-  TRANSACTION_TYPES,
 } from './credits';
 
 export type {
@@ -133,7 +125,7 @@ export type {
 // Audit
 export { scriptAnalysisAudit } from './audit';
 
-export type { ScriptAnalysisAudit, InsertScriptAnalysisAudit } from './audit';
+export type { InsertScriptAnalysisAudit, ScriptAnalysisAudit } from './audit';
 
 /**
  * Complete schema object for Drizzle client initialization
@@ -145,9 +137,6 @@ export const schema = {
   session,
   account,
   verification,
-  userRelations,
-  sessionRelations,
-  accountRelations,
 
   // Teams
   teams,
@@ -192,15 +181,7 @@ export const schema = {
 };
 
 // Import statements (not exported, just for local use)
-import {
-  account,
-  accountRelations,
-  session,
-  sessionRelations,
-  user,
-  userRelations,
-  verification,
-} from './auth';
+import { account, session, user, verification } from './auth';
 
 import {
   teamInvitations,
