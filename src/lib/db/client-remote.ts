@@ -14,6 +14,12 @@ if (!tursoUrl) {
   throw new Error('TURSO_DATABASE_URL is required');
 }
 
+// Debug connection URL (safe to log as token is separate)
+console.log(
+  '[DB] Initializing remote client with URL:',
+  tursoUrl?.replace('libsql://', 'https://')
+);
+
 /**
  * libSQL client instance
  * Connects to Turso database (cloud) or local SQLite file
@@ -21,7 +27,7 @@ if (!tursoUrl) {
  * - For production: use https:// URLs with auth token
  */
 const client = createClient({
-  url: tursoUrl,
+  url: tursoUrl?.replace('libsql://', 'https://'),
   ...(tursoToken && { authToken: tursoToken }), // Only include if defined
 });
 
