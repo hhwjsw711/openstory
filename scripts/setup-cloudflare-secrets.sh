@@ -65,7 +65,7 @@ echo -e "${GREEN}✓ Found environment file: $ENV_FILE${NC}"
 echo ""
 
 # Project name
-PROJECT_NAME="velro"
+PROJECT_NAME="frontend"
 
 # Required secrets for Cloudflare deployment
 REQUIRED_SECRETS=(

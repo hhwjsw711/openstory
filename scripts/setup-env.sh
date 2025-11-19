@@ -9,35 +9,10 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Setting up .env.development.local...${NC}"
 echo ""
-
-# Check if wrangler is authenticated
-echo -e "${BLUE}Checking Cloudflare Wrangler authentication...${NC}"
-if bunx wrangler whoami > /dev/null 2>&1; then
-  echo -e "${GREEN}✓ Wrangler authenticated${NC}"
-  echo ""
-
-  # List secrets from Cloudflare preview environment
-  echo -e "${BLUE}Listing secrets from Cloudflare preview environment...${NC}"
-  PROJECT_NAME="velro"
-
-  # Get list of secrets (names only - values are not readable for security)
-  echo -e "${BLUE}Secrets configured in Cloudflare preview:${NC}"
-  if bunx wrangler pages secret list --project-name="$PROJECT_NAME" --env="preview" 2>/dev/null | grep -v "^$" | tail -n +2; then
-    echo ""
-    echo -e "${GREEN}✓ Connected to Cloudflare project: $PROJECT_NAME${NC}"
-    echo -e "${YELLOW}Note: Secret values cannot be read from Cloudflare (write-only for security)${NC}"
-    echo -e "${YELLOW}Make sure your .env.development.local matches these secrets${NC}"
-  else
-    echo -e "${YELLOW}⚠ Could not list secrets from Cloudflare${NC}"
-    echo -e "${YELLOW}This is normal if the project doesn't exist yet${NC}"
-    echo -e "${YELLOW}Continuing with default local development setup...${NC}"
-  fi
-else
-  echo -e "${YELLOW}⚠ Wrangler not authenticated${NC}"
-  echo -e "${YELLOW}Run 'bunx wrangler login' to connect to Cloudflare${NC}"
-  echo -e "${YELLOW}Continuing with default local development setup...${NC}"
-fi
-echo ""
+# Get variables from Railway
+echo -e "${BLUE}Pulling environment variables from Railway...${NC}"
+railway variables --kv -e development > .env.local
+echo -e "${GREEN}✓ Environment variables pulled from Railway${NC}"
 
 # Setup local SQLite database with Turso
 echo -e "${BLUE}Setting up local SQLite database (Turso)...${NC}"
