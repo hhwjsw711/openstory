@@ -3,7 +3,11 @@
   "main": ".open-next/worker.js",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public",
+    "nodejs_compat_populate_process_env",
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
