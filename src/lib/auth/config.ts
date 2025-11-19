@@ -17,7 +17,6 @@ import { isValidAccessCode } from './access-codes';
 const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: APP_URL,
 } as const;
 
 // Validate environment variables
@@ -39,19 +38,11 @@ export const auth = betterAuth({
     },
   }),
   secret: requiredEnvVars.BETTER_AUTH_SECRET,
-  baseURL: requiredEnvVars.BETTER_AUTH_URL,
+  baseURL: APP_URL,
 
   // Trusted origins for CSRF protection
   // Production uses custom domain, previews use Vercel URLs
-  trustedOrigins: [
-    'https://app.velro.ai', // Production custom domain
-    'https://railway.velro.ai', // Railway custom domain
-    'https://velro-*.vercel.app', // Production deployments
-    'https://velro-git-*.vercel.app', // Branch preview deployments
-    ...(process.env.NODE_ENV === 'development'
-      ? ['http://localhost:3000']
-      : []), // Local development only
-  ],
+  trustedOrigins: [APP_URL],
 
   // Session configuration
   // SECURITY: 90-day expiration mitigates:
@@ -157,9 +148,7 @@ export const auth = betterAuth({
         return;
       }
 
-      const accessCode =
-        (ctx.body?.accessCode as string | undefined) ||
-        'no access code provided';
+      const accessCode = ctx.body?.accessCode as string | undefined;
 
       // Validate access code
       if (!accessCode || !isValidAccessCode(accessCode)) {
@@ -169,8 +158,10 @@ export const auth = betterAuth({
         // });
       }
 
-      // Normalize the code
-      ctx.body.accessCode = accessCode.toUpperCase().trim();
+      // Normalize the code if provided
+      if (accessCode && ctx.body) {
+        ctx.body.accessCode = accessCode.toUpperCase().trim();
+      }
 
       return { context: ctx };
     }),
