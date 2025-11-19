@@ -13,6 +13,7 @@ import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { isValidAccessCode } from './access-codes';
 
+import { sendPasswordResetEmail } from '@/lib/services/email-service';
 // Environment validation
 const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
@@ -84,10 +85,6 @@ export const auth = betterAuth({
         url,
       });
 
-      // Import dynamically to avoid issues during build
-      const { sendPasswordResetEmail } = await import(
-        '@/lib/services/email-service'
-      );
       const result = await sendPasswordResetEmail(user.email, url);
 
       if (!result.success) {
