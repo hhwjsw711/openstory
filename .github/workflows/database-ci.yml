@@ -215,8 +215,14 @@ jobs:
             exit 1
           fi
 
-          # Get service ID (first service in project) using jq
-          SERVICE_ID=$(echo "$PROJECT_RESPONSE" | jq -r '.data.project.services.edges[0].node.id')
+          # Get service ID
+          if [ -n "$RAILWAY_SERVICE_ID" ]; then
+            echo "Using provided RAILWAY_SERVICE_ID: $RAILWAY_SERVICE_ID"
+            SERVICE_ID="$RAILWAY_SERVICE_ID"
+          else
+            echo "RAILWAY_SERVICE_ID not provided, fetching first service from project..."
+            SERVICE_ID=$(echo "$PROJECT_RESPONSE" | jq -r '.data.project.services.edges[0].node.id')
+          fi
 
           if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" = "null" ]; then
             echo "Error: Could not find service in project"
@@ -301,6 +307,7 @@ jobs:
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 
       - name: Configure Vercel preview environment
         continue-on-error: true
