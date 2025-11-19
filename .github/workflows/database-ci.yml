@@ -323,18 +323,16 @@ jobs:
 
           # Link to Vercel project
           vercel link --yes \
-            --token="$VERCEL_TOKEN" \
-            --scope="$VERCEL_ORG_ID" \
-            --project="$VERCEL_PROJECT_ID"
+            --token "$VERCEL_TOKEN" \
+            --scope "$VERCEL_ORG_ID" \
+            --project "$VERCEL_PROJECT_ID"
 
           # Set environment variables for preview branch
           echo "${{ steps.create_db.outputs.db_url }}" | vercel env add TURSO_DATABASE_URL preview \
-            --token="$VERCEL_TOKEN" \
-            --yes || true
+            --token "$VERCEL_TOKEN"
 
           echo "${{ steps.create_db.outputs.db_token }}" | vercel env add TURSO_AUTH_TOKEN preview \
-            --token="$VERCEL_TOKEN" \
-            --yes || true
+            --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
