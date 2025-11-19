@@ -197,7 +197,7 @@ bun deploy:cloudflare:production   # Production deployment
 
 **Cloudflare-Specific Configuration**:
 
-- `wrangler.toml` - Cloudflare Workers configuration
+- `wrangler.jsonc` - Cloudflare Workers configuration
 - `.dev.vars` - Local development secrets (gitignored)
 - `nodejs_compat` flag enabled for Node.js API compatibility
 
@@ -568,13 +568,13 @@ const visualPrompt = frame.metadata.prompts.visual.fullPrompt;
 
 All async AI operations use QStash Workflow for durable execution:
 
-**Available Workflows** (`/app/api/workflows/`):
+**Available Workflows** (`/app/api/workflows/[...any]/`):
 
-- `image` - Image generation with FAL/LetzAI
-- `video` - Video generation from text
-- `motion` - Image-to-video generation
-- `frame-generation` - Complex orchestration for script analysis and frame creation
-- `script` - Script enhancement and analysis
+- `image-workflow` - Image generation with FAL/LetzAI
+- `motion-workflow` - Image-to-video generation (motion for frames)
+- `storyboard-workflow` - Complex orchestration for script analysis and frame creation
+
+**Workflow Status Endpoint**: `/app/api/workflows/status/[runId]/` - Check workflow execution status
 
 **Workflow Pattern**:
 
@@ -590,28 +590,43 @@ const workflowInput: ImageWorkflowInput = {
 // Publish to QStash to trigger the workflow
 const qstash = getQStashClient();
 const { messageId } = await qstash.publishJSON({
-  url: `${workflowConfig.baseUrl}/image`, // Use baseUrl for QStash webhooks
+  url: `${getQStashWebhookUrl()}/workflows/image`, // Use webhook URL for QStash
   body: workflowInput,
 });
 
 const workflowRunId = messageId;
 
-// 2. Workflow executes with durable steps
-export const { POST } = serve<ImageWorkflowInput>(async (context) => {
+// 2. Workflow registered with serveMany in /api/workflows/[...any]/route.ts
+export const { POST } = serveMany(
+  {
+    storyboard: generateStoryboardWorkflow,
+    image: generateImageWorkflow,
+    motion: generateMotionWorkflow,
+  },
+  {
+    baseUrl: getQStashWebhookUrl(),
+  }
+);
+
+// 3. Individual workflow implementation
+export const generateImageWorkflow = async (
+  context: WorkflowContext<ImageWorkflowInput>
+) => {
   const input = context.requestPayload;
   validateWorkflowAuth(input); // Check userId/teamId
 
   const result = await context.run('step-name', async () => {
     // Step logic - automatically retried on failure
   });
-});
+};
 ```
 
 **Important**:
 
 - Always use `qstash.publishJSON()` to trigger workflows, not direct `fetch()` calls
 - QStash requires proper signatures which are only added through the publish API
-- Use `workflowConfig.baseUrl` for QStash webhook URLs (external URL that QStash can reach)
+- Use `getQStashWebhookUrl()` for QStash webhook URLs (external URL that QStash can reach)
+- Workflows are registered using `serveMany()` from `@upstash/workflow/dist/nextjs`
 
 **Key Principles**:
 
@@ -1241,15 +1256,15 @@ When mocking modules in Bun tests, avoid shared mock state between tests:
 
 ```typescript
 // CORRECT - Fresh mock for each test
-const mockCreateClient = mock(() => ({
+const mockDb = mock(() => ({
   /* mock implementation */
 }));
-mock.module('@supabase/supabase-js', () => ({
-  createClient: mockCreateClient,
+mock.module('@/lib/db/client', () => ({
+  db: mockDb,
 }));
 
 beforeEach(async () => {
-  mockCreateClient.mockClear(); // Clear call history
+  mockDb.mockClear(); // Clear call history
   // Import modules after clearing mocks
   const module = await import('./module-under-test');
 });
@@ -1257,10 +1272,10 @@ beforeEach(async () => {
 
 ### Database Integration
 
-- Tests use mocked Supabase clients, not real database connections
-- Include database types from `@/types/database` (not `src/lib/supabase/gen.types.ts`)
-- Always use the Supabase CLI to create migrations
-- Use `z.uuid()` for UUID validation in schemas
+- Tests use mocked database clients (Drizzle/Turso), not real database connections
+- Database types are automatically inferred by Drizzle from schema definitions in `src/lib/db/schema/`
+- Always use Drizzle Kit to generate migrations (`bun db:generate`)
+- Schema uses `ulid()` for primary keys (not UUIDs)
 
 ### Workflow Integration Testing
 

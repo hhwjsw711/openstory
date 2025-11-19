@@ -1,0 +1,24 @@
+/**
+ * Drizzle Database Client
+ * Centralized database client using libSQL (Turso)
+ */
+
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
+import { schema } from './schema';
+
+const filePath = 'local.db';
+const client = createClient({
+  url: `file:${filePath}`,
+});
+
+/**
+ * Drizzle database instance
+ * Uses the libSQL client and includes all schema definitions
+ * Configured to use snake_case in database and camelCase in application
+ */
+export const db = drizzle(client, {
+  schema,
+  logger: process.env.NODE_ENV === 'development',
+  casing: 'snake_case',
+});
