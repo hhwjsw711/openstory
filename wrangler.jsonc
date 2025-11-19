@@ -4,18 +4,30 @@
   "name": "frontend",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS",
-  },
-  "r2_buckets": [
-    {
-      "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "cache",
-    },
-  ],
   "env": {
-    "development": {},
-    "production": {},
+    "development": {
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "cache-dev",
+        },
+      ],
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS",
+      },
+    },
+    "production": {
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "cache-prod",
+        },
+      ],
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS",
+      },
+    },
   },
 }
