@@ -320,9 +320,10 @@ jobs:
 
           # Set environment variables for preview branch
           # Note we could check if they don't yet exist and redeploy if its the first time we're setting them, but this is simpler for now.
-          echo "${{ steps.create_db.outputs.db_url }}" | bunx vercel env add --token "$VERCEL_TOKEN" --force TURSO_DATABASE_URL preview "${{ github.head_ref }}"
+          # Use echo -n to avoid adding a trailing newline to the environment variable value
+          echo -n "${{ steps.create_db.outputs.db_url }}" | bunx vercel env add --token "$VERCEL_TOKEN" --force TURSO_DATABASE_URL preview "${{ github.head_ref }}"
 
-          echo "${{ steps.create_db.outputs.db_token }}" | bunx vercel env add --token "$VERCEL_TOKEN" --force TURSO_AUTH_TOKEN preview "${{ github.head_ref }}"
+          echo -n "${{ steps.create_db.outputs.db_token }}" | bunx vercel env add --token "$VERCEL_TOKEN" --force TURSO_AUTH_TOKEN preview "${{ github.head_ref }}"
 
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
