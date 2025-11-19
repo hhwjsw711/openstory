@@ -3,7 +3,7 @@
  * Centralized database client using libSQL (Turso)
  */
 
-import { createClient } from '@libsql/client/web';
+import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import { schema } from './schema';
 
@@ -15,10 +15,7 @@ if (!tursoUrl) {
 }
 
 // Debug connection URL (safe to log as token is separate)
-console.log(
-  '[DB] Initializing remote client with URL:',
-  tursoUrl?.replace('libsql://', 'https://')
-);
+console.log('[DB] Initializing remote client with URL:', tursoUrl);
 
 /**
  * libSQL client instance
@@ -27,7 +24,7 @@ console.log(
  * - For production: use https:// URLs with auth token
  */
 const client = createClient({
-  url: tursoUrl?.replace('libsql://', 'https://'),
+  url: tursoUrl,
   ...(tursoToken && { authToken: tursoToken }), // Only include if defined
 });
 
