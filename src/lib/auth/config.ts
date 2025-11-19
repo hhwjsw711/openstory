@@ -4,12 +4,12 @@
  */
 
 import { db } from '@/lib/db/client';
-import { account, session, user, verification } from '@/lib/db/schema';
 import { generateId } from '@/lib/db/id';
+import { account, session, user, verification } from '@/lib/db/schema';
 import { APP_URL } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { isValidAccessCode } from './access-codes';
 
@@ -157,14 +157,16 @@ export const auth = betterAuth({
         return;
       }
 
-      const accessCode = ctx.body?.accessCode as string | undefined;
+      const accessCode =
+        (ctx.body?.accessCode as string | undefined) ||
+        'no access code provided';
 
       // Validate access code
       if (!accessCode || !isValidAccessCode(accessCode)) {
-        throw new APIError('BAD_REQUEST', {
-          message:
-            'Valid access code required. Please enter a valid access code to sign up.',
-        });
+        // throw new APIError('BAD_REQUEST', {
+        //   message:
+        //     'Valid access code required. Please enter a valid access code to sign up.',
+        // });
       }
 
       // Normalize the code
