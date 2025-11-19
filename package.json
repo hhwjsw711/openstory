@@ -32,7 +32,8 @@
     "setup:cloudflare-secrets": "./scripts/setup-cloudflare-secrets.sh",
     "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=development",
+    "deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=production",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
