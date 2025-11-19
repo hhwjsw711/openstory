@@ -1,0 +1,66 @@
+# Cloudflare Workers Local Development Environment Variables
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and used by wrangler for local development
+#
+# Note: This file is for wrangler (Cloudflare Workers) local dev
+# For Next.js development, use .env.development.local (created by bun setup:env)
+# To sync these secrets to Cloudflare preview environment, run: bun setup:cloudflare-secrets
+
+# Database (Turso/SQLite)
+TURSO_DATABASE_URL=file:local.db
+# TURSO_AUTH_TOKEN not needed for local file: URLs
+# For cloud Turso database, use:
+# TURSO_DATABASE_URL=libsql://your-db.turso.io
+# TURSO_AUTH_TOKEN=your-turso-token
+
+# QStash (Upstash Workflow)
+# Local QStash dev server (run: bun qstash:dev)
+QSTASH_URL=http://127.0.0.1:8080
+QSTASH_TOKEN=eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=
+QSTASH_CURRENT_SIGNING_KEY=sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r
+QSTASH_NEXT_SIGNING_KEY=sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs
+
+# App URL (for webhooks, auth callbacks, etc.)
+APP_URL=http://localhost:8788
+NEXT_PUBLIC_APP_URL=http://localhost:8788
+
+# Better Auth
+BETTER_AUTH_SECRET=your-better-auth-secret-here-generate-with-openssl-rand-hex-32
+
+# Google OAuth (optional)
+# GOOGLE_CLIENT_ID=your-google-client-id
+# GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Cloudflare R2 Storage
+# Note: When using R2 bindings in Workers, these are primarily for S3 SDK compatibility
+# The VELRO_STORAGE binding is configured in wrangler.toml
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET_NAME=velro-storage-dev
+# R2_PUBLIC_URL=https://pub-xxxxx.r2.dev
+
+# Resend (Email)
+# RESEND_API_KEY=re_your_resend_api_key
+
+# AI Service API Keys
+# FAL.ai (Image/Video Generation)
+# FAL_KEY=your-fal-api-key
+
+# OpenRouter (LLM Access)
+# OPENROUTER_API_KEY=your-openrouter-api-key
+
+# Cerebras (Fast Inference)
+# CEREBRAS_API_KEY=your-cerebras-api-key
+
+# Runway ML (Video Generation)
+# RUNWAY_API_SECRET=your-runway-api-secret
+
+# Kling AI (Video Generation)
+# KLING_ACCESS_KEY=your-kling-access-key
+
+# OpenAI (GPT Models)
+# OPENAI_API_KEY=sk-your-openai-api-key
+
+# Anthropic (Claude Models)
+# ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key

@@ -4,13 +4,54 @@
  */
 
 /**
+ * Platform detection
+ */
+export type DeploymentPlatform =
+  | 'cloudflare'
+  | 'vercel'
+  | 'railway'
+  | 'local'
+  | 'unknown';
+
+/**
+ * Detect which platform the app is running on
+ */
+export function getDeploymentPlatform(): DeploymentPlatform {
+  if (process.env.CF_PAGES) {
+    return 'cloudflare';
+  }
+  if (process.env.VERCEL) {
+    return 'vercel';
+  }
+  if (process.env.RAILWAY_ENVIRONMENT) {
+    return 'railway';
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return 'local';
+  }
+  return 'unknown';
+}
+
+/**
+ * Check if running on Cloudflare Pages/Workers
+ */
+export function isCloudflare(): boolean {
+  return process.env.CF_PAGES === '1' || !!process.env.CF_PAGES_URL;
+}
+
+/**
  * Get the application URL with platform-specific fallbacks
- * Priority: APP_URL → RAILWAY_PUBLIC_DOMAIN → VERCEL_URL → localhost
+ * Priority: APP_URL → CF_PAGES_URL → RAILWAY_PUBLIC_DOMAIN → VERCEL_URL → localhost
  */
 function getAppUrl(): string {
-  // Explicit APP_URL (should be set in Railway/Vercel production)
+  // Explicit APP_URL (should be set in production)
   if (process.env.APP_URL) {
     return process.env.APP_URL;
+  }
+
+  // Cloudflare Pages deployment
+  if (process.env.CF_PAGES_URL) {
+    return process.env.CF_PAGES_URL;
   }
 
   // Railway deployment - use public domain

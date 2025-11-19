@@ -1,10 +1,10 @@
 import type { NextConfig } from 'next';
-import path from 'node:path';
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname, '../..'),
-  },
+  // Remove turbopack.root - Next.js will use the project root by default
+  // Mark @libsql/isomorphic-ws as external to prevent bundling issues with Cloudflare Workers
+  // This package uses workerd-specific exports that esbuild can't resolve during bundling
+  serverExternalPackages: ['@libsql/isomorphic-ws'],
   images: {
     remotePatterns: [
       {
@@ -66,5 +66,10 @@ const nextConfig: NextConfig = {
     ],
   },
 };
+
+// Cloudflare Pages build uses @cloudflare/next-on-pages adapter
+// The adapter runs post-build to transform Next.js output for Workers
+// See: scripts/build-cloudflare.sh and .github/workflows/cloudflare-deploy.yml
+// For Cloudflare Image Optimization, see: https://developers.cloudflare.com/images/
 
 export default nextConfig;

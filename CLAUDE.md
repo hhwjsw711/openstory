@@ -89,6 +89,16 @@ bun storybook         # Start Storybook dev server
 bun build-storybook   # Build Storybook for production
 ```
 
+### Deployment (Cloudflare Pages)
+
+```bash
+bun deploy:cloudflare              # Deploy to Cloudflare Pages (preview)
+bun deploy:cloudflare:production   # Deploy to Cloudflare Pages (production)
+bun setup:cloudflare-secrets       # Sync environment variables to Cloudflare
+```
+
+**Note**: Cloudflare Pages is one of three supported hosting platforms (Cloudflare, Vercel, Railway). All platforms use the same codebase with automatic platform detection.
+
 ## Development Workflow
 
 ### First Time Setup
@@ -125,6 +135,185 @@ This feature:
 - Skips merge commits
 - Won't duplicate existing issue numbers in commit messages
 - Uses the lefthook commit-msg hook via `scripts/add-issue-number.sh`
+
+## Deployment
+
+Velro supports three hosting platforms with automatic platform detection:
+
+### Cloudflare Pages (Recommended for Global Performance)
+
+**Initial Setup**:
+
+1. **Authenticate with Cloudflare**:
+
+   ```bash
+   bunx wrangler login
+   ```
+
+2. **Create Cloudflare Pages project** (via dashboard or CLI):
+
+   ```bash
+   bunx wrangler pages project create velro
+   ```
+
+3. **Set up GitHub secrets** (for CI/CD):
+   - `CLOUDFLARE_API_TOKEN` - Create at https://dash.cloudflare.com/profile/api-tokens
+   - `CLOUDFLARE_ACCOUNT_ID` - Find in Cloudflare dashboard URL
+
+4. **Configure environment variables**:
+
+   ```bash
+   # Copy your local environment
+   cp .env.development.local .env.production
+
+   # Sync secrets to Cloudflare
+   bun setup:cloudflare-secrets --production
+   ```
+
+**Deployment Options**:
+
+```bash
+# Option 1: Automated via GitHub Actions (recommended)
+# Push to main branch or create a PR
+git push origin main
+
+# Option 2: Manual deployment
+bun deploy:cloudflare              # Preview deployment
+bun deploy:cloudflare:production   # Production deployment
+```
+
+**PR Preview Deployments**:
+
+- Automatic preview for every PR
+- URL format: `https://<branch>.velro.pages.dev`
+- Preview comment posted automatically on PR
+
+**Platform-Specific Features**:
+
+- **Edge Runtime**: Middleware runs on Cloudflare's edge network
+- **R2 Storage**: Native integration with Cloudflare R2 (already configured)
+- **Global CDN**: Automatic distribution to 275+ cities worldwide
+- **Zero Cold Starts**: Edge workers stay warm
+
+**Cloudflare-Specific Configuration**:
+
+- `wrangler.jsonc` - Cloudflare Workers configuration
+- `.dev.vars` - Local development secrets (gitignored)
+- `nodejs_compat` flag enabled for Node.js API compatibility
+
+### Vercel (Alternative Platform)
+
+**Deployment**:
+
+```bash
+# Install Vercel CLI
+bun add -g vercel
+
+# Deploy
+vercel          # Preview deployment
+vercel --prod   # Production deployment
+```
+
+**Configuration**:
+
+- `vercel.json` - Platform configuration
+- Environment variables set via Vercel dashboard
+- Automatic PR previews included
+
+### Railway (Alternative Platform)
+
+**Deployment**:
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Deploy
+railway up
+```
+
+**Configuration**:
+
+- Environment variables set via Railway dashboard
+- Automatic PR previews supported
+
+### Multi-Platform Compatibility
+
+The codebase automatically adapts to each platform:
+
+**Platform Detection** (`src/lib/utils/environment.ts`):
+
+```typescript
+// Automatically detects: cloudflare | vercel | railway | local
+const platform = getDeploymentPlatform();
+const isCloudflare = isCloudflare();
+```
+
+**APP_URL Resolution** (automatic):
+
+- Cloudflare: `CF_PAGES_URL`
+- Vercel: `VERCEL_URL`
+- Railway: `RAILWAY_PUBLIC_DOMAIN`
+- Local: `localhost:3000`
+
+**Edge Runtime Compatibility**:
+
+- Middleware uses `runtime: 'edge'` (works on all platforms)
+- Auth uses cookie-based session validation
+- Storage uses S3 SDK (compatible with Cloudflare Workers via `nodejs_compat`)
+
+### Required Environment Variables (All Platforms)
+
+```bash
+# Database (Turso)
+TURSO_DATABASE_URL=libsql://your-db.turso.io
+TURSO_AUTH_TOKEN=your-token
+
+# Authentication
+BETTER_AUTH_SECRET=your-secret
+APP_URL=https://your-domain.com
+
+# Storage (Cloudflare R2)
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key
+R2_SECRET_ACCESS_KEY=your-secret
+R2_BUCKET_NAME=velro-storage
+
+# Workflows (QStash)
+QSTASH_TOKEN=your-token
+QSTASH_URL=https://qstash.upstash.io
+QSTASH_CURRENT_SIGNING_KEY=your-key
+QSTASH_NEXT_SIGNING_KEY=your-key
+
+# Optional: AI Service Keys
+FAL_KEY=your-fal-key
+OPENROUTER_API_KEY=your-key
+CEREBRAS_API_KEY=your-key
+GOOGLE_CLIENT_ID=your-id
+GOOGLE_CLIENT_SECRET=your-secret
+RESEND_API_KEY=your-key
+```
+
+### GitHub Actions CI/CD
+
+**Cloudflare Deployment** (`.github/workflows/cloudflare-deploy.yml`):
+
+- Triggers on push to `main` and PR events
+- Runs tests, linting, type checking
+- Builds with `@cloudflare/next-on-pages`
+- Deploys to Cloudflare Pages
+- Posts preview URL as PR comment
+
+**Database Preview Environments** (`.github/workflows/database-ci.yml`):
+
+- Creates Turso database for each PR
+- Destroys database when PR closes
+- Unique database URL per PR
+
+**Test Suite** (`.github/workflows/test.yml`):
+
+- Runs on all PRs
+- Bun test + linting + type checking
 
 ## Project Architecture
 
@@ -379,13 +568,13 @@ const visualPrompt = frame.metadata.prompts.visual.fullPrompt;
 
 All async AI operations use QStash Workflow for durable execution:
 
-**Available Workflows** (`/app/api/workflows/`):
+**Available Workflows** (`/app/api/workflows/[...any]/`):
 
-- `image` - Image generation with FAL/LetzAI
-- `video` - Video generation from text
-- `motion` - Image-to-video generation
-- `frame-generation` - Complex orchestration for script analysis and frame creation
-- `script` - Script enhancement and analysis
+- `image-workflow` - Image generation with FAL/LetzAI
+- `motion-workflow` - Image-to-video generation (motion for frames)
+- `storyboard-workflow` - Complex orchestration for script analysis and frame creation
+
+**Workflow Status Endpoint**: `/app/api/workflows/status/[runId]/` - Check workflow execution status
 
 **Workflow Pattern**:
 
@@ -401,28 +590,43 @@ const workflowInput: ImageWorkflowInput = {
 // Publish to QStash to trigger the workflow
 const qstash = getQStashClient();
 const { messageId } = await qstash.publishJSON({
-  url: `${workflowConfig.baseUrl}/image`, // Use baseUrl for QStash webhooks
+  url: `${getQStashWebhookUrl()}/workflows/image`, // Use webhook URL for QStash
   body: workflowInput,
 });
 
 const workflowRunId = messageId;
 
-// 2. Workflow executes with durable steps
-export const { POST } = serve<ImageWorkflowInput>(async (context) => {
+// 2. Workflow registered with serveMany in /api/workflows/[...any]/route.ts
+export const { POST } = serveMany(
+  {
+    storyboard: generateStoryboardWorkflow,
+    image: generateImageWorkflow,
+    motion: generateMotionWorkflow,
+  },
+  {
+    baseUrl: getQStashWebhookUrl(),
+  }
+);
+
+// 3. Individual workflow implementation
+export const generateImageWorkflow = async (
+  context: WorkflowContext<ImageWorkflowInput>
+) => {
   const input = context.requestPayload;
   validateWorkflowAuth(input); // Check userId/teamId
 
   const result = await context.run('step-name', async () => {
     // Step logic - automatically retried on failure
   });
-});
+};
 ```
 
 **Important**:
 
 - Always use `qstash.publishJSON()` to trigger workflows, not direct `fetch()` calls
 - QStash requires proper signatures which are only added through the publish API
-- Use `workflowConfig.baseUrl` for QStash webhook URLs (external URL that QStash can reach)
+- Use `getQStashWebhookUrl()` for QStash webhook URLs (external URL that QStash can reach)
+- Workflows are registered using `serveMany()` from `@upstash/workflow/dist/nextjs`
 
 **Key Principles**:
 
@@ -1052,15 +1256,15 @@ When mocking modules in Bun tests, avoid shared mock state between tests:
 
 ```typescript
 // CORRECT - Fresh mock for each test
-const mockCreateClient = mock(() => ({
+const mockDb = mock(() => ({
   /* mock implementation */
 }));
-mock.module('@supabase/supabase-js', () => ({
-  createClient: mockCreateClient,
+mock.module('@/lib/db/client', () => ({
+  db: mockDb,
 }));
 
 beforeEach(async () => {
-  mockCreateClient.mockClear(); // Clear call history
+  mockDb.mockClear(); // Clear call history
   // Import modules after clearing mocks
   const module = await import('./module-under-test');
 });
@@ -1068,10 +1272,10 @@ beforeEach(async () => {
 
 ### Database Integration
 
-- Tests use mocked Supabase clients, not real database connections
-- Include database types from `@/types/database` (not `src/lib/supabase/gen.types.ts`)
-- Always use the Supabase CLI to create migrations
-- Use `z.uuid()` for UUID validation in schemas
+- Tests use mocked database clients (Drizzle/Turso), not real database connections
+- Database types are automatically inferred by Drizzle from schema definitions in `src/lib/db/schema/`
+- Always use Drizzle Kit to generate migrations (`bun db:generate`)
+- Schema uses `ulid()` for primary keys (not UUIDs)
 
 ### Workflow Integration Testing
 

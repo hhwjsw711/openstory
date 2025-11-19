@@ -7,12 +7,12 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up .env.local...${NC}"
+echo -e "${GREEN}Setting up .env.development.local...${NC}"
 echo ""
+# Get variables from Railway
 echo -e "${BLUE}Pulling environment variables from Railway...${NC}"
 railway variables --kv -e development > .env.local
 echo -e "${GREEN}✓ Environment variables pulled from Railway${NC}"
-echo ""
 
 # Setup local SQLite database with Turso
 echo -e "${BLUE}Setting up local SQLite database (Turso)...${NC}"
@@ -93,10 +93,13 @@ echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "${YELLOW}   • You can override QStash values by setting them as environment variables before running this script${NC}"
 echo -e "${YELLOW}   • Remember to keep 'bun qstash:dev' running in another terminal!${NC}"
 echo -e "${YELLOW}   • Don't forget to set up R2 credentials for file storage (see R2 section in .env)${NC}"
+echo -e "${YELLOW}   • To sync secrets to Cloudflare: bun setup:cloudflare-secrets${NC}"
+echo -e "${YELLOW}   • To list Cloudflare secrets: bunx wrangler pages secret list --project-name=velro${NC}"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "   1. Initialize database: bun db:setup"
 echo "   2. Setup R2 storage: bun scripts/setup-r2-buckets.sh"
 echo "   3. Add R2 credentials to $ENV_FILE"
+echo "   4. Sync secrets to Cloudflare: bun setup:cloudflare-secrets"
 echo ""
 echo -e "${GREEN}Setup complete! Run 'bun db:setup' then 'bun dev' to start${NC}"

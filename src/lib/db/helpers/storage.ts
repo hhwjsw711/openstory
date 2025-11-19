@@ -2,6 +2,15 @@
  * Storage Helpers
  * Utilities for working with Cloudflare R2 Storage
  * Migrated from Supabase Storage to R2 for better performance and cost efficiency
+ *
+ * MULTI-PLATFORM COMPATIBILITY:
+ * - Uses AWS S3 SDK for R2 access (works on Vercel, Railway, Cloudflare Workers)
+ * - Cloudflare Workers: Requires nodejs_compat flag (configured in wrangler.toml)
+ * - Alternative: Native R2 bindings on Cloudflare (future optimization for performance)
+ *
+ * The S3 SDK provides cross-platform compatibility at the cost of larger bundle size.
+ * For Cloudflare-specific optimization, consider using native R2 bindings via:
+ * env.VELRO_STORAGE (configured in wrangler.toml as [[r2_buckets]])
  */
 
 import { S3Client } from '@aws-sdk/client-s3';

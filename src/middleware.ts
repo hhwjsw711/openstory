@@ -1,68 +1,37 @@
 /**
  * Next.js middleware for BetterAuth route protection
- * Requires authentication for all routes except login/signup
+ * Optimistically checks for session cookie presence (not secure validation)
+ * Actual session validation happens in protected layout
  */
 
-import { auth } from '@/lib/auth/config';
-import { headers } from 'next/headers';
+import { getSessionCookie } from 'better-auth/cookies';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-
-// Routes that unauthenticated users can access
-const publicRoutes = ['/login', '/signup', '/forgot-password'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static files, API routes, and Next.js internals
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/favicon') ||
-    pathname.includes('.') ||
-    pathname.startsWith('/public')
-  ) {
-    return NextResponse.next();
-  }
+  // THIS IS NOT SECURE!
+  // This is the recommended approach to optimistically redirect users
+  // We recommend handling auth checks in each page/route
+  const sessionCookie = getSessionCookie(request);
 
-  // Check for BetterAuth session using direct API access
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  const hasSession = !!session;
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-
-  // Redirect authenticated users away from login/signup pages
-  if (hasSession && isPublicRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Require authentication for all routes except public routes
-  if (!hasSession && !isPublicRoute) {
+  if (!sessionCookie) {
     // Preserve the original URL for redirect after login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Allow access to the route
   return NextResponse.next();
 }
 
 export const config = {
-  runtime: 'nodejs', // Required for direct API access with auth.api.getSession
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (BetterAuth API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files with extensions
+     * Match /sequences and all sub-routes
+     * Examples: /sequences, /sequences/123, /sequences/123/scenes
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/sequences/:path*',
   ],
 };
