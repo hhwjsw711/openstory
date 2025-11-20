@@ -14,6 +14,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { env } from '#env';
 // Input validation schema
 const shortenPromptSchema = z.object({
   prompt: z
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
     const validated = shortenPromptSchema.parse(body);
 
     // Check if OpenRouter API key is configured
-    if (!process.env.OPENROUTER_KEY) {
+    if (!env.OPENROUTER_KEY) {
       return NextResponse.json(
         {
           success: false,

@@ -3,6 +3,7 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
+import { env } from '#env';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
@@ -357,14 +358,14 @@ export const generateStoryboardWorkflow = createWorkflow(
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
             flowControl: {
               key: 'fal-requests', // Shared key for both image & motion
-              parallelism: process.env.FAL_CONCURRENCY_LIMIT
-                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+              parallelism: env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(env.FAL_CONCURRENCY_LIMIT)
                 : 10,
             },
-            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+            headers: env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':
-                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+                    env.VERCEL_AUTOMATION_BYPASS_SECRET,
                 }
               : undefined,
           });
@@ -406,14 +407,14 @@ export const generateStoryboardWorkflow = createWorkflow(
               key: 'fal-requests', // Shared key for both image & motion
               rate: 10,
               period: 5,
-              parallelism: process.env.FAL_CONCURRENCY_LIMIT
-                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
+              parallelism: env.FAL_CONCURRENCY_LIMIT
+                ? parseInt(env.FAL_CONCURRENCY_LIMIT)
                 : 10,
             },
-            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+            headers: env.VERCEL_AUTOMATION_BYPASS_SECRET
               ? {
                   'x-vercel-protection-bypass':
-                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+                    env.VERCEL_AUTOMATION_BYPASS_SECRET,
                 }
               : undefined,
           });

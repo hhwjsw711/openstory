@@ -3,6 +3,7 @@
  * Provides enterprise-grade integration with LetzAI API
  */
 
+import { env } from '#env';
 import { db } from '@/lib/db/client';
 import { letzaiRequests } from '@/lib/db/schema/tracking';
 import { VelroError } from '@/lib/errors';
@@ -17,7 +18,6 @@ import type {
   LetzAIUpscaleRequest,
 } from '@/lib/schemas/letzai-request';
 import { and, eq, gte, lte } from 'drizzle-orm';
-
 // Configuration constants
 const LETZAI_API_URL = 'https://api.letz.ai';
 const POLL_INTERVAL_MS = 3000; // 3 seconds as recommended by LetzAI
@@ -37,7 +37,7 @@ export interface LetzAIServiceResponse<T = unknown> {
  */
 export class LetzAIService {
   constructor() {
-    const apiKey = process.env.LETZAI_API_KEY;
+    const apiKey = env.LETZAI_API_KEY;
     if (!apiKey) {
       throw new VelroError(
         'LETZAI_API_KEY environment variable is required',
@@ -142,7 +142,7 @@ export class LetzAIService {
     try {
       const response = await fetch(`${LETZAI_API_URL}${endpoint}/${jobId}`, {
         headers: {
-          Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
+          Authorization: `Bearer ${env.LETZAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
       });
@@ -179,7 +179,7 @@ export class LetzAIService {
       // Test with a simple models call to check if the service is healthy
       const response = await fetch(`${LETZAI_API_URL}/models?limit=1`, {
         headers: {
-          Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
+          Authorization: `Bearer ${env.LETZAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000), // 5 second timeout for health check
@@ -412,7 +412,7 @@ export class LetzAIService {
     const response = await fetch(`${LETZAI_API_URL}${endpoint}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
+        Authorization: `Bearer ${env.LETZAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(parameters),
@@ -451,7 +451,7 @@ export class LetzAIService {
         `${LETZAI_API_URL}${endpoint}/${jobId}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
+            Authorization: `Bearer ${env.LETZAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
         }

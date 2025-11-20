@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { env } from '#env';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
@@ -14,7 +14,7 @@ import {
   enhanceScriptPrompt,
   VELRO_UNIVERSAL_SYSTEM_PROMPT,
 } from '@/lib/ai/prompts';
-
+import { z } from 'zod';
 // Input validation schema
 const EnhanceScriptOptionsSchema = z.object({
   originalScript: z
@@ -166,7 +166,7 @@ export async function enhanceScript(
     }
 
     // Check if OpenRouter API key is configured
-    if (!process.env.OPENROUTER_KEY) {
+    if (!env.OPENROUTER_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
 

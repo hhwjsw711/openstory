@@ -13,11 +13,12 @@ import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { isValidAccessCode } from './access-codes';
 
+import { env } from '#env';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
 // Environment validation
 const requiredEnvVars = {
-  TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
-  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+  TURSO_DATABASE_URL: env.TURSO_DATABASE_URL,
+  BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
 } as const;
 
 // Debug logging for Vercel 405/500 error investigation
@@ -25,8 +26,8 @@ console.log('[Auth Config] Initializing Better Auth');
 console.log('[Auth Config] APP_URL:', APP_URL);
 console.log('[Auth Config] Trusted Origins:', [APP_URL]);
 console.log('[Auth Config] Environment Check:', {
-  TURSO_DATABASE_URL: !!process.env.TURSO_DATABASE_URL,
-  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ? 'Set' : 'Missing',
+  TURSO_DATABASE_URL: !!env.TURSO_DATABASE_URL,
+  BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET ? 'Set' : 'Missing',
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_ENV: process.env.VERCEL_ENV,
 });
@@ -102,12 +103,11 @@ export const auth = betterAuth({
   // Preview branches use email/password or anonymous mode
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientId: env.GOOGLE_CLIENT_ID || '',
+      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
       enabled:
-        !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) &&
-        (process.env.VERCEL_ENV === 'production' ||
-          process.env.NODE_ENV === 'development'),
+        !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) &&
+        (env.VERCEL_ENV === 'production' || env.NODE_ENV === 'development'),
       // Disable sign-up via Google during closed beta
       // Existing users can sign in, but new accounts must use email/password with access code
       disableSignUp: true,
