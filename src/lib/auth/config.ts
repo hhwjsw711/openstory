@@ -35,7 +35,8 @@ export const auth = betterAuth({
 
   // Session configuration
   // SECURITY: 90-day expiration mitigates:
-  // - Session fixation attacks
+  // - Session fixation attacks✘ [ERROR] The entry-point file at ".open-next/worker.js" was not found.
+
   // - Database bloat from long-lived sessions
   // - GDPR compliance concerns
   session: {

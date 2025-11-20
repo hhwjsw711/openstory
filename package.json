@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
     "build": "bun db:migrate && next build",
-    "build:cloudflare": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "bunx oxlint --type-aware",
     "lint:fix": "bunx oxlint --type-aware --fix",
@@ -34,7 +34,7 @@
     "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=\"\"",
-    "deploy:development": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=development",
+    "deploy:development": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=preview",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
