@@ -3,7 +3,7 @@
  * Centralized database client using libSQL (Turso)
  */
 
-import { createClient } from '@libsql/client/web';
+import { createClient } from '@libsql/client/http';
 import { drizzle } from 'drizzle-orm/libsql';
 import { schema } from './schema';
 

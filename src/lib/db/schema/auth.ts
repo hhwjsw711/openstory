@@ -1,162 +1,85 @@
-/**
- * Authentication Schema
- * Better Auth tables and user-related tables
- */
+import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
-import {
-  index,
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from 'drizzle-orm/sqlite-core';
-import { generateId } from '../id';
+export const user = sqliteTable('user', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  emailVerified: integer('email_verified', { mode: 'boolean' })
+    .default(false)
+    .notNull(),
+  image: text('image'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+  fullName: text('full_name'),
+  avatarUrl: text('avatar_url'),
+  onboardingCompleted: integer('onboarding_completed', {
+    mode: 'boolean',
+  }).default(false),
+  accessCode: text('access_code'),
+});
 
-/**
- * Better Auth user table
- * Core authentication identity table using ULID
- */
-export const user = sqliteTable(
-  'user',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    email: text().notNull(),
-    emailVerified: integer('email_verified', { mode: 'boolean' })
-      .default(false)
-      .notNull(),
-    name: text(),
-    image: text(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull()
-      .$onUpdate(() => new Date()),
-    fullName: text(),
-    avatarUrl: text(),
-    onboardingCompleted: integer('onboarding_completed', {
-      mode: 'boolean',
-    }).default(false),
-    accessCode: text(),
-  },
-  (table) => [uniqueIndex('idx_user_email').on(table.email)]
-);
+export const session = sqliteTable('session', {
+  id: text('id').primaryKey(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .$onUpdate(() => new Date())
+    .notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+});
 
-/**
- * Better Auth session table
- * Tracks active user sessions
- */
-export const session = sqliteTable(
-  'session',
-  {
-    id: text().primaryKey().notNull(),
-    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-    token: text().notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    ipAddress: text('ip_address'),
-    userAgent: text('user_agent'),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-  },
-  (table) => [
-    index('idx_session_expires_at').on(table.expiresAt),
-    uniqueIndex('idx_session_token').on(table.token),
-    index('idx_session_user_id').on(table.userId),
-  ]
-);
-
-/**
- * Better Auth account table
- * Links users to auth providers (OAuth, email/password, etc)
- */
-export const account = sqliteTable(
-  'account',
-  {
-    id: text().primaryKey().notNull(),
-    accountId: text('account_id').notNull(),
-    providerId: text('provider_id').notNull(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    accessToken: text('access_token'),
-    refreshToken: text('refresh_token'),
-    idToken: text('id_token'),
-    accessTokenExpiresAt: integer('access_token_expires_at', {
-      mode: 'timestamp',
-    }),
-    refreshTokenExpiresAt: integer('refresh_token_expires_at', {
-      mode: 'timestamp',
-    }),
-    scope: text(),
-    password: text(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('idx_account_provider').on(table.providerId, table.accountId),
-    index('idx_account_user_id').on(table.userId),
-  ]
-);
-
-/**
- * Better Auth verification table
- * Manages email verification tokens
- */
-export const verification = sqliteTable(
-  'verification',
-  {
-    id: text().primaryKey().notNull(),
-    identifier: text().notNull(),
-    value: text().notNull(),
-    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_verification_expires_at').on(table.expiresAt),
-    index('idx_verification_identifier').on(table.identifier),
-  ]
-);
-
-// Relations
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-}));
-
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
+export const account = sqliteTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: integer('access_token_expires_at', {
+    mode: 'timestamp_ms',
   }),
-}));
-
-export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
-    fields: [account.userId],
-    references: [user.id],
+  refreshTokenExpiresAt: integer('refresh_token_expires_at', {
+    mode: 'timestamp_ms',
   }),
-}));
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
 
+export const verification = sqliteTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
 // Type exports
 export type User = InferSelectModel<typeof user>;
 export type NewUser = InferInsertModel<typeof user>;

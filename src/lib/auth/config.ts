@@ -7,17 +7,29 @@ import { db } from '@/lib/db/client';
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
 import { APP_URL } from '@/lib/utils/environment';
-import { betterAuth } from 'better-auth';
+import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { isValidAccessCode } from './access-codes';
 
+import { sendPasswordResetEmail } from '@/lib/services/email-service';
 // Environment validation
 const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
 } as const;
+
+// Debug logging for Vercel 405/500 error investigation
+console.log('[Auth Config] Initializing Better Auth');
+console.log('[Auth Config] APP_URL:', APP_URL);
+console.log('[Auth Config] Trusted Origins:', [APP_URL]);
+console.log('[Auth Config] Environment Check:', {
+  TURSO_DATABASE_URL: !!process.env.TURSO_DATABASE_URL,
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ? 'Set' : 'Missing',
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+});
 
 // Validate environment variables
 // Note: TURSO_AUTH_TOKEN is optional for local development (file: URLs)
@@ -52,11 +64,6 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 90, // 90 days
     updateAge: 60 * 60 * 24, // Update session daily
-    // Disable cookie cache to prevent sign-out issues
-    // Cookie cache was causing sessions to persist after signOut()
-    cookieCache: {
-      enabled: false,
-    },
   },
 
   // Account linking configuration
@@ -78,10 +85,6 @@ export const auth = betterAuth({
         url,
       });
 
-      // Import dynamically to avoid issues during build
-      const { sendPasswordResetEmail } = await import(
-        '@/lib/services/email-service'
-      );
       const result = await sendPasswordResetEmail(user.email, url);
 
       if (!result.success) {
@@ -152,10 +155,10 @@ export const auth = betterAuth({
 
       // Validate access code
       if (!accessCode || !isValidAccessCode(accessCode)) {
-        // throw new APIError('BAD_REQUEST', {
-        //   message:
-        //     'Valid access code required. Please enter a valid access code to sign up.',
-        // });
+        throw new APIError('BAD_REQUEST', {
+          message:
+            'Valid access code required. Please enter a valid access code to sign up.',
+        });
       }
 
       // Normalize the code if provided
