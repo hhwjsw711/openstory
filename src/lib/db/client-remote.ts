@@ -3,7 +3,7 @@
  * Centralized database client using libSQL (Turso)
  */
 
-import { createClient } from '@libsql/client';
+import { createClient } from '@libsql/client/http';
 import { drizzle } from 'drizzle-orm/libsql';
 import { schema } from './schema';
 
@@ -13,9 +13,6 @@ const tursoToken = process.env.TURSO_AUTH_TOKEN;
 if (!tursoUrl) {
   throw new Error('TURSO_DATABASE_URL is required');
 }
-
-// Debug connection URL (safe to log as token is separate)
-console.log('[DB] Initializing remote client with URL:', tursoUrl);
 
 /**
  * libSQL client instance

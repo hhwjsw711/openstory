@@ -6,8 +6,6 @@
 import { NEXT_PUBLIC_APP_URL } from '@/lib/utils/environment';
 import { createAuthClient } from 'better-auth/react';
 
-console.log('[auth client] NEXT_PUBLIC_APP_URL', NEXT_PUBLIC_APP_URL);
-
 // Create the auth client
 export const authClient = createAuthClient({
   // Use centralized URL constant with runtime domain detection
