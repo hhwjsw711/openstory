@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
-    "build": "bun db:migrate && bun db:seed && next build",
+    "build": "bun db:migrate && next build",
     "start": "next start",
     "lint": "bunx oxlint --type-aware",
     "lint:fix": "bunx oxlint --type-aware --fix",
