@@ -1,3 +1,4 @@
+import { env } from '#env';
 import type { ImageToVideoModel, TextToImageModelId } from '@/lib/ai/models';
 import { IMAGE_MODELS, VIDEO_MODELS } from '@/lib/ai/models';
 import { db } from '@/lib/db/client';
@@ -79,7 +80,7 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
 export class FalService {
   private fal;
   constructor() {
-    const apiKey = process.env.FAL_KEY;
+    const apiKey = env.FAL_KEY;
     if (!apiKey) {
       throw new VelroError(
         'FAL_KEY environment variable is required',

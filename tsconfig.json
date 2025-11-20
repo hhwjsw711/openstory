@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2022",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "types": ["bun"],
+    "types": ["bun", "@cloudflare/workers-types"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,

@@ -18,7 +18,8 @@ export function useSequences(teamId?: string) {
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
       const response = await fetch('/api/sequences');
-      const result = await response.json();
+      const result: { success: boolean; data: Sequence[]; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to load sequences');
@@ -42,7 +43,8 @@ export function useSequence(
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
       const response = await fetch(`/api/sequences/${id}`);
-      const result = await response.json();
+      const result: { success: boolean; data: Sequence; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to load sequence');
@@ -75,7 +77,7 @@ export function useCreateSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    { data: Sequence[]; message: string },
+    { data: Sequence[]; message?: string },
     Error,
     {
       script: string;
@@ -109,7 +111,8 @@ export function useCreateSequence() {
         }),
       });
 
-      const result = await response.json();
+      const result: { success: boolean; data: Sequence[]; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to create sequence');
@@ -141,8 +144,8 @@ export function useUpdateSequence() {
         body: JSON.stringify(input),
       });
 
-      const result = await response.json();
-
+      const result: { success: boolean; data: Sequence; message?: string } =
+        await response.json();
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to update sequence');
       }
@@ -172,7 +175,8 @@ export function useDeleteSequence() {
         method: 'DELETE',
       });
 
-      const result = await response.json();
+      const result: { success: boolean; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to delete sequence');

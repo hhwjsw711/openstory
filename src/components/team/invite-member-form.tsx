@@ -5,14 +5,14 @@
 
 'use client';
 
-import type React from 'react';
-import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useTeamRole } from '@/hooks/use-team-role';
+import type React from 'react';
+import { useState } from 'react';
 
 interface InviteMemberFormProps {
   onSuccess?: () => void;
@@ -82,8 +82,8 @@ export function InviteMemberForm({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        setError(error.error || 'Failed to send invitation');
+        const responseJson: { error?: string } = await response.json();
+        setError(responseJson.error || 'Failed to send invitation');
         setIsLoading(false);
         return;
       }

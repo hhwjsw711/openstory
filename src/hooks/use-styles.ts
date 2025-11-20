@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Style } from '@/types/database';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface CreateStyleInput {
   name: string;
@@ -26,7 +26,8 @@ export function useStyles(teamId?: string, enabled = true) {
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
       const response = await fetch('/api/styles');
-      const result = await response.json();
+      const result: { success: boolean; data: Style[]; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to list styles');
@@ -45,7 +46,8 @@ export function useStyle(id: string) {
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
       const response = await fetch(`/api/styles/${id}`);
-      const result = await response.json();
+      const result: { success: boolean; data: Style; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to get style');
@@ -72,7 +74,8 @@ export function useCreateStyle() {
         body: JSON.stringify(input),
       });
 
-      const result = await response.json();
+      const result: { success: boolean; data: Style; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to create style');
@@ -80,8 +83,8 @@ export function useCreateStyle() {
 
       return result.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }
@@ -113,7 +116,8 @@ export function useUpdateStyle() {
         body: JSON.stringify(input),
       });
 
-      const result = await response.json();
+      const result: { success: boolean; data: Style; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to update style');
@@ -121,11 +125,11 @@ export function useUpdateStyle() {
 
       return result.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data?.id) {
         queryClient.setQueryData(styleKeys.detail(data.id), data);
       }
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }
@@ -140,15 +144,16 @@ export function useDeleteStyle() {
         method: 'DELETE',
       });
 
-      const result = await response.json();
+      const result: { success: boolean; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to delete style');
       }
     },
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
       queryClient.removeQueries({ queryKey: styleKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }

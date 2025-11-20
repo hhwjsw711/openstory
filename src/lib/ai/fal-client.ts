@@ -18,6 +18,8 @@ import {
 import type { FalServiceResponse } from '@/lib/services/fal-service';
 import { getFalService } from '@/lib/services/fal-service';
 import { z } from 'zod';
+// @ts-ignore - resolved via package.json imports
+import { env } from '#env';
 
 // Response schema for FAL video generation
 const falVideoResponseSchema = z.object({
@@ -107,7 +109,7 @@ export interface FalImageGenerationParams {
 export async function generateVideo(
   params: FalVideoGenerationParams
 ): Promise<FalServiceResponse<FalVideoResponse>> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = env.FAL_KEY;
 
   if (!apiKey) {
     console.warn(
@@ -180,7 +182,7 @@ export async function generateVideo(
 export async function generateImage(
   params: FalImageGenerationParams
 ): Promise<FalServiceResponse<FalImageResponse>> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = env.FAL_KEY;
 
   if (!apiKey) {
     throw new Error('FAL_KEY environment variable is required');
@@ -202,7 +204,7 @@ export async function generateImage(
   if (params.seed !== undefined) requestData.seed = params.seed;
   if (params.image_url) requestData.image_url = params.image_url;
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (env.NODE_ENV !== 'production') {
     const { prompt, image_url, ...rest } = requestData;
     const redacted = {
       ...rest,
@@ -297,7 +299,7 @@ export const fal = {
     model: TextToImageModelId | ImageToVideoModelId,
     params: { input: Record<string, unknown> }
   ): Promise<unknown> {
-    const apiKey = process.env.FAL_KEY;
+    const apiKey = env.FAL_KEY;
 
     if (!apiKey) {
       console.warn('[FAL] No API key found, returning mock response');
@@ -345,7 +347,7 @@ export async function uploadToFal(
   file: Buffer | Blob,
   filename: string
 ): Promise<string> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = env.FAL_KEY;
 
   if (!apiKey) {
     console.warn('[FAL] No API key, returning mock URL');
@@ -380,7 +382,7 @@ export async function uploadToFal(
     throw new Error(`FAL upload error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data: { url: string } = await response.json();
   return data.url;
 }
 

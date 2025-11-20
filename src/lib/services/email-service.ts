@@ -4,26 +4,37 @@
  */
 
 import { Resend } from 'resend';
+// @ts-ignore - resolved via package.json imports
+import { env } from '#env';
 
-// Initialize Resend with API key
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+let _resend: Resend | null = null;
 
-// Email sender configuration with strict validation
-// In production, EMAIL_FROM is REQUIRED and must be a verified domain in Resend
-// In development, falls back to Resend's test address
-const FROM_EMAIL =
-  process.env.EMAIL_FROM ||
-  (process.env.NODE_ENV === 'development'
-    ? 'onboarding@resend.dev' // Resend's official test address
-    : (() => {
-        throw new Error(
-          'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
-        );
-      })());
+function getResend() {
+  if (_resend) return _resend;
 
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Velro';
+  const apiKey = env.RESEND_API_KEY;
+  if (apiKey) {
+    _resend = new Resend(apiKey);
+  }
+  return _resend;
+}
+
+function getEmailConfig() {
+  const fromEmail =
+    env.EMAIL_FROM ||
+    (env.NODE_ENV === 'development' ? 'onboarding@resend.dev' : null);
+
+  if (!fromEmail && env.NODE_ENV !== 'development') {
+    throw new Error(
+      'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
+    );
+  }
+
+  return {
+    fromEmail: fromEmail!,
+    fromName: env.EMAIL_FROM_NAME || 'Velro',
+  };
+}
 
 interface SendEmailParams {
   to: string;
@@ -41,6 +52,8 @@ export async function sendEmail({
   html,
   text,
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
+  const resend = getResend();
+
   // Check if Resend is configured
   if (!resend) {
     console.error('[Email] Resend not configured - missing RESEND_API_KEY');
@@ -51,8 +64,10 @@ export async function sendEmail({
   }
 
   try {
+    const { fromEmail, fromName } = getEmailConfig();
+
     const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      from: `${fromName} <${fromEmail}>`,
       to,
       subject,
       html,

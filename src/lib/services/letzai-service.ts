@@ -3,6 +3,8 @@
  * Provides enterprise-grade integration with LetzAI API
  */
 
+import { db } from '@/lib/db/client';
+import { letzaiRequests } from '@/lib/db/schema/tracking';
 import { VelroError } from '@/lib/errors';
 import type {
   LetzAIEndpoint,
@@ -14,9 +16,7 @@ import type {
   LetzAIServiceRequest,
   LetzAIUpscaleRequest,
 } from '@/lib/schemas/letzai-request';
-import { db } from '@/lib/db/client';
-import { letzaiRequests } from '@/lib/db/schema/tracking';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 
 // Configuration constants
 const LETZAI_API_URL = 'https://api.letz.ai';
@@ -423,7 +423,7 @@ export class LetzAIService {
       throw new Error(`LetzAI API error: ${response.status} - ${errorText}`);
     }
 
-    const result = await response.json();
+    const result: { id: string; status: string } = await response.json();
 
     // For async endpoints, poll for completion
     if (result.id && result.status && result.status !== 'ready') {
@@ -461,7 +461,8 @@ export class LetzAIService {
         throw new Error(`LetzAI status check error: ${statusResponse.status}`);
       }
 
-      const statusData = await statusResponse.json();
+      const statusData: { id: string; status: string; error?: string } =
+        await statusResponse.json();
 
       if (statusData.status === 'ready') {
         return statusData;

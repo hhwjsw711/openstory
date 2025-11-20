@@ -1,5 +1,5 @@
-import { ImageModelSelector } from '@/components/sequence/image-model-selector';
 import { MotionModelSelector } from '@/components/motion/motion-model-selector';
+import { ImageModelSelector } from '@/components/sequence/image-model-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,8 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  TextToImageModel,
   ImageToVideoModel,
+  TextToImageModel,
 } from '@/lib/ai/models';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
@@ -152,16 +152,27 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         body: JSON.stringify({ prompt: currentPrompt }),
       });
 
-      const result = await response.json();
+      const result: {
+        success: boolean;
+        data?: {
+          originalPrompt?: string;
+          shortenedPrompt?: string;
+          originalLength?: number;
+          shortenedLength?: number;
+          reductionPercent?: number;
+        };
+        message?: string;
+      } = await response.json();
 
       if (!response.ok) {
         throw new Error(result.message || 'Failed to shorten prompt');
       }
+      const promptResultData = result?.data;
 
-      if (result.success && result.data?.shortenedPrompt) {
-        setEditedPrompt(result.data.shortenedPrompt);
+      if (result.success && promptResultData?.shortenedPrompt) {
+        setEditedPrompt(promptResultData.shortenedPrompt);
         setShortenSuccess(
-          `Prompt shortened by ${result.data.reductionPercent}% (${result.data.originalLength} → ${result.data.shortenedLength} chars)`
+          `Prompt shortened by ${promptResultData.reductionPercent}% (${promptResultData.originalLength} → ${promptResultData.shortenedLength} chars)`
         );
         // Clear success message after 5 seconds
         setTimeout(() => setShortenSuccess(null), 5000);

@@ -3,9 +3,6 @@
  * POST /api/prompts/shorten - Shorten an image prompt using AI
  */
 
-import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
@@ -13,6 +10,9 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import { handleApiError } from '@/lib/errors';
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 // Input validation schema
 const shortenPromptSchema = z.object({
@@ -82,6 +82,20 @@ Your task is to shorten image prompts by:
 Target 50-75% reduction in length while keeping the prompt's core meaning intact.
 
 Return ONLY the shortened prompt text, nothing else. No explanations, no preamble.`;
+
+export type ShortenPromptRequest = z.infer<typeof shortenPromptSchema>;
+export type ShortenPromptResponse = {
+  success: boolean;
+  data?: {
+    originalPrompt: string;
+    shortenedPrompt: string;
+    originalLength: number;
+    shortenedLength: number;
+    reductionPercent: number;
+  };
+  message: string;
+  timestamp: string;
+};
 
 export async function POST(request: Request) {
   try {
@@ -179,25 +193,24 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          originalPrompt: validated.prompt,
-          shortenedPrompt: trimmedPrompt,
-          originalLength: validated.prompt.length,
-          shortenedLength: trimmedPrompt.length,
-          reductionPercent: Math.round(
-            ((validated.prompt.length - trimmedPrompt.length) /
-              validated.prompt.length) *
-              100
-          ),
-        },
-        message: 'Prompt shortened successfully',
-        timestamp: new Date().toISOString(),
+    const response: ShortenPromptResponse = {
+      success: true,
+      data: {
+        originalPrompt: validated.prompt,
+        shortenedPrompt: trimmedPrompt,
+        originalLength: validated.prompt.length,
+        shortenedLength: trimmedPrompt.length,
+        reductionPercent: Math.round(
+          ((validated.prompt.length - trimmedPrompt.length) /
+            validated.prompt.length) *
+            100
+        ),
       },
-      { status: 200 }
-    );
+      message: 'Prompt shortened successfully',
+      timestamp: new Date().toISOString(),
+    };
+
+    return NextResponse.json(response, { status: 200 });
   } catch (error) {
     console.error('[POST /api/prompts/shorten] Error:', error);
     const handledError = handleApiError(error);

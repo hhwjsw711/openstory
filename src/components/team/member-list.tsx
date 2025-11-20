@@ -5,8 +5,6 @@
 
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { AdminOnly } from '@/components/auth/admin-only';
 import { OwnerOnly } from '@/components/auth/owner-only';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,6 +19,9 @@ import {
 import { Select } from '@/components/ui/select';
 import { type TeamRole, useTeamRole } from '@/hooks/use-team-role';
 import { useUser } from '@/hooks/use-user';
+import { TeamMember } from '@/types/database';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { MemberRoleBadge } from './member-role-badge';
 
 interface MemberListProps {
@@ -47,11 +48,11 @@ export function MemberList({ teamId }: MemberListProps) {
     queryFn: async () => {
       const response = await fetch(`/api/teams/${teamId}/members`);
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch members');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to fetch members');
       }
-      const result = await response.json();
-      return result.data || [];
+      const result: { data?: TeamMember[] } = await response.json();
+      return result?.data;
     },
   });
 
@@ -62,12 +63,14 @@ export function MemberList({ teamId }: MemberListProps) {
         method: 'DELETE',
       });
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to remove member');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to remove member');
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['team-members', teamId],
+      });
       setError(null);
     },
     onError: (err) => {
@@ -95,12 +98,14 @@ export function MemberList({ teamId }: MemberListProps) {
         }
       );
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update role');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to update role');
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['team-members', teamId],
+      });
       setError(null);
     },
     onError: (err) => {
@@ -143,85 +148,70 @@ export function MemberList({ teamId }: MemberListProps) {
         )}
 
         <div className="space-y-4">
-          {members.map(
-            (member: {
-              userId: string;
-              email: string;
-              fullName?: string | null;
-              role: string;
-            }) => {
-              const isCurrentUser = member.userId === userData?.user?.id;
-              const isOwner = member.role === 'owner';
+          {members.map((member: TeamMember) => {
+            const isCurrentUser = member.userId === userData?.user?.id;
+            const isOwner = member.role === 'owner';
 
-              return (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {member.fullName || member.email}
-                        </span>
-                        {isCurrentUser && (
-                          <span className="text-sm text-muted-foreground">
-                            (You)
-                          </span>
-                        )}
-                      </div>
-                      {member.fullName && (
+            return (
+              <div
+                key={member.userId}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      {isCurrentUser && (
                         <span className="text-sm text-muted-foreground">
-                          {member.email}
+                          (You)
                         </span>
                       )}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Role badge or selector */}
-                    {canChangeRoles && !isOwner && !isCurrentUser ? (
-                      <OwnerOnly
-                        fallback={
-                          <MemberRoleBadge role={member.role as TeamRole} />
-                        }
-                      >
-                        <Select
-                          options={roleOptions}
-                          value={member.role}
-                          onChange={(newRole) =>
-                            updateRoleMutation.mutate({
-                              userId: member.userId,
-                              newRole: newRole as TeamRole,
-                            })
-                          }
-                          disabled={updateRoleMutation.isPending}
-                          size="sm"
-                          className="w-32"
-                        />
-                      </OwnerOnly>
-                    ) : (
-                      <MemberRoleBadge role={member.role as TeamRole} />
-                    )}
-
-                    {/* Remove button */}
-                    {canRemoveMembers && !isOwner && !isCurrentUser && (
-                      <AdminOnly>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeMutation.mutate(member.userId)}
-                          disabled={removeMutation.isPending}
-                        >
-                          {removeMutation.isPending ? 'Removing...' : 'Remove'}
-                        </Button>
-                      </AdminOnly>
-                    )}
-                  </div>
                 </div>
-              );
-            }
-          )}
+
+                <div className="flex items-center gap-2">
+                  {/* Role badge or selector */}
+                  {canChangeRoles && !isOwner && !isCurrentUser ? (
+                    <OwnerOnly
+                      fallback={
+                        <MemberRoleBadge role={member.role as TeamRole} />
+                      }
+                    >
+                      <Select
+                        options={roleOptions}
+                        value={member.role}
+                        onChange={(newRole) =>
+                          updateRoleMutation.mutate({
+                            userId: member.userId,
+                            newRole: newRole as TeamRole,
+                          })
+                        }
+                        disabled={updateRoleMutation.isPending}
+                        size="sm"
+                        className="w-32"
+                      />
+                    </OwnerOnly>
+                  ) : (
+                    <MemberRoleBadge role={member.role as TeamRole} />
+                  )}
+
+                  {/* Remove button */}
+                  {canRemoveMembers && !isOwner && !isCurrentUser && (
+                    <AdminOnly>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeMutation.mutate(member.userId)}
+                        disabled={removeMutation.isPending}
+                      >
+                        {removeMutation.isPending ? 'Removing...' : 'Remove'}
+                      </Button>
+                    </AdminOnly>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
