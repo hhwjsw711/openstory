@@ -7,8 +7,6 @@ import { env } from '#env';
 import { APP_URL, getDeploymentPlatform } from '@/lib/utils/environment';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
-
 export async function GET() {
   // Sanitize function to hide sensitive values
   const sanitize = (value: string | undefined): string => {
