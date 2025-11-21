@@ -152,27 +152,23 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         body: JSON.stringify({ prompt: currentPrompt }),
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to shorten prompt');
+      }
       const result: {
         success: boolean;
         data?: {
-          originalPrompt?: string;
-          shortenedPrompt?: string;
-          originalLength?: number;
-          shortenedLength?: number;
-          reductionPercent?: number;
+          shortenedPrompt: string;
+          reductionPercent: number;
+          originalLength: number;
+          shortenedLength: number;
         };
-        message?: string;
       } = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to shorten prompt');
-      }
-      const promptResultData = result?.data;
-
-      if (result.success && promptResultData?.shortenedPrompt) {
-        setEditedPrompt(promptResultData.shortenedPrompt);
+      if (result.success && result.data?.shortenedPrompt) {
+        setEditedPrompt(result.data.shortenedPrompt);
         setShortenSuccess(
-          `Prompt shortened by ${promptResultData.reductionPercent}% (${promptResultData.originalLength} → ${promptResultData.shortenedLength} chars)`
+          `Prompt shortened by ${result.data.reductionPercent}% (${result.data.originalLength} → ${result.data.shortenedLength} chars)`
         );
         // Clear success message after 5 seconds
         setTimeout(() => setShortenSuccess(null), 5000);

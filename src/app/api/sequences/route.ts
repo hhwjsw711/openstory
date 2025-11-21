@@ -159,7 +159,7 @@ export async function GET() {
       );
     }
 
-    const sequences = await sequenceService.getSequencesByTeam(
+    const sequences: Sequence[] = await sequenceService.getSequencesByTeam(
       defaultTeam.teamId
     );
 

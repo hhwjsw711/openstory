@@ -26,10 +26,10 @@ export function useStyles(teamId?: string, enabled = true) {
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
       const response = await fetch('/api/styles');
-      const result: { success: boolean; data: Style[]; message?: string } =
+      const result: { success: boolean; data?: Style[]; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to list styles');
       }
 
@@ -46,10 +46,10 @@ export function useStyle(id: string) {
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
       const response = await fetch(`/api/styles/${id}`);
-      const result: { success: boolean; data: Style; message?: string } =
+      const result: { success: boolean; data?: Style; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to get style');
       }
 
@@ -74,10 +74,10 @@ export function useCreateStyle() {
         body: JSON.stringify(input),
       });
 
-      const result: { success: boolean; data: Style; message?: string } =
+      const result: { success: boolean; data?: Style; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to create style');
       }
 
@@ -116,10 +116,10 @@ export function useUpdateStyle() {
         body: JSON.stringify(input),
       });
 
-      const result: { success: boolean; data: Style; message?: string } =
+      const result: { success: boolean; data?: Style; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to update style');
       }
 

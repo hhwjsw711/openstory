@@ -54,14 +54,14 @@ export function useFramesBySequence(
     queryKey: frameKeys.list(sequenceId ?? ''),
     queryFn: async () => {
       const response = await fetch(`/api/sequences/${sequenceId}/frames`);
-      const result: { success: boolean; data: Frame[]; message?: string } =
+      const result: { success: boolean; data?: Frame[]; message?: string } =
         await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to load frames');
       }
 
-      return result.data;
+      return result.data || [];
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     refetchInterval: (query) => {
@@ -103,10 +103,10 @@ export function useFrame(sequenceId: string, frameId: string) {
       const response = await fetch(
         `/api/sequences/${sequenceId}/frames/${frameId}`
       );
-      const result: { success: boolean; data: Frame; message?: string } =
+      const result: { success: boolean; data?: Frame; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to load frame');
       }
 
@@ -132,10 +132,10 @@ export function useCreateFrame() {
         body: JSON.stringify(frameData),
       });
 
-      const result: { success: boolean; data: Frame; message?: string } =
+      const result: { success: boolean; data?: Frame; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to create frame');
       }
 
@@ -170,10 +170,10 @@ export function useUpdateFrame() {
         }
       );
 
-      const result: { success: boolean; data: Frame; message?: string } =
+      const result: { success: boolean; data?: Frame; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to update frame');
       }
 
@@ -215,11 +215,11 @@ export function useDeleteFrame() {
 
       const result: {
         success: boolean;
-        data: { frameId: string; sequenceId?: string };
+        data?: { frameId: string; sequenceId?: string };
         message?: string;
       } = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to delete frame');
       }
 
@@ -269,7 +269,7 @@ export function useReorderFrames() {
 
       const result: {
         success: boolean;
-        data: { sequenceId: string };
+        data?: { sequenceId: string };
         message?: string;
       } = await response.json();
 
@@ -346,10 +346,10 @@ export function useBulkCreateFrames() {
         body: JSON.stringify({ frames }),
       });
 
-      const result: { success: boolean; data: Frame[]; message?: string } =
+      const result: { success: boolean; data?: Frame[]; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to create frames');
       }
 
@@ -373,7 +373,7 @@ export function useDeleteFramesBySequence() {
         method: 'DELETE',
       });
 
-      const result: { success: boolean; message?: string } =
+      const result: { success: boolean; data?: string; message?: string } =
         await response.json();
 
       if (!response.ok || !result.success) {
@@ -411,11 +411,16 @@ export function useGenerateFrames() {
 
       const result: {
         success: boolean;
-        data: { jobId: string; message?: string };
+        data?: { jobId: string };
         message?: string;
       } = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.data ||
+        !result.data.jobId
+      ) {
         throw new Error(result.message || 'Failed to generate frames');
       }
 
@@ -476,11 +481,16 @@ export function useRegenerateFrame() {
 
       const result: {
         success: boolean;
-        data: { jobId: string };
+        data?: { jobId: string };
         message?: string;
       } = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.data ||
+        !result.data.jobId
+      ) {
         throw new Error(result.message || 'Failed to regenerate frame');
       }
 
@@ -510,7 +520,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
       );
       const result: {
         success: boolean;
-        data: { jobId: string; status: string };
+        data?: { status: string };
         message?: string;
       } = await response.json();
 

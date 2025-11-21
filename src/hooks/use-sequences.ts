@@ -18,10 +18,10 @@ export function useSequences(teamId?: string) {
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
       const response = await fetch('/api/sequences');
-      const result: { success: boolean; data: Sequence[]; message?: string } =
+      const result: { success: boolean; data?: Sequence[]; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to load sequences');
       }
 
@@ -43,10 +43,10 @@ export function useSequence(
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
       const response = await fetch(`/api/sequences/${id}`);
-      const result: { success: boolean; data: Sequence; message?: string } =
+      const result: { success: boolean; data?: Sequence; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to load sequence');
       }
 
@@ -88,14 +88,7 @@ export function useCreateSequence() {
       aspectRatio?: string;
     }
   >({
-    mutationFn: async (input: {
-      script: string;
-      styleId: string | null;
-      title?: string;
-      analysisModels?: string[];
-      teamId?: string;
-      aspectRatio?: string;
-    }) => {
+    mutationFn: async (input) => {
       const response = await fetch('/api/sequences', {
         method: 'POST',
         headers: {
@@ -111,14 +104,17 @@ export function useCreateSequence() {
         }),
       });
 
-      const result: { success: boolean; data: Sequence[]; message?: string } =
+      const result: { success: boolean; data?: Sequence[]; message?: string } =
         await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to create sequence');
       }
 
-      return { data: result.data, message: result.message };
+      return {
+        data: result.data,
+        message: result.message || 'Sequence created successfully',
+      };
     },
     onSuccess: () => {
       queryClient
@@ -144,9 +140,10 @@ export function useUpdateSequence() {
         body: JSON.stringify(input),
       });
 
-      const result: { success: boolean; data: Sequence; message?: string } =
+      const result: { success: boolean; data?: Sequence; message?: string } =
         await response.json();
-      if (!response.ok || !result.success) {
+
+      if (!response.ok || !result.success || !result.data) {
         throw new Error(result.message || 'Failed to update sequence');
       }
 

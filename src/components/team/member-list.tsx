@@ -51,8 +51,12 @@ export function MemberList({ teamId }: MemberListProps) {
         const responseJson: { error?: string } = await response.json();
         throw new Error(responseJson.error || 'Failed to fetch members');
       }
-      const result: { data?: TeamMember[] } = await response.json();
-      return result?.data;
+      const result: { success: boolean; data?: TeamMember[] } =
+        await response.json();
+      if (!response.ok || !result.success || !result.data) {
+        throw new Error('Failed to fetch members');
+      }
+      return result.data;
     },
   });
 
@@ -148,7 +152,7 @@ export function MemberList({ teamId }: MemberListProps) {
         )}
 
         <div className="space-y-4">
-          {members.map((member: TeamMember) => {
+          {members.map((member) => {
             const isCurrentUser = member.userId === userData?.user?.id;
             const isOwner = member.role === 'owner';
 
@@ -160,6 +164,7 @@ export function MemberList({ teamId }: MemberListProps) {
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
+                      <span className="font-medium">{member.userId}</span>
                       {isCurrentUser && (
                         <span className="text-sm text-muted-foreground">
                           (You)

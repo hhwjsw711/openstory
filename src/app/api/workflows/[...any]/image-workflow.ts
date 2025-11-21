@@ -77,7 +77,9 @@ export const generateImageWorkflow = createWorkflow(
         !input.teamId ||
         !imageResult.imageUrls[0]
       ) {
-        throw new Error('Missing required IDs for storage upload');
+        throw new Error('Missing required IDs for storage upload', {
+          cause: JSON.stringify(imageResult),
+        });
       }
 
       const result = await uploadImageToStorage({

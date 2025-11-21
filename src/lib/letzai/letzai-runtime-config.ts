@@ -5,5 +5,6 @@ export const createClientConfig: CreateClientConfig = (config) => ({
   headers: {
     Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
     'Content-Type': 'application/json',
+    ...config?.headers,
   },
 });

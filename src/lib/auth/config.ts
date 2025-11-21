@@ -14,6 +14,30 @@ import { isValidAccessCode } from './access-codes';
 
 import { getDb } from '#db-client';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
+// Environment validation
+const requiredEnvVars = {
+  TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+} as const;
+
+// Debug logging for Vercel 405/500 error investigation
+console.log('[Auth Config] Initializing Better Auth');
+console.log('[Auth Config] APP_URL:', APP_URL);
+console.log('[Auth Config] Trusted Origins:', [APP_URL]);
+console.log('[Auth Config] Environment Check:', {
+  TURSO_DATABASE_URL: !!process.env.TURSO_DATABASE_URL,
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ? 'Set' : 'Missing',
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+});
+
+// Validate environment variables
+// Note: TURSO_AUTH_TOKEN is optional for local development (file: URLs)
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
 
 export const auth = betterAuth({
   database: drizzleAdapter(getDb(), {
