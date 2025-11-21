@@ -37,7 +37,10 @@
     "deploy:preview": "opennextjs-cloudflare build --env=preview && opennextjs-cloudflare deploy --env=preview",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts"
+    "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts",
+    "secrets:dev": "doppler secrets download --config=dev --format=env > .dev.vars && cp .dev.vars .env.local",
+    "secrets:cf:preview": "doppler secrets --json --config=stg | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk -e preview",
+    "secrets:cf:prod": "doppler secrets --json --config=prod | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk -e production"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.933.0",
