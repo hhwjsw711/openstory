@@ -3,7 +3,7 @@
  * Provides a unified interface to multiple AI models
  */
 
-import { getEnvAsync } from '#env';
+import { getEnv } from '#env';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { z } from 'zod';
 // OpenRouter API configuration
@@ -81,7 +81,7 @@ export const RECOMMENDED_MODELS = {
 export async function callOpenRouter(
   params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
-  const apiKey = (await getEnvAsync()).OPENROUTER_KEY;
+  const apiKey = getEnv().OPENROUTER_KEY;
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {

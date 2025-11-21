@@ -3,7 +3,7 @@
  * Analyzes scripts to identify scene boundaries and generate frame metadata
  */
 
-import { getEnvAsync } from '#env';
+import { getEnv } from '#env';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   storyboardPrompt,
@@ -63,7 +63,7 @@ export async function analyzeScriptForFrames(
   auditContext?: { sequenceId: string; teamId: string; userId: string }
 ): Promise<{ analysis: SceneAnalysis; durationMs: number }> {
   const startTime = Date.now();
-  const runtimeEnv = await getEnvAsync();
+  const runtimeEnv = getEnv();
   // Initialize audit data
   const auditData: ScriptAnalysisAuditData = {
     userScript: script,

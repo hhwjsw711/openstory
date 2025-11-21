@@ -99,8 +99,8 @@ export function getAuth() {
     // Preview branches use email/password or anonymous mode
     socialProviders: {
       google: {
-        clientId: runtimeEnv.GOOGLE_CLIENT_ID || '',
-        clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET || '',
+        clientId: runtimeEnv.GOOGLE_CLIENT_ID,
+        clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
         enabled: !isPreviewBranch(),
         // Disable sign-up via Google during closed beta
         // Existing users can sign in, but new accounts must use email/password with access code

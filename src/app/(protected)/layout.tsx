@@ -8,7 +8,11 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
+
+  if (isPending) {
+    return <div>Loading...</div>;
+  }
 
   if (!session) {
     return redirect('/login');

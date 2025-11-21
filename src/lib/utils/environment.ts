@@ -37,7 +37,7 @@ export function getDeploymentPlatform(): DeploymentPlatform {
  * Check if running on Cloudflare Pages/Workers
  */
 export function isCloudflare(): boolean {
-  return process.env.CF_PAGES === '1' || !!process.env.CF_PAGES_URL;
+  return !!process.env.OPEN_NEXT_ORIGIN;
 }
 
 /**
@@ -60,6 +60,12 @@ function getAppUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
+  if (process.env.OPEN_NEXT_ORIGIN) {
+    // running in Open Next
+    const openNextOrigin = JSON.parse(process.env.OPEN_NEXT_ORIGIN);
+    const defaultOrigin = openNextOrigin.default;
+    return `${defaultOrigin.protocol}://${defaultOrigin.host}${defaultOrigin.port ? `:${defaultOrigin.port}` : ''}`;
+  }
   // Local development default
   return 'http://localhost:3000';
 }
@@ -83,7 +89,7 @@ export function isPreviewBranch(): boolean {
   const isVercelProduction = process.env.VERCEL_ENV === 'production';
   const isCloudflareProduction = process.env.CF_PAGES_BRANCH === 'main';
   const isRailwayProduction = process.env.RAILWAY_ENVIRONMENT === 'production';
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = isLocalDevelopment();
 
   // Don't run Google OAuth on preview branches
   return !(
@@ -99,7 +105,7 @@ export function isPreviewBranch(): boolean {
  * Detected by checking if Supabase URL points to localhost or 127.0.0.1
  */
 export function isLocalDevelopment(): boolean {
-  const appUrl = APP_URL;
+  const appUrl = NEXT_PUBLIC_APP_URL;
 
   if (!appUrl) {
     return false;

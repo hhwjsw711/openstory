@@ -4,7 +4,7 @@
  */
 
 import { getDb } from '#db-client';
-import { getEnvAsync } from '#env';
+import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
@@ -347,7 +347,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             frameId,
             sequenceId: input.sequenceId,
           };
-          const runtimeEnv = await getEnvAsync();
+          const runtimeEnv = getEnv();
           const falConcurrencyLimit = (
             runtimeEnv as unknown as Record<string, string>
           ).FAL_CONCURRENCY_LIMIT;

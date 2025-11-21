@@ -12,6 +12,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "customConditions": ["cloudflare"],
     "jsx": "preserve",
     "incremental": true,
     "plugins": [

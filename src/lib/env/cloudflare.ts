@@ -10,12 +10,3 @@ export const getEnv = () => {
 
   return env;
 };
-
-export const getEnvAsync = async () => {
-  const { env } = await getCloudflareContext({ async: true });
-  if (!env) {
-    throw new Error('Cloudflare context not found');
-  }
-
-  return env;
-};
