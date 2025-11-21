@@ -3,14 +3,14 @@
  * POST /api/script/enhance - Enhance a script using AI
  */
 
-import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import {
   enhanceScript as enhanceScriptService,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
 import { handleApiError } from '@/lib/errors';
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const enhanceScriptSchema = z.object({
   script: z

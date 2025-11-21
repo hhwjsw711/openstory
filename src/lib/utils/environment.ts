@@ -79,23 +79,19 @@ export const NEXT_PUBLIC_APP_URL =
     ? window.location.origin
     : process.env.NEXT_PUBLIC_APP_URL || APP_URL;
 
-/**
- * Check if Google OAuth is enabled based on environment configuration.
- * Matches the logic from Better Auth config (src/lib/auth/config.ts).
- *
- * Google OAuth is enabled when:
- * 1. Both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are present
- * 2. AND either:
- *    - VERCEL_ENV === 'production' (production deployments)
- *    - NODE_ENV === 'development' (local development)
- *
- * This means Google OAuth is DISABLED on Vercel preview branches.
- */
-export function isGoogleOAuthEnabled(): boolean {
-  const isProduction = process.env.NODE_ENV === 'production';
+export function isPreviewBranch(): boolean {
+  const isVercelProduction = process.env.VERCEL_ENV === 'production';
+  const isCloudflareProduction = process.env.CF_PAGES_BRANCH === 'main';
+  const isRailwayProduction = process.env.RAILWAY_ENVIRONMENT === 'production';
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  return isProduction || isDevelopment;
+  // Don't run Google OAuth on preview branches
+  return !(
+    isCloudflareProduction ||
+    isVercelProduction ||
+    isRailwayProduction ||
+    isDevelopment
+  );
 }
 
 /**

@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
-import { isGoogleOAuthEnabled } from '@/lib/utils/environment';
+import { isPreviewBranch } from '@/lib/utils/environment';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -49,7 +49,7 @@ export function AuthForm({
     ? 'Enter your details to create your account'
     : 'Enter your credentials to access your account';
 
-  const showGoogleAuth = isGoogleOAuthEnabled();
+  const showGoogleAuth = !isPreviewBranch();
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
