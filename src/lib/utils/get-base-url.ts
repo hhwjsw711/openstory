@@ -10,7 +10,7 @@ export function getQStashWebhookUrl(): string {
   // for QStash running in Docker to reach the Next.js app
   if (APP_URL.includes('localhost') || APP_URL.includes('127.0.0.1')) {
     const appUrl = new URL(APP_URL);
-    return `http://host.docker.internal:${appUrl.port}`;
+    return `http://host.docker.internal${appUrl.port ? `:${appUrl.port}` : ''}`;
   }
 
   return APP_URL;
