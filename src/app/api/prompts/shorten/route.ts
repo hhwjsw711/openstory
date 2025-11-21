@@ -100,6 +100,7 @@ export type ShortenPromptResponse = {
 
 export async function POST(request: Request) {
   try {
+    const env = getEnv();
     // Get client IP for rate limiting
     const headersList = await headers();
     const forwardedFor = headersList.get('x-forwarded-for');
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
     const validated = shortenPromptSchema.parse(body);
 
     // Check if OpenRouter API key is configured
-    if (!getEnv().OPENROUTER_KEY) {
+    if (!env.OPENROUTER_KEY) {
       return NextResponse.json(
         {
           success: false,

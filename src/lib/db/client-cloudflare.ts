@@ -12,13 +12,13 @@ type Database = LibSQLDatabase<typeof schema>;
 let _db: Database | undefined;
 
 function buildLibsqlClient(): LibsqlClient {
-  //
-  const url = getEnv().TURSO_DATABASE_URL?.trim();
+  const env = getEnv();
+  const url = env.TURSO_DATABASE_URL?.trim();
   if (url === undefined) {
     throw new Error('TURSO_DATABASE_URL env var is not defined');
   }
 
-  const authToken = getEnv().TURSO_AUTH_TOKEN?.trim();
+  const authToken = env.TURSO_AUTH_TOKEN?.trim();
   if (authToken == undefined) {
     throw new Error('TURSO_AUTH_TOKEN env var is not defined');
   }

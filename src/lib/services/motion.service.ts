@@ -15,11 +15,6 @@ import { getEnv } from '#env';
 import type { QueueStatus } from '@fal-ai/client';
 import { createFalClient } from '@fal-ai/client';
 
-// Configure fal client
-const fal = createFalClient({
-  credentials: getEnv().FAL_KEY || '',
-});
-
 interface GenerateMotionOptions {
   imageUrl: string;
   prompt: string;
@@ -247,6 +242,11 @@ export async function generateMotionForFrame(
     let statusUrl: string | undefined;
     let responseUrl: string | undefined;
     let cancelUrl: string | undefined;
+
+    // Configure fal client
+    const fal = createFalClient({
+      credentials: getEnv().FAL_KEY || '',
+    });
 
     // Call the Fal.ai model using subscribe for queue tracking
     const result = await fal.subscribe(modelConfig.id, {
