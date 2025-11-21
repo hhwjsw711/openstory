@@ -74,7 +74,6 @@ storybook-static
 .dev.vars
 !.dev.vars.example
 worker-configuration.d.ts
-cloudflare-env.d.ts
 .wrangler/
 
 # opennext
