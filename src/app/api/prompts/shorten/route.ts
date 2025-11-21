@@ -3,9 +3,6 @@
  * POST /api/prompts/shorten - Shorten an image prompt using AI
  */
 
-import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
@@ -13,6 +10,9 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import { handleApiError } from '@/lib/errors';
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 // Input validation schema
 const shortenPromptSchema = z.object({

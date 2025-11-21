@@ -25,7 +25,7 @@ export interface TeamMember {
   fullName: string | null;
   avatarUrl: string | null;
   role: string;
-  joinedAt: string;
+  joinedAt: Date;
 }
 
 export interface TeamInvitation {
@@ -324,7 +324,7 @@ export class TeamService {
    * @returns Array of team members with their details
    */
   async getMembers(teamId: string): Promise<TeamMember[]> {
-    const members = await this.database
+    const members: TeamMember[] = await this.database
       .select({
         userId: teamMembers.userId,
         email: user.email,
@@ -344,7 +344,7 @@ export class TeamService {
       fullName: m.fullName,
       avatarUrl: m.avatarUrl,
       role: m.role,
-      joinedAt: m.joinedAt.toISOString(),
+      joinedAt: m.joinedAt,
     }));
   }
 
@@ -358,13 +358,21 @@ export class TeamService {
   async getInvitations(
     teamId: string
   ): Promise<Omit<TeamInvitation, 'token'>[]> {
-    const invitations = await this.database.query.teamInvitations.findMany({
-      where: eq(teamInvitations.teamId, teamId),
-      orderBy: (teamInvitations, { desc }) => [desc(teamInvitations.createdAt)],
-      columns: {
-        token: false, // Exclude token for security
-      },
-    });
+    const invitations: Omit<TeamInvitation, 'token'>[] = await db
+      .select({
+        id: teamInvitations.id,
+        teamId: teamInvitations.teamId,
+        email: teamInvitations.email,
+        role: teamInvitations.role,
+        invitedBy: teamInvitations.invitedBy,
+        status: teamInvitations.status,
+        expiresAt: teamInvitations.expiresAt,
+        createdAt: teamInvitations.createdAt,
+        acceptedAt: teamInvitations.acceptedAt,
+      })
+      .from(teamInvitations)
+      .where(eq(teamInvitations.teamId, teamId))
+      .orderBy(asc(teamInvitations.createdAt));
 
     return invitations.map((inv) => ({
       id: inv.id,
