@@ -14,6 +14,7 @@ import {
 import { sequenceService } from '@/lib/services/sequence.service';
 import type { StoryboardWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
+import { Sequence } from '@/types/database';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
@@ -158,7 +159,7 @@ export async function GET() {
       );
     }
 
-    const sequences = await sequenceService.getSequencesByTeam(
+    const sequences: Sequence[] = await sequenceService.getSequencesByTeam(
       defaultTeam.teamId
     );
 

@@ -25,7 +25,8 @@ export function useUser() {
     queryFn: async (): Promise<UserData> => {
       // Fetch user data - session guaranteed by middleware
       const response = await fetch('/api/user/me');
-      const result = await response.json();
+      const result: { success: boolean; data?: UserData; message?: string } =
+        await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to fetch user');

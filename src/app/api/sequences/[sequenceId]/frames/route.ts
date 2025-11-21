@@ -14,11 +14,13 @@ import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import type { NewFrame } from '@/lib/db/schema';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
+  BulkFrameInput,
   bulkFrameSchema,
+  SingleFrameInput,
   singleFrameSchema,
 } from '@/lib/schemas/frame.schemas';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { frameService } from '@/lib/services/frame.service';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -121,7 +123,7 @@ export async function POST(
     await requireTeamMemberAccess(user.id, sequence.teamId);
 
     // Parse request body
-    const body = await request.json();
+    const body: BulkFrameInput | SingleFrameInput = await request.json();
 
     // Determine if this is bulk or single creation
     const isBulk = 'frames' in body && Array.isArray(body.frames);

@@ -1,11 +1,9 @@
-import type { LetzAIMode } from '@/lib/ai/letzai-client';
-import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
 import { getTextToImageModelId, type TextToImageModel } from '@/lib/ai/models';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
-import type { LetzAIImageResponse } from '@/lib/schemas/letzai-request';
+import { ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 
 import { fal } from '@fal-ai/client';
 
@@ -40,7 +38,7 @@ export type ImageGenerationParams = {
   creativity?: number;
   hasWatermark?: boolean;
   systemVersion?: number;
-  mode?: LetzAIMode;
+  mode?: 'default' | 'sigma';
 
   // Model-specific features
   style?: string; // Recraft
@@ -274,18 +272,46 @@ export async function generateImageWithProvider(
         landscape_16_9: { width: 1600, height: 900 },
       }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
 
-      const resp = await generateImageLetzAI({
-        prompt: params.prompt,
-        width: presetDims.width,
-        height: presetDims.height,
-        quality: params.quality ?? 5,
-        creativity: params.creativity ?? 2,
-        hasWatermark: params.hasWatermark ?? false,
-        systemVersion: params.systemVersion ?? 3,
-        mode: params.mode ?? 'cinematic',
+      // TODO: This needs to be updated to use the new SDK
+      const resp = await imagesCreate({
+        // @ts-expect-error - webhookUrl is not required for imagesCreate
+        body: {
+          prompt: params.prompt,
+          width: presetDims.width,
+          height: presetDims.height,
+          quality: params.quality ?? 5,
+          creativity: params.creativity ?? 2,
+          hasWatermark: params.hasWatermark ?? false,
+          systemVersion: params.systemVersion ?? 3,
+          mode: params.mode ?? 'default',
+          hideFromUserProfile: false,
+        },
       });
+      // @TODO Tom 21 Nov 2025: This is kinda hacky, but it's the best we can do for now
+
       if (!resp.data) throw new Error('No data returned from LetzAI');
-      return resultByProvider(params.model, params, resp.data);
+      let imageDto: ImageDto = resp.data;
+      do {
+        // Now we have to poll the task status until it is completed
+        const imageStatusResp = await imagesGet({ path: { id: resp.data.id } });
+        if (!imageStatusResp.data)
+          throw new Error('No data returned from LetzAI');
+
+        imageDto = imageStatusResp.data;
+        console.log('imageStatus', imageDto.status, imageDto.progress);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      } while (
+        imageDto.status !== 'ready' &&
+        imageDto.status !== 'failed' &&
+        imageDto.status !== 'interrupted'
+      );
+      if (imageDto.status === 'failed') {
+        throw new Error('Image generation failed');
+      }
+      if (imageDto.status === 'interrupted') {
+        throw new Error('Image generation interrupted');
+      }
+      return resultByProvider(params.model, params, imageDto);
     }
 
     default: {
@@ -324,7 +350,7 @@ function resultByProvider(
   };
 
   if (model === 'letzai') {
-    const letzaiResp = resp as LetzAIImageResponse;
+    const letzaiResp = resp as ImageDto;
 
     // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
     const presetDims = {

@@ -96,7 +96,9 @@ export const NEXT_PUBLIC_APP_URL =
  * This means Google OAuth is DISABLED on Vercel preview branches.
  */
 export function isGoogleOAuthEnabled(): boolean {
-  const isProduction = process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
+  const isProduction =
+    process.env.RAILWAY_ENVIRONMENT === 'production' ||
+    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   return isProduction || isDevelopment;
