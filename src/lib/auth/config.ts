@@ -3,21 +3,20 @@
  * Replaces Supabase Auth with anonymous users and email/password login
  */
 
-import { db } from '@/lib/db/client';
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
-import { APP_URL } from '@/lib/utils/environment';
+import { APP_URL, isGoogleOAuthEnabled } from '@/lib/utils/environment';
 import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { isValidAccessCode } from './access-codes';
 
-import { env } from '#env';
+import { getDb } from '#db-client';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
+  database: drizzleAdapter(getDb(), {
     provider: 'sqlite',
     schema: {
       user: user,
@@ -26,7 +25,7 @@ export const auth = betterAuth({
       verification: verification,
     },
   }),
-  secret: env.BETTER_AUTH_SECRET,
+  secret: process.env.BETTER_AUTH_SECRET,
   baseURL: APP_URL,
 
   // Trusted origins for CSRF protection
@@ -80,11 +79,11 @@ export const auth = betterAuth({
   // Preview branches use email/password or anonymous mode
   socialProviders: {
     google: {
-      clientId: env.GOOGLE_CLIENT_ID || '',
-      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       enabled:
-        !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) &&
-        (env.VERCEL_ENV === 'production' || env.NODE_ENV === 'development'),
+        !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) &&
+        isGoogleOAuthEnabled(),
       // Disable sign-up via Google during closed beta
       // Existing users can sign in, but new accounts must use email/password with access code
       disableSignUp: true,

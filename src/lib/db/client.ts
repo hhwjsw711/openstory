@@ -11,11 +11,21 @@
  * - Completely excludes Bun-specific code from production builds
  * - Works on all platforms (Bun, Node.js, Cloudflare Workers, Vercel)
  */
-import { db } from '#db-client';
-export { db } from '#db-client';
 
+export { getDb } from '#db-client';
+import { getDb } from '#db-client';
+
+/**
+ * Drizzle database instance
+ * Uses the libSQL client and includes all schema definitions
+ * Configured to use snake_case in database and camelCase in application
+ *
+ * Wrapped in a Proxy to support lazy initialization for Cloudflare Workers
+ * where environment variables are only available during request handling.
+ */
+// export const db = getDb();
 /**
  * Type alias for the database instance
  * Use this type when passing the db instance as a parameter
  */
-export type Database = typeof db;
+export type Database = ReturnType<typeof getDb>;

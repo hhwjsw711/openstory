@@ -3,15 +3,14 @@
  * GET /api/frames/[frameId]/download - Get a signed download URL for a frame's video
  */
 
+import { getDb } from '#db-client';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
-import { db } from '@/lib/db/client';
 import { frames, sequences } from '@/lib/db/schema';
 import { handleApiError, ValidationError } from '@/lib/errors';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { getVideoDownloadUrl } from '@/lib/services/video-storage.service';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ frameId: string }> }
@@ -31,7 +30,7 @@ export async function GET(
     const user = await requireUser();
 
     // Get frame with sequence info to verify access and extract video path
-    const [frame] = await db
+    const [frame] = await getDb()
       .select({
         id: frames.id,
         videoUrl: frames.videoUrl,

@@ -3,7 +3,7 @@
  * Provides session management for Server Actions and API routes
  */
 
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import { TeamMember, teamMembers } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
@@ -73,7 +73,7 @@ export async function getUserWithTeam(): Promise<{
 
   try {
     // Fetch all team memberships for the user
-    const teamMembersList: Pick<TeamMember, 'teamId' | 'role'>[] = await db
+    const teamMembersList: Pick<TeamMember, 'teamId' | 'role'>[] = await getDb()
       .select({
         teamId: teamMembers.teamId,
         role: teamMembers.role,

@@ -1,4 +1,4 @@
-import { env } from '#env';
+import { getEnv } from '#env';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
@@ -98,7 +98,9 @@ function parseEnhancedScriptResponse(response: string): {
     const jsonData = JSON.parse(jsonMatch[1]);
     styleRecommendation = StyleStackRecommendationSchema.parse(jsonData);
   } catch (parseError) {
-    throw new Error(`Failed to parse style recommendation JSON: ${parseError}`);
+    throw new Error(
+      `Failed to parse style recommendation JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+    );
   }
 
   // Extract the enhanced script text (everything before the JSON block)
@@ -166,7 +168,7 @@ export async function enhanceScript(
     }
 
     // Check if OpenRouter API key is configured
-    if (!env.OPENROUTER_KEY) {
+    if (!getEnv().OPENROUTER_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
 

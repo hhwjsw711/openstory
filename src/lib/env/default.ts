@@ -1,1 +1,3 @@
-export const env = process.env;
+console.log('[env default] Loading context');
+
+export const getEnv = () => process.env;

@@ -3,7 +3,6 @@
  * based on environment variables and deployment context.
  */
 
-import { env } from '#env';
 /**
  * Platform detection
  */
@@ -18,16 +17,17 @@ export type DeploymentPlatform =
  * Detect which platform the app is running on
  */
 export function getDeploymentPlatform(): DeploymentPlatform {
-  if (env.CF_PAGES) {
+  // Note this should use process.env at build time, not getEnv()
+  if (process.env.CF_PAGES) {
     return 'cloudflare';
   }
-  if (env.VERCEL) {
+  if (process.env.VERCEL) {
     return 'vercel';
   }
-  if (env.RAILWAY_ENVIRONMENT) {
+  if (process.env.RAILWAY_ENVIRONMENT) {
     return 'railway';
   }
-  if (env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development') {
     return 'local';
   }
   return 'unknown';
@@ -37,7 +37,7 @@ export function getDeploymentPlatform(): DeploymentPlatform {
  * Check if running on Cloudflare Pages/Workers
  */
 export function isCloudflare(): boolean {
-  return env.CF_PAGES === '1' || !!env.CF_PAGES_URL;
+  return process.env.CF_PAGES === '1' || !!process.env.CF_PAGES_URL;
 }
 
 /**
@@ -68,7 +68,7 @@ function getAppUrl(): string {
  * Server-side application URL
  * Used by Better Auth, QStash webhooks, and internal API calls
  */
-export const APP_URL = env.APP_URL || getAppUrl();
+export const APP_URL = process.env.APP_URL || getAppUrl();
 
 /**
  * Client-side application URL

@@ -8,16 +8,14 @@
  * @module lib/services/team.service
  */
 
+import { getDb } from '#db-client';
 import { INVITATION_CONFIG } from '@/lib/auth/constants';
 import type { TeamRole } from '@/lib/auth/permissions';
 import { getUserRole } from '@/lib/auth/permissions';
-import type { Database } from '@/lib/db/client';
-import { db } from '@/lib/db/client';
 import { teamInvitations, teamMembers, user } from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
 import { and, asc, eq } from 'drizzle-orm';
 import crypto from 'node:crypto';
-
 // Type definitions
 export interface TeamMember {
   userId: string;
@@ -74,7 +72,7 @@ export interface UpdateMemberRoleParams {
  * the caller has already verified authentication and authorization.
  */
 export class TeamService {
-  constructor(private database: Database = db) {}
+  constructor() {}
 
   /**
    * Create a team invitation
@@ -88,13 +86,13 @@ export class TeamService {
     params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
-    const existingAuthUser = await this.database.query.user.findFirst({
+    const existingAuthUser = await getDb().query.user.findFirst({
       where: eq(user.email, params.email),
       columns: { id: true },
     });
 
     if (existingAuthUser) {
-      const existingMember = await this.database.query.teamMembers.findFirst({
+      const existingMember = await getDb().query.teamMembers.findFirst({
         where: and(
           eq(teamMembers.teamId, params.teamId),
           eq(teamMembers.userId, existingAuthUser.id)
@@ -108,15 +106,14 @@ export class TeamService {
     }
 
     // Check if there's already a pending invitation
-    const existingInvitation =
-      await this.database.query.teamInvitations.findFirst({
-        where: and(
-          eq(teamInvitations.teamId, params.teamId),
-          eq(teamInvitations.email, params.email),
-          eq(teamInvitations.status, 'pending')
-        ),
-        columns: { id: true },
-      });
+    const existingInvitation = await getDb().query.teamInvitations.findFirst({
+      where: and(
+        eq(teamInvitations.teamId, params.teamId),
+        eq(teamInvitations.email, params.email),
+        eq(teamInvitations.status, 'pending')
+      ),
+      columns: { id: true },
+    });
 
     if (existingInvitation) {
       throw new ValidationError(
@@ -135,7 +132,7 @@ export class TeamService {
     );
 
     // Create invitation
-    const [invitation] = await this.database
+    const [invitation] = await getDb()
       .insert(teamInvitations)
       .values({
         teamId: params.teamId,
@@ -183,7 +180,7 @@ export class TeamService {
    */
   async acceptInvitation(params: AcceptInvitationParams): Promise<string> {
     // Get invitation
-    const invitation = await this.database.query.teamInvitations.findFirst({
+    const invitation = await getDb().query.teamInvitations.findFirst({
       where: eq(teamInvitations.token, params.token),
     });
 
@@ -198,7 +195,7 @@ export class TeamService {
 
     if (new Date(invitation.expiresAt) < new Date()) {
       // Mark as expired
-      await this.database
+      await getDb()
         .update(teamInvitations)
         .set({ status: 'expired' })
         .where(eq(teamInvitations.id, invitation.id));
@@ -207,7 +204,7 @@ export class TeamService {
     }
 
     // Check if user is already a member
-    const existingMember = await this.database.query.teamMembers.findFirst({
+    const existingMember = await getDb().query.teamMembers.findFirst({
       where: and(
         eq(teamMembers.teamId, invitation.teamId),
         eq(teamMembers.userId, params.userId)
@@ -220,7 +217,7 @@ export class TeamService {
     }
 
     // Add user to team
-    await this.database.insert(teamMembers).values({
+    await getDb().insert(teamMembers).values({
       teamId: invitation.teamId,
       userId: params.userId,
       role: invitation.role,
@@ -228,7 +225,7 @@ export class TeamService {
 
     // Mark invitation as accepted
     try {
-      await this.database
+      await getDb()
         .update(teamInvitations)
         .set({
           status: 'accepted',
@@ -268,7 +265,7 @@ export class TeamService {
     }
 
     // Remove the member
-    await this.database
+    await getDb()
       .delete(teamMembers)
       .where(
         and(
@@ -305,7 +302,7 @@ export class TeamService {
     }
 
     // Update the role
-    await this.database
+    await getDb()
       .update(teamMembers)
       .set({ role: params.newRole })
       .where(
@@ -324,7 +321,7 @@ export class TeamService {
    * @returns Array of team members with their details
    */
   async getMembers(teamId: string): Promise<TeamMember[]> {
-    const members: TeamMember[] = await this.database
+    const members: TeamMember[] = await getDb()
       .select({
         userId: teamMembers.userId,
         email: user.email,
@@ -358,7 +355,7 @@ export class TeamService {
   async getInvitations(
     teamId: string
   ): Promise<Omit<TeamInvitation, 'token'>[]> {
-    const invitations: Omit<TeamInvitation, 'token'>[] = await db
+    const invitations: Omit<TeamInvitation, 'token'>[] = await getDb()
       .select({
         id: teamInvitations.id,
         teamId: teamInvitations.teamId,

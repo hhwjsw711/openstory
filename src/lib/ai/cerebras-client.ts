@@ -3,7 +3,7 @@
  * Provides 1,400-3,000 tokens/second throughput
  */
 
-import { env } from '#env';
+import { getEnv } from '#env';
 import Cerebras from '@cerebras/cerebras_cloud_sdk';
 export type CerebrasRequestParams = Omit<
   Cerebras.Chat.ChatCompletionCreateParams,
@@ -16,7 +16,7 @@ export type CerebrasResponse = Cerebras.Chat.ChatCompletion;
  * Create Cerebras client instance
  */
 function getCerebrasClient(): Cerebras {
-  const apiKey = env.CEREBRAS_API_KEY;
+  const apiKey = getEnv().CEREBRAS_API_KEY;
 
   if (!apiKey) {
     throw new Error(

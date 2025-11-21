@@ -3,8 +3,8 @@
  * Handles creating and querying audit records for script analysis operations
  */
 
+import { getDb } from '#db-client';
 import type { SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
-import { db } from '@/lib/db/client';
 import {
   scriptAnalysisAudit,
   type InsertScriptAnalysisAudit,
@@ -60,7 +60,7 @@ export async function createAuditRecord(
     status: input.status,
   };
 
-  const [created] = await db
+  const [created] = await getDb()
     .insert(scriptAnalysisAudit)
     .values(record)
     .returning();
@@ -79,7 +79,7 @@ export async function getSequenceAuditHistory(
   sequenceId: string,
   limit = 50
 ): Promise<ScriptAnalysisAudit[]> {
-  return db
+  return getDb()
     .select()
     .from(scriptAnalysisAudit)
     .where(eq(scriptAnalysisAudit.sequenceId, sequenceId))
@@ -96,7 +96,7 @@ export async function getSequenceAuditHistory(
 export async function getLatestAuditRecord(
   sequenceId: string
 ): Promise<ScriptAnalysisAudit | null> {
-  const [latest] = await db
+  const [latest] = await getDb()
     .select()
     .from(scriptAnalysisAudit)
     .where(eq(scriptAnalysisAudit.sequenceId, sequenceId))
@@ -145,7 +145,7 @@ export async function getTeamAuditStats(
     conditions.length > 1 ? and(...conditions) : conditions[0];
 
   // Get all audit records for the team
-  const records = await db
+  const records = await getDb()
     .select()
     .from(scriptAnalysisAudit)
     .where(whereClause);
@@ -190,7 +190,7 @@ export async function getAuditRecordsWithErrors(
   teamId: string,
   limit = 20
 ): Promise<ScriptAnalysisAudit[]> {
-  return db
+  return getDb()
     .select()
     .from(scriptAnalysisAudit)
     .where(

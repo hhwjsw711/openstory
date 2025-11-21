@@ -2,7 +2,6 @@
  * QStash Workflow client configuration
  */
 
-import { env } from '#env';
 import { ConfigurationError } from '@/lib/errors';
 import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
 import { Client } from '@upstash/workflow';
@@ -11,7 +10,7 @@ import { Client } from '@upstash/workflow';
  * Most workflow operations should use the serve() function in route files
  */
 function getQStashClient(): Client {
-  const token = env.QSTASH_TOKEN;
+  const token = process.env.QSTASH_TOKEN;
 
   if (!token) {
     throw new ConfigurationError(

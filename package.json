@@ -87,12 +87,10 @@
   },
   "imports": {
     "#env": {
-      "workerd": "./src/lib/env/cloudflare.ts",
-      "default": "./src/lib/env/default.ts"
+      "default": "./src/lib/env/cloudflare.ts"
     },
     "#db-client": {
-      "development": "./src/lib/db/client-local.ts",
-      "default": "./src/lib/db/client-remote.ts"
+      "default": "./src/lib/db/client-cloudflare.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
@@ -101,7 +99,6 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
-    "@cloudflare/workers-types": "^4.20251120.0",
     "@faker-js/faker": "^10.1.0",
     "@storybook/addon-a11y": "^10.0.8",
     "@storybook/addon-docs": "^10.0.8",

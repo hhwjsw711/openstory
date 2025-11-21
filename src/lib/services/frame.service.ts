@@ -8,8 +8,8 @@
  * @module lib/services/frame.service
  */
 
+import { getDb } from '#db-client';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import { db } from '@/lib/db/client';
 import {
   createFrame as createFrameHelper,
   createFramesBulk,
@@ -26,7 +26,6 @@ import type {
   UpdateFrameInput,
 } from '@/lib/schemas/frame.schemas';
 import { and, eq } from 'drizzle-orm';
-
 // Type definitions - using Zod-inferred types for consistency with API validation
 export type CreateFrameParams = CreateFrameInput;
 
@@ -90,7 +89,7 @@ export class FrameService {
    */
   async deleteFrame(frameId: string): Promise<string> {
     // First get the frame to know its sequenceId
-    const [frame] = await db
+    const [frame] = await getDb()
       .select({ sequenceId: frames.sequenceId })
       .from(frames)
       .where(eq(frames.id, frameId));
@@ -109,7 +108,10 @@ export class FrameService {
    * @returns The frame
    */
   async getFrame(frameId: string): Promise<Frame> {
-    const [data] = await db.select().from(frames).where(eq(frames.id, frameId));
+    const [data] = await getDb()
+      .select()
+      .from(frames)
+      .where(eq(frames.id, frameId));
 
     if (!data) {
       throw new ValidationError('Frame not found');
@@ -141,7 +143,7 @@ export class FrameService {
     frameOrders: Array<{ id: string; order_index: number }>
   ): Promise<void> {
     // Use transaction to update all frames
-    await db.transaction(async (tx) => {
+    await getDb().transaction(async (tx) => {
       for (const frameOrder of frameOrders) {
         await tx
           .update(frames)
@@ -179,7 +181,7 @@ export class FrameService {
           error.message.includes('unique constraint'))
       ) {
         // For upsert, we need to manually handle conflicts
-        const upserted = await db.transaction(async (tx) => {
+        const upserted = await getDb().transaction(async (tx) => {
           const results: Frame[] = [];
           for (const frame of frameInserts) {
             const [existing] = await tx

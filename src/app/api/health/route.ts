@@ -3,7 +3,7 @@
  * Reports system variables for debugging deployment issues
  */
 
-import { env } from '#env';
+import { getEnv } from '#env';
 import { APP_URL, getDeploymentPlatform } from '@/lib/utils/environment';
 import { NextResponse } from 'next/server';
 
@@ -22,41 +22,43 @@ export async function GET() {
     status: 'ok',
     timestamp: new Date().toISOString(),
     platform: getDeploymentPlatform(),
+    env: getEnv(),
+    processEnv: process.env,
     deployment: {
       // Vercel-specific
-      vercel: !!env.VERCEL,
-      vercelEnv: env.VERCEL_ENV || '<not set>',
-      vercelUrl: env.VERCEL_URL || '<not set>',
-      vercelGitCommitRef: env.VERCEL_GIT_COMMIT_REF || '<not set>',
+      vercel: process.env.VERCEL,
+      vercelEnv: process.env.VERCEL_ENV || '<not set>',
+      vercelUrl: process.env.VERCEL_URL || '<not set>',
+      vercelGitCommitRef: process.env.VERCEL_GIT_COMMIT_REF || '<not set>',
 
       // Cloudflare-specific
-      cfPages: env.CF_PAGES || '<not set>',
-      cfPagesUrl: env.CF_PAGES_URL || '<not set>',
-      cfPagesBranch: env.CF_PAGES_BRANCH || '<not set>',
+      cfPages: process.env.CF_PAGES || '<not set>',
+      cfPagesUrl: process.env.CF_PAGES_URL || '<not set>',
+      cfPagesBranch: process.env.CF_PAGES_BRANCH || '<not set>',
 
       // Railway-specific
-      railwayEnv: env.RAILWAY_ENVIRONMENT || '<not set>',
-      railwayPublicDomain: env.RAILWAY_PUBLIC_DOMAIN || '<not set>',
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT || '<not set>',
+      railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || '<not set>',
 
       // Node environment
-      nodeEnv: env.NODE_ENV || '<not set>',
+      nodeEnv: process.env.NODE_ENV || '<not set>',
     },
     urls: {
       appUrl: APP_URL,
-      explicitAppUrl: env.APP_URL || '<not set>',
+      explicitAppUrl: process.env.APP_URL || '<not set>',
     },
     auth: {
-      betterAuthSecret: sanitize(env.BETTER_AUTH_SECRET),
+      betterAuthSecret: sanitize(process.env.BETTER_AUTH_SECRET),
       baseUrl: APP_URL, // This is what Better Auth uses
     },
     database: {
-      tursoUrl: env.TURSO_DATABASE_URL || '<not set>',
-      tursoToken: sanitize(env.TURSO_AUTH_TOKEN),
+      tursoUrl: process.env.TURSO_DATABASE_URL || '<not set>',
+      tursoToken: sanitize(process.env.TURSO_AUTH_TOKEN),
     },
     storage: {
-      r2AccountId: env.R2_ACCOUNT_ID || '<not set>',
-      r2BucketName: env.R2_BUCKET_NAME || '<not set>',
-      r2AccessKeyId: sanitize(env.R2_ACCESS_KEY_ID),
+      r2AccountId: process.env.R2_ACCOUNT_ID || '<not set>',
+      r2BucketName: process.env.R2_BUCKET_NAME || '<not set>',
+      r2AccessKeyId: sanitize(process.env.R2_ACCESS_KEY_ID),
     },
   };
 

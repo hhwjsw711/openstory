@@ -3,28 +3,31 @@
  * Handles sending transactional emails via Resend
  */
 
+import { getEnv } from '#env';
 import { Resend } from 'resend';
 // @ts-ignore - resolved via package.json imports
-import { env } from '#env';
 
-let _resend: Resend | null = null;
+let _resend: Resend | undefined = undefined;
 
-function getResend() {
+function getResend(): Resend | undefined {
   if (_resend) return _resend;
 
-  const apiKey = env.RESEND_API_KEY;
+  const apiKey = getEnv().RESEND_API_KEY;
   if (apiKey) {
     _resend = new Resend(apiKey);
   }
   return _resend;
 }
 
-function getEmailConfig() {
+function getEmailConfig(): {
+  fromEmail: string;
+  fromName: string;
+} {
   const fromEmail =
-    env.EMAIL_FROM ||
-    (env.NODE_ENV === 'development' ? 'onboarding@resend.dev' : null);
+    getEnv().EMAIL_FROM ||
+    (process.env.NODE_ENV === 'development' ? 'onboarding@resend.dev' : null);
 
-  if (!fromEmail && env.NODE_ENV !== 'development') {
+  if (!fromEmail && process.env.NODE_ENV !== 'development') {
     throw new Error(
       'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
     );
@@ -32,7 +35,7 @@ function getEmailConfig() {
 
   return {
     fromEmail: fromEmail!,
-    fromName: env.EMAIL_FROM_NAME || 'Velro',
+    fromName: 'Velro',
   };
 }
 

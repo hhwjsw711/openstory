@@ -3,6 +3,7 @@
  * POST /api/prompts/shorten - Shorten an image prompt using AI
  */
 
+import { getEnv } from '#env';
 import {
   callOpenRouter,
   RECOMMENDED_MODELS,
@@ -14,7 +15,6 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { env } from '#env';
 // Input validation schema
 const shortenPromptSchema = z.object({
   prompt: z
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     const validated = shortenPromptSchema.parse(body);
 
     // Check if OpenRouter API key is configured
-    if (!env.OPENROUTER_KEY) {
+    if (!getEnv().OPENROUTER_KEY) {
       return NextResponse.json(
         {
           success: false,

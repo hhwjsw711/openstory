@@ -3,7 +3,7 @@
  * Analyzes scripts to identify scene boundaries and generate frame metadata
  */
 
-import { env } from '#env';
+import { getEnvAsync } from '#env';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   storyboardPrompt,
@@ -63,7 +63,7 @@ export async function analyzeScriptForFrames(
   auditContext?: { sequenceId: string; teamId: string; userId: string }
 ): Promise<{ analysis: SceneAnalysis; durationMs: number }> {
   const startTime = Date.now();
-
+  const runtimeEnv = await getEnvAsync();
   // Initialize audit data
   const auditData: ScriptAnalysisAuditData = {
     userScript: script,
@@ -94,7 +94,7 @@ export async function analyzeScriptForFrames(
   try {
     if (isCerebrasModel) {
       // Route to Cerebras for ultra-fast inference
-      if (!env.CEREBRAS_API_KEY) {
+      if (!runtimeEnv.CEREBRAS_API_KEY) {
         throw new Error('CEREBRAS_API_KEY is not set');
       }
 
@@ -121,7 +121,7 @@ export async function analyzeScriptForFrames(
       content = firstChoice.message.content;
     } else {
       // Route to OpenRouter for Anthropic and other models
-      if (!env.OPENROUTER_KEY) {
+      if (!runtimeEnv.OPENROUTER_KEY) {
         throw new Error('OPENROUTER_KEY is not set');
       }
 
