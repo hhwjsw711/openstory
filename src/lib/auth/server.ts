@@ -4,7 +4,7 @@
  */
 
 import { db } from '@/lib/db/client';
-import { teamMembers } from '@/lib/db/schema';
+import { TeamMember, teamMembers } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import type { Session, User } from './config';
@@ -73,7 +73,7 @@ export async function getUserWithTeam(): Promise<{
 
   try {
     // Fetch all team memberships for the user
-    const teamMembersList = await db
+    const teamMembersList: Pick<TeamMember, 'teamId' | 'role'>[] = await db
       .select({
         teamId: teamMembers.teamId,
         role: teamMembers.role,

@@ -11,9 +11,8 @@
  * - Completely excludes Bun-specific code from production builds
  * - Works on all platforms (Bun, Node.js, Cloudflare Workers, Vercel)
  */
-
-export { db } from '#db-client';
 import { db } from '#db-client';
+export { db } from '#db-client';
 
 /**
  * Type alias for the database instance

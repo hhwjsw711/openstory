@@ -1,11 +1,12 @@
-import type { LetzAIMode } from '@/lib/ai/letzai-client';
-import { generateImage as generateImageLetzAI } from '@/lib/ai/letzai-client';
 import { getTextToImageModelId, type TextToImageModel } from '@/lib/ai/models';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
-import type { LetzAIImageResponse } from '@/lib/schemas/letzai-request';
+import {
+  imagesCreate as generateImageLetzAI,
+  ImageDto,
+} from '@/lib/letzai/sdk';
 
 import { fal } from '@fal-ai/client';
 
@@ -40,7 +41,7 @@ export type ImageGenerationParams = {
   creativity?: number;
   hasWatermark?: boolean;
   systemVersion?: number;
-  mode?: LetzAIMode;
+  mode?: 'default' | 'sigma';
 
   // Model-specific features
   style?: string; // Recraft
@@ -275,17 +276,21 @@ export async function generateImageWithProvider(
       }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
 
       const resp = await generateImageLetzAI({
-        prompt: params.prompt,
-        width: presetDims.width,
-        height: presetDims.height,
-        quality: params.quality ?? 5,
-        creativity: params.creativity ?? 2,
-        hasWatermark: params.hasWatermark ?? false,
-        systemVersion: params.systemVersion ?? 3,
-        mode: params.mode ?? 'cinematic',
+        body: {
+          prompt: params.prompt,
+          width: presetDims.width,
+          height: presetDims.height,
+          quality: params.quality ?? 5,
+          creativity: params.creativity ?? 2,
+          hasWatermark: params.hasWatermark ?? false,
+          systemVersion: params.systemVersion ?? 3,
+          mode: params.mode ?? 'default',
+          hideFromUserProfile: false,
+          webhookUrl: '',
+        },
       });
       if (!resp.data) throw new Error('No data returned from LetzAI');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByProvider(params.model, params, resp);
     }
 
     default: {
@@ -324,7 +329,7 @@ function resultByProvider(
   };
 
   if (model === 'letzai') {
-    const letzaiResp = resp as LetzAIImageResponse;
+    const letzaiResp = resp as ImageDto;
 
     // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
     const presetDims = {

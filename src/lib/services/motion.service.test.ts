@@ -5,14 +5,12 @@
  */
 
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import {
   mockCreateFalClient,
   mockSubscribe,
 } from './__mocks__/fal-client.mock';
-import {
-  generateMotionForFrame,
-  IMAGE_TO_VIDEO_MODELS,
-} from './motion.service';
+import { generateMotionForFrame } from './motion.service';
 
 describe('Motion Service', () => {
   beforeEach(() => {
