@@ -33,8 +33,8 @@
     "setup:cloudflare-secrets": "./scripts/setup-cloudflare-secrets.sh",
     "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=\"\"",
-    "deploy:development": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=preview",
+    "deploy:production": "opennextjs-cloudflare build --env=\"\" && opennextjs-cloudflare deploy --env=\"\"",
+    "deploy:preview": "opennextjs-cloudflare build --env=preview && opennextjs-cloudflare deploy --env=preview",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts"
