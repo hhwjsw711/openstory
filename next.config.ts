@@ -2,7 +2,9 @@ import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 import type { NextConfig } from 'next';
 
 // added by create cloudflare to enable calling `getCloudflareContext()` in `next dev`
-void initOpenNextCloudflareForDev();
+if (process.env.BUILD_CLOUDFLARE) {
+  void initOpenNextCloudflareForDev();
+}
 
 const nextConfig: NextConfig = {
   // Remove turbopack.root - Next.js will use the project root by default

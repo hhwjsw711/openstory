@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
     "build": "next build",
-    "build:cloudflare": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "bunx oxlint --type-aware",
     "lint:fix": "bunx oxlint --type-aware --fix",
@@ -30,17 +29,20 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy",
-    "setup:cloudflare-secrets": "./scripts/setup-cloudflare-secrets.sh",
-    "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:production": "opennextjs-cloudflare build --env=\"\" && opennextjs-cloudflare deploy --env=\"\"",
-    "deploy:preview": "opennextjs-cloudflare build --env=preview && opennextjs-cloudflare deploy --env=preview",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "deploy:preview": "build:cloudflare:preview && opennextjs-cloudflare deploy --env=preview",
     "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts",
     "secrets:dev": "doppler secrets download --config=dev --format=env > .dev.vars && cp .dev.vars .env.local",
-    "secrets:cf:preview": "doppler secrets --json --config=stg | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk -e preview",
-    "secrets:cf:prod": "doppler secrets --json --config=prod | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk -e production"
+    "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "cf:secrets:stg": "doppler secrets --json --config=stg | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk --env stg",
+    "cf:secrets:prd": "doppler secrets --json --config=prd | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk --env \"\"",
+    "cf:build:prd": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare build --env=\"\"",
+    "cf:build:stg": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare build --env=stg",
+    "cf:preview": "bun run cf:build:stg && opennextjs-cloudflare preview",
+    "cf:deploy:prd": "bun run cf:build:prd && BUILD_CLOUDFLARE=1 opennextjs-cloudflare deploy --env=\"\"",
+    "cf:deploy:stg": "bun run cf:build:stg && BUILD_CLOUDFLARE=1 opennextjs-cloudflare deploy --env=stg",
+    "cf:upload:prd": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare upload --env=\"\"",
+    "cf:upload:stg": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare upload --env=stg"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.933.0",
@@ -90,10 +92,11 @@
   },
   "imports": {
     "#env": {
-      "default": "./src/lib/env/cloudflare.ts"
+      "default": "./src/lib/env/default.ts"
     },
     "#db-client": {
-      "default": "./src/lib/db/client-cloudflare.ts"
+      "development": "./src/lib/db/client-local.ts",
+      "default": "./src/lib/db/client-web.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
