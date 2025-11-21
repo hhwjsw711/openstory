@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { useSession } from '@/lib/auth/client';
 import { redirect } from 'next/navigation';
 
-export default async function ProtectedLayout({
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
