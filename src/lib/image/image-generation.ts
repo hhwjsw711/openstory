@@ -3,10 +3,7 @@ import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
-import {
-  imagesCreate as generateImageLetzAI,
-  ImageDto,
-} from '@/lib/letzai/sdk';
+import { ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 
 import { fal } from '@fal-ai/client';
 
@@ -275,7 +272,9 @@ export async function generateImageWithProvider(
         landscape_16_9: { width: 1600, height: 900 },
       }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
 
-      const resp = await generateImageLetzAI({
+      // TODO: This needs to be updated to use the new SDK
+      const resp = await imagesCreate({
+        // @ts-expect-error - webhookUrl is not required for imagesCreate
         body: {
           prompt: params.prompt,
           width: presetDims.width,
@@ -286,11 +285,33 @@ export async function generateImageWithProvider(
           systemVersion: params.systemVersion ?? 3,
           mode: params.mode ?? 'default',
           hideFromUserProfile: false,
-          webhookUrl: '',
         },
       });
+      // @TODO Tom 21 Nov 2025: This is kinda hacky, but it's the best we can do for now
+
       if (!resp.data) throw new Error('No data returned from LetzAI');
-      return resultByProvider(params.model, params, resp);
+      let imageDto: ImageDto = resp.data;
+      do {
+        // Now we have to poll the task status until it is completed
+        const imageStatusResp = await imagesGet({ path: { id: resp.data.id } });
+        if (!imageStatusResp.data)
+          throw new Error('No data returned from LetzAI');
+
+        imageDto = imageStatusResp.data;
+        console.log('imageStatus', imageDto.status, imageDto.progress);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      } while (
+        imageDto.status !== 'ready' &&
+        imageDto.status !== 'failed' &&
+        imageDto.status !== 'interrupted'
+      );
+      if (imageDto.status === 'failed') {
+        throw new Error('Image generation failed');
+      }
+      if (imageDto.status === 'interrupted') {
+        throw new Error('Image generation interrupted');
+      }
+      return resultByProvider(params.model, params, imageDto);
     }
 
     default: {

@@ -6,7 +6,7 @@
 import { db } from '@/lib/db/client';
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
-import { APP_URL } from '@/lib/utils/environment';
+import { APP_URL, isGoogleOAuthEnabled } from '@/lib/utils/environment';
 import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createAuthMiddleware } from 'better-auth/api';
@@ -19,17 +19,6 @@ const requiredEnvVars = {
   TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
 } as const;
-
-// Debug logging for Vercel 405/500 error investigation
-console.log('[Auth Config] Initializing Better Auth');
-console.log('[Auth Config] APP_URL:', APP_URL);
-console.log('[Auth Config] Trusted Origins:', [APP_URL]);
-console.log('[Auth Config] Environment Check:', {
-  TURSO_DATABASE_URL: !!process.env.TURSO_DATABASE_URL,
-  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ? 'Set' : 'Missing',
-  NODE_ENV: process.env.NODE_ENV,
-  VERCEL_ENV: process.env.VERCEL_ENV,
-});
 
 // Validate environment variables
 // Note: TURSO_AUTH_TOKEN is optional for local development (file: URLs)
@@ -104,10 +93,7 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      enabled:
-        !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) &&
-        (process.env.VERCEL_ENV === 'production' ||
-          process.env.NODE_ENV === 'development'),
+      enabled: isGoogleOAuthEnabled(),
       // Disable sign-up via Google during closed beta
       // Existing users can sign in, but new accounts must use email/password with access code
       disableSignUp: true,
