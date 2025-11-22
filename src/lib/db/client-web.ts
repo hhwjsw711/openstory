@@ -4,7 +4,7 @@ import { createClient, Client as LibsqlClient } from '@libsql/client/web';
 import { drizzle, LibSQLDatabase } from 'drizzle-orm/libsql';
 import { schema } from './schema';
 
-console.log('[db-cloudflare] Loading client');
+console.log('[db-web] Loading client');
 
 type Database = LibSQLDatabase<typeof schema>;
 

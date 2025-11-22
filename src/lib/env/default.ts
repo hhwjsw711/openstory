@@ -1,7 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-console.log('[env cloudflare] Loading context');
-
 export const getEnv = () => {
   if (process.env.BUILD_CLOUDFLARE) {
     const { env } = getCloudflareContext();

@@ -9,7 +9,7 @@ import { drizzle, LibSQLDatabase } from 'drizzle-orm/libsql';
 import { schema } from './schema';
 // @ts-ignore - resolved via package.json imports
 
-console.log('[db-remote] Loading client');
+console.log('[db-http] Loading client');
 
 // Define the database type explicitly
 type Database = LibSQLDatabase<typeof schema>;
