@@ -43,7 +43,7 @@ export type ImageGenerationParams = {
   // Model-specific features
   style?: string; // Recraft
   colors?: Array<{ r: number; g: number; b: number }>; // Recraft
-  resolution?: '1K' | '2K'; // Imagen4
+  resolution?: '1K' | '2K' | '4K'; // Imagen4, Nano Banana Pro
   enhancePrompt?: boolean; // FLUX Pro
   safetyTolerance?: number; // FLUX Pro
   acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell
@@ -214,6 +214,25 @@ export async function generateImageWithProvider(
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          sync_mode: false,
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(params.model, params, resp.data);
+    }
+
+    case 'nano_banana_pro': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          aspect_ratio: imageSizeToAspectRatio(
+            params.imageSize ?? DEFAULT_IMAGE_SIZE
+          ),
+          resolution: params.resolution ?? '2K',
           ...(params.numImages !== undefined && {
             num_images: params.numImages,
           }),
