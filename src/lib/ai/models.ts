@@ -310,6 +310,15 @@ export const IMAGE_MODELS = {
     description: 'Fastest generation, good for iteration',
     maxPromptLength: 2000, // ~512 tokens
   },
+  nano_banana_pro: {
+    id: 'fal-ai/nano-banana-pro' as const,
+    name: 'Nano Banana Pro',
+    provider: 'Fal.ai',
+    tier: 'high quality',
+    description:
+      "Enhanced realism and typography, Google's latest image generation model",
+    maxPromptLength: 50000, // ~12,800 tokens (supports very long prompts)
+  },
   flux_schnell: {
     id: 'fal-ai/flux/schnell' as const,
     name: 'Flux Schnell',
@@ -405,7 +414,7 @@ export type TextToImageModel = keyof typeof IMAGE_MODELS;
 export type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
 export type TextToImageModelId = ImageModelConfig['id'];
 
-export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana';
+export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_pro';
 
 // Helper to get model ID from key
 export function getTextToImageModelId(

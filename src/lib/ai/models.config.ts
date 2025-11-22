@@ -54,6 +54,13 @@ export const SCRIPT_ANALYSIS_MODELS = [
     description: 'Fastest analysis, highest quality',
   },
   {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro',
+    provider: 'Google',
+    tier: 'premium',
+    description: 'Latest Gemini model, best quality analysis',
+  },
+  {
     id: 'openai/gpt-5-pro',
     name: 'GPT-5 Pro',
     provider: 'OpenAI',
