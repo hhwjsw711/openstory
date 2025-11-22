@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -48,8 +49,11 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
       await queryClient.invalidateQueries({ queryKey: ['session'] });
       await queryClient.invalidateQueries({ queryKey: ['current-user'] });
 
+      // Validate redirect URL to prevent open redirects
+      const validatedRedirect = getRedirectFromParams({ redirectTo });
+
       // Use window.location for hard refresh to ensure session is updated
-      window.location.href = redirectTo;
+      window.location.href = validatedRedirect;
     } catch (err) {
       console.error('Activation error:', err);
       setError('An unexpected error occurred. Please try again.');

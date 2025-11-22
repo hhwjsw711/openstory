@@ -6,6 +6,7 @@
 
 import { InviteCodeForm } from '@/components/auth/invite-code-form';
 import { PageContainer } from '@/components/layout';
+import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { getUser } from '@/lib/auth/server';
 import { redirect } from 'next/navigation';
 
@@ -28,7 +29,7 @@ export default async function InviteCodePage({ searchParams }: Props) {
   // If user is already active, redirect to app
   if (!status || status === 'active') {
     const params = await searchParams;
-    const redirectTo = params.redirectTo || '/sequences';
+    const redirectTo = getRedirectFromParams(params);
     redirect(redirectTo);
   }
 
@@ -50,7 +51,7 @@ export default async function InviteCodePage({ searchParams }: Props) {
 
   // User is pending, show invite code form
   const params = await searchParams;
-  const redirectTo = params.redirectTo || '/sequences';
+  const redirectTo = getRedirectFromParams(params);
 
   return (
     <PageContainer>
