@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getUserRole } from '@/lib/auth/permissions';
 import type { Session, User } from './config';
-import { auth } from './config';
+import { getAuth } from './config';
 
 interface AuthResult {
   user: User;
@@ -27,6 +27,7 @@ export async function authenticateApiRequest(
   request: Request
 ): Promise<AuthResult | NextResponse<AuthError>> {
   try {
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });
@@ -121,6 +122,7 @@ export async function getOptionalUser(
   request: Request
 ): Promise<AuthResult | null> {
   try {
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });

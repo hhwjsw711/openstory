@@ -3,7 +3,7 @@
  * Comprehensive frame CRUD, ordering, and status operations using Drizzle ORM
  */
 
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import type { Frame, NewFrame } from '@/lib/db/schema';
 import { frames } from '@/lib/db/schema';
 import {
@@ -69,7 +69,10 @@ export type FrameFilters = {
  * ```
  */
 export async function getFrameById(frameId: string): Promise<Frame | null> {
-  const result = await db.select().from(frames).where(eq(frames.id, frameId));
+  const result = await getDb()
+    .select()
+    .from(frames)
+    .where(eq(frames.id, frameId));
   return result[0] ?? null;
 }
 
@@ -127,7 +130,7 @@ export async function getSequenceFrames(
   const orderFn = ascending ? asc : desc;
 
   // Execute query
-  let query = db
+  let query = getDb()
     .select()
     .from(frames)
     .where(and(...conditions))
@@ -162,7 +165,7 @@ export async function getSequenceFrames(
  * ```
  */
 export async function createFrame(data: NewFrame): Promise<Frame> {
-  const [frame] = await db.insert(frames).values(data).returning();
+  const [frame] = await getDb().insert(frames).values(data).returning();
   return frame;
 }
 
@@ -185,7 +188,7 @@ export async function updateFrame(
   frameId: string,
   data: Partial<NewFrame>
 ): Promise<Frame> {
-  const [frame] = await db
+  const [frame] = await getDb()
     .update(frames)
     .set({ ...data, updatedAt: new Date() })
     .where(eq(frames.id, frameId))
@@ -213,7 +216,7 @@ export async function updateFrame(
  * ```
  */
 export async function deleteFrame(frameId: string): Promise<boolean> {
-  const result = await db.delete(frames).where(eq(frames.id, frameId));
+  const result = await getDb().delete(frames).where(eq(frames.id, frameId));
   return (result.rowsAffected ?? 0) > 0;
 }
 
@@ -232,7 +235,7 @@ export async function deleteFrame(frameId: string): Promise<boolean> {
 export async function deleteSequenceFrames(
   sequenceId: string
 ): Promise<number> {
-  const result = await db
+  const result = await getDb()
     .delete(frames)
     .where(eq(frames.sequenceId, sequenceId));
   return result.rowsAffected ?? 0;
@@ -260,7 +263,7 @@ export async function reorderFrames(
   sequenceId: string,
   frameIds: string[]
 ): Promise<Frame[]> {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     const updatedFrames: Frame[] = [];
 
     for (let i = 0; i < frameIds.length; i++) {
@@ -299,7 +302,7 @@ export async function moveFrame(
   frameId: string,
   newOrderIndex: number
 ): Promise<Frame> {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     // Get the frame to move
     const [frameToMove] = await tx
       .select()
@@ -375,7 +378,7 @@ export async function swapFrames(
   frameId1: string,
   frameId2: string
 ): Promise<[Frame, Frame]> {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     const [frame1] = await tx
       .select()
       .from(frames)
@@ -428,7 +431,7 @@ export async function swapFrames(
 export async function createFramesBulk(
   frameData: NewFrame[]
 ): Promise<Frame[]> {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     const createdFrames = await tx.insert(frames).values(frameData).returning();
     return createdFrames;
   });
@@ -451,7 +454,7 @@ export async function createFramesBulk(
 export async function updateFramesBulk(
   updates: Array<{ id: string; data: Partial<NewFrame> }>
 ): Promise<Frame[]> {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     const updatedFrames: Frame[] = [];
 
     for (const update of updates) {
@@ -483,7 +486,9 @@ export async function updateFramesBulk(
  * ```
  */
 export async function deleteFramesBulk(frameIds: string[]): Promise<number> {
-  const result = await db.delete(frames).where(inArray(frames.id, frameIds));
+  const result = await getDb()
+    .delete(frames)
+    .where(inArray(frames.id, frameIds));
   return result.rowsAffected ?? 0;
 }
 
@@ -575,7 +580,7 @@ export async function markFrameComplete(
 export async function getFramesWithoutThumbnails(
   sequenceId: string
 ): Promise<Frame[]> {
-  return await db
+  return await getDb()
     .select()
     .from(frames)
     .where(and(eq(frames.sequenceId, sequenceId), isNull(frames.thumbnailUrl)))
@@ -597,7 +602,7 @@ export async function getFramesWithoutThumbnails(
 export async function getFramesWithoutVideo(
   sequenceId: string
 ): Promise<Frame[]> {
-  return await db
+  return await getDb()
     .select()
     .from(frames)
     .where(and(eq(frames.sequenceId, sequenceId), isNull(frames.videoUrl)))
@@ -626,7 +631,7 @@ export async function getFramesWithoutVideo(
 export async function getFrameWithSequence(
   frameId: string
 ): Promise<FrameWithSequence | null> {
-  const result = await db.query.frames.findFirst({
+  const result = await getDb().query.frames.findFirst({
     where: eq(frames.id, frameId),
     with: {
       sequence: {
@@ -661,8 +666,8 @@ export async function getFrameWithSequence(
  * ```
  */
 export async function countSequenceFrames(sequenceId: string): Promise<number> {
-  const [result] = await db
-    .select({ count: db.$count(frames.id) })
+  const [result] = await getDb()
+    .select({ count: getDb().$count(frames.id) })
     .from(frames)
     .where(eq(frames.sequenceId, sequenceId));
 
@@ -684,7 +689,7 @@ export async function countSequenceFrames(sequenceId: string): Promise<number> {
 export async function getIncompleteFrames(
   sequenceId: string
 ): Promise<Frame[]> {
-  return await db
+  return await getDb()
     .select()
     .from(frames)
     .where(

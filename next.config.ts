@@ -1,9 +1,16 @@
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 import type { NextConfig } from 'next';
+
+// added by create cloudflare to enable calling `getCloudflareContext()` in `next dev`
+if (process.env.BUILD_CLOUDFLARE) {
+  void initOpenNextCloudflareForDev();
+}
 
 const nextConfig: NextConfig = {
   // Remove turbopack.root - Next.js will use the project root by default
   // Mark @libsql/isomorphic-ws as external to prevent bundling issues with Cloudflare Workers
   // This package uses workerd-specific exports that esbuild can't resolve during bundling
+  serverExternalPackages: ['@libsql/isomorphic-ws'],
   images: {
     remotePatterns: [
       {

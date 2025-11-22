@@ -8,11 +8,11 @@
  * @module lib/services/sequence.service
  */
 
+import { getDb } from '#db-client';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
-import { db } from '@/lib/db/client';
 import type { NewSequence, Sequence, SequenceStatus } from '@/lib/db/schema';
 import { sequences } from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
@@ -78,7 +78,10 @@ export class SequenceService {
       status: 'draft',
     };
 
-    const [data] = await db.insert(sequences).values(sequenceData).returning();
+    const [data] = await getDb()
+      .insert(sequences)
+      .values(sequenceData)
+      .returning();
 
     if (!data) {
       throw new Error('No sequence returned from database');
@@ -107,7 +110,7 @@ export class SequenceService {
       updatedAt: new Date(),
     };
 
-    const [data] = await db
+    const [data] = await getDb()
       .update(sequences)
       .set(updateData)
       .where(eq(sequences.id, params.id))
@@ -127,7 +130,7 @@ export class SequenceService {
    * @throws {Error} If database operation fails
    */
   async deleteSequence(sequenceId: string): Promise<void> {
-    await db.delete(sequences).where(eq(sequences.id, sequenceId));
+    await getDb().delete(sequences).where(eq(sequences.id, sequenceId));
   }
 
   /**
@@ -144,7 +147,7 @@ export class SequenceService {
     includeFrames = false
   ): Promise<SequenceWithDetails> {
     if (includeFrames) {
-      const data = await db.query.sequences.findFirst({
+      const data = await getDb().query.sequences.findFirst({
         where: eq(sequences.id, sequenceId),
         with: {
           frames: {
@@ -167,7 +170,7 @@ export class SequenceService {
       return data as SequenceWithDetails;
     }
 
-    const [data] = await db
+    const [data] = await getDb()
       .select()
       .from(sequences)
       .where(eq(sequences.id, sequenceId));
@@ -187,7 +190,7 @@ export class SequenceService {
    * @returns Array of sequences
    */
   async getSequencesByTeam(teamId: string): Promise<Sequence[]> {
-    return await db
+    return await getDb()
       .select()
       .from(sequences)
       .where(eq(sequences.teamId, teamId))
@@ -202,7 +205,7 @@ export class SequenceService {
    * @returns Array of sequences
    */
   async getSequencesByUser(userId: string): Promise<Sequence[]> {
-    return await db
+    return await getDb()
       .select()
       .from(sequences)
       .where(eq(sequences.createdBy, userId))
@@ -221,7 +224,7 @@ export class SequenceService {
     metadata: Record<string, unknown>
   ): Promise<void> {
     // Get current metadata
-    const [sequence] = await db
+    const [sequence] = await getDb()
       .select({ metadata: sequences.metadata })
       .from(sequences)
       .where(eq(sequences.id, sequenceId));
@@ -229,7 +232,7 @@ export class SequenceService {
     const currentMetadata =
       (sequence?.metadata as Record<string, unknown>) || {};
 
-    await db
+    await getDb()
       .update(sequences)
       .set({
         metadata: {
@@ -273,7 +276,10 @@ export class SequenceService {
       metadata: original.metadata,
     };
 
-    const [data] = await db.insert(sequences).values(duplicateData).returning();
+    const [data] = await getDb()
+      .insert(sequences)
+      .values(duplicateData)
+      .returning();
 
     if (!data) {
       throw new Error('No sequence returned from database');

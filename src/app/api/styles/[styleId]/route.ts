@@ -5,8 +5,8 @@
  * DELETE /api/styles/[styleId] - Delete a style
  */
 
+import { getDb } from '#db-client';
 import { requireUser } from '@/lib/auth/action-utils';
-import { db } from '@/lib/db/client';
 import {
   getStyleById,
   getUserDefaultTeam,
@@ -14,11 +14,11 @@ import {
 } from '@/lib/db/helpers';
 import { styles } from '@/lib/db/schema';
 import { handleApiError, ValidationError } from '@/lib/errors';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { updateStyleSchema } from '@/lib/schemas/style.schemas';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function GET(
   _request: Request,
@@ -94,7 +94,7 @@ export async function PATCH(
     const validated = updateStyleSchema.parse(body);
 
     // Update style with Drizzle
-    const result = await db
+    const result = await getDb()
       .update(styles)
       .set(validated)
       .where(
@@ -175,7 +175,7 @@ export async function DELETE(
     await requireTeamManagement(user.id, style.teamId);
 
     // Delete the style with Drizzle
-    await db
+    await getDb()
       .delete(styles)
       .where(and(eq(styles.id, styleId), eq(styles.teamId, style.teamId)));
 

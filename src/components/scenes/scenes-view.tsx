@@ -51,8 +51,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     new Set()
   );
 
-  console.log('regeneratingImages', regeneratingImages);
-  console.log('regeneratingMotion', regeneratingMotion);
   const { data: sequence } = useSequence(sequenceId);
   // Fetch frames once at the top level (useSuspenseQuery always returns data)
   const { data: frames } = useFramesBySequence(sequenceId);

@@ -3,7 +3,6 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
-import { db } from '@/lib/db/client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { frames } from '@/lib/db/schema';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
@@ -14,6 +13,7 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 // Import motion service
 import { generateMotionForFrame } from '@/lib/services/motion.service';
 
+import { getDb } from '#db-client';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { getSignedImageUrl } from '@/lib/image/image-storage';
 import { eq } from 'drizzle-orm';
@@ -62,8 +62,8 @@ export const generateMotionWorkflow = createWorkflow(
     );
 
     // Step 1: Verify frame and get sequence/style info
-    const frame = await context.run('verify-frame', async () => {
-      const data = await db.query.frames.findFirst({
+    const _frame = await context.run('verify-frame', async () => {
+      const data = await getDb().query.frames.findFirst({
         where: eq(frames.id, input.frameId),
         with: {
           sequence: {
@@ -217,9 +217,7 @@ export const generateMotionWorkflow = createWorkflow(
     retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
     flowControl: {
       key: 'fal-requests', // Shared key for both image & motion
-      parallelism: process.env.FAL_CONCURRENCY_LIMIT
-        ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
-        : 10,
+      parallelism: parseInt(process.env.FAL_CONCURRENCY_LIMIT || '10'),
     },
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;

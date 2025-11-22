@@ -9,7 +9,7 @@ import {
   getUserTeams as getTeamsHelper,
 } from '@/lib/db/helpers/team-permissions';
 import type { User } from './config';
-import { auth } from './config';
+import { getAuth } from './config';
 
 // Role hierarchy (higher number = more permissions)
 const ROLE_HIERARCHY = {
@@ -63,6 +63,7 @@ function hasMinimumRole(userRole: TeamRole, requiredRole: TeamRole): boolean {
  */
 async function getAuthenticatedUser(request: Request): Promise<User | null> {
   try {
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });

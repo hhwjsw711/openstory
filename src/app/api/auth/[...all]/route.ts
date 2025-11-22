@@ -3,7 +3,14 @@
  * Handles all authentication requests at /api/auth/*
  */
 
-import { auth } from '@/lib/auth/config';
-import { toNextJsHandler } from 'better-auth/next-js';
+import { getAuth } from '@/lib/auth/config';
 
-export const { GET, POST } = toNextJsHandler(auth.handler);
+export async function GET(request: Request) {
+  const auth = getAuth();
+  return auth.handler(request);
+}
+
+export async function POST(request: Request) {
+  const auth = getAuth();
+  return auth.handler(request);
+}

@@ -11,15 +11,9 @@ import {
 } from '@/lib/ai/models';
 
 // Re-export for tests
-export { IMAGE_TO_VIDEO_MODELS };
-
+import { getEnv } from '#env';
 import type { QueueStatus } from '@fal-ai/client';
 import { createFalClient } from '@fal-ai/client';
-
-// Configure fal client
-const fal = createFalClient({
-  credentials: process.env.FAL_KEY || '',
-});
 
 interface GenerateMotionOptions {
   imageUrl: string;
@@ -249,6 +243,11 @@ export async function generateMotionForFrame(
     let responseUrl: string | undefined;
     let cancelUrl: string | undefined;
 
+    // Configure fal client
+    const fal = createFalClient({
+      credentials: getEnv().FAL_KEY || '',
+    });
+
     // Call the Fal.ai model using subscribe for queue tracking
     const result = await fal.subscribe(modelConfig.id, {
       input,
@@ -362,7 +361,7 @@ export async function generateMotionForFrame(
 export async function checkMotionStatus(
   statusUrl: string
 ): Promise<QueueStatus> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = getEnv().FAL_KEY;
 
   if (!apiKey) {
     throw new Error('FAL_KEY environment variable is required');
@@ -391,7 +390,7 @@ export async function checkMotionStatus(
 export async function getMotionResult(
   responseUrl: string
 ): Promise<{ video: { url: string } }> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = getEnv().FAL_KEY;
 
   if (!apiKey) {
     throw new Error('FAL_KEY environment variable is required');
@@ -417,7 +416,7 @@ export async function getMotionResult(
  * @param cancelUrl The cancel URL from the MotionResult
  */
 export async function cancelMotionGeneration(cancelUrl: string): Promise<void> {
-  const apiKey = process.env.FAL_KEY;
+  const apiKey = getEnv().FAL_KEY;
 
   if (!apiKey) {
     throw new Error('FAL_KEY environment variable is required');

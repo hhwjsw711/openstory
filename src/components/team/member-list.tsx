@@ -48,12 +48,15 @@ export function MemberList({ teamId }: MemberListProps) {
     queryFn: async () => {
       const response = await fetch(`/api/teams/${teamId}/members`);
       if (!response.ok) {
-        const error: { error: string } = await response.json();
-        throw new Error(error.error || 'Failed to fetch members');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to fetch members');
       }
       const result: { success: boolean; data?: TeamMember[] } =
         await response.json();
-      return result.data || [];
+      if (!response.ok || !result.success || !result.data) {
+        throw new Error('Failed to fetch members');
+      }
+      return result.data;
     },
   });
 
@@ -64,12 +67,14 @@ export function MemberList({ teamId }: MemberListProps) {
         method: 'DELETE',
       });
       if (!response.ok) {
-        const error: { error: string } = await response.json();
-        throw new Error(error.error || 'Failed to remove member');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to remove member');
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['team-members', teamId],
+      });
       setError(null);
     },
     onError: (err) => {
@@ -97,12 +102,14 @@ export function MemberList({ teamId }: MemberListProps) {
         }
       );
       if (!response.ok) {
-        const error: { error: string } = await response.json();
-        throw new Error(error.error || 'Failed to update role');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to update role');
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-members', teamId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['team-members', teamId],
+      });
       setError(null);
     },
     onError: (err) => {

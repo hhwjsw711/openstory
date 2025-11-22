@@ -82,8 +82,8 @@ export function InviteMemberForm({
       });
 
       if (!response.ok) {
-        const error: { error: string } = await response.json();
-        setError(error.error || 'Failed to send invitation');
+        const responseJson: { error?: string } = await response.json();
+        setError(responseJson.error || 'Failed to send invitation');
         setIsLoading(false);
         return;
       }

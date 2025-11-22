@@ -1,7 +1,6 @@
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import { styles, teams } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
-
 import { DEFAULT_STYLE_TEMPLATES } from './style-templates';
 /**
  * Service function to seed default templates into the database
@@ -12,14 +11,14 @@ export async function seedDefaultTemplates(): Promise<void> {
     // Create a system team for templates if it doesn't exist
     const systemTeamSlug = 'system-templates';
 
-    let [systemTeam] = await db
+    let [systemTeam] = await getDb()
       .select({ id: teams.id })
       .from(teams)
       .where(eq(teams.slug, systemTeamSlug));
 
     if (!systemTeam) {
       // Team doesn't exist, create it
-      const [newTeam] = await db
+      const [newTeam] = await getDb()
         .insert(teams)
         .values({
           name: 'System Templates',
@@ -39,7 +38,7 @@ export async function seedDefaultTemplates(): Promise<void> {
     }
 
     // Check which templates already exist
-    const existingTemplates = await db
+    const existingTemplates = await getDb()
       .select({ name: styles.name })
       .from(styles)
       .where(
@@ -62,7 +61,7 @@ export async function seedDefaultTemplates(): Promise<void> {
     }
 
     // Insert new templates
-    await db.insert(styles).values(templatesToInsert);
+    await getDb().insert(styles).values(templatesToInsert);
 
     console.log(
       `Successfully seeded ${templatesToInsert.length} default style templates`

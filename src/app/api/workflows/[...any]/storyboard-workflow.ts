@@ -3,11 +3,12 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
+import { getDb } from '#db-client';
+import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { db } from '@/lib/db/client';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
@@ -28,6 +29,7 @@ import type {
 } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
@@ -50,7 +52,7 @@ export const generateStoryboardWorkflow = createWorkflow(
     const { sequence, styleConfig, analysisModel } = await context.run(
       'verify-clear-and-start-processing',
       async () => {
-        const sequence = await db.query.sequences.findFirst({
+        const sequence = await getDb().query.sequences.findFirst({
           where: eq(sequences.id, input.sequenceId),
         });
 
@@ -68,7 +70,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('Sequence has no style selected');
         }
 
-        const style = await db.query.styles.findFirst({
+        const style = await getDb().query.styles.findFirst({
           where: eq(styles.id, sequence.styleId),
         });
 
@@ -88,7 +90,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         }
 
         // Set sequence status to processing
-        await db
+        await getDb()
           .update(sequences)
           .set({ status: 'processing', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
@@ -147,7 +149,7 @@ export const generateStoryboardWorkflow = createWorkflow(
 
         // Add the updated metadata to the sequence
 
-        await db
+        await getDb()
           .update(sequences)
           .set(updateData)
           .where(eq(sequences.id, input.sequenceId));
@@ -187,7 +189,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         });
 
         // Set sequence status to completed
-        await db
+        await getDb()
           .update(sequences)
           .set({ status: 'completed', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
@@ -345,7 +347,26 @@ export const generateStoryboardWorkflow = createWorkflow(
             frameId,
             sequenceId: input.sequenceId,
           };
+          const runtimeEnv = getEnv();
+          const falConcurrencyLimit = (
+            runtimeEnv as unknown as Record<string, string>
+          ).FAL_CONCURRENCY_LIMIT;
+          const flowControl: FlowControl = {
+            key: 'fal-requests', // Shared key for both image & motion
+            rate: 10,
+            period: '5s', // 5 seconds
+            parallelism: falConcurrencyLimit
+              ? parseInt(falConcurrencyLimit)
+              : 10,
+          };
+          const vercelAutomationBypassSecret =
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
+          const headers = vercelAutomationBypassSecret
+            ? {
+                'x-vercel-protection-bypass': vercelAutomationBypassSecret,
+              }
+            : undefined;
           const {
             body: imageBody,
             isFailed: imageIsFailed,
@@ -355,18 +376,8 @@ export const generateStoryboardWorkflow = createWorkflow(
             body: imageInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl: {
-              key: 'fal-requests', // Shared key for both image & motion
-              parallelism: process.env.FAL_CONCURRENCY_LIMIT
-                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
-                : 10,
-            },
-            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-              ? {
-                  'x-vercel-protection-bypass':
-                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-                }
-              : undefined,
+            flowControl,
+            headers,
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.thumbnailPath) {
@@ -402,20 +413,8 @@ export const generateStoryboardWorkflow = createWorkflow(
             body: motionInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl: {
-              key: 'fal-requests', // Shared key for both image & motion
-              rate: 10,
-              period: 5,
-              parallelism: process.env.FAL_CONCURRENCY_LIMIT
-                ? parseInt(process.env.FAL_CONCURRENCY_LIMIT)
-                : 10,
-            },
-            headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-              ? {
-                  'x-vercel-protection-bypass':
-                    process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-                }
-              : undefined,
+            flowControl,
+            headers,
           });
         })
       );

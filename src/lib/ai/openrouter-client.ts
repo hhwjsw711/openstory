@@ -3,9 +3,9 @@
  * Provides a unified interface to multiple AI models
  */
 
+import { getEnv } from '#env';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { z } from 'zod';
-
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -81,13 +81,7 @@ export const RECOMMENDED_MODELS = {
 export async function callOpenRouter(
   params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
-  const apiKey = process.env.OPENROUTER_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      'OPENROUTER_KEY environment variable is required but not set'
-    );
-  }
+  const apiKey = getEnv().OPENROUTER_KEY;
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {

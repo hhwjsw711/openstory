@@ -4,18 +4,18 @@
  * GET /api/styles - List all styles for the user
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { getDb } from '#db-client';
 import { requireUser } from '@/lib/auth/action-utils';
+import {
+  getPublicStyles,
+  getTeamAndPublicStyles,
+  getUserDefaultTeam,
+} from '@/lib/db/helpers';
+import { styles } from '@/lib/db/schema';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { createStyleSchema } from '@/lib/schemas/style.schemas';
-import {
-  getUserDefaultTeam,
-  getTeamAndPublicStyles,
-  getPublicStyles,
-} from '@/lib/db/helpers';
-import { db } from '@/lib/db/client';
-import { styles } from '@/lib/db/schema';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const validated = createStyleSchema.parse(body);
 
     // Create style with Drizzle
-    const result = await db
+    const result = await getDb()
       .insert(styles)
       .values({
         teamId: teamMembership.teamId,

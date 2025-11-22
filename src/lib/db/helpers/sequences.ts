@@ -1,6 +1,6 @@
+import { getDb } from '#db-client';
 import { SequenceMetadata } from '@/lib/db/schema/sequences';
 import { eq } from 'drizzle-orm';
-import { db } from '../client';
 import { sequences } from '../schema';
 
 /**
@@ -16,7 +16,7 @@ export async function updateSequenceMetadata(
   }
 ) {
   // Read existing metadata
-  const existing = await db.query.sequences.findFirst({
+  const existing = await getDb().query.sequences.findFirst({
     where: eq(sequences.id, sequenceId),
     columns: { metadata: true },
   });
@@ -30,7 +30,7 @@ export async function updateSequenceMetadata(
   };
 
   // Update sequence
-  await db
+  await getDb()
     .update(sequences)
     .set({
       metadata: updatedMetadata,

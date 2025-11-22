@@ -77,7 +77,7 @@ export function useCreateSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    { data: Sequence[]; message: string },
+    { data: Sequence[]; message?: string },
     Error,
     {
       script: string;

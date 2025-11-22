@@ -3,10 +3,10 @@
  * Utilities for checking team access and permissions using Drizzle ORM
  */
 
-import { eq, and, sql } from 'drizzle-orm';
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import { teamMembers, teams, user } from '@/lib/db/schema';
 import type { TeamMemberRole } from '@/lib/db/schema/teams';
+import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * Result from getUserTeam - contains team membership info
@@ -47,7 +47,7 @@ export async function getUserTeam(
   userId: string,
   teamId: string
 ): Promise<UserTeamMembership | null> {
-  const [result] = await db
+  const [result] = await getDb()
     .select({
       teamId: teamMembers.teamId,
       role: teamMembers.role,
@@ -81,7 +81,7 @@ export async function getUserDefaultTeam(
   userId: string
 ): Promise<UserTeamMembership | null> {
   // Query with role ordering - owner first, viewer last
-  const [result] = await db
+  const [result] = await getDb()
     .select({
       teamId: teamMembers.teamId,
       role: teamMembers.role,
@@ -170,7 +170,7 @@ export async function canManageTeam(
 export async function getTeamMembers(
   teamId: string
 ): Promise<TeamMemberWithDetails[]> {
-  const members = await db
+  const members = await getDb()
     .select({
       userId: teamMembers.userId,
       role: teamMembers.role,
@@ -211,7 +211,7 @@ export async function getTeamMembers(
 export async function getUserTeams(
   userId: string
 ): Promise<UserTeamMembership[]> {
-  const memberships = await db
+  const memberships = await getDb()
     .select({
       teamId: teamMembers.teamId,
       role: teamMembers.role,

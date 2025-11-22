@@ -5,9 +5,9 @@
  * Used by both anonymous and authenticated user creation flows.
  */
 
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import type { User } from '@/lib/db/schema';
-import { user, teamMembers, teams } from '@/lib/db/schema';
+import { teamMembers, teams, user } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 type UserWithTeamMembers = User & {
@@ -34,13 +34,13 @@ export async function ensureUserAndTeam(authUser: {
 }): Promise<EnsureUserTeamResult> {
   try {
     // Check if user already exists with team
-    const foundUser = await db.query.user.findFirst({
+    const foundUser = await getDb().query.user.findFirst({
       where: eq(user.id, authUser.id),
     });
 
     if (foundUser) {
       // Check for team membership
-      const memberships = await db
+      const memberships = await getDb()
         .select({
           teamId: teamMembers.teamId,
           role: teamMembers.role,
@@ -58,7 +58,7 @@ export async function ensureUserAndTeam(authUser: {
     }
 
     // User doesn't exist or has no team - create both in a transaction
-    const result = await db.transaction(async (tx) => {
+    const result = await getDb().transaction(async (tx) => {
       // Create user record if it doesn't exist (upsert)
       await tx
         .insert(user)

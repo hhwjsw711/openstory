@@ -17,6 +17,7 @@ export type DeploymentPlatform =
  * Detect which platform the app is running on
  */
 export function getDeploymentPlatform(): DeploymentPlatform {
+  // Note this should use process.env at build time, not getEnv()
   if (process.env.CF_PAGES) {
     return 'cloudflare';
   }
@@ -36,7 +37,7 @@ export function getDeploymentPlatform(): DeploymentPlatform {
  * Check if running on Cloudflare Pages/Workers
  */
 export function isCloudflare(): boolean {
-  return process.env.CF_PAGES === '1' || !!process.env.CF_PAGES_URL;
+  return !!process.env.OPEN_NEXT_ORIGIN;
 }
 
 /**
@@ -44,11 +45,6 @@ export function isCloudflare(): boolean {
  * Priority: APP_URL → CF_PAGES_URL → RAILWAY_PUBLIC_DOMAIN → VERCEL_URL → localhost
  */
 function getAppUrl(): string {
-  // Explicit APP_URL (should be set in production)
-  if (process.env.APP_URL) {
-    return process.env.APP_URL;
-  }
-
   // Cloudflare Pages deployment
   if (process.env.CF_PAGES_URL) {
     return process.env.CF_PAGES_URL;
@@ -64,6 +60,12 @@ function getAppUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
+  if (process.env.OPEN_NEXT_ORIGIN) {
+    // running in Open Next
+    const openNextOrigin = JSON.parse(process.env.OPEN_NEXT_ORIGIN);
+    const defaultOrigin = openNextOrigin.default;
+    return `${defaultOrigin.protocol}://${defaultOrigin.host}${defaultOrigin.port ? `:${defaultOrigin.port}` : ''}`;
+  }
   // Local development default
   return 'http://localhost:3000';
 }
@@ -72,7 +74,7 @@ function getAppUrl(): string {
  * Server-side application URL
  * Used by Better Auth, QStash webhooks, and internal API calls
  */
-export const APP_URL = getAppUrl();
+export const APP_URL = process.env.APP_URL || getAppUrl();
 
 /**
  * Client-side application URL
@@ -83,25 +85,19 @@ export const NEXT_PUBLIC_APP_URL =
     ? window.location.origin
     : process.env.NEXT_PUBLIC_APP_URL || APP_URL;
 
-/**
- * Check if Google OAuth is enabled based on environment configuration.
- * Matches the logic from Better Auth config (src/lib/auth/config.ts).
- *
- * Google OAuth is enabled when:
- * 1. Both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are present
- * 2. AND either:
- *    - VERCEL_ENV === 'production' (production deployments)
- *    - NODE_ENV === 'development' (local development)
- *
- * This means Google OAuth is DISABLED on Vercel preview branches.
- */
-export function isGoogleOAuthEnabled(): boolean {
-  const isProduction =
-    process.env.RAILWAY_ENVIRONMENT === 'production' ||
-    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
-  const isDevelopment = process.env.NODE_ENV === 'development';
+export function isPreviewBranch(): boolean {
+  const isVercelProduction = process.env.VERCEL_ENV === 'production';
+  const isCloudflareProduction = process.env.CF_PAGES_BRANCH === 'main';
+  const isRailwayProduction = process.env.RAILWAY_ENVIRONMENT === 'production';
+  const isDevelopment = isLocalDevelopment();
 
-  return isProduction || isDevelopment;
+  // Don't run Google OAuth on preview branches
+  return !(
+    isCloudflareProduction ||
+    isVercelProduction ||
+    isRailwayProduction ||
+    isDevelopment
+  );
 }
 
 /**
@@ -109,7 +105,7 @@ export function isGoogleOAuthEnabled(): boolean {
  * Detected by checking if Supabase URL points to localhost or 127.0.0.1
  */
 export function isLocalDevelopment(): boolean {
-  const appUrl = process.env.APP_URL;
+  const appUrl = NEXT_PUBLIC_APP_URL;
 
   if (!appUrl) {
     return false;
@@ -129,32 +125,4 @@ export function isLocalDevelopment(): boolean {
     // If URL parsing fails, assume production
     return false;
   }
-}
-
-/**
- * Select the appropriate image URL for external API calls
- * - Local development: Use temporary FAL URL (publicly accessible)
- * - Production: Generate signed URL from R2 storage path
- *
- * @param sourceImageUrl - Temporary FAL URL from image generation
- * @param storagePathOrUrl - R2 storage path or legacy storage URL
- * @returns The URL that should be used for external API calls (may be async in production)
- */
-export async function getImageUrlForApi(
-  sourceImageUrl: string | undefined | null,
-  storagePathOrUrl: string | undefined | null
-): Promise<string | null> {
-  if (isLocalDevelopment()) {
-    // In local dev, prefer temporary FAL URL (publicly accessible)
-    return sourceImageUrl || storagePathOrUrl || null;
-  }
-
-  // In production, check if we have a storage path (not a URL)
-  if (storagePathOrUrl && !storagePathOrUrl.startsWith('http')) {
-    // It's a storage path - generate a signed URL
-    const { getSignedImageUrl } = await import('@/lib/image/image-storage');
-    return await getSignedImageUrl(storagePathOrUrl, 7200); // 2 hour expiry
-  }
-
-  return storagePathOrUrl || sourceImageUrl || null;
 }

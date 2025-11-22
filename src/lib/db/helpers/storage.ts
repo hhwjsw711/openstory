@@ -10,21 +10,21 @@
  *
  * The S3 SDK provides cross-platform compatibility at the cost of larger bundle size.
  * For Cloudflare-specific optimization, consider using native R2 bindings via:
- * env.VELRO_STORAGE (configured in wrangler.toml as [[r2_buckets]])
+ * getEnv().VELRO_STORAGE (configured in wrangler.toml as [[r2_buckets]])
  */
 
-import { S3Client } from '@aws-sdk/client-s3';
+import { getEnv } from '#env';
 import {
-  PutObjectCommand,
-  GetObjectCommand,
+  CopyObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
-  ListObjectsV2Command,
-  CopyObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
-
 /**
  * Storage bucket names
  * These are now used as prefixes in a single R2 bucket
@@ -54,9 +54,9 @@ export type UploadResult = {
  * Create an S3 client configured for Cloudflare R2
  */
 function createR2Client(): S3Client {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const accountId = getEnv().R2_ACCOUNT_ID;
+  const accessKeyId = getEnv().R2_ACCESS_KEY_ID;
+  const secretAccessKey = getEnv().R2_SECRET_ACCESS_KEY;
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     throw new Error(
@@ -78,7 +78,7 @@ function createR2Client(): S3Client {
  * Get the R2 bucket name from environment
  */
 function getR2BucketName(): string {
-  const bucketName = process.env.R2_BUCKET_NAME;
+  const bucketName = getEnv().R2_BUCKET_NAME;
   if (!bucketName) {
     throw new Error('R2_BUCKET_NAME environment variable is not set');
   }

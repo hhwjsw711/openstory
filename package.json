@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
-    "build": "bun db:migrate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "bunx oxlint --type-aware",
     "lint:fix": "bunx oxlint --type-aware --fix",
@@ -29,14 +29,20 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy",
-    "setup:cloudflare-secrets": "./scripts/setup-cloudflare-secrets.sh",
-    "setup:cloudflare-secrets:production": "./scripts/setup-cloudflare-secrets.sh --production",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=\"\"",
-    "deploy:development": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env=development",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts"
+    "deploy:production": "opennextjs-cloudflare build --env=prd && opennextjs-cloudflare deploy --env=prd",
+    "deploy:preview": "build:cloudflare:preview && opennextjs-cloudflare deploy --env=preview",
+    "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts",
+    "secrets:dev": "doppler secrets download --config=dev --format=env > .dev.vars && cp .dev.vars .env.local",
+    "cf:typegen": "doppler run --mount .env -- bun wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "cf:secrets:stg": "doppler secrets --json --config=stg | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk --env=stg",
+    "cf:secrets:prd": "doppler secrets --json --config=prd | jq -c 'with_entries(.value = .value.computed)' | wrangler secret bulk --env=prd",
+    "cf:build:prd": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare build",
+    "cf:build:stg": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare build --env=stg",
+    "cf:preview": "bun run cf:build:stg && opennextjs-cloudflare preview",
+    "cf:deploy:prd": "bun run cf:build:prd && BUILD_CLOUDFLARE=1 opennextjs-cloudflare deploy --env=prd",
+    "cf:deploy:stg": "bun run cf:build:stg && BUILD_CLOUDFLARE=1 opennextjs-cloudflare deploy --env=stg",
+    "cf:upload:prd": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare upload --env=prd",
+    "cf:upload:stg": "BUILD_CLOUDFLARE=1 opennextjs-cloudflare upload --env=stg"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.933.0",
@@ -85,9 +91,12 @@
     "zod": "^4.1.12"
   },
   "imports": {
+    "#env": {
+      "default": "./src/lib/env/default.ts"
+    },
     "#db-client": {
       "development": "./src/lib/db/client-local.ts",
-      "default": "./src/lib/db/client-remote.ts"
+      "default": "./src/lib/db/client-web.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",

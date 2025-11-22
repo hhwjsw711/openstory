@@ -141,9 +141,9 @@ export function useCreateFrame() {
 
       return result.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data?.sequenceId) {
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: frameKeys.list(data.sequenceId),
         });
       }
@@ -179,12 +179,12 @@ export function useUpdateFrame() {
 
       return result.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data?.id) {
         queryClient.setQueryData(frameKeys.detail(data.id), data);
       }
       if (data?.sequenceId) {
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: frameKeys.list(data.sequenceId),
         });
       }
@@ -225,10 +225,10 @@ export function useDeleteFrame() {
 
       return { frameId, sequenceId: frameData?.sequenceId };
     },
-    onSuccess: ({ frameId, sequenceId }) => {
+    onSuccess: async ({ frameId, sequenceId }) => {
       queryClient.removeQueries({ queryKey: frameKeys.detail(frameId) });
       if (sequenceId) {
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: frameKeys.list(sequenceId),
         });
       }
@@ -311,8 +311,8 @@ export function useReorderFrames() {
         );
       }
     },
-    onSettled: (_, __, { sequenceId }) => {
-      queryClient.invalidateQueries({
+    onSettled: async (_, __, { sequenceId }) => {
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
     },
@@ -355,8 +355,8 @@ export function useBulkCreateFrames() {
 
       return result.data;
     },
-    onSuccess: (_, { sequenceId }) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, { sequenceId }) => {
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
     },
@@ -382,9 +382,9 @@ export function useDeleteFramesBySequence() {
 
       return sequenceId;
     },
-    onSuccess: (sequenceId) => {
+    onSuccess: async (sequenceId) => {
       queryClient.setQueryData(frameKeys.list(sequenceId), []);
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
     },
@@ -440,12 +440,12 @@ export function useGenerateFrames() {
 
       return { previousFrames, sequenceId };
     },
-    onSuccess: (_, { sequenceId }) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, { sequenceId }) => {
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
 
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: ['active-job', sequenceId],
       });
     },
@@ -496,12 +496,12 @@ export function useRegenerateFrame() {
 
       return { jobId: result.data.jobId };
     },
-    onSuccess: (_, { sequenceId, frameId }) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, { sequenceId, frameId }) => {
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
       });
 
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
     },
@@ -534,7 +534,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
       const job = result.data;
 
       if (job && (job.status === 'running' || job.status === 'completed')) {
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: frameKeys.list(sequenceId),
         });
       }
@@ -548,11 +548,6 @@ export function useActiveFrameGeneration(sequenceId: string) {
         query.state.data.status === 'completed' ||
         query.state.data.status === 'failed'
       ) {
-        if (query.state.data?.status === 'completed') {
-          queryClient.invalidateQueries({
-            queryKey: frameKeys.list(sequenceId),
-          });
-        }
         return false;
       }
       return 2000;

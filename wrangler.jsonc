@@ -8,24 +8,38 @@
     "global_fetch_strictly_public",
     "nodejs_compat_populate_process_env",
   ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS",
-  },
-  "r2_buckets": [
-    {
-      "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "cache",
-    },
-  ],
   "env": {
-    "development": {
+    "stg": {
       "r2_buckets": [
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
           "bucket_name": "cache-dev",
         },
       ],
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS-STG",
+      },
+    },
+    "prd": {
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "cache",
+        },
+      ],
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS",
+      },
+    },
+  },
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true,
     },
   },
 }

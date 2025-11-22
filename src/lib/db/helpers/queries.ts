@@ -3,24 +3,24 @@
  * Frequently used database queries to avoid duplication across API routes
  */
 
-import { eq, desc, and, or, isNull } from 'drizzle-orm';
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
+import type {
+  Audio,
+  Character,
+  Frame,
+  Sequence,
+  Style,
+  Vfx,
+} from '@/lib/db/schema';
 import {
+  audio,
+  characters,
   sequences,
   styles,
-  characters,
-  vfx,
-  audio,
   teams,
+  vfx,
 } from '@/lib/db/schema';
-import type {
-  Sequence,
-  Frame,
-  Style,
-  Character,
-  Vfx,
-  Audio,
-} from '@/lib/db/schema';
+import { and, desc, eq, isNull, or } from 'drizzle-orm';
 
 /**
  * Sequence with all its frames
@@ -49,7 +49,7 @@ export type SequenceWithFrames = Sequence & {
 export async function getSequenceWithFrames(
   sequenceId: string
 ): Promise<SequenceWithFrames | null> {
-  const result = await db.query.sequences.findFirst({
+  const result = await getDb().query.sequences.findFirst({
     where: eq(sequences.id, sequenceId),
     with: {
       frames: {
@@ -87,7 +87,7 @@ export async function getTeamSequences(
     status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived';
   }
 ): Promise<Sequence[]> {
-  const query = db
+  const query = getDb()
     .select()
     .from(sequences)
     .where(
@@ -143,7 +143,7 @@ export async function getTeamStyles(
     conditions.push(eq(styles.category, options.category));
   }
 
-  return await db
+  return await getDb()
     .select()
     .from(styles)
     .where(and(...conditions))
@@ -162,7 +162,7 @@ export async function getTeamStyles(
  * ```
  */
 export async function getPublicStyles(): Promise<Style[]> {
-  return await db
+  return await getDb()
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
@@ -182,7 +182,7 @@ export async function getPublicStyles(): Promise<Style[]> {
  * ```
  */
 export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
-  return await db
+  return await getDb()
     .select()
     .from(styles)
     .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
@@ -201,7 +201,7 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
  * ```
  */
 export async function getTeamCharacters(teamId: string): Promise<Character[]> {
-  return await db
+  return await getDb()
     .select()
     .from(characters)
     .where(eq(characters.teamId, teamId))
@@ -220,7 +220,7 @@ export async function getTeamCharacters(teamId: string): Promise<Character[]> {
  * ```
  */
 export async function getTeamVfx(teamId: string): Promise<Vfx[]> {
-  return await db
+  return await getDb()
     .select()
     .from(vfx)
     .where(eq(vfx.teamId, teamId))
@@ -239,7 +239,7 @@ export async function getTeamVfx(teamId: string): Promise<Vfx[]> {
  * ```
  */
 export async function getTeamAudio(teamId: string): Promise<Audio[]> {
-  return await db
+  return await getDb()
     .select()
     .from(audio)
     .where(eq(audio.teamId, teamId))
@@ -263,7 +263,7 @@ export async function getTeamAudio(teamId: string): Promise<Audio[]> {
 export async function getSequenceById(
   sequenceId: string
 ): Promise<Sequence | null> {
-  const result = await db
+  const result = await getDb()
     .select()
     .from(sequences)
     .where(eq(sequences.id, sequenceId));
@@ -285,7 +285,10 @@ export async function getSequenceById(
  * ```
  */
 export async function getStyleById(styleId: string): Promise<Style | null> {
-  const result = await db.select().from(styles).where(eq(styles.id, styleId));
+  const result = await getDb()
+    .select()
+    .from(styles)
+    .where(eq(styles.id, styleId));
   return result[0] ?? null;
 }
 
@@ -306,7 +309,7 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
 export async function getCharacterById(
   characterId: string
 ): Promise<Character | null> {
-  const result = await db
+  const result = await getDb()
     .select()
     .from(characters)
     .where(eq(characters.id, characterId));
@@ -328,7 +331,7 @@ export async function getCharacterById(
  * ```
  */
 export async function getTeamById(teamId: string) {
-  const result = await db.select().from(teams).where(eq(teams.id, teamId));
+  const result = await getDb().select().from(teams).where(eq(teams.id, teamId));
   return result[0] ?? null;
 }
 
@@ -383,8 +386,8 @@ export async function countTeamSequences(
   teamId: string,
   status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived'
 ): Promise<number> {
-  const [result] = await db
-    .select({ count: db.$count(sequences.id) })
+  const [result] = await getDb()
+    .select({ count: getDb().$count(sequences.id) })
     .from(sequences)
     .where(
       status
@@ -413,7 +416,7 @@ export async function countTeamSequences(
 export async function getSequencesWithoutStyle(
   teamId: string
 ): Promise<Sequence[]> {
-  return await db
+  return await getDb()
     .select()
     .from(sequences)
     .where(and(eq(sequences.teamId, teamId), isNull(sequences.styleId)))
@@ -438,7 +441,7 @@ export async function getRecentlyUsedStyles(
   limit = 5
 ): Promise<Style[]> {
   // Get styles that have been used in sequences, ordered by most recent use
-  const stylesWithUsage = await db.query.styles.findMany({
+  const stylesWithUsage = await getDb().query.styles.findMany({
     where: eq(styles.teamId, teamId),
     orderBy: (styles, { desc }) => [desc(styles.usageCount)],
     limit,

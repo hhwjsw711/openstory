@@ -3,6 +3,7 @@
  * Get the current state and logs of a workflow run
  */
 
+import { getEnv } from '#env';
 import { Client } from '@upstash/qstash';
 import { NextResponse } from 'next/server';
 
@@ -21,7 +22,7 @@ export async function GET(
     }
 
     // Create QStash client
-    const token = process.env.QSTASH_TOKEN;
+    const token = getEnv().QSTASH_TOKEN;
     if (!token) {
       return NextResponse.json(
         { error: 'QStash not configured' },

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       analysisModels
     );
 
-    const sequences = await Promise.all(
+    const sequences: Sequence[] = await Promise.all(
       analysisModels.map(async (modelId) => {
         // Create sequence with model-specific config
         const createParams = {

@@ -1,19 +1,23 @@
+'use client';
 import { AppLayout } from '@/components/layout';
-import { auth } from '@/lib/auth/config';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { useSession } from '@/lib/auth/client';
+import { redirect, useRouter } from 'next/navigation';
 
-export default async function ProtectedLayout({
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
+
+  if (isPending) {
+    return <div>Loading...</div>;
+  }
 
   if (!session) {
-    return redirect('/login');
+    router.push('/login');
+    return null;
   }
 
   return <AppLayout>{children}</AppLayout>;

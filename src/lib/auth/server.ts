@@ -3,12 +3,12 @@
  * Provides session management for Server Actions and API routes
  */
 
-import { db } from '@/lib/db/client';
+import { getDb } from '#db-client';
 import { TeamMember, teamMembers } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import type { Session, User } from './config';
-import { auth } from './config';
+import { getAuth } from './config';
 import type { TeamRole } from './constants';
 import { getHighestRole } from './constants';
 
@@ -19,6 +19,7 @@ import { getHighestRole } from './constants';
 export async function getSession(): Promise<Session | null> {
   try {
     const headersList = await headers();
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: headersList,
     });
@@ -73,7 +74,7 @@ export async function getUserWithTeam(): Promise<{
 
   try {
     // Fetch all team memberships for the user
-    const teamMembersList: Pick<TeamMember, 'teamId' | 'role'>[] = await db
+    const teamMembersList: Pick<TeamMember, 'teamId' | 'role'>[] = await getDb()
       .select({
         teamId: teamMembers.teamId,
         role: teamMembers.role,
@@ -137,6 +138,7 @@ export async function checkTeamAccess(teamId: string): Promise<boolean> {
 export async function signOut(): Promise<{ success: boolean; error?: string }> {
   try {
     const headersList = await headers();
+    const auth = getAuth();
     const result = await auth.api.signOut({
       headers: headersList,
     });

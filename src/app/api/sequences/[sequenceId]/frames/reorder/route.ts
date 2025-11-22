@@ -3,13 +3,13 @@
  * PATCH /api/sequences/[sequenceId]/frames/reorder - Reorder frames in a sequence
  */
 
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { frameService } from '@/lib/services/frame.service';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { frameService } from '@/lib/services/frame.service';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const frameOrderSchema = z.object({
   id: ulidSchema,

@@ -27,8 +27,8 @@ export function useFrameDownloadUrl(
       const response = await fetch(`/api/frames/${frameId}/download`);
 
       if (!response.ok) {
-        const error: { message: string } = await response.json();
-        throw new Error(error.message || 'Failed to fetch download URL');
+        const responseJson: { error?: string } = await response.json();
+        throw new Error(responseJson.error || 'Failed to fetch download URL');
       }
 
       const data: DownloadUrlResponse = await response.json();

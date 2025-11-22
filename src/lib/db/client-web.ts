@@ -1,0 +1,52 @@
+// import { getEnv } from '#env';
+import { getEnv } from '#env';
+import { createClient, Client as LibsqlClient } from '@libsql/client/web';
+import { drizzle, LibSQLDatabase } from 'drizzle-orm/libsql';
+import { schema } from './schema';
+
+console.log('[db-web] Loading client');
+
+type Database = LibSQLDatabase<typeof schema>;
+
+// Global database instance but locally scoped to the file
+let _db: Database | undefined;
+
+function buildLibsqlClient(): LibsqlClient {
+  const env = getEnv();
+  const url = env.TURSO_DATABASE_URL?.trim();
+  if (url === undefined) {
+    throw new Error('TURSO_DATABASE_URL env var is not defined');
+  }
+
+  const authToken = env.TURSO_AUTH_TOKEN?.trim();
+  if (authToken == undefined) {
+    throw new Error('TURSO_AUTH_TOKEN env var is not defined');
+  }
+
+  return createClient({ url, authToken });
+}
+
+export const getDb = () => {
+  if (_db) return _db;
+
+  /**
+   * libSQL client instance
+   * Connects to Turso database (cloud) or local SQLite file
+   * - For local development: use file: URLs (e.g., file:local.db)
+   * - For production: use https:// URLs with auth token
+   */
+  const client = buildLibsqlClient();
+
+  /**
+   * Drizzle database instance
+   * Uses the libSQL client and includes all schema definitions
+   * Configured to use snake_case in database and camelCase in application
+   */
+  _db = drizzle(client, {
+    schema,
+    logger: process.env.NODE_ENV === 'development',
+    casing: 'snake_case',
+  });
+
+  return _db;
+};

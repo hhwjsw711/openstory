@@ -83,8 +83,8 @@ export function useCreateStyle() {
 
       return result.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }
@@ -125,11 +125,11 @@ export function useUpdateStyle() {
 
       return result.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data?.id) {
         queryClient.setQueryData(styleKeys.detail(data.id), data);
       }
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }
@@ -151,9 +151,9 @@ export function useDeleteStyle() {
         throw new Error(result.message || 'Failed to delete style');
       }
     },
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
       queryClient.removeQueries({ queryKey: styleKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
     },
   });
 }
