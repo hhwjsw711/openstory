@@ -49,7 +49,8 @@ export function AuthForm({
     ? 'Enter your details to create your account'
     : 'Enter your credentials to access your account';
 
-  const showGoogleAuth = !isPreviewBranch();
+  // Enable Google Auth on all environments (handled by oAuthProxy on previews)
+  const showGoogleAuth = true;
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();

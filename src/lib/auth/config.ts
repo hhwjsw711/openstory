@@ -10,6 +10,7 @@ import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
+import { oAuthProxy } from 'better-auth/plugins';
 import { isValidAccessCode } from './access-codes';
 
 import { getDb } from '#db-client';
@@ -101,7 +102,8 @@ export function getAuth() {
       google: {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
-        enabled: !isPreviewBranch(),
+        // Enable Google Auth on all environments (proxied on previews)
+        enabled: true,
         // Disable sign-up via Google during closed beta
         // Existing users can sign in, but new accounts must use email/password with access code
         disableSignUp: true,
@@ -112,6 +114,10 @@ export function getAuth() {
     plugins: [
       // Next.js cookie integration
       nextCookies(),
+      // OAuth Proxy for preview deployments
+      oAuthProxy({
+        productionURL: 'https://app.velro.ai',
+      }),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
