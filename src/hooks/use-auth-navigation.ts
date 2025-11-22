@@ -31,6 +31,7 @@ export function useAuthNavigation() {
 
   /**
    * Navigate to signup page, preserving current path for redirect
+   * @deprecated Use goToLogin instead - signup and signin are now unified
    * @param customPath - Optional custom path to redirect to (overrides current pathname)
    */
   const goToSignup = useCallback(
@@ -49,6 +50,7 @@ export function useAuthNavigation() {
 
   /**
    * Get the signup URL with redirect preservation (without navigating)
+   * @deprecated Use loginUrl instead - signup and signin are now unified
    * Useful for Link components
    */
   const signupUrl = getSignupUrl(pathname);

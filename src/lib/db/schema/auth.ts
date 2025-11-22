@@ -22,6 +22,9 @@ export const user = sqliteTable('user', {
     mode: 'boolean',
   }).default(false),
   accessCode: text('access_code'),
+  status: text('status', { enum: ['pending', 'active', 'suspended'] })
+    .default('pending')
+    .notNull(),
 });
 
 export const session = sqliteTable('session', {

@@ -17,7 +17,7 @@ export function getLoginUrl(currentPath?: string): string {
   // Only add redirectTo if it's not a default or auth route
   const isDefaultRoute = redirectTo === '/' || redirectTo === '/sequences';
   const isAuthRoute =
-    redirectTo.startsWith('/login') || redirectTo.startsWith('/signup');
+    redirectTo.startsWith('/login') || redirectTo.startsWith('/invite-code');
 
   if (isDefaultRoute || isAuthRoute) {
     return '/login';
@@ -29,26 +29,13 @@ export function getLoginUrl(currentPath?: string): string {
 
 /**
  * Build a signup URL with redirect preservation
+ * @deprecated Use getLoginUrl instead - signup and signin are now unified
  * @param currentPath - Current path to redirect back to after signup (default: current pathname)
- * @returns Signup URL with redirectTo query param
+ * @returns Login URL with redirectTo query param
  */
 export function getSignupUrl(currentPath?: string): string {
-  // Get current path from window if not provided (client-side only)
-  const redirectTo =
-    currentPath ||
-    (typeof window !== 'undefined' ? window.location.pathname : '/sequences');
-
-  // Only add redirectTo if it's not a default or auth route
-  const isDefaultRoute = redirectTo === '/' || redirectTo === '/sequences';
-  const isAuthRoute =
-    redirectTo.startsWith('/login') || redirectTo.startsWith('/signup');
-
-  if (isDefaultRoute || isAuthRoute) {
-    return '/signup';
-  }
-
-  const params = new URLSearchParams({ redirectTo });
-  return `/signup?${params.toString()}`;
+  // Signup is now the same as login - redirect to login page
+  return getLoginUrl(currentPath);
 }
 
 /**
@@ -67,6 +54,7 @@ export function navigateToLogin(
 
 /**
  * Navigate to signup page with current path as redirect
+ * @deprecated Use navigateToLogin instead - signup and signin are now unified
  * For use in client components with Next.js router
  * @param router - Next.js router instance
  * @param currentPath - Optional path to redirect back to (defaults to current window.location.pathname)
@@ -75,8 +63,8 @@ export function navigateToSignup(
   router: { push: (url: string) => void | Promise<void> },
   currentPath?: string
 ): void {
-  const signupUrl = getSignupUrl(currentPath);
-  router.push(signupUrl);
+  // Signup is now the same as login - redirect to login page
+  navigateToLogin(router, currentPath);
 }
 
 /**
@@ -104,7 +92,7 @@ export function getRedirectFromParams(
       // Prevent redirecting back to auth pages
       if (
         !redirectTo.startsWith('/login') &&
-        !redirectTo.startsWith('/signup')
+        !redirectTo.startsWith('/invite-code')
       ) {
         return redirectTo;
       }

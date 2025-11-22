@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     if (!code) {
       return NextResponse.json(
-        { isValid: false, message: 'Access code is required' },
+        { isValid: false, message: 'Invite code is required' },
         { status: 400 }
       );
     }
@@ -18,16 +18,16 @@ export async function POST(request: Request) {
     if (!isValid) {
       return NextResponse.json({
         isValid: false,
-        message: 'Invalid access code',
+        message: 'Invalid invite code',
       });
     }
 
     return NextResponse.json({
       isValid: true,
-      message: 'Valid access code',
+      message: 'Valid invite code',
     });
   } catch (error) {
-    console.error('Access code validation error:', error);
+    console.error('Invite code validation error:', error);
     return NextResponse.json(
       { isValid: false, message: 'Validation failed' },
       { status: 500 }

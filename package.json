@@ -25,6 +25,11 @@
     "db:check": "bun --bun drizzle-kit check",
     "db:seed": "bun --bun scripts/seed.ts",
     "db:setup": "bun db:migrate && bun db:seed",
+    "db:generate:local": "bun --bun drizzle-kit generate --config=drizzle.config.local.ts",
+    "db:migrate:local": "bun --bun drizzle-kit migrate --config=drizzle.config.local.ts",
+    "db:push:local": "bun --bun drizzle-kit push --config=drizzle.config.local.ts",
+    "db:studio:local": "bun drizzle-kit studio --config=drizzle.config.local.ts",
+    "db:setup:local": "bun db:migrate:local && bun db:seed",
     "qstash:dev": "docker run -p 8080:8080 public.ecr.aws/upstash/qstash:latest qstash dev",
     "setup:env": "./scripts/setup-env.sh",
     "bash:setup:env": "bash ./scripts/setup-env.sh",
@@ -97,8 +102,8 @@
       "default": "./src/lib/env/default.ts"
     },
     "#db-client": {
-      "development": "./src/lib/db/client-local.ts",
-      "default": "./src/lib/db/client-web.ts"
+      "production": "./src/lib/db/client-web.ts",
+      "default": "./src/lib/db/client-local.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
