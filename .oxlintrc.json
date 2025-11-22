@@ -21,7 +21,7 @@
       "files": ["*.test.ts", "*.spec.ts", "*.gen.ts"],
       "rules": {
         "@typescript-eslint/no-explicit-any": "warn",
-        "no-floating-promises": "off"
+        "typescript/no-floating-promises": "off"
       }
     }
   ]
