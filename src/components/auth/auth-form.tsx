@@ -17,7 +17,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
-import { isPreviewBranch } from '@/lib/utils/environment';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -26,30 +25,23 @@ import { useState } from 'react';
 interface AuthFormProps {
   mode: 'signin' | 'signup';
   redirectTo?: string;
-  defaultAccessCode?: string;
 }
 
-export function AuthForm({
-  mode,
-  redirectTo = '/sequences',
-  defaultAccessCode = '',
-}: AuthFormProps) {
+export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accessCode, setAccessCode] = useState(defaultAccessCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const isSignup = mode === 'signup';
-  const title = isSignup ? 'Create Account' : 'Sign In';
-  const description = isSignup
-    ? 'Enter your details to create your account'
-    : 'Enter your credentials to access your account';
+  const title = 'Sign In';
+  const description = 'Sign in or create a new account';
 
-  const showGoogleAuth = !isPreviewBranch();
+  // Enable Google Auth on all environments (handled by oAuthProxy on previews)
+  const showGoogleAuth = true;
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,56 +50,59 @@ export function AuthForm({
     setIsLoading(true);
 
     try {
-      if (isSignup) {
-        // Sign up with email and password
-        const result = await authClient.signUp.email(
-          {
+      // Unified sign-in/sign-up flow: try sign-in first, create account if needed
+      const signInResult = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: redirectTo,
+      });
+
+      let isNewUser = false;
+
+      // If user doesn't exist, create account automatically
+      if (signInResult.error) {
+        // Check if error indicates user doesn't exist
+        if (signInResult.error.code === 'INVALID_EMAIL_OR_PASSWORD') {
+          // Create new account
+          const signUpResult = await authClient.signUp.email({
             email,
             password,
             name: '',
             callbackURL: redirectTo,
-          },
-          {
-            body: {
-              accessCode, // Include access code in signup body
-            },
+          });
+
+          isNewUser = true;
+
+          if (signUpResult.error) {
+            setError(signUpResult.error.message || 'Failed to create account');
+            setIsLoading(false);
+            return;
           }
+        } else {
+          // Other error (wrong password, etc.)
+          setError(signInResult.error.message || 'Authentication failed');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Invalidate auth-related queries to fetch fresh user data
+      setSuccess(
+        isNewUser
+          ? 'Account created! Loading your profile...'
+          : 'Signed in! Loading your profile...'
+      );
+      await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+      // Check if user needs to enter access code
+      // New users have status: 'pending' by default
+      if (isNewUser) {
+        setSuccess('Welcome! Please enter your invite code to continue...');
+        router.push(
+          '/invite-code?redirectTo=' + encodeURIComponent(redirectTo)
         );
-
-        if (result.error) {
-          setError(result.error.message || 'Failed to create account');
-          setIsLoading(false);
-          return;
-        }
-
-        // Invalidate auth-related queries to fetch fresh user data
-        setSuccess('Account created! Loading your profile...');
-        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-        await queryClient.invalidateQueries({ queryKey: ['session'] });
-
-        // Wait for queries to refetch before redirecting
-        setSuccess('Account created! Redirecting...');
-        router.push(redirectTo);
       } else {
-        // Sign in with email and password
-        const result = await authClient.signIn.email({
-          email,
-          password,
-          callbackURL: redirectTo,
-        });
-
-        if (result.error) {
-          setError(result.error.message || 'Failed to sign in');
-          setIsLoading(false);
-          return;
-        }
-
-        // Invalidate auth-related queries to fetch fresh user data
-        setSuccess('Signed in! Loading your profile...');
-        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-        await queryClient.invalidateQueries({ queryKey: ['session'] });
-
-        // Wait for queries to refetch before redirecting
         setSuccess('Signed in! Redirecting...');
         router.push(redirectTo);
       }
@@ -126,6 +121,9 @@ export function AuthForm({
       await authClient.signIn.social({
         provider: 'google',
         callbackURL: redirectTo,
+        // Redirect new Google users to invite code page
+        newUserCallbackURL:
+          '/invite-code?redirectTo=' + encodeURIComponent(redirectTo),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);
@@ -156,8 +154,8 @@ export function AuthForm({
           </Alert>
         )}
 
-        {/* OAuth Providers - Only show on sign-in (not sign-up during closed beta) */}
-        {showGoogleAuth && !isSignup && (
+        {/* OAuth Providers */}
+        {showGoogleAuth && (
           <>
             <div className="space-y-2">
               <Button
@@ -245,29 +243,6 @@ export function AuthForm({
             />
           </div>
 
-          {/* Access Code Field - Only for signup */}
-          {isSignup && (
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="access-code">Access Code</Label>
-              <Input
-                id="access-code"
-                type="text"
-                placeholder="MY-ACCESS-CODE"
-                value={accessCode}
-                onChange={(e) => {
-                  const newCode = e.target.value.toUpperCase();
-                  setAccessCode(newCode);
-                }}
-                disabled={isLoading}
-                required
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">
-                Don't have a code? Contact us for early access.
-              </p>
-            </div>
-          )}
-
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading
               ? 'Please wait...'
@@ -276,39 +251,6 @@ export function AuthForm({
                 : 'Sign In'}
           </Button>
         </form>
-
-        {/* Sign in/Sign up toggle */}
-        <div className="text-center text-sm">
-          {isSignup ? (
-            <p className="text-muted-foreground">
-              Already have an account?{' '}
-              <Link
-                href={
-                  redirectTo !== '/sequences'
-                    ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
-                    : '/login'
-                }
-                className="text-primary hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              Don't have an account?{' '}
-              <Link
-                href={
-                  redirectTo !== '/sequences'
-                    ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}`
-                    : '/signup'
-                }
-                className="text-primary hover:underline"
-              >
-                Create one
-              </Link>
-            </p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

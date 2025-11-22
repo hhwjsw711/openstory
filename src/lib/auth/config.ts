@@ -5,12 +5,11 @@
 
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
-import { APP_URL, isPreviewBranch } from '@/lib/utils/environment';
-import { APIError, betterAuth } from 'better-auth';
+import { APP_URL } from '@/lib/utils/environment';
+import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { createAuthMiddleware } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
-import { isValidAccessCode } from './access-codes';
+import { oAuthProxy } from 'better-auth/plugins';
 
 import { getDb } from '#db-client';
 import { getEnv } from '#env';
@@ -101,10 +100,9 @@ export function getAuth() {
       google: {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
-        enabled: !isPreviewBranch(),
-        // Disable sign-up via Google during closed beta
-        // Existing users can sign in, but new accounts must use email/password with access code
-        disableSignUp: true,
+        // Enable Google Auth on all environments (proxied on previews)
+        enabled: true,
+        // Sign-up enabled - access code validation happens after auth via activation flow
       },
     },
 
@@ -112,6 +110,10 @@ export function getAuth() {
     plugins: [
       // Next.js cookie integration
       nextCookies(),
+      // OAuth Proxy for preview deployments
+      oAuthProxy({
+        productionURL: 'https://app.velro.ai',
+      }),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
@@ -134,37 +136,12 @@ export function getAuth() {
           type: 'string',
           required: false,
         },
+        status: {
+          type: 'string',
+          required: false,
+          defaultValue: 'pending',
+        },
       },
-    },
-
-    // Hooks for access code validation
-    hooks: {
-      before: createAuthMiddleware(async (ctx) => {
-        // Only validate for signup endpoint
-        if (ctx.path !== '/sign-up/email') {
-          return;
-        }
-
-        const accessCode = ctx.body?.accessCode as string | undefined;
-
-        // Validate access code
-        if (!accessCode || !isValidAccessCode(accessCode)) {
-          throw new APIError('BAD_REQUEST', {
-            message:
-              'Valid access code required. Please enter a valid access code to sign up.',
-          });
-        }
-
-        // Normalize the code if provided
-        if (accessCode && ctx.body) {
-          ctx.body.accessCode = accessCode.toUpperCase().trim();
-        }
-
-        return { context: ctx };
-      }),
-      // No 'after' hook needed - Better Auth automatically stores additionalFields
-      // when input: true (default). The accessCode field is defined in user.additionalFields
-      // with input: true, so it's automatically persisted when passed in signup body.
     },
 
     // Advanced configuration

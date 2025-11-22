@@ -58,6 +58,30 @@ export async function requireAuth(): Promise<{ session: Session; user: User }> {
 }
 
 /**
+ * Require active user status - throws error if user is pending or suspended
+ * Use in routes that should only be accessible to active users
+ */
+export async function requireActiveAuth(): Promise<{
+  session: Session;
+  user: User;
+}> {
+  const { session, user } = await requireAuth();
+
+  // Check user status
+  const status = (user as User & { status?: string }).status;
+
+  if (status === 'pending') {
+    throw new Error('Account activation required');
+  }
+
+  if (status === 'suspended') {
+    throw new Error('Account suspended');
+  }
+
+  return { session, user };
+}
+
+/**
  * Get user with team information
  * Returns user data with team context for authorization
  */
@@ -130,6 +154,32 @@ export async function checkTeamAccess(teamId: string): Promise<boolean> {
   }
 
   return userWithTeam.teamId === teamId;
+}
+
+/**
+ * Check if the current user has pending status
+ * Returns true if user needs to activate their account
+ */
+export async function isUserPending(): Promise<boolean> {
+  const user = await getUser();
+  if (!user) return false;
+
+  const status = (user as User & { status?: string }).status;
+  return status === 'pending';
+}
+
+/**
+ * Check if the current user is active
+ * Returns true if user has active status or no status field (legacy users)
+ */
+export async function isUserActive(): Promise<boolean> {
+  const user = await getUser();
+  if (!user) return false;
+
+  const status = (user as User & { status?: string }).status;
+  // No status field means legacy user (treat as active)
+  // or explicitly set to 'active'
+  return !status || status === 'active';
 }
 
 /**

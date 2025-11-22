@@ -39,6 +39,11 @@ export type ImageGenerationParams = {
   hasWatermark?: boolean;
   systemVersion?: number;
   mode?: 'default' | 'sigma';
+  // Generic callbacks
+  onQueueUpdate?: (update: {
+    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+    logs?: string[];
+  }) => void;
 
   // Model-specific features
   style?: string; // Recraft
@@ -142,6 +147,18 @@ export async function generateImageWithProvider(
             params.loras && { loras: params.loras }),
           sync_mode: false,
         },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
+        },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
       return resultByProvider(params.model, params, resp.data);
@@ -183,6 +200,18 @@ export async function generateImageWithProvider(
           ...(params.embeddings && { embeddings: params.embeddings }),
           sync_mode: false,
         },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
+        },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
       return resultByProvider(params.model, params, resp.data);
@@ -202,6 +231,18 @@ export async function generateImageWithProvider(
           }),
           ...(params.seed !== undefined && { seed: params.seed }),
         },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
+        },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
       return resultByProvider(params.model, params, resp.data);
@@ -219,6 +260,18 @@ export async function generateImageWithProvider(
           }),
           ...(params.outputFormat && { output_format: params.outputFormat }),
           sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
@@ -239,6 +292,18 @@ export async function generateImageWithProvider(
           ...(params.outputFormat && { output_format: params.outputFormat }),
           sync_mode: false,
         },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
+        },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
       return resultByProvider(params.model, params, resp.data);
@@ -253,6 +318,18 @@ export async function generateImageWithProvider(
           enable_safety_checker: false, // Default false for Recraft
           ...(params.colors &&
             params.colors.length > 0 && { colors: params.colors }),
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
@@ -277,6 +354,18 @@ export async function generateImageWithProvider(
           ...(params.outputFormat && { output_format: params.outputFormat }),
           ...(params.loras && { loras: params.loras }),
           sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+            });
+          }
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');

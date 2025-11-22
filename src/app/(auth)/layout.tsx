@@ -1,6 +1,6 @@
 /**
  * Auth Layout
- * Layout for authentication pages (login, signup)
+ * Layout for authentication pages (login, access code entry)
  */
 
 import type { ReactNode } from 'react';

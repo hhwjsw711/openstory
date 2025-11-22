@@ -5,6 +5,7 @@
 
 import { AuthForm } from '@/components/auth/auth-form';
 import { PageContainer } from '@/components/layout';
+import { getRedirectFromParams } from '@/lib/auth/navigation';
 
 type Props = {
   searchParams: Promise<{ redirectTo?: string }>;
@@ -12,7 +13,7 @@ type Props = {
 
 export default async function LoginPage({ searchParams }: Props) {
   const params = await searchParams;
-  const redirectTo = params.redirectTo || '/sequences';
+  const redirectTo = getRedirectFromParams(params);
 
   return (
     <PageContainer>
