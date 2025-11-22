@@ -102,8 +102,8 @@
       "default": "./src/lib/env/default.ts"
     },
     "#db-client": {
-      "production": "./src/lib/db/client-web.ts",
-      "default": "./src/lib/db/client-local.ts"
+      "development": "./src/lib/db/client-local.ts",
+      "default": "./src/lib/db/client-web.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
