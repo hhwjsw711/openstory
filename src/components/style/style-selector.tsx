@@ -5,7 +5,7 @@ import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
 import Image from 'next/image';
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSelectionDialog } from './style-selection-dialog';
 
 interface StyleSelectorProps {
@@ -158,7 +158,7 @@ export function StyleSelector({
     <>
       <div
         ref={gridRef}
-        className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-12 gap-3 overflow-hidden p-2"
+        className="grid grid-cols-[repeat(auto-fill,minmax(65px,1fr))] gap-3 overflow-hidden p-2"
         role="grid"
         aria-label="Style selection"
       >
@@ -193,7 +193,7 @@ export function StyleSelector({
                     alt={style.name}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, 12vw"
+                    sizes="80px"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20" />

@@ -5,7 +5,8 @@ import { Style } from '@/types/database';
  * Falls back to staging if not set
  */
 function getPublicAssetsDomain(): string {
-  return `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'https://assets.velro.ai'}`;
+  const domain = process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai';
+  return domain;
 }
 
 /**
@@ -20,7 +21,7 @@ function getStylePreviewUrl(styleName: string): string {
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  return `${getPublicAssetsDomain()}/styles/${sanitized}/character.jpg`;
+  return `https://${getPublicAssetsDomain()}/styles/${sanitized}/character.jpg`;
 }
 
 // Default style templates that can be imported into any team
