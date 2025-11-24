@@ -1,3 +1,6 @@
+'use client';
+
+import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
 import { ModelSelector } from '@/components/model/model-selector';
 import { ScriptEditor } from '@/components/script/script-editor';
 import { AspectRatioSelect } from '@/components/style/aspect-ratio-select';
@@ -8,30 +11,27 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { Label } from '@/components/ui/label';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import {
   ANALYSIS_MODEL_IDS,
-  AnalysisModelId,
   DEFAULT_ANALYSIS_MODEL,
+  type AnalysisModelId,
 } from '@/lib/ai/models.config';
-import { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { Sequence } from '@/types/database';
-import { Zap } from 'lucide-react';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import type { Sequence } from '@/types/database';
 import { useEffect, useMemo, useState, type FC } from 'react';
 
 export const ScriptView: FC<{
   teamId?: string;
   sequence?: Sequence;
-  flat?: boolean; // if true, the card will have no border
+  flat?: boolean;
   loading?: boolean;
-  onSuccess?: (sequenceIds: string[]) => void; // called when the sequence is created or updated
-  onCancel?: () => void; // called when the user cancels the script
-  autoFocus?: boolean; // if true, the script editor will be focused on mount
+  onSuccess?: (sequenceIds: string[]) => void;
+  onCancel?: () => void;
+  autoFocus?: boolean;
 }> = ({
   teamId,
   sequence,
@@ -41,15 +41,7 @@ export const ScriptView: FC<{
   onCancel,
   autoFocus = false,
 }) => {
-  // The way state is managed is a bit confusing - but perfectly logical
-  // Local state is undefined until the user makeas an edit.
-  // We pass the value of local state to each field first
-  // If we are editing an existing sequence we pass the existing value to each field that is editable.
-  // e.g. value={script || sequence?.script || ''}
-
-  // This saves us from using complex useEffect logic to update the state when the sequence changes.
-
-  // Local state
+  // Local state - undefined until user makes an edit
   const [script, setScript] = useState<string | null | undefined>(
     sequence?.script
   );
@@ -57,7 +49,6 @@ export const ScriptView: FC<{
     sequence?.styleId || null
   );
 
-  // Get the analysis model from the existing sequence or use the default model
   const sequenceAnalysisModels: AnalysisModelId[] | undefined = useMemo(() => {
     return sequence?.analysisModel &&
       ANALYSIS_MODEL_IDS.includes(sequence?.analysisModel as AnalysisModelId)
@@ -71,10 +62,9 @@ export const ScriptView: FC<{
 
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
 
-  // Get the styles from the database
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
-  // Auto-select first style if none is selected and styles are loaded
+  // Auto-select first style if none selected
   useEffect(() => {
     if (
       !isLoadingStyles &&
@@ -86,7 +76,6 @@ export const ScriptView: FC<{
     }
   }, [styles, isLoadingStyles, styleId, sequence?.styleId]);
 
-  // TanStack Query mutations
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
 
@@ -111,7 +100,6 @@ export const ScriptView: FC<{
         },
         {
           onSuccess: (result) => {
-            // Update single sequence
             if (result.id && onSuccess) {
               onSuccess([result.id]);
             }
@@ -130,7 +118,6 @@ export const ScriptView: FC<{
         },
         {
           onSuccess: (result) => {
-            // Multi-model creation returns array of sequences
             if (onSuccess) {
               onSuccess(result.data.map((sequence) => sequence.id));
             }
@@ -140,7 +127,6 @@ export const ScriptView: FC<{
     }
   };
 
-  // Check if form is valid and can be submitted
   const isFormValid =
     (script || sequence?.script) &&
     (styleId || sequence?.styleId) &&
@@ -150,41 +136,15 @@ export const ScriptView: FC<{
   const isSubmitting =
     createSequenceMutation.isPending || updateSequenceMutation.isPending;
   const isDisabled = !isFormValid || isSubmitting;
-  return (
-    <Card className={flat ? 'border-none' : ''}>
-      <form onSubmit={handleSubmit}>
-        <CardHeader>
-          <CardTitle className="text-2xl font-extralight pb-8">
-            Tell your story
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="@container space-y-4">
-          <div className="flex flex-col @lg:flex-row gap-4">
-            <ScriptEditor
-              value={script || sequence?.script || ''}
-              loading={!!loading}
-              onValueChange={setScript}
-              placeholder="The camera pushes through a haze of orange light as the city wakes…"
-              showCharacterCount={false}
-              maxLength={50000} // 50,000 characters is the maximum length of a script
-              autoFocus={autoFocus}
-            />
-            <div className="flex flex-col gap-2">
-              <Label className="whitespace-nowrap">Aspect Ratio</Label>
-              <AspectRatioSelect
-                value={aspectRatio}
-                onChange={setAspectRatio}
-                variant="vertical"
-              />
-            </div>
-          </div>
 
-          <StyleSelector
-            styles={styles}
-            selectedStyleId={styleId || sequence?.styleId || null}
-            onStyleSelect={setStyleId}
-            loading={isLoadingStyles}
-          />
+  const scriptValue = script || sequence?.script || '';
+
+  return (
+    <Card variant="premium" className={flat ? 'border-none' : ''}>
+      <form onSubmit={handleSubmit}>
+        {/* Control bar */}
+        <CardHeader className="flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
+          <AspectRatioSelect value={aspectRatio} onChange={setAspectRatio} />
           <ModelSelector
             selectedModels={
               analysisModels ||
@@ -194,25 +154,76 @@ export const ScriptView: FC<{
             disabled={loading}
             singleSelect={!!sequence?.id}
           />
+        </CardHeader>
+
+        <CardContent className="@container space-y-4 py-6">
+          <ScriptEditor
+            value={scriptValue}
+            loading={!!loading}
+            onValueChange={setScript}
+            placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+            showCharacterCount={false}
+            maxLength={50000}
+            autoFocus={autoFocus}
+          />
+
+          <StyleSelector
+            styles={styles}
+            selectedStyleId={styleId || sequence?.styleId || null}
+            onStyleSelect={setStyleId}
+            loading={isLoadingStyles}
+          />
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 justify-center items-center w-full">
-          <div className="flex flex-row gap-2">
-            {sequence?.id && (
-              <Button type="button" variant="secondary" onClick={handleCancel}>
-                Cancel
-              </Button>
-            )}
-            <Button type="submit" variant="outline" disabled={isDisabled}>
-              <Zap className="size-4" />
-              Activate Crew
-              {!isDisabled && (
+
+        <CardFooter className="flex-col gap-4 border-t py-4 border-border/30">
+          {/* Footer row - stacks on mobile, inline on desktop */}
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Meta info - hidden on mobile */}
+            <div className="hidden sm:flex items-center gap-4">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <KbdGroup>
-                  <Kbd>{'⌘'}</Kbd>
+                  <Kbd>⌘</Kbd>
                   <span className="text-muted-foreground">+</span>
-                  <Kbd>{'⏎'}</Kbd>
+                  <Kbd>⏎</Kbd>
                 </KbdGroup>
+                <span className="ml-1">to generate</span>
+              </span>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              {!sequence?.id && (
+                <span className="hidden sm:block text-xs text-muted-foreground">
+                  {(
+                    analysisModels ||
+                    sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
+                  ).length === 1
+                    ? '1 sequence will be created'
+                    : `${(analysisModels || sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]).length} sequences will be created`}
+                </span>
               )}
-            </Button>
+              {sequence?.id && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={isDisabled}
+                className="group relative px-6 bg-linear-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold tracking-wide shadow-lg shadow-primary/20 hover:shadow-primary/30 overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <GenerateSequenceIcon className="size-4" />
+                  Activate Crew
+                </span>
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+              </Button>
+            </div>
           </div>
         </CardFooter>
       </form>

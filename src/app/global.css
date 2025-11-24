@@ -38,6 +38,10 @@
   --sidebar-accent-foreground: oklch(0.2103 0.0059 285.8852);
   --sidebar-border: oklch(0.9197 0.004 286.3202);
   --sidebar-ring: oklch(0.7118 0.0129 286.0665);
+  --card-gradient-from: oklch(0.98 0.002 0);
+  --card-gradient-via: oklch(1 0 0);
+  --card-gradient-to: oklch(0.98 0.002 0);
+  --card-accent: oklch(0.7124 0.1848 37.7682 / 0.3);
   --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
   --font-serif: serif;
   --font-mono: Geist Mono, ui-monospace, monospace;
@@ -117,6 +121,12 @@
   --sidebar-border: oklch(0.28 0.006 38);
   --sidebar-ring: oklch(0.72 0.15 45);
 
+  /* Premium card gradients - more contrast for visible gradients */
+  --card-gradient-from: oklch(0.10 0.003 30);
+  --card-gradient-via: oklch(0.20 0.008 35);
+  --card-gradient-to: oklch(0.10 0.003 30);
+  --card-accent: oklch(0.72 0.18 45 / 0.4);
+
   /* Typography */
   --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
   --font-serif: serif;
@@ -185,6 +195,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-card-gradient-from: var(--card-gradient-from);
+  --color-card-gradient-via: var(--card-gradient-via);
+  --color-card-gradient-to: var(--card-gradient-to);
+  --color-card-accent: var(--card-accent);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

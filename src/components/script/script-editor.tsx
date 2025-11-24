@@ -66,7 +66,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-32 max-h-[50vh] resize-none overflow-y-auto',
+            'min-h-32 max-h-[50vh] resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"
