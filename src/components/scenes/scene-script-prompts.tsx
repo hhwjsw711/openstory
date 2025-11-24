@@ -414,7 +414,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               selectedModel={selectedModel || imageModel}
               onModelChange={setSelectedModel}
               disabled={isGenerating}
-              promptLength={(editedPrompt || imagePrompt || '').length}
             />
           </div>
 

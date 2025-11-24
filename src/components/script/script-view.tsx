@@ -1,9 +1,8 @@
 'use client';
 
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
-import { ModelSelector } from '@/components/model/model-selector';
 import { ScriptEditor } from '@/components/script/script-editor';
-import { AspectRatioSelect } from '@/components/style/aspect-ratio-select';
+import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +19,12 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  type TextToImageModel,
+  type ImageToVideoModel,
+} from '@/lib/ai/models';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Sequence } from '@/types/database';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -49,18 +54,21 @@ export const ScriptView: FC<{
     sequence?.styleId || null
   );
 
-  const sequenceAnalysisModels: AnalysisModelId[] | undefined = useMemo(() => {
+  const sequenceAnalysisModels: AnalysisModelId[] = useMemo(() => {
     return sequence?.analysisModel &&
       ANALYSIS_MODEL_IDS.includes(sequence?.analysisModel as AnalysisModelId)
       ? [sequence?.analysisModel as AnalysisModelId]
-      : undefined;
+      : [DEFAULT_ANALYSIS_MODEL];
   }, [sequence]);
 
-  const [analysisModels, setAnalysisModels] = useState<
-    AnalysisModelId[] | undefined
-  >(sequenceAnalysisModels);
-
+  const [analysisModels, setAnalysisModels] = useState<AnalysisModelId[]>(
+    sequenceAnalysisModels
+  );
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
+  const [imageModel, setImageModel] =
+    useState<TextToImageModel>(DEFAULT_IMAGE_MODEL);
+  const [motionModel, setMotionModel] =
+    useState<ImageToVideoModel>(DEFAULT_VIDEO_MODEL);
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -96,7 +104,7 @@ export const ScriptView: FC<{
           id: sequence.id,
           script: script || sequence?.script || '',
           styleId: styleId || sequence?.styleId || undefined,
-          analysisModel: analysisModels?.[0] || DEFAULT_ANALYSIS_MODEL,
+          analysisModel: analysisModels[0],
         },
         {
           onSuccess: (result) => {
@@ -113,8 +121,7 @@ export const ScriptView: FC<{
           script: script || '',
           styleId: styleId,
           aspectRatio,
-          analysisModels: analysisModels ||
-            sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL],
+          analysisModels,
         },
         {
           onSuccess: (result) => {
@@ -130,8 +137,7 @@ export const ScriptView: FC<{
   const isFormValid =
     (script || sequence?.script) &&
     (styleId || sequence?.styleId) &&
-    (analysisModels || sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL])
-      .length > 0;
+    analysisModels.length > 0;
 
   const isSubmitting =
     createSequenceMutation.isPending || updateSequenceMutation.isPending;
@@ -144,15 +150,17 @@ export const ScriptView: FC<{
       <form onSubmit={handleSubmit}>
         {/* Control bar */}
         <CardHeader className="flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
-          <AspectRatioSelect value={aspectRatio} onChange={setAspectRatio} />
-          <ModelSelector
-            selectedModels={
-              analysisModels ||
-              sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
-            }
-            onModelsChange={(models) => setAnalysisModels(models)}
+          <GenerationSettings
+            aspectRatio={aspectRatio}
+            analysisModels={analysisModels}
+            imageModel={imageModel}
+            motionModel={motionModel}
+            onAspectRatioChange={setAspectRatio}
+            onAnalysisModelsChange={setAnalysisModels}
+            onImageModelChange={setImageModel}
+            onMotionModelChange={setMotionModel}
             disabled={loading}
-            singleSelect={!!sequence?.id}
+            singleSelectAnalysis={!!sequence?.id}
           />
         </CardHeader>
 
@@ -194,12 +202,9 @@ export const ScriptView: FC<{
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {!sequence?.id && (
                 <span className="hidden sm:block text-xs text-muted-foreground">
-                  {(
-                    analysisModels ||
-                    sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]
-                  ).length === 1
+                  {analysisModels.length === 1
                     ? '1 sequence will be created'
-                    : `${(analysisModels || sequenceAnalysisModels || [DEFAULT_ANALYSIS_MODEL]).length} sequences will be created`}
+                    : `${analysisModels.length} sequences will be created`}
                 </span>
               )}
               {sequence?.id && (

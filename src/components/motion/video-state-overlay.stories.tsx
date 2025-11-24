@@ -12,7 +12,7 @@ const meta = {
     (Story) => (
       <div className="relative aspect-video w-[640px]">
         {/* Mock poster frame background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500" />
+        <div className="absolute inset-0 bg-linear-to-br from-purple-500 to-pink-500" />
         <div className="absolute inset-0 flex items-center justify-center text-white/20 text-6xl font-bold">
           POSTER FRAME
         </div>
