@@ -44,7 +44,7 @@ if (!['prd', 'stg', 'dev'].includes(environment)) {
 // Environment-specific configuration
 const ENV_CONFIG = {
   prd: {
-    bucket: 'velro-public-assets-prd',
+    bucket: 'velro-public-assets',
     url: 'https://storage.velro.ai',
   },
   stg: {
@@ -52,7 +52,7 @@ const ENV_CONFIG = {
     url: 'https://storage-stg.velro.ai',
   },
   dev: {
-    bucket: 'velro-public-assets',
+    bucket: 'velro-public-assets-dev',
     url: 'https://storage-dev.velro.ai',
   },
 };
