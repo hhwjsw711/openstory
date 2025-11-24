@@ -5,7 +5,7 @@ import { Style } from '@/types/database';
  * Falls back to staging if not set
  */
 function getPublicAssetsDomain(): string {
-  return process.env.R2_PUBLIC_ASSETS_DOMAIN || 'https://storage-stg.velro.ai';
+  return `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai'}`;
 }
 
 /**
