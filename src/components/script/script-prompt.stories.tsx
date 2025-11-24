@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ScriptPrompt } from './script-prompt';
 
 const meta = {
-  title: 'Components/Script/ScriptPrompt',
+  title: 'Script/ScriptPrompt',
   component: ScriptPrompt,
   parameters: {
     layout: 'centered',
@@ -14,7 +14,6 @@ const meta = {
       ],
     },
   },
-  tags: ['autodocs'],
 } satisfies Meta<typeof ScriptPrompt>;
 
 export default meta;

@@ -48,7 +48,7 @@ const createQueryClient = () =>
   });
 
 const meta: Meta<typeof ScriptView> = {
-  title: 'Components/Script/ScriptView',
+  title: 'Script/ScriptView',
   component: ScriptView,
   parameters: {
     layout: 'fullscreen',

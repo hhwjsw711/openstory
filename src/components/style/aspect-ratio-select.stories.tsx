@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { AspectRatioSelect } from './aspect-ratio-select';
 
 const meta: Meta<typeof AspectRatioSelect> = {
-  title: 'Components/Sequence/AspectRatioSelect',
+  title: 'Style/AspectRatioSelect',
   component: AspectRatioSelect,
   parameters: {
     layout: 'centered',

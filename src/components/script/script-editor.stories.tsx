@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ScriptEditor } from './script-editor';
 
 const meta: Meta<typeof ScriptEditor> = {
-  title: 'Components/Script/ScriptEditor',
+  title: 'Script/ScriptEditor',
   component: ScriptEditor,
   parameters: {
     layout: 'padded',

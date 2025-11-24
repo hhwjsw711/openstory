@@ -9,7 +9,7 @@ import {
 } from './style-selection-dialog';
 
 const meta: Meta<typeof StyleSelectionDialog> = {
-  title: 'Components/Style/StyleSelectionDialog',
+  title: 'Style/StyleSelectionDialog',
   component: StyleSelectionDialog,
   parameters: {
     layout: 'centered',
