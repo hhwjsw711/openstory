@@ -79,3 +79,4 @@ worker-configuration.d.ts
 # opennext
 .open-next
 
+.tmp/

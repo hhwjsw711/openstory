@@ -43,6 +43,7 @@ export type ImageGenerationParams = {
   onQueueUpdate?: (update: {
     status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
     logs?: string[];
+    progress?: number; // Progress percentage (0-100)
   }) => void;
 
   // Model-specific features
@@ -85,6 +86,40 @@ function imageSizeToAspectRatio(imageSize: ImageSize): string {
     landscape_16_9: '16:9',
   };
   return mapping[imageSize] ?? '16:9';
+}
+
+/**
+ * Extract progress percentage from Fal.ai queue update
+ * Checks for progress in update object or logs
+ */
+function extractProgress(
+  update: { status: string; logs?: Array<{ message: string }> } & Record<
+    string,
+    unknown
+  >
+): number | undefined {
+  // Check if progress is directly in the update object (using type assertion for dynamic access)
+  const updateAny = update as Record<string, unknown>;
+  if (typeof updateAny.progress === 'number') {
+    return updateAny.progress;
+  }
+
+  // Try to extract progress from logs (e.g., "Progress: 45%")
+  if (update.logs) {
+    for (const log of update.logs) {
+      const message = log.message || '';
+      // Look for patterns like "45%", "Progress: 45%", "45% complete"
+      const progressMatch = message.match(/(\d+)%/);
+      if (progressMatch) {
+        const percent = parseInt(progressMatch[1], 10);
+        if (percent >= 0 && percent <= 100) {
+          return percent;
+        }
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -150,12 +185,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -203,12 +247,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -234,12 +287,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -264,12 +326,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -295,12 +366,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -322,12 +402,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
@@ -358,12 +447,21 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
+            // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
             params.onQueueUpdate({
               status: update.status,
               logs:
                 update.status === 'IN_PROGRESS'
                   ? update.logs?.map((l) => l.message)
                   : undefined,
+              progress,
             });
           }
         },
