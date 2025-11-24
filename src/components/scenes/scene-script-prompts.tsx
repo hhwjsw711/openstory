@@ -1,5 +1,5 @@
+import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { MotionModelSelector } from '@/components/motion/motion-model-selector';
-import { ImageModelSelector } from '@/components/sequence/image-model-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';

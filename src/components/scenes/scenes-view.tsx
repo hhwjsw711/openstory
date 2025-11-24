@@ -1,7 +1,7 @@
 'use client';
 
-import { ModelBadge } from '@/components/common/model-badge';
 import { PageContainer } from '@/components/layout/page-container';
+import { ModelBadge } from '@/components/model/model-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import {

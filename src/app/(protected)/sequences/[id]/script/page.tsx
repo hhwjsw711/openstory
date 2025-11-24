@@ -1,11 +1,11 @@
 'use client';
 import { PageContainer } from '@/components/layout';
+import { ScriptView } from '@/components/script/script-view';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
 } from '@/components/typography';
-import { ScriptView } from '@/components/views/script-view';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
 import { useRouter } from 'next/navigation';

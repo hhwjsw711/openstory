@@ -1,5 +1,5 @@
-import { ModelSelector } from '@/components/sequence/model-selector';
-import { ScriptEditor } from '@/components/sequence/script-editor';
+import { ModelSelector } from '@/components/model/model-selector';
+import { ScriptEditor } from '@/components/script/script-editor';
 import { AspectRatioSelect } from '@/components/style/aspect-ratio-select';
 import { StyleSelector } from '@/components/style/style-selector';
 import { Button } from '@/components/ui/button';

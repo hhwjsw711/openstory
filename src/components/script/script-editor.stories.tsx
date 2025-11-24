@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs';
+import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { ScriptEditor } from '../script-editor';
+import { ScriptEditor } from './script-editor';
 
 const meta: Meta<typeof ScriptEditor> = {
-  title: 'Components/Sequence/ScriptEditor',
+  title: 'Components/Script/ScriptEditor',
   component: ScriptEditor,
   parameters: {
     layout: 'padded',

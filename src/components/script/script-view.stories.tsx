@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/nextjs';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Sequence } from '@/lib/db/schema/sequences';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScriptView } from './script-view';
 
 // Mock sequence for edit mode stories
@@ -48,7 +48,7 @@ const createQueryClient = () =>
   });
 
 const meta: Meta<typeof ScriptView> = {
-  title: 'Views/ScriptView',
+  title: 'Components/Script/ScriptView',
   component: ScriptView,
   parameters: {
     layout: 'fullscreen',
