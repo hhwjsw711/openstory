@@ -49,6 +49,7 @@ export function getAuth() {
     // Wildcard patterns allow OAuth proxy to redirect from production to preview branches
     trustedOrigins: [
       APP_URL,
+      'http://localhost:3000', // Local development (for OAuth proxy redirect)
       'https://*.velro.ai',
       'https://*.vercel.app',
       'https://*.railway.app',
@@ -120,6 +121,7 @@ export function getAuth() {
       nextCookies(),
       // OAuth Proxy for preview deployments
       oAuthProxy({
+        currentURL: APP_URL,
         productionURL: 'https://app.velro.ai',
       }),
     ],

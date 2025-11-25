@@ -166,7 +166,7 @@ export async function getPublicStyles(): Promise<Style[]> {
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
-    .orderBy(desc(styles.createdAt));
+    .orderBy(styles.createdAt);
 }
 
 /**
