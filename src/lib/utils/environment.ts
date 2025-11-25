@@ -85,19 +85,36 @@ export const NEXT_PUBLIC_APP_URL =
     ? window.location.origin
     : process.env.NEXT_PUBLIC_APP_URL || APP_URL;
 
-export function isPreviewBranch(): boolean {
-  const isVercelProduction = process.env.VERCEL_ENV === 'production';
-  const isCloudflareProduction = process.env.CF_PAGES_BRANCH === 'main';
-  const isRailwayProduction = process.env.RAILWAY_ENVIRONMENT === 'production';
-  const isDevelopment = isLocalDevelopment();
+/**
+ * This returns the app URL for production deployments
+ * This is used in the redirect URIs for OAuth providers on preview branches
+ */
+export function getProductionDeploymentAppUrl(): string {
+  if (/https:\/\/.*\.velro.ai/.test(APP_URL)) {
+    return 'https://app.velro.ai';
+  }
+  if (/https:\/\/.*\.velro.workers.dev/.test(APP_URL)) {
+    return 'https://frontend-prd.velro.workers.dev';
+  }
+  if (/https:\/\/velro.*\.vercel.app/.test(APP_URL)) {
+    return 'https://velro-phi.vercel.app/'; // staging deployment
+  }
+  if (/https:\/\/.*\.railway.app/.test(APP_URL)) {
+    return 'https://velro.up.railway.app'; // production deployment
+  }
 
-  // Don't run Google OAuth on preview branches
-  return !(
-    isCloudflareProduction ||
-    isVercelProduction ||
-    isRailwayProduction ||
-    isDevelopment
-  );
+  // Otherwise, return the original app URL
+  return APP_URL;
+}
+
+export const PRODUCTION_DEPLOYMENT_APP_URL = getProductionDeploymentAppUrl();
+
+export function isProductionDeployment(): boolean {
+  return PRODUCTION_DEPLOYMENT_APP_URL === APP_URL;
+}
+
+export function isPreviewDeployment(): boolean {
+  return !isLocalDevelopment() && !isProductionDeployment();
 }
 
 /**
