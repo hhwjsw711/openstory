@@ -86,6 +86,8 @@ export function useCreateSequence() {
       analysisModels?: string[];
       teamId?: string;
       aspectRatio?: string;
+      imageModel?: string;
+      videoModel?: string;
     }
   >({
     mutationFn: async (input) => {
@@ -101,6 +103,8 @@ export function useCreateSequence() {
           analysisModels: input.analysisModels || [DEFAULT_ANALYSIS_MODEL],
           teamId: input.teamId,
           aspectRatio: input.aspectRatio,
+          imageModel: input.imageModel,
+          videoModel: input.videoModel,
         }),
       });
 

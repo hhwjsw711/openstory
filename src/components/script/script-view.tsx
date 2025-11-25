@@ -15,16 +15,16 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  type ImageToVideoModel,
+  type TextToImageModel,
+} from '@/lib/ai/models';
+import {
   ANALYSIS_MODEL_IDS,
   DEFAULT_ANALYSIS_MODEL,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
-import {
-  DEFAULT_IMAGE_MODEL,
-  DEFAULT_VIDEO_MODEL,
-  type TextToImageModel,
-  type ImageToVideoModel,
-} from '@/lib/ai/models';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Sequence } from '@/types/database';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -122,6 +122,8 @@ export const ScriptView: FC<{
           styleId: styleId,
           aspectRatio,
           analysisModels,
+          imageModel,
+          videoModel: motionModel,
         },
         {
           onSuccess: (result) => {
