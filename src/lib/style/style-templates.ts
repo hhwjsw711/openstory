@@ -257,6 +257,44 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     parentId: null,
     usageCount: null,
   },
+  {
+    name: 'Lo-Fi iPhone',
+    description:
+      'Ultra-photorealistic, unedited smartphone photography aesthetic. Adapts to any environment (day, night, indoor, outdoor) while simulating authentic iPhone sensor behavior and optical imperfections.',
+    category: 'photography',
+    tags: [
+      'photorealistic',
+      'iphone',
+      'raw',
+      'candid',
+      '4k',
+      'mobile-photography',
+    ],
+    config: {
+      artStyle:
+        'iPhone 16 Pro 48MP Raw HEIF, unedited aesthetic. Ultra-high fidelity textures showing real skin pores and material imperfections. Includes optical flaws: slight barrel distortion, chromatic aberration on edges, and realistic sensor noise in shadow areas.',
+      colorPalette: ['#F5F5DC', '#D2B48C', '#8B4513', '#FFFAF0', '#2F4F4F'],
+      lighting:
+        'Environment-reactive lighting. Accurate sensor exposure handling: slight highlight bloom on bright sources (sun or neon) and digital grain in low-light areas. Realistic light falloff and authentic ambient occlusion.',
+      cameraWork:
+        'Handheld smartphone perspective, f/1.78 aperture. Natural depth of field focusing on the subject. Slight motion blur on moving elements if applicable.',
+      mood: 'Grounded reality. "In-the-moment" capture. Authentic presence, ignoring the camera.',
+      referenceFilms: [
+        'BeReal Aesthetic',
+        'User Generated Content',
+        'Documentary Footage',
+        'Raw Camera Files',
+      ],
+      colorGrading:
+        'Standard Apple Log profile converted to Rec.709. No creative grading. Authentic colors with potential for mixed lighting temperatures (e.g. warm tungsten vs cool daylight).',
+    },
+    isPublic: true,
+    isTemplate: true,
+    previewUrl: getStylePreviewUrl('Lo-Fi iPhone'),
+    version: null,
+    parentId: null,
+    usageCount: null,
+  },
 ];
 
 // Slug for the system templates team
