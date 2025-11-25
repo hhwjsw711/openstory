@@ -20,7 +20,7 @@ import {
   teams,
   vfx,
 } from '@/lib/db/schema';
-import { and, desc, eq, isNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, or } from 'drizzle-orm';
 
 /**
  * Sequence with all its frames
@@ -155,7 +155,7 @@ export async function getTeamStyles(
     where: whereCondition,
     orderBy: (styles, { desc }) => [
       desc(styles.usageCount),
-      desc(styles.createdAt),
+      asc(styles.createdAt),
     ],
   });
 }
@@ -176,7 +176,7 @@ export async function getPublicStyles(): Promise<Style[]> {
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
-    .orderBy(styles.createdAt);
+    .orderBy(asc(styles.name));
 }
 
 /**
@@ -196,7 +196,7 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
     .select()
     .from(styles)
     .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
-    .orderBy(desc(styles.createdAt));
+    .orderBy(asc(styles.name));
 }
 
 /**
