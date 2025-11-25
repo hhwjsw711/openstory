@@ -56,10 +56,14 @@ export async function POST(request: Request) {
     await requireTeamMemberAccess(user.id, teamId);
 
     // Create sequences in parallel for each selected model
-    const { analysisModels } = createSequenceInput;
+    const { analysisModels, imageModel, videoModel } = createSequenceInput;
     console.log(
       '[POST /api/sequences] Creating sequences for models:',
-      analysisModels
+      analysisModels,
+      'imageModel:',
+      imageModel,
+      'videoModel:',
+      videoModel
     );
 
     const sequences: Sequence[] = await Promise.all(
@@ -73,6 +77,8 @@ export async function POST(request: Request) {
           styleId: createSequenceInput.styleId,
           aspectRatio: createSequenceInput.aspectRatio,
           analysisModel: modelId,
+          imageModel,
+          videoModel,
         };
         console.log(
           `[POST /api/sequences] Creating sequence for model ${modelId}:`,

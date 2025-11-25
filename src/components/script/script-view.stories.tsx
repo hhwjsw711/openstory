@@ -31,6 +31,8 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   aspectRatio: '16:9',
   analysisModel: 'anthropic/claude-haiku-4.5',
   analysisDurationMs: 0,
+  imageModel: 'nano_banana_pro',
+  videoModel: 'kling_v2_5_turbo_pro',
 };
 
 // Create a new QueryClient for each story to avoid state leakage

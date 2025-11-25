@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "dc88bc65-65b5-4e25-a954-ce036d26cf8f",
-  "prevId": "be4d2b3e-c2c8-401e-bd86-2c6cb5d1f0d7",
+  "id": "f0cbec9d-8b04-49e2-9b94-37a9dac5b4fe",
+  "prevId": "dc88bc65-65b5-4e25-a954-ce036d26cf8f",
   "tables": {
     "account": {
       "name": "account",
@@ -1177,6 +1177,22 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "image_model": {
+          "name": "image_model",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'nano_banana_pro'"
+        },
+        "video_model": {
+          "name": "video_model",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'kling_v2_5_turbo_pro'"
         }
       },
       "indexes": {

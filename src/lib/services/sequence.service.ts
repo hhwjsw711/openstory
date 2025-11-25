@@ -27,6 +27,8 @@ export interface CreateSequenceParams {
   styleId: string;
   analysisModel: string;
   aspectRatio?: AspectRatio; // Optional - defaults to '16:9' in database
+  imageModel?: string; // Model key for image generation (e.g., 'nano_banana_pro')
+  videoModel?: string; // Model key for video generation (e.g., 'kling_v2_5_turbo_pro')
 }
 
 export interface UpdateSequenceParams {
@@ -39,6 +41,8 @@ export interface UpdateSequenceParams {
   metadata?: Record<string, unknown>;
   analysisModel?: string;
   aspectRatio?: AspectRatio;
+  imageModel?: string;
+  videoModel?: string;
 }
 
 export interface SequenceWithDetails extends Sequence {
@@ -75,6 +79,8 @@ export class SequenceService {
       styleId: params.styleId,
       aspectRatio: params.aspectRatio ?? DEFAULT_ASPECT_RATIO, // Default to '16:9' if not provided
       analysisModel: params.analysisModel,
+      imageModel: params.imageModel, // Will use database default if not provided
+      videoModel: params.videoModel, // Will use database default if not provided
       status: 'draft',
     };
 
@@ -106,6 +112,8 @@ export class SequenceService {
       status: params.status,
       metadata: params.metadata,
       analysisModel: params.analysisModel,
+      imageModel: params.imageModel,
+      videoModel: params.videoModel,
       updatedBy: params.userId,
       updatedAt: new Date(),
     };
@@ -272,6 +280,8 @@ export class SequenceService {
       styleId: original.styleId,
       aspectRatio: original.aspectRatio, // Preserve aspect ratio
       analysisModel: original.analysisModel,
+      imageModel: original.imageModel, // Preserve image model
+      videoModel: original.videoModel, // Preserve video model
       status: 'draft',
       metadata: original.metadata,
     };
