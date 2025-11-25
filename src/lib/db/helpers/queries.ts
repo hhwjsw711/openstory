@@ -133,21 +133,31 @@ export async function getTeamStyles(
     category?: string;
   }
 ): Promise<Style[]> {
-  const conditions = [eq(styles.teamId, teamId)];
+  // Build where condition explicitly to preserve type inference
+  const whereCondition =
+    options?.templatesOnly && options?.category
+      ? and(
+          eq(styles.teamId, teamId),
+          eq(styles.isTemplate, true),
+          eq(styles.category, options.category)
+        )
+      : options?.templatesOnly
+        ? and(eq(styles.teamId, teamId), eq(styles.isTemplate, true))
+        : options?.category
+          ? and(
+              eq(styles.teamId, teamId),
+              eq(styles.category, options.category)
+            )
+          : eq(styles.teamId, teamId);
 
-  if (options?.templatesOnly) {
-    conditions.push(eq(styles.isTemplate, true));
-  }
-
-  if (options?.category) {
-    conditions.push(eq(styles.category, options.category));
-  }
-
-  return await getDb()
-    .select()
-    .from(styles)
-    .where(and(...conditions))
-    .orderBy(desc(styles.usageCount), desc(styles.createdAt));
+  // Use relational query API for better type inference
+  return await getDb().query.styles.findMany({
+    where: whereCondition,
+    orderBy: (styles, { desc }) => [
+      desc(styles.usageCount),
+      desc(styles.createdAt),
+    ],
+  });
 }
 
 /**
