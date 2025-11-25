@@ -3,7 +3,7 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
  */
 
-import { DEFAULT_IMAGE_MODEL, TextToImageModel } from '@/lib/ai/models';
+import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
@@ -72,11 +72,10 @@ export async function POST(
       );
     }
 
-    // Determine which model to use
+    // Determine which model to use (with runtime validation)
     const modelToUse =
       validatedBody.model ||
-      (frameData.imageModel as TextToImageModel | undefined) ||
-      DEFAULT_IMAGE_MODEL;
+      safeTextToImageModel(frameData.imageModel, DEFAULT_IMAGE_MODEL);
 
     // Trigger image generation workflow with deduplication
     const workflowInput: ImageWorkflowInput = {

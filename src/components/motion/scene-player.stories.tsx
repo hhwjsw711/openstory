@@ -27,6 +27,7 @@ const mockFrameBase = {
   videoGeneratedAt: null,
   videoError: null,
   motionPrompt: null,
+  motionModel: 'veo3',
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,

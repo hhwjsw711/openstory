@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  ImageToVideoModel,
-  TextToImageModel,
+  safeTextToImageModel,
+  type ImageToVideoModel,
+  type TextToImageModel,
 } from '@/lib/ai/models';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
@@ -129,7 +130,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Get imagePrompt early so it can be used in handleShortenPrompt
   const scriptText = frame?.metadata?.originalScript?.extract;
-  const imageModel = frame?.imageModel as TextToImageModel;
+  const imageModel = safeTextToImageModel(
+    frame?.imageModel,
+    DEFAULT_IMAGE_MODEL
+  );
   const imagePrompt =
     frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
 
@@ -324,8 +328,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Update local state when frame changes
   useEffect(() => {
-    const currentModel =
-      (frame?.imageModel as TextToImageModel) || DEFAULT_IMAGE_MODEL;
+    const currentModel = safeTextToImageModel(
+      frame?.imageModel,
+      DEFAULT_IMAGE_MODEL
+    );
     setSelectedModel(currentModel);
   }, [frame?.imageModel]);
 

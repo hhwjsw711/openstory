@@ -17,6 +17,8 @@ import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  safeImageToVideoModel,
+  safeTextToImageModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
@@ -64,11 +66,15 @@ export const ScriptView: FC<{
   const [analysisModels, setAnalysisModels] = useState<AnalysisModelId[]>(
     sequenceAnalysisModels
   );
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
-  const [imageModel, setImageModel] =
-    useState<TextToImageModel>(DEFAULT_IMAGE_MODEL);
-  const [motionModel, setMotionModel] =
-    useState<ImageToVideoModel>(DEFAULT_VIDEO_MODEL);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
+    sequence?.aspectRatio || '16:9'
+  );
+  const [imageModel, setImageModel] = useState<TextToImageModel>(
+    safeTextToImageModel(sequence?.imageModel, DEFAULT_IMAGE_MODEL)
+  );
+  const [motionModel, setMotionModel] = useState<ImageToVideoModel>(
+    safeImageToVideoModel(sequence?.videoModel, DEFAULT_VIDEO_MODEL)
+  );
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 

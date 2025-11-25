@@ -504,7 +504,6 @@ export async function generateImageWithProvider(
           throw new Error('No data returned from LetzAI');
 
         imageDto = imageStatusResp.data;
-        console.log('imageStatus', imageDto.status, imageDto.progress);
         await new Promise((resolve) => setTimeout(resolve, 5000));
       } while (
         imageDto.status !== 'ready' &&

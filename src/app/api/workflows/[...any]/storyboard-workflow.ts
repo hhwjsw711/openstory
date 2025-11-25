@@ -10,8 +10,8 @@ import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-work
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  TextToImageModel,
-  ImageToVideoModel,
+  safeImageToVideoModel,
+  safeTextToImageModel,
 } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
@@ -102,12 +102,17 @@ export const generateStoryboardWorkflow = createWorkflow(
         const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
         // Use the sequence's models (fall back to defaults if not set)
+        // Runtime validation prevents invalid model keys from causing downstream failures
         const analysisModel =
           sequence.analysisModel || 'anthropic/claude-haiku-4.5';
-        const imageModel = (sequence.imageModel ||
-          DEFAULT_IMAGE_MODEL) as TextToImageModel;
-        const videoModel = (sequence.videoModel ||
-          DEFAULT_VIDEO_MODEL) as ImageToVideoModel;
+        const imageModel = safeTextToImageModel(
+          sequence.imageModel,
+          DEFAULT_IMAGE_MODEL
+        );
+        const videoModel = safeImageToVideoModel(
+          sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        );
 
         return { sequence, styleConfig, analysisModel, imageModel, videoModel };
       });
