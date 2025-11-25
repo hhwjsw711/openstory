@@ -8,13 +8,13 @@ import { PageContainer } from '@/components/layout';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
 
 type Props = {
-  searchParams: Promise<{ redirectTo?: string }>;
+  searchParams: Promise<{ redirectTo?: string; email?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: Props) {
   const params = await searchParams;
   const redirectTo = getRedirectFromParams(params);
-
+  const email = params.email || '';
   return (
     <PageContainer>
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
@@ -25,7 +25,11 @@ export default async function LoginPage({ searchParams }: Props) {
               Sign in to continue creating cinematic content
             </p>
           </div>
-          <AuthForm mode="signin" redirectTo={redirectTo} />
+          <AuthForm
+            mode="signin"
+            emailEntered={email}
+            redirectTo={redirectTo}
+          />
         </div>
       </div>
     </PageContainer>
