@@ -80,3 +80,6 @@ worker-configuration.d.ts
 .open-next
 
 .tmp/
+
+# doppler
+doppler.json

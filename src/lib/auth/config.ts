@@ -94,14 +94,15 @@ export function getAuth() {
     },
 
     // Social providers
-    // Google OAuth only enabled in production and local development
-    // Preview branches use email/password or anonymous mode
+    // Google OAuth enabled on all environments via oAuthProxy plugin
+    // Preview branches proxy OAuth requests to production
     socialProviders: {
       google: {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
-        // Enable Google Auth on all environments (proxied on previews)
         enabled: true,
+        // Redirect URI required for oAuthProxy to work on preview branches
+        redirectURI: 'https://app.velro.ai/api/auth/callback/google',
         // Sign-up enabled - access code validation happens after auth via activation flow
       },
     },
