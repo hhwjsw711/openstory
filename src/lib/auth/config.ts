@@ -49,6 +49,9 @@ export function getAuth() {
     // Wildcard patterns allow OAuth proxy to redirect from production to preview branches
     trustedOrigins: [
       APP_URL,
+      'https://*.velro.ai',
+      'https://*.vercel.app',
+      'https://*.railway.app',
       'https://app.velro.ai', // Production
       'https://*.velro.workers.dev', // All Cloudflare Pages previews
     ],

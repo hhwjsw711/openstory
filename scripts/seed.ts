@@ -52,23 +52,32 @@ async function seed() {
       console.log(`✅ System team found with ID: ${systemTeam.id}\n`);
     }
 
-    // 2. Check if template styles already exist
+    // 2. Check which templates already exist
     console.log('Checking existing template styles...');
     const existingTemplates = await db
-      .select()
+      .select({ name: styles.name })
       .from(styles)
       .where(eq(styles.teamId, systemTeam.id));
 
-    if (existingTemplates.length > 0) {
-      console.log(
-        `ℹ️  Found ${existingTemplates.length} existing template styles - skipping insert`
-      );
-      console.log('✅ Templates already seeded\n');
+    const existingNames = new Set(existingTemplates.map((t) => t.name));
+    console.log(
+      `ℹ️  Found ${existingTemplates.length} existing template styles`
+    );
+
+    // Filter out templates that already exist
+    const templatesToInsert = DEFAULT_SYSTEM_STYLES.filter(
+      (template) => !existingNames.has(template.name)
+    );
+
+    if (templatesToInsert.length === 0) {
+      console.log('✅ All templates already exist - nothing to add\n');
     } else {
-      // 3. Insert template film styles
-      console.log('Inserting template styles...');
+      // 3. Insert only new template styles
+      console.log(
+        `Inserting ${templatesToInsert.length} new template style(s)...`
+      );
       await db.insert(styles).values(
-        DEFAULT_SYSTEM_STYLES.map((style) => ({
+        templatesToInsert.map((style) => ({
           ...style,
           teamId: systemTeam.id, // Add system team ID
           createdBy: null, // No user for system templates
@@ -76,8 +85,12 @@ async function seed() {
       );
 
       console.log(
-        `✅ Inserted ${DEFAULT_SYSTEM_STYLES.length} template styles\n`
+        `✅ Inserted ${templatesToInsert.length} new template style(s):`
       );
+      templatesToInsert.forEach((style) => {
+        console.log(`   - ${style.name}`);
+      });
+      console.log();
     }
 
     console.log('🎉 Database seeded successfully!');
