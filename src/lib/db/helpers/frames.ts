@@ -30,6 +30,7 @@ export type FrameWithSequence = Frame & {
     title: string;
     status: string;
     styleId: string | null;
+    videoModel: string;
   };
 };
 
@@ -641,6 +642,7 @@ export async function getFrameWithSequence(
           title: true,
           status: true,
           styleId: true,
+          videoModel: true,
         },
       },
     },

@@ -36,6 +36,13 @@
       "when": 1764027306035,
       "tag": "0004_loving_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1764030114648,
+      "tag": "0005_conscious_madripoor",
+      "breakpoints": true
     }
   ]
 }

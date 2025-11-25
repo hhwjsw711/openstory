@@ -136,6 +136,11 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'failed',
     ]),
     motionPrompt: null,
+    motionModel: faker.helpers.arrayElement([
+      'veo3',
+      'kling_v2_5_turbo_pro',
+      'wan_i2v',
+    ]),
     videoWorkflowRunId: faker.string.uuid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,

@@ -97,13 +97,15 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   onRegenerateStart,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
-  const [editedPrompt, setEditedPrompt] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<
-    TextToImageModel | undefined
-  >(undefined);
   const [isShortening, setIsShortening] = useState(false);
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenSuccess, setShortenSuccess] = useState<string | null>(null);
+
+  // Image regeneration state
+  const [editedImagePrompt, setEditedImagePrompt] = useState<string>('');
+  const [selectedImageModel, setSelectedImageModel] = useState<
+    TextToImageModel | undefined
+  >(undefined);
 
   // Motion regeneration state
   const [editedMotionPrompt, setEditedMotionPrompt] = useState<string>('');
@@ -141,7 +143,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setShortenError(null);
     setShortenSuccess(null);
 
-    const currentPrompt = editedPrompt || imagePrompt;
+    const currentPrompt = editedImagePrompt || imagePrompt;
     if (!currentPrompt || currentPrompt.length < 20) {
       setShortenError('Prompt is too short to shorten');
       return;
@@ -170,7 +172,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       } = await response.json();
 
       if (result.success && result.data?.shortenedPrompt) {
-        setEditedPrompt(result.data.shortenedPrompt);
+        setEditedImagePrompt(result.data.shortenedPrompt);
         setShortenSuccess(
           `Prompt shortened by ${result.data.reductionPercent}% (${result.data.originalLength} → ${result.data.shortenedLength} chars)`
         );
@@ -187,7 +189,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     } finally {
       setIsShortening(false);
     }
-  }, [editedPrompt, imagePrompt]);
+  }, [editedImagePrompt, imagePrompt]);
 
   const handleRegenerate = useCallback(async () => {
     if (!frame?.id || !frame?.sequenceId) return;
@@ -204,8 +206,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             ? {
                 ...f,
                 thumbnailStatus: 'generating' as const,
-                imagePrompt: editedPrompt || f.imagePrompt,
-                imageModel: selectedModel || f.imageModel,
+                imagePrompt: editedImagePrompt || f.imagePrompt,
+                imageModel: selectedImageModel || f.imageModel,
               }
             : f
         );
@@ -218,8 +220,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       return {
         ...oldFrame,
         thumbnailStatus: 'generating' as const,
-        imagePrompt: editedPrompt || oldFrame.imagePrompt,
-        imageModel: selectedModel || oldFrame.imageModel,
+        imagePrompt: editedImagePrompt || oldFrame.imagePrompt,
+        imageModel: selectedImageModel || oldFrame.imageModel,
       };
     });
 
@@ -230,8 +232,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: selectedModel,
-            prompt: editedPrompt || undefined,
+            model: selectedImageModel,
+            prompt: editedImagePrompt || undefined,
           }),
         }
       );
@@ -252,7 +254,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       });
       await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
     }
-  }, [frame, selectedModel, editedPrompt, queryClient, onRegenerateStart]);
+  }, [
+    frame,
+    selectedImageModel,
+    editedImagePrompt,
+    queryClient,
+    onRegenerateStart,
+  ]);
 
   const handleRegenerateMotion = useCallback(async () => {
     if (!frame?.id || !frame?.sequenceId) return;
@@ -270,6 +278,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
                 ...f,
                 videoStatus: 'generating' as const,
                 motionPrompt: editedMotionPrompt || f.motionPrompt,
+                motionModel: selectedMotionModel || f.motionModel,
               }
             : f
         );
@@ -283,6 +292,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         ...oldFrame,
         videoStatus: 'generating' as const,
         motionPrompt: editedMotionPrompt || oldFrame.motionPrompt,
+        motionModel: selectedMotionModel || oldFrame.motionModel,
       };
     });
 
@@ -323,16 +333,16 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Update local state when frame image prompt changes
   useEffect(() => {
-    setEditedPrompt(imagePrompt || '');
+    setEditedImagePrompt(imagePrompt || '');
   }, [imagePrompt]);
 
-  // Update local state when frame changes
+  // Update local state when frame image model changes
   useEffect(() => {
     const currentModel = safeTextToImageModel(
       frame?.imageModel,
       DEFAULT_IMAGE_MODEL
     );
-    setSelectedModel(currentModel);
+    setSelectedImageModel(currentModel);
   }, [frame?.imageModel]);
 
   const motionPrompt =
@@ -345,9 +355,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Update local motion model state when frame changes
   useEffect(() => {
-    // Note: Currently there's no motionModel field on frame, so use default model
-    setSelectedMotionModel(DEFAULT_VIDEO_MODEL);
-  }, [frame?.id]);
+    const currentModel =
+      (frame?.motionModel as ImageToVideoModel) || DEFAULT_VIDEO_MODEL;
+    setSelectedMotionModel(currentModel);
+  }, [frame?.motionModel]);
 
   // Check if image is currently generating
   const isGenerating =
@@ -401,12 +412,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Prompt</label>
               <span className="text-xs text-muted-foreground">
-                {(editedPrompt || imagePrompt || '').length} characters
+                {(editedImagePrompt || imagePrompt || '').length} characters
               </span>
             </div>
             <Textarea
-              value={editedPrompt || imagePrompt || ''}
-              onChange={(e) => setEditedPrompt(e.target.value)}
+              value={editedImagePrompt || imagePrompt || ''}
+              onChange={(e) => setEditedImagePrompt(e.target.value)}
               placeholder="Enter image prompt…"
               className="min-h-[120px] resize-y"
               disabled={isGenerating}
@@ -417,8 +428,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
             <ImageModelSelector
-              selectedModel={selectedModel || imageModel}
-              onModelChange={setSelectedModel}
+              selectedModel={selectedImageModel || imageModel}
+              onModelChange={setSelectedImageModel}
               disabled={isGenerating}
             />
           </div>
@@ -430,8 +441,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             disabled={
               isShortening ||
               isGenerating ||
-              !editedPrompt ||
-              editedPrompt.length < 20
+              !editedImagePrompt ||
+              editedImagePrompt.length < 20
             }
             className="w-full"
           >
@@ -454,7 +465,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <Button
             variant="outline"
             onClick={() =>
-              handleCopy(editedPrompt || imagePrompt, 'image-prompt')
+              handleCopy(editedImagePrompt || imagePrompt, 'image-prompt')
             }
             disabled={!imagePrompt}
             className="w-full"
