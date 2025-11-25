@@ -1,6 +1,10 @@
 /**
  * Database Seed Script
  * Seeds the database with initial template styles and system team
+ *
+ * Usage:
+ *   bun db:seed           # Seed Turso database (requires TURSO_DATABASE_URL)
+ *   bun db:seed:local     # Seed local SQLite database (file:local.db)
  */
 
 import { styles, teams } from '@/lib/db/schema';
@@ -11,18 +15,40 @@ import { drizzle } from 'drizzle-orm/libsql';
 
 const SYSTEM_TEAM_SLUG = 'system-templates';
 
-async function seed() {
-  const tursoUrl = process.env.TURSO_DATABASE_URL;
-  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+function parseArgs() {
+  const args = process.argv.slice(2);
+  return {
+    local: args.includes('--local'),
+  };
+}
 
-  if (!tursoUrl) {
-    throw new Error('TURSO_DATABASE_URL is required');
+async function seed() {
+  const { local } = parseArgs();
+
+  let client;
+
+  if (local) {
+    console.log('🗄️  Using local SQLite database (file:local.db)\n');
+    client = createClient({
+      url: 'file:local.db',
+    });
+  } else {
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (!tursoUrl) {
+      throw new Error(
+        'TURSO_DATABASE_URL is required (use --local for local.db)'
+      );
+    }
+
+    console.log('🗄️  Using Turso database\n');
+    client = createClient({
+      url: tursoUrl,
+      ...(tursoToken && { authToken: tursoToken }),
+    });
   }
 
-  const client = createClient({
-    url: tursoUrl,
-    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
-  });
   const db = drizzle(client);
 
   try {
