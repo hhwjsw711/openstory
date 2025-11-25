@@ -359,6 +359,14 @@ export const IMAGE_MODELS = {
     description: 'Flux with creative LoRA',
     maxPromptLength: 2000, // ~512 tokens
   },
+  flux_2: {
+    id: 'fal-ai/flux-2' as const,
+    name: 'Flux 2',
+    provider: 'Black Forest Labs',
+    tier: 'premium',
+    description: 'Enhanced realism, crisper text generation, native editing',
+    maxPromptLength: 2000, // ~512 tokens
+  },
   sdxl_lightning: {
     id: 'fal-ai/fast-lightning-sdxl' as const,
     name: 'SDXL Lightning',
