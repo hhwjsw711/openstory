@@ -45,9 +45,13 @@ export function getAuth() {
     secret: runtimeEnv.BETTER_AUTH_SECRET,
     baseURL: APP_URL,
 
-    // Trusted origins for CSRF protection
-    // Production uses custom domain, previews use Vercel URLs
-    trustedOrigins: [APP_URL],
+    // Trusted origins for CSRF protection and OAuth proxy
+    // Wildcard patterns allow OAuth proxy to redirect from production to preview branches
+    trustedOrigins: [
+      APP_URL,
+      'https://app.velro.ai', // Production
+      'https://*.velro.workers.dev', // All Cloudflare Pages previews
+    ],
 
     // Session configuration
     // SECURITY: 90-day expiration mitigates:
