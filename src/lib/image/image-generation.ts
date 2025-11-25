@@ -52,7 +52,8 @@ export type ImageGenerationParams = {
   resolution?: '1K' | '2K' | '4K'; // Imagen4, Nano Banana Pro
   enhancePrompt?: boolean; // FLUX Pro
   safetyTolerance?: number; // FLUX Pro
-  acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell
+  acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell/Flux 2
+  enablePromptExpansion?: boolean; // FLUX 2
 };
 
 /**
@@ -186,6 +187,51 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(params.model, params, resp.data);
+    }
+
+    case 'flux_2': {
+      // FLUX 2 - Enhanced realism, crisper text, native editing
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+          num_inference_steps: params.numInferenceSteps ?? 28,
+          guidance_scale: params.guidanceScale ?? 2.5,
+          enable_safety_checker: true,
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          ...(params.acceleration && { acceleration: params.acceleration }),
+          ...(params.enablePromptExpansion !== undefined && {
+            enable_prompt_expansion: params.enablePromptExpansion,
+          }),
+          sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
             const progress = extractProgress(
               update as unknown as {
                 status: string;

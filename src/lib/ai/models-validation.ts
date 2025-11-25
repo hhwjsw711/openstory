@@ -136,6 +136,17 @@ export const sdxlLightningSchema = z.object({
   num_images: z.number().positive().optional(),
 });
 
+export const flux2Schema = z.object({
+  prompt: z.string(),
+  seed: z.number().int().min(0).optional(),
+  num_inference_steps: z.number().int().min(4).max(50).optional(),
+  guidance_scale: z.number().min(0).max(20).optional(),
+  num_images: z.number().int().min(1).max(4).optional(),
+  acceleration: z.enum(['none', 'regular', 'high']).optional(),
+  enable_prompt_expansion: z.boolean().optional(),
+  output_format: z.enum(['jpeg', 'png', 'webp']).optional(),
+});
+
 interface ExtraParamsSchemaByModelData {
   model: string;
   prompt: string;
@@ -159,6 +170,7 @@ export const extraParamsSchemaByModel = (
     flux_pro: fluxProSchema,
     flux_dev: fluxDevSchema,
     flux_schnell: fluxSchnellSchema,
+    flux_2: flux2Schema,
     sdxl: sdxlSchema,
     sdxl_lightning: sdxlLightningSchema,
   };
@@ -197,6 +209,7 @@ export const parseExtraParamsByModel = (
     flux_pro: fluxProSchema,
     flux_dev: fluxDevSchema,
     flux_schnell: fluxSchnellSchema,
+    flux_2: flux2Schema,
     sdxl: sdxlSchema,
     sdxl_lightning: sdxlLightningSchema,
   };
