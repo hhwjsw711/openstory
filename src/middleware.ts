@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: 'nodejs',
   matcher: [
     /*
      * Match /sequences and all sub-routes
