@@ -3,14 +3,15 @@
  * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate-motion - Regenerate a single frame's motion video
  */
 
+import { DEFAULT_VIDEO_MODEL, type ImageToVideoModel } from '@/lib/ai/models';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { regenerateMotionSchema } from '@/lib/schemas/frame.schemas';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { NextResponse } from 'next/server';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 export async function POST(
   request: Request,
@@ -73,6 +74,13 @@ export async function POST(
       frameData.description ||
       '';
 
+    // Determine which model to use (priority: provided > frame's stored > sequence default > global default)
+    const modelToUse =
+      validatedBody.model ||
+      (frameData.motionModel as ImageToVideoModel | null) ||
+      (frameData.sequence.videoModel as ImageToVideoModel) ||
+      DEFAULT_VIDEO_MODEL;
+
     // Trigger motion generation workflow with deduplication
     const workflowInput: MotionWorkflowInput = {
       userId: user.id,
@@ -81,7 +89,7 @@ export async function POST(
       sequenceId: frameData.sequenceId,
       thumbnailPath,
       prompt: promptToUse,
-      model: validatedBody.model,
+      model: modelToUse,
       duration: validatedBody.duration,
       fps: validatedBody.fps,
       motionBucket: validatedBody.motionBucket,

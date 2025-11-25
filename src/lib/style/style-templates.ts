@@ -1,5 +1,29 @@
 import { Style } from '@/types/database';
 
+/**
+ * Get the R2 public assets domain from environment
+ * Falls back to staging if not set
+ */
+function getPublicAssetsDomain(): string {
+  const domain = process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai';
+  return domain;
+}
+
+/**
+ * Generate preview URL for a style
+ */
+function getStylePreviewUrl(styleName: string): string {
+  const sanitized = styleName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `https://${getPublicAssetsDomain()}/styles/${sanitized}/character.jpg`;
+}
+
 // Default style templates that can be imported into any team
 export const DEFAULT_STYLE_TEMPLATES: Array<
   Omit<Style, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'createdBy'>
@@ -21,7 +45,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/cinematic-drama/400/300',
+    previewUrl: getStylePreviewUrl('Cinematic Drama'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -43,7 +67,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/neo-noir/400/300',
+    previewUrl: getStylePreviewUrl('Neo-Noir Thriller'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -70,7 +94,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/wes-anderson/400/300',
+    previewUrl: getStylePreviewUrl('Wes Anderson Style'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -92,7 +116,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/documentary/400/300',
+    previewUrl: getStylePreviewUrl('Documentary Realism'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -114,7 +138,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/scifi/400/300',
+    previewUrl: getStylePreviewUrl('Sci-Fi Futuristic'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -136,7 +160,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/horror-gothic/400/300',
+    previewUrl: getStylePreviewUrl('Horror Gothic'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -158,7 +182,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/action/400/300',
+    previewUrl: getStylePreviewUrl('Action Blockbuster'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -180,7 +204,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/romantic/400/300',
+    previewUrl: getStylePreviewUrl('Romantic Comedy'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -206,7 +230,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/western/400/300',
+    previewUrl: getStylePreviewUrl('Western Epic'),
     version: null,
     parentId: null,
     usageCount: null,
@@ -228,7 +252,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: 'https://picsum.photos/seed/animation/400/300',
+    previewUrl: getStylePreviewUrl('Animation Studio'),
     version: null,
     parentId: null,
     usageCount: null,

@@ -96,11 +96,13 @@ export const generateMotionWorkflow = createWorkflow(
       return data;
     });
 
-    // Step 2: Set status to generating
+    // Step 2: Set status to generating and store model being used
     await context.run('set-generating-status', async () => {
       await updateFrame(input.frameId, {
         videoStatus: 'generating',
         videoWorkflowRunId: context.workflowRunId,
+        motionModel: input.model || DEFAULT_VIDEO_MODEL,
+        motionPrompt: input.prompt,
       });
     });
 

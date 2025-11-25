@@ -1,17 +1,49 @@
 import type * as React from 'react';
 
+import { cva, type VariantProps } from 'class-variance-authority';
+
 import { cn } from '@/lib/utils';
 
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
+const cardVariants = cva(
+  'flex flex-col gap-6 rounded-xl border text-card-foreground',
+  {
+    variants: {
+      variant: {
+        default: 'bg-card py-6 shadow-sm',
+        premium: [
+          'relative overflow-hidden py-0',
+          'bg-gradient-to-br from-card-gradient-from via-card-gradient-via to-card-gradient-to',
+          'border-border/50 shadow-2xl',
+        ].join(' '),
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
+
+type CardProps = React.ComponentProps<'div'> &
+  VariantProps<typeof cardVariants>;
+
+function Card({ className, variant, children, ...props }: CardProps) {
   return (
     <div
       data-slot="card"
-      className={cn(
-        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
-        className
-      )}
+      data-variant={variant}
+      className={cn(cardVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {variant === 'premium' && (
+        <>
+          {/* Top accent line */}
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-card-accent to-transparent" />
+          {/* Bottom accent glow */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-linear-to-r from-transparent via-primary/20 to-transparent" />
+        </>
+      )}
+      {children}
+    </div>
   );
 }
 
@@ -20,7 +52,9 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="card-header"
       className={cn(
-        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6',
+        '[[data-variant=default]>&]:pt-0 [[data-variant=premium]>&]:pt-6',
+        'has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
         className
       )}
       {...props}
@@ -75,7 +109,12 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-footer"
-      className={cn('flex items-center px-6 [.border-t]:pt-6', className)}
+      className={cn(
+        'flex items-center px-6',
+        '[[data-variant=default]>&]:pb-0 [[data-variant=premium]>&]:pb-6',
+        '[.border-t]:pt-6',
+        className
+      )}
       {...props}
     />
   );
@@ -83,10 +122,10 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
 
 export {
   Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
   CardAction,
-  CardDescription,
   CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 };

@@ -5,16 +5,16 @@ import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
 import Image from 'next/image';
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSelectionDialog } from './style-selection-dialog';
 
-interface StyleSelectorProps {
+type StyleSelectorProps = {
   styles: Style[];
   selectedStyleId: string | null;
   onStyleSelect: (styleId: string) => void;
   loading?: boolean;
   disabled?: boolean;
-}
+};
 
 export function StyleSelector({
   styles,
@@ -26,9 +26,31 @@ export function StyleSelector({
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const [focusableIndex, setFocusableIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(10);
 
-  // Always show max 10 items total (9 styles + More tile, or all styles + More tile if < 10)
-  const GRID_SIZE = 10;
+  // Calculate columns from container width using ResizeObserver
+  useEffect(() => {
+    const container = gridRef.current;
+    if (!container) return;
+
+    const calculateColumns = (width: number) => {
+      const tileSize = 65; // min tile width in px
+      const gap = 12; // gap-3 = 12px
+      const columns = Math.floor((width + gap) / (tileSize + gap));
+      setVisibleCount(Math.max(3, columns)); // min 3 columns
+    };
+
+    // Initial calculation
+    calculateColumns(container.clientWidth);
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+      calculateColumns(width);
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Reorder styles to place selected style at the beginning if it exists
   const reorderedStyles = useMemo(() => {
@@ -37,18 +59,17 @@ export function StyleSelector({
     const selectedIndex = styles.findIndex((s) => s.id === selectedStyleId);
     if (selectedIndex === -1) return styles;
 
-    // If selected style is already in the first 9 positions, don't reorder
-    if (selectedIndex < GRID_SIZE - 1) return styles;
+    // If selected style is already in the visible positions, don't reorder
+    if (selectedIndex < visibleCount - 1) return styles;
 
     // Move selected style to the front
     const selectedStyle = styles[selectedIndex];
     return [selectedStyle, ...styles.filter((s) => s.id !== selectedStyleId)];
-  }, [styles, selectedStyleId]);
+  }, [styles, selectedStyleId, visibleCount]);
 
-  const hasMoreThanGrid = reorderedStyles.length >= GRID_SIZE;
-  const visibleStyles = hasMoreThanGrid
-    ? reorderedStyles.slice(0, GRID_SIZE - 1)
-    : reorderedStyles;
+  // Always reserve last slot for "More" button, show visibleCount - 1 styles
+  const visibleStyles = reorderedStyles.slice(0, visibleCount - 1);
+  const hiddenCount = reorderedStyles.length - visibleStyles.length;
 
   // Reset focusable index when styles change or selected style changes
   useEffect(() => {
@@ -66,62 +87,22 @@ export function StyleSelector({
     }
   }, [selectedStyleId, visibleStyles]);
 
-  // Calculate actual grid columns from the rendered layout
-  const getColumnsCount = useCallback(() => {
-    if (!gridRef.current) return 5; // default
-
-    // Get the first two buttons to calculate column count
-    const buttons = gridRef.current.querySelectorAll('button');
-    if (buttons.length < 2) return 1;
-
-    const firstButton = buttons[0] as HTMLElement;
-    const secondButton = buttons[1] as HTMLElement;
-
-    // Get the actual positions
-    const firstRect = firstButton.getBoundingClientRect();
-    const secondRect = secondButton.getBoundingClientRect();
-
-    // If they're on the same row (top positions are close), they're in different columns
-    if (Math.abs(firstRect.top - secondRect.top) < 5) {
-      // Calculate columns based on button width and container width
-      const containerRect = gridRef.current.getBoundingClientRect();
-      const buttonWidth = firstRect.width;
-      const gap = secondRect.left - firstRect.right;
-      const availableWidth = containerRect.width;
-
-      // Calculate how many buttons fit per row
-      const cols = Math.floor((availableWidth + gap) / (buttonWidth + gap));
-      return Math.max(1, cols);
-    }
-
-    // If second button is below the first, we have 1 column
-    return 1;
-  }, []);
-
-  // Handle arrow key navigation
+  // Handle arrow key navigation (single row, so left/right only)
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent, currentIndex: number) => {
-      // Total items = visible styles + "More" button
-      const totalItems = visibleStyles.length + 1;
+      const totalItems = visibleStyles.length + 1; // styles + "More" button
       let nextIndex = currentIndex;
-      const cols = getColumnsCount();
 
       switch (event.key) {
         case 'ArrowRight':
+        case 'ArrowDown':
           event.preventDefault();
           nextIndex = Math.min(currentIndex + 1, totalItems - 1);
           break;
         case 'ArrowLeft':
-          event.preventDefault();
-          nextIndex = Math.max(currentIndex - 1, 0);
-          break;
-        case 'ArrowDown':
-          event.preventDefault();
-          nextIndex = Math.min(currentIndex + cols, totalItems - 1);
-          break;
         case 'ArrowUp':
           event.preventDefault();
-          nextIndex = Math.max(currentIndex - cols, 0);
+          nextIndex = Math.max(currentIndex - 1, 0);
           break;
         case 'Home':
           event.preventDefault();
@@ -135,18 +116,15 @@ export function StyleSelector({
           return;
       }
 
-      // Update focusable index and move focus
       if (nextIndex !== currentIndex) {
         setFocusableIndex(nextIndex);
-
-        // Focus the next button
         const buttons = gridRef.current?.querySelectorAll('button');
         if (buttons && buttons[nextIndex]) {
           (buttons[nextIndex] as HTMLElement).focus();
         }
       }
     },
-    [visibleStyles.length, getColumnsCount]
+    [visibleStyles.length]
   );
 
   const handleStyleSelect = (styleId: string) => {
@@ -158,12 +136,12 @@ export function StyleSelector({
     <>
       <div
         ref={gridRef}
-        className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 2xl:grid-cols-12 gap-3 overflow-hidden p-2"
+        className="grid grid-cols-[repeat(auto-fill,minmax(65px,1fr))] gap-3 overflow-hidden p-2"
         role="grid"
         aria-label="Style selection"
       >
         {loading
-          ? Array.from({ length: GRID_SIZE }).map((_, i) => (
+          ? Array.from({ length: visibleCount }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-lg" />
             ))
           : visibleStyles.map((style, index) => (
@@ -193,14 +171,14 @@ export function StyleSelector({
                     alt={style.name}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, 12vw"
+                    sizes="80px"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20" />
+                  <div className="w-full h-full bg-linear-to-br from-muted to-muted-foreground/20" />
                 )}
 
                 {/* Name Overlay on Image */}
-                <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 via-black/60 to-transparent">
+                <div className="absolute inset-x-0 bottom-0 p-2 bg-linear-to-t from-black/80 via-black/60 to-transparent">
                   <p className="text-xs font-medium text-white text-center line-clamp-2">
                     {style.name}
                   </p>
@@ -234,8 +212,8 @@ export function StyleSelector({
           >
             <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground font-medium text-center">
-              {hasMoreThanGrid
-                ? `+${reorderedStyles.length - (GRID_SIZE - 1)} More`
+              {hiddenCount > 0
+                ? `+${hiddenCount} More`
                 : `View All (${reorderedStyles.length})`}
             </span>
           </button>

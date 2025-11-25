@@ -1,0 +1,154 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+
+type ModelItem = {
+  id: string;
+  name: string;
+  group: string;
+};
+
+type BaseModelSelectorProps = {
+  label: string;
+  models: ModelItem[];
+  groupOrder: readonly string[];
+  selectedIds: string[];
+  onSelectionChange: (ids: string[]) => void;
+  disabled?: boolean;
+  multiSelect?: boolean;
+};
+
+export const BaseModelSelector: React.FC<BaseModelSelectorProps> = ({
+  label,
+  models,
+  groupOrder,
+  selectedIds,
+  onSelectionChange,
+  disabled = false,
+  multiSelect = false,
+}) => {
+  const [open, setOpen] = useState(false);
+
+  // Group models by their group field
+  const groupedModels = useMemo(() => {
+    const groups: Record<string, ModelItem[]> = {};
+    for (const model of models) {
+      if (!groups[model.group]) {
+        groups[model.group] = [];
+      }
+      groups[model.group].push(model);
+    }
+    return groups;
+  }, [models]);
+
+  const handleToggle = useCallback(
+    (modelId: string, checked: boolean) => {
+      if (disabled) return;
+
+      if (!multiSelect) {
+        // Single select mode
+        if (checked) {
+          onSelectionChange([modelId]);
+        }
+      } else {
+        // Multi select mode
+        if (checked) {
+          onSelectionChange([...selectedIds, modelId]);
+        } else {
+          // Ensure at least one remains
+          if (selectedIds.length > 1) {
+            onSelectionChange(selectedIds.filter((id) => id !== modelId));
+          }
+        }
+      }
+    },
+    [selectedIds, onSelectionChange, disabled, multiSelect]
+  );
+
+  // Display label for button
+  const displayLabel = useMemo(() => {
+    if (selectedIds.length === 0) {
+      return `Select ${label.toLowerCase()}`;
+    }
+
+    const firstModel = models.find((m) => m.id === selectedIds[0]);
+    const firstName = firstModel?.name ?? 'Unknown';
+
+    if (selectedIds.length === 1) {
+      return firstName;
+    }
+
+    return `${firstName} +${selectedIds.length - 1}`;
+  }, [selectedIds, models, label]);
+
+  // Format group label (capitalize, format nicely)
+  const formatGroupLabel = (group: string) => {
+    return group
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={disabled}
+        >
+          <span className="text-sm truncate">{displayLabel}</span>
+          <ChevronDown className="ml-2 size-4 shrink-0" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[260px] max-h-[400px] overflow-y-auto">
+        <DropdownMenuLabel className="text-xs">{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {groupOrder.map((groupKey, groupIndex) => {
+          const groupModels = groupedModels[groupKey];
+          if (!groupModels || groupModels.length === 0) return null;
+
+          return (
+            <DropdownMenuGroup key={groupKey}>
+              {groupIndex > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase tracking-wider font-normal">
+                {formatGroupLabel(groupKey)}
+              </DropdownMenuLabel>
+              {groupModels.map((model) => {
+                const isSelected = selectedIds.includes(model.id);
+                const isLastSelected = isSelected && selectedIds.length === 1;
+                const isDisabled = !multiSelect ? isSelected : isLastSelected;
+
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={model.id}
+                    checked={isSelected}
+                    onCheckedChange={(checked) =>
+                      handleToggle(model.id, checked)
+                    }
+                    onSelect={(e) => e.preventDefault()}
+                    disabled={isDisabled}
+                    className="cursor-pointer"
+                  >
+                    <span className="text-sm">{model.name}</span>
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuGroup>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};

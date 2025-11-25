@@ -1,6 +1,6 @@
 'use client';
 import { PageContainer } from '@/components/layout';
-import { ScriptView } from '@/components/views/script-view';
+import { ScriptView } from '@/components/script/script-view';
 import { useUser } from '@/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';

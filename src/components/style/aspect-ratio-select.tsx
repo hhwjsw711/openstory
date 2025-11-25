@@ -40,12 +40,7 @@ export const AspectRatioSelect = ({
             variant="outline"
             size={size}
             disabled={disabled}
-            className={cn(
-              'flex-col h-auto py-3 px-4 gap-2',
-              size === 'sm' && 'py-2 px-3',
-              size === 'lg' && 'py-4 px-5',
-              className
-            )}
+            className={cn('flex-col h-auto gap-2', className)}
             aria-label="Select aspect ratio"
           >
             {selectedRatio ? (
@@ -93,24 +88,22 @@ export const AspectRatioSelect = ({
           className={className}
           aria-label="Select aspect ratio"
         >
-          <span className="flex items-center gap-2 flex-1">
-            {selectedRatio ? (
-              <>
-                <AspectRatioIcon
-                  width={selectedRatio.width}
-                  height={selectedRatio.height}
-                  size={size}
-                />
-                <span>{selectedRatio.label}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </span>
-          <ChevronDown className="h-4 w-4 ml-2" />
+          {selectedRatio ? (
+            <>
+              <AspectRatioIcon
+                width={selectedRatio.width}
+                height={selectedRatio.height}
+                size="sm"
+              />
+              <span className="font-mono">{selectedRatio.value}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+          <ChevronDown className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[200px]">
+      <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup
           value={value}
           onValueChange={(val) => onChange?.(val as AspectRatio)}
@@ -120,9 +113,9 @@ export const AspectRatioSelect = ({
               <AspectRatioIcon
                 width={ratio.width}
                 height={ratio.height}
-                size={size}
+                size="sm"
               />
-              <span>{ratio.label}</span>
+              <span className="font-mono">{ratio.value}</span>
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

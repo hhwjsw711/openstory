@@ -15,10 +15,23 @@
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
           "bucket_name": "cache-dev",
         },
+        {
+          "bucket_name": "velro-public-assets-stg",
+          "binding": "R2_PUBLIC_ASSETS_BUCKET",
+          "remote": true,
+        },
       ],
       "assets": {
         "directory": ".open-next/assets",
         "binding": "ASSETS-STG",
+      },
+      "observability": {
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "invocation_logs": true,
+          "persist": true,
+        },
       },
     },
     "prd": {
@@ -27,19 +40,24 @@
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
           "bucket_name": "cache",
         },
+        {
+          "bucket_name": "velro-public-assets",
+          "binding": "R2_PUBLIC_ASSETS_BUCKET",
+          "remote": true,
+        },
       ],
       "assets": {
         "directory": ".open-next/assets",
         "binding": "ASSETS",
       },
-    },
-  },
-  "observability": {
-    "logs": {
-      "enabled": false,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
-      "persist": true,
+      "observability": {
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "invocation_logs": true,
+          "persist": true,
+        },
+      },
     },
   },
 }

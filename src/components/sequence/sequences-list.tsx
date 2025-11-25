@@ -1,7 +1,7 @@
 'use client';
 
-import { ModelBadge } from '@/components/common/model-badge';
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
+import { ModelBadge } from '@/components/model/model-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';

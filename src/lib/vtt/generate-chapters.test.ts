@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
-import type { Frame } from '@/types/database';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
+import type { Frame } from '@/types/database';
+import { describe, expect, test } from 'bun:test';
 import { generateChaptersVTT } from './generate-chapters';
 
 // Helper to create test frames with minimal required fields
@@ -27,6 +27,7 @@ const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  motionModel: 'veo3',
   motionPrompt: null,
   ...overrides,
 });

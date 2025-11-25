@@ -1,0 +1,2 @@
+ALTER TABLE `sequences` ADD `image_model` text(100) DEFAULT 'nano_banana_pro' NOT NULL;--> statement-breakpoint
+ALTER TABLE `sequences` ADD `video_model` text(100) DEFAULT 'kling_v2_5_turbo_pro' NOT NULL;

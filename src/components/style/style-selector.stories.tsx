@@ -5,7 +5,7 @@ import { fn } from 'storybook/test';
 import { StyleSelector } from './style-selector';
 
 const meta = {
-  title: 'Components/Style/StyleSelector',
+  title: 'Style/StyleSelector',
   component: StyleSelector,
   parameters: {
     layout: 'padded',

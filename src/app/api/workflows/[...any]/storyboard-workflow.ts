@@ -7,7 +7,12 @@ import { getDb } from '#db-client';
 import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
-import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  safeImageToVideoModel,
+  safeTextToImageModel,
+} from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
@@ -49,9 +54,8 @@ export const generateStoryboardWorkflow = createWorkflow(
     );
 
     // Step 1: Verify sequence and get data
-    const { sequence, styleConfig, analysisModel } = await context.run(
-      'verify-clear-and-start-processing',
-      async () => {
+    const { sequence, styleConfig, analysisModel, imageModel, videoModel } =
+      await context.run('verify-clear-and-start-processing', async () => {
         const sequence = await getDb().query.sequences.findFirst({
           where: eq(sequences.id, input.sequenceId),
         });
@@ -97,13 +101,21 @@ export const generateStoryboardWorkflow = createWorkflow(
 
         const styleConfig = DirectorDnaConfigSchema.parse(style.config);
 
-        // Use the sequence's analysisModel for script analysis
+        // Use the sequence's models (fall back to defaults if not set)
+        // Runtime validation prevents invalid model keys from causing downstream failures
         const analysisModel =
           sequence.analysisModel || 'anthropic/claude-haiku-4.5';
+        const imageModel = safeTextToImageModel(
+          sequence.imageModel,
+          DEFAULT_IMAGE_MODEL
+        );
+        const videoModel = safeImageToVideoModel(
+          sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        );
 
-        return { sequence, styleConfig, analysisModel };
-      }
-    );
+        return { sequence, styleConfig, analysisModel, imageModel, videoModel };
+      });
 
     // Step 2: Split script into basic scenes and store in sequence metadata
     const { scenes: basicScenes, title } = await context.run(
@@ -336,12 +348,12 @@ export const generateStoryboardWorkflow = createWorkflow(
             return null;
           }
 
-          // Generate image for the frame
+          // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
             prompt: visualPrompt,
-            model: DEFAULT_IMAGE_MODEL,
+            model: imageModel,
             imageSize,
             numImages: 1,
             frameId,
@@ -396,7 +408,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             return null;
           }
 
-          // Trigger motion generation workflow
+          // Trigger motion generation workflow using sequence's selected model
           const motionInput: MotionWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
@@ -404,7 +416,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             sequenceId: input.sequenceId,
             thumbnailPath: imageBody.thumbnailPath,
             prompt: motionPrompt,
-            model: DEFAULT_VIDEO_MODEL,
+            model: videoModel,
             aspectRatio: sequence.aspectRatio,
           };
 

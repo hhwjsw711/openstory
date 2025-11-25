@@ -5,6 +5,7 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { VelroLogo } from '@/components/icons';
 import { UserBadge } from './user-badge';
 
 interface HeaderProps {
@@ -22,11 +23,8 @@ export function Header({ className }: HeaderProps) {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
-          <Link href="/sequences" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-              V
-            </div>
-            <span className="font-bold text-lg">Velro</span>
+          <Link href="/sequences" className="flex items-center">
+            <VelroLogo size="md" />
           </Link>
 
           {/* Main navigation */}

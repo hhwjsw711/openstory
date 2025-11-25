@@ -450,3 +450,65 @@ export function getImageToVideoModelId(
 ): ImageToVideoModelId {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
 }
+
+/**
+ * Runtime validation: Check if a string is a valid TextToImageModel key
+ * @param value - String value to validate
+ * @returns true if value is a valid model key, false otherwise
+ */
+export function isValidTextToImageModel(
+  value: string
+): value is TextToImageModel {
+  return value in IMAGE_MODELS;
+}
+
+/**
+ * Runtime validation: Check if a string is a valid ImageToVideoModel key
+ * @param value - String value to validate
+ * @returns true if value is a valid model key, false otherwise
+ */
+export function isValidImageToVideoModel(
+  value: string
+): value is ImageToVideoModel {
+  return value in IMAGE_TO_VIDEO_MODELS;
+}
+
+/**
+ * Safely cast database string to TextToImageModel with validation
+ * Falls back to default if invalid
+ * @param value - Database string value (potentially invalid)
+ * @param fallback - Default value to use if invalid (defaults to DEFAULT_IMAGE_MODEL)
+ * @returns Valid TextToImageModel
+ */
+export function safeTextToImageModel(
+  value: string | null | undefined,
+  fallback: TextToImageModel = DEFAULT_IMAGE_MODEL
+): TextToImageModel {
+  if (!value || !isValidTextToImageModel(value)) {
+    console.warn(
+      `[models] Invalid TextToImageModel "${value}", using fallback "${fallback}"`
+    );
+    return fallback;
+  }
+  return value;
+}
+
+/**
+ * Safely cast database string to ImageToVideoModel with validation
+ * Falls back to default if invalid
+ * @param value - Database string value (potentially invalid)
+ * @param fallback - Default value to use if invalid (defaults to DEFAULT_VIDEO_MODEL)
+ * @returns Valid ImageToVideoModel
+ */
+export function safeImageToVideoModel(
+  value: string | null | undefined,
+  fallback: ImageToVideoModel = DEFAULT_VIDEO_MODEL
+): ImageToVideoModel {
+  if (!value || !isValidImageToVideoModel(value)) {
+    console.warn(
+      `[models] Invalid ImageToVideoModel "${value}", using fallback "${fallback}"`
+    );
+    return fallback;
+  }
+  return value;
+}

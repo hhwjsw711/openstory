@@ -1,10 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/nextjs';
+import type { Meta, StoryObj } from '@storybook/react';
+
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { useState } from 'react';
 import { AspectRatioSelect } from './aspect-ratio-select';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
 const meta: Meta<typeof AspectRatioSelect> = {
-  title: 'Components/Sequence/AspectRatioSelect',
+  title: 'Style/AspectRatioSelect',
   component: AspectRatioSelect,
   parameters: {
     layout: 'centered',

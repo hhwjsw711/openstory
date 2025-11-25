@@ -1,7 +1,11 @@
 'use client';
 
-import { ModelBadge } from '@/components/common/model-badge';
 import { PageContainer } from '@/components/layout/page-container';
+import {
+  ImageModelBadge,
+  ModelBadge,
+  VideoModelBadge,
+} from '@/components/model/model-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import {
@@ -123,6 +127,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
       <PageHeader>
         <PageHeading>{sequence?.title}</PageHeading>
         <ModelBadge model={sequence?.analysisModel} />
+        <ImageModelBadge model={sequence?.imageModel} />
+        <VideoModelBadge model={sequence?.videoModel} />
       </PageHeader>
 
       <div className="flex flex-1 min-h-0">

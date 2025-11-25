@@ -79,3 +79,7 @@ worker-configuration.d.ts
 # opennext
 .open-next
 
+.tmp/
+
+# doppler
+doppler.json

@@ -62,10 +62,17 @@ const nextConfig: NextConfig = {
         port: '54321',
         pathname: '/storage/v1/**',
       },
-      // Cloudflare R2 Storage
+      // Cloudflare R2 Storage (private bucket - S3 API)
       {
         protocol: 'https',
         hostname: '**.r2.cloudflarestorage.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Cloudflare R2 Public Assets (staging)
+      {
+        protocol: 'https',
+        hostname: process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai',
         port: '',
         pathname: '/**',
       },

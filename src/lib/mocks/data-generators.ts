@@ -57,6 +57,16 @@ export const generateMockSequence = (
       'anthropic/claude-sonnet-4.5',
     ]),
     analysisDurationMs: faker.number.int({ min: 1000, max: 15000 }), // 1-15 seconds
+    imageModel: faker.helpers.arrayElement([
+      'nano_banana_pro',
+      'flux_schnell',
+      'flux_pro',
+    ]),
+    videoModel: faker.helpers.arrayElement([
+      'kling_v2_5_turbo_pro',
+      'wan_i2v',
+      'veo3_1',
+    ]),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),
@@ -126,6 +136,11 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'failed',
     ]),
     motionPrompt: null,
+    motionModel: faker.helpers.arrayElement([
+      'veo3',
+      'kling_v2_5_turbo_pro',
+      'wan_i2v',
+    ]),
     videoWorkflowRunId: faker.string.uuid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,

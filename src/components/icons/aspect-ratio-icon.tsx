@@ -42,7 +42,7 @@ export const AspectRatioIcon = ({
       )}
     >
       <div
-        className="border-2 border-foreground/60 bg-foreground/5 rounded"
+        className="border-2 border-primary/40 bg-primary/20 rounded-sm"
         style={{
           width: `${iconWidth}px`,
           height: `${iconHeight}px`,

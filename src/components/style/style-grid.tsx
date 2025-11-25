@@ -82,7 +82,7 @@ const StyleCard: FC<StyleCardProps> = ({
       data-testid={`style-card-${style.id}`}
     >
       <CardContent className="p-0">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg bg-muted">
+        <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
           {style.previewUrl ? (
             <Image
               src={style.previewUrl}

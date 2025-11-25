@@ -3,7 +3,7 @@
  * Core content creation entities for video sequences
  */
 
-import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
@@ -96,6 +96,12 @@ export const sequences = sqliteTable(
       .default('anthropic/claude-haiku-4.5')
       .notNull(),
     analysisDurationMs: integer('analysis_duration_ms').default(0).notNull(),
+    imageModel: text('image_model', { length: 100 })
+      .default(DEFAULT_IMAGE_MODEL)
+      .notNull(),
+    videoModel: text('video_model', { length: 100 })
+      .default(DEFAULT_VIDEO_MODEL)
+      .notNull(),
   },
   (table) => [
     index('idx_sequences_created_at').on(desc(table.createdAt)),
@@ -156,6 +162,7 @@ export const frames = sqliteTable(
     }),
     videoError: text('video_error'),
     motionPrompt: text('motion_prompt'), // User-updated motion prompt (overrides AI-generated prompt from metadata)
+    motionModel: text('motion_model', { length: 100 }), // Model used for motion/video generation (nullable - inherits from sequence if not set)
     /**
      * Stores Scene data at various stages of progressive analysis.
      * Fields are populated progressively across 5 phases.

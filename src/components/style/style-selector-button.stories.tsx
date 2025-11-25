@@ -6,7 +6,7 @@ import { StyleSelectionDialogWithTrigger } from './style-selection-dialog';
 import { StyleSelectorButton } from './style-selector-button';
 
 const meta: Meta<typeof StyleSelectorButton> = {
-  title: 'Components/Style/StyleSelectorButton',
+  title: 'Style/StyleSelectorButton',
   component: StyleSelectorButton,
   argTypes: {
     selectedStyle: {
