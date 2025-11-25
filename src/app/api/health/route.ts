@@ -3,8 +3,11 @@
  * Reports system variables for debugging deployment issues
  */
 
-import { getEnv } from '#env';
-import { APP_URL, getDeploymentPlatform } from '@/lib/utils/environment';
+import {
+  APP_URL,
+  getDeploymentPlatform,
+  PRODUCTION_DEPLOYMENT_APP_URL,
+} from '@/lib/utils/environment';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -22,8 +25,6 @@ export async function GET() {
     status: 'ok',
     timestamp: new Date().toISOString(),
     platform: getDeploymentPlatform(),
-    env: getEnv(),
-    processEnv: process.env,
     deployment: {
       // Vercel-specific
       vercel: process.env.VERCEL,
@@ -46,14 +47,13 @@ export async function GET() {
     urls: {
       appUrl: APP_URL,
       explicitAppUrl: process.env.APP_URL || 'not set',
+      productionDeploymentAppUrl: PRODUCTION_DEPLOYMENT_APP_URL,
     },
     auth: {
-      betterAuthSecret: sanitize(process.env.BETTER_AUTH_SECRET),
       baseUrl: APP_URL, // This is what Better Auth uses
     },
     database: {
       tursoUrl: process.env.TURSO_DATABASE_URL || 'not set',
-      tursoToken: sanitize(process.env.TURSO_AUTH_TOKEN),
     },
     storage: {
       r2AccountId: process.env.R2_ACCOUNT_ID || 'not set',

@@ -5,8 +5,6 @@
 
 'use client';
 
-import Link from 'next/link';
-import { useState } from 'react';
 import { PageContainer } from '@/components/layout';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,6 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
+import Link from 'next/link';
+import { useState } from 'react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      const result = await authClient.forgetPassword({
+      const result = await authClient.requestPasswordReset({
         email,
         redirectTo: '/reset-password',
       });

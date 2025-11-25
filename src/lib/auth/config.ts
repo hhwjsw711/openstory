@@ -5,7 +5,10 @@
 
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
-import { APP_URL } from '@/lib/utils/environment';
+import {
+  APP_URL,
+  PRODUCTION_DEPLOYMENT_APP_URL,
+} from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
@@ -110,7 +113,7 @@ export function getAuth() {
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
         enabled: true,
         // Redirect URI required for oAuthProxy to work on preview branches
-        redirectURI: 'https://app.velro.ai/api/auth/callback/google',
+        redirectURI: `${PRODUCTION_DEPLOYMENT_APP_URL}/api/auth/callback/google`,
         // Sign-up enabled - access code validation happens after auth via activation flow
       },
     },
@@ -122,7 +125,7 @@ export function getAuth() {
       // OAuth Proxy for preview deployments
       oAuthProxy({
         currentURL: APP_URL,
-        productionURL: 'https://app.velro.ai',
+        productionURL: PRODUCTION_DEPLOYMENT_APP_URL,
       }),
     ],
 

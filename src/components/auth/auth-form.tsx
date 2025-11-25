@@ -24,21 +24,28 @@ import { useState } from 'react';
 
 interface AuthFormProps {
   mode: 'signin' | 'signup';
+  emailEntered?: string;
   redirectTo?: string;
 }
 
-export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  emailEntered,
+  redirectTo = '/sequences',
+}: AuthFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailEntered || '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const isSignup = mode === 'signup';
-  const title = 'Sign In';
-  const description = 'Sign in or create a new account';
+  const title = isSignup ? 'Create Account' : 'Sign In';
+  const description = isSignup
+    ? 'Create a new account to get started'
+    : 'Sign in to your account';
 
   // Enable Google Auth on all environments (handled by oAuthProxy on previews)
   const showGoogleAuth = true;
@@ -50,59 +57,48 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
     setIsLoading(true);
 
     try {
-      // Unified sign-in/sign-up flow: try sign-in first, create account if needed
-      const signInResult = await authClient.signIn.email({
-        email,
-        password,
-        callbackURL: redirectTo,
-      });
+      if (isSignup) {
+        // Sign up flow
+        const signUpResult = await authClient.signUp.email({
+          email,
+          password,
+          name: email.split('@')[0], // Use email prefix as default name
+          callbackURL: redirectTo,
+        });
 
-      let isNewUser = false;
-
-      // If user doesn't exist, create account automatically
-      if (signInResult.error) {
-        // Check if error indicates user doesn't exist
-        if (signInResult.error.code === 'INVALID_EMAIL_OR_PASSWORD') {
-          // Create new account
-          const signUpResult = await authClient.signUp.email({
-            email,
-            password,
-            name: '',
-            callbackURL: redirectTo,
-          });
-
-          isNewUser = true;
-
-          if (signUpResult.error) {
-            setError(signUpResult.error.message || 'Failed to create account');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // Other error (wrong password, etc.)
-          setError(signInResult.error.message || 'Authentication failed');
+        if (signUpResult.error) {
+          setError(signUpResult.error.message || 'Failed to create account');
           setIsLoading(false);
           return;
         }
-      }
 
-      // Invalidate auth-related queries to fetch fresh user data
-      setSuccess(
-        isNewUser
-          ? 'Account created! Loading your profile...'
-          : 'Signed in! Loading your profile...'
-      );
-      await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-      await queryClient.invalidateQueries({ queryKey: ['session'] });
+        // Invalidate auth-related queries to fetch fresh user data
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
 
-      // Check if user needs to enter access code
-      // New users have status: 'pending' by default
-      if (isNewUser) {
-        setSuccess('Welcome! Please enter your invite code to continue...');
+        // New users have status: 'pending' by default - redirect to invite code
+        setSuccess('Account created! Please enter your invite code...');
         router.push(
           '/invite-code?redirectTo=' + encodeURIComponent(redirectTo)
         );
       } else {
+        // Sign in flow
+        const signInResult = await authClient.signIn.email({
+          email,
+          password,
+          callbackURL: redirectTo,
+        });
+
+        if (signInResult.error) {
+          setError(signInResult.error.message || 'Authentication failed');
+          setIsLoading(false);
+          return;
+        }
+
+        // Invalidate auth-related queries to fetch fresh user data
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+
         setSuccess('Signed in! Redirecting...');
         router.push(redirectTo);
       }
@@ -211,7 +207,9 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -234,7 +232,9 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
             </div>
             <Input
               id="password"
+              name="password"
               type="password"
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -251,6 +251,31 @@ export function AuthForm({ mode, redirectTo = '/sequences' }: AuthFormProps) {
                 : 'Sign In'}
           </Button>
         </form>
+
+        {/* Navigation links */}
+        <div className="text-center text-sm pt-4 border-t">
+          {isSignup ? (
+            <p className="text-muted-foreground">
+              Already have an account?{' '}
+              <Link
+                href={`/login?redirectTo=${encodeURIComponent(redirectTo)}${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+                className="text-primary hover:underline font-medium"
+              >
+                Sign in
+              </Link>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Don't have an account?{' '}
+              <Link
+                href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+                className="text-primary hover:underline font-medium"
+              >
+                Create one
+              </Link>
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
