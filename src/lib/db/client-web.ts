@@ -26,7 +26,7 @@ function buildLibsqlClient(): LibsqlClient {
   return createClient({ url, authToken });
 }
 
-export const getDb = () => {
+export const getDb = (): Database => {
   if (_db) return _db;
 
   /**

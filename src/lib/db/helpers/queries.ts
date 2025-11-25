@@ -20,7 +20,7 @@ import {
   teams,
   vfx,
 } from '@/lib/db/schema';
-import { and, desc, eq, isNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, or } from 'drizzle-orm';
 
 /**
  * Sequence with all its frames
@@ -133,21 +133,31 @@ export async function getTeamStyles(
     category?: string;
   }
 ): Promise<Style[]> {
-  const conditions = [eq(styles.teamId, teamId)];
+  // Build where condition explicitly to preserve type inference
+  const whereCondition =
+    options?.templatesOnly && options?.category
+      ? and(
+          eq(styles.teamId, teamId),
+          eq(styles.isTemplate, true),
+          eq(styles.category, options.category)
+        )
+      : options?.templatesOnly
+        ? and(eq(styles.teamId, teamId), eq(styles.isTemplate, true))
+        : options?.category
+          ? and(
+              eq(styles.teamId, teamId),
+              eq(styles.category, options.category)
+            )
+          : eq(styles.teamId, teamId);
 
-  if (options?.templatesOnly) {
-    conditions.push(eq(styles.isTemplate, true));
-  }
-
-  if (options?.category) {
-    conditions.push(eq(styles.category, options.category));
-  }
-
-  return await getDb()
-    .select()
-    .from(styles)
-    .where(and(...conditions))
-    .orderBy(desc(styles.usageCount), desc(styles.createdAt));
+  // Use relational query API for better type inference
+  return await getDb().query.styles.findMany({
+    where: whereCondition,
+    orderBy: (styles, { desc }) => [
+      desc(styles.usageCount),
+      asc(styles.createdAt),
+    ],
+  });
 }
 
 /**
@@ -166,7 +176,7 @@ export async function getPublicStyles(): Promise<Style[]> {
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
-    .orderBy(desc(styles.createdAt));
+    .orderBy(asc(styles.name));
 }
 
 /**
@@ -186,7 +196,7 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
     .select()
     .from(styles)
     .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
-    .orderBy(desc(styles.createdAt));
+    .orderBy(asc(styles.name));
 }
 
 /**

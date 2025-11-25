@@ -1,6 +1,10 @@
 /**
  * Database Seed Script
  * Seeds the database with initial template styles and system team
+ *
+ * Usage:
+ *   bun db:seed           # Seed Turso database (requires TURSO_DATABASE_URL)
+ *   bun db:seed:local     # Seed local SQLite database (file:local.db)
  */
 
 import { styles, teams } from '@/lib/db/schema';
@@ -11,18 +15,40 @@ import { drizzle } from 'drizzle-orm/libsql';
 
 const SYSTEM_TEAM_SLUG = 'system-templates';
 
-async function seed() {
-  const tursoUrl = process.env.TURSO_DATABASE_URL;
-  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+function parseArgs() {
+  const args = process.argv.slice(2);
+  return {
+    local: args.includes('--local'),
+  };
+}
 
-  if (!tursoUrl) {
-    throw new Error('TURSO_DATABASE_URL is required');
+async function seed() {
+  const { local } = parseArgs();
+
+  let client;
+
+  if (local) {
+    console.log('🗄️  Using local SQLite database (file:local.db)\n');
+    client = createClient({
+      url: 'file:local.db',
+    });
+  } else {
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (!tursoUrl) {
+      throw new Error(
+        'TURSO_DATABASE_URL is required (use --local for local.db)'
+      );
+    }
+
+    console.log('🗄️  Using Turso database\n');
+    client = createClient({
+      url: tursoUrl,
+      ...(tursoToken && { authToken: tursoToken }),
+    });
   }
 
-  const client = createClient({
-    url: tursoUrl,
-    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
-  });
   const db = drizzle(client);
 
   try {
@@ -52,23 +78,32 @@ async function seed() {
       console.log(`✅ System team found with ID: ${systemTeam.id}\n`);
     }
 
-    // 2. Check if template styles already exist
+    // 2. Check which templates already exist
     console.log('Checking existing template styles...');
     const existingTemplates = await db
-      .select()
+      .select({ name: styles.name })
       .from(styles)
       .where(eq(styles.teamId, systemTeam.id));
 
-    if (existingTemplates.length > 0) {
-      console.log(
-        `ℹ️  Found ${existingTemplates.length} existing template styles - skipping insert`
-      );
-      console.log('✅ Templates already seeded\n');
+    const existingNames = new Set(existingTemplates.map((t) => t.name));
+    console.log(
+      `ℹ️  Found ${existingTemplates.length} existing template styles`
+    );
+
+    // Filter out templates that already exist
+    const templatesToInsert = DEFAULT_SYSTEM_STYLES.filter(
+      (template) => !existingNames.has(template.name)
+    );
+
+    if (templatesToInsert.length === 0) {
+      console.log('✅ All templates already exist - nothing to add\n');
     } else {
-      // 3. Insert template film styles
-      console.log('Inserting template styles...');
+      // 3. Insert only new template styles
+      console.log(
+        `Inserting ${templatesToInsert.length} new template style(s)...`
+      );
       await db.insert(styles).values(
-        DEFAULT_SYSTEM_STYLES.map((style) => ({
+        templatesToInsert.map((style) => ({
           ...style,
           teamId: systemTeam.id, // Add system team ID
           createdBy: null, // No user for system templates
@@ -76,8 +111,12 @@ async function seed() {
       );
 
       console.log(
-        `✅ Inserted ${DEFAULT_SYSTEM_STYLES.length} template styles\n`
+        `✅ Inserted ${templatesToInsert.length} new template style(s):`
       );
+      templatesToInsert.forEach((style) => {
+        console.log(`   - ${style.name}`);
+      });
+      console.log();
     }
 
     console.log('🎉 Database seeded successfully!');

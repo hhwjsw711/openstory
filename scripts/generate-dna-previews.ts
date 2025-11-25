@@ -1,7 +1,5 @@
-import { getDb } from '@/lib/db/client-local';
-import { styles } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
-import { eq } from 'drizzle-orm';
+import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -424,16 +422,31 @@ async function main() {
   console.log('🎨 Starting System Director DNA Preview Generation...');
   console.log(`⚡ Max concurrent jobs: ${MAX_CONCURRENT}`);
 
-  const db = getDb();
+  // Parse command line arguments
+  const styleNameArg = process.argv[2];
+  const styleName = styleNameArg ? styleNameArg.trim() : null;
 
-  // 1. Fetch system template styles
-  console.log('Fetching system styles...');
-  const systemStyles = await db
-    .select()
-    .from(styles)
-    .where(eq(styles.isTemplate, true));
+  if (styleName) {
+    console.log(`🎯 Filtering to style: "${styleName}"`);
+  }
 
-  console.log(`Found ${systemStyles.length} system styles.`);
+  // 1. Load style templates
+  console.log('Loading style templates...');
+
+  // Filter by name if provided
+  let systemStyles = DEFAULT_STYLE_TEMPLATES;
+  if (styleName) {
+    systemStyles = systemStyles.filter((style) => style.name === styleName);
+  }
+
+  if (styleName && systemStyles.length === 0) {
+    console.error(`❌ No style found with name "${styleName}"`);
+    console.error('   Available styles:');
+    DEFAULT_STYLE_TEMPLATES.forEach((s) => console.error(`   - ${s.name}`));
+    process.exit(1);
+  }
+
+  console.log(`Found ${systemStyles.length} system style(s).`);
 
   // Ensure output directory exists
   await mkdir(OUTPUT_DIR, { recursive: true });
@@ -481,7 +494,7 @@ async function main() {
         .join('. ');
 
       allTasks.push({
-        styleId: style.id,
+        styleId: style.name, // Use name as ID since templates don't have database IDs
         styleName: style.name,
         sceneName: scene.name,
         prompt: fullPrompt,
