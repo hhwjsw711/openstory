@@ -31,6 +31,7 @@ import {
   getVisualPromptGenerationPrompt,
 } from '@/lib/mcp/resources/prompt-templates';
 import { Scene } from '@/lib/script';
+import { generationMotionOptionsSchema } from '@/lib/services/motion.service';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 
 // Get all style names for enum validation - ensure it's a proper tuple
@@ -186,15 +187,7 @@ const handler = createMcpHandler(
       'generate_motion',
       {
         description: 'Convert image to video with camera movement',
-        inputSchema: {
-          imageUrl: z.string().describe('Source image URL'),
-          prompt: z.string().describe('Motion prompt'),
-          model: z
-            .string()
-            .optional()
-            .default('kling_video')
-            .describe('Video generation model ID'),
-        }, // ZodRawShape - Zod v4 types are incompatible but runtime works correctly
+        inputSchema: generationMotionOptionsSchema, // ZodRawShape - Zod v4 types are incompatible but runtime works correctly
       },
       async (args) => {
         console.log(`[MCP] Tool called: generate_motion`);

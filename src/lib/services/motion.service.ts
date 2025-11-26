@@ -12,20 +12,37 @@ import {
 
 // Re-export for tests
 import { getEnv } from '#env';
+import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import type { QueueStatus } from '@fal-ai/client';
 import { createFalClient } from '@fal-ai/client';
+import { z } from 'zod';
 
-interface GenerateMotionOptions {
+export const generationMotionOptionsSchema = z.object({
+  imageUrl: z.url(),
+  prompt: z.string(),
+  model: z
+    .enum(
+      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
+    )
+    .optional()
+    .default(DEFAULT_VIDEO_MODEL),
+  duration: z.number().optional(),
+  fps: z.number().optional(),
+  motionBucket: z.number().optional(),
+  aspectRatio: aspectRatioSchema.optional(),
+});
+
+export type GenerateMotionOptions = {
   imageUrl: string;
   prompt: string;
   model?: ImageToVideoModel;
   duration?: number;
   fps?: number;
   motionBucket?: number;
-  aspectRatio?: string; // "16:9", "9:16", "1:1"
-}
+  aspectRatio?: AspectRatio;
+};
 
-interface MotionResult {
+export type MotionResult = {
   success: boolean;
   videoUrl?: string;
   metadata?: Record<string, unknown>;
@@ -35,7 +52,7 @@ interface MotionResult {
   statusUrl?: string;
   responseUrl?: string;
   cancelUrl?: string;
-}
+};
 
 /**
  * Provider-specific input builders
@@ -379,7 +396,7 @@ export async function checkMotionStatus(
     );
   }
 
-  return response.json() as Promise<QueueStatus>;
+  return response.json();
 }
 
 /**

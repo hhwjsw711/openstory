@@ -3,9 +3,9 @@
  * Phase 3: Generates visual prompts for scenes
  */
 
-import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
-import type { Scene } from '@/lib/script';
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
+import type { Scene } from '@/lib/script';
+import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 
 export type GenerateVisualPromptsInput = {
