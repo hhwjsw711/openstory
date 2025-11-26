@@ -11,10 +11,25 @@ import { analyzeScriptTool } from '@/lib/mcp/tools/analyze-script';
 import { generateFramesTool } from '@/lib/mcp/tools/generate-frames';
 import { generateImageTool } from '@/lib/mcp/tools/generate-image';
 import { generateMotionTool } from '@/lib/mcp/tools/generate-motion';
+// Import granular phase tools
+import { designAudioTool } from '@/lib/mcp/tools/design-audio';
+import { extractCharactersTool } from '@/lib/mcp/tools/extract-characters';
+import { generateMotionPromptsTool } from '@/lib/mcp/tools/generate-motion-prompts';
+import { generateVisualPromptsTool } from '@/lib/mcp/tools/generate-visual-prompts';
+import { splitScenesTool } from '@/lib/mcp/tools/split-scenes';
 
 // Import resources
 import { formatPromptsAsText } from '@/lib/mcp/resources/prompts';
 import { formatStylesAsText } from '@/lib/mcp/resources/styles';
+// Import prompt template resources
+import { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
+import {
+  getAudioDesignPrompt,
+  getCharacterExtractionPrompt,
+  getMotionPromptGenerationPrompt,
+  getSceneSplittingPrompt,
+  getVisualPromptGenerationPrompt,
+} from '@/lib/mcp/resources/prompt-templates';
 import { Scene } from '@/lib/script';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 
@@ -199,6 +214,157 @@ const handler = createMcpHandler(
       }
     );
 
+    // Register granular phase tools
+    server.registerTool(
+      'split_scenes',
+      {
+        description:
+          'Phase 1: Split a script into logical scenes with metadata (use this for step-by-step workflow)',
+        inputSchema: {
+          script: z.string().describe('Script content to analyze'),
+          aspectRatio: z
+            .enum(['16:9', '9:16', '1:1', '21:9'])
+            .optional()
+            .default('16:9')
+            .describe('Aspect ratio for the project'),
+        },
+      },
+      async (args) => {
+        console.log(`[MCP] Tool called: split_scenes`);
+        const result = await splitScenesTool({
+          script: args.script,
+          aspectRatio: args.aspectRatio,
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerTool(
+      'extract_characters',
+      {
+        description:
+          'Phase 2: Extract character bible from scenes (use this for step-by-step workflow)',
+        inputSchema: {
+          scenes: z
+            .array(z.record(z.string(), z.unknown()))
+            .describe('Array of scenes from split_scenes output'),
+        },
+      },
+      async (args) => {
+        console.log(`[MCP] Tool called: extract_characters`);
+        const result = await extractCharactersTool({
+          scenes: args.scenes as Scene[],
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerTool(
+      'generate_visual_prompts',
+      {
+        description:
+          'Phase 3: Generate visual prompts for scenes (use this for step-by-step workflow)',
+        inputSchema: {
+          scenes: z
+            .array(z.record(z.string(), z.unknown()))
+            .describe('Array of scenes from split_scenes output'),
+          characterBible: z
+            .array(z.record(z.string(), z.unknown()))
+            .describe('Character bible from extract_characters output'),
+          style: z.enum(getAllStyleNames()).describe('Director style to apply'),
+        },
+      },
+      async (args) => {
+        console.log(`[MCP] Tool called: generate_visual_prompts`);
+        const result = await generateVisualPromptsTool({
+          scenes: args.scenes as Scene[],
+          characterBible:
+            args.characterBible as unknown as CharacterBibleEntry[],
+          style: args.style,
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerTool(
+      'generate_motion_prompts',
+      {
+        description:
+          'Phase 4: Generate motion prompts for scenes (use this for step-by-step workflow)',
+        inputSchema: {
+          scenes: z
+            .array(z.record(z.string(), z.unknown()))
+            .describe(
+              'Array of scenes with visual prompts (from generate_visual_prompts output)'
+            ),
+        },
+      },
+      async (args) => {
+        console.log(`[MCP] Tool called: generate_motion_prompts`);
+        const result = await generateMotionPromptsTool({
+          scenes: args.scenes as Scene[],
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerTool(
+      'design_audio',
+      {
+        description:
+          'Phase 5: Generate audio design for scenes (use this for step-by-step workflow)',
+        inputSchema: {
+          scenes: z
+            .array(z.record(z.string(), z.unknown()))
+            .describe(
+              'Array of scenes with visual and motion prompts (from generate_motion_prompts output)'
+            ),
+        },
+      },
+      async (args) => {
+        console.log(`[MCP] Tool called: design_audio`);
+        const result = await designAudioTool({
+          scenes: args.scenes as Scene[],
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
     // Register resources
     server.resource('styles', 'velro://styles', async () => ({
       contents: [
@@ -219,6 +385,188 @@ const handler = createMcpHandler(
         },
       ],
     }));
+
+    // Register prompt templates as MCP prompts (for Prompts tab in Inspector)
+    server.registerPrompt(
+      'scene-splitting',
+      {
+        title: 'Scene Splitting Prompt',
+        description:
+          'Phase 1: System prompt template for splitting scripts into logical scenes with metadata',
+      },
+      async () => {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: getSceneSplittingPrompt(),
+              },
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerPrompt(
+      'character-extraction',
+      {
+        title: 'Character Extraction Prompt',
+        description:
+          'Phase 2: System prompt template for extracting character bible from scenes',
+      },
+      async () => {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: getCharacterExtractionPrompt(),
+              },
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerPrompt(
+      'visual-generation',
+      {
+        title: 'Visual Prompt Generation',
+        description:
+          'Phase 3: System prompt template for generating visual prompts with director style',
+      },
+      async () => {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: getVisualPromptGenerationPrompt(),
+              },
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerPrompt(
+      'motion-generation',
+      {
+        title: 'Motion Prompt Generation',
+        description:
+          'Phase 4: System prompt template for generating motion prompts for video generation',
+      },
+      async () => {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: getMotionPromptGenerationPrompt(),
+              },
+            },
+          ],
+        };
+      }
+    );
+
+    server.registerPrompt(
+      'audio-design',
+      {
+        title: 'Audio Design Prompt',
+        description:
+          'Phase 5: System prompt template for generating audio design specifications',
+      },
+      async () => {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: getAudioDesignPrompt(),
+              },
+            },
+          ],
+        };
+      }
+    );
+
+    // Also register as resources for direct access
+    server.resource(
+      'prompt-scene-splitting',
+      'velro://prompts/scene-splitting',
+      async () => ({
+        contents: [
+          {
+            uri: 'velro://prompts/scene-splitting',
+            mimeType: 'text/plain',
+            text: getSceneSplittingPrompt(),
+          },
+        ],
+      })
+    );
+
+    server.resource(
+      'prompt-character-extraction',
+      'velro://prompts/character-extraction',
+      async () => ({
+        contents: [
+          {
+            uri: 'velro://prompts/character-extraction',
+            mimeType: 'text/plain',
+            text: getCharacterExtractionPrompt(),
+          },
+        ],
+      })
+    );
+
+    server.resource(
+      'prompt-visual-generation',
+      'velro://prompts/visual-generation',
+      async () => ({
+        contents: [
+          {
+            uri: 'velro://prompts/visual-generation',
+            mimeType: 'text/plain',
+            text: getVisualPromptGenerationPrompt(),
+          },
+        ],
+      })
+    );
+
+    server.resource(
+      'prompt-motion-generation',
+      'velro://prompts/motion-generation',
+      async () => ({
+        contents: [
+          {
+            uri: 'velro://prompts/motion-generation',
+            mimeType: 'text/plain',
+            text: getMotionPromptGenerationPrompt(),
+          },
+        ],
+      })
+    );
+
+    server.resource(
+      'prompt-audio-design',
+      'velro://prompts/audio-design',
+      async () => ({
+        contents: [
+          {
+            uri: 'velro://prompts/audio-design',
+            mimeType: 'text/plain',
+            text: getAudioDesignPrompt(),
+          },
+        ],
+      })
+    );
   },
   {
     serverInfo: {

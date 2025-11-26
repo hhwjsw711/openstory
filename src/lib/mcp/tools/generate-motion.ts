@@ -5,6 +5,7 @@
 
 import type { ImageToVideoModel } from '@/lib/ai/models';
 import { generateMotionForFrame } from '@/lib/services/motion.service';
+import type { Scene } from '@/lib/script';
 
 export type GenerateMotionInput = {
   imageUrl: string;
@@ -26,6 +27,32 @@ export type GenerateMotionOutput = {
     duration: number;
     fps: number;
   };
+  generatedAt: string;
+};
+
+export type GenerateMotionFromScenesInput = {
+  scenes: Scene[];
+  model?: string;
+  duration?: number;
+  fps?: number;
+  aspectRatio?: string;
+};
+
+export type SceneMotionResult = {
+  sceneId: string;
+  sceneNumber: number;
+  sceneTitle: string;
+  videoUrl?: string;
+  prompt: string;
+  success: boolean;
+  error?: string;
+};
+
+export type GenerateMotionFromScenesOutput = {
+  results: SceneMotionResult[];
+  totalGenerated: number;
+  totalFailed: number;
+  model: string;
   generatedAt: string;
 };
 
@@ -80,6 +107,126 @@ export async function generateMotionTool(
       error: errorMessage,
       generatedAt: new Date().toISOString(),
     };
+  }
+}
+
+/**
+ * Generate motion videos from scenes (batch operation)
+ * Uses motion prompts from scene analysis
+ */
+export async function generateMotionFromScenesTool(
+  input: GenerateMotionFromScenesInput
+): Promise<GenerateMotionFromScenesOutput> {
+  try {
+    const model = (input.model as ImageToVideoModel) || 'kling_v2_5_turbo_pro';
+    const results: SceneMotionResult[] = [];
+
+    console.log(
+      `[MCP Generate Motion From Scenes] Generating motion for ${input.scenes.length} scenes with model ${model}`
+    );
+
+    for (const scene of input.scenes) {
+      // Extract image URL and motion prompt from scene
+      const imageUrl = scene.prompts?.visual?.fullPrompt
+        ? undefined // Need image URL, not prompt
+        : undefined;
+
+      const motionPrompt = scene.prompts?.motion?.fullPrompt;
+
+      if (!motionPrompt) {
+        console.warn(
+          `[MCP Generate Motion From Scenes] Scene ${scene.sceneId} has no motion prompt, skipping`
+        );
+        results.push({
+          sceneId: scene.sceneId,
+          sceneNumber: scene.sceneNumber,
+          sceneTitle: scene.metadata.title,
+          prompt: '',
+          success: false,
+          error: 'No motion prompt available',
+        });
+        continue;
+      }
+
+      // Note: This requires the scene to have an image URL from frame generation
+      // For now, we'll skip scenes without image URLs
+      if (!imageUrl) {
+        console.warn(
+          `[MCP Generate Motion From Scenes] Scene ${scene.sceneId} has no image URL, skipping. Generate frames first.`
+        );
+        results.push({
+          sceneId: scene.sceneId,
+          sceneNumber: scene.sceneNumber,
+          sceneTitle: scene.metadata.title,
+          prompt: motionPrompt,
+          success: false,
+          error: 'No image URL available - generate frames first',
+        });
+        continue;
+      }
+
+      try {
+        const result = await generateMotionForFrame({
+          imageUrl,
+          prompt: motionPrompt,
+          model,
+          duration: input.duration,
+          fps: input.fps,
+          aspectRatio: input.aspectRatio,
+        });
+
+        if (result.success && result.videoUrl) {
+          results.push({
+            sceneId: scene.sceneId,
+            sceneNumber: scene.sceneNumber,
+            sceneTitle: scene.metadata.title,
+            videoUrl: result.videoUrl,
+            prompt: motionPrompt,
+            success: true,
+          });
+        } else {
+          results.push({
+            sceneId: scene.sceneId,
+            sceneNumber: scene.sceneNumber,
+            sceneTitle: scene.metadata.title,
+            prompt: motionPrompt,
+            success: false,
+            error: result.error || 'Motion generation failed',
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[MCP Generate Motion From Scenes] Failed for scene ${scene.sceneId}:`,
+          error
+        );
+        results.push({
+          sceneId: scene.sceneId,
+          sceneNumber: scene.sceneNumber,
+          sceneTitle: scene.metadata.title,
+          prompt: motionPrompt,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    const totalGenerated = results.filter((r) => r.success).length;
+    const totalFailed = results.filter((r) => !r.success).length;
+
+    console.log(
+      `[MCP Generate Motion From Scenes] Complete: ${totalGenerated}/${input.scenes.length} successful`
+    );
+
+    return {
+      results,
+      totalGenerated,
+      totalFailed,
+      model,
+      generatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[MCP Generate Motion From Scenes] Error:', error);
+    throw error;
   }
 }
 
