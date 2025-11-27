@@ -24,6 +24,8 @@ export type ExtractCharactersOutput = {
 
 /**
  * Extract character bible from scenes
+ *
+ * @param input - Tool input containing scenes
  */
 export async function extractCharactersTool(
   input: ExtractCharactersInput

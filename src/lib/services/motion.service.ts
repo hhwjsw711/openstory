@@ -14,7 +14,7 @@ import {
 import { getEnv } from '#env';
 import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import type { QueueStatus } from '@fal-ai/client';
-import { createFalClient } from '@fal-ai/client';
+import { createFalClient, isQueueStatus } from '@fal-ai/client';
 import { z } from 'zod';
 
 export const generationMotionOptionsSchema = z.object({
@@ -22,7 +22,10 @@ export const generationMotionOptionsSchema = z.object({
   prompt: z.string(),
   model: z
     .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
+      Object.keys(IMAGE_TO_VIDEO_MODELS) as [
+        ImageToVideoModel,
+        ...ImageToVideoModel[],
+      ]
     )
     .optional()
     .default(DEFAULT_VIDEO_MODEL),
@@ -395,9 +398,12 @@ export async function checkMotionStatus(
       `Failed to check status: ${response.status} ${response.statusText}`
     );
   }
-  const ressponse: QueueStatus = await response.json();
 
-  return ressponse;
+  const responseBody = await response.json();
+  if (!isQueueStatus(responseBody)) {
+    throw new Error('Invalid response body');
+  }
+  return responseBody;
 }
 
 /**

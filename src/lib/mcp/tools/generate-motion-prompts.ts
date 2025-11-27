@@ -22,6 +22,8 @@ export type GenerateMotionPromptsOutput = {
 
 /**
  * Generate motion prompts for scenes
+ *
+ * @param input - Tool input containing scenes
  */
 export async function generateMotionPromptsTool(
   input: GenerateMotionPromptsInput

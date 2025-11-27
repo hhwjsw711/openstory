@@ -11,8 +11,11 @@ import { z } from 'zod';
 export const designAudioInputSchema = z.object({
   scenes: z.array(sceneSchema),
 });
+
 /**
  * Generate audio design for scenes
+ *
+ * @param input - Tool input containing scenes
  */
 export async function designAudioTool(input: {
   scenes: Scene[];

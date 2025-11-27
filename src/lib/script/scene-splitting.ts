@@ -61,14 +61,19 @@ const sceneSplittingResultSchema = z.object({
  *
  * @param script - The script content to analyze
  * @param aspectRatio - The aspect ratio for the project (e.g., '16:9', '9:16', '1:1')
- * @param model - AI model to use (defaults to fast model)
+ * @param options - Optional configuration
+ * @param options.model - AI model to use (defaults to fast model)
  * @returns Project metadata and basic scenes
  */
 export async function splitScriptIntoScenes(
   script: string,
   aspectRatio: AspectRatio,
-  model: string = RECOMMENDED_MODELS.fast
+  options?: {
+    model?: string;
+  }
 ): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
   // Sanitize script content
   const sanitizedScript = sanitizeScriptContent(script);
 
@@ -87,13 +92,12 @@ IMPORTANT: Extract EXACT original script text for each scene. Do NOT modify or e
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Call AI
+  // Get AI response
   const response = await callOpenRouter({
     model,
     messages: [systemMessage(SCENE_SPLITTING_PROMPT), userMessage(userPrompt)],
   });
-
-  const content = response.choices[0]?.message?.content;
+  const content = response.choices[0]?.message?.content ?? '';
 
   if (!content) {
     throw new Error('AI response contained no content');

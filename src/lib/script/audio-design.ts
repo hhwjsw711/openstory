@@ -34,13 +34,18 @@ const audioDesignGenerationResultSchema = z.object({
  * Generate audio design for a batch of scenes
  *
  * @param scenes - Scenes with visual and motion prompts to generate audio design for
- * @param model - AI model to use (defaults to fast model)
+ * @param options - Optional configuration
+ * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with audio design
  */
 export async function generateAudioDesignForScenes(
   scenes: Scene[],
-  model: string = RECOMMENDED_MODELS.fast
+  options?: {
+    model?: string;
+  }
 ): Promise<Scene[]> {
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
   // Build user prompt with scenes (including visual/motion for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -75,13 +80,12 @@ For each scene, design audio across four categories:
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Call AI
+  // Get AI response
   const response = await callOpenRouter({
     model,
     messages: [systemMessage(AUDIO_DESIGN_PROMPT), userMessage(userPrompt)],
   });
-
-  const content = response.choices[0]?.message?.content;
+  const content = response.choices[0]?.message?.content ?? '';
 
   if (!content) {
     throw new Error('AI response contained no content');

@@ -22,6 +22,8 @@ export type SplitScenesOutput = {
 
 /**
  * Split script into scenes
+ *
+ * @param input - Tool input containing script and aspect ratio
  */
 export async function splitScenesTool(
   input: SplitScenesInput

@@ -5,6 +5,24 @@
 
 import { isLocalDevelopment } from '@/lib/utils/environment';
 import { createMcpHandler } from 'mcp-handler';
+
+/**
+ * Fetch a URL and return base64-encoded data with mime type
+ */
+async function fetchAsBase64(
+  url: string
+): Promise<{ data: string; mimeType: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get('content-type') || 'image/png';
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+  return { data: base64, mimeType: contentType };
+}
 // Import tool implementations
 import {
   analyzeScriptInputSchema,
@@ -39,16 +57,7 @@ import {
 } from '@/lib/mcp/tools/split-scenes';
 
 // Import resources
-import { formatPromptsAsText } from '@/lib/mcp/resources/prompts';
 import { formatStylesAsText } from '@/lib/mcp/resources/styles';
-// Import prompt template resources
-import {
-  getAudioDesignPrompt,
-  getCharacterExtractionPrompt,
-  getMotionPromptGenerationPrompt,
-  getSceneSplittingPrompt,
-  getVisualPromptGenerationPrompt,
-} from '@/lib/mcp/resources/prompt-templates';
 import { generationMotionOptionsSchema } from '@/lib/services/motion.service';
 
 const handler = createMcpHandler(
@@ -59,18 +68,45 @@ const handler = createMcpHandler(
       {
         title: 'Generate Image',
         description:
-          'Generate a single cinematic image with a director style applied',
+          'Generate a single cinematic image with a director style applied. Returns the image as base64.',
         inputSchema: generateImageInputSchema, // ZodRawShape - Zod v4 types are incompatible but runtime works correctly
       },
       async (args) => {
         console.log(`[MCP] Tool called: generate_image`);
         const result = await generateImageTool(args);
+
+        // Fetch images and convert to base64
+        const imageContents = await Promise.all(
+          result.imageUrls.map(async (url) => {
+            const { data, mimeType } = await fetchAsBase64(url);
+            return {
+              type: 'image' as const,
+              data,
+              mimeType,
+            };
+          })
+        );
+
         return {
           content: [
+            // Include metadata as text (with URLs for programmatic access)
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(
+                {
+                  imageUrls: result.imageUrls,
+                  generatedAt: result.generatedAt,
+                  processingTimeMs: result.processingTimeMs,
+                  provider: result.provider,
+                  model: result.metadata.model,
+                  dimensions: result.metadata.dimensions,
+                },
+                null,
+                2
+              ),
             },
+            // Include base64 images
+            ...imageContents,
           ],
         };
       }
@@ -100,7 +136,8 @@ const handler = createMcpHandler(
     server.registerTool(
       'generate_motion',
       {
-        description: 'Convert image to video with camera movement',
+        description:
+          'Convert image to video with camera movement. Returns the video as base64.',
         inputSchema: generationMotionOptionsSchema, // ZodRawShape - Zod v4 types are incompatible but runtime works correctly
       },
       async (args) => {
@@ -110,11 +147,42 @@ const handler = createMcpHandler(
           prompt: args.prompt,
           model: args.model,
         });
+
+        // If generation failed, return error as text
+        if (!result.success || !result.videoUrl) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify(
+                  { success: false, error: result.error },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        // Fetch video and convert to base64
+        const { data, mimeType } = await fetchAsBase64(result.videoUrl);
+
         return {
           content: [
+            // Include metadata as text (with URL for programmatic access)
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(
+                { success: true, videoUrl: result.videoUrl },
+                null,
+                2
+              ),
+            },
+            // Include base64 video
+            {
+              type: 'image' as const, // MCP uses 'image' type for binary data
+              data,
+              mimeType, // will be video/mp4 or similar
             },
           ],
         };
@@ -250,198 +318,6 @@ const handler = createMcpHandler(
         },
       ],
     }));
-
-    server.resource('prompts', 'velro://prompts', async () => ({
-      contents: [
-        {
-          uri: 'velro://prompts',
-          mimeType: 'text/plain',
-          text: formatPromptsAsText(),
-        },
-      ],
-    }));
-
-    // Register prompt templates as MCP prompts (for Prompts tab in Inspector)
-    server.registerPrompt(
-      'scene-splitting',
-      {
-        title: 'Scene Splitting Prompt',
-        description:
-          'Phase 1: System prompt template for splitting scripts into logical scenes with metadata',
-      },
-      async () => {
-        return {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: getSceneSplittingPrompt(),
-              },
-            },
-          ],
-        };
-      }
-    );
-
-    server.registerPrompt(
-      'character-extraction',
-      {
-        title: 'Character Extraction Prompt',
-        description:
-          'Phase 2: System prompt template for extracting character bible from scenes',
-      },
-      async () => {
-        return {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: getCharacterExtractionPrompt(),
-              },
-            },
-          ],
-        };
-      }
-    );
-
-    server.registerPrompt(
-      'visual-generation',
-      {
-        title: 'Visual Prompt Generation',
-        description:
-          'Phase 3: System prompt template for generating visual prompts with director style',
-      },
-      async () => {
-        return {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: getVisualPromptGenerationPrompt(),
-              },
-            },
-          ],
-        };
-      }
-    );
-
-    server.registerPrompt(
-      'motion-generation',
-      {
-        title: 'Motion Prompt Generation',
-        description:
-          'Phase 4: System prompt template for generating motion prompts for video generation',
-      },
-      async () => {
-        return {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: getMotionPromptGenerationPrompt(),
-              },
-            },
-          ],
-        };
-      }
-    );
-
-    server.registerPrompt(
-      'audio-design',
-      {
-        title: 'Audio Design Prompt',
-        description:
-          'Phase 5: System prompt template for generating audio design specifications',
-      },
-      async () => {
-        return {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: getAudioDesignPrompt(),
-              },
-            },
-          ],
-        };
-      }
-    );
-
-    // Also register as resources for direct access
-    server.resource(
-      'prompt-scene-splitting',
-      'velro://prompts/scene-splitting',
-      async () => ({
-        contents: [
-          {
-            uri: 'velro://prompts/scene-splitting',
-            mimeType: 'text/plain',
-            text: getSceneSplittingPrompt(),
-          },
-        ],
-      })
-    );
-
-    server.resource(
-      'prompt-character-extraction',
-      'velro://prompts/character-extraction',
-      async () => ({
-        contents: [
-          {
-            uri: 'velro://prompts/character-extraction',
-            mimeType: 'text/plain',
-            text: getCharacterExtractionPrompt(),
-          },
-        ],
-      })
-    );
-
-    server.resource(
-      'prompt-visual-generation',
-      'velro://prompts/visual-generation',
-      async () => ({
-        contents: [
-          {
-            uri: 'velro://prompts/visual-generation',
-            mimeType: 'text/plain',
-            text: getVisualPromptGenerationPrompt(),
-          },
-        ],
-      })
-    );
-
-    server.resource(
-      'prompt-motion-generation',
-      'velro://prompts/motion-generation',
-      async () => ({
-        contents: [
-          {
-            uri: 'velro://prompts/motion-generation',
-            mimeType: 'text/plain',
-            text: getMotionPromptGenerationPrompt(),
-          },
-        ],
-      })
-    );
-
-    server.resource(
-      'prompt-audio-design',
-      'velro://prompts/audio-design',
-      async () => ({
-        contents: [
-          {
-            uri: 'velro://prompts/audio-design',
-            mimeType: 'text/plain',
-            text: getAudioDesignPrompt(),
-          },
-        ],
-      })
-    );
   },
   {
     serverInfo: {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --bun next dev --turbopack",
+    "dev:https": "bun run --bun next dev --turbopack --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "next build",
     "start": "next start",
     "build:bun": "bun run --bun next build",
@@ -36,6 +37,7 @@
     "setup:env": "./scripts/setup-env.sh",
     "bash:setup:env": "bash ./scripts/setup-env.sh",
     "cert:setup": "bash ./scripts/setup-cert.sh",
+    "cert:trust": "mkcert -install",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy",

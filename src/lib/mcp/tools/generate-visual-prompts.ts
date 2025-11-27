@@ -49,6 +49,8 @@ function getAllStyleNames(): string[] {
 
 /**
  * Generate visual prompts for scenes
+ *
+ * @param input - Tool input containing scenes, character bible, and style
  */
 export async function generateVisualPromptsTool(
   input: GenerateVisualPromptsInput
