@@ -395,8 +395,9 @@ export async function checkMotionStatus(
       `Failed to check status: ${response.status} ${response.statusText}`
     );
   }
+  const ressponse: QueueStatus = await response.json();
 
-  return response.json();
+  return ressponse;
 }
 
 /**

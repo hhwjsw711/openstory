@@ -92,9 +92,7 @@ export async function generateMotionFromScenesTool(
 
     for (const scene of input.scenes) {
       // Extract image URL and motion prompt from scene
-      const imageUrl = scene.prompts?.visual?.fullPrompt
-        ? undefined // Need image URL, not prompt
-        : undefined;
+      const imageUrl = scene.sourceImageUrl;
 
       const motionPrompt = scene.prompts?.motion?.fullPrompt;
 
