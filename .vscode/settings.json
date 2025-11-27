@@ -59,8 +59,6 @@
   "task.problemMatchers.neverPrompt": false,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "oxc.typeAware": true,
-  "oxc.lint.run": "onSave",
-  "oxc.configPath": "",
   "git.repositoryScanIgnoredFolders": [
     "node_modules",
     ".conductor",

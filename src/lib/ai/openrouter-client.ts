@@ -158,18 +158,14 @@ export function extractJSON<T>(content: string): T | null {
     return JSON.parse(content) as T;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      console.error('Failed to parse JSON from markdown direct parse:', {
-        cause: error.cause,
-        message: error.message,
-        stack: error.stack,
-      });
+      console.log('Failed to parse JSON from markdown direct parse');
     } else if (error instanceof Error) {
-      console.error(
+      console.log(
         'Failed to parse JSON from markdown direct parse:',
         error.message
       );
     } else {
-      console.error('Failed to parse JSON from markdown direct parse:', error);
+      console.log('Failed to parse JSON from markdown direct parse:');
     }
     // Try to extract JSON from markdown code blocks
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);

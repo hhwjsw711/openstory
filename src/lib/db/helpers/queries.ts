@@ -133,31 +133,22 @@ export async function getTeamStyles(
     category?: string;
   }
 ): Promise<Style[]> {
-  // Build where condition explicitly to preserve type inference
-  const whereCondition =
-    options?.templatesOnly && options?.category
-      ? and(
-          eq(styles.teamId, teamId),
-          eq(styles.isTemplate, true),
-          eq(styles.category, options.category)
-        )
-      : options?.templatesOnly
-        ? and(eq(styles.teamId, teamId), eq(styles.isTemplate, true))
-        : options?.category
-          ? and(
-              eq(styles.teamId, teamId),
-              eq(styles.category, options.category)
-            )
-          : eq(styles.teamId, teamId);
+  // Build where condition
+  const conditions = [eq(styles.teamId, teamId)];
 
-  // Use relational query API for better type inference
-  return await getDb().query.styles.findMany({
-    where: whereCondition,
-    orderBy: (styles, { desc }) => [
-      desc(styles.usageCount),
-      asc(styles.createdAt),
-    ],
-  });
+  if (options?.templatesOnly) {
+    conditions.push(eq(styles.isTemplate, true));
+  }
+
+  if (options?.category) {
+    conditions.push(eq(styles.category, options.category));
+  }
+
+  return await getDb()
+    .select()
+    .from(styles)
+    .where(and(...conditions))
+    .orderBy(desc(styles.usageCount), asc(styles.createdAt));
 }
 
 /**
@@ -172,11 +163,12 @@ export async function getTeamStyles(
  * ```
  */
 export async function getPublicStyles(): Promise<Style[]> {
-  return await getDb()
+  const result = await getDb()
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
     .orderBy(asc(styles.name));
+  return result;
 }
 
 /**
@@ -192,11 +184,12 @@ export async function getPublicStyles(): Promise<Style[]> {
  * ```
  */
 export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
-  return await getDb()
+  const result = await getDb()
     .select()
     .from(styles)
     .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
     .orderBy(asc(styles.name));
+  return result;
 }
 
 /**
@@ -298,7 +291,8 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
   const result = await getDb()
     .select()
     .from(styles)
-    .where(eq(styles.id, styleId));
+    .where(eq(styles.id, styleId))
+    .limit(1);
   return result[0] ?? null;
 }
 
@@ -451,11 +445,10 @@ export async function getRecentlyUsedStyles(
   limit = 5
 ): Promise<Style[]> {
   // Get styles that have been used in sequences, ordered by most recent use
-  const stylesWithUsage = await getDb().query.styles.findMany({
-    where: eq(styles.teamId, teamId),
-    orderBy: (styles, { desc }) => [desc(styles.usageCount)],
-    limit,
-  });
-
-  return stylesWithUsage;
+  return await getDb()
+    .select()
+    .from(styles)
+    .where(eq(styles.teamId, teamId))
+    .orderBy(desc(styles.usageCount))
+    .limit(limit);
 }

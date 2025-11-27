@@ -47,13 +47,18 @@ const motionPromptGenerationResultSchema = z.object({
  * Generate motion prompts for a batch of scenes
  *
  * @param scenes - Scenes with visual prompts to generate motion for
- * @param model - AI model to use (defaults to fast model)
+ * @param options - Optional configuration
+ * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with motion prompts
  */
 export async function generateMotionPromptsForScenes(
   scenes: Scene[],
-  model: string = RECOMMENDED_MODELS.fast
+  options?: {
+    model?: string;
+  }
 ): Promise<Scene[]> {
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
   // Build user prompt with scenes (including visual prompts for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -77,7 +82,7 @@ CRITICAL: Motion prompts MUST be self-contained. AI video generators have ZERO m
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Call AI
+  // Get AI response
   const response = await callOpenRouter({
     model,
     messages: [
@@ -85,8 +90,7 @@ Respond with ONLY valid JSON matching the schema.`;
       userMessage(userPrompt),
     ],
   });
-
-  const content = response.choices[0]?.message?.content;
+  const content = response.choices[0]?.message?.content ?? '';
 
   if (!content) {
     throw new Error('AI response contained no content');

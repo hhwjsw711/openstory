@@ -5,7 +5,6 @@
  * Does NOT generate prompts, characters, or audio - just identifies scene boundaries.
  */
 
-import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   callOpenRouter,
   extractJSON,
@@ -13,7 +12,9 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
+import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
 
@@ -24,7 +25,7 @@ const sceneSplittingResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
   projectMetadata: z.object({
     title: z.string(),
-    aspectRatio: z.string(),
+    aspectRatio: aspectRatioSchema,
     totalDurationSeconds: z.number().optional(),
     generatedAt: z.string(),
   }),
@@ -60,14 +61,19 @@ const sceneSplittingResultSchema = z.object({
  *
  * @param script - The script content to analyze
  * @param aspectRatio - The aspect ratio for the project (e.g., '16:9', '9:16', '1:1')
- * @param model - AI model to use (defaults to fast model)
+ * @param options - Optional configuration
+ * @param options.model - AI model to use (defaults to fast model)
  * @returns Project metadata and basic scenes
  */
 export async function splitScriptIntoScenes(
   script: string,
-  aspectRatio: string,
-  model: string = RECOMMENDED_MODELS.fast
+  aspectRatio: AspectRatio,
+  options?: {
+    model?: string;
+  }
 ): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
   // Sanitize script content
   const sanitizedScript = sanitizeScriptContent(script);
 
@@ -86,13 +92,12 @@ IMPORTANT: Extract EXACT original script text for each scene. Do NOT modify or e
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Call AI
+  // Get AI response
   const response = await callOpenRouter({
     model,
     messages: [systemMessage(SCENE_SPLITTING_PROMPT), userMessage(userPrompt)],
   });
-
-  const content = response.choices[0]?.message?.content;
+  const content = response.choices[0]?.message?.content ?? '';
 
   if (!content) {
     throw new Error('AI response contained no content');

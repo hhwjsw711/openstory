@@ -56,15 +56,20 @@ const visualPromptGenerationResultSchema = z.object({
  * @param scenes - Scenes to generate visual prompts for
  * @param characterBible - Character bible for consistency
  * @param styleConfig - Director DNA configuration
- * @param model - AI model to use (defaults to fast model)
+ * @param options - Optional configuration
+ * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with visual prompts
  */
 export async function generateVisualPromptsForScenes(
   scenes: Scene[],
   characterBible: CharacterBibleEntry[],
   styleConfig: DirectorDnaConfig,
-  model: string = RECOMMENDED_MODELS.fast
+  options?: {
+    model?: string;
+  }
 ): Promise<Scene[]> {
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
   // Build user prompt with scenes, character bible, and style config
   const scenesJson = JSON.stringify(scenes, null, 2);
   const characterBibleJson = JSON.stringify(characterBible, null, 2);
@@ -98,7 +103,7 @@ CRITICAL: Visual prompts MUST be self-contained. AI image generators have ZERO m
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Call AI
+  // Get AI response
   const response = await callOpenRouter({
     model,
     messages: [
@@ -106,8 +111,7 @@ Respond with ONLY valid JSON matching the schema.`;
       userMessage(userPrompt),
     ],
   });
-
-  const content = response.choices[0]?.message?.content;
+  const content = response.choices[0]?.message?.content ?? '';
 
   if (!content) {
     throw new Error('AI response contained no content');

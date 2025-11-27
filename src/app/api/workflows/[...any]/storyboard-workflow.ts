@@ -128,7 +128,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         const result = await splitScriptIntoScenes(
           sequence.script,
           sequence.aspectRatio,
-          analysisModel
+          { model: analysisModel }
         );
 
         if (!result.scenes || result.scenes.length === 0) {
@@ -190,10 +190,9 @@ export const generateStoryboardWorkflow = createWorkflow(
     const characterBible = await context.run(
       'extract-character-bible',
       async () => {
-        const characterBible = await extractCharacterBible(
-          basicScenes,
-          analysisModel
-        );
+        const characterBible = await extractCharacterBible(basicScenes, {
+          model: analysisModel,
+        });
 
         // Store character bible in sequence metadata
         await updateSequenceMetadata(input.sequenceId, {
@@ -233,7 +232,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             batch,
             characterBible,
             styleConfig,
-            analysisModel
+            { model: analysisModel }
           );
         });
       })
@@ -262,10 +261,9 @@ export const generateStoryboardWorkflow = createWorkflow(
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          return await generateMotionPromptsForScenes(
-            batchWithVisualPrompts,
-            analysisModel
-          );
+          return await generateMotionPromptsForScenes(batchWithVisualPrompts, {
+            model: analysisModel,
+          });
         });
       })
     );
@@ -293,10 +291,9 @@ export const generateStoryboardWorkflow = createWorkflow(
     const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
         return context.run(`audio-design-batch-${batchIndex}`, async () => {
-          return await generateAudioDesignForScenes(
-            batchWithMotionPrompts,
-            analysisModel
-          );
+          return await generateAudioDesignForScenes(batchWithMotionPrompts, {
+            model: analysisModel,
+          });
         });
       })
     );
