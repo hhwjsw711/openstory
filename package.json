@@ -35,6 +35,7 @@
     "qstash:dev": "docker run -p 8080:8080 public.ecr.aws/upstash/qstash:latest qstash dev",
     "setup:env": "./scripts/setup-env.sh",
     "bash:setup:env": "bash ./scripts/setup-env.sh",
+    "cert:setup": "bash ./scripts/setup-cert.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "system-prompt": "bun ./scripts/system-prompt.ts | pbcopy",

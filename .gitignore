@@ -24,6 +24,11 @@
 .DS_Store
 *.pem
 
+# local SSL certificates (mkcert)
+certs/
+*.pem
+*-key.pem
+
 # debug
 npm-debug.log*
 yarn-debug.log*
