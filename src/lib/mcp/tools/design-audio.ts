@@ -3,35 +3,32 @@
  * Phase 5: Generates audio design for scenes
  */
 
-import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
+import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import type { Scene } from '@/lib/script';
+import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
+import { z } from 'zod';
 
-export type DesignAudioInput = {
-  scenes: Scene[];
-};
-
-export type DesignAudioOutput = {
-  scenes: Scene[];
-};
-
+export const designAudioInputSchema = z.object({
+  scenes: z.array(sceneSchema),
+});
 /**
  * Generate audio design for scenes
  */
-export async function designAudioTool(
-  input: DesignAudioInput
-): Promise<DesignAudioOutput> {
+export async function designAudioTool(input: {
+  scenes: Scene[];
+}): Promise<Scene[]> {
   try {
     console.log(
       `[MCP Design Audio] Generating audio design for ${input.scenes.length} scenes`
     );
 
-    const scenes = await generateAudioDesignForScenes(input.scenes);
+    const enrichedScenes = await generateAudioDesignForScenes(input.scenes);
 
     console.log(
-      `[MCP Design Audio] Complete: ${scenes.length} scenes enriched with audio design`
+      `[MCP Design Audio] Complete: ${enrichedScenes.length} scenes enriched with audio design`
     );
 
-    return { scenes };
+    return enrichedScenes;
   } catch (error) {
     console.error('[MCP Design Audio] Error:', error);
     throw error;
@@ -52,18 +49,7 @@ This tool creates comprehensive audio design specifications with:
 - Ambient: room tone and atmosphere
 
 Requires scenes with visual and motion prompts from previous phases.`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      scenes: {
-        type: 'array',
-        description:
-          'Array of scenes with visual and motion prompts (from generate_motion_prompts output)',
-        items: {
-          type: 'object',
-        },
-      },
-    },
-    required: ['scenes'],
-  },
+  inputSchema: z.object({
+    scenes: z.array(sceneSchema),
+  }),
 };

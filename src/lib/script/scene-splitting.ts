@@ -5,7 +5,6 @@
  * Does NOT generate prompts, characters, or audio - just identifies scene boundaries.
  */
 
-import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   callOpenRouter,
   extractJSON,
@@ -13,7 +12,9 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
+import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
 
@@ -24,7 +25,7 @@ const sceneSplittingResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
   projectMetadata: z.object({
     title: z.string(),
-    aspectRatio: z.string(),
+    aspectRatio: aspectRatioSchema,
     totalDurationSeconds: z.number().optional(),
     generatedAt: z.string(),
   }),
@@ -65,7 +66,7 @@ const sceneSplittingResultSchema = z.object({
  */
 export async function splitScriptIntoScenes(
   script: string,
-  aspectRatio: string,
+  aspectRatio: AspectRatio,
   model: string = RECOMMENDED_MODELS.fast
 ): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
   // Sanitize script content

@@ -4,19 +4,33 @@
  */
 
 import type { Scene, SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
+import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
 import { extractCharacterBible } from '@/lib/script/character-extraction';
 import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
 import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
+import { z } from 'zod';
 
-export type AnalyzeScriptInput = {
-  script: string;
-  style: string;
-  aspectRatio?: string;
-};
+/**
+ * Get all style names as tuple for enum validation
+ */
+function getAllStyleNamesTuple(): [string, ...string[]] {
+  const names = DEFAULT_STYLE_TEMPLATES.map((style) => style.name);
+  if (names.length === 0) {
+    throw new Error('No style templates available');
+  }
+  return names as [string, ...string[]];
+}
 
+export const analyzeScriptInputSchema = z.object({
+  script: z.string(),
+  style: z.enum(getAllStyleNamesTuple()),
+  aspectRatio: aspectRatioSchema,
+});
+
+export type AnalyzeScriptInput = z.infer<typeof analyzeScriptInputSchema>;
 export type AnalyzeScriptOutput = SceneAnalysis;
 
 function getStyleByName(name: string) {
@@ -89,24 +103,5 @@ export async function analyzeScriptTool(
 export const analyzeScriptToolDescription = {
   name: 'analyze_script',
   description: `Analyze script with 5-phase workflow. Available styles: ${getAllStyleNames().join(', ')}`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      script: {
-        type: 'string',
-        description: 'Script to analyze',
-      },
-      style: {
-        type: 'string',
-        description: 'Director style',
-        enum: getAllStyleNames(),
-      },
-      aspectRatio: {
-        type: 'string',
-        description: 'Aspect ratio',
-        enum: ['16:9', '9:16', '1:1', '21:9'],
-      },
-    },
-    required: ['script', 'style'],
-  },
+  inputSchema: analyzeScriptInputSchema,
 };

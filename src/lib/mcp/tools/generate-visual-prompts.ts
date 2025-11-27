@@ -3,16 +3,35 @@
  * Phase 3: Generates visual prompts for scenes
  */
 
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
+import {
+  characterBibleEntrySchema,
+  sceneSchema,
+} from '@/lib/ai/scene-analysis.schema';
 import type { Scene } from '@/lib/script';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
+import { z } from 'zod';
 
-export type GenerateVisualPromptsInput = {
-  scenes: Scene[];
-  characterBible: CharacterBibleEntry[];
-  style: string;
-};
+/**
+ * Get all style names as tuple for enum validation
+ */
+function getAllStyleNamesTuple(): [string, ...string[]] {
+  const names = DEFAULT_STYLE_TEMPLATES.map((style) => style.name);
+  if (names.length === 0) {
+    throw new Error('No style templates available');
+  }
+  return names as [string, ...string[]];
+}
+
+export const generateVisualPromptsInputSchema = z.object({
+  scenes: z.array(sceneSchema),
+  characterBible: z.array(characterBibleEntrySchema),
+  style: z.enum(getAllStyleNamesTuple()),
+});
+
+export type GenerateVisualPromptsInput = z.infer<
+  typeof generateVisualPromptsInputSchema
+>;
 
 export type GenerateVisualPromptsOutput = {
   scenes: Scene[];
@@ -78,29 +97,5 @@ This tool creates detailed image generation prompts with:
 - Continuity tracking (characters, environment, colors, lighting)
 
 Uses the Character Bible from Phase 2 to ensure visual consistency. Applies director style to all prompts.`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      scenes: {
-        type: 'array',
-        description: 'Array of scenes from split_scenes output',
-        items: {
-          type: 'object',
-        },
-      },
-      characterBible: {
-        type: 'array',
-        description: 'Character bible from extract_characters output',
-        items: {
-          type: 'object',
-        },
-      },
-      style: {
-        type: 'string',
-        description: 'Director style name',
-        enum: getAllStyleNames(),
-      },
-    },
-    required: ['scenes', 'characterBible', 'style'],
-  },
+  inputSchema: generateVisualPromptsInputSchema,
 };

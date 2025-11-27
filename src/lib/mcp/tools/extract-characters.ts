@@ -3,13 +3,20 @@
  * Phase 2: Extracts character bible from scenes
  */
 
+import {
+  sceneSchema,
+  type CharacterBibleEntry,
+} from '@/lib/ai/scene-analysis.schema';
 import { extractCharacterBible } from '@/lib/script/character-extraction';
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
-import type { Scene } from '@/lib/script';
+import { z } from 'zod';
 
-export type ExtractCharactersInput = {
-  scenes: Scene[];
-};
+export const extractCharactersInputSchema = z.object({
+  scenes: z.array(sceneSchema),
+});
+
+export type ExtractCharactersInput = z.infer<
+  typeof extractCharactersInputSchema
+>;
 
 export type ExtractCharactersOutput = {
   characterBible: CharacterBibleEntry[];
@@ -55,17 +62,5 @@ This tool analyzes scenes to identify all characters and build a Character Bible
 - Consistency tags for visual reference
 
 The Character Bible is used in Phase 3 to ensure visual consistency across all generated images.`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      scenes: {
-        type: 'array',
-        description: 'Array of scenes from split_scenes output',
-        items: {
-          type: 'object',
-        },
-      },
-    },
-    required: ['scenes'],
-  },
+  inputSchema: extractCharactersInputSchema,
 };

@@ -3,12 +3,18 @@
  * Phase 4: Generates motion prompts for scenes
  */
 
-import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
+import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import type { Scene } from '@/lib/script';
+import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
+import { z } from 'zod';
 
-export type GenerateMotionPromptsInput = {
-  scenes: Scene[];
-};
+export const generateMotionPromptsInputSchema = z.object({
+  scenes: z.array(sceneSchema),
+});
+
+export type GenerateMotionPromptsInput = z.infer<
+  typeof generateMotionPromptsInputSchema
+>;
 
 export type GenerateMotionPromptsOutput = {
   scenes: Scene[];
@@ -53,18 +59,5 @@ This tool creates camera movement descriptions for video generation with:
 - Start/end positions, duration, technical parameters
 
 Requires scenes with visual prompts from Phase 3. Motion prompts are self-contained for AI video generators with no memory.`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      scenes: {
-        type: 'array',
-        description:
-          'Array of scenes with visual prompts (from generate_visual_prompts output)',
-        items: {
-          type: 'object',
-        },
-      },
-    },
-    required: ['scenes'],
-  },
+  inputSchema: generateMotionPromptsInputSchema,
 };

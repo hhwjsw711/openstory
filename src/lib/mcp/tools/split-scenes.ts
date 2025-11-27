@@ -3,13 +3,17 @@
  * Phase 1: Splits script into basic scenes with metadata
  */
 
-import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
+import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
+import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
+import { z } from 'zod';
 
-export type SplitScenesInput = {
-  script: string;
-  aspectRatio?: string;
-};
+export const splitScenesInputSchema = z.object({
+  script: z.string(),
+  aspectRatio: aspectRatioSchema,
+});
+
+export type SplitScenesInput = z.infer<typeof splitScenesInputSchema>;
 
 export type SplitScenesOutput = {
   projectMetadata: ProjectMetadata;
@@ -55,19 +59,5 @@ This tool analyzes a script and breaks it into scenes with:
 - Original script extracts (preserved verbatim)
 
 Returns project metadata and an array of basic scenes (without prompts, characters, or audio design yet).`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      script: {
-        type: 'string',
-        description: 'Script content to analyze',
-      },
-      aspectRatio: {
-        type: 'string',
-        description: 'Aspect ratio for the project',
-        enum: ['16:9', '9:16', '1:1', '21:9'],
-      },
-    },
-    required: ['script'],
-  },
+  inputSchema: splitScenesInputSchema,
 };

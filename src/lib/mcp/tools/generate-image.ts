@@ -3,28 +3,43 @@
  * Uses existing Velro image generation service
  */
 
+import type { TextToImageModel } from '@/lib/ai/models';
+import { IMAGE_MODELS } from '@/lib/ai/models';
+import { ImageSize } from '@/lib/constants/aspect-ratios';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
+  type ImageGenerationResult,
 } from '@/lib/image/image-generation';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
-import type { TextToImageModel } from '@/lib/ai/models';
+import { z } from 'zod';
 
-export type GenerateImageInput = {
-  prompt: string;
-  style: string;
-  model?: string;
-  imageSize?: 'square_hd' | 'portrait_16_9' | 'landscape_16_9';
-  numImages?: number;
-};
+/**
+ * Get all style names as tuple for enum validation
+ */
+function getAllStyleNamesTuple(): [string, ...string[]] {
+  const names = DEFAULT_STYLE_TEMPLATES.map((style) => style.name);
+  if (names.length === 0) {
+    throw new Error('No style templates available');
+  }
+  return names as [string, ...string[]];
+}
 
-export type GenerateImageOutput = {
-  imageUrls: string[];
-  style: string;
-  model: string;
-  enhancedPrompt: string;
-  generatedAt: string;
-};
+export const generateImageInputSchema = z.object({
+  prompt: z.string(),
+  style: z.enum(getAllStyleNamesTuple()),
+  model: z
+    .enum(
+      Object.keys(IMAGE_MODELS) as [TextToImageModel, ...TextToImageModel[]]
+    )
+    .optional(),
+  imageSize: z
+    .enum(['square_hd', 'portrait_16_9', 'landscape_16_9'])
+    .optional(),
+  numImages: z.number().int().min(1).max(4).optional(),
+});
+
+export type GenerateImageInput = z.infer<typeof generateImageInputSchema>;
 
 /**
  * Get style by name from templates
@@ -72,7 +87,7 @@ function enhancePromptWithStyle(prompt: string, styleName: string): string {
  */
 export async function generateImageTool(
   input: GenerateImageInput
-): Promise<GenerateImageOutput> {
+): Promise<ImageGenerationResult> {
   try {
     // Validate style exists
     const style = getStyleByName(input.style);
@@ -89,20 +104,14 @@ export async function generateImageTool(
     const params: ImageGenerationParams = {
       prompt: enhancedPrompt,
       model: (input.model as TextToImageModel) || 'nano_banana_pro',
-      imageSize: input.imageSize || 'landscape_16_9',
+      imageSize: (input.imageSize as ImageSize) || 'landscape_16_9',
       numImages: input.numImages || 1,
     };
 
     // Use existing Velro image generation service
     const result = await generateImageWithProvider(params);
 
-    return {
-      imageUrls: result.imageUrls,
-      style: input.style,
-      model: result.metadata.model,
-      enhancedPrompt,
-      generatedAt: result.generatedAt,
-    };
+    return result;
   } catch (error) {
     console.error('[MCP Generate Image] Error:', error);
     throw error;
@@ -119,48 +128,5 @@ export const generateImageToolDescription = {
 Available styles: ${getAllStyleNames().join(', ')}
 
 The tool will enhance your prompt with the selected director's visual style, including their signature lighting, camera work, mood, and color grading.`,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      prompt: {
-        type: 'string',
-        description: 'The image prompt describing what you want to generate',
-      },
-      style: {
-        type: 'string',
-        description: `Director style to apply. Available: ${getAllStyleNames().join(', ')}`,
-        enum: getAllStyleNames(),
-      },
-      model: {
-        type: 'string',
-        description: 'Image generation model (default: nano_banana_pro)',
-        enum: [
-          'nano_banana',
-          'nano_banana_pro',
-          'flux_schnell',
-          'flux_dev',
-          'flux_pro',
-          'flux_pro_v1_1_ultra',
-          'flux_krea_lora',
-          'sdxl_lightning',
-          'sdxl',
-          'imagen4_preview_ultra',
-          'recraft_v3',
-          'hidream_i1_full',
-        ],
-      },
-      imageSize: {
-        type: 'string',
-        description: 'Image dimensions',
-        enum: ['square_hd', 'portrait_16_9', 'landscape_16_9'],
-      },
-      numImages: {
-        type: 'number',
-        description: 'Number of images to generate (1-4)',
-        minimum: 1,
-        maximum: 4,
-      },
-    },
-    required: ['prompt', 'style'],
-  },
+  inputSchema: generateImageInputSchema,
 };
