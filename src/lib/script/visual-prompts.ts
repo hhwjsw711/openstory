@@ -118,10 +118,10 @@ Respond with ONLY valid JSON matching the schema.`;
   })) {
     finalContent = chunk.accumulated;
 
-    // Notify caller of progress
-    if (onProgress) {
+    // Notify caller of progress (only 'chunk' during streaming)
+    if (onProgress && !chunk.done) {
       onProgress({
-        type: chunk.done ? 'complete' : 'chunk',
+        type: 'chunk',
         text: finalContent,
       });
     }
