@@ -13,6 +13,7 @@ import {
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
+import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
@@ -125,9 +126,20 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('No script found');
         }
 
+        const splitScriptProgressCallback: ProgressCallback = (progress: {
+          type: 'chunk' | 'complete';
+          text: string;
+          parsed?: unknown;
+        }) => {
+          console.log(
+            '[StoryboardGenerationWorkflow] Split Script Progress:',
+            progress
+          );
+        };
         const result = await splitScriptIntoScenes(
           sequence.script,
           sequence.aspectRatio,
+          splitScriptProgressCallback,
           { model: analysisModel }
         );
 
@@ -190,9 +202,24 @@ export const generateStoryboardWorkflow = createWorkflow(
     const characterBible = await context.run(
       'extract-character-bible',
       async () => {
-        const characterBible = await extractCharacterBible(basicScenes, {
-          model: analysisModel,
-        });
+        const extractCharacterBibleProgressCallback: ProgressCallback =
+          (progress: {
+            type: 'chunk' | 'complete';
+            text: string;
+            parsed?: unknown;
+          }) => {
+            console.log(
+              '[StoryboardGenerationWorkflow] Extract Character Bible Progress:',
+              progress
+            );
+          };
+        const characterBible = await extractCharacterBible(
+          basicScenes,
+          extractCharacterBibleProgressCallback,
+          {
+            model: analysisModel,
+          }
+        );
 
         // Store character bible in sequence metadata
         await updateSequenceMetadata(input.sequenceId, {
@@ -228,10 +255,22 @@ export const generateStoryboardWorkflow = createWorkflow(
     const visualPromptResults: Scene[][] = await Promise.all(
       basicSceneBatches.map(async (batch, batchIndex) => {
         return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
+          const generateVisualPromptsProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Visual Prompts Progress:',
+                progress
+              );
+            };
           return await generateVisualPromptsForScenes(
             batch,
             characterBible,
             styleConfig,
+            generateVisualPromptsProgressCallback,
             { model: analysisModel }
           );
         });
@@ -261,9 +300,24 @@ export const generateStoryboardWorkflow = createWorkflow(
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          return await generateMotionPromptsForScenes(batchWithVisualPrompts, {
-            model: analysisModel,
-          });
+          const generateMotionPromptsProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Motion Prompts Progress:',
+                progress
+              );
+            };
+          return await generateMotionPromptsForScenes(
+            batchWithVisualPrompts,
+            generateMotionPromptsProgressCallback,
+            {
+              model: analysisModel,
+            }
+          );
         });
       })
     );
@@ -291,9 +345,24 @@ export const generateStoryboardWorkflow = createWorkflow(
     const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
         return context.run(`audio-design-batch-${batchIndex}`, async () => {
-          return await generateAudioDesignForScenes(batchWithMotionPrompts, {
-            model: analysisModel,
-          });
+          const generateAudioDesignProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Audio Design Progress:',
+                progress
+              );
+            };
+          return await generateAudioDesignForScenes(
+            batchWithMotionPrompts,
+            generateAudioDesignProgressCallback,
+            {
+              model: analysisModel,
+            }
+          );
         });
       })
     );

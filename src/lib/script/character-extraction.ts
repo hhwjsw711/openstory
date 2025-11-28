@@ -6,8 +6,9 @@
  */
 
 import {
-  callOpenRouter,
+  callOpenRouterStream,
   extractJSON,
+  type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -32,12 +33,14 @@ const characterExtractionResultSchema = z.object({
  * Extract character bible from scenes
  *
  * @param scenes - Scenes to analyze for characters
+ * @param onProgress - Optional callback for streaming progress updates
  * @param options - Optional configuration
  * @param options.model - AI model to use (defaults to fast model)
  * @returns Character bible array
  */
 export async function extractCharacterBible(
   scenes: Scene[],
+  onProgress?: ProgressCallback,
   options?: {
     model?: string;
   }
@@ -62,23 +65,36 @@ For each character that appears:
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Get AI response
-  const response = await callOpenRouter({
+  let finalContent = '';
+
+  // Stream the response
+  for await (const chunk of callOpenRouterStream({
     model,
     messages: [
       systemMessage(CHARACTER_EXTRACTION_PROMPT),
       userMessage(userPrompt),
     ],
-  });
-  const content = response.choices[0]?.message?.content ?? '';
+  })) {
+    finalContent = chunk.accumulated;
 
-  if (!content) {
+    // Notify caller of progress
+    if (onProgress) {
+      onProgress({
+        type: chunk.done ? 'complete' : 'chunk',
+        text: finalContent,
+      });
+    }
+
+    if (chunk.done) break;
+  }
+
+  if (!finalContent) {
     throw new Error('AI response contained no content');
   }
 
   // Extract JSON from response
   const parsed =
-    extractJSON<z.infer<typeof characterExtractionResultSchema>>(content);
+    extractJSON<z.infer<typeof characterExtractionResultSchema>>(finalContent);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -86,6 +102,15 @@ Respond with ONLY valid JSON matching the schema.`;
 
   // Validate with Zod
   const validated = characterExtractionResultSchema.parse(parsed);
+
+  // Notify with final parsed result
+  if (onProgress) {
+    onProgress({
+      type: 'complete',
+      text: finalContent,
+      parsed: validated.characterBible,
+    });
+  }
 
   // Extract and return character bible directly
   return validated.characterBible;
