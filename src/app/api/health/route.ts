@@ -3,6 +3,7 @@
  * Reports system variables for debugging deployment issues
  */
 
+import { getEnv } from '#env';
 import {
   APP_URL,
   getDeploymentPlatform,
@@ -25,6 +26,8 @@ export async function GET() {
     status: 'ok',
     timestamp: new Date().toISOString(),
     platform: getDeploymentPlatform(),
+    getEnv: getEnv(),
+    processEnv: process.env,
     deployment: {
       // Vercel-specific
       vercel: process.env.VERCEL,
