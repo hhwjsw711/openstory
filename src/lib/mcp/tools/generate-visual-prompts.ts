@@ -3,6 +3,7 @@
  * Phase 3: Generates visual prompts for scenes
  */
 
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import {
   characterBibleEntrySchema,
   sceneSchema,
@@ -51,9 +52,11 @@ function getAllStyleNames(): string[] {
  * Generate visual prompts for scenes
  *
  * @param input - Tool input containing scenes, character bible, and style
+ * @param onProgress - Optional callback for streaming progress
  */
 export async function generateVisualPromptsTool(
-  input: GenerateVisualPromptsInput
+  input: GenerateVisualPromptsInput,
+  onProgress?: ProgressCallback
 ): Promise<GenerateVisualPromptsOutput> {
   try {
     const style = getStyleByName(input.style);
@@ -70,7 +73,8 @@ export async function generateVisualPromptsTool(
     const scenes = await generateVisualPromptsForScenes(
       input.scenes,
       input.characterBible,
-      style.config
+      style.config,
+      onProgress
     );
 
     console.log(

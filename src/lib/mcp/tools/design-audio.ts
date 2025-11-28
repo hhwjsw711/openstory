@@ -3,6 +3,7 @@
  * Phase 5: Generates audio design for scenes
  */
 
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import type { Scene } from '@/lib/script';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
@@ -16,16 +17,21 @@ export const designAudioInputSchema = z.object({
  * Generate audio design for scenes
  *
  * @param input - Tool input containing scenes
+ * @param onProgress - Optional callback for streaming progress
  */
-export async function designAudioTool(input: {
-  scenes: Scene[];
-}): Promise<Scene[]> {
+export async function designAudioTool(
+  input: { scenes: Scene[] },
+  onProgress?: ProgressCallback
+): Promise<Scene[]> {
   try {
     console.log(
       `[MCP Design Audio] Generating audio design for ${input.scenes.length} scenes`
     );
 
-    const enrichedScenes = await generateAudioDesignForScenes(input.scenes);
+    const enrichedScenes = await generateAudioDesignForScenes(
+      input.scenes,
+      onProgress
+    );
 
     console.log(
       `[MCP Design Audio] Complete: ${enrichedScenes.length} scenes enriched with audio design`

@@ -3,6 +3,7 @@
  * Phase 2: Extracts character bible from scenes
  */
 
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import {
   sceneSchema,
   type CharacterBibleEntry,
@@ -26,16 +27,21 @@ export type ExtractCharactersOutput = {
  * Extract character bible from scenes
  *
  * @param input - Tool input containing scenes
+ * @param onProgress - Optional callback for streaming progress
  */
 export async function extractCharactersTool(
-  input: ExtractCharactersInput
+  input: ExtractCharactersInput,
+  onProgress?: ProgressCallback
 ): Promise<ExtractCharactersOutput> {
   try {
     console.log(
       `[MCP Extract Characters] Analyzing ${input.scenes.length} scenes for characters`
     );
 
-    const characterBible = await extractCharacterBible(input.scenes);
+    const characterBible = await extractCharacterBible(
+      input.scenes,
+      onProgress
+    );
 
     console.log(
       `[MCP Extract Characters] Complete: ${characterBible.length} characters extracted`
