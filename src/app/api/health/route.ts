@@ -25,7 +25,6 @@ export async function GET() {
     status: 'ok',
     timestamp: new Date().toISOString(),
     platform: getDeploymentPlatform(),
-    branch: 235,
     deployment: {
       // Vercel-specific
       vercel: process.env.VERCEL,
