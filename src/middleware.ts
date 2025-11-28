@@ -4,7 +4,6 @@
  * Actual session validation happens in protected layout
  */
 
-import { isPreviewDeployment } from '@/lib/utils/environment';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -19,9 +18,12 @@ export async function middleware(request: NextRequest) {
   // helpers to avoid Edge Runtime dynamic code evaluation restrictions.
   // Better Auth's default cookie format is: ${prefix}.${cookie_name}
   // Default prefix: "better-auth", default cookie name: "session_token"
-  const sessionCookie = request.cookies.get('better-auth.session_token');
 
-  if (!sessionCookie && !isPreviewDeployment()) {
+  const sessionCookie = request.cookies.get(
+    '__Secure-better-auth.session_token'
+  );
+
+  if (!sessionCookie) {
     // Preserve the original URL for redirect after login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
