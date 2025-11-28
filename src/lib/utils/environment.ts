@@ -90,6 +90,14 @@ export const NEXT_PUBLIC_APP_URL =
  * This is used in the redirect URIs for OAuth providers on preview branches
  */
 export function getProductionDeploymentAppUrl(): string {
+  if (
+    APP_URL === 'https://app.velro.ai' ||
+    APP_URL === 'https://r.velro.ai' ||
+    APP_URL === 'https://v.velro.ai' ||
+    APP_URL === 'https://cf.velro.ai'
+  ) {
+    return APP_URL;
+  }
   if (/https:\/\/.*\.velro.ai/.test(APP_URL)) {
     return 'https://app.velro.ai';
   }
