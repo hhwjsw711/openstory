@@ -4,6 +4,7 @@
  * Actual session validation happens in protected layout
  */
 
+import { isPreviewDeployment } from '@/lib/utils/environment';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -20,7 +21,7 @@ export async function middleware(request: NextRequest) {
   // Default prefix: "better-auth", default cookie name: "session_token"
   const sessionCookie = request.cookies.get('better-auth.session_token');
 
-  if (!sessionCookie) {
+  if (!sessionCookie && !isPreviewDeployment()) {
     // Preserve the original URL for redirect after login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
