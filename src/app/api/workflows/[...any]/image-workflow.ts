@@ -6,6 +6,7 @@ import {
   ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -17,6 +18,30 @@ export const maxDuration = 800; // This function can run for a maximum of 800 se
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
+
+    // Get realtime channel for streaming progress (if available)
+    let channel: ReturnType<typeof getGenerationChannel> | null = null;
+    if (input.sequenceId) {
+      try {
+        channel = getGenerationChannel(input.sequenceId);
+      } catch {
+        // Realtime not available - continue without streaming
+      }
+    }
+
+    // Helper to safely emit events
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emit = async (event: string, data: any) => {
+      if (!channel) return;
+      try {
+        await channel.emit(
+          `generation.${event}` as 'generation.complete',
+          data
+        );
+      } catch {
+        // Ignore emit errors - don't fail the workflow
+      }
+    };
 
     // Step 1: Set status to generating if frameId is provided
     const generationParams: ImageGenerationParams = await context.run(
@@ -46,6 +71,12 @@ export const generateImageWorkflow = createWorkflow(
             thumbnailWorkflowRunId: context.workflowRunId,
             imageModel: model,
             imagePrompt: input.prompt,
+          });
+
+          // Emit realtime progress
+          await emit('image:progress', {
+            frameId: input.frameId,
+            status: 'generating',
           });
         }
 
@@ -108,6 +139,15 @@ export const generateImageWorkflow = createWorkflow(
       return { url: result.url, path: result.path };
     });
 
+    // Emit completion progress
+    if (input.frameId) {
+      await emit('image:progress', {
+        frameId: input.frameId,
+        status: 'completed',
+        thumbnailUrl: storageResult.url,
+      });
+    }
+
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
@@ -129,6 +169,20 @@ export const generateImageWorkflow = createWorkflow(
           thumbnailStatus: 'failed',
           thumbnailError: failResponse,
         });
+
+        // Emit failure progress
+        if (input.sequenceId) {
+          try {
+            const channel = getGenerationChannel(input.sequenceId);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (channel.emit as any)('generation.image:progress', {
+              frameId: input.frameId,
+              status: 'failed',
+            });
+          } catch {
+            // Ignore emit errors
+          }
+        }
 
         console.error(
           '[ImageWorkflow]',

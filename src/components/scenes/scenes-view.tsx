@@ -1,5 +1,6 @@
 'use client';
 
+import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
 import { PageContainer } from '@/components/layout/page-container';
 import {
   ImageModelBadge,
@@ -16,12 +17,15 @@ import { PageHeader, PageHeading } from '@/components/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import {
+  DEFAULT_ASPECT_RATIO,
+  type AspectRatio,
+} from '@/lib/constants/aspect-ratios';
+import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
-  sequenceId?: string | undefined;
-  aspectRatio: AspectRatio;
+  sequenceId?: string;
 };
 
 export const getPlayerMaxClassNameByAspectRatio = (
@@ -37,10 +41,7 @@ export const getPlayerMaxClassNameByAspectRatio = (
   return classMap[aspectRatio] || classMap['16:9'];
 };
 
-export const ScenesView: React.FC<ScenesViewProps> = ({
-  sequenceId,
-  aspectRatio,
-}) => {
+export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // State management
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
     undefined
@@ -55,9 +56,35 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
     new Set()
   );
 
-  const { data: sequence } = useSequence(sequenceId);
-  // Fetch frames once at the top level (useSuspenseQuery always returns data)
-  const { data: frames } = useFramesBySequence(sequenceId);
+  // Initial fetch to determine sequence status - disable default polling
+  const { data: sequence } = useSequence(sequenceId, {
+    refetchInterval: false,
+  });
+  const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
+  const isProcessing = sequence?.status === 'processing';
+
+  // Subscribe to real-time generation events when sequence is processing
+  const { state: generationState, status: realtimeStatus } =
+    useGenerationStream(sequenceId);
+
+  // Hybrid polling: only poll when processing AND realtime has failed
+  // - 'connecting' → wait for connection, don't poll
+  // - 'connected' → use realtime, don't poll
+  // - 'disconnected'/'error' → poll as fallback
+  const realtimeFailed = realtimeStatus === 'error';
+  const shouldPoll = isProcessing && realtimeFailed;
+  const pollInterval = shouldPoll ? 2000 : false;
+
+  // Fetch sequence and frames with hybrid polling
+  const { data: sequenceData } = useSequence(sequenceId, {
+    refetchInterval: pollInterval,
+  });
+  const { data: frames } = useFramesBySequence(sequenceId, {
+    refetchInterval: pollInterval,
+  });
+
+  // Use the most recent sequence data
+  const currentSequence = sequenceData ?? sequence;
 
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
@@ -79,7 +106,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
 
   const handleRegenerateEnd = useCallback(
     (frameId: string, type: 'image' | 'motion') => {
-      console.log('handleRegenerateEnd', frameId, type);
       if (type === 'image') {
         setRegeneratingImages((prev) => {
           const next = new Set(prev);
@@ -125,10 +151,15 @@ export const ScenesView: React.FC<ScenesViewProps> = ({
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
-        <PageHeading>{sequence?.title}</PageHeading>
-        <ModelBadge model={sequence?.analysisModel} />
-        <ImageModelBadge model={sequence?.imageModel} />
-        <VideoModelBadge model={sequence?.videoModel} />
+        <PageHeading>{currentSequence?.title}</PageHeading>
+        <ModelBadge model={currentSequence?.analysisModel} />
+        <ImageModelBadge model={currentSequence?.imageModel} />
+        <VideoModelBadge model={currentSequence?.videoModel} />
+        {!generationState.isComplete &&
+          generationState.currentPhase > 0 &&
+          realtimeStatus === 'connected' && (
+            <PhaseIndicatorCompact phases={generationState.phases} />
+          )}
       </PageHeader>
 
       <div className="flex flex-1 min-h-0">

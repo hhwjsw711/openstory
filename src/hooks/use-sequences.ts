@@ -54,19 +54,26 @@ export function useSequence(
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
-    refetchInterval: (query) => {
-      if (!query.state.data) return false;
+    // If refetchInterval is explicitly passed, use it; otherwise use smart polling
+    refetchInterval:
+      options?.refetchInterval !== undefined
+        ? options.refetchInterval
+        : (query) => {
+            if (!query.state.data) return false;
 
-      const sequence = query.state.data;
+            const sequence = query.state.data;
 
-      // Poll for draft sequences (may be generating frames)
-      if (sequence?.status === 'draft' || sequence?.status === 'processing') {
-        return 1000; // 1 second
-      }
+            // Poll for draft sequences (may be generating frames)
+            if (
+              sequence?.status === 'draft' ||
+              sequence?.status === 'processing'
+            ) {
+              return 1000; // 1 second
+            }
 
-      // Stop polling for completed/archived sequences
-      return false;
-    },
+            // Stop polling for completed/archived sequences
+            return false;
+          },
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus
   });

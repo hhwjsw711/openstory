@@ -18,6 +18,7 @@ import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
+import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
   generateAudioDesignForScenes,
@@ -40,6 +41,9 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
+// Total phases for realtime progress tracking
+const TOTAL_PHASES = 7;
+
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 export const generateStoryboardWorkflow = createWorkflow(
@@ -53,6 +57,36 @@ export const generateStoryboardWorkflow = createWorkflow(
       '[StoryboardGenerationWorkflow]',
       `Starting storyboard generation workflow for sequence ${input.sequenceId}`
     );
+
+    // Get realtime channel for this sequence (for streaming progress to client)
+    // Note: This may fail if Redis env vars are not set, which is fine - we just skip realtime
+    let channel: ReturnType<typeof getGenerationChannel> | null = null;
+    try {
+      channel = getGenerationChannel(input.sequenceId);
+    } catch (error) {
+      console.warn(
+        '[StoryboardGenerationWorkflow] Realtime not available:',
+        error
+      );
+    }
+
+    // Helper to safely emit events (no-op if realtime unavailable)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emit = async (event: string, data: any) => {
+      if (!channel) return;
+      try {
+        console.log('emitting event', event, data);
+        await channel.emit(
+          `generation.${event}` as 'generation.complete',
+          data
+        );
+      } catch (error) {
+        console.warn(
+          '[StoryboardGenerationWorkflow] Failed to emit event:',
+          error
+        );
+      }
+    };
 
     // Step 1: Verify sequence and get data
     const { sequence, styleConfig, analysisModel, imageModel, videoModel } =
@@ -118,6 +152,13 @@ export const generateStoryboardWorkflow = createWorkflow(
         return { sequence, styleConfig, analysisModel, imageModel, videoModel };
       });
 
+    // Emit Phase 1 start
+    await emit('phase:start', {
+      phase: 1,
+      phaseName: 'Scene Splitting',
+      totalPhases: TOTAL_PHASES,
+    });
+
     // Step 2: Split script into basic scenes and store in sequence metadata
     const { scenes: basicScenes, title } = await context.run(
       'split-script-into-scenes',
@@ -133,7 +174,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         }) => {
           console.log(
             '[StoryboardGenerationWorkflow] Split Script Progress:',
-            progress
+            progress.type
           );
         };
         const result = await splitScriptIntoScenes(
@@ -157,6 +198,20 @@ export const generateStoryboardWorkflow = createWorkflow(
     );
 
     const frameCount = basicScenes.length;
+
+    // Emit scene:new for each scene that was split
+    for (const scene of basicScenes) {
+      await emit('scene:new', {
+        sceneId: scene.sceneId,
+        sceneNumber: scene.sceneNumber,
+        title: scene.metadata.title,
+        scriptExtract: scene.originalScript.extract,
+        durationSeconds: scene.metadata.durationSeconds,
+      });
+    }
+
+    // Emit Phase 1 complete
+    await emit('phase:complete', { phase: 1 });
 
     // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
     const frameMap: { sceneId: string; frameId: string }[] = await context.run(
@@ -198,6 +253,23 @@ export const generateStoryboardWorkflow = createWorkflow(
       }
     );
 
+    // Emit frame:created for each frame
+    for (const { sceneId, frameId } of frameMap) {
+      const scene = basicScenes.find((s) => s.sceneId === sceneId);
+      await emit('frame:created', {
+        frameId,
+        sceneId,
+        orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+      });
+    }
+
+    // Emit Phase 2 start
+    await emit('phase:start', {
+      phase: 2,
+      phaseName: 'Character Extraction',
+      totalPhases: TOTAL_PHASES,
+    });
+
     // Step 4: Extract character bible
     const characterBible = await context.run(
       'extract-character-bible',
@@ -210,7 +282,7 @@ export const generateStoryboardWorkflow = createWorkflow(
           }) => {
             console.log(
               '[StoryboardGenerationWorkflow] Extract Character Bible Progress:',
-              progress
+              progress.type
             );
           };
         const characterBible = await extractCharacterBible(
@@ -235,6 +307,16 @@ export const generateStoryboardWorkflow = createWorkflow(
         return characterBible;
       }
     );
+
+    // Emit Phase 2 complete
+    await emit('phase:complete', { phase: 2 });
+
+    // Emit Phase 3 start
+    await emit('phase:start', {
+      phase: 3,
+      phaseName: 'Visual Prompts',
+      totalPhases: TOTAL_PHASES,
+    });
 
     // Process scenes in batches for phases 3-5
     const BATCH_SIZE = 5; // Process 5 scenes at a time
@@ -263,7 +345,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             }) => {
               console.log(
                 '[StoryboardGenerationWorkflow] Generate Visual Prompts Progress:',
-                progress
+                progress.type
               );
             };
           return await generateVisualPromptsForScenes(
@@ -296,6 +378,16 @@ export const generateStoryboardWorkflow = createWorkflow(
       );
     });
 
+    // Emit Phase 3 complete
+    await emit('phase:complete', { phase: 3 });
+
+    // Emit Phase 4 start
+    await emit('phase:start', {
+      phase: 4,
+      phaseName: 'Motion Prompts',
+      totalPhases: TOTAL_PHASES,
+    });
+
     // Step 6: Generate motion prompts for each batch
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
@@ -308,7 +400,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             }) => {
               console.log(
                 '[StoryboardGenerationWorkflow] Generate Motion Prompts Progress:',
-                progress
+                progress.type
               );
             };
           return await generateMotionPromptsForScenes(
@@ -341,6 +433,16 @@ export const generateStoryboardWorkflow = createWorkflow(
       );
     });
 
+    // Emit Phase 4 complete
+    await emit('phase:complete', { phase: 4 });
+
+    // Emit Phase 5 start
+    await emit('phase:start', {
+      phase: 5,
+      phaseName: 'Audio Design',
+      totalPhases: TOTAL_PHASES,
+    });
+
     // Step 7: Generate audio design for each batch
     const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
@@ -353,7 +455,7 @@ export const generateStoryboardWorkflow = createWorkflow(
             }) => {
               console.log(
                 '[StoryboardGenerationWorkflow] Generate Audio Design Progress:',
-                progress
+                progress.type
               );
             };
           return await generateAudioDesignForScenes(
@@ -384,6 +486,16 @@ export const generateStoryboardWorkflow = createWorkflow(
           });
         })
       );
+    });
+
+    // Emit Phase 5 complete
+    await emit('phase:complete', { phase: 5 });
+
+    // Emit Phase 6 start (Image Generation)
+    await emit('phase:start', {
+      phase: 6,
+      phaseName: 'Image Generation',
+      totalPhases: TOTAL_PHASES,
     });
 
     // Step 8: Generate thumbnails in parallel if enabled
@@ -497,6 +609,12 @@ export const generateStoryboardWorkflow = createWorkflow(
         })
       );
     }
+
+    // Emit generation complete
+    await emit('complete', {
+      sequenceId: input.sequenceId,
+      frameCount,
+    });
 
     return {
       sequenceId: input.sequenceId,
