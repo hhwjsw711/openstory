@@ -309,6 +309,12 @@ export const generateStoryboardWorkflow = createWorkflow(
         // Emit Phase 2 complete
         await emit('phase:complete', { phase: 2 });
 
+        // Emit Phase 3 start
+        await emit('phase:start', {
+          phase: 3,
+          phaseName: 'Visual Prompts',
+          totalPhases: TOTAL_PHASES,
+        });
         return characterBible;
       }
     );
@@ -332,12 +338,6 @@ export const generateStoryboardWorkflow = createWorkflow(
     const visualPromptResults: Scene[][] = await Promise.all(
       basicSceneBatches.map(async (batch, batchIndex) => {
         return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
-          // Emit Phase 3 start
-          await emit('phase:start', {
-            phase: 3,
-            phaseName: 'Visual Prompts',
-            totalPhases: TOTAL_PHASES,
-          });
           const generateVisualPromptsProgressCallback: ProgressCallback =
             (progress: {
               type: 'chunk' | 'complete';
