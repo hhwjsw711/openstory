@@ -18,10 +18,10 @@ export async function middleware(request: NextRequest) {
   // helpers to avoid Edge Runtime dynamic code evaluation restrictions.
   // Better Auth's default cookie format is: ${prefix}.${cookie_name}
   // Default prefix: "better-auth", default cookie name: "session_token"
-  // On HTTPS, cookies have __Secure- prefix added by the browser
-  const sessionCookie =
-    request.cookies.get('__Secure-better-auth.session_token') ||
-    request.cookies.get('better-auth.session_token');
+
+  const sessionCookie = request.cookies.get(
+    '__Secure-better-auth.session_token'
+  );
 
   if (!sessionCookie) {
     // Preserve the original URL for redirect after login
