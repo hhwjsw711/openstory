@@ -5,11 +5,14 @@
 
 import {
   deleteFile,
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
   getSignedUrl,
   listFiles,
   STORAGE_BUCKETS,
   uploadFile,
 } from '@/lib/db/helpers/storage';
+import { generateId } from '@/lib/db/id';
 
 interface UploadImageOptions {
   imageUrl: string;
@@ -25,26 +28,41 @@ type StorageResult = {
 
 /**
  * Upload an image from URL to R2 Storage
+ * Uses ULID-based filename and preserves original file extension
  */
 export async function uploadImageToStorage(
   options: UploadImageOptions
 ): Promise<StorageResult> {
   const { imageUrl, teamId, sequenceId, frameId } = options;
 
-  // Construct storage path
-  const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/thumbnail.jpg`;
-
-  // Download image from URL
+  // Download image from URL first to get content type
   const response = await fetch(imageUrl);
 
   if (!response.ok) {
     throw new Error(`Failed to download image: ${response.statusText}`);
   }
 
+  // Extract extension from URL or use response content-type
+  const urlExtension = getExtensionFromUrl(imageUrl);
+  const responseContentType = response.headers.get('content-type');
+
+  // Prefer URL extension, fallback to content-type detection
+  let extension = urlExtension;
+  if (urlExtension === 'jpg' && responseContentType) {
+    // If we defaulted to jpg, check if content-type suggests otherwise
+    if (responseContentType.includes('png')) extension = 'png';
+    else if (responseContentType.includes('webp')) extension = 'webp';
+    else if (responseContentType.includes('gif')) extension = 'gif';
+  }
+
+  // Generate ULID-based filename
+  const ulid = generateId();
+  const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
+
   const imageBlob = await response.blob();
 
-  // Determine content type from response or default to jpeg
-  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  // Get proper MIME type for the extension
+  const contentType = getMimeTypeFromExtension(extension);
 
   // Upload to R2 Storage
   const result = await uploadFile(

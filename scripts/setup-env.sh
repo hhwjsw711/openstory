@@ -69,7 +69,7 @@ BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 # R2_ACCESS_KEY_ID=your-r2-access-key-id
 # R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for production
-# R2_PUBLIC_URL=https://pub-xxxxx.r2.dev  # optional, for custom domain
+# R2_PUBLIC_STORAGE_DOMAIN=storage-dev.velro.ai  # custom domain for public storage
 
 # Optional: AI Service Keys (add as needed)
 # OPENROUTER_KEY=

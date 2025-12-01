@@ -5,12 +5,15 @@
 
 import {
   deleteFile,
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
   getSignedUrl,
   getSignedUrlWithDownload,
   listFiles,
   STORAGE_BUCKETS,
   uploadFile,
 } from '@/lib/db/helpers/storage';
+import { generateId } from '@/lib/db/id';
 
 interface UploadVideoOptions {
   videoUrl: string;
@@ -32,6 +35,7 @@ type StorageResult =
 
 /**
  * Upload a video from URL to R2 Storage
+ * Uses ULID-based filename and preserves original file extension
  */
 export async function uploadVideoToStorage(
   options: UploadVideoOptions
@@ -39,17 +43,39 @@ export async function uploadVideoToStorage(
   try {
     const { videoUrl, teamId, sequenceId, frameId } = options;
 
-    // Construct storage path
-    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/motion.mp4`;
-
-    // Download video from URL
+    // Download video from URL first
     const response = await fetch(videoUrl);
 
     if (!response.ok) {
       throw new Error(`Failed to download video: ${response.statusText}`);
     }
 
+    // Extract extension from URL or use response content-type
+    const urlExtension = getExtensionFromUrl(videoUrl);
+    const responseContentType = response.headers.get('content-type');
+
+    // Prefer URL extension, fallback to content-type detection
+    let extension = urlExtension;
+    if (urlExtension === 'jpg' && responseContentType) {
+      // Default was jpg (fallback), check content-type for video formats
+      if (responseContentType.includes('mp4')) extension = 'mp4';
+      else if (responseContentType.includes('webm')) extension = 'webm';
+      else if (
+        responseContentType.includes('quicktime') ||
+        responseContentType.includes('mov')
+      )
+        extension = 'mov';
+      else extension = 'mp4'; // Default to mp4 for videos
+    }
+
+    // Generate ULID-based filename
+    const ulid = generateId();
+    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
+
     const videoBlob = await response.blob();
+
+    // Get proper MIME type for the extension
+    const contentType = getMimeTypeFromExtension(extension);
 
     // Upload to R2 Storage
     const result = await uploadFile(
@@ -57,7 +83,7 @@ export async function uploadVideoToStorage(
       storagePath,
       videoBlob,
       {
-        contentType: 'video/mp4',
+        contentType,
         upsert: true, // Overwrite if exists
       }
     );

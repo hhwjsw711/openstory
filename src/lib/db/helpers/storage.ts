@@ -149,8 +149,8 @@ export async function uploadFile(
 
     await client.send(command);
 
-    // Generate a signed URL (1 hour default expiry for security)
-    const publicUrl = await getSignedUrl(bucket, path);
+    // Generate public URL (requires R2_PUBLIC_STORAGE_DOMAIN to be configured)
+    const publicUrl = getPublicUrl(bucket, path);
 
     return {
       path: key,
@@ -166,23 +166,86 @@ export async function uploadFile(
 
 /**
  * Get the public URL for a file in storage
- * For R2, we use signed URLs since buckets are private
+ * Requires R2 bucket to have public access enabled with a custom domain
  *
- * @param bucket - The storage bucket name
+ * @param bucket - The storage bucket name (used as prefix)
  * @param path - The file path within the bucket
- * @returns Public URL for the file (signed URL with 1 hour expiry)
+ * @returns Public URL for the file
  *
  * @example
  * ```ts
  * const url = getPublicUrl(STORAGE_BUCKETS.THUMBNAILS, 'team-id/frame.jpg');
+ * // Returns: https://storage.velro.ai/thumbnails/team-id/frame.jpg
  * ```
  */
-export function getPublicUrl(_bucket: StorageBucket, _path: string): string {
-  // For R2, we need to use signed URLs, but this is a sync function
-  // so we return a placeholder. Use getSignedUrl instead for actual URLs.
-  throw new Error(
-    'getPublicUrl is not supported with R2. Use getSignedUrl instead.'
-  );
+export function getPublicUrl(bucket: StorageBucket, path: string): string {
+  const domain = getEnv().R2_PUBLIC_STORAGE_DOMAIN;
+  if (!domain) {
+    throw new Error(
+      'R2_PUBLIC_STORAGE_DOMAIN environment variable is not set. Configure a custom domain for public R2 access.'
+    );
+  }
+  const key = buildR2Key(bucket, path);
+  return `https://${domain}/${key}`;
+}
+
+/**
+ * Extract file extension from a URL
+ * Handles URLs with query parameters and fragments
+ *
+ * @param url - Source URL to extract extension from
+ * @returns Lowercase file extension (e.g., 'jpg', 'png', 'mp4')
+ *
+ * @example
+ * ```ts
+ * getExtensionFromUrl('https://example.com/image.PNG?token=abc');
+ * // Returns: 'png'
+ * ```
+ */
+export function getExtensionFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const match = pathname.match(/\.([a-zA-Z0-9]+)$/);
+    return match?.[1]?.toLowerCase() || 'jpg';
+  } catch {
+    // If URL parsing fails, try simple regex
+    const match = url.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+    return match?.[1]?.toLowerCase() || 'jpg';
+  }
+}
+
+/**
+ * Get MIME type from file extension
+ *
+ * @param ext - File extension (without dot)
+ * @returns MIME type string
+ *
+ * @example
+ * ```ts
+ * getMimeTypeFromExtension('png'); // Returns: 'image/png'
+ * getMimeTypeFromExtension('mp4'); // Returns: 'video/mp4'
+ * ```
+ */
+export function getMimeTypeFromExtension(ext: string): string {
+  const mimeTypes: Record<string, string> = {
+    // Images
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    svg: 'image/svg+xml',
+    // Videos
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    avi: 'video/x-msvideo',
+    // Audio
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+  };
+  return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
 }
 
 /**

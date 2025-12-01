@@ -293,54 +293,49 @@ export class FrameService {
   }
 
   /**
-   * Enrich a frame with fresh signed URLs from its storage paths
-   * Generates temporary signed URLs from permanent R2 paths stored in the database
+   * Enrich a frame with URLs from its storage paths
+   * For frames with stored public URLs, returns as-is (new behavior)
+   * For legacy frames without URLs, generates public URL from path
    *
    * @param frame - The frame to enrich
-   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
-   * @returns Frame with videoUrl and thumbnailUrl populated from paths
+   * @returns Frame with videoUrl and thumbnailUrl populated
    */
-  async enrichFrameWithSignedUrls(
-    frame: Frame,
-    expiresIn: number = 3600
-  ): Promise<Frame> {
-    const { getSignedUrl, STORAGE_BUCKETS } = await import(
+  async enrichFrameWithSignedUrls(frame: Frame): Promise<Frame> {
+    // If both URLs are already stored, return as-is (new public URL system)
+    if (frame.thumbnailUrl && frame.videoUrl) {
+      return frame;
+    }
+
+    const { getPublicUrl, STORAGE_BUCKETS } = await import(
       '@/lib/db/helpers/storage'
     );
 
-    // Generate signed URL for video if videoPath exists
+    // Generate public URL for video if path exists but URL doesn't
     let videoUrl = frame.videoUrl;
-    if (frame.videoPath) {
+    if (!videoUrl && frame.videoPath) {
       try {
-        videoUrl = await getSignedUrl(
-          STORAGE_BUCKETS.VIDEOS,
-          frame.videoPath,
-          expiresIn
-        );
+        videoUrl = getPublicUrl(STORAGE_BUCKETS.VIDEOS, frame.videoPath);
       } catch (error) {
         console.error(
-          `Failed to generate signed URL for video path ${frame.videoPath}:`,
+          `Failed to generate public URL for video path ${frame.videoPath}:`,
           error
         );
-        // Keep existing URL if generation fails
       }
     }
 
-    // Generate signed URL for thumbnail if thumbnailPath exists
+    // Generate public URL for thumbnail if path exists but URL doesn't
     let thumbnailUrl = frame.thumbnailUrl;
-    if (frame.thumbnailPath) {
+    if (!thumbnailUrl && frame.thumbnailPath) {
       try {
-        thumbnailUrl = await getSignedUrl(
+        thumbnailUrl = getPublicUrl(
           STORAGE_BUCKETS.THUMBNAILS,
-          frame.thumbnailPath,
-          expiresIn
+          frame.thumbnailPath
         );
       } catch (error) {
         console.error(
-          `Failed to generate signed URL for thumbnail path ${frame.thumbnailPath}:`,
+          `Failed to generate public URL for thumbnail path ${frame.thumbnailPath}:`,
           error
         );
-        // Keep existing URL if generation fails
       }
     }
 
@@ -352,18 +347,14 @@ export class FrameService {
   }
 
   /**
-   * Enrich multiple frames with fresh signed URLs
+   * Enrich multiple frames with URLs
    *
    * @param frames - Array of frames to enrich
-   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
-   * @returns Array of frames with signed URLs
+   * @returns Array of frames with URLs populated
    */
-  async enrichFramesWithSignedUrls(
-    frames: Frame[],
-    expiresIn: number = 3600
-  ): Promise<Frame[]> {
+  async enrichFramesWithSignedUrls(frames: Frame[]): Promise<Frame[]> {
     return Promise.all(
-      frames.map((frame) => this.enrichFrameWithSignedUrls(frame, expiresIn))
+      frames.map((frame) => this.enrichFrameWithSignedUrls(frame))
     );
   }
 }

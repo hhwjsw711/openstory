@@ -24,6 +24,7 @@ declare namespace Cloudflare {
     R2_ACCESS_KEY_ID: string;
     R2_ACCOUNT_ID: string;
     R2_BUCKET_NAME: string;
+    R2_PUBLIC_STORAGE_DOMAIN: string;
     R2_SECRET_ACCESS_KEY: string;
     RESEND_API_KEY: string;
     TURSO_AUTH_TOKEN: string;
@@ -61,6 +62,7 @@ declare namespace NodeJS {
         | 'R2_ACCESS_KEY_ID'
         | 'R2_ACCOUNT_ID'
         | 'R2_BUCKET_NAME'
+        | 'R2_PUBLIC_STORAGE_DOMAIN'
         | 'R2_SECRET_ACCESS_KEY'
         | 'RESEND_API_KEY'
         | 'TURSO_AUTH_TOKEN'

@@ -216,7 +216,7 @@ export const generateMotionWorkflow = createWorkflow(
 
         await updateFrame(input.frameId, {
           videoPath: storageResult.path, // Store R2 path (permanent)
-          videoUrl: null, // Don't store signed URLs in DB (they expire)
+          videoUrl: storageResult.url, // Store public URL (permanent, not signed)
           durationMs: actualDuration * 1000,
           videoStatus: 'completed',
           videoGeneratedAt: new Date(),
