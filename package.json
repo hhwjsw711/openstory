@@ -44,7 +44,7 @@
     "deploy:production": "opennextjs-cloudflare build --env=prd && opennextjs-cloudflare deploy --env=prd",
     "deploy:preview": "build:cloudflare:preview && opennextjs-cloudflare deploy --env=preview",
     "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts",
-    "secrets:dev": "doppler secrets download --config=dev --format=env --no-file > .dev.vars && cp .dev.vars .env.local",
+    "secrets:dev": "doppler secrets download --config=dev --format=env --no-file > .env.local",
     "secrets:stg": "doppler secrets download --config=stg --format=env --no-file > .env.local",
     "secrets:prd": "doppler secrets download --config=prd --format=env --no-file > .env.production",
     "cf:typegen": "doppler run --mount .env -- bun wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
