@@ -78,6 +78,9 @@ export function getAuth() {
         trustedProviders: ['google', 'email-password'],
         allowDifferentEmails: false, // Only link accounts with matching emails
       },
+      // Required for oAuthProxy to work on preview branches
+      // Stores OAuth state in cookies instead of database so it can be passed via URL params
+      storeStateStrategy: 'cookie',
     },
 
     // Email and password authentication
