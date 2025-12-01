@@ -392,7 +392,12 @@ export const generateStoryboardWorkflow = createWorkflow(
 
       // Emit Phase 3 complete
       await emit('phase:complete', { phase: 3 });
-
+      // Emit Phase 4 start
+      await emit('phase:start', {
+        phase: 4,
+        phaseName: 'Motion Prompts',
+        totalPhases: TOTAL_PHASES,
+      });
       return scenes;
     });
 
@@ -400,12 +405,6 @@ export const generateStoryboardWorkflow = createWorkflow(
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          // Emit Phase 4 start
-          await emit('phase:start', {
-            phase: 4,
-            phaseName: 'Motion Prompts',
-            totalPhases: TOTAL_PHASES,
-          });
           const generateMotionPromptsProgressCallback: ProgressCallback =
             (progress: {
               type: 'chunk' | 'complete';
@@ -448,6 +447,13 @@ export const generateStoryboardWorkflow = createWorkflow(
 
       // Emit Phase 4 complete
       await emit('phase:complete', { phase: 4 });
+
+      // Emit Phase 5 start
+      await emit('phase:start', {
+        phase: 5,
+        phaseName: 'Audio Design',
+        totalPhases: TOTAL_PHASES,
+      });
     });
 
     // Step 7: Generate audio design for each batch
@@ -466,12 +472,6 @@ export const generateStoryboardWorkflow = createWorkflow(
               );
             };
 
-          // Emit Phase 5 start
-          await emit('phase:start', {
-            phase: 5,
-            phaseName: 'Audio Design',
-            totalPhases: TOTAL_PHASES,
-          });
           return await generateAudioDesignForScenes(
             batchWithMotionPrompts,
             generateAudioDesignProgressCallback,
