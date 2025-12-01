@@ -76,16 +76,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const pollInterval = shouldPoll ? 2000 : false;
 
   // Fetch sequence and frames with hybrid polling
-  const { data: sequenceData } = useSequence(sequenceId, {
-    refetchInterval: pollInterval,
-  });
   const { data: frames } = useFramesBySequence(sequenceId, {
     refetchInterval: pollInterval,
   });
 
   // Use the most recent sequence data
-  const currentSequence = sequenceData ?? sequence;
-
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
     () => frames?.find((frame) => frame.id === curSelectedFrameId),
@@ -151,10 +146,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
-        <PageHeading>{currentSequence?.title}</PageHeading>
-        <ModelBadge model={currentSequence?.analysisModel} />
-        <ImageModelBadge model={currentSequence?.imageModel} />
-        <VideoModelBadge model={currentSequence?.videoModel} />
+        <PageHeading>{sequence?.title}</PageHeading>
+        <ModelBadge model={sequence?.analysisModel} />
+        <ImageModelBadge model={sequence?.imageModel} />
+        <VideoModelBadge model={sequence?.videoModel} />
         {!generationState.isComplete &&
           generationState.currentPhase > 0 &&
           realtimeStatus === 'connected' && (
