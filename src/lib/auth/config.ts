@@ -128,6 +128,10 @@ export function getAuth() {
         productionURL: PRODUCTION_DEPLOYMENT_APP_URL,
       }),
     ],
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: '.velro.ai',
+    },
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
     user: {
