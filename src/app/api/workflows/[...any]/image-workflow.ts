@@ -126,7 +126,7 @@ export const generateImageWorkflow = createWorkflow(
 
       await updateFrame(input.frameId, {
         thumbnailPath: result.path || null, // Store R2 path (permanent)
-        thumbnailUrl: null, // Don't store signed URLs in DB (they expire)
+        thumbnailUrl: result.url, // Store public URL (permanent, not signed)
         thumbnailStatus: 'completed',
         thumbnailGeneratedAt: new Date(),
         thumbnailError: null,
