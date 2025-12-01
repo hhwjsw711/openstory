@@ -222,18 +222,18 @@ export const generateMotionWorkflow = createWorkflow(
           videoGeneratedAt: new Date(),
           videoError: null,
         });
+
+        // Emit completion progress
+        await emit('video:progress', {
+          frameId: input.frameId,
+          status: 'completed',
+          videoUrl: storageResult.url,
+        });
       } catch (error) {
         throw new Error(
           `Failed to update frame: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
-    });
-
-    // Emit completion progress
-    await emit('video:progress', {
-      frameId: input.frameId,
-      status: 'completed',
-      videoUrl: storageResult.url,
     });
 
     console.log('[MotionWorkflow]', 'Motion generation workflow completed');

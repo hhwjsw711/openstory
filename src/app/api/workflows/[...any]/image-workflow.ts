@@ -132,21 +132,19 @@ export const generateImageWorkflow = createWorkflow(
         thumbnailError: null,
       });
 
+      // Emit completion progress
+      await emit('image:progress', {
+        frameId: input.frameId,
+        status: 'completed',
+        thumbnailUrl: result.url,
+      });
+
       console.log(
         '[ImageWorkflow]',
         `Image uploaded to storage: ${result.path}`
       );
       return { url: result.url, path: result.path };
     });
-
-    // Emit completion progress
-    if (input.frameId) {
-      await emit('image:progress', {
-        frameId: input.frameId,
-        status: 'completed',
-        thumbnailUrl: storageResult.url,
-      });
-    }
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 

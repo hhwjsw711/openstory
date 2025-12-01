@@ -42,7 +42,7 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
 // Total phases for realtime progress tracking
-const TOTAL_PHASES = 7;
+const TOTAL_PHASES = 6;
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -152,13 +152,6 @@ export const generateStoryboardWorkflow = createWorkflow(
         return { sequence, styleConfig, analysisModel, imageModel, videoModel };
       });
 
-    // Emit Phase 1 start
-    await emit('phase:start', {
-      phase: 1,
-      phaseName: 'Scene Splitting',
-      totalPhases: TOTAL_PHASES,
-    });
-
     // Step 2: Split script into basic scenes and store in sequence metadata
     const { scenes: basicScenes, title } = await context.run(
       'split-script-into-scenes',
@@ -166,6 +159,13 @@ export const generateStoryboardWorkflow = createWorkflow(
         if (!sequence.script) {
           throw new WorkflowValidationError('No script found');
         }
+
+        // Emit Phase 1 start
+        await emit('phase:start', {
+          phase: 1,
+          phaseName: 'Scene Splitting',
+          totalPhases: TOTAL_PHASES,
+        });
 
         const splitScriptProgressCallback: ProgressCallback = (progress: {
           type: 'chunk' | 'complete';
@@ -190,6 +190,20 @@ export const generateStoryboardWorkflow = createWorkflow(
           );
         }
 
+        // Emit scene:new for each scene that was split
+        for (const scene of result.scenes) {
+          await emit('scene:new', {
+            sceneId: scene.sceneId,
+            sceneNumber: scene.sceneNumber,
+            title: scene.metadata.title,
+            scriptExtract: scene.originalScript.extract,
+            durationSeconds: scene.metadata.durationSeconds,
+          });
+        }
+
+        // Emit Phase 1 complete
+        await emit('phase:complete', { phase: 1 });
+
         return {
           scenes: result.scenes,
           title: result.projectMetadata?.title || 'Untitled',
@@ -198,20 +212,6 @@ export const generateStoryboardWorkflow = createWorkflow(
     );
 
     const frameCount = basicScenes.length;
-
-    // Emit scene:new for each scene that was split
-    for (const scene of basicScenes) {
-      await emit('scene:new', {
-        sceneId: scene.sceneId,
-        sceneNumber: scene.sceneNumber,
-        title: scene.metadata.title,
-        scriptExtract: scene.originalScript.extract,
-        durationSeconds: scene.metadata.durationSeconds,
-      });
-    }
-
-    // Emit Phase 1 complete
-    await emit('phase:complete', { phase: 1 });
 
     // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
     const frameMap: { sceneId: string; frameId: string }[] = await context.run(
@@ -246,29 +246,24 @@ export const generateStoryboardWorkflow = createWorkflow(
         const createdFrames = await frameService.bulkInsertFrames(frameInserts);
 
         // Create a map of scene ID to frame ID for later updates
-        return createdFrames.map((frame) => ({
+        const frameMapping = createdFrames.map((frame) => ({
           sceneId: frame.metadata?.sceneId || '',
           frameId: frame.id,
         }));
+
+        // Emit frame:created for each frame
+        for (const { sceneId, frameId } of frameMapping) {
+          const scene = basicScenes.find((s) => s.sceneId === sceneId);
+          await emit('frame:created', {
+            frameId,
+            sceneId,
+            orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+          });
+        }
+
+        return frameMapping;
       }
     );
-
-    // Emit frame:created for each frame
-    for (const { sceneId, frameId } of frameMap) {
-      const scene = basicScenes.find((s) => s.sceneId === sceneId);
-      await emit('frame:created', {
-        frameId,
-        sceneId,
-        orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
-      });
-    }
-
-    // Emit Phase 2 start
-    await emit('phase:start', {
-      phase: 2,
-      phaseName: 'Character Extraction',
-      totalPhases: TOTAL_PHASES,
-    });
 
     // Step 4: Extract character bible
     const characterBible = await context.run(
@@ -285,6 +280,13 @@ export const generateStoryboardWorkflow = createWorkflow(
               progress.type
             );
           };
+
+        // Emit Phase 2 start
+        await emit('phase:start', {
+          phase: 2,
+          phaseName: 'Character Extraction',
+          totalPhases: TOTAL_PHASES,
+        });
         const characterBible = await extractCharacterBible(
           basicScenes,
           extractCharacterBibleProgressCallback,
@@ -304,19 +306,12 @@ export const generateStoryboardWorkflow = createWorkflow(
           .set({ status: 'completed', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
 
+        // Emit Phase 2 complete
+        await emit('phase:complete', { phase: 2 });
+
         return characterBible;
       }
     );
-
-    // Emit Phase 2 complete
-    await emit('phase:complete', { phase: 2 });
-
-    // Emit Phase 3 start
-    await emit('phase:start', {
-      phase: 3,
-      phaseName: 'Visual Prompts',
-      totalPhases: TOTAL_PHASES,
-    });
 
     // Process scenes in batches for phases 3-5
     const BATCH_SIZE = 5; // Process 5 scenes at a time
@@ -337,6 +332,12 @@ export const generateStoryboardWorkflow = createWorkflow(
     const visualPromptResults: Scene[][] = await Promise.all(
       basicSceneBatches.map(async (batch, batchIndex) => {
         return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
+          // Emit Phase 3 start
+          await emit('phase:start', {
+            phase: 3,
+            phaseName: 'Visual Prompts',
+            totalPhases: TOTAL_PHASES,
+          });
           const generateVisualPromptsProgressCallback: ProgressCallback =
             (progress: {
               type: 'chunk' | 'complete';
@@ -361,10 +362,10 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Update frames with visual prompt data (Phase 3)
     await context.run('update-frames-after-visual-prompts', async () => {
-      const scenesWithVisualPrompts = visualPromptResults.flat();
+      const scenes = visualPromptResults.flat();
 
       await Promise.all(
-        scenesWithVisualPrompts.map(async (scene) => {
+        scenes.map(async (scene) => {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
@@ -376,22 +377,35 @@ export const generateStoryboardWorkflow = createWorkflow(
           });
         })
       );
-    });
 
-    // Emit Phase 3 complete
-    await emit('phase:complete', { phase: 3 });
+      // Emit frame:updated for each frame with visual prompts
+      for (const scene of scenes) {
+        const frameMapping = frameMap.find((m) => m.sceneId === scene.sceneId);
+        if (frameMapping) {
+          await emit('frame:updated', {
+            frameId: frameMapping.frameId,
+            updateType: 'visual-prompt',
+            metadata: scene,
+          });
+        }
+      }
 
-    // Emit Phase 4 start
-    await emit('phase:start', {
-      phase: 4,
-      phaseName: 'Motion Prompts',
-      totalPhases: TOTAL_PHASES,
+      // Emit Phase 3 complete
+      await emit('phase:complete', { phase: 3 });
+
+      return scenes;
     });
 
     // Step 6: Generate motion prompts for each batch
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
+          // Emit Phase 4 start
+          await emit('phase:start', {
+            phase: 4,
+            phaseName: 'Motion Prompts',
+            totalPhases: TOTAL_PHASES,
+          });
           const generateMotionPromptsProgressCallback: ProgressCallback =
             (progress: {
               type: 'chunk' | 'complete';
@@ -416,10 +430,10 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Update frames with motion prompt data (Phase 4)
     await context.run('update-frames-after-motion-prompts', async () => {
-      const scenesWithMotionPrompts = motionPromptResults.flat();
+      const scenes = motionPromptResults.flat();
 
       await Promise.all(
-        scenesWithMotionPrompts.map(async (scene) => {
+        scenes.map(async (scene) => {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
@@ -431,16 +445,9 @@ export const generateStoryboardWorkflow = createWorkflow(
           });
         })
       );
-    });
 
-    // Emit Phase 4 complete
-    await emit('phase:complete', { phase: 4 });
-
-    // Emit Phase 5 start
-    await emit('phase:start', {
-      phase: 5,
-      phaseName: 'Audio Design',
-      totalPhases: TOTAL_PHASES,
+      // Emit Phase 4 complete
+      await emit('phase:complete', { phase: 4 });
     });
 
     // Step 7: Generate audio design for each batch
@@ -458,6 +465,13 @@ export const generateStoryboardWorkflow = createWorkflow(
                 progress.type
               );
             };
+
+          // Emit Phase 5 start
+          await emit('phase:start', {
+            phase: 5,
+            phaseName: 'Audio Design',
+            totalPhases: TOTAL_PHASES,
+          });
           return await generateAudioDesignForScenes(
             batchWithMotionPrompts,
             generateAudioDesignProgressCallback,
@@ -469,34 +483,53 @@ export const generateStoryboardWorkflow = createWorkflow(
       })
     );
 
-    const completeScenes: Scene[] = audioDesignResults.flat();
-
     // Update frames with audio design data (Phase 5)
-    await context.run('update-frames-after-audio-design', async () => {
-      await Promise.all(
-        completeScenes.map(async (scene) => {
+    const completeScenes: Scene[] = await context.run(
+      'update-frames-after-audio-design',
+      async () => {
+        const scenes = audioDesignResults.flat();
+
+        await Promise.all(
+          scenes.map(async (scene) => {
+            const frameMapping = frameMap.find(
+              (m) => m.sceneId === scene.sceneId
+            );
+            if (!frameMapping) return;
+
+            await frameService.updateFrame({
+              id: frameMapping.frameId,
+              metadata: scene,
+            });
+          })
+        );
+
+        // Emit frame:updated for each frame with audio design
+        for (const scene of scenes) {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
-          if (!frameMapping) return;
+          if (frameMapping) {
+            await emit('frame:updated', {
+              frameId: frameMapping.frameId,
+              updateType: 'audio-design',
+              metadata: scene,
+            });
+          }
+        }
 
-          await frameService.updateFrame({
-            id: frameMapping.frameId,
-            metadata: scene,
-          });
-        })
-      );
-    });
+        // Emit Phase 5 complete
+        await emit('phase:complete', { phase: 5 });
 
-    // Emit Phase 5 complete
-    await emit('phase:complete', { phase: 5 });
+        // Emit Phase 6 start (Image Generation)
+        await emit('phase:start', {
+          phase: 6,
+          phaseName: 'Image & Motion Generation',
+          totalPhases: TOTAL_PHASES,
+        });
 
-    // Emit Phase 6 start (Image Generation)
-    await emit('phase:start', {
-      phase: 6,
-      phaseName: 'Image Generation',
-      totalPhases: TOTAL_PHASES,
-    });
+        return scenes;
+      }
+    );
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
@@ -611,9 +644,11 @@ export const generateStoryboardWorkflow = createWorkflow(
     }
 
     // Emit generation complete
-    await emit('complete', {
-      sequenceId: input.sequenceId,
-      frameCount,
+    await context.run('emit-complete', async () => {
+      await emit('complete', {
+        sequenceId: input.sequenceId,
+        frameCount,
+      });
     });
 
     return {

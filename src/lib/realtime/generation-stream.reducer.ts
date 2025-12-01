@@ -73,8 +73,7 @@ const PHASE_NAMES = [
   'Visual Prompts',
   'Motion Prompts',
   'Audio Design',
-  'Image Generation',
-  'Video Generation',
+  'Image & Motion Generation',
 ];
 
 export const initialGenerationStreamState: GenerationStreamState = {
@@ -96,6 +95,12 @@ export function generationStreamReducer(
   switch (action.type) {
     case 'PHASE_START': {
       const { phase, phaseName } = action.payload;
+
+      // Ignore backwards phase transitions (prevents flickering from out-of-order events)
+      if (phase < state.currentPhase) {
+        return state;
+      }
+
       return {
         ...state,
         currentPhase: phase,
