@@ -6,8 +6,9 @@
  */
 
 import {
-  callOpenRouter,
+  callOpenRouterStream,
   extractJSON,
+  type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -34,12 +35,14 @@ const audioDesignGenerationResultSchema = z.object({
  * Generate audio design for a batch of scenes
  *
  * @param scenes - Scenes with visual and motion prompts to generate audio design for
+ * @param onProgress - Optional callback for streaming progress updates
  * @param options - Optional configuration
  * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with audio design
  */
 export async function generateAudioDesignForScenes(
   scenes: Scene[],
+  onProgress?: ProgressCallback,
   options?: {
     model?: string;
   }
@@ -80,20 +83,35 @@ For each scene, design audio across four categories:
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Get AI response
-  const response = await callOpenRouter({
+  let finalContent = '';
+
+  // Stream the response
+  for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(AUDIO_DESIGN_PROMPT), userMessage(userPrompt)],
-  });
-  const content = response.choices[0]?.message?.content ?? '';
+  })) {
+    finalContent = chunk.accumulated;
 
-  if (!content) {
+    // Notify caller of progress (only 'chunk' during streaming)
+    if (onProgress && !chunk.done) {
+      onProgress({
+        type: 'chunk',
+        text: finalContent,
+      });
+    }
+
+    if (chunk.done) break;
+  }
+
+  if (!finalContent) {
     throw new Error('AI response contained no content');
   }
 
   // Extract JSON from response
   const parsed =
-    extractJSON<z.infer<typeof audioDesignGenerationResultSchema>>(content);
+    extractJSON<z.infer<typeof audioDesignGenerationResultSchema>>(
+      finalContent
+    );
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -118,6 +136,15 @@ Respond with ONLY valid JSON matching the schema.`;
       audioDesign: enrichment.audioDesign,
     };
   });
+
+  // Notify with final parsed result
+  if (onProgress) {
+    onProgress({
+      type: 'complete',
+      text: finalContent,
+      parsed: enrichedScenes,
+    });
+  }
 
   return enrichedScenes;
 }

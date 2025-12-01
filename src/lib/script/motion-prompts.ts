@@ -6,8 +6,9 @@
  */
 
 import {
-  callOpenRouter,
+  callOpenRouterStream,
   extractJSON,
+  type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -47,12 +48,14 @@ const motionPromptGenerationResultSchema = z.object({
  * Generate motion prompts for a batch of scenes
  *
  * @param scenes - Scenes with visual prompts to generate motion for
+ * @param onProgress - Optional callback for streaming progress updates
  * @param options - Optional configuration
  * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with motion prompts
  */
 export async function generateMotionPromptsForScenes(
   scenes: Scene[],
+  onProgress?: ProgressCallback,
   options?: {
     model?: string;
   }
@@ -82,22 +85,35 @@ CRITICAL: Motion prompts MUST be self-contained. AI video generators have ZERO m
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Get AI response
-  const response = await callOpenRouter({
+  let finalContent = '';
+
+  // Stream the response
+  for await (const chunk of callOpenRouterStream({
     model,
     messages: [
       systemMessage(MOTION_PROMPT_GENERATION_PROMPT),
       userMessage(userPrompt),
     ],
-  });
-  const content = response.choices[0]?.message?.content ?? '';
+  })) {
+    finalContent = chunk.accumulated;
 
-  if (!content) {
+    // Notify caller of progress (only 'chunk' during streaming)
+    if (onProgress && !chunk.done) {
+      onProgress({
+        type: 'chunk',
+        text: finalContent,
+      });
+    }
+
+    if (chunk.done) break;
+  }
+
+  if (!finalContent) {
     throw new Error('AI response contained no content');
   }
 
   // Extract JSON from response
-  const parsed = extractJSON(content);
+  const parsed = extractJSON(finalContent);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -148,6 +164,15 @@ Respond with ONLY valid JSON matching the schema.`;
       },
     };
   });
+
+  // Notify with final parsed result
+  if (onProgress) {
+    onProgress({
+      type: 'complete',
+      text: finalContent,
+      parsed: enrichedScenes,
+    });
+  }
 
   return enrichedScenes;
 }

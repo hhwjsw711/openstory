@@ -362,11 +362,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Check if image is currently generating
   const isGenerating =
+    frame?.thumbnailStatus === 'pending' ||
     frame?.thumbnailStatus === 'generating' ||
     (frame?.id ? regeneratingImages.has(frame.id) : false);
 
   // Check if motion is currently generating
   const isGeneratingMotion =
+    frame?.videoStatus === 'pending' ||
     frame?.videoStatus === 'generating' ||
     (frame?.id ? regeneratingMotion.has(frame.id) : false);
 
@@ -418,7 +420,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             <Textarea
               value={editedImagePrompt || imagePrompt || ''}
               onChange={(e) => setEditedImagePrompt(e.target.value)}
-              placeholder="Enter image prompt…"
+              placeholder={
+                isGenerating
+                  ? 'Prompt is being generated…'
+                  : 'Enter image prompt…'
+              }
               className="min-h-[120px] resize-y"
               disabled={isGenerating}
             />
@@ -496,7 +502,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             <Textarea
               value={editedMotionPrompt || motionPrompt || ''}
               onChange={(e) => setEditedMotionPrompt(e.target.value)}
-              placeholder="Enter motion prompt…"
+              placeholder={
+                isGeneratingMotion
+                  ? 'Prompt is being generated…'
+                  : 'Enter motion prompt…'
+              }
               className="min-h-[120px] resize-y"
               disabled={isGenerating || isGeneratingMotion}
             />

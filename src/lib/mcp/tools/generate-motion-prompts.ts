@@ -3,6 +3,7 @@
  * Phase 4: Generates motion prompts for scenes
  */
 
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import type { Scene } from '@/lib/script';
 import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
@@ -24,16 +25,21 @@ export type GenerateMotionPromptsOutput = {
  * Generate motion prompts for scenes
  *
  * @param input - Tool input containing scenes
+ * @param onProgress - Optional callback for streaming progress
  */
 export async function generateMotionPromptsTool(
-  input: GenerateMotionPromptsInput
+  input: GenerateMotionPromptsInput,
+  onProgress?: ProgressCallback
 ): Promise<GenerateMotionPromptsOutput> {
   try {
     console.log(
       `[MCP Generate Motion Prompts] Generating motion prompts for ${input.scenes.length} scenes`
     );
 
-    const scenes = await generateMotionPromptsForScenes(input.scenes);
+    const scenes = await generateMotionPromptsForScenes(
+      input.scenes,
+      onProgress
+    );
 
     console.log(
       `[MCP Generate Motion Prompts] Complete: ${scenes.length} scenes enriched with motion prompts`

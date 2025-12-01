@@ -3,6 +3,7 @@
  * Phase 1: Splits script into basic scenes with metadata
  */
 
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
@@ -24,16 +25,22 @@ export type SplitScenesOutput = {
  * Split script into scenes
  *
  * @param input - Tool input containing script and aspect ratio
+ * @param onProgress - Optional callback for streaming progress
  */
 export async function splitScenesTool(
-  input: SplitScenesInput
+  input: SplitScenesInput,
+  onProgress?: ProgressCallback
 ): Promise<SplitScenesOutput> {
   try {
     const aspectRatio = input.aspectRatio || '16:9';
 
     console.log('[MCP Split Scenes] Splitting script into scenes');
 
-    const result = await splitScriptIntoScenes(input.script, aspectRatio);
+    const result = await splitScriptIntoScenes(
+      input.script,
+      aspectRatio,
+      onProgress
+    );
 
     console.log(
       `[MCP Split Scenes] Complete: ${result.scenes.length} scenes created`

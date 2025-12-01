@@ -33,6 +33,18 @@ const openRouterResponseSchema = z.object({
 
 export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
 
+export type StreamChunk = {
+  delta: string; // Text chunk
+  accumulated: string; // Full accumulated text so far
+  done: boolean; // Whether stream is complete
+};
+
+export type ProgressCallback = (progress: {
+  type: 'chunk' | 'complete';
+  text: string; // Current accumulated text
+  parsed?: unknown; // Parsed result (only on complete)
+}) => void;
+
 export type OpenRouterMessageContent =
   | string
   | { type: 'text'; text: string }
@@ -125,6 +137,83 @@ export async function callOpenRouter(
   } catch (error) {
     console.error('[OpenRouter] Request failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Stream OpenRouter responses chunk by chunk
+ */
+export async function* callOpenRouterStream(
+  params: OpenRouterRequestParams
+): AsyncGenerator<StreamChunk> {
+  const apiKey = getEnv().OPENROUTER_KEY;
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://velro.ai',
+      'X-Title': 'Velro AI',
+    },
+    body: JSON.stringify({
+      ...params,
+      stream: true, // Force streaming
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[OpenRouter] API error:', error);
+    throw new Error(`OpenRouter API error: ${response.status} ${error}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body reader available');
+  }
+
+  const decoder = new TextDecoder();
+  let accumulated = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        yield { delta: '', accumulated, done: true };
+        break;
+      }
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+
+          if (data === '[DONE]') {
+            yield { delta: '', accumulated, done: true };
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content || '';
+
+            if (delta) {
+              accumulated += delta;
+              yield { delta, accumulated, done: false };
+            }
+          } catch {
+            // Skip invalid JSON chunks
+            continue;
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
 }
 

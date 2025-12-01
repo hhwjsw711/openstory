@@ -6,8 +6,9 @@
  */
 
 import {
-  callOpenRouter,
+  callOpenRouterStream,
   extractJSON,
+  type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -61,6 +62,7 @@ const sceneSplittingResultSchema = z.object({
  *
  * @param script - The script content to analyze
  * @param aspectRatio - The aspect ratio for the project (e.g., '16:9', '9:16', '1:1')
+ * @param onProgress - Optional callback for streaming progress updates
  * @param options - Optional configuration
  * @param options.model - AI model to use (defaults to fast model)
  * @returns Project metadata and basic scenes
@@ -68,6 +70,7 @@ const sceneSplittingResultSchema = z.object({
 export async function splitScriptIntoScenes(
   script: string,
   aspectRatio: AspectRatio,
+  onProgress?: ProgressCallback,
   options?: {
     model?: string;
   }
@@ -92,20 +95,33 @@ IMPORTANT: Extract EXACT original script text for each scene. Do NOT modify or e
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Get AI response
-  const response = await callOpenRouter({
+  let finalContent = '';
+
+  // Stream the response
+  for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(SCENE_SPLITTING_PROMPT), userMessage(userPrompt)],
-  });
-  const content = response.choices[0]?.message?.content ?? '';
+  })) {
+    finalContent = chunk.accumulated;
 
-  if (!content) {
+    // Notify caller of progress (only 'chunk' during streaming)
+    if (onProgress && !chunk.done) {
+      onProgress({
+        type: 'chunk',
+        text: finalContent,
+      });
+    }
+
+    if (chunk.done) break;
+  }
+
+  if (!finalContent) {
     throw new Error('AI response contained no content');
   }
 
   // Extract JSON from response
   const parsed =
-    extractJSON<z.infer<typeof sceneSplittingResultSchema>>(content);
+    extractJSON<z.infer<typeof sceneSplittingResultSchema>>(finalContent);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -113,6 +129,15 @@ Respond with ONLY valid JSON matching the schema.`;
 
   // Validate with Zod
   const validated = sceneSplittingResultSchema.parse(parsed);
+
+  // Notify with final parsed result
+  if (onProgress) {
+    onProgress({
+      type: 'complete',
+      text: finalContent,
+      parsed: validated,
+    });
+  }
 
   // Extract and return project metadata and scenes
   return {

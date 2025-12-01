@@ -6,8 +6,9 @@
  */
 
 import {
-  callOpenRouter,
+  callOpenRouterStream,
   extractJSON,
+  type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -56,6 +57,7 @@ const visualPromptGenerationResultSchema = z.object({
  * @param scenes - Scenes to generate visual prompts for
  * @param characterBible - Character bible for consistency
  * @param styleConfig - Director DNA configuration
+ * @param onProgress - Optional callback for streaming progress updates
  * @param options - Optional configuration
  * @param options.model - AI model to use (defaults to fast model)
  * @returns Enriched scenes with visual prompts
@@ -64,6 +66,7 @@ export async function generateVisualPromptsForScenes(
   scenes: Scene[],
   characterBible: CharacterBibleEntry[],
   styleConfig: DirectorDnaConfig,
+  onProgress?: ProgressCallback,
   options?: {
     model?: string;
   }
@@ -103,22 +106,35 @@ CRITICAL: Visual prompts MUST be self-contained. AI image generators have ZERO m
 
 Respond with ONLY valid JSON matching the schema.`;
 
-  // Get AI response
-  const response = await callOpenRouter({
+  let finalContent = '';
+
+  // Stream the response
+  for await (const chunk of callOpenRouterStream({
     model,
     messages: [
       systemMessage(VISUAL_PROMPT_GENERATION_PROMPT),
       userMessage(userPrompt),
     ],
-  });
-  const content = response.choices[0]?.message?.content ?? '';
+  })) {
+    finalContent = chunk.accumulated;
 
-  if (!content) {
+    // Notify caller of progress (only 'chunk' during streaming)
+    if (onProgress && !chunk.done) {
+      onProgress({
+        type: 'chunk',
+        text: finalContent,
+      });
+    }
+
+    if (chunk.done) break;
+  }
+
+  if (!finalContent) {
     throw new Error('AI response contained no content');
   }
 
   // Extract JSON from response
-  const parsed = extractJSON(content);
+  const parsed = extractJSON(finalContent);
 
   if (!parsed) {
     throw new Error('Failed to parse AI response - invalid or missing JSON');
@@ -145,6 +161,15 @@ Respond with ONLY valid JSON matching the schema.`;
       continuity: enrichment.continuity,
     };
   });
+
+  // Notify with final parsed result
+  if (onProgress) {
+    onProgress({
+      type: 'complete',
+      text: finalContent,
+      parsed: enrichedScenes,
+    });
+  }
 
   return enrichedScenes;
 }

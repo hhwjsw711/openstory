@@ -13,10 +13,12 @@ import {
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
+import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateSequenceMetadata } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
 import { Sequence } from '@/lib/db/schema/sequences';
+import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
   generateAudioDesignForScenes,
@@ -39,6 +41,9 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 import { eq } from 'drizzle-orm';
 
+// Total phases for realtime progress tracking
+const TOTAL_PHASES = 6;
+
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 export const generateStoryboardWorkflow = createWorkflow(
@@ -52,6 +57,36 @@ export const generateStoryboardWorkflow = createWorkflow(
       '[StoryboardGenerationWorkflow]',
       `Starting storyboard generation workflow for sequence ${input.sequenceId}`
     );
+
+    // Get realtime channel for this sequence (for streaming progress to client)
+    // Note: This may fail if Redis env vars are not set, which is fine - we just skip realtime
+    let channel: ReturnType<typeof getGenerationChannel> | null = null;
+    try {
+      channel = getGenerationChannel(input.sequenceId);
+    } catch (error) {
+      console.warn(
+        '[StoryboardGenerationWorkflow] Realtime not available:',
+        error
+      );
+    }
+
+    // Helper to safely emit events (no-op if realtime unavailable)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emit = async (event: string, data: any) => {
+      if (!channel) return;
+      try {
+        console.log('emitting event', event, data);
+        await channel.emit(
+          `generation.${event}` as 'generation.complete',
+          data
+        );
+      } catch (error) {
+        console.warn(
+          '[StoryboardGenerationWorkflow] Failed to emit event:',
+          error
+        );
+      }
+    };
 
     // Step 1: Verify sequence and get data
     const { sequence, styleConfig, analysisModel, imageModel, videoModel } =
@@ -125,9 +160,27 @@ export const generateStoryboardWorkflow = createWorkflow(
           throw new WorkflowValidationError('No script found');
         }
 
+        // Emit Phase 1 start
+        await emit('phase:start', {
+          phase: 1,
+          phaseName: 'Scene Splitting',
+          totalPhases: TOTAL_PHASES,
+        });
+
+        const splitScriptProgressCallback: ProgressCallback = (progress: {
+          type: 'chunk' | 'complete';
+          text: string;
+          parsed?: unknown;
+        }) => {
+          console.log(
+            '[StoryboardGenerationWorkflow] Split Script Progress:',
+            progress.type
+          );
+        };
         const result = await splitScriptIntoScenes(
           sequence.script,
           sequence.aspectRatio,
+          splitScriptProgressCallback,
           { model: analysisModel }
         );
 
@@ -136,6 +189,20 @@ export const generateStoryboardWorkflow = createWorkflow(
             'Script splitting returned no scenes - script may be too short or invalid'
           );
         }
+
+        // Emit scene:new for each scene that was split
+        for (const scene of result.scenes) {
+          await emit('scene:new', {
+            sceneId: scene.sceneId,
+            sceneNumber: scene.sceneNumber,
+            title: scene.metadata.title,
+            scriptExtract: scene.originalScript.extract,
+            durationSeconds: scene.metadata.durationSeconds,
+          });
+        }
+
+        // Emit Phase 1 complete
+        await emit('phase:complete', { phase: 1 });
 
         return {
           scenes: result.scenes,
@@ -179,10 +246,22 @@ export const generateStoryboardWorkflow = createWorkflow(
         const createdFrames = await frameService.bulkInsertFrames(frameInserts);
 
         // Create a map of scene ID to frame ID for later updates
-        return createdFrames.map((frame) => ({
+        const frameMapping = createdFrames.map((frame) => ({
           sceneId: frame.metadata?.sceneId || '',
           frameId: frame.id,
         }));
+
+        // Emit frame:created for each frame
+        for (const { sceneId, frameId } of frameMapping) {
+          const scene = basicScenes.find((s) => s.sceneId === sceneId);
+          await emit('frame:created', {
+            frameId,
+            sceneId,
+            orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+          });
+        }
+
+        return frameMapping;
       }
     );
 
@@ -190,9 +269,31 @@ export const generateStoryboardWorkflow = createWorkflow(
     const characterBible = await context.run(
       'extract-character-bible',
       async () => {
-        const characterBible = await extractCharacterBible(basicScenes, {
-          model: analysisModel,
+        const extractCharacterBibleProgressCallback: ProgressCallback =
+          (progress: {
+            type: 'chunk' | 'complete';
+            text: string;
+            parsed?: unknown;
+          }) => {
+            console.log(
+              '[StoryboardGenerationWorkflow] Extract Character Bible Progress:',
+              progress.type
+            );
+          };
+
+        // Emit Phase 2 start
+        await emit('phase:start', {
+          phase: 2,
+          phaseName: 'Character Extraction',
+          totalPhases: TOTAL_PHASES,
         });
+        const characterBible = await extractCharacterBible(
+          basicScenes,
+          extractCharacterBibleProgressCallback,
+          {
+            model: analysisModel,
+          }
+        );
 
         // Store character bible in sequence metadata
         await updateSequenceMetadata(input.sequenceId, {
@@ -205,6 +306,15 @@ export const generateStoryboardWorkflow = createWorkflow(
           .set({ status: 'completed', updatedAt: new Date() })
           .where(eq(sequences.id, input.sequenceId));
 
+        // Emit Phase 2 complete
+        await emit('phase:complete', { phase: 2 });
+
+        // Emit Phase 3 start
+        await emit('phase:start', {
+          phase: 3,
+          phaseName: 'Visual Prompts',
+          totalPhases: TOTAL_PHASES,
+        });
         return characterBible;
       }
     );
@@ -228,10 +338,22 @@ export const generateStoryboardWorkflow = createWorkflow(
     const visualPromptResults: Scene[][] = await Promise.all(
       basicSceneBatches.map(async (batch, batchIndex) => {
         return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
+          const generateVisualPromptsProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Visual Prompts Progress:',
+                progress.type
+              );
+            };
           return await generateVisualPromptsForScenes(
             batch,
             characterBible,
             styleConfig,
+            generateVisualPromptsProgressCallback,
             { model: analysisModel }
           );
         });
@@ -240,10 +362,10 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Update frames with visual prompt data (Phase 3)
     await context.run('update-frames-after-visual-prompts', async () => {
-      const scenesWithVisualPrompts = visualPromptResults.flat();
+      const scenes = visualPromptResults.flat();
 
       await Promise.all(
-        scenesWithVisualPrompts.map(async (scene) => {
+        scenes.map(async (scene) => {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
@@ -255,25 +377,62 @@ export const generateStoryboardWorkflow = createWorkflow(
           });
         })
       );
+
+      // Emit frame:updated for each frame with visual prompts
+      for (const scene of scenes) {
+        const frameMapping = frameMap.find((m) => m.sceneId === scene.sceneId);
+        if (frameMapping) {
+          await emit('frame:updated', {
+            frameId: frameMapping.frameId,
+            updateType: 'visual-prompt',
+            metadata: scene,
+          });
+        }
+      }
+
+      // Emit Phase 3 complete
+      await emit('phase:complete', { phase: 3 });
+      // Emit Phase 4 start
+      await emit('phase:start', {
+        phase: 4,
+        phaseName: 'Motion Prompts',
+        totalPhases: TOTAL_PHASES,
+      });
+      return scenes;
     });
 
     // Step 6: Generate motion prompts for each batch
     const motionPromptResults: Scene[][] = await Promise.all(
       visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          return await generateMotionPromptsForScenes(batchWithVisualPrompts, {
-            model: analysisModel,
-          });
+          const generateMotionPromptsProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Motion Prompts Progress:',
+                progress.type
+              );
+            };
+          return await generateMotionPromptsForScenes(
+            batchWithVisualPrompts,
+            generateMotionPromptsProgressCallback,
+            {
+              model: analysisModel,
+            }
+          );
         });
       })
     );
 
     // Update frames with motion prompt data (Phase 4)
     await context.run('update-frames-after-motion-prompts', async () => {
-      const scenesWithMotionPrompts = motionPromptResults.flat();
+      const scenes = motionPromptResults.flat();
 
       await Promise.all(
-        scenesWithMotionPrompts.map(async (scene) => {
+        scenes.map(async (scene) => {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
@@ -285,37 +444,92 @@ export const generateStoryboardWorkflow = createWorkflow(
           });
         })
       );
+
+      // Emit Phase 4 complete
+      await emit('phase:complete', { phase: 4 });
+
+      // Emit Phase 5 start
+      await emit('phase:start', {
+        phase: 5,
+        phaseName: 'Audio Design',
+        totalPhases: TOTAL_PHASES,
+      });
     });
 
     // Step 7: Generate audio design for each batch
     const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
         return context.run(`audio-design-batch-${batchIndex}`, async () => {
-          return await generateAudioDesignForScenes(batchWithMotionPrompts, {
-            model: analysisModel,
-          });
+          const generateAudioDesignProgressCallback: ProgressCallback =
+            (progress: {
+              type: 'chunk' | 'complete';
+              text: string;
+              parsed?: unknown;
+            }) => {
+              console.log(
+                '[StoryboardGenerationWorkflow] Generate Audio Design Progress:',
+                progress.type
+              );
+            };
+
+          return await generateAudioDesignForScenes(
+            batchWithMotionPrompts,
+            generateAudioDesignProgressCallback,
+            {
+              model: analysisModel,
+            }
+          );
         });
       })
     );
 
-    const completeScenes: Scene[] = audioDesignResults.flat();
-
     // Update frames with audio design data (Phase 5)
-    await context.run('update-frames-after-audio-design', async () => {
-      await Promise.all(
-        completeScenes.map(async (scene) => {
+    const completeScenes: Scene[] = await context.run(
+      'update-frames-after-audio-design',
+      async () => {
+        const scenes = audioDesignResults.flat();
+
+        await Promise.all(
+          scenes.map(async (scene) => {
+            const frameMapping = frameMap.find(
+              (m) => m.sceneId === scene.sceneId
+            );
+            if (!frameMapping) return;
+
+            await frameService.updateFrame({
+              id: frameMapping.frameId,
+              metadata: scene,
+            });
+          })
+        );
+
+        // Emit frame:updated for each frame with audio design
+        for (const scene of scenes) {
           const frameMapping = frameMap.find(
             (m) => m.sceneId === scene.sceneId
           );
-          if (!frameMapping) return;
+          if (frameMapping) {
+            await emit('frame:updated', {
+              frameId: frameMapping.frameId,
+              updateType: 'audio-design',
+              metadata: scene,
+            });
+          }
+        }
 
-          await frameService.updateFrame({
-            id: frameMapping.frameId,
-            metadata: scene,
-          });
-        })
-      );
-    });
+        // Emit Phase 5 complete
+        await emit('phase:complete', { phase: 5 });
+
+        // Emit Phase 6 start (Image Generation)
+        await emit('phase:start', {
+          phase: 6,
+          phaseName: 'Image & Motion Generation',
+          totalPhases: TOTAL_PHASES,
+        });
+
+        return scenes;
+      }
+    );
 
     // Step 8: Generate thumbnails in parallel if enabled
     if (input.options?.generateThumbnails !== false) {
@@ -428,6 +642,14 @@ export const generateStoryboardWorkflow = createWorkflow(
         })
       );
     }
+
+    // Emit generation complete
+    await context.run('emit-complete', async () => {
+      await emit('complete', {
+        sequenceId: input.sequenceId,
+        frameCount,
+      });
+    });
 
     return {
       sequenceId: input.sequenceId,

@@ -4,6 +4,7 @@
  */
 
 import type { Scene, SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
 import { extractCharacterBible } from '@/lib/script/character-extraction';
@@ -12,6 +13,14 @@ import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { z } from 'zod';
+
+export type PhaseProgressCallback = (
+  phase: number,
+  phaseName: string,
+  progress: number,
+  /** The streaming text chunk from LLM (only present for chunk events) */
+  chunk?: string
+) => void;
 
 /**
  * Get all style names as tuple for enum validation
@@ -51,7 +60,8 @@ function mergeScenes(baseScenes: Scene[], updatedScenes: Scene[]): Scene[] {
 }
 
 export async function analyzeScriptTool(
-  input: AnalyzeScriptInput
+  input: AnalyzeScriptInput,
+  onPhaseProgress?: PhaseProgressCallback
 ): Promise<AnalyzeScriptOutput> {
   try {
     const style = getStyleByName(input.style);
@@ -63,27 +73,68 @@ export async function analyzeScriptTool(
 
     const aspectRatio = input.aspectRatio || '16:9';
 
+    // Create progress callbacks that report to phase progress
+    const createPhaseCallback = (
+      phase: number,
+      phaseName: string
+    ): ProgressCallback => {
+      return (progress) => {
+        if (onPhaseProgress && progress.type === 'chunk') {
+          // Estimate progress based on text length (rough approximation)
+          const estimatedProgress = Math.min(progress.text.length / 1000, 0.95);
+          // Forward the actual text chunk for streaming display
+          onPhaseProgress(
+            phase,
+            phaseName,
+            estimatedProgress * 100,
+            progress.text
+          );
+        } else if (onPhaseProgress && progress.type === 'complete') {
+          onPhaseProgress(phase, phaseName, 100);
+        }
+      };
+    };
+
     console.log('[MCP] Phase 1: Scene Splitting');
+    onPhaseProgress?.(1, 'Scene Splitting', 0);
     const { scenes: initialScenes, projectMetadata } =
-      await splitScriptIntoScenes(input.script, aspectRatio);
+      await splitScriptIntoScenes(
+        input.script,
+        aspectRatio,
+        createPhaseCallback(1, 'Scene Splitting')
+      );
 
     console.log('[MCP] Phase 2: Character Extraction');
-    const characterBible = await extractCharacterBible(initialScenes);
+    onPhaseProgress?.(2, 'Character Extraction', 0);
+    const characterBible = await extractCharacterBible(
+      initialScenes,
+      createPhaseCallback(2, 'Character Extraction')
+    );
 
     console.log('[MCP] Phase 3: Visual Prompt Generation');
+    onPhaseProgress?.(3, 'Visual Prompt Generation', 0);
     const scenesWithVisual = await generateVisualPromptsForScenes(
       initialScenes,
       characterBible,
-      style.config
+      style.config,
+      createPhaseCallback(3, 'Visual Prompt Generation')
     );
     let scenes = mergeScenes(initialScenes, scenesWithVisual);
 
     console.log('[MCP] Phase 4: Motion Prompt Generation');
-    const scenesWithMotion = await generateMotionPromptsForScenes(scenes);
+    onPhaseProgress?.(4, 'Motion Prompt Generation', 0);
+    const scenesWithMotion = await generateMotionPromptsForScenes(
+      scenes,
+      createPhaseCallback(4, 'Motion Prompt Generation')
+    );
     scenes = mergeScenes(scenes, scenesWithMotion);
 
     console.log('[MCP] Phase 5: Audio Design');
-    const scenesWithAudio = await generateAudioDesignForScenes(scenes);
+    onPhaseProgress?.(5, 'Audio Design', 0);
+    const scenesWithAudio = await generateAudioDesignForScenes(
+      scenes,
+      createPhaseCallback(5, 'Audio Design')
+    );
     scenes = mergeScenes(scenes, scenesWithAudio);
 
     console.log('[MCP] All phases complete');

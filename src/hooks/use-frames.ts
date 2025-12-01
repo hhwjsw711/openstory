@@ -64,31 +64,40 @@ export function useFramesBySequence(
       return result.data || [];
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
-    refetchInterval: (query) => {
-      if (!query.state.data) return 1000;
+    // If refetchInterval is explicitly passed, use it; otherwise use smart polling
+    refetchInterval:
+      options?.refetchInterval !== undefined
+        ? options.refetchInterval
+        : (query) => {
+            if (!query.state.data) return 1000;
 
-      const frames = query.state.data;
+            const frames = query.state.data;
 
-      // Phase-aware polling using frame status fields:
-      // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
-      // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
-      const isGeneratingImages = frames.some(
-        (f: Frame) =>
-          f.thumbnailStatus === 'pending' || f.thumbnailStatus === 'generating'
-      );
-      const isGeneratingVideos = frames.some(
-        (f: Frame) =>
-          f.videoStatus === 'pending' || f.videoStatus === 'generating'
-      );
+            // Phase-aware polling using frame status fields:
+            // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
+            // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
+            const isGeneratingImages = frames.some(
+              (f: Frame) =>
+                f.thumbnailStatus === 'pending' ||
+                f.thumbnailStatus === 'generating'
+            );
+            const isGeneratingVideos = frames.some(
+              (f: Frame) =>
+                f.videoStatus === 'pending' || f.videoStatus === 'generating'
+            );
 
-      // Phases 6-7: Image/video generation (rapid parallel updates)
-      // Poll faster for snappier UI updates as thumbnails/videos complete
-      if (frames.length > 0 && !isGeneratingImages && !isGeneratingVideos) {
-        return false;
-      }
+            // Phases 6-7: Image/video generation (rapid parallel updates)
+            // Poll faster for snappier UI updates as thumbnails/videos complete
+            if (
+              frames.length > 0 &&
+              !isGeneratingImages &&
+              !isGeneratingVideos
+            ) {
+              return false;
+            }
 
-      return 2000; // 1 second
-    },
+            return 2000;
+          },
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus
     enabled: !!sequenceId,

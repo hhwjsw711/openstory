@@ -493,9 +493,11 @@ export function safeTextToImageModel(
   fallback: TextToImageModel = DEFAULT_IMAGE_MODEL
 ): TextToImageModel {
   if (!value || !isValidTextToImageModel(value)) {
-    console.warn(
-      `[models] Invalid TextToImageModel "${value}", using fallback "${fallback}"`
-    );
+    if (value) {
+      console.warn(
+        `[models] Invalid TextToImageModel "${value}", using fallback "${fallback}"`
+      );
+    }
     return fallback;
   }
   return value;
@@ -513,9 +515,11 @@ export function safeImageToVideoModel(
   fallback: ImageToVideoModel = DEFAULT_VIDEO_MODEL
 ): ImageToVideoModel {
   if (!value || !isValidImageToVideoModel(value)) {
-    console.warn(
-      `[models] Invalid ImageToVideoModel "${value}", using fallback "${fallback}"`
-    );
+    if (value) {
+      console.warn(
+        `[models] Invalid ImageToVideoModel "${value}", using fallback "${fallback}"`
+      );
+    }
     return fallback;
   }
   return value;

@@ -105,7 +105,7 @@ export function getProductionDeploymentAppUrl(): string {
     return 'https://frontend-prd.velro.workers.dev';
   }
   if (/https:\/\/velro.*\.vercel.app/.test(APP_URL)) {
-    return 'https://velro-phi.vercel.app'; // staging deployment
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
   if (/https:\/\/.*\.railway.app/.test(APP_URL)) {
     return 'https://velro.up.railway.app'; // production deployment

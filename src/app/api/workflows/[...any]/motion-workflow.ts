@@ -5,6 +5,7 @@
 
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { frames } from '@/lib/db/schema';
+import { getGenerationChannel } from '@/lib/realtime';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -48,6 +49,30 @@ export const generateMotionWorkflow = createWorkflow(
 
     // Validate authentication
     validateWorkflowAuth(input);
+
+    // Get realtime channel for streaming progress (if available)
+    let channel: ReturnType<typeof getGenerationChannel> | null = null;
+    if (input.sequenceId) {
+      try {
+        channel = getGenerationChannel(input.sequenceId);
+      } catch {
+        // Realtime not available - continue without streaming
+      }
+    }
+
+    // Helper to safely emit events
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emit = async (event: string, data: any) => {
+      if (!channel) return;
+      try {
+        await channel.emit(
+          `generation.${event}` as 'generation.complete',
+          data
+        );
+      } catch {
+        // Ignore emit errors - don't fail the workflow
+      }
+    };
 
     // Validate required fields
     if (!input.thumbnailPath || input.thumbnailPath.trim().length === 0) {
@@ -103,6 +128,12 @@ export const generateMotionWorkflow = createWorkflow(
         videoWorkflowRunId: context.workflowRunId,
         motionModel: input.model || DEFAULT_VIDEO_MODEL,
         motionPrompt: input.prompt,
+      });
+
+      // Emit realtime progress
+      await emit('video:progress', {
+        frameId: input.frameId,
+        status: 'generating',
       });
     });
 
@@ -191,6 +222,13 @@ export const generateMotionWorkflow = createWorkflow(
           videoGeneratedAt: new Date(),
           videoError: null,
         });
+
+        // Emit completion progress
+        await emit('video:progress', {
+          frameId: input.frameId,
+          status: 'completed',
+          videoUrl: storageResult.url,
+        });
       } catch (error) {
         throw new Error(
           `Failed to update frame: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -229,6 +267,20 @@ export const generateMotionWorkflow = createWorkflow(
         videoStatus: 'failed',
         videoError: failResponse,
       });
+
+      // Emit failure progress
+      if (input.sequenceId) {
+        try {
+          const channel = getGenerationChannel(input.sequenceId);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (channel.emit as any)('generation.video:progress', {
+            frameId: input.frameId,
+            status: 'failed',
+          });
+        } catch {
+          // Ignore emit errors
+        }
+      }
 
       console.error(
         '[MotionWorkflow]',

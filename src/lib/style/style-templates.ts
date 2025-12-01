@@ -258,39 +258,33 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     usageCount: null,
   },
   {
-    name: 'Lo-Fi iPhone',
+    name: 'Lo-Fi iPhone 7 Aesthetic (Clean)',
     description:
-      'Ultra-photorealistic, unedited smartphone photography aesthetic. Adapts to any environment (day, night, indoor, outdoor) while simulating authentic iPhone sensor behavior and optical imperfections.',
+      'Simulates the look of circa-2016 smartphone photography without any overlays. Characterized by lower resolution, poor dynamic range (blown-out highlights), digital noise, and the specific "crunchy" JPEG processing of the iPhone 7 era.',
     category: 'photography',
-    tags: [
-      'photorealistic',
-      'iphone',
-      'raw',
-      'candid',
-      '4k',
-      'mobile-photography',
-    ],
+    tags: ['lo-fi', 'iphone-7', 'amateur', '2010s', 'no-text', 'digital-noise'],
     config: {
+      // ADDED EXPLICIT "NO TEXT" CONSTRAINTS HERE
       artStyle:
-        'iPhone 16 Pro 48MP Raw HEIF, unedited aesthetic. Ultra-high fidelity textures showing real skin pores and material imperfections. Includes optical flaws: slight barrel distortion, chromatic aberration on edges, and realistic sensor noise in shadow areas.',
+        'iPhone 7 12MP JPEG aesthetic. Clean image with absolutely NO text overlays, NO datestamps, and NO time indicators burnt into the visual. Visible digital compression artifacts and over-sharpening. Textures are slightly soft/muddy. Includes sensor limitations: significant digital noise in shadows and color fringing.',
       colorPalette: ['#F5F5DC', '#D2B48C', '#8B4513', '#FFFAF0', '#2F4F4F'],
       lighting:
-        'Environment-reactive lighting. Accurate sensor exposure handling: slight highlight bloom on bright sources (sun or neon) and digital grain in low-light areas. Realistic light falloff and authentic ambient occlusion.',
+        'Low dynamic range (LDR). Highlights are blown out/clipped (loss of detail in bright areas like skies or lamps). Shadows are crushed and grainy. Simulates the struggle of older sensors to balance exposure.',
       cameraWork:
-        'Handheld smartphone perspective, f/1.78 aperture. Natural depth of field focusing on the subject. Slight motion blur on moving elements if applicable.',
-      mood: 'Grounded reality. "In-the-moment" capture. Authentic presence, ignoring the camera.',
+        'Handheld amateur perspective, f/1.8 aperture. Less sophisticated stabilization implies slight micro-jitters. Focus is decent but not clinical; background separation is digital and less smooth than modern sensors.',
+      mood: 'Nostalgic, amateur, "Camera Roll 2016". Authentic snapshot quality with no professional polish. Pure photographic capture.',
+      // REMOVED 'Found Footage' and 'Snapchat' as they often trigger text overlays
       referenceFilms: [
-        'BeReal Aesthetic',
-        'User Generated Content',
-        'Documentary Footage',
-        'Raw Camera Files',
+        'Amateur Vlogs circa 2016',
+        'Early Instagram Aesthetic',
+        'Raw Phone Camera Roll',
       ],
       colorGrading:
-        'Standard Apple Log profile converted to Rec.709. No creative grading. Authentic colors with potential for mixed lighting temperatures (e.g. warm tungsten vs cool daylight).',
+        'Standard Rec.709 sRGB with older auto-white balance tendencies (often slightly too cool or too warm). No Log profile. Colors appear "baked in" and digital.',
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Lo-Fi iPhone'),
+    previewUrl: getStylePreviewUrl('Lo-Fi iPhone 7 Aesthetic Clean'),
     version: null,
     parentId: null,
     usageCount: null,
