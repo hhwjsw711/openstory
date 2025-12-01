@@ -1,30 +1,39 @@
 /**
- * Next.js middleware for BetterAuth route protection
- * Optimistically checks for session cookie presence (not secure validation)
- * Actual session validation happens in protected layout
+ * Next.js middleware for:
+ * 1. Canonical URL redirect (redirect to APP_URL if not on canonical domain)
+ * 2. BetterAuth route protection (optimistic session cookie check)
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/utils/environment';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestHost = request.headers.get('host') || '';
 
-  // THIS IS NOT SECURE!
-  // This is the recommended approach to optimistically redirect users
-  // We recommend handling auth checks in each page/route
-  //
+  // 1. Canonical URL redirect (skip for localhost)
+  if (!requestHost.includes('localhost')) {
+    const canonical = new URL(APP_URL);
+    if (requestHost !== canonical.host) {
+      const redirectUrl = new URL(request.url);
+      redirectUrl.host = canonical.host;
+      redirectUrl.protocol = canonical.protocol;
+      return NextResponse.redirect(redirectUrl, 308);
+    }
+  }
+
+  // 2. Auth check for protected routes
+  // THIS IS NOT SECURE! This is optimistic - actual validation happens in protected layout.
   // Note: We manually read the cookie instead of using better-auth/cookies
   // helpers to avoid Edge Runtime dynamic code evaluation restrictions.
-  // Better Auth's default cookie format is: ${prefix}.${cookie_name}
-  // Default prefix: "better-auth", default cookie name: "session_token"
-  const sessionCookie = request.cookies.get('better-auth.session_token');
-
-  if (!sessionCookie) {
-    // Preserve the original URL for redirect after login
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirectTo', pathname);
-    return NextResponse.redirect(loginUrl);
+  if (pathname.startsWith('/sequences')) {
+    const sessionCookie = request.cookies.get('better-auth.session_token');
+    if (!sessionCookie) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirectTo', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
@@ -32,10 +41,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match /sequences and all sub-routes
-     * Examples: /sequences, /sequences/123, /sequences/123/scenes
-     */
-    '/sequences/:path*',
+    // All routes except static assets and API
+    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
   ],
 };
