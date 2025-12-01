@@ -11,9 +11,6 @@ import {
 import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { z } from 'zod';
 
-export const runtime = 'edge';
-export const maxDuration = 300;
-
 const requestSchema = z.object({
   scenes: z.array(sceneSchema),
 });

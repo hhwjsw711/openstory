@@ -11,9 +11,6 @@ import {
 import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { z } from 'zod';
 
-export const runtime = 'edge';
-export const maxDuration = 300;
-
 const requestSchema = z.object({
   script: z.string().min(1, 'Script is required'),
   aspectRatio: aspectRatioSchema.optional().default('16:9'),

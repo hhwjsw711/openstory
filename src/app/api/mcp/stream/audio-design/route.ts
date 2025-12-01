@@ -9,7 +9,6 @@ import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import type { Scene } from '@/lib/script';
 import { z } from 'zod';
 
-export const runtime = 'edge';
 export const maxDuration = 300;
 
 const requestSchema = z.object({

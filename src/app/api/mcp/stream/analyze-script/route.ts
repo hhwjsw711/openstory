@@ -12,7 +12,6 @@ import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { z } from 'zod';
 
-export const runtime = 'edge';
 export const maxDuration = 300; // 5 minutes
 
 function getAllStyleNamesTuple(): [string, ...string[]] {
