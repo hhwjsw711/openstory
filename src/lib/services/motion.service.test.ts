@@ -167,6 +167,48 @@ describe('Motion Service', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('No video URL returned');
     });
+
+    it('should generate motion with Kling O1 model', async () => {
+      const mockVideoUrl = 'https://example.com/kling-o1-video.mp4';
+
+      mockSubscribe.mockResolvedValue({
+        data: {
+          video: {
+            url: mockVideoUrl,
+          },
+        },
+        requestId: 'test-kling-o1-request-id',
+      });
+
+      const result = await generateMotionForFrame({
+        imageUrl: 'https://example.com/image.jpg',
+        prompt: 'Smooth camera movement',
+        model: 'kling_o1',
+        duration: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.videoUrl).toBe(mockVideoUrl);
+      expect(result.metadata?.model).toBe(
+        'fal-ai/kling-video/o1/image-to-video'
+      );
+      expect(result.metadata?.provider).toBe('kling');
+
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        'fal-ai/kling-video/o1/image-to-video',
+        expect.objectContaining({
+          input: expect.objectContaining({
+            prompt: 'Smooth camera movement',
+            image_url: 'https://example.com/image.jpg',
+            duration: '10', // Should be string
+            cfg_scale: 0.5,
+            negative_prompt: 'blur, distort, and low quality',
+          }),
+          logs: true,
+          pollInterval: 5000,
+        })
+      );
+    });
   });
 
   describe('Model configurations', () => {
@@ -217,6 +259,26 @@ describe('Motion Service', () => {
         },
         pricing: {
           estimatedCost: 0.5,
+        },
+        performance: {
+          quality: 'best',
+        },
+      });
+
+      expect(IMAGE_TO_VIDEO_MODELS.kling_o1).toMatchObject({
+        id: 'fal-ai/kling-video/o1/image-to-video',
+        name: 'Kling O1 (Omni)',
+        provider: 'kling',
+        capabilities: {
+          supportsPrompt: true,
+          supportsAudio: false,
+          maxDuration: 10,
+          defaultDuration: 5,
+          requiresStringDuration: true,
+        },
+        pricing: {
+          estimatedCost: 0.35,
+          unit: 'video',
         },
         performance: {
           quality: 'best',

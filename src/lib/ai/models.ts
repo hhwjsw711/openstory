@@ -276,6 +276,29 @@ export const IMAGE_TO_VIDEO_MODELS = {
       quality: 'best',
     },
   },
+
+  kling_o1: {
+    id: 'fal-ai/kling-video/o1/image-to-video',
+    name: 'Kling O1 (Omni)',
+    provider: 'kling',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 10,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
+    },
+    pricing: {
+      estimatedCost: 0.35, // Similar to kling_v2_5_turbo_pro
+      unit: 'video',
+    },
+    performance: {
+      estimatedGenerationTime: 15,
+      quality: 'best',
+    },
+  },
 } as const;
 
 /**
@@ -296,6 +319,7 @@ export const VIDEO_MODELS = {
   kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
   wan_2_5: IMAGE_TO_VIDEO_MODELS.wan_2_5.id,
   sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
+  kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
 } as const;
 
 /**
