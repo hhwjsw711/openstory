@@ -276,6 +276,53 @@ export const IMAGE_TO_VIDEO_MODELS = {
       quality: 'best',
     },
   },
+
+  kling_o1: {
+    id: 'fal-ai/kling-video/o1/image-to-video',
+    name: 'Kling O1 (Omni)',
+    provider: 'kling',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 10,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
+    },
+    pricing: {
+      estimatedCost: 0.35, // Similar to kling_v2_5_turbo_pro
+      unit: 'video',
+    },
+    performance: {
+      estimatedGenerationTime: 15,
+      quality: 'best',
+    },
+  },
+
+  runway_gen3_turbo: {
+    id: 'fal-ai/runway-gen3/turbo/image-to-video',
+    name: 'Runway Gen-3 Turbo',
+    provider: 'runway',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 10,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 24 }, // Standard cinematic
+      supportedDurations: [5, 10],
+      requiresStringDuration: true, // API expects string duration
+      supportedAspectRatios: ['16:9', '9:16'],
+    },
+    pricing: {
+      estimatedCost: 0.5, // Premium tier
+      unit: 'video',
+    },
+    performance: {
+      estimatedGenerationTime: 10, // Fast turbo model
+      quality: 'best',
+    },
+  },
 } as const;
 
 /**
@@ -296,6 +343,8 @@ export const VIDEO_MODELS = {
   kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
   wan_2_5: IMAGE_TO_VIDEO_MODELS.wan_2_5.id,
   sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
+  kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
+  runway_gen3_turbo: IMAGE_TO_VIDEO_MODELS.runway_gen3_turbo.id,
 } as const;
 
 /**

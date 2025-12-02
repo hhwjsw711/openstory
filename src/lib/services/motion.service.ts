@@ -219,6 +219,23 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       seed: Math.floor(Math.random() * 1000000),
     };
   },
+
+  runway: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+
+    // Runway requires string duration: "5" or "10"
+    const runwayDuration = validatedDuration <= 7 ? '5' : '10';
+
+    return {
+      prompt_text: options.prompt,
+      prompt_image: options.imageUrl,
+      duration: runwayDuration,
+      ratio: options.aspectRatio || '16:9',
+      seed: Math.floor(Math.random() * 1000000),
+    };
+  },
 };
 
 /**
