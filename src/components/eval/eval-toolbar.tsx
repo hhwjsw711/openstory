@@ -26,6 +26,7 @@ type EvalToolbarProps = {
   onFiltersChange: (filters: FilterState) => void;
   sortCriteria: SortCriteria[];
   onSortChange: (criteria: SortCriteria[]) => void;
+  availableWorkflows: string[];
 };
 
 const SORT_FIELDS: { value: SortCriteria['field']; label: string }[] = [
@@ -33,6 +34,7 @@ const SORT_FIELDS: { value: SortCriteria['field']; label: string }[] = [
   { value: 'title', label: 'Title' },
   { value: 'analysisModel', label: 'Analysis Model' },
   { value: 'imageModel', label: 'Image Model' },
+  { value: 'workflow', label: 'Workflow' },
 ];
 
 export const EvalToolbar: React.FC<EvalToolbarProps> = ({
@@ -42,6 +44,7 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
   onFiltersChange,
   sortCriteria,
   onSortChange,
+  availableWorkflows,
 }) => {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFiltersChange({ ...filters, search: e.target.value });
@@ -61,6 +64,13 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
     });
   };
 
+  const handleWorkflowChange = (value: string) => {
+    onFiltersChange({
+      ...filters,
+      workflow: value === 'all' ? null : value,
+    });
+  };
+
   const clearFilters = () => {
     onFiltersChange({
       search: '',
@@ -68,6 +78,7 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
       dateTo: null,
       analysisModel: null,
       imageModel: null,
+      workflow: null,
     });
   };
 
@@ -75,6 +86,7 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
     filters.search ||
     filters.analysisModel ||
     filters.imageModel ||
+    filters.workflow ||
     filters.dateFrom ||
     filters.dateTo;
 
@@ -127,6 +139,14 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
     })),
   ];
 
+  const workflowOptions = [
+    { value: 'all', label: 'All Workflows' },
+    ...availableWorkflows.map((workflow) => ({
+      value: workflow,
+      label: workflow,
+    })),
+  ];
+
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center gap-4">
@@ -155,6 +175,17 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
           placeholder="Image Model"
           className="w-44"
         />
+
+        {/* Workflow Filter */}
+        {availableWorkflows.length > 0 && (
+          <Select
+            options={workflowOptions}
+            value={filters.workflow || 'all'}
+            onChange={handleWorkflowChange}
+            placeholder="Workflow"
+            className="w-52"
+          />
+        )}
 
         {/* Clear Filters */}
         {hasActiveFilters && (

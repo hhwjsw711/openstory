@@ -40,6 +40,7 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     analysisModel: true, // Omit singular model - we'll use analysisModels array
     imageModel: true, // Omit - will use imageModel field in extend
     videoModel: true, // Omit - will use videoModel field in extend
+    workflow: true, // Omit - set by workflow, not user
   })
   .extend({
     // Accept array of models for multi-model sequence creation
@@ -95,6 +96,7 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   updatedAt: true,
   createdBy: true,
   updatedBy: true,
+  workflow: true, // Set by workflow, not user
 });
 
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

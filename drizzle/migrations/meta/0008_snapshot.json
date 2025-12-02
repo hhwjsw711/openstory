@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "355f91d0-733f-42d9-8628-9898c16e9a53",
-  "prevId": "32d33c00-99fb-4dae-aeba-ad4d8e5914de",
+  "id": "139abf8e-fe00-4af2-a710-8c87b0e31b63",
+  "prevId": "355f91d0-733f-42d9-8628-9898c16e9a53",
   "tables": {
     "account": {
       "name": "account",
@@ -1200,6 +1200,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'kling_v2_5_turbo_pro'"
+        },
+        "workflow": {
+          "name": "workflow",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {

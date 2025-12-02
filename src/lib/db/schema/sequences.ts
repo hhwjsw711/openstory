@@ -102,6 +102,7 @@ export const sequences = sqliteTable(
     videoModel: text('video_model', { length: 100 })
       .default(DEFAULT_VIDEO_MODEL)
       .notNull(),
+    workflow: text('workflow', { length: 100 }),
   },
   (table) => [
     index('idx_sequences_created_at').on(desc(table.createdAt)),

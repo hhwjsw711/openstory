@@ -21,10 +21,11 @@ export type FilterState = {
   dateTo: Date | null;
   analysisModel: string | null;
   imageModel: string | null;
+  workflow: string | null;
 };
 
 export type SortCriteria = {
-  field: 'title' | 'createdAt' | 'analysisModel' | 'imageModel';
+  field: 'title' | 'createdAt' | 'analysisModel' | 'imageModel' | 'workflow';
   direction: 'asc' | 'desc';
 };
 
@@ -34,6 +35,7 @@ const defaultFilters: FilterState = {
   dateTo: null,
   analysisModel: null,
   imageModel: null,
+  workflow: null,
 };
 
 export const EvalView: React.FC = () => {
@@ -100,6 +102,13 @@ export const EvalView: React.FC = () => {
     );
   }
 
+  // Get unique workflows for filter dropdown
+  const availableWorkflows = [
+    ...new Set(
+      sequences?.map((s) => s.workflow).filter((w): w is string => w !== null)
+    ),
+  ].sort();
+
   return (
     <div className="flex-1 overflow-hidden flex flex-col gap-4">
       <EvalToolbar
@@ -109,6 +118,7 @@ export const EvalView: React.FC = () => {
         onFiltersChange={setFilters}
         sortCriteria={sortCriteria}
         onSortChange={setSortCriteria}
+        availableWorkflows={availableWorkflows}
       />
       {filteredAndSorted.length === 0 ? (
         <Card className="p-8 text-center">
@@ -152,6 +162,10 @@ function applyFiltersAndSort(
     result = result.filter((s) => s.imageModel === filters.imageModel);
   }
 
+  if (filters.workflow) {
+    result = result.filter((s) => s.workflow === filters.workflow);
+  }
+
   // Apply multi-criteria sort
   result.sort((a, b) => {
     for (const criteria of sortCriteria) {
@@ -160,7 +174,9 @@ function applyFiltersAndSort(
 
       let cmp: number;
       if (criteria.field === 'createdAt') {
-        cmp = new Date(aVal).getTime() - new Date(bVal).getTime();
+        const aTime = aVal ? new Date(aVal).getTime() : 0;
+        const bTime = bVal ? new Date(bVal).getTime() : 0;
+        cmp = aTime - bTime;
       } else {
         cmp = String(aVal ?? '').localeCompare(String(bVal ?? ''));
       }

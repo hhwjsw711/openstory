@@ -77,6 +77,13 @@ export async function updateSequenceStatus(
     .where(eq(sequences.id, sequenceId));
 }
 
+export async function updateSequenceTitle(sequenceId: string, title: string) {
+  await getDb()
+    .update(sequences)
+    .set({ title, updatedAt: new Date() })
+    .where(eq(sequences.id, sequenceId));
+}
+
 export async function updateSequenceAnalysisDurationMs(
   sequenceId: string,
   durationMs: number
@@ -84,5 +91,15 @@ export async function updateSequenceAnalysisDurationMs(
   await getDb()
     .update(sequences)
     .set({ analysisDurationMs: durationMs, updatedAt: new Date() })
+    .where(eq(sequences.id, sequenceId));
+}
+
+export async function updateSequenceWorkflow(
+  sequenceId: string,
+  workflow: string
+) {
+  await getDb()
+    .update(sequences)
+    .set({ workflow, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }

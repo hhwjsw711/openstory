@@ -12,6 +12,8 @@ import {
   updateSequenceAnalysisDurationMs,
   updateSequenceMetadata,
   updateSequenceStatus,
+  updateSequenceTitle,
+  updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
 import { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -141,9 +143,10 @@ export const analyzeScriptWorkflow = createWorkflow(
         if (!sequenceId) return [];
 
         // Add the updated metadata to the sequence
-        await updateSequenceMetadata(sequenceId, {
-          title,
-        });
+        await updateSequenceTitle(sequenceId, title);
+
+        // Add the workflow to the sequence
+        await updateSequenceWorkflow(sequenceId, 'analyze-script');
 
         // Build array of all frames to create with basic scene data
         const frameInserts = scenes.map(

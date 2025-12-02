@@ -76,6 +76,7 @@ export const generateMockSequence = (
       mood: faker.helpers.arrayElement(moods),
       targetAudience: faker.helpers.arrayElement(audiences),
     },
+    workflow: null,
     ...overrides,
   };
 };
