@@ -1,13 +1,14 @@
 'use client';
 
 import type React from 'react';
+import Link from 'next/link';
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { ModelBadge } from '@/components/model/model-badge';
 import { getAspectRatioData } from '@/lib/constants/aspect-ratios';
 import { formatDistanceToNow } from '@/lib/utils';
 import { formatDuration } from '@/lib/utils/format-duration';
 import { getImageModelById } from '@/lib/ai/models';
-import { Calendar, Timer, ImageIcon } from 'lucide-react';
+import { Calendar, Timer, ImageIcon, Workflow } from 'lucide-react';
 import type { SequenceWithFrames } from '@/hooks/use-sequences-with-frames';
 
 type EvalSequenceMetadataProps = {
@@ -23,12 +24,13 @@ export const EvalSequenceMetadata: React.FC<EvalSequenceMetadataProps> = ({
   return (
     <div className="h-full border-r border-b p-3 flex flex-col gap-2">
       {/* Title */}
-      <h3
-        className="font-medium text-sm line-clamp-2"
+      <Link
+        href={`/sequences/${sequence.id}/scenes`}
+        className="font-medium text-sm line-clamp-2 hover:underline"
         title={sequence.title || 'Untitled Sequence'}
       >
         {sequence.title || 'Untitled Sequence'}
-      </h3>
+      </Link>
 
       {/* Analysis Model */}
       <ModelBadge model={sequence.analysisModel} />
@@ -38,6 +40,14 @@ export const EvalSequenceMetadata: React.FC<EvalSequenceMetadataProps> = ({
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <ImageIcon className="h-3 w-3" />
           <span className="truncate">{imageModel.name}</span>
+        </div>
+      )}
+
+      {/* Workflow */}
+      {sequence.workflow && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Workflow className="h-3 w-3" />
+          <span className="truncate">{sequence.workflow}</span>
         </div>
       )}
 
