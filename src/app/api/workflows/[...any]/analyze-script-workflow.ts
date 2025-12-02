@@ -9,9 +9,11 @@ import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-work
 import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
+  updateSequenceAnalysisDurationMs,
   updateSequenceMetadata,
   updateSequenceStatus,
 } from '@/lib/db/helpers/sequences';
+import { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
@@ -73,9 +75,10 @@ export const analyzeScriptWorkflow = createWorkflow(
     };
 
     // STEP: Split script into basic scenes and store in sequence metadata
-    const { scenes, title } = await context.run(
+    const { scenes, title, startTime } = await context.run(
       'split-script-into-scenes',
       async () => {
+        const startTime = Date.now();
         if (!script) {
           throw new WorkflowValidationError('No script found');
         }
@@ -127,6 +130,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         return {
           scenes: result.scenes,
           title: result.projectMetadata?.title || 'Untitled',
+          startTime: startTime,
         };
       }
     );
@@ -142,13 +146,20 @@ export const analyzeScriptWorkflow = createWorkflow(
         });
 
         // Build array of all frames to create with basic scene data
-        const frameInserts = scenes.map((scene, index) => ({
-          sequenceId,
-          description: scene.originalScript.extract,
-          orderIndex: index,
-          metadata: scene, // Store BasicScene object - will be enriched later
-          durationMs: Math.round((scene.metadata.durationSeconds || 3) * 1000),
-        }));
+        const frameInserts = scenes.map(
+          (scene, index) =>
+            ({
+              sequenceId,
+              description: scene.originalScript.extract,
+              orderIndex: index,
+              metadata: scene, // Store BasicScene object - will be enriched later
+              durationMs: Math.round(
+                (scene.metadata.durationSeconds || 3) * 1000
+              ),
+              thumbnailStatus: 'generating', // we're going to generate the thumbnail
+              videoStatus: autoGenerateMotion ? 'generating' : 'pending',
+            }) satisfies NewFrame
+        );
 
         // Bulk insert all frames at once
         const createdFrames = await frameService.bulkInsertFrames(frameInserts);
@@ -404,6 +415,11 @@ export const analyzeScriptWorkflow = createWorkflow(
               metadata: scene,
             });
           })
+        );
+
+        await updateSequenceAnalysisDurationMs(
+          sequenceId,
+          Date.now() - startTime
         );
         // Emit Phase 5 complete
         await emit('phase:complete', { phase: 5 });

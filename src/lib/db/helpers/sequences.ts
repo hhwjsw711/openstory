@@ -76,3 +76,13 @@ export async function updateSequenceStatus(
     .set({ status, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }
+
+export async function updateSequenceAnalysisDurationMs(
+  sequenceId: string,
+  durationMs: number
+) {
+  await getDb()
+    .update(sequences)
+    .set({ analysisDurationMs: durationMs, updatedAt: new Date() })
+    .where(eq(sequences.id, sequenceId));
+}
