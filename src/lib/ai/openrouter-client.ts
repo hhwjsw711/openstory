@@ -175,22 +175,43 @@ export async function* callOpenRouterStream(
 
   const decoder = new TextDecoder();
   let accumulated = '';
+  let buffer = '';
 
   try {
     while (true) {
       const { done, value } = await reader.read();
 
       if (done) {
+        if (buffer.trim()) {
+          const line = buffer.trim();
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data !== '[DONE]') {
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta?.content || '';
+                if (delta) accumulated += delta;
+              } catch (e) {
+                console.warn('[OpenRouter] Failed to parse final chunk:', e);
+              }
+            }
+          }
+        }
         yield { delta: '', accumulated, done: true };
         break;
       }
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+      buffer += chunk;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+
+        if (trimmedLine.startsWith('data: ')) {
+          const data = trimmedLine.slice(6);
 
           if (data === '[DONE]') {
             yield { delta: '', accumulated, done: true };
@@ -206,7 +227,7 @@ export async function* callOpenRouterStream(
               yield { delta, accumulated, done: false };
             }
           } catch {
-            // Skip invalid JSON chunks
+            // Skip invalid JSON chunks (wait for more data)
             continue;
           }
         }
