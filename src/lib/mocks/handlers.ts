@@ -133,7 +133,6 @@ export const handlers = [
       createdBy: 'mock-user',
       usageCount: 0,
       version: null,
-      parentId: null,
     };
 
     return HttpResponse.json({

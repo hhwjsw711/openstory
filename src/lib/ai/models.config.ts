@@ -111,7 +111,7 @@ export type AnalysisModelId = AnalysisModel['id'];
 /**
  * Get model by ID
  */
-export function getModelById(id: string): AnalysisModel | undefined {
+export function getAnalysisModelById(id: string): AnalysisModel | undefined {
   return SCRIPT_ANALYSIS_MODELS.find((model) => model.id === id);
 }
 
@@ -119,7 +119,7 @@ export function getModelById(id: string): AnalysisModel | undefined {
  * Get display name for a model
  */
 export function getModelDisplayName(modelId: string): string {
-  const model = getModelById(modelId);
+  const model = getAnalysisModelById(modelId);
   return model?.name ?? modelId;
 }
 

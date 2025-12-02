@@ -1,8 +1,35 @@
 import { getDb } from '#db-client';
-import { SequenceMetadata } from '@/lib/db/schema/sequences';
-import { eq } from 'drizzle-orm';
+import { canAccessTeam } from '@/lib/db/helpers/team-permissions';
+import {
+  Sequence,
+  SequenceMetadata,
+  SequenceStatus,
+} from '@/lib/db/schema/sequences';
+import { AuthenticationError, ValidationError } from '@/lib/errors';
+import { and, eq } from 'drizzle-orm';
 import { sequences } from '../schema';
 
+export async function getSequenceForUser({
+  sequenceId,
+  teamId,
+  userId,
+}: {
+  sequenceId: string;
+  teamId: string;
+  userId: string;
+}): Promise<Sequence> {
+  const canAccess = await canAccessTeam(userId, teamId);
+  if (!canAccess) {
+    throw new AuthenticationError('User does not have access to this team');
+  }
+  const sequence = await getDb().query.sequences.findFirst({
+    where: and(eq(sequences.id, sequenceId), eq(sequences.teamId, teamId)),
+  });
+  if (!sequence) {
+    throw new ValidationError('Sequence not found');
+  }
+  return sequence;
+}
 /**
  * Update sequence metadata fields without losing existing data
  * Uses read-merge-update pattern for partial JSONB updates
@@ -37,5 +64,15 @@ export async function updateSequenceMetadata(
       updatedAt: new Date(),
       ...otherFields,
     })
+    .where(eq(sequences.id, sequenceId));
+}
+
+export async function updateSequenceStatus(
+  sequenceId: string,
+  status: SequenceStatus
+) {
+  await getDb()
+    .update(sequences)
+    .set({ status, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       })
       .returning();
     // Handle ambiguous return type due to self-referencing styles table
-    const style = Array.isArray(result) ? result[0] : result.rows[0];
+    const style = result[0];
 
     return NextResponse.json(
       {

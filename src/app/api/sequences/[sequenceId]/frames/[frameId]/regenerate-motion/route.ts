@@ -53,8 +53,8 @@ export async function POST(
     await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
     // Check for thumbnail (required for motion generation)
-    const thumbnailPath = frameData.thumbnailPath;
-    if (!thumbnailPath) {
+    const thumbnailUrl = frameData.thumbnailUrl;
+    if (!thumbnailUrl) {
       return NextResponse.json(
         {
           success: false,
@@ -87,7 +87,7 @@ export async function POST(
       teamId: frameData.sequence.teamId,
       frameId,
       sequenceId: frameData.sequenceId,
-      thumbnailPath,
+      imageUrl: thumbnailUrl,
       prompt: promptToUse,
       model: modelToUse,
       duration: validatedBody.duration,

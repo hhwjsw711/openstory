@@ -366,7 +366,6 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),
-    parentId: null,
     usageCount: null,
     version: null,
     ...overrides,

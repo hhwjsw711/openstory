@@ -8,6 +8,7 @@ import {
   characterBibleEntrySchema,
   sceneSchema,
 } from '@/lib/ai/scene-analysis.schema';
+import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import type { Scene } from '@/lib/script';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
@@ -26,6 +27,7 @@ function getAllStyleNamesTuple(): [string, ...string[]] {
 
 export const generateVisualPromptsInputSchema = z.object({
   scenes: z.array(sceneSchema),
+  aspectRatio: aspectRatioSchema,
   characterBible: z.array(characterBibleEntrySchema),
   style: z.enum(getAllStyleNamesTuple()),
 });
@@ -72,6 +74,7 @@ export async function generateVisualPromptsTool(
 
     const scenes = await generateVisualPromptsForScenes(
       input.scenes,
+      input.aspectRatio,
       input.characterBible,
       style.config,
       onProgress

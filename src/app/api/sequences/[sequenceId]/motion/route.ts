@@ -12,10 +12,10 @@ import {
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { ValidationError } from '@/lib/errors';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { z } from 'zod';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
 
 // Request body schema
 const requestSchema = z.object({
@@ -88,7 +88,7 @@ export async function POST(
     for (const frame of framesWithThumbnails) {
       try {
         // TypeScript guard - we already filtered for frames with thumbnails
-        if (!frame.thumbnailPath) continue;
+        if (!frame.thumbnailUrl) continue;
 
         // Use description or empty string as fallback
         const prompt = frame.description || '';
@@ -99,7 +99,7 @@ export async function POST(
           teamId: membership.teamId,
           frameId: frame.id,
           sequenceId,
-          thumbnailPath: frame.thumbnailPath,
+          imageUrl: frame.thumbnailUrl,
           prompt,
           model: validatedData.model,
           duration: validatedData.duration,

@@ -47,7 +47,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Cinematic Drama'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -69,7 +68,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Neo-Noir Thriller'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -96,7 +94,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Wes Anderson Style'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -118,7 +115,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Documentary Realism'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -140,7 +136,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Sci-Fi Futuristic'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -162,7 +157,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Horror Gothic'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -184,7 +178,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Action Blockbuster'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -206,7 +199,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Romantic Comedy'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -232,7 +224,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Western Epic'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -254,7 +245,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Animation Studio'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
   {
@@ -286,7 +276,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     isTemplate: true,
     previewUrl: getStylePreviewUrl('Lo-Fi iPhone 7 Aesthetic Clean'),
     version: null,
-    parentId: null,
     usageCount: null,
   },
 ];

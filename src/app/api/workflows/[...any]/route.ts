@@ -3,6 +3,7 @@
  * Generates images using AI models and optionally updates frame thumbnails
  */
 
+import { analyzeScriptWorkflow } from '@/app/api/workflows/[...any]/analyze-script-workflow';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { generateStoryboardWorkflow } from '@/app/api/workflows/[...any]/storyboard-workflow';
@@ -14,6 +15,7 @@ export const { POST } = serveMany(
     storyboard: generateStoryboardWorkflow,
     image: generateImageWorkflow,
     motion: generateMotionWorkflow,
+    'analyze-script': analyzeScriptWorkflow,
   },
   {
     baseUrl: getQStashWebhookUrl(),

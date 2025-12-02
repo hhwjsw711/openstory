@@ -84,6 +84,7 @@ export async function POST(request: Request) {
           `[POST /api/sequences] Creating sequence for model ${modelId}:`,
           createParams
         );
+
         const sequence = await sequenceService.createSequence(createParams);
         console.log('[POST /api/sequences] Created sequence:', {
           id: sequence.id,

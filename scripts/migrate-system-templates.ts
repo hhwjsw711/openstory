@@ -98,7 +98,6 @@ async function migrateSystemTemplates() {
             isPublic: template.isPublic,
             isTemplate: template.isTemplate,
             version: template.version,
-            parentId: template.parentId,
             previewUrl: template.previewUrl,
             createdBy: null,
             updatedAt: new Date(),

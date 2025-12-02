@@ -3,13 +3,8 @@
  * Styles, characters, VFX, and audio assets for teams
  */
 
-import {
-  desc,
-  InferInsertModel,
-  InferSelectModel,
-  relations,
-} from 'drizzle-orm';
-import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
 import { teams } from './teams';
@@ -29,12 +24,7 @@ type StyleConfig = {
 /**
  * Styles library
  * Style Stacks - JSON configurations for consistent AI-generated content
- *
- * Note: TypeScript shows implicit 'any' warning due to self-referencing parentId field.
- * This is a known limitation with circular references in Drizzle ORM.
- * The type resolves correctly after export and doesn't affect runtime or query type inference.
  */
-// @ts-expect-error - Self-referencing table creates circular type dependency
 export const styles = sqliteTable(
   'styles',
   {
@@ -56,10 +46,6 @@ export const styles = sqliteTable(
     isPublic: integer('is_public', { mode: 'boolean' }).default(false),
     isTemplate: integer('is_template', { mode: 'boolean' }).default(false),
     version: integer().default(1),
-    // @ts-expect-error - Self-referencing field creates circular type dependency
-    parentId: text('parent_id').references(() => styles.id, {
-      onDelete: 'set null',
-    }),
     previewUrl: text('preview_url'),
     usageCount: integer('usage_count').default(0),
     createdAt: integer('created_at', { mode: 'timestamp' })
@@ -72,16 +58,7 @@ export const styles = sqliteTable(
       onDelete: 'set null',
     }),
   },
-  (table) => [
-    index('idx_styles_category').on(table.category),
-    index('idx_styles_created_at').on(desc(table.createdAt)),
-    index('idx_styles_is_public').on(table.isPublic),
-    index('idx_styles_is_template').on(table.isTemplate),
-    index('idx_styles_name').on(table.name),
-    index('idx_styles_parent_id').on(table.parentId),
-    index('idx_styles_team_id').on(table.teamId),
-    index('idx_styles_usage_count').on(desc(table.usageCount)),
-  ]
+  (table) => [index('idx_styles_team_id').on(table.teamId)]
 );
 
 /**
@@ -224,14 +201,6 @@ export const stylesRelations = relations(styles, ({ one, many }) => ({
   team: one(teams, {
     fields: [styles.teamId],
     references: [teams.id],
-  }),
-  style: one(styles, {
-    fields: [styles.parentId],
-    references: [styles.id],
-    relationName: 'styles_parentId_styles_id',
-  }),
-  styles: many(styles, {
-    relationName: 'styles_parentId_styles_id',
   }),
   user: one(user, {
     fields: [styles.createdBy],

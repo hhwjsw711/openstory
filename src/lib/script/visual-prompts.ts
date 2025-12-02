@@ -21,6 +21,7 @@ import {
   type Scene,
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { VISUAL_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
@@ -64,6 +65,7 @@ const visualPromptGenerationResultSchema = z.object({
  */
 export async function generateVisualPromptsForScenes(
   scenes: Scene[],
+  aspectRatio: AspectRatio,
   characterBible: CharacterBibleEntry[],
   styleConfig: DirectorDnaConfig,
   onProgress?: ProgressCallback,
@@ -91,6 +93,10 @@ ${characterBibleJson}
 <DIRECTOR_STYLE>
 ${styleConfigJson}
 </DIRECTOR_STYLE>
+
+<ASPECT_RATIO>
+${aspectRatio}
+</ASPECT_RATIO>
 
 For each scene:
 1. Generate 3 camera angle variants (A1, A2, A3)

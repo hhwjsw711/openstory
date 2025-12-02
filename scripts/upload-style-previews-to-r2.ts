@@ -78,19 +78,6 @@ type ImageInfo = {
 };
 
 /**
- * Sanitize a style name for use as a folder name
- */
-function sanitizeFolderName(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-/**
  * Downsample image to 512x512 using Bun's native image APIs
  * Returns a Buffer of the resized JPEG
  */
@@ -116,7 +103,7 @@ async function downsampleImage(inputPath: string): Promise<Buffer> {
       .toBuffer();
 
     return resized;
-  } catch (error) {
+  } catch {
     console.error('❌ Sharp not installed. Install it with: bun add sharp');
     console.error('   Falling back to using original image without resizing.');
     return Buffer.from(imageData);
@@ -195,7 +182,9 @@ async function uploadImage(image: ImageInfo): Promise<string> {
   try {
     await $`bunx wrangler r2 object put ${r2Key} --file=${tempFile} --remote`.quiet();
   } catch (error) {
-    throw new Error(`Failed to upload ${image.r2Path}: ${error}`);
+    throw new Error(
+      `Failed to upload ${image.r2Path}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // Return deterministic public URL
