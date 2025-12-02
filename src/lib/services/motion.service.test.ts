@@ -209,49 +209,6 @@ describe('Motion Service', () => {
         })
       );
     });
-
-    it('should generate motion with Runway Gen-3 Turbo model', async () => {
-      const mockVideoUrl = 'https://example.com/runway-gen3-video.mp4';
-
-      mockSubscribe.mockResolvedValue({
-        data: {
-          video: {
-            url: mockVideoUrl,
-          },
-        },
-        requestId: 'test-runway-request-id',
-      });
-
-      const result = await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: 'Cinematic zoom out',
-        model: 'runway_gen3_turbo',
-        duration: 5,
-        aspectRatio: '9:16',
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.videoUrl).toBe(mockVideoUrl);
-      expect(result.metadata?.model).toBe(
-        'fal-ai/runway-gen3/turbo/image-to-video'
-      );
-      expect(result.metadata?.provider).toBe('runway');
-
-      expect(mockSubscribe).toHaveBeenCalledWith(
-        'fal-ai/runway-gen3/turbo/image-to-video',
-        expect.objectContaining({
-          input: expect.objectContaining({
-            prompt_text: 'Cinematic zoom out',
-            prompt_image: 'https://example.com/image.jpg',
-            duration: '5', // Should be string
-            ratio: '9:16',
-            seed: expect.any(Number),
-          }),
-          logs: true,
-          pollInterval: 5000,
-        })
-      );
-    });
   });
 
   describe('Model configurations', () => {
@@ -324,27 +281,6 @@ describe('Motion Service', () => {
           unit: 'video',
         },
         performance: {
-          quality: 'best',
-        },
-      });
-
-      expect(IMAGE_TO_VIDEO_MODELS.runway_gen3_turbo).toMatchObject({
-        id: 'fal-ai/runway-gen3/turbo/image-to-video',
-        name: 'Runway Gen-3 Turbo',
-        provider: 'runway',
-        capabilities: {
-          supportsPrompt: true,
-          supportsAudio: false,
-          maxDuration: 10,
-          defaultDuration: 5,
-          requiresStringDuration: true,
-        },
-        pricing: {
-          estimatedCost: 0.5,
-          unit: 'video',
-        },
-        performance: {
-          estimatedGenerationTime: 10,
           quality: 'best',
         },
       });
