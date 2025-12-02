@@ -4,3 +4,4 @@ export { EvalMatrix } from './eval-matrix';
 export { EvalSequenceRow } from './eval-sequence-row';
 export { EvalSequenceMetadata } from './eval-sequence-metadata';
 export { EvalSceneCell } from './eval-scene-cell';
+export { EvalCellDialog } from './eval-cell-dialog';

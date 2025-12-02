@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { VideoIcon } from 'lucide-react';
 
-export type ViewMode = 'prompts' | 'images';
+export type ViewMode = 'script' | 'prompts' | 'images';
 
 export type FilterState = {
   search: string;
@@ -117,10 +117,7 @@ export const EvalView: React.FC = () => {
           </p>
         </Card>
       ) : (
-        <EvalMatrix
-          sequences={filteredAndSorted}
-          showImages={viewMode === 'images'}
-        />
+        <EvalMatrix sequences={filteredAndSorted} viewMode={viewMode} />
       )}
     </div>
   );

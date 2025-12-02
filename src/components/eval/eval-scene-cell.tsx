@@ -1,40 +1,63 @@
 'use client';
 
-import type React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { Frame } from '@/types/database';
+import Image from 'next/image';
+import type React from 'react';
+import { EvalCellDialog } from './eval-cell-dialog';
+import type { ViewMode } from './eval-view';
 
 /**
  * Get visual prompt from frame - client-safe utility
  * Prioritizes user-updated prompt over AI-generated prompt
  */
-function getVisualPrompt(frame: Frame): string | null {
-  // Prioritize user-updated prompt
+export function getVisualPrompt(frame: Frame): string | null {
   if (frame.imagePrompt) {
     return frame.imagePrompt;
   }
-  // Fall back to AI-generated prompt from scene analysis
   const scene = frame.metadata;
   return scene?.prompts?.visual?.fullPrompt || null;
 }
 
+/**
+ * Get original script extract from frame
+ */
+export function getSceneScript(frame: Frame): string | null {
+  const scene = frame.metadata;
+  return scene?.originalScript?.extract || null;
+}
+
 type EvalSceneCellProps = {
   frame: Frame | undefined;
-  showImages: boolean;
+  viewMode: ViewMode;
   sceneNumber: number;
+  sequenceTitle: string;
+  dialogOpen: boolean;
+  onDialogOpenChange: (open: boolean) => void;
+  onNavigateLeft?: () => void;
+  onNavigateRight?: () => void;
+  onNavigateUp?: () => void;
+  onNavigateDown?: () => void;
 };
 
 export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
   frame,
-  showImages,
+  viewMode,
   sceneNumber,
+  sequenceTitle,
+  dialogOpen,
+  onDialogOpenChange,
+  onNavigateLeft,
+  onNavigateRight,
+  onNavigateUp,
+  onNavigateDown,
 }) => {
   // Empty cell for missing frames
   if (!frame) {
     return (
-      <div className="border-b p-2 flex items-center justify-center">
-        <div className="w-full h-32 border-2 border-dashed border-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
+      <div className="border-b p-2 flex items-center justify-center h-full">
+        <div className="w-full h-full border-2 border-dashed border-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
           No scene {sceneNumber}
         </div>
       </div>
@@ -42,55 +65,130 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
   }
 
   const prompt = getVisualPrompt(frame);
+  const script = getSceneScript(frame);
 
-  if (showImages) {
-    // Images view
+  const handleClick = () => onDialogOpenChange(true);
+
+  // Images view
+  if (viewMode === 'images') {
     if (!frame.thumbnailUrl) {
       return (
-        <div className="border-b p-2">
-          <div className="w-full h-32 flex items-center justify-center">
-            {frame.thumbnailStatus === 'generating' ? (
-              <Skeleton className="w-full h-32" />
-            ) : (
-              <div className="text-xs text-muted-foreground text-center">
-                No image
-              </div>
-            )}
-          </div>
+        <div className="border-b p-2 h-full flex items-center justify-center">
+          {frame.thumbnailStatus === 'generating' ? (
+            <Skeleton className="w-full h-full" />
+          ) : (
+            <div className="text-xs text-muted-foreground text-center">
+              No image
+            </div>
+          )}
         </div>
       );
     }
 
     return (
-      <div className="border-b p-2">
-        <img
-          src={frame.thumbnailUrl}
-          alt={`Scene ${sceneNumber}`}
-          className="w-full h-32 object-cover rounded-md"
-          loading="lazy"
+      <>
+        <div
+          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
+          onClick={handleClick}
+        >
+          <div className="flex-1 flex items-center min-h-0">
+            <Image
+              src={frame.thumbnailUrl}
+              alt={`Scene ${sceneNumber}`}
+              className="w-full h-full object-cover rounded-md"
+              loading="lazy"
+              width={1000}
+              height={1000}
+            />
+          </div>
+        </div>
+        <EvalCellDialog
+          open={dialogOpen}
+          onOpenChange={onDialogOpenChange}
+          frame={frame}
+          sceneNumber={sceneNumber}
+          sequenceTitle={sequenceTitle}
+          initialViewMode={viewMode}
+          onNavigateLeft={onNavigateLeft}
+          onNavigateRight={onNavigateRight}
+          onNavigateUp={onNavigateUp}
+          onNavigateDown={onNavigateDown}
         />
-      </div>
+      </>
     );
   }
 
-  // Prompts view
+  // Script view
+  if (viewMode === 'script') {
+    if (!script) {
+      return (
+        <div className="border-b p-2 h-full flex items-center justify-center">
+          <div className="text-xs text-muted-foreground">No script</div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div
+          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
+          onClick={handleClick}
+        >
+          <ScrollArea className="flex-1 w-full min-h-0">
+            <p className="text-xs leading-relaxed whitespace-pre-wrap pr-2">
+              {script}
+            </p>
+          </ScrollArea>
+        </div>
+        <EvalCellDialog
+          open={dialogOpen}
+          onOpenChange={onDialogOpenChange}
+          frame={frame}
+          sceneNumber={sceneNumber}
+          sequenceTitle={sequenceTitle}
+          initialViewMode={viewMode}
+          onNavigateLeft={onNavigateLeft}
+          onNavigateRight={onNavigateRight}
+          onNavigateUp={onNavigateUp}
+          onNavigateDown={onNavigateDown}
+        />
+      </>
+    );
+  }
+
+  // Prompts view (default)
   if (!prompt) {
     return (
-      <div className="border-b p-2">
-        <div className="w-full h-32 flex items-center justify-center text-xs text-muted-foreground">
-          No prompt
-        </div>
+      <div className="border-b p-2 h-full flex items-center justify-center">
+        <div className="text-xs text-muted-foreground">No prompt</div>
       </div>
     );
   }
 
   return (
-    <div className="border-b p-2">
-      <ScrollArea className="h-32 w-full">
-        <p className="text-xs leading-relaxed whitespace-pre-wrap pr-2">
-          {prompt}
-        </p>
-      </ScrollArea>
-    </div>
+    <>
+      <div
+        className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0"
+        onClick={handleClick}
+      >
+        <ScrollArea className="flex-1 w-full min-h-0">
+          <p className="text-xs leading-relaxed whitespace-pre-wrap pr-2">
+            {prompt}
+          </p>
+        </ScrollArea>
+      </div>
+      <EvalCellDialog
+        open={dialogOpen}
+        onOpenChange={onDialogOpenChange}
+        frame={frame}
+        sceneNumber={sceneNumber}
+        sequenceTitle={sequenceTitle}
+        initialViewMode={viewMode}
+        onNavigateLeft={onNavigateLeft}
+        onNavigateRight={onNavigateRight}
+        onNavigateUp={onNavigateUp}
+        onNavigateDown={onNavigateDown}
+      />
+    </>
   );
 };

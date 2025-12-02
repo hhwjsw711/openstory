@@ -9,7 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SCRIPT_ANALYSIS_MODELS } from '@/lib/ai/models.config';
 import { IMAGE_MODELS } from '@/lib/ai/models';
-import { ImageIcon, TextIcon, X, ArrowUpDown, Plus } from 'lucide-react';
+import {
+  ImageIcon,
+  TextIcon,
+  FileTextIcon,
+  X,
+  ArrowUpDown,
+  Plus,
+} from 'lucide-react';
 import type { ViewMode, FilterState, SortCriteria } from './eval-view';
 
 type EvalToolbarProps = {
@@ -228,6 +235,10 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
           }
           variant="outline"
         >
+          <ToggleGroupItem value="script" aria-label="Show script">
+            <FileTextIcon className="h-4 w-4 mr-2" />
+            Script
+          </ToggleGroupItem>
           <ToggleGroupItem value="prompts" aria-label="Show prompts">
             <TextIcon className="h-4 w-4 mr-2" />
             Prompts

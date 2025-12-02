@@ -21,7 +21,7 @@ export const EvalSequenceMetadata: React.FC<EvalSequenceMetadataProps> = ({
   const imageModel = getImageModelById(sequence.imageModel);
 
   return (
-    <div className="sticky left-0 z-10 bg-background border-r border-b p-3 flex flex-col gap-2">
+    <div className="h-full border-r border-b p-3 flex flex-col gap-2">
       {/* Title */}
       <h3
         className="font-medium text-sm line-clamp-2"
