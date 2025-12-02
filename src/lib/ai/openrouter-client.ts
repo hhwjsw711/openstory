@@ -296,6 +296,8 @@ export function extractJSON<T>(content: string): T | null {
       }
     }
 
+    console.error('Failed to parse JSON from content:', content);
+
     return null;
   }
 }
