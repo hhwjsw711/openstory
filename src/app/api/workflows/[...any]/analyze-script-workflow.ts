@@ -49,6 +49,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       analysisModelId,
       imageModel,
       videoModel,
+      autoGenerateMotion = false,
     } = input;
 
     // Helper to safely emit events (no-op if realtime unavailable)
@@ -486,8 +487,8 @@ export const analyzeScriptWorkflow = createWorkflow(
               `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
             );
           }
-          if (!videoModel) {
-            // No video model selected, skip motion generation
+          if (!autoGenerateMotion || !videoModel) {
+            // Auto-generate motion is disabled or no video model selected, skip motion generation
             return;
           }
           // Check if motion prompt exists

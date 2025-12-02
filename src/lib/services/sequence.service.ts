@@ -9,6 +9,7 @@
  */
 
 import { getDb } from '#db-client';
+import { AnalysisModelId } from '@/lib/ai/models.config';
 import {
   AspectRatio,
   DEFAULT_ASPECT_RATIO,
@@ -16,20 +17,17 @@ import {
 import type { NewSequence, Sequence, SequenceStatus } from '@/lib/db/schema';
 import { sequences } from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
+import { CreateSequenceInput } from '@/lib/schemas/sequence.schemas';
 import { desc, eq } from 'drizzle-orm';
 
 // Type definitions
-export interface CreateSequenceParams {
-  teamId: string;
+export type CreateSequenceParams = Omit<
+  Required<CreateSequenceInput>,
+  'analysisModels' | 'analysisDurationMs' | 'metadata'
+> & {
+  analysisModel: AnalysisModelId;
   userId: string;
-  title: string;
-  script: string;
-  styleId: string;
-  analysisModel: string;
-  aspectRatio?: AspectRatio; // Optional - defaults to '16:9' in database
-  imageModel?: string; // Model key for image generation (e.g., 'nano_banana_pro')
-  videoModel?: string; // Model key for video generation (e.g., 'kling_v2_5_turbo_pro')
-}
+};
 
 export interface UpdateSequenceParams {
   id: string;

@@ -24,10 +24,11 @@ const validVideoModelKeys = Object.keys(
 ) as readonly string[];
 
 export const createSequenceSchema = createInsertSchema(sequences, {
-  title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
-  script: z.string().min(10).max(10000), // Override to make it required with business rules
+  title: (schema) => schema.min(1).optional(), // Optional - defaults to 'Untitled Sequence' in hook
+  script: z.string().min(10), // Override to make it required with business rules
   teamId: ulidSchemaOptional, // Optional - will use user's default team if not provided
   aspectRatio: aspectRatioSchema.optional(), // Optional - defaults to '16:9' in database
+  styleId: z.string().optional(), // Optional - can be null
 })
   .omit({
     id: true,
@@ -66,6 +67,8 @@ export const createSequenceSchema = createInsertSchema(sequences, {
         message: 'Invalid video model',
       })
       .default(DEFAULT_VIDEO_MODEL),
+    // Auto-generate motion flag (UI-only, not stored in DB)
+    autoGenerateMotion: z.boolean().default(false).optional(),
   });
 
 export const updateSequenceSchema = createUpdateSchema(sequences, {

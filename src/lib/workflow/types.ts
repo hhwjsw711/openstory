@@ -65,6 +65,7 @@ export interface StoryboardWorkflowInput
     aiProvider?: 'openai' | 'anthropic' | 'openrouter';
     regenerateAll?: boolean;
   };
+  autoGenerateMotion?: boolean;
 }
 
 /**
@@ -79,6 +80,7 @@ export interface AnalyzeScriptWorkflowInput
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
+  autoGenerateMotion?: boolean;
 }
 
 /**

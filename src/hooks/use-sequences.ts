@@ -1,5 +1,8 @@
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
-import { UpdateSequenceInput } from '@/lib/schemas/sequence.schemas';
+import {
+  CreateSequenceInput,
+  UpdateSequenceInput,
+} from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -86,16 +89,7 @@ export function useCreateSequence() {
   return useMutation<
     { data: Sequence[]; message?: string },
     Error,
-    {
-      script: string;
-      styleId: string | null;
-      title?: string;
-      analysisModels?: string[];
-      teamId?: string;
-      aspectRatio?: string;
-      imageModel?: string;
-      videoModel?: string;
-    }
+    CreateSequenceInput
   >({
     mutationFn: async (input) => {
       const response = await fetch('/api/sequences', {
@@ -112,6 +106,7 @@ export function useCreateSequence() {
           aspectRatio: input.aspectRatio,
           imageModel: input.imageModel,
           videoModel: input.videoModel,
+          autoGenerateMotion: input.autoGenerateMotion,
         }),
       });
 

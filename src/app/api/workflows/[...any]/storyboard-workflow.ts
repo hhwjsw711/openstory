@@ -156,6 +156,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         analysisModelId,
         imageModel,
         videoModel,
+        autoGenerateMotion: input.autoGenerateMotion ?? false,
       },
       retries: 3,
       retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s

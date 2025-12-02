@@ -75,6 +75,7 @@ export const ScriptView: FC<{
   const [motionModel, setMotionModel] = useState<ImageToVideoModel>(
     safeImageToVideoModel(sequence?.videoModel, DEFAULT_VIDEO_MODEL)
   );
+  const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(false);
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -123,13 +124,15 @@ export const ScriptView: FC<{
     } else {
       createSequenceMutation.mutate(
         {
+          title: undefined, // Will default to 'Untitled Sequence' in hook
           teamId,
           script: script || '',
-          styleId: styleId,
+          styleId: styleId || undefined,
           aspectRatio,
           analysisModels,
           imageModel,
           videoModel: motionModel,
+          autoGenerateMotion,
         },
         {
           onSuccess: (result) => {
@@ -163,10 +166,12 @@ export const ScriptView: FC<{
             analysisModels={analysisModels}
             imageModel={imageModel}
             motionModel={motionModel}
+            autoGenerateMotion={autoGenerateMotion}
             onAspectRatioChange={setAspectRatio}
             onAnalysisModelsChange={setAnalysisModels}
             onImageModelChange={setImageModel}
             onMotionModelChange={setMotionModel}
+            onAutoGenerateMotionChange={setAutoGenerateMotion}
             disabled={loading}
             singleSelectAnalysis={!!sequence?.id}
           />
