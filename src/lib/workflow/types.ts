@@ -56,8 +56,7 @@ export interface VideoWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Storyboard generation workflow input
  */
-export interface StoryboardWorkflowInput
-  extends Partial<SequenceWorkflowContext> {
+export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
   options?: {
     framesPerScene?: number;
     generateThumbnails?: boolean;
