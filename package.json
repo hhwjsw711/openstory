@@ -102,7 +102,7 @@
     "drizzle-zod": "^0.8.3",
     "lucide-react": "^0.554.0",
     "mcp-handler": "^1.0.4",
-    "next": "15.5.2",
+    "next": "15.5.7",
     "openai": "^6.9.1",
     "partial-json": "^0.1.7",
     "postcss": "^8.5.6",
