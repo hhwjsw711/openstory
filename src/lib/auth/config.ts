@@ -112,8 +112,6 @@ export function getAuth() {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
         enabled: true,
-        // Redirect URI required for oAuthProxy to work on preview branches
-        redirectURI: `${PRODUCTION_DEPLOYMENT_APP_URL}/api/auth/callback/google`,
         // Sign-up enabled - access code validation happens after auth via activation flow
       },
     },
@@ -128,10 +126,6 @@ export function getAuth() {
         productionURL: PRODUCTION_DEPLOYMENT_APP_URL,
       }),
     ],
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: '.velro.ai',
-    },
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
     user: {
