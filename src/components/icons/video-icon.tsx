@@ -18,7 +18,8 @@ const videoIconVariants = cva('text-current', {
 });
 
 export interface VideoIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof videoIconVariants> {}
 
 export const VideoIcon: React.FC<VideoIconProps> = ({

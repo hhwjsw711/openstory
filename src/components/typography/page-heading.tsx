@@ -25,7 +25,8 @@ const skeletonSizes = {
 } as const;
 
 export interface PageHeadingProps
-  extends React.HTMLAttributes<HTMLHeadingElement>,
+  extends
+    React.HTMLAttributes<HTMLHeadingElement>,
     VariantProps<typeof pageHeadingVariants> {
   as?: 'h1' | 'h2' | 'h3';
 }

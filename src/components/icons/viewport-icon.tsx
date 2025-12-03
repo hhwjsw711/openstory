@@ -18,7 +18,8 @@ const viewportIconVariants = cva('text-current', {
 });
 
 export interface ViewportIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof viewportIconVariants> {}
 
 export const ViewportIcon: React.FC<ViewportIconProps> = ({

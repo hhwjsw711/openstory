@@ -134,9 +134,8 @@ export const generateMotionWorkflow = createWorkflow(
           });
         }
 
-        const { uploadVideoToStorage } = await import(
-          '@/lib/services/video-storage.service'
-        );
+        const { uploadVideoToStorage } =
+          await import('@/lib/services/video-storage.service');
 
         const result = await uploadVideoToStorage({
           videoUrl: videoResult.videoUrl,

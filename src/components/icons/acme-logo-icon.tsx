@@ -18,7 +18,8 @@ const acmeLogoIconVariants = cva('text-current', {
 });
 
 export interface AcmeLogoIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof acmeLogoIconVariants> {}
 
 export const AcmeLogoIcon: React.FC<AcmeLogoIconProps> = ({

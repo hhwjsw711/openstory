@@ -16,7 +16,8 @@ const sectionHeadingVariants = cva('font-semibold', {
 });
 
 export interface SectionHeadingProps
-  extends React.HTMLAttributes<HTMLHeadingElement>,
+  extends
+    React.HTMLAttributes<HTMLHeadingElement>,
     VariantProps<typeof sectionHeadingVariants> {
   as?: 'h2' | 'h3' | 'h4';
 }

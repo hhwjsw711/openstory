@@ -18,7 +18,8 @@ const rightArrowIconVariants = cva('text-current', {
 });
 
 export interface RightArrowIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof rightArrowIconVariants> {}
 
 export const RightArrowIcon: React.FC<RightArrowIconProps> = ({

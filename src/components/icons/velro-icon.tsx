@@ -18,7 +18,8 @@ const velroIconVariants = cva('', {
 });
 
 export interface VelroIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof velroIconVariants> {}
 
 export const VelroIcon: React.FC<VelroIconProps> = ({

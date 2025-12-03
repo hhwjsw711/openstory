@@ -27,7 +27,8 @@ const pageDescriptionVariants = cva('text-muted-foreground', {
 });
 
 export interface PageDescriptionProps
-  extends React.HTMLAttributes<HTMLParagraphElement>,
+  extends
+    React.HTMLAttributes<HTMLParagraphElement>,
     VariantProps<typeof pageDescriptionVariants> {}
 
 export const PageDescription: React.FC<PageDescriptionProps> = ({

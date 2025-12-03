@@ -70,8 +70,7 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
 /**
  * Analyze scenes workflow input
  */
-export interface AnalyzeScriptWorkflowInput
-  extends Partial<SequenceWorkflowContext> {
+export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
   // Required inputs
   script: string;
   aspectRatio: AspectRatio;
@@ -99,8 +98,7 @@ export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Batch motion generation workflow input
  */
-export interface BatchMotionWorkflowInput
-  extends Partial<SequenceWorkflowContext> {
+export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContext> {
   frameIds?: string[]; // Optional: specific frames to process
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;

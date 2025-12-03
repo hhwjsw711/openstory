@@ -1,8 +1,7 @@
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface HeroSectionProps
-  extends React.HTMLAttributes<HTMLDivElement> {}
+export interface HeroSectionProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   className,

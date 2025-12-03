@@ -306,9 +306,8 @@ export class FrameService {
       return frame;
     }
 
-    const { getPublicUrl, STORAGE_BUCKETS } = await import(
-      '@/lib/db/helpers/storage'
-    );
+    const { getPublicUrl, STORAGE_BUCKETS } =
+      await import('@/lib/db/helpers/storage');
 
     // Generate public URL for video if path exists but URL doesn't
     let videoUrl = frame.videoUrl;
