@@ -312,6 +312,14 @@ export const IMAGE_MODELS = {
     description: 'High detail rendering',
     maxPromptLength: 2000, // ~512 tokens
   },
+  seedream_v4_5: {
+    id: 'fal-ai/bytedance/seedream/v4.5/text-to-image' as const,
+    name: 'Seedream 4.5',
+    provider: 'ByteDance',
+    tier: 'premium',
+    description: 'Unified generation and editing, high resolution up to 4K',
+    maxPromptLength: 2000, // ~512 tokens
+  },
   letzai: {
     id: 'letzai/image' as const,
     name: 'LetzAI',
