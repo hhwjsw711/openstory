@@ -2,8 +2,15 @@
  * Type definitions for QStash Workflows
  */
 
-import type { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import type {
+  IMAGE_MODELS,
+  IMAGE_TO_VIDEO_MODELS,
+  ImageToVideoModel,
+  TextToImageModel,
+} from '@/lib/ai/models';
+import { AnalysisModelId } from '@/lib/ai/models.config';
 import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
+import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
 
 /**
@@ -15,10 +22,13 @@ export interface UserWorkflowContext {
   teamId: string;
 }
 
+export interface SequenceWorkflowContext extends UserWorkflowContext {
+  sequenceId: string;
+}
 /**
  * Image generation workflow input
  */
-export interface ImageWorkflowInput extends UserWorkflowContext {
+export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
   prompt: string;
   style?: Json;
   model?: keyof typeof IMAGE_MODELS;
@@ -28,13 +38,12 @@ export interface ImageWorkflowInput extends UserWorkflowContext {
   numImages?: number;
   seed?: number;
   frameId?: string; // Optional: update frame thumbnail
-  sequenceId?: string;
 }
 
 /**
  * Video generation workflow input
  */
-export interface VideoWorkflowInput extends UserWorkflowContext {
+export interface VideoWorkflowInput extends Partial<SequenceWorkflowContext> {
   prompt?: string;
   imageUrl?: string; // For image-to-video
   imageData?: string; // Base64 encoded
@@ -47,8 +56,7 @@ export interface VideoWorkflowInput extends UserWorkflowContext {
 /**
  * Storyboard generation workflow input
  */
-export interface StoryboardWorkflowInput extends UserWorkflowContext {
-  sequenceId: string;
+export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
   options?: {
     framesPerScene?: number;
     generateThumbnails?: boolean;
@@ -56,15 +64,29 @@ export interface StoryboardWorkflowInput extends UserWorkflowContext {
     aiProvider?: 'openai' | 'anthropic' | 'openrouter';
     regenerateAll?: boolean;
   };
+  autoGenerateMotion?: boolean;
+}
+
+/**
+ * Analyze scenes workflow input
+ */
+export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
+  // Required inputs
+  script: string;
+  aspectRatio: AspectRatio;
+  styleConfig: DirectorDnaConfig;
+  analysisModelId: AnalysisModelId;
+  imageModel?: TextToImageModel;
+  videoModel?: ImageToVideoModel;
+  autoGenerateMotion?: boolean;
 }
 
 /**
  * Motion generation workflow input
  */
-export interface MotionWorkflowInput extends UserWorkflowContext {
-  frameId: string;
-  sequenceId: string;
-  thumbnailPath: string;
+export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
+  frameId?: string;
+  imageUrl: string;
   prompt: string;
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
@@ -76,8 +98,7 @@ export interface MotionWorkflowInput extends UserWorkflowContext {
 /**
  * Batch motion generation workflow input
  */
-export interface BatchMotionWorkflowInput extends UserWorkflowContext {
-  sequenceId: string;
+export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContext> {
   frameIds?: string[]; // Optional: specific frames to process
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
@@ -88,7 +109,7 @@ export interface BatchMotionWorkflowInput extends UserWorkflowContext {
 /**
  * Script analysis workflow input
  */
-export interface ScriptWorkflowInput extends UserWorkflowContext {
+export interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
   script: string;
   language?: string;
   genre?: string;
@@ -120,15 +141,13 @@ export interface FrameGenerationResult {
  * Workflow result types
  */
 export interface ImageWorkflowResult {
-  thumbnailPath: string;
+  imageUrl: string;
   frameId?: string;
   sequenceId?: string;
 }
 
 export interface MotionWorkflowResult {
-  frameId: string;
   videoUrl: string;
-  thumbnailUrl?: string;
   duration?: number;
 }
 

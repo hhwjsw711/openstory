@@ -8,7 +8,6 @@ import {
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
-import { validateWorkflowAuth } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
@@ -19,19 +18,11 @@ export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Get realtime channel for streaming progress (if available)
-    let channel: ReturnType<typeof getGenerationChannel> | null = null;
-    if (input.sequenceId) {
-      try {
-        channel = getGenerationChannel(input.sequenceId);
-      } catch {
-        // Realtime not available - continue without streaming
-      }
-    }
-
     // Helper to safely emit events
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emit = async (event: string, data: any) => {
+      if (!input.sequenceId) return;
+      const channel = getGenerationChannel(input.sequenceId);
       if (!channel) return;
       try {
         await channel.emit(
@@ -47,9 +38,6 @@ export const generateImageWorkflow = createWorkflow(
     const generationParams: ImageGenerationParams = await context.run(
       'set-generating-status',
       async () => {
-        // Validate authentication
-        validateWorkflowAuth(input);
-
         // Validate required fields
         if (!input.prompt || input.prompt.trim().length === 0) {
           throw new WorkflowValidationError(
@@ -101,56 +89,62 @@ export const generateImageWorkflow = createWorkflow(
       return await generateImageWithProvider(generationParams);
     });
 
-    const storageResult = await context.run('upload-to-storage', async () => {
-      if (
-        !input.frameId ||
-        !input.sequenceId ||
-        !input.teamId ||
-        !imageResult.imageUrls[0]
-      ) {
-        throw new Error('Missing required IDs for storage upload', {
-          cause: JSON.stringify(imageResult),
+    let imageUrl: string = imageResult.imageUrls[0];
+
+    if (input.frameId) {
+      await context.run('upload-to-storage', async () => {
+        if (
+          !input.frameId ||
+          !input.sequenceId ||
+          !input.teamId ||
+          !imageResult.imageUrls[0]
+        ) {
+          throw new Error('Missing required IDs for storage upload', {
+            cause: JSON.stringify(imageResult),
+          });
+        }
+
+        const result = await uploadImageToStorage({
+          imageUrl: imageResult.imageUrls[0],
+          teamId: input.teamId,
+          sequenceId: input.sequenceId,
+          frameId: input.frameId,
         });
-      }
 
-      const result = await uploadImageToStorage({
-        imageUrl: imageResult.imageUrls[0],
-        teamId: input.teamId,
-        sequenceId: input.sequenceId,
-        frameId: input.frameId,
+        if (!result.url) {
+          throw new Error('Failed to upload image to storage');
+        }
+
+        imageUrl = result.url;
+
+        await updateFrame(input.frameId, {
+          thumbnailPath: result.path || null, // Store R2 path (permanent)
+          thumbnailUrl: result.url, // Store public URL (permanent, not signed)
+          thumbnailStatus: 'completed',
+          thumbnailGeneratedAt: new Date(),
+          thumbnailError: null,
+        });
+
+        // Emit completion progress
+        await emit('image:progress', {
+          frameId: input.frameId,
+          status: 'completed',
+          thumbnailUrl: result.url,
+        });
+
+        console.log(
+          '[ImageWorkflow]',
+          `Image uploaded to storage: ${result.path}`
+        );
+        return { url: result.url, path: result.path };
       });
-
-      if (!result.url) {
-        throw new Error('Failed to upload image to storage');
-      }
-
-      await updateFrame(input.frameId, {
-        thumbnailPath: result.path || null, // Store R2 path (permanent)
-        thumbnailUrl: result.url, // Store public URL (permanent, not signed)
-        thumbnailStatus: 'completed',
-        thumbnailGeneratedAt: new Date(),
-        thumbnailError: null,
-      });
-
-      // Emit completion progress
-      await emit('image:progress', {
-        frameId: input.frameId,
-        status: 'completed',
-        thumbnailUrl: result.url,
-      });
-
-      console.log(
-        '[ImageWorkflow]',
-        `Image uploaded to storage: ${result.path}`
-      );
-      return { url: result.url, path: result.path };
-    });
+    }
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
     const result: ImageWorkflowResult = {
-      thumbnailPath: storageResult.path,
+      imageUrl: imageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };

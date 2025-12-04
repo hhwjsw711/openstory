@@ -77,13 +77,10 @@ export function useFramesBySequence(
             // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
             // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
             const isGeneratingImages = frames.some(
-              (f: Frame) =>
-                f.thumbnailStatus === 'pending' ||
-                f.thumbnailStatus === 'generating'
+              (f: Frame) => f.thumbnailStatus === 'generating'
             );
             const isGeneratingVideos = frames.some(
-              (f: Frame) =>
-                f.videoStatus === 'pending' || f.videoStatus === 'generating'
+              (f: Frame) => f.videoStatus === 'generating'
             );
 
             // Phases 6-7: Image/video generation (rapid parallel updates)

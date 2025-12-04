@@ -35,7 +35,8 @@ const iconContainerVariants = cva(
 );
 
 export interface EmptyStateProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof emptyStateVariants> {
   icon: React.ReactNode;
   title: string;

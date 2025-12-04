@@ -6,17 +6,13 @@
 
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
-import {
-  mockCreateFalClient,
-  mockSubscribe,
-} from './__mocks__/fal-client.mock';
+import { mockSubscribe } from './__mocks__/fal-client.mock';
 import { generateMotionForFrame } from './motion.service';
 
 describe('Motion Service', () => {
   beforeEach(() => {
     // Clear mocks before each test
     mockSubscribe.mockClear();
-    mockCreateFalClient.mockClear();
   });
 
   describe('generateMotionForFrame', () => {
@@ -138,15 +134,13 @@ describe('Motion Service', () => {
     it('should handle generation failure', async () => {
       mockSubscribe.mockRejectedValue(new Error('API error'));
 
-      const result = await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: '', // Required even though SVD doesn't use it
-        model: 'svd_lcm',
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('API error');
-      expect(result.videoUrl).toBeUndefined();
+      await expect(
+        generateMotionForFrame({
+          imageUrl: 'https://example.com/image.jpg',
+          prompt: '', // Required even though SVD doesn't use it
+          model: 'svd_lcm',
+        })
+      ).rejects.toThrow('API error');
     });
 
     it('should handle missing video URL in response', async () => {
@@ -158,14 +152,13 @@ describe('Motion Service', () => {
         requestId: 'test-error-id',
       });
 
-      const result = await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: '', // Required even though SVD doesn't use it
-        model: 'svd_lcm',
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('No video URL returned');
+      await expect(
+        generateMotionForFrame({
+          imageUrl: 'https://example.com/image.jpg',
+          prompt: '', // Required even though SVD doesn't use it
+          model: 'svd_lcm',
+        })
+      ).rejects.toThrow('No video URL returned from motion generation');
     });
 
     it('should generate motion with Kling O1 model', async () => {

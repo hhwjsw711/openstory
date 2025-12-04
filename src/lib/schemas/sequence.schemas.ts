@@ -24,10 +24,11 @@ const validVideoModelKeys = Object.keys(
 ) as readonly string[];
 
 export const createSequenceSchema = createInsertSchema(sequences, {
-  title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
-  script: z.string().min(10).max(10000), // Override to make it required with business rules
+  title: (schema) => schema.min(1).optional(), // Optional - defaults to 'Untitled Sequence' in hook
+  script: z.string().min(10), // Override to make it required with business rules
   teamId: ulidSchemaOptional, // Optional - will use user's default team if not provided
   aspectRatio: aspectRatioSchema.optional(), // Optional - defaults to '16:9' in database
+  styleId: z.string().optional(), // Optional - can be null
 })
   .omit({
     id: true,
@@ -39,6 +40,7 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     analysisModel: true, // Omit singular model - we'll use analysisModels array
     imageModel: true, // Omit - will use imageModel field in extend
     videoModel: true, // Omit - will use videoModel field in extend
+    workflow: true, // Omit - set by workflow, not user
   })
   .extend({
     // Accept array of models for multi-model sequence creation
@@ -66,6 +68,8 @@ export const createSequenceSchema = createInsertSchema(sequences, {
         message: 'Invalid video model',
       })
       .default(DEFAULT_VIDEO_MODEL),
+    // Auto-generate motion flag (UI-only, not stored in DB)
+    autoGenerateMotion: z.boolean().default(false).optional(),
   });
 
 export const updateSequenceSchema = createUpdateSchema(sequences, {
@@ -92,6 +96,7 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   updatedAt: true,
   createdBy: true,
   updatedBy: true,
+  workflow: true, // Set by workflow, not user
 });
 
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

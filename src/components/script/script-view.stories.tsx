@@ -33,6 +33,7 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   analysisDurationMs: 0,
   imageModel: 'nano_banana_pro',
   videoModel: 'kling_v2_5_turbo_pro',
+  workflow: null,
 };
 
 // Create a new QueryClient for each story to avoid state leakage

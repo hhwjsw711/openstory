@@ -1,6 +1,6 @@
+import { getRedis } from '@/lib/db/redis';
 import { Realtime } from '@upstash/realtime';
 import { z } from 'zod';
-import { getRedis } from '@/lib/db/redis';
 
 /**
  * Realtime event schema for generation progress streaming.
@@ -60,7 +60,6 @@ export const realtimeSchema = {
     // Terminal events
     complete: z.object({
       sequenceId: z.string(),
-      frameCount: z.number(),
     }),
     error: z.object({
       message: z.string(),

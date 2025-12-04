@@ -63,7 +63,7 @@ export type GenerationStreamAction =
       type: 'VIDEO_PROGRESS';
       payload: { frameId: string; status: FrameStatus; videoUrl?: string };
     }
-  | { type: 'COMPLETE'; payload: { sequenceId: string; frameCount: number } }
+  | { type: 'COMPLETE'; payload: { sequenceId: string } }
   | { type: 'ERROR'; payload: { message: string; phase?: number } }
   | { type: 'RESET' };
 

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
-import { getModelById } from '@/lib/ai/models.config';
+import { getAnalysisModelById } from '@/lib/ai/models.config';
 
 export const ModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
@@ -11,11 +11,13 @@ export const ModelBadge = ({ model }: { model?: string }) => {
   return (
     <Badge
       variant={
-        getModelById(model)?.tier === 'premium' ? 'default' : 'secondary'
+        getAnalysisModelById(model)?.tier === 'premium'
+          ? 'default'
+          : 'secondary'
       }
       className="text-xs"
     >
-      {getModelById(model)?.name || model}
+      {getAnalysisModelById(model)?.name || model}
     </Badge>
   );
 };

@@ -172,7 +172,7 @@ export const HomeView: FC = () => {
         </video>
 
         {/* Gradient Overlay for Readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/50 to-background z-0"></div>
+        <div className="absolute inset-0 bg-linear-to-b from-background/30 via-background/50 to-background z-0"></div>
 
         {/* Content Overlay - Positioned to overlap bottom */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-center px-8 translate-y-1/4 z-10">
@@ -180,7 +180,7 @@ export const HomeView: FC = () => {
             <Card>
               <CardHeader>
                 <div className="text-center space-y-4">
-                  <h1 className="text-4xl font-extralight tracking-wide min-h-[3rem] flex items-center justify-center">
+                  <h1 className="text-4xl font-extralight tracking-wide min-h-12 flex items-center justify-center">
                     <span className="inline-flex items-center">
                       {displayedText}
                       <span className="inline-block w-[2px] h-9 bg-primary ml-1 animate-pulse shadow-sm shadow-primary/50" />
@@ -221,14 +221,14 @@ export const HomeView: FC = () => {
             {communityCreations.map((creation) => (
               <div
                 key={creation.id}
-                className="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer hover-scale"
+                className="group relative aspect-3/4 rounded-2xl overflow-hidden cursor-pointer hover-scale"
               >
                 <Image
                   src={creation.image}
                   alt={creation.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <h3 className="text-sm font-bold text-foreground mb-1">
                       {creation.title}

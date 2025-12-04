@@ -4,6 +4,10 @@
  * GET /api/sequences - List all sequences for the user's team
  */
 
+import {
+  DEFAULT_ANALYSIS_MODEL,
+  getAnalysisModelById,
+} from '@/lib/ai/models.config';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
@@ -56,7 +60,8 @@ export async function POST(request: Request) {
     await requireTeamMemberAccess(user.id, teamId);
 
     // Create sequences in parallel for each selected model
-    const { analysisModels, imageModel, videoModel } = createSequenceInput;
+    const { analysisModels, imageModel, videoModel, autoGenerateMotion } =
+      createSequenceInput;
     console.log(
       '[POST /api/sequences] Creating sequences for models:',
       analysisModels,
@@ -66,25 +71,36 @@ export async function POST(request: Request) {
       videoModel
     );
 
+    if (!createSequenceInput.styleId || !createSequenceInput.aspectRatio) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Style ID is required',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+    const styleId = createSequenceInput.styleId;
+    const aspectRatio = createSequenceInput.aspectRatio;
+
     const sequences: Sequence[] = await Promise.all(
       analysisModels.map(async (modelId) => {
         // Create sequence with model-specific config
-        const createParams = {
+
+        const sequence = await sequenceService.createSequence({
           teamId,
           userId: user.id,
-          title: createSequenceInput.title,
+          title: createSequenceInput.title || 'Untitled Sequence',
           script: createSequenceInput.script,
-          styleId: createSequenceInput.styleId,
-          aspectRatio: createSequenceInput.aspectRatio,
-          analysisModel: modelId,
-          imageModel,
-          videoModel,
-        };
-        console.log(
-          `[POST /api/sequences] Creating sequence for model ${modelId}:`,
-          createParams
-        );
-        const sequence = await sequenceService.createSequence(createParams);
+          styleId: styleId,
+          aspectRatio: aspectRatio,
+          analysisModel:
+            getAnalysisModelById(modelId)?.id || DEFAULT_ANALYSIS_MODEL,
+          imageModel: imageModel,
+          videoModel: videoModel,
+          autoGenerateMotion: false,
+        });
         console.log('[POST /api/sequences] Created sequence:', {
           id: sequence.id,
           analysisModel: sequence.analysisModel,
@@ -102,6 +118,7 @@ export async function POST(request: Request) {
             aiProvider: 'openrouter',
             regenerateAll: true,
           },
+          autoGenerateMotion: autoGenerateMotion ?? false,
         };
 
         // Trigger workflow with deduplication to prevent duplicates

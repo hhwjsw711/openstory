@@ -1,0 +1,125 @@
+'use client';
+
+import type React from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Card } from '@/components/ui/card';
+import { EvalSequenceRow } from './eval-sequence-row';
+import type { SequenceWithFrames } from '@/hooks/use-sequences-with-frames';
+import type { ViewMode } from './eval-view';
+
+const ROW_HEIGHT = 160; // Cell height (128px) + padding (32px)
+const METADATA_WIDTH = 280;
+const CELL_WIDTH = 200;
+
+type EvalMatrixProps = {
+  sequences: SequenceWithFrames[];
+  viewMode: ViewMode;
+};
+
+type OpenDialogState = {
+  sequenceIndex: number;
+  sceneIndex: number;
+} | null;
+
+export const EvalMatrix: React.FC<EvalMatrixProps> = ({
+  sequences,
+  viewMode,
+}) => {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [openDialog, setOpenDialog] = useState<OpenDialogState>(null);
+
+  // Calculate max scene count across all sequences
+  const maxSceneCount = useMemo(() => {
+    return Math.max(1, ...sequences.map((s) => s.frames.length));
+  }, [sequences]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sequences.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 3,
+  });
+
+  const totalWidth = METADATA_WIDTH + maxSceneCount * CELL_WIDTH;
+
+  const handleNavigateToCell = (sequenceIndex: number, sceneIndex: number) => {
+    // Validate bounds and check if frame exists
+    if (
+      sequenceIndex >= 0 &&
+      sequenceIndex < sequences.length &&
+      sceneIndex >= 0 &&
+      sceneIndex < maxSceneCount
+    ) {
+      const sequence = sequences[sequenceIndex];
+      const frame = sequence?.frames[sceneIndex];
+      // Only navigate if the target cell has a frame
+      if (frame) {
+        setOpenDialog({ sequenceIndex, sceneIndex });
+      }
+    }
+  };
+
+  return (
+    <Card className="flex-1 overflow-hidden">
+      <div ref={parentRef} className="overflow-auto h-full">
+        {/* Sticky header row */}
+        <div
+          className="sticky top-0 z-20 flex bg-background border-b"
+          style={{ width: totalWidth }}
+        >
+          <div
+            className="sticky left-0 z-30 bg-background border-r p-4 font-medium text-sm shrink-0"
+            style={{ width: METADATA_WIDTH }}
+          >
+            Sequence
+          </div>
+          {Array.from({ length: maxSceneCount }, (_, i) => (
+            <div
+              key={i}
+              className="p-4 text-center font-medium text-sm shrink-0"
+              style={{ width: CELL_WIDTH }}
+            >
+              Scene {i + 1}
+            </div>
+          ))}
+        </div>
+
+        {/* Virtualized rows */}
+        <div
+          style={{
+            height: rowVirtualizer.getTotalSize(),
+            width: totalWidth,
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const sequence = sequences[virtualRow.index];
+            return (
+              <div
+                key={sequence.id}
+                className="absolute left-0 flex items-stretch"
+                style={{
+                  top: 0,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  height: virtualRow.size,
+                  width: totalWidth,
+                }}
+              >
+                <EvalSequenceRow
+                  sequence={sequence}
+                  viewMode={viewMode}
+                  maxSceneCount={maxSceneCount}
+                  sequenceIndex={virtualRow.index}
+                  openDialog={openDialog}
+                  onOpenDialogChange={setOpenDialog}
+                  onNavigateToCell={handleNavigateToCell}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+};

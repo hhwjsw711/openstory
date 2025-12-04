@@ -3,6 +3,7 @@
 import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { ModelSelector } from '@/components/model/model-selector';
 import { MotionModelSelector } from '@/components/model/motion-model-selector';
+import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
@@ -21,10 +22,12 @@ type GenerationSettingsProps = {
   analysisModels: AnalysisModelId[];
   imageModel: TextToImageModel;
   motionModel: ImageToVideoModel;
+  autoGenerateMotion?: boolean;
   onAspectRatioChange: (value: AspectRatio) => void;
   onAnalysisModelsChange: (value: AnalysisModelId[]) => void;
   onImageModelChange: (value: TextToImageModel) => void;
   onMotionModelChange: (value: ImageToVideoModel) => void;
+  onAutoGenerateMotionChange?: (value: boolean) => void;
   disabled?: boolean;
   singleSelectAnalysis?: boolean;
 };
@@ -34,10 +37,12 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
   analysisModels,
   imageModel,
   motionModel,
+  autoGenerateMotion = false,
   onAspectRatioChange,
   onAnalysisModelsChange,
   onImageModelChange,
   onMotionModelChange,
+  onAutoGenerateMotionChange,
   disabled = false,
   singleSelectAnalysis = false,
 }) => {
@@ -95,10 +100,28 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
             <h3 className="text-sm font-medium text-foreground">
               Motion Model
             </h3>
+            {onAutoGenerateMotionChange && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="auto-generate-motion"
+                  checked={autoGenerateMotion}
+                  onChange={(e) => onAutoGenerateMotionChange(e.target.checked)}
+                  disabled={disabled}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <Label
+                  htmlFor="auto-generate-motion"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Auto-generate motion
+                </Label>
+              </div>
+            )}
             <MotionModelSelector
               selectedModel={motionModel}
               onModelChange={onMotionModelChange}
-              disabled={disabled}
+              disabled={disabled || !autoGenerateMotion}
             />
           </section>
         </div>

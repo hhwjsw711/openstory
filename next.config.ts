@@ -72,15 +72,26 @@ const nextConfig: NextConfig = {
       // Cloudflare R2 Public Assets (styles/characters)
       {
         protocol: 'https',
-        hostname: process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai',
+        hostname: 'assets.velro.ai',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets-stg.velro.ai',
         port: '',
         pathname: '/**',
       },
       // Cloudflare R2 Public Storage (thumbnails/videos)
       {
         protocol: 'https',
-        hostname:
-          process.env.R2_PUBLIC_STORAGE_DOMAIN ?? 'storage-dev.velro.ai',
+        hostname: 'storage-dev.velro.ai',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.velro.ai',
         port: '',
         pathname: '/**',
       },

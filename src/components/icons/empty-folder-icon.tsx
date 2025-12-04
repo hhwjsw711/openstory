@@ -18,7 +18,8 @@ const emptyFolderIconVariants = cva('text-current', {
 });
 
 export interface EmptyFolderIconProps
-  extends React.SVGProps<SVGSVGElement>,
+  extends
+    React.SVGProps<SVGSVGElement>,
     VariantProps<typeof emptyFolderIconVariants> {}
 
 export const EmptyFolderIcon: React.FC<EmptyFolderIconProps> = ({

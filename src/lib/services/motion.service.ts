@@ -228,149 +228,132 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
 export async function generateMotionForFrame(
   options: GenerateMotionOptions
 ): Promise<MotionResult> {
-  try {
-    const modelKey = options.model || DEFAULT_VIDEO_MODEL;
-    const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+  const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
 
-    if (!modelConfig) {
-      throw new Error(`Invalid model: ${modelKey}`);
-    }
+  if (!modelConfig) {
+    throw new Error(`Invalid model: ${modelKey}`);
+  }
 
-    // Get the provider-specific input builder
-    const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
+  // Get the provider-specific input builder
+  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
-    if (!inputBuilder) {
-      throw new Error(
-        `No input builder found for provider: ${modelConfig.provider}`
-      );
-    }
-
-    // Build provider-specific input
-    const input = inputBuilder(options, modelConfig);
-
-    console.log(
-      `[Motion Service] Generating motion with model: ${modelConfig.id}`,
-      {
-        provider: modelConfig.provider,
-        promptLength: options.prompt?.length,
-        input,
-      }
+  if (!inputBuilder) {
+    throw new Error(
+      `No input builder found for provider: ${modelConfig.provider}`
     );
+  }
 
-    // Track queue status
-    let requestId: string | undefined;
-    let statusUrl: string | undefined;
-    let responseUrl: string | undefined;
-    let cancelUrl: string | undefined;
+  // Build provider-specific input
+  const input = inputBuilder(options, modelConfig);
 
-    // Configure fal client
-    const fal = createFalClient({
-      credentials: getEnv().FAL_KEY || '',
-    });
-
-    // Call the Fal.ai model using subscribe for queue tracking
-    const result = await fal.subscribe(modelConfig.id, {
+  console.log(
+    `[Motion Service] Generating motion with model: ${modelConfig.id}`,
+    {
+      provider: modelConfig.provider,
+      promptLength: options.prompt?.length,
       input,
-      logs: true,
-      pollInterval: 5000, // Poll every 5 seconds
-      onEnqueue: (reqId: string) => {
-        requestId = reqId;
-        console.log(`[Motion Service] Request enqueued: ${reqId}`);
-      },
-      onQueueUpdate: (update: QueueStatus) => {
-        // Capture URLs on first update
-        if (!statusUrl) {
-          statusUrl = update.status_url;
-          responseUrl = update.response_url;
-          cancelUrl = update.cancel_url;
+    }
+  );
 
-          console.log(`[Motion Service] Queue URLs available:`, {
-            statusUrl: update.status_url,
-            responseUrl: update.response_url,
-            cancelUrl: update.cancel_url,
+  // Track queue status
+  let requestId: string | undefined;
+  let statusUrl: string | undefined;
+  let responseUrl: string | undefined;
+  let cancelUrl: string | undefined;
+
+  // Configure fal client
+  const fal = createFalClient({
+    credentials: getEnv().FAL_KEY || '',
+  });
+
+  // Call the Fal.ai model using subscribe for queue tracking
+  const result = await fal.subscribe(modelConfig.id, {
+    input,
+    logs: true,
+    pollInterval: 5000, // Poll every 5 seconds
+    onEnqueue: (reqId: string) => {
+      requestId = reqId;
+      console.log(`[Motion Service] Request enqueued: ${reqId}`);
+    },
+    onQueueUpdate: (update: QueueStatus) => {
+      // Capture URLs on first update
+      if (!statusUrl) {
+        statusUrl = update.status_url;
+        responseUrl = update.response_url;
+        cancelUrl = update.cancel_url;
+
+        console.log(`[Motion Service] Queue URLs available:`, {
+          statusUrl: update.status_url,
+          responseUrl: update.response_url,
+          cancelUrl: update.cancel_url,
+        });
+      }
+
+      // Log queue position
+      if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
+        console.log(
+          `[Motion Service] Queue position: ${update.queue_position}`
+        );
+      }
+
+      // Log progress
+      if (update.status === 'IN_PROGRESS') {
+        console.log(`[Motion Service] Generation in progress...`);
+        if (update.logs && update.logs.length > 0) {
+          update.logs.forEach((log) => {
+            console.log(`[Motion Service] ${log.level}: ${log.message}`);
           });
         }
-
-        // Log queue position
-        if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
-          console.log(
-            `[Motion Service] Queue position: ${update.queue_position}`
-          );
-        }
-
-        // Log progress
-        if (update.status === 'IN_PROGRESS') {
-          console.log(`[Motion Service] Generation in progress...`);
-          if (update.logs && update.logs.length > 0) {
-            update.logs.forEach((log) => {
-              console.log(`[Motion Service] ${log.level}: ${log.message}`);
-            });
-          }
-        }
-
-        // Log completion
-        if (update.status === 'COMPLETED') {
-          console.log(
-            `[Motion Service] Generation completed in ${update.metrics?.inference_time || 'unknown'}s`
-          );
-        }
-      },
-    });
-
-    console.log('[Motion Service] Result:', JSON.stringify(result, null, 2));
-
-    // Extract video URL from result (subscribe returns { data, requestId })
-    const data = (result as { data?: unknown }).data;
-    const videoUrl = (data as { video?: { url?: string } })?.video?.url;
-
-    if (!videoUrl) {
-      console.error('[Motion Service] No video URL in result:', result);
-      throw new Error('No video URL returned from motion generation');
-    }
-
-    // Capture requestId from result if not already captured in onEnqueue
-    if (!requestId && (result as { requestId?: string }).requestId) {
-      requestId = (result as { requestId: string }).requestId;
-    }
-
-    const validatedDuration =
-      options.duration || modelConfig.capabilities.defaultDuration;
-    const validatedFps =
-      options.fps || modelConfig.capabilities.fpsRange.default;
-
-    return {
-      success: true,
-      videoUrl,
-      requestId,
-      statusUrl,
-      responseUrl,
-      cancelUrl,
-      metadata: {
-        model: modelConfig.id,
-        provider: modelConfig.provider,
-        duration: validatedDuration,
-        fps: validatedFps,
-        motionBucket: options.motionBucket,
-        totalFrames: Math.round(validatedDuration * validatedFps),
-        cost: modelConfig.pricing.estimatedCost,
-        generatedAt: new Date().toISOString(),
-      },
-    };
-  } catch (error) {
-    console.error(
-      `[Motion Service] Generation failed for model ${options.model || DEFAULT_VIDEO_MODEL}:`,
-      {
-        error: error instanceof Error ? error.message : String(error),
-        imageUrl: options.imageUrl,
-        promptLength: options.prompt?.length,
       }
-    );
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : 'Motion generation failed',
-    };
+
+      // Log completion
+      if (update.status === 'COMPLETED') {
+        console.log(
+          `[Motion Service] Generation completed in ${update.metrics?.inference_time || 'unknown'}s`
+        );
+      }
+    },
+  });
+
+  console.log('[Motion Service] Result:', JSON.stringify(result, null, 2));
+
+  // Extract video URL from result (subscribe returns { data, requestId })
+  const data = (result as { data?: unknown }).data;
+  const videoUrl = (data as { video?: { url?: string } })?.video?.url;
+
+  if (!videoUrl) {
+    console.error('[Motion Service] No video URL in result:', result);
+    throw new Error('No video URL returned from motion generation');
   }
+
+  // Capture requestId from result if not already captured in onEnqueue
+  if (!requestId && (result as { requestId?: string }).requestId) {
+    requestId = (result as { requestId: string }).requestId;
+  }
+
+  const validatedDuration =
+    options.duration || modelConfig.capabilities.defaultDuration;
+  const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
+
+  return {
+    success: true,
+    videoUrl,
+    requestId,
+    statusUrl,
+    responseUrl,
+    cancelUrl,
+    metadata: {
+      model: modelConfig.id,
+      provider: modelConfig.provider,
+      duration: validatedDuration,
+      fps: validatedFps,
+      motionBucket: options.motionBucket,
+      totalFrames: Math.round(validatedDuration * validatedFps),
+      cost: modelConfig.pricing.estimatedCost,
+      generatedAt: new Date().toISOString(),
+    },
+  };
 }
 
 /**

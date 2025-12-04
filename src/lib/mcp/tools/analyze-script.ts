@@ -3,8 +3,8 @@
  * Uses existing Velro script analysis services
  */
 
-import type { Scene, SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
+import type { Scene, SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
 import { extractCharacterBible } from '@/lib/script/character-extraction';
@@ -115,6 +115,7 @@ export async function analyzeScriptTool(
     onPhaseProgress?.(3, 'Visual Prompt Generation', 0);
     const scenesWithVisual = await generateVisualPromptsForScenes(
       initialScenes,
+      aspectRatio,
       characterBible,
       style.config,
       createPhaseCallback(3, 'Visual Prompt Generation')

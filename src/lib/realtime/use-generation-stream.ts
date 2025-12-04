@@ -127,7 +127,7 @@ export function useGenerationStream(sequenceId?: string) {
         case 'generation.complete':
           dispatch({
             type: 'COMPLETE',
-            payload: data as { sequenceId: string; frameCount: number },
+            payload: data as { sequenceId: string },
           });
           break;
 
