@@ -179,7 +179,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           />
           {/* Show overlay for image/video generation states */}
           <VideoStateOverlay
-            thumbnailStatus={currentFrame.thumbnailStatus ?? null}
+            thumbnailUrl={currentFrame.thumbnailUrl}
             videoStatus={currentFrame.videoStatus ?? null}
           />
         </div>

@@ -1,4 +1,5 @@
 import { generateMockFrames } from '@/lib/mocks/data-generators';
+import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import type { Meta, StoryObj } from '@storybook/react';
 import { SceneList } from './scene-list';
 
@@ -18,7 +19,10 @@ const meta: Meta<typeof SceneList> = {
   args: {
     frames: [],
     selectedFrameId: undefined,
+    aspectRatio: DEFAULT_ASPECT_RATIO,
     onSelectFrame: () => console.log('onSelectFrame'),
+    regeneratingImages: new Set<string>(),
+    regeneratingMotion: new Set<string>(),
   },
 };
 
@@ -153,7 +157,7 @@ export const WidthLarge: Story = {
   decorators: [
     (Story) => (
       <div className="h-screen">
-        <div className="[&>div]:w-[32rem]">
+        <div className="[&>div]:w-lg">
           <Story />
         </div>
       </div>
@@ -169,7 +173,7 @@ export const WidthExtraLarge: Story = {
   decorators: [
     (Story) => (
       <div className="h-screen">
-        <div className="[&>div]:w-[48rem]">
+        <div className="[&>div]:w-xl">
           <Story />
         </div>
       </div>
