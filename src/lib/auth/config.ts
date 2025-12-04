@@ -7,6 +7,7 @@ import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
 import {
   APP_URL,
+  isProductionDeployment,
   PRODUCTION_DEPLOYMENT_APP_URL,
 } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
@@ -32,7 +33,13 @@ export function getAuth() {
   }
 
   const runtimeEnv = getEnv();
-  console.log('[Auth Config] Creating auth instance with lazy initialization');
+  const skipStateCookie = !isProductionDeployment();
+  console.log('[Auth Config] Creating auth instance', {
+    APP_URL,
+    PRODUCTION_DEPLOYMENT_APP_URL,
+    isProduction: isProductionDeployment(),
+    skipStateCookieCheck: skipStateCookie,
+  });
 
   // getDb() is now called during request handling, not module initialization
   _authInstance = betterAuth({
@@ -78,6 +85,10 @@ export function getAuth() {
         trustedProviders: ['google', 'email-password'],
         allowDifferentEmails: false, // Only link accounts with matching emails
       },
+      // Skip state cookie check for preview environments
+      // Required because .vercel.app is on the Public Suffix List
+      // and cookies cannot be shared across subdomains
+      skipStateCookieCheck: !isProductionDeployment(),
     },
 
     // Email and password authentication

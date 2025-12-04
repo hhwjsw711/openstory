@@ -236,3 +236,50 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Plates Loader Animation */
+@keyframes plates-wave {
+  0%,
+  100% {
+    transform: translateZ(var(--base-z)) translateY(0);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateZ(calc(var(--base-z) + 12px)) translateY(-4px);
+    filter: brightness(1.4);
+  }
+}
+
+@keyframes plates-sheen {
+  0%,
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.4;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.8;
+  }
+}
+
+/* Reduced motion: simple fade pulse */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes plates-wave {
+    0%,
+    100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes plates-sheen {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+}

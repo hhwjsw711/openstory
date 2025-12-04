@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 
 export const GeneratingFrame: Story = {
   args: {
-    thumbnailStatus: 'generating',
+    thumbnailUrl: null,
     videoStatus: 'pending',
   },
   parameters: {
@@ -40,31 +40,16 @@ export const GeneratingFrame: Story = {
   },
 };
 
-export const GeneratingVideo: Story = {
+export const HasThumbnail: Story = {
   args: {
-    thumbnailStatus: 'completed',
+    thumbnailUrl: 'https://example.com/image.jpg',
     videoStatus: 'generating',
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Shows when the frame is ready but video is actively generating.',
-      },
-    },
-  },
-};
-
-export const PendingVideo: Story = {
-  args: {
-    thumbnailStatus: 'completed',
-    videoStatus: 'pending',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Shows when frame is ready and video generation will start automatically. Displays "Generating video..." since it will begin soon.',
+          'No overlay when thumbnail exists - just shows the poster image while video generates.',
       },
     },
   },
@@ -72,7 +57,7 @@ export const PendingVideo: Story = {
 
 export const Failed: Story = {
   args: {
-    thumbnailStatus: 'completed',
+    thumbnailUrl: 'https://example.com/image.jpg',
     videoStatus: 'failed',
   },
   parameters: {
@@ -86,7 +71,7 @@ export const Failed: Story = {
 
 export const Completed: Story = {
   args: {
-    thumbnailStatus: 'completed',
+    thumbnailUrl: 'https://example.com/image.jpg',
     videoStatus: 'completed',
   },
   parameters: {

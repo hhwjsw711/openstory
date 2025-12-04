@@ -25,9 +25,7 @@ describe('Model Validation', () => {
     });
 
     it('returns false for null/undefined', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(isValidTextToImageModel(null)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidTextToImageModel(undefined)).toBe(false);
     });
   });
@@ -46,9 +44,7 @@ describe('Model Validation', () => {
     });
 
     it('returns false for null/undefined', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(isValidImageToVideoModel(null)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidImageToVideoModel(undefined)).toBe(false);
     });
   });
