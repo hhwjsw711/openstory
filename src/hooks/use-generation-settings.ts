@@ -3,6 +3,7 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  getCompatibleModel,
   isValidImageToVideoModel,
   isValidTextToImageModel,
   type ImageToVideoModel,
@@ -105,9 +106,12 @@ function loadSettings(): GenerationSettings {
       ? parsed.imageModel
       : DEFAULT_IMAGE_MODEL;
 
-    const motionModel = isValidImageToVideoModel(parsed.motionModel)
+    const rawMotionModel = isValidImageToVideoModel(parsed.motionModel)
       ? parsed.motionModel
       : DEFAULT_VIDEO_MODEL;
+
+    // Ensure motion model is compatible with aspect ratio
+    const motionModel = getCompatibleModel(rawMotionModel, aspectRatio);
 
     const autoGenerateMotion =
       typeof parsed.autoGenerateMotion === 'boolean'
@@ -166,10 +170,26 @@ export function useGenerationSettings() {
 
   /**
    * Save settings to localStorage and update state
+   * Auto-switches motion model if incompatible with new aspect ratio
    */
   const save = useCallback((newSettings: Partial<GenerationSettings>) => {
     setSettings((prev) => {
-      const updated = { ...prev, ...newSettings };
+      let updated = { ...prev, ...newSettings };
+
+      // If aspect ratio is changing, ensure motion model is compatible
+      if (
+        newSettings.aspectRatio &&
+        newSettings.aspectRatio !== prev.aspectRatio
+      ) {
+        const compatibleModel = getCompatibleModel(
+          updated.motionModel,
+          newSettings.aspectRatio
+        );
+        if (compatibleModel !== updated.motionModel) {
+          updated = { ...updated, motionModel: compatibleModel };
+        }
+      }
+
       saveSettings(updated);
       return updated;
     });

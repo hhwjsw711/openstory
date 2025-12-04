@@ -8,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  getCompatibleModel,
   safeTextToImageModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -26,6 +28,7 @@ type SceneScriptPromptsProps = {
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
   onRegenerateStart: (frameId: string, type: 'image' | 'motion') => void;
+  aspectRatio?: AspectRatio;
 };
 
 type PromptTabContentProps = {
@@ -95,6 +98,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   regeneratingImages,
   regeneratingMotion,
   onRegenerateStart,
+  aspectRatio,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
   const [isShortening, setIsShortening] = useState(false);
@@ -353,12 +357,16 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setEditedMotionPrompt(motionPrompt || '');
   }, [motionPrompt]);
 
-  // Update local motion model state when frame changes
+  // Update local motion model state when frame or aspect ratio changes
+  // Ensure the model is compatible with the aspect ratio
   useEffect(() => {
     const currentModel =
       (frame?.motionModel as ImageToVideoModel) || DEFAULT_VIDEO_MODEL;
-    setSelectedMotionModel(currentModel);
-  }, [frame?.motionModel]);
+    const compatibleModel = aspectRatio
+      ? getCompatibleModel(currentModel, aspectRatio)
+      : currentModel;
+    setSelectedMotionModel(compatibleModel);
+  }, [frame?.motionModel, aspectRatio]);
 
   // Check if image is currently generating
   const isGenerating =
@@ -517,6 +525,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               selectedModel={selectedMotionModel || DEFAULT_VIDEO_MODEL}
               onModelChange={setSelectedMotionModel}
               disabled={isGenerating || isGeneratingMotion}
+              aspectRatio={aspectRatio}
             />
           </div>
 

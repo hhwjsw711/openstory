@@ -187,6 +187,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onRegenerateStart={handleRegenerateStart}
+            aspectRatio={aspectRatio}
           />
         </ScrollArea>
       </div>

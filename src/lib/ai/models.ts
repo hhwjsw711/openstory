@@ -3,6 +3,8 @@
  * Separated to avoid circular dependencies between service and client modules
  */
 
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+
 /**
  * Text-to-video models
  */
@@ -29,15 +31,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 12,
       defaultDuration: 5,
       fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 24fps per docs
-      supportedAspectRatios: [
-        '21:9',
-        '16:9',
-        '4:3',
-        '1:1',
-        '3:4',
-        '9:16',
-        'auto',
-      ],
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
       supportedResolutions: ['480p', '720p', '1080p'],
       supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
@@ -61,7 +55,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 8,
       defaultDuration: 8,
       fpsRange: { min: 24, max: 30, default: 24 }, // Fixed FPS
-      supportedAspectRatios: ['auto', '9:16', '16:9', '1:1'],
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
       supportedResolutions: ['720p', '1080p'],
       supportedDurations: [8], // Only 8s supported
     },
@@ -86,6 +80,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 12,
       defaultDuration: 10,
       fpsRange: { min: 24, max: 60, default: 30 },
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
       estimatedCost: 0.2, // $0.20/sec without audio, $0.40/sec with audio
@@ -109,6 +104,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
       estimatedCost: 0.35, // $0.35 for 5s + $0.07/s
@@ -132,6 +128,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       fpsRange: { min: 24, max: 30, default: 30 },
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
       estimatedCost: 0.4,
@@ -153,6 +150,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 10,
       defaultDuration: 5,
       fpsRange: { min: 24, max: 60, default: 30 },
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
       estimatedCost: 1.5, // Estimated, subject to OpenAI pricing
@@ -176,6 +174,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
       estimatedCost: 0.35, // Similar to kling_v2_5_turbo_pro
@@ -432,4 +431,55 @@ export function safeImageToVideoModel(
     return fallback;
   }
   return value;
+}
+
+/**
+ * Check if a video model supports a specific aspect ratio
+ * @param model - The video model key to check
+ * @param aspectRatio - The aspect ratio to check for
+ * @returns true if the model supports the aspect ratio
+ */
+export function isModelCompatibleWithAspectRatio(
+  model: ImageToVideoModel,
+  aspectRatio: AspectRatio
+): boolean {
+  const config = IMAGE_TO_VIDEO_MODELS[model];
+  const supported = config.capabilities.supportedAspectRatios;
+  // If supportedAspectRatios is not defined, assume all are supported
+  return !supported || supported.includes(aspectRatio);
+}
+
+/**
+ * Get all video models that support a specific aspect ratio
+ * @param aspectRatio - The aspect ratio to filter by
+ * @returns Array of compatible model keys
+ */
+export function getModelsForAspectRatio(
+  aspectRatio: AspectRatio
+): ImageToVideoModel[] {
+  return Object.keys(IMAGE_TO_VIDEO_MODELS).filter((key) =>
+    isModelCompatibleWithAspectRatio(key as ImageToVideoModel, aspectRatio)
+  ) as ImageToVideoModel[];
+}
+
+/**
+ * Get a compatible video model for an aspect ratio, falling back if needed
+ * @param currentModel - The currently selected model
+ * @param aspectRatio - The target aspect ratio
+ * @returns The current model if compatible, otherwise a compatible fallback
+ */
+export function getCompatibleModel(
+  currentModel: ImageToVideoModel,
+  aspectRatio: AspectRatio
+): ImageToVideoModel {
+  if (isModelCompatibleWithAspectRatio(currentModel, aspectRatio)) {
+    return currentModel;
+  }
+  // Try default first
+  if (isModelCompatibleWithAspectRatio(DEFAULT_VIDEO_MODEL, aspectRatio)) {
+    return DEFAULT_VIDEO_MODEL;
+  }
+  // Fall back to first compatible model
+  const compatible = getModelsForAspectRatio(aspectRatio);
+  return compatible[0] ?? DEFAULT_VIDEO_MODEL;
 }

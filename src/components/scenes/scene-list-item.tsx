@@ -91,7 +91,7 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
         >
           <SceneThumbnail
             thumbnailUrl={frame?.thumbnailUrl}
-            thumbnailStatus={frame?.thumbnailStatus ?? 'pending'}
+            thumbnailStatus={frame?.thumbnailStatus || undefined}
             alt={title ?? 'Scene thumbnail'}
             aspectRatio={aspectRatio}
             className={cn(
