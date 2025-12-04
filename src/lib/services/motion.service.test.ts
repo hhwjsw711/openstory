@@ -16,8 +16,8 @@ describe('Motion Service', () => {
   });
 
   describe('generateMotionForFrame', () => {
-    it('should generate motion with SVD-LCM model', async () => {
-      const mockVideoUrl = 'https://example.com/generated-video.mp4';
+    it('should generate motion with Kling v2.6 Pro model', async () => {
+      const mockVideoUrl = 'https://example.com/kling-v26-video.mp4';
 
       mockSubscribe.mockResolvedValue({
         data: {
@@ -25,70 +25,40 @@ describe('Motion Service', () => {
             url: mockVideoUrl,
           },
         },
-        requestId: 'test-request-id',
+        requestId: 'test-kling-v26-request-id',
       });
 
       const result = await generateMotionForFrame({
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'A person walking',
-        model: 'svd_lcm',
-        duration: 2,
-        fps: 7,
-        motionBucket: 127,
+        model: 'kling_v2_6_pro',
+        duration: 5,
       });
 
       expect(result.success).toBe(true);
       expect(result.videoUrl).toBe(mockVideoUrl);
-      expect(result.requestId).toBe('test-request-id');
+      expect(result.requestId).toBe('test-kling-v26-request-id');
       expect(result.metadata).toMatchObject({
-        model: 'fal-ai/fast-svd-lcm',
-        provider: 'stability',
-        duration: 2, // User-provided duration (validated against max)
-        fps: 7,
-        motionBucket: 127,
-        cost: 0.1,
+        model: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+        provider: 'kling',
+        duration: 5,
+        cost: 0.4,
       });
 
       expect(mockSubscribe).toHaveBeenCalledWith(
-        'fal-ai/fast-svd-lcm',
+        'fal-ai/kling-video/v2.6/pro/image-to-video',
         expect.objectContaining({
           input: expect.objectContaining({
             image_url: 'https://example.com/image.jpg',
-            motion_bucket_id: 127,
-            fps: 7,
-            cond_aug: 0.02,
-            steps: 4,
+            prompt: 'A person walking',
+            duration: '5',
+            cfg_scale: 0.5,
+            negative_prompt: 'blur, distort, and low quality',
           }),
           logs: true,
           pollInterval: 5000,
         })
       );
-    });
-
-    it('should generate motion with WAN I2V model', async () => {
-      const mockVideoUrl = 'https://example.com/wan-video.mp4';
-
-      mockSubscribe.mockResolvedValue({
-        data: {
-          video: {
-            url: mockVideoUrl,
-          },
-        },
-        requestId: 'test-wan-request-id',
-      });
-
-      const result = await generateMotionForFrame({
-        imageUrl: 'https://example.com/image.jpg',
-        prompt: 'Smooth camera pan',
-        model: 'wan_i2v',
-        duration: 3,
-        fps: 24,
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.videoUrl).toBe(mockVideoUrl);
-      expect(result.metadata?.model).toBe('fal-ai/wan-i2v');
-      expect(result.metadata?.cost).toBe(0.3);
     });
 
     it('should generate motion with Seedance Pro model', async () => {
@@ -137,8 +107,8 @@ describe('Motion Service', () => {
       await expect(
         generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
-          prompt: '', // Required even though SVD doesn't use it
-          model: 'svd_lcm',
+          prompt: 'Test prompt',
+          model: 'kling_v2_6_pro',
         })
       ).rejects.toThrow('API error');
     });
@@ -155,8 +125,8 @@ describe('Motion Service', () => {
       await expect(
         generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
-          prompt: '', // Required even though SVD doesn't use it
-          model: 'svd_lcm',
+          prompt: 'Test prompt',
+          model: 'kling_v2_6_pro',
         })
       ).rejects.toThrow('No video URL returned from motion generation');
     });
@@ -206,41 +176,24 @@ describe('Motion Service', () => {
 
   describe('Model configurations', () => {
     it('should have correct model configurations', () => {
-      expect(IMAGE_TO_VIDEO_MODELS.svd_lcm).toMatchObject({
-        id: 'fal-ai/fast-svd-lcm',
-        name: 'Fast Motion (SVD-LCM)',
-        provider: 'stability',
+      expect(IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro).toMatchObject({
+        id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+        name: 'Kling v2.6 Pro (with Audio)',
+        provider: 'kling',
         capabilities: {
-          supportsPrompt: false,
-          supportsAudio: false,
-          maxDuration: 2.5,
-          defaultDuration: 2.5,
-          fpsRange: { min: 1, max: 25, default: 10 },
-          fixedFrameCount: 25,
+          supportsPrompt: true,
+          supportsAudio: true,
+          maxDuration: 10,
+          defaultDuration: 5,
+          requiresStringDuration: true,
         },
         pricing: {
-          estimatedCost: 0.1,
-          unit: 'frame',
+          estimatedCost: 0.4,
+          unit: 'video',
         },
         performance: {
-          estimatedGenerationTime: 5,
-          quality: 'good',
-        },
-      });
-
-      expect(IMAGE_TO_VIDEO_MODELS.wan_i2v).toMatchObject({
-        id: 'fal-ai/wan-i2v',
-        name: 'Balanced Motion (WAN 2.1)',
-        provider: 'minimax',
-        capabilities: {
-          defaultDuration: 5.06,
-          fpsRange: { min: 5, max: 24, default: 16 },
-        },
-        pricing: {
-          estimatedCost: 0.3,
-        },
-        performance: {
-          quality: 'better',
+          estimatedGenerationTime: 15,
+          quality: 'best',
         },
       });
 

@@ -18,74 +18,6 @@ export const TEXT_TO_VIDEO_MODELS = {
  * Enriched with capabilities, pricing, and performance metadata
  */
 export const IMAGE_TO_VIDEO_MODELS = {
-  // Fast models - optimized for speed
-  svd_lcm: {
-    id: 'fal-ai/fast-svd-lcm',
-    name: 'Fast Motion (SVD-LCM)',
-    provider: 'stability',
-    capabilities: {
-      supportsPrompt: false, // Uses motion_bucket_id instead
-      supportsAudio: false,
-      maxDuration: 2.5, // 25 frames total
-      defaultDuration: 2.5,
-      fpsRange: { min: 1, max: 25, default: 10 }, // API allows 1-25 fps
-      fixedFrameCount: 25, // Always generates 25 frames
-    },
-    pricing: {
-      estimatedCost: 0.1,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 5, // seconds
-      quality: 'good',
-    },
-  },
-
-  // Balanced models - good quality/speed ratio
-  wan_i2v: {
-    id: 'fal-ai/wan-i2v',
-    name: 'Balanced Motion (WAN 2.1)',
-    provider: 'minimax',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 6.25, // 100 frames at 16fps
-      defaultDuration: 5.06, // 81 frames at 16fps (default)
-      fpsRange: { min: 5, max: 24, default: 16 }, // API: 5-24 fps, default 16
-      supportedResolutions: ['480p', '720p'],
-      supportedAspectRatios: ['auto', '16:9', '9:16', '1:1'],
-    },
-    pricing: {
-      estimatedCost: 0.3,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 10,
-      quality: 'better',
-    },
-  },
-
-  kling_i2v: {
-    id: 'fal-ai/kling-video-v1-5/standard/image-to-video',
-    name: 'High Quality Motion (Kling I2V v1.5)',
-    provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 60, default: 30 },
-    },
-    pricing: {
-      estimatedCost: 0.4,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'better',
-    },
-  },
-
   // Premium models - highest quality
   seedance_v1_pro: {
     id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
@@ -119,30 +51,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
   },
 
-  veo2_i2v: {
-    id: 'fal-ai/veo2/image-to-video',
-    name: 'Ultra Premium Motion (Google Veo 2)',
-    provider: 'google',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 8,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 720p output
-      supportedAspectRatios: ['auto', 'auto_prefer_portrait', '16:9', '9:16'],
-      supportedDurations: [5, 6, 7, 8],
-      fixedResolution: '720p',
-    },
-    pricing: {
-      estimatedCost: 0.8,
-      unit: 'second',
-    },
-    performance: {
-      estimatedGenerationTime: 20,
-      quality: 'best',
-    },
-  },
-
   veo3: {
     id: 'fal-ai/veo3',
     name: 'Ultra Premium Motion with Audio (Google Veo 3)',
@@ -163,27 +71,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
     performance: {
       estimatedGenerationTime: 25,
-      quality: 'best',
-    },
-  },
-
-  wan_v2: {
-    id: 'fal-ai/wan-v2-2-a14b',
-    name: 'Cinematic Quality Motion (WAN 2.2)',
-    provider: 'minimax',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 6,
-      fpsRange: { min: 24, max: 60, default: 30 },
-    },
-    pricing: {
-      estimatedCost: 0.7,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 18,
       quality: 'best',
     },
   },
@@ -233,22 +120,22 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
   },
 
-  wan_2_5: {
-    id: 'fal-ai/wan-25-preview/image-to-video',
-    name: 'WAN 2.5 Preview',
-    provider: 'minimax',
+  kling_v2_6_pro: {
+    id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+    name: 'Kling v2.6 Pro (with Audio)',
+    provider: 'kling',
     capabilities: {
       supportsPrompt: true,
-      supportsAudio: true,
+      supportsAudio: true, // Native audio generation (Chinese/English)
       maxDuration: 10,
       defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 30 }, // Fixed FPS at 30
-      supportedResolutions: ['480p', '720p', '1080p'],
-      supportedDurations: [5, 10],
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
     },
     pricing: {
-      estimatedCost: 0.1, // $0.05-$0.15/s depending on resolution
-      unit: 'second',
+      estimatedCost: 0.4,
+      unit: 'video',
     },
     performance: {
       estimatedGenerationTime: 15,
@@ -308,16 +195,11 @@ export const IMAGE_TO_VIDEO_MODELS = {
 export const VIDEO_MODELS = {
   ...TEXT_TO_VIDEO_MODELS,
   // Extract just the IDs for backward compatibility
-  svd_lcm: IMAGE_TO_VIDEO_MODELS.svd_lcm.id,
-  wan_i2v: IMAGE_TO_VIDEO_MODELS.wan_i2v.id,
-  kling_i2v: IMAGE_TO_VIDEO_MODELS.kling_i2v.id,
   seedance_v1_pro: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro.id,
-  veo2_i2v: IMAGE_TO_VIDEO_MODELS.veo2_i2v.id,
   veo3: IMAGE_TO_VIDEO_MODELS.veo3.id,
-  wan_v2: IMAGE_TO_VIDEO_MODELS.wan_v2.id,
   veo3_1: IMAGE_TO_VIDEO_MODELS.veo3_1.id,
   kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
-  wan_2_5: IMAGE_TO_VIDEO_MODELS.wan_2_5.id,
+  kling_v2_6_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro.id,
   sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
   kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
 } as const;
@@ -474,7 +356,7 @@ export type ImageToVideoModelConfig =
 // Type for the video model ID
 export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
-export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_5_turbo_pro';
+export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
 
 // Helper to get model ID from key (for backward compatibility)
 export function getImageToVideoModelId(
