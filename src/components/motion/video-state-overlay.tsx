@@ -33,7 +33,7 @@ export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
       style={{
         background: hasFailed
           ? 'rgba(0, 0, 0, 0.5)'
-          : 'radial-gradient(circle at 50% 40%, rgba(251, 146, 60, 0.15), rgba(0, 0, 0, 0.6) 70%)',
+          : 'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.15), transparent 70%), #09090b',
       }}
     >
       <div className="flex flex-col items-center gap-4">
