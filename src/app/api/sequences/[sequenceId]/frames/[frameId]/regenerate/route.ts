@@ -5,6 +5,10 @@
 
 import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import {
+  aspectRatioToImageSize,
+  type AspectRatio,
+} from '@/lib/constants/aspect-ratios';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { regenerateFrameSchema } from '@/lib/schemas/frame.schemas';
@@ -83,7 +87,9 @@ export async function POST(
       teamId: frameData.sequence.teamId,
       prompt: promptToUse,
       model: modelToUse,
-      imageSize: 'landscape_16_9',
+      imageSize: aspectRatioToImageSize(
+        frameData.sequence.aspectRatio as AspectRatio
+      ),
       numImages: 1,
       frameId,
       sequenceId: frameData.sequenceId,

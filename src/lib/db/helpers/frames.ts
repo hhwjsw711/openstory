@@ -31,6 +31,7 @@ export type FrameWithSequence = Frame & {
     status: string;
     styleId: string | null;
     videoModel: string;
+    aspectRatio: string;
   };
 };
 
@@ -643,6 +644,7 @@ export async function getFrameWithSequence(
           status: true,
           styleId: true,
           videoModel: true,
+          aspectRatio: true,
         },
       },
     },

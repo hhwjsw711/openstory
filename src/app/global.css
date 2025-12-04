@@ -237,6 +237,11 @@ body {
   }
 }
 
+/* 3D Transform utilities */
+.transform-3d {
+  transform-style: preserve-3d;
+}
+
 /* Plates Loader Animation */
 @keyframes plates-wave {
   0%,

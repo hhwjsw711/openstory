@@ -516,6 +516,43 @@ export async function generateImageWithProvider(
       return resultByProvider(params.model, params, resp.data);
     }
 
+    case 'seedream_v4_5': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt: params.prompt,
+          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+          enable_safety_checker: true,
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            const progress = extractProgress(
+              update as unknown as {
+                status: string;
+                logs?: Array<{ message: string }>;
+              } & Record<string, unknown>
+            );
+
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByProvider(params.model, params, resp.data);
+    }
+
     case 'letzai': {
       // LetzAI uses custom provider with different API
       const presetDims = {

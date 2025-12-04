@@ -3,6 +3,7 @@ import {
   type AspectRatio,
   getAspectRatioClassName,
 } from '@/lib/constants/aspect-ratios';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -18,13 +19,16 @@ type SceneThumbnailProps = {
 
 const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
-  thumbnailStatus = 'pending',
+  thumbnailStatus,
   alt,
   aspectRatio,
   className,
 }) => {
   // Only show loader when there's no image
-  const showLoader = !thumbnailUrl && thumbnailStatus !== 'failed';
+  const showLoader =
+    !thumbnailUrl && !!thumbnailStatus && thumbnailStatus !== 'failed';
+
+  const showSkeleton = !thumbnailUrl || !thumbnailStatus;
   const isFailed = thumbnailStatus === 'failed' && !thumbnailUrl;
 
   return (
@@ -35,6 +39,9 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
         className
       )}
     >
+      {showSkeleton && (
+        <Skeleton className="absolute h-full w-full rounded-md" />
+      )}
       {showLoader && (
         <PlatesLoaderContainer size="sm" className="absolute inset-0" />
       )}

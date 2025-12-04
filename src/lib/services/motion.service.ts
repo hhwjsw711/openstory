@@ -67,29 +67,6 @@ type ProviderInputBuilder = (
 ) => Record<string, unknown>;
 
 const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
-  stability: (options, modelConfig) => {
-    // SVD-LCM: Always generates 25 frames, fps controls playback speed
-    const validatedFps = options.fps
-      ? Math.max(
-          modelConfig.capabilities.fpsRange.min,
-          Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
-        )
-      : modelConfig.capabilities.fpsRange.default;
-
-    const validatedMotionBucket = options.motionBucket
-      ? Math.max(1, Math.min(options.motionBucket, 255))
-      : 127;
-
-    return {
-      image_url: options.imageUrl,
-      motion_bucket_id: validatedMotionBucket,
-      cond_aug: 0.02, // Default conditioning augmentation
-      seed: Math.floor(Math.random() * 1000000),
-      steps: 4, // Default processing steps
-      fps: validatedFps,
-    };
-  },
-
   kling: (options, modelConfig) => {
     const validatedDuration = options.duration
       ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
@@ -107,47 +84,6 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
     };
   },
 
-  minimax: (options, modelConfig) => {
-    const modelId = modelConfig.id;
-
-    // WAN 2.1 (wan-i2v) has different params than WAN 2.5
-    if (modelId === 'fal-ai/wan-i2v') {
-      const validatedFps = options.fps
-        ? Math.max(
-            modelConfig.capabilities.fpsRange.min,
-            Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
-          )
-        : modelConfig.capabilities.fpsRange.default;
-
-      return {
-        prompt: options.prompt,
-        image_url: options.imageUrl,
-        frames_per_second: validatedFps,
-        num_frames: 81, // Default frame count
-        resolution: '720p',
-        aspect_ratio: options.aspectRatio || 'auto',
-        enable_prompt_expansion: false,
-        enable_safety_checker: false,
-      };
-    }
-
-    // WAN 2.5
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
-
-    const duration = validatedDuration <= 7 ? '5' : '10'; // String enum
-
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      resolution: '1080p',
-      duration,
-      enable_prompt_expansion: true,
-      enable_safety_checker: true,
-    };
-  },
-
   luma: (options, _modelConfig) => ({
     prompt: options.prompt,
     image_url: options.imageUrl,
@@ -160,18 +96,11 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
       : modelConfig.capabilities.defaultDuration;
 
-    // Veo 2 and Veo 3 have different duration formats
-    const modelId = modelConfig.id;
-    const durationValue =
-      modelId === 'fal-ai/veo2/image-to-video'
-        ? `${Math.round(validatedDuration)}s` // "5s", "6s", etc
-        : '8s'; // Veo 3 only supports 8s
-
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
       aspect_ratio: options.aspectRatio || 'auto',
-      duration: durationValue,
+      duration: `${Math.round(validatedDuration)}s`,
       generate_audio: true,
       resolution: '1080p',
     };

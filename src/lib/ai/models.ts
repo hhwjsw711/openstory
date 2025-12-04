@@ -3,6 +3,8 @@
  * Separated to avoid circular dependencies between service and client modules
  */
 
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+
 /**
  * Text-to-video models
  */
@@ -18,74 +20,6 @@ export const TEXT_TO_VIDEO_MODELS = {
  * Enriched with capabilities, pricing, and performance metadata
  */
 export const IMAGE_TO_VIDEO_MODELS = {
-  // Fast models - optimized for speed
-  svd_lcm: {
-    id: 'fal-ai/fast-svd-lcm',
-    name: 'Fast Motion (SVD-LCM)',
-    provider: 'stability',
-    capabilities: {
-      supportsPrompt: false, // Uses motion_bucket_id instead
-      supportsAudio: false,
-      maxDuration: 2.5, // 25 frames total
-      defaultDuration: 2.5,
-      fpsRange: { min: 1, max: 25, default: 10 }, // API allows 1-25 fps
-      fixedFrameCount: 25, // Always generates 25 frames
-    },
-    pricing: {
-      estimatedCost: 0.1,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 5, // seconds
-      quality: 'good',
-    },
-  },
-
-  // Balanced models - good quality/speed ratio
-  wan_i2v: {
-    id: 'fal-ai/wan-i2v',
-    name: 'Balanced Motion (WAN 2.1)',
-    provider: 'minimax',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 6.25, // 100 frames at 16fps
-      defaultDuration: 5.06, // 81 frames at 16fps (default)
-      fpsRange: { min: 5, max: 24, default: 16 }, // API: 5-24 fps, default 16
-      supportedResolutions: ['480p', '720p'],
-      supportedAspectRatios: ['auto', '16:9', '9:16', '1:1'],
-    },
-    pricing: {
-      estimatedCost: 0.3,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 10,
-      quality: 'better',
-    },
-  },
-
-  kling_i2v: {
-    id: 'fal-ai/kling-video-v1-5/standard/image-to-video',
-    name: 'High Quality Motion (Kling I2V v1.5)',
-    provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 60, default: 30 },
-    },
-    pricing: {
-      estimatedCost: 0.4,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'better',
-    },
-  },
-
   // Premium models - highest quality
   seedance_v1_pro: {
     id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
@@ -97,15 +31,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 12,
       defaultDuration: 5,
       fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 24fps per docs
-      supportedAspectRatios: [
-        '21:9',
-        '16:9',
-        '4:3',
-        '1:1',
-        '3:4',
-        '9:16',
-        'auto',
-      ],
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
       supportedResolutions: ['480p', '720p', '1080p'],
       supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
@@ -115,30 +41,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
     performance: {
       estimatedGenerationTime: 12,
-      quality: 'best',
-    },
-  },
-
-  veo2_i2v: {
-    id: 'fal-ai/veo2/image-to-video',
-    name: 'Ultra Premium Motion (Google Veo 2)',
-    provider: 'google',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 8,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 720p output
-      supportedAspectRatios: ['auto', 'auto_prefer_portrait', '16:9', '9:16'],
-      supportedDurations: [5, 6, 7, 8],
-      fixedResolution: '720p',
-    },
-    pricing: {
-      estimatedCost: 0.8,
-      unit: 'second',
-    },
-    performance: {
-      estimatedGenerationTime: 20,
       quality: 'best',
     },
   },
@@ -153,7 +55,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 8,
       defaultDuration: 8,
       fpsRange: { min: 24, max: 30, default: 24 }, // Fixed FPS
-      supportedAspectRatios: ['auto', '9:16', '16:9', '1:1'],
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
       supportedResolutions: ['720p', '1080p'],
       supportedDurations: [8], // Only 8s supported
     },
@@ -163,27 +65,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
     performance: {
       estimatedGenerationTime: 25,
-      quality: 'best',
-    },
-  },
-
-  wan_v2: {
-    id: 'fal-ai/wan-v2-2-a14b',
-    name: 'Cinematic Quality Motion (WAN 2.2)',
-    provider: 'minimax',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 6,
-      fpsRange: { min: 24, max: 60, default: 30 },
-    },
-    pricing: {
-      estimatedCost: 0.7,
-      unit: 'frame',
-    },
-    performance: {
-      estimatedGenerationTime: 18,
       quality: 'best',
     },
   },
@@ -199,6 +80,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 12,
       defaultDuration: 10,
       fpsRange: { min: 24, max: 60, default: 30 },
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
       estimatedCost: 0.2, // $0.20/sec without audio, $0.40/sec with audio
@@ -222,6 +104,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
       estimatedCost: 0.35, // $0.35 for 5s + $0.07/s
@@ -233,22 +116,23 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
   },
 
-  wan_2_5: {
-    id: 'fal-ai/wan-25-preview/image-to-video',
-    name: 'WAN 2.5 Preview',
-    provider: 'minimax',
+  kling_v2_6_pro: {
+    id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+    name: 'Kling v2.6 Pro (with Audio)',
+    provider: 'kling',
     capabilities: {
       supportsPrompt: true,
-      supportsAudio: true,
+      supportsAudio: true, // Native audio generation (Chinese/English)
       maxDuration: 10,
       defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 30 }, // Fixed FPS at 30
-      supportedResolutions: ['480p', '720p', '1080p'],
-      supportedDurations: [5, 10],
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
-      estimatedCost: 0.1, // $0.05-$0.15/s depending on resolution
-      unit: 'second',
+      estimatedCost: 0.4,
+      unit: 'video',
     },
     performance: {
       estimatedGenerationTime: 15,
@@ -266,6 +150,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 10,
       defaultDuration: 5,
       fpsRange: { min: 24, max: 60, default: 30 },
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
       estimatedCost: 1.5, // Estimated, subject to OpenAI pricing
@@ -289,6 +174,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
       estimatedCost: 0.35, // Similar to kling_v2_5_turbo_pro
@@ -308,16 +194,11 @@ export const IMAGE_TO_VIDEO_MODELS = {
 export const VIDEO_MODELS = {
   ...TEXT_TO_VIDEO_MODELS,
   // Extract just the IDs for backward compatibility
-  svd_lcm: IMAGE_TO_VIDEO_MODELS.svd_lcm.id,
-  wan_i2v: IMAGE_TO_VIDEO_MODELS.wan_i2v.id,
-  kling_i2v: IMAGE_TO_VIDEO_MODELS.kling_i2v.id,
   seedance_v1_pro: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro.id,
-  veo2_i2v: IMAGE_TO_VIDEO_MODELS.veo2_i2v.id,
   veo3: IMAGE_TO_VIDEO_MODELS.veo3.id,
-  wan_v2: IMAGE_TO_VIDEO_MODELS.wan_v2.id,
   veo3_1: IMAGE_TO_VIDEO_MODELS.veo3_1.id,
   kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
-  wan_2_5: IMAGE_TO_VIDEO_MODELS.wan_2_5.id,
+  kling_v2_6_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro.id,
   sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
   kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
 } as const;
@@ -431,6 +312,14 @@ export const IMAGE_MODELS = {
     description: 'High detail rendering',
     maxPromptLength: 2000, // ~512 tokens
   },
+  seedream_v4_5: {
+    id: 'fal-ai/bytedance/seedream/v4.5/text-to-image' as const,
+    name: 'Seedream 4.5',
+    provider: 'ByteDance',
+    tier: 'premium',
+    description: 'Unified generation and editing, high resolution up to 4K',
+    maxPromptLength: 2000, // ~512 tokens
+  },
   letzai: {
     id: 'letzai/image' as const,
     name: 'LetzAI',
@@ -474,7 +363,7 @@ export type ImageToVideoModelConfig =
 // Type for the video model ID
 export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
-export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_5_turbo_pro';
+export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
 
 // Helper to get model ID from key (for backward compatibility)
 export function getImageToVideoModelId(
@@ -550,4 +439,55 @@ export function safeImageToVideoModel(
     return fallback;
   }
   return value;
+}
+
+/**
+ * Check if a video model supports a specific aspect ratio
+ * @param model - The video model key to check
+ * @param aspectRatio - The aspect ratio to check for
+ * @returns true if the model supports the aspect ratio
+ */
+export function isModelCompatibleWithAspectRatio(
+  model: ImageToVideoModel,
+  aspectRatio: AspectRatio
+): boolean {
+  const config = IMAGE_TO_VIDEO_MODELS[model];
+  const supported = config.capabilities.supportedAspectRatios;
+  // If supportedAspectRatios is not defined, assume all are supported
+  return !supported || supported.includes(aspectRatio);
+}
+
+/**
+ * Get all video models that support a specific aspect ratio
+ * @param aspectRatio - The aspect ratio to filter by
+ * @returns Array of compatible model keys
+ */
+export function getModelsForAspectRatio(
+  aspectRatio: AspectRatio
+): ImageToVideoModel[] {
+  return Object.keys(IMAGE_TO_VIDEO_MODELS).filter((key) =>
+    isModelCompatibleWithAspectRatio(key as ImageToVideoModel, aspectRatio)
+  ) as ImageToVideoModel[];
+}
+
+/**
+ * Get a compatible video model for an aspect ratio, falling back if needed
+ * @param currentModel - The currently selected model
+ * @param aspectRatio - The target aspect ratio
+ * @returns The current model if compatible, otherwise a compatible fallback
+ */
+export function getCompatibleModel(
+  currentModel: ImageToVideoModel,
+  aspectRatio: AspectRatio
+): ImageToVideoModel {
+  if (isModelCompatibleWithAspectRatio(currentModel, aspectRatio)) {
+    return currentModel;
+  }
+  // Try default first
+  if (isModelCompatibleWithAspectRatio(DEFAULT_VIDEO_MODEL, aspectRatio)) {
+    return DEFAULT_VIDEO_MODEL;
+  }
+  // Fall back to first compatible model
+  const compatible = getModelsForAspectRatio(aspectRatio);
+  return compatible[0] ?? DEFAULT_VIDEO_MODEL;
 }

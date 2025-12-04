@@ -5,6 +5,7 @@
 
 import { DEFAULT_VIDEO_MODEL, type ImageToVideoModel } from '@/lib/ai/models';
 import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { regenerateMotionSchema } from '@/lib/schemas/frame.schemas';
@@ -93,6 +94,7 @@ export async function POST(
       duration: validatedBody.duration,
       fps: validatedBody.fps,
       motionBucket: validatedBody.motionBucket,
+      aspectRatio: frameData.sequence.aspectRatio as AspectRatio,
     };
 
     const workflowRunId = await triggerWorkflow('/motion', workflowInput, {

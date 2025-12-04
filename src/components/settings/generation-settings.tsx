@@ -122,6 +122,7 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
               selectedModel={motionModel}
               onModelChange={onMotionModelChange}
               disabled={disabled || !autoGenerateMotion}
+              aspectRatio={aspectRatio}
             />
           </section>
         </div>

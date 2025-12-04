@@ -59,6 +59,13 @@ export interface OpenRouterMessage {
   content: OpenRouterMessageContent;
 }
 
+export interface OpenRouterProviderPreference {
+  order?: string[];
+  only?: string[];
+  ignore?: string[];
+  allow_fallbacks?: boolean;
+}
+
 export interface OpenRouterRequestParams {
   model: string;
   messages: OpenRouterMessage[];
@@ -68,7 +75,15 @@ export interface OpenRouterRequestParams {
   frequency_penalty?: number;
   presence_penalty?: number;
   stream?: boolean;
+  provider?: OpenRouterProviderPreference;
 }
+
+/**
+ * Default provider preference - prefer Cerebras for speed
+ */
+const DEFAULT_PROVIDER: OpenRouterProviderPreference = {
+  order: ['Cerebras'],
+};
 
 /**
  * Model recommendations for different tasks
@@ -121,6 +136,7 @@ export async function callOpenRouter(
           presence_penalty: params.presence_penalty,
         }),
         ...(params.stream !== undefined && { stream: params.stream }),
+        provider: params.provider ?? DEFAULT_PROVIDER,
       }),
     });
 
@@ -157,7 +173,22 @@ export async function* callOpenRouterStream(
       'X-Title': 'Velro AI',
     },
     body: JSON.stringify({
-      ...params,
+      model: params.model,
+      messages: params.messages,
+      ...(params.temperature !== undefined && {
+        temperature: params.temperature,
+      }),
+      ...(params.max_tokens !== undefined && {
+        max_tokens: params.max_tokens,
+      }),
+      ...(params.top_p !== undefined && { top_p: params.top_p }),
+      ...(params.frequency_penalty !== undefined && {
+        frequency_penalty: params.frequency_penalty,
+      }),
+      ...(params.presence_penalty !== undefined && {
+        presence_penalty: params.presence_penalty,
+      }),
+      provider: params.provider ?? DEFAULT_PROVIDER,
       stream: true, // Force streaming
     }),
   });

@@ -5,6 +5,13 @@
 
 export const SCRIPT_ANALYSIS_MODELS = [
   {
+    id: 'z-ai/glm-4.6',
+    name: 'GLM 4.6',
+    provider: 'Z.ai',
+    tier: 'ultra-fast',
+    description: 'Strong reasoning and tool use, 200K context (~1,000 tok/s)',
+  },
+  {
     id: 'cerebras/qwen-3-235b-a22b-instruct-2507',
     name: 'Qwen 3 235B Instruct',
     provider: 'Cerebras',
