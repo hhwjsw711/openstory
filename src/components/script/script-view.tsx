@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
+import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
@@ -29,7 +30,7 @@ import {
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Sequence } from '@/types/database';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import React, { useEffect, useMemo, useState, type FC } from 'react';
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -56,26 +57,46 @@ export const ScriptView: FC<{
     sequence?.styleId || null
   );
 
+  // Load saved settings from localStorage
+  const { settings: savedSettings, save: saveSettings } =
+    useGenerationSettings();
+
+  // Determine if we're editing an existing sequence
+  const isEditing = !!sequence?.id;
+
+  // Initialize with sequence values (if editing) or localStorage defaults (if creating)
   const sequenceAnalysisModels: AnalysisModelId[] = useMemo(() => {
-    return sequence?.analysisModel &&
-      ANALYSIS_MODEL_IDS.includes(sequence?.analysisModel as AnalysisModelId)
-      ? [sequence?.analysisModel as AnalysisModelId]
-      : [DEFAULT_ANALYSIS_MODEL];
-  }, [sequence]);
+    if (isEditing && sequence?.analysisModel) {
+      return ANALYSIS_MODEL_IDS.includes(
+        sequence.analysisModel as AnalysisModelId
+      )
+        ? [sequence.analysisModel as AnalysisModelId]
+        : [DEFAULT_ANALYSIS_MODEL];
+    }
+    return savedSettings.analysisModels;
+  }, [isEditing, sequence?.analysisModel, savedSettings.analysisModels]);
 
   const [analysisModels, setAnalysisModels] = useState<AnalysisModelId[]>(
     sequenceAnalysisModels
   );
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    sequence?.aspectRatio || '16:9'
+    isEditing && sequence?.aspectRatio
+      ? sequence.aspectRatio
+      : savedSettings.aspectRatio
   );
   const [imageModel, setImageModel] = useState<TextToImageModel>(
-    safeTextToImageModel(sequence?.imageModel, DEFAULT_IMAGE_MODEL)
+    isEditing && sequence?.imageModel
+      ? safeTextToImageModel(sequence.imageModel, DEFAULT_IMAGE_MODEL)
+      : savedSettings.imageModel
   );
   const [motionModel, setMotionModel] = useState<ImageToVideoModel>(
-    safeImageToVideoModel(sequence?.videoModel, DEFAULT_VIDEO_MODEL)
+    isEditing && sequence?.videoModel
+      ? safeImageToVideoModel(sequence.videoModel, DEFAULT_VIDEO_MODEL)
+      : savedSettings.motionModel
   );
-  const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(false);
+  const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(
+    isEditing ? false : savedSettings.autoGenerateMotion
+  );
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -90,6 +111,47 @@ export const ScriptView: FC<{
       setStyleId(styles[0].id);
     }
   }, [styles, isLoadingStyles, styleId, sequence?.styleId]);
+
+  // Sync state with savedSettings when creating new sequences (not when editing)
+  // Use a ref to track if we've already synced to avoid loops
+  const hasSyncedRef = React.useRef(false);
+  useEffect(() => {
+    // Reset sync flag when switching modes
+    if (isEditing) {
+      hasSyncedRef.current = false;
+      return;
+    }
+    // Sync once when creating new sequence
+    if (!hasSyncedRef.current) {
+      setAspectRatio(savedSettings.aspectRatio);
+      setAnalysisModels(savedSettings.analysisModels);
+      setImageModel(savedSettings.imageModel);
+      setMotionModel(savedSettings.motionModel);
+      setAutoGenerateMotion(savedSettings.autoGenerateMotion);
+      hasSyncedRef.current = true;
+    }
+  }, [isEditing, savedSettings]);
+
+  // Persist settings to localStorage when creating new sequences (not when editing)
+  useEffect(() => {
+    if (!isEditing) {
+      saveSettings({
+        aspectRatio,
+        analysisModels,
+        imageModel,
+        motionModel,
+        autoGenerateMotion,
+      });
+    }
+  }, [
+    isEditing,
+    aspectRatio,
+    analysisModels,
+    imageModel,
+    motionModel,
+    autoGenerateMotion,
+    saveSettings,
+  ]);
 
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();

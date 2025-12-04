@@ -190,8 +190,8 @@ export const IMAGE_TO_VIDEO_MODELS = {
 
   // Latest models - cutting edge
   veo3_1: {
-    id: 'fal-ai/veo3.1/reference-to-video',
-    name: 'Latest Google Veo 3.1',
+    id: 'fal-ai/veo3.1/image-to-video',
+    name: 'Google Veo 3.1',
     provider: 'google',
     capabilities: {
       supportsPrompt: true,
@@ -489,9 +489,9 @@ export function getImageToVideoModelId(
  * @returns true if value is a valid model key, false otherwise
  */
 export function isValidTextToImageModel(
-  value: string
+  value: unknown
 ): value is TextToImageModel {
-  return value in IMAGE_MODELS;
+  return typeof value === 'string' && Object.keys(IMAGE_MODELS).includes(value);
 }
 
 /**
@@ -500,9 +500,12 @@ export function isValidTextToImageModel(
  * @returns true if value is a valid model key, false otherwise
  */
 export function isValidImageToVideoModel(
-  value: string
+  value: unknown
 ): value is ImageToVideoModel {
-  return value in IMAGE_TO_VIDEO_MODELS;
+  return (
+    typeof value === 'string' &&
+    Object.keys(IMAGE_TO_VIDEO_MODELS).includes(value)
+  );
 }
 
 /**

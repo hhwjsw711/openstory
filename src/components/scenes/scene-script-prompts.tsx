@@ -362,13 +362,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   // Check if image is currently generating
   const isGenerating =
-    frame?.thumbnailStatus === 'pending' ||
     frame?.thumbnailStatus === 'generating' ||
     (frame?.id ? regeneratingImages.has(frame.id) : false);
 
   // Check if motion is currently generating
   const isGeneratingMotion =
-    frame?.videoStatus === 'pending' ||
     frame?.videoStatus === 'generating' ||
     (frame?.id ? regeneratingMotion.has(frame.id) : false);
 

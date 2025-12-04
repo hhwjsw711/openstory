@@ -172,10 +172,8 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       image_url: options.imageUrl,
       aspect_ratio: options.aspectRatio || 'auto',
       duration: durationValue,
-      ...(modelId === 'fal-ai/veo3' && {
-        generate_audio: true,
-        resolution: '720p',
-      }),
+      generate_audio: true,
+      resolution: '1080p',
     };
   },
 
