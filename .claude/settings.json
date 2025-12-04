@@ -11,6 +11,7 @@
       "Bash(bunx oxlint:*)",
       "Bash(bunx prettier:*)",
       "Bash(bun tsc:*)",
+      "Bash(bun tsgo:*)",
       "Bash(bun test:*)",
       "Bash(bun test --watch)",
       "Bash(bun test --coverage)",

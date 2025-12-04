@@ -1,6 +1,7 @@
 import type { Frame } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';
-import { SceneScriptPrompts } from './scene-script-prompts';
+import { fn } from 'storybook/test';
+import { SceneScriptPrompts, TabValue } from './scene-script-prompts';
 
 const mockFrame: Frame = {
   id: 'frame-1',
@@ -118,6 +119,13 @@ const meta: Meta<typeof SceneScriptPrompts> = {
   component: SceneScriptPrompts,
   parameters: {
     layout: 'centered',
+  },
+  args: {
+    selectedTab: 'script' as TabValue,
+    onTabChange: fn(),
+    regeneratingImages: new Set<string>(),
+    regeneratingMotion: new Set<string>(),
+    onRegenerateStart: fn(),
   },
   decorators: [
     (Story) => (

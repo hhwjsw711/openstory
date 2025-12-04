@@ -7,10 +7,39 @@ import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 const stylePresets: Style[] = MOCK_SYSTEM_STYLES;
 
 /**
+ * Creates a mock SSE stream for the realtime endpoint.
+ * Returns a connected message then keeps connection minimal.
+ */
+function createMockSSEStream() {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      // Send initial connected message
+      controller.enqueue(
+        encoder.encode('data: {"type":"connected","channel":"default"}\n\n')
+      );
+    },
+  });
+  return stream;
+}
+
+/**
  * MSW handlers for mocking API requests in Storybook and tests
  * These handlers intercept fetch requests and return mock data
  */
 export const handlers = [
+  // GET /api/realtime - Mock SSE endpoint for Upstash Realtime
+  http.get('/api/realtime', () => {
+    return new HttpResponse(createMockSSEStream(), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  }),
+
   // GET /api/user/me - Get current user
   http.get('/api/user/me', () => {
     return HttpResponse.json({
