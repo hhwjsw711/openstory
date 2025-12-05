@@ -51,6 +51,25 @@ const TOTAL_PHASES = 7;
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
+// Helper to safely emit events (no-op if realtime unavailable)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const emitSequenceEvent = async (
+  sequenceId: string,
+  event: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any
+) => {
+  if (!sequenceId) return;
+  const channel = getGenerationChannel(sequenceId);
+  if (!channel) return;
+  try {
+    console.log('emitting event', event, data);
+    await channel.emit(`generation.${event}` as 'generation.complete', data);
+  } catch (error) {
+    console.warn('[StoryboardGenerationWorkflow] Failed to emit event:', error);
+  }
+};
+
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
     const input = context.requestPayload;
@@ -70,20 +89,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emit = async (event: string, data: any) => {
       if (!sequenceId) return;
-      const channel = getGenerationChannel(sequenceId);
-      if (!channel) return;
-      try {
-        console.log('emitting event', event, data);
-        await channel.emit(
-          `generation.${event}` as 'generation.complete',
-          data
-        );
-      } catch (error) {
-        console.warn(
-          '[StoryboardGenerationWorkflow] Failed to emit event:',
-          error
-        );
-      }
+      await emitSequenceEvent(sequenceId, event, data);
     };
 
     // STEP: Split script into basic scenes and store in sequence metadata
@@ -91,6 +97,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       'split-script-into-scenes',
       async () => {
         const startTime = Date.now();
+
         if (!script) {
           throw new WorkflowValidationError('No script found');
         }
@@ -154,6 +161,9 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         // Add the updated metadata to the sequence
         await updateSequenceTitle(sequenceId, title);
+
+        // Emit sequence updated event so frontend can refresh title
+        await emit('updated', { title });
 
         // Add the workflow to the sequence
         await updateSequenceWorkflow(sequenceId, 'analyze-script');
@@ -666,5 +676,22 @@ export const analyzeScriptWorkflow = createWorkflow(
   {
     retries: 3,
     retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+    failureFunction: async ({ context, failResponse }) => {
+      const input = context.requestPayload;
+      const { sequenceId } = input;
+      if (!sequenceId) return;
+
+      console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
+
+      // Set sequence status to completed
+      await updateSequenceStatus(sequenceId, 'failed');
+
+      // Emit sequence failure event
+      await emitSequenceEvent(sequenceId, 'failed', {
+        message: String(failResponse),
+      });
+
+      return `Analysis workflow failed: ${failResponse}`;
+    },
   }
 );

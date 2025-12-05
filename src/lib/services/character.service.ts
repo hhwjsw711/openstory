@@ -270,7 +270,7 @@ export function buildCharacterSheetPrompt(entry: CharacterBibleEntry): string {
     ? `Distinguishing Features:\n${entry.distinguishingFeatures}`
     : '';
 
-  return `Character Reference Sheet, highly detailed, photorealistic, 4K resolution, studio lighting, extreme fidelity, clean aesthetic.
+  return `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
 
 Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
 

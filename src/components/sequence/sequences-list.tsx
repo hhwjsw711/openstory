@@ -2,6 +2,7 @@
 
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { ModelBadge } from '@/components/model/model-badge';
+import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useSequences } from '@/hooks/use-sequences';
@@ -65,7 +66,10 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
                       {sequence.title || 'Untitled Sequence'}
                     </h3>
                   </div>
-                  <ModelBadge model={sequence.analysisModel} />
+                  <div className="flex items-center gap-2">
+                    <ModelBadge model={sequence.analysisModel} />
+                    <SequenceStatusBadge status={sequence.status} />
+                  </div>
                 </div>
               </div>
 

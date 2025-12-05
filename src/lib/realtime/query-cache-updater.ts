@@ -87,7 +87,9 @@ export function updateQueryCacheFromEvent(
       break;
 
     case 'generation.complete':
-      // Invalidate sequence to get final status
+    case 'generation.failed':
+    case 'generation.updated':
+      // Invalidate sequence to get updated status/title
       void queryClient.invalidateQueries({
         queryKey: sequenceKeys.detail(sequenceId),
       });

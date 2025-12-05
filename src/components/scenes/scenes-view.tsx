@@ -7,6 +7,7 @@ import {
   ModelBadge,
   VideoModelBadge,
 } from '@/components/model/model-badge';
+import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { SceneList } from '@/components/scenes/scene-list';
 import {
@@ -150,7 +151,12 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         <ModelBadge model={sequence?.analysisModel} />
         <ImageModelBadge model={sequence?.imageModel} />
         <VideoModelBadge model={sequence?.videoModel} />
+        {/* Show failure badge if sequence failed OR realtime reports failure */}
+        {(sequence?.status === 'failed' || generationState.isFailed) && (
+          <SequenceStatusBadge status="failed" />
+        )}
         {!generationState.isComplete &&
+          !generationState.isFailed &&
           generationState.currentPhase > 0 &&
           realtimeStatus === 'connected' && (
             <PhaseIndicatorCompact phases={generationState.phases} />
