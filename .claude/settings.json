@@ -24,6 +24,7 @@
       "Bash(bun db:migrate)",
       "Bash(cat:*)",
       "Bash(bun storybook:*)",
+      "Bash(grep:*)",
       "mcp__chrome-devtools__navigate_page",
       "mcp__chrome-devtools__wait_for",
       "mcp__chrome-devtools__list_console_messages",
