@@ -491,3 +491,34 @@ export function getCompatibleModel(
   const compatible = getModelsForAspectRatio(aspectRatio);
   return compatible[0] ?? DEFAULT_VIDEO_MODEL;
 }
+
+// ============================================================================
+// Edit Endpoint Support (for reference image generation)
+// ============================================================================
+
+/**
+ * Map text-to-image models to their edit endpoints (if available)
+ * These endpoints accept image_urls for reference-based generation
+ */
+const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
+  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
+  // Add other models with edit support here as they become available
+};
+
+/**
+ * Get the edit endpoint for a model that supports reference images
+ * @param model - The text-to-image model key
+ * @returns The Fal.ai edit endpoint ID, or null if not supported
+ */
+export function getEditEndpoint(model: TextToImageModel): string | null {
+  return EDIT_ENDPOINTS[model] ?? null;
+}
+
+/**
+ * Check if a model supports reference images via an edit endpoint
+ * @param model - The text-to-image model key
+ * @returns true if the model has an edit endpoint for reference images
+ */
+export function supportsReferenceImages(model: TextToImageModel): boolean {
+  return model in EDIT_ENDPOINTS;
+}

@@ -131,6 +131,13 @@ export function useGenerationStream(sequenceId?: string) {
           });
           break;
 
+        case 'generation.failed':
+          dispatch({
+            type: 'FAILED',
+            payload: data as { message: string },
+          });
+          break;
+
         case 'generation.error':
           dispatch({
             type: 'ERROR',
@@ -155,6 +162,8 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.image:progress',
       'generation.video:progress',
       'generation.complete',
+      'generation.failed',
+      'generation.updated',
       'generation.error',
     ] as const,
     onData: handleEvent,

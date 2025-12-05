@@ -98,3 +98,20 @@ export {
   // Types
   type FrameWithSequence,
 } from './frames';
+
+// Sequence Character Operations
+export {
+  createSequenceCharacter,
+  createSequenceCharactersBulk,
+  deleteSequenceCharacter,
+  deleteSequenceCharacters,
+  getCharactersNeedingSheets,
+  getSequenceCharacterByCharacterId,
+  getSequenceCharacterById,
+  getSequenceCharacters,
+  getSequenceCharactersByIds,
+  getSequenceCharactersWithSheets,
+  updateCharacterSheet,
+  updateSequenceCharacter,
+  updateSheetStatus,
+} from './sequence-characters';

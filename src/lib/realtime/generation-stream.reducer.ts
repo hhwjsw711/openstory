@@ -40,6 +40,8 @@ export type GenerationStreamState = {
   frames: Map<string, StreamingFrame>;
   /** Whether generation is complete */
   isComplete: boolean;
+  /** Whether generation failed */
+  isFailed: boolean;
   /** Error message if generation failed */
   error?: string;
 };
@@ -64,12 +66,14 @@ export type GenerationStreamAction =
       payload: { frameId: string; status: FrameStatus; videoUrl?: string };
     }
   | { type: 'COMPLETE'; payload: { sequenceId: string } }
+  | { type: 'FAILED'; payload: { message: string } }
   | { type: 'ERROR'; payload: { message: string; phase?: number } }
   | { type: 'RESET' };
 
 const PHASE_NAMES = [
   'Scene Splitting',
   'Character Extraction',
+  'Character Sheets',
   'Visual Prompts',
   'Motion Prompts',
   'Audio Design',
@@ -86,6 +90,7 @@ export const initialGenerationStreamState: GenerationStreamState = {
   scenes: [],
   frames: new Map(),
   isComplete: false,
+  isFailed: false,
 };
 
 export function generationStreamReducer(
@@ -191,8 +196,15 @@ export function generationStreamReducer(
       return {
         ...state,
         isComplete: true,
-        currentPhase: 7,
+        currentPhase: 8,
         phases: state.phases.map((p) => ({ ...p, status: 'completed' })),
+      };
+
+    case 'FAILED':
+      return {
+        ...state,
+        isFailed: true,
+        error: action.payload.message,
       };
 
     case 'ERROR':

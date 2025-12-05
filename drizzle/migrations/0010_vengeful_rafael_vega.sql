@@ -1,0 +1,1 @@
+ALTER TABLE `sequence_characters` DROP COLUMN `sheet_workflow_run_id`;

@@ -75,6 +75,7 @@ export const generateImageWorkflow = createWorkflow(
           imageSize: input.imageSize ?? DEFAULT_IMAGE_SIZE,
           numImages: input.numImages ?? 1,
           seed: input.seed,
+          referenceImageUrls: input.referenceImageUrls,
         };
       }
     );

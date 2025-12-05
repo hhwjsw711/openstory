@@ -79,16 +79,12 @@ export function PhaseIndicatorCompact({
   className,
 }: Omit<PhaseIndicatorProps, 'currentPhase'>) {
   const activePhase = phases.find((p) => p.status === 'active');
-  const completedCount = phases.filter((p) => p.status === 'completed').length;
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <Loader2 className="h-4 w-4 animate-spin text-primary" />
       <span className="text-sm text-muted-foreground">
         {activePhase?.phaseName ?? 'Processing'}
-      </span>
-      <span className="text-xs text-muted-foreground/70">
-        ({completedCount}/{phases.length})
       </span>
     </div>
   );

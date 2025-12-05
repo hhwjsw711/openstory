@@ -57,6 +57,13 @@ export const realtimeSchema = {
       videoUrl: z.string().optional(),
     }),
 
+    // Sequence events
+    updated: z.object({
+      title: z.string().optional(),
+    }),
+    failed: z.object({
+      message: z.string(),
+    }),
     // Terminal events
     complete: z.object({
       sequenceId: z.string(),
