@@ -247,54 +247,64 @@ Generate the scene with characters matching their reference images exactly.`;
 /**
  * Build a detailed character sheet prompt from character bible entry
  *
+ * Creates a comprehensive multi-panel reference sheet prompt with:
+ * - Top row: Full-body turnaround (front, side, 3/4 back, rear)
+ * - Middle-left: 15-portrait headshot matrix
+ * - Lower-central: Posed full-body
+ * - Right: Large close-up headshot
+ *
  * @param entry - The character bible entry
  * @returns Full character sheet generation prompt
  */
 export function buildCharacterSheetPrompt(entry: CharacterBibleEntry): string {
-  const parts = [
-    `Full body character reference sheet of ${entry.name}`,
-    'showing front view, 3/4 view, and side profile.',
-  ];
+  const ageStr = entry.age
+    ? typeof entry.age === 'number'
+      ? `Age: ${entry.age} years old`
+      : `Age: ${entry.age}`
+    : '';
 
-  if (entry.age) {
-    const ageStr =
-      typeof entry.age === 'number' ? `${entry.age} years old` : entry.age;
-    parts.push(ageStr);
-  }
+  const genderLine = entry.gender ? `Gender: ${entry.gender}` : '';
+  const ethnicityLine = entry.ethnicity ? `Ethnicity: ${entry.ethnicity}` : '';
 
-  if (entry.gender) {
-    parts.push(`${entry.gender}.`);
-  }
+  const distinguishingSection = entry.distinguishingFeatures
+    ? `Distinguishing Features:\n${entry.distinguishingFeatures}`
+    : '';
 
-  if (entry.physicalDescription) {
-    parts.push(entry.physicalDescription);
-  }
+  return `Character Reference Sheet, highly detailed, photorealistic, 4K resolution, studio lighting, extreme fidelity, clean aesthetic.
 
-  if (entry.standardClothing) {
-    parts.push(`Wearing: ${entry.standardClothing}`);
-  }
+Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
 
-  if (entry.distinguishingFeatures) {
-    parts.push(`Notable features: ${entry.distinguishingFeatures}`);
-  }
+Top Row (Full-Body Turnaround): Four distinct, full-body views of the character: full frontal, direct side profile (90-degree turn), back three-quarter view, and full rear view (180-degree turn). All in a neutral, standing posture.
 
-  parts.push(
-    'Clean white background, character design reference sheet style, consistent proportions across all views, professional quality.'
-  );
+Middle-Left Grid (Headshot Matrix): A grid of 15 distinct head-and-shoulders portraits (3 rows of 5 images). Each portrait must capture a unique head angle and subtle expression variation, systematically rotating through: direct frontal, three-quarter left/right, near-profile left/right, slight head tilts. Maintain a generally neutral to contemplative expression range.
 
-  return parts.join(' ');
+Lower-Central Panel (Posed Full-Body): A single full-body image of the character in a three-quarter stance, head slightly turned away from the camera, conveying a dynamic or pensive mood.
+
+Right-Side Feature Panel (Large Headshot): A single, prominent, large close-up headshot, tightly framed for maximum facial detail, focused on the character's eyes and central features.
+
+Character Identity Directive:
+Create a character with the following attributes. Maintain absolute consistency across all panels:
+
+Name: ${entry.name}
+${[ageStr, genderLine, ethnicityLine].filter(Boolean).join('\n')}
+
+Physical Appearance:
+${entry.physicalDescription}
+
+Attire:
+${entry.standardClothing}
+
+${distinguishingSection}
+
+Stylistic & Technical Parameters:
+
+Lighting: Soft, even, professional studio lighting from multiple sources to minimize harsh shadows and maximize visibility of form and detail, consistent across all panels.
+
+Background: Uniform, seamless, solid neutral light-to-medium gray studio backdrop for all panels, matching the clean simplicity of a professional reference sheet.
+
+Focus: Ultra-sharp, deep focus on the character in every panel, ensuring clarity of all features and clothing details.
+
+Mood: Objective, detailed, and clear, characteristic of a high-end visual reference or concept art.
+
+Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.`.trim();
 }
-
-/**
- * Character service object for convenient imports
- * @deprecated Use individual function imports instead
- */
-export const characterService = {
-  createFromBible,
-  getSequenceCharacters,
-  getSequenceCharactersWithSheets,
-  getCharactersForScene,
-  updateSheet,
-  buildPromptWithReferences,
-  buildCharacterSheetPrompt,
-};

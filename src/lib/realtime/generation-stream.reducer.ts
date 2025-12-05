@@ -70,6 +70,7 @@ export type GenerationStreamAction =
 const PHASE_NAMES = [
   'Scene Splitting',
   'Character Extraction',
+  'Character Sheets',
   'Visual Prompts',
   'Motion Prompts',
   'Audio Design',
@@ -191,7 +192,7 @@ export function generationStreamReducer(
       return {
         ...state,
         isComplete: true,
-        currentPhase: 7,
+        currentPhase: 8,
         phases: state.phases.map((p) => ({ ...p, status: 'completed' })),
       };
 

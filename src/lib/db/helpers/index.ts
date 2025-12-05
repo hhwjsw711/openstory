@@ -111,7 +111,6 @@ export {
   getSequenceCharacters,
   getSequenceCharactersByIds,
   getSequenceCharactersWithSheets,
-  setSheetWorkflowRunId,
   updateCharacterSheet,
   updateSequenceCharacter,
   updateSheetStatus,

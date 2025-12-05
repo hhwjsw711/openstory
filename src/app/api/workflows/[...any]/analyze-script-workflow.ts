@@ -16,7 +16,7 @@ import {
   updateSequenceTitle,
   updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
-import { NewFrame } from '@/lib/db/schema';
+import { NewFrame, SequenceCharacter } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
@@ -29,7 +29,7 @@ import { Scene } from '@/lib/script/types';
 import {
   buildCharacterSheetPrompt,
   buildPromptWithReferences,
-  characterService,
+  createFromBible,
   getCharactersForScene,
   getSequenceCharacters,
   getSequenceCharactersWithSheets,
@@ -47,7 +47,7 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
 
 // Total phases for realtime progress tracking
-const TOTAL_PHASES = 6;
+const TOTAL_PHASES = 7;
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -244,14 +244,16 @@ export const analyzeScriptWorkflow = createWorkflow(
     );
 
     // ------------------------------------------------------------
-    // Phase 2.5: Create sequence characters and generate character sheets
+    // Phase 3: Create sequence characters and generate character sheets
+    await emit('phase:start', {
+      phase: 3,
+      phaseName: 'Character Sheets',
+      totalPhases: TOTAL_PHASES,
+    });
     if (sequenceId && characterBible.length > 0) {
       await context.run('create-sequence-characters', async () => {
         // Create sequence_characters records from character bible
-        const seqCharacters = await characterService.createFromBible(
-          sequenceId,
-          characterBible
-        );
+        const seqCharacters = await createFromBible(sequenceId, characterBible);
 
         console.log(
           '[AnalyzeScriptWorkflow]',
@@ -262,61 +264,65 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
 
       // Generate character sheets in parallel
-      await context.run('generate-character-sheets', async () => {
-        const runtimeEnv = getEnv();
-        const falConcurrencyLimit = (
-          runtimeEnv as unknown as Record<string, string>
-        ).FAL_CONCURRENCY_LIMIT;
-        const flowControl: FlowControl = {
-          key: 'fal-requests',
-          rate: 10,
-          period: '5s',
-          parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
-        };
-        const vercelAutomationBypassSecret =
-          process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-        const headers = vercelAutomationBypassSecret
-          ? { 'x-vercel-protection-bypass': vercelAutomationBypassSecret }
-          : undefined;
+      const runtimeEnv = getEnv();
+      const falConcurrencyLimit = (
+        runtimeEnv as unknown as Record<string, string>
+      ).FAL_CONCURRENCY_LIMIT;
+      const flowControl: FlowControl = {
+        key: 'fal-requests',
+        rate: 10,
+        period: '5s',
+        parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
+      };
+      const vercelAutomationBypassSecret =
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+      const headers = vercelAutomationBypassSecret
+        ? { 'x-vercel-protection-bypass': vercelAutomationBypassSecret }
+        : undefined;
 
-        // Get fresh character list with IDs
-        const seqCharacters = await getSequenceCharacters(sequenceId);
+      // Get fresh character list with IDs
+      const seqCharacters = await getSequenceCharacters(sequenceId);
 
-        await Promise.all(
-          seqCharacters.map(async (char) => {
-            const sheetPrompt = buildCharacterSheetPrompt(char.metadata);
+      await Promise.all(
+        seqCharacters.map(async (char) => {
+          const sheetPrompt = buildCharacterSheetPrompt(char.metadata);
 
-            const sheetInput: CharacterSheetWorkflowInput = {
-              userId: input.userId!,
-              teamId: input.teamId!,
-              sequenceId,
-              characterDbId: char.id,
-              characterName: char.name,
-              sheetPrompt,
-              imageModel: imageModel,
-            };
+          const sheetInput: CharacterSheetWorkflowInput = {
+            userId: input.userId!,
+            teamId: input.teamId!,
+            sequenceId,
+            characterDbId: char.id,
+            characterName: char.name,
+            sheetPrompt,
+            imageModel: imageModel,
+          };
 
-            await context.invoke('character-sheet', {
-              workflow: characterSheetWorkflow,
-              body: sheetInput,
-              retries: 3,
-              retryDelay: 'pow(2, retried) * 1000',
-              flowControl,
-              headers,
-            });
-          })
-        );
+          console.log('sheetInput', sheetInput);
 
-        console.log(
-          '[AnalyzeScriptWorkflow]',
-          `Triggered character sheet generation for ${seqCharacters.length} characters`
-        );
-      });
+          await context.invoke('character-sheet', {
+            workflowRunId: char.id,
+            workflow: characterSheetWorkflow,
+            body: sheetInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000',
+            flowControl,
+            headers,
+          });
+        })
+      );
+
+      console.log(
+        '[AnalyzeScriptWorkflow]',
+        `Triggered character sheet generation for ${seqCharacters.length} characters`
+      );
     }
 
-    // Emit Phase 3 start
+    // Emit Phase 3 complete
+    await emit('phase:complete', { phase: 3 });
+
+    // Emit Phase 4 start
     await emit('phase:start', {
-      phase: 3,
+      phase: 4,
       phaseName: 'Visual Prompts',
       totalPhases: TOTAL_PHASES,
     });
@@ -383,11 +389,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           })
         );
 
-        // Emit Phase 3 complete
-        await emit('phase:complete', { phase: 3 });
-        // Emit Phase 4 start
+        // Emit Phase 4 complete
+        await emit('phase:complete', { phase: 4 });
+        // Emit Phase 5 start
         await emit('phase:start', {
-          phase: 4,
+          phase: 5,
           phaseName: 'Motion Prompts',
           totalPhases: TOTAL_PHASES,
         });
@@ -443,11 +449,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           })
         );
 
-        // Emit Phase 4 complete
-        await emit('phase:complete', { phase: 4 });
-        // Emit Phase 5 start
+        // Emit Phase 5 complete
+        await emit('phase:complete', { phase: 5 });
+        // Emit Phase 6 start
         await emit('phase:start', {
-          phase: 5,
+          phase: 6,
           phaseName: 'Audio Design',
           totalPhases: TOTAL_PHASES,
         });
@@ -506,12 +512,12 @@ export const analyzeScriptWorkflow = createWorkflow(
           sequenceId,
           Date.now() - startTime
         );
-        // Emit Phase 5 complete
-        await emit('phase:complete', { phase: 5 });
+        // Emit Phase 6 complete
+        await emit('phase:complete', { phase: 6 });
 
-        // Emit Phase 6 start (Image Generation)
+        // Emit Phase 7 start (Image Generation)
         await emit('phase:start', {
-          phase: 6,
+          phase: 7,
           phaseName: 'Image & Motion Generation',
           totalPhases: TOTAL_PHASES,
         });
@@ -523,9 +529,26 @@ export const analyzeScriptWorkflow = createWorkflow(
       // Map aspect ratio to image size preset
       const imageSize = aspectRatioToImageSize(aspectRatio);
 
-      // Get all characters with completed sheets for reference
-      const charactersWithSheets =
-        await getSequenceCharactersWithSheets(sequenceId);
+      const { charactersWithSheets, sceneCharacterMap } = await context.run(
+        'get-characters-with-and-without-sheets',
+        async () => {
+          // Get all characters with completed sheets for reference
+          const charactersWithSheets =
+            await getSequenceCharactersWithSheets(sequenceId);
+
+          const sceneCharacterMap: Record<string, SequenceCharacter[]> = {};
+          for (const scene of completeScenes) {
+            const sceneCharTags = scene.continuity?.characterTags || [];
+            const sceneCharacters = await getCharactersForScene(
+              sequenceId,
+              sceneCharTags
+            );
+            sceneCharacterMap[scene.sceneId] = sceneCharacters;
+          }
+
+          return { charactersWithSheets, sceneCharacterMap };
+        }
+      );
 
       await Promise.all(
         completeScenes.map(async (scene) => {
@@ -543,11 +566,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
 
           // Get characters for this scene and build enhanced prompt with references
-          const sceneCharTags = scene.continuity?.characterTags || [];
-          const sceneCharacters = await getCharactersForScene(
-            sequenceId,
-            sceneCharTags
-          );
+          const sceneCharacters = sceneCharacterMap[scene.sceneId] || [];
           const charsWithSheets = sceneCharacters.filter(
             (c) =>
               c.sheetImageUrl &&

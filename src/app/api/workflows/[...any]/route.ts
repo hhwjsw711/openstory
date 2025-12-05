@@ -21,5 +21,6 @@ export const { POST } = serveMany(
   },
   {
     baseUrl: getQStashWebhookUrl(),
+    verbose: true,
   }
 );

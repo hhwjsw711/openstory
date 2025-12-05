@@ -7,7 +7,6 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
-  setSheetWorkflowRunId,
   updateCharacterSheet,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
@@ -51,8 +50,7 @@ export const characterSheetWorkflow = createWorkflow(
           `Starting sheet generation for character ${input.characterName} (${input.characterDbId})`
         );
 
-        // Update status and store workflow run ID
-        await setSheetWorkflowRunId(input.characterDbId, context.workflowRunId);
+        // Workflow run ID is now set to characterDbId via context.invoke({ workflowRunId: ... })
 
         const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
@@ -60,7 +58,7 @@ export const characterSheetWorkflow = createWorkflow(
           model,
           prompt: input.sheetPrompt,
           // Character sheets use square aspect ratio for turnaround views
-          imageSize: 'square_hd' as const,
+          imageSize: 'landscape_16_9' as const,
           numImages: 1,
         };
       }

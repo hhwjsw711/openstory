@@ -49,7 +49,6 @@ export const sequenceCharacters = sqliteTable(
       .$type<SheetStatus>()
       .default('pending')
       .notNull(),
-    sheetWorkflowRunId: text('sheet_workflow_run_id'),
     sheetGeneratedAt: integer('sheet_generated_at', { mode: 'timestamp' }),
     sheetError: text('sheet_error'),
     // Timestamps

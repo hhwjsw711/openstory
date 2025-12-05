@@ -194,19 +194,6 @@ export async function updateCharacterSheet(
 }
 
 /**
- * Set sheet workflow run ID
- */
-export async function setSheetWorkflowRunId(
-  id: string,
-  workflowRunId: string
-): Promise<SequenceCharacter> {
-  return await updateSequenceCharacter(id, {
-    sheetWorkflowRunId: workflowRunId,
-    sheetStatus: 'generating',
-  });
-}
-
-/**
  * Get characters with pending or failed sheets for a sequence
  */
 export async function getCharactersNeedingSheets(
