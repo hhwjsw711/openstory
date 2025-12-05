@@ -15,7 +15,7 @@
     "format": "bunx prettier --write .",
     "format:check": "bunx prettier --check .",
     "lint:open": "./scripts/lint-and-open.sh",
-    "typecheck": "bun --bun tsc --noEmit",
+    "typecheck": "bun --bun tsgo --noEmit",
     "test": "bun test",
     "test:ui": "bun test --watch",
     "test:coverage": "bun test --coverage",

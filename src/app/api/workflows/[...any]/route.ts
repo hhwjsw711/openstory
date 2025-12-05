@@ -1,9 +1,10 @@
 /**
- * Image generation workflow
- * Generates images using AI models and optionally updates frame thumbnails
+ * Workflow Routes
+ * Serves all QStash workflows for async AI task processing
  */
 
 import { analyzeScriptWorkflow } from '@/app/api/workflows/[...any]/analyze-script-workflow';
+import { characterSheetWorkflow } from '@/app/api/workflows/[...any]/character-sheet-workflow';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { generateStoryboardWorkflow } from '@/app/api/workflows/[...any]/storyboard-workflow';
@@ -16,6 +17,7 @@ export const { POST } = serveMany(
     image: generateImageWorkflow,
     motion: generateMotionWorkflow,
     'analyze-script': analyzeScriptWorkflow,
+    'character-sheet': characterSheetWorkflow,
   },
   {
     baseUrl: getQStashWebhookUrl(),

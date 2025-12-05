@@ -59,6 +59,19 @@ export type {
   SequenceStatus,
 } from './sequences';
 
+// Sequence Characters
+export {
+  sequenceCharacters,
+  sequenceCharactersRelations,
+  SHEET_STATUSES,
+} from './sequence-characters';
+
+export type {
+  NewSequenceCharacter,
+  SequenceCharacter,
+  SheetStatus,
+} from './sequence-characters';
+
 // Library Resources
 export {
   audio,
@@ -152,6 +165,10 @@ export const schema = {
   sequencesRelations,
   framesRelations,
 
+  // Sequence Characters
+  sequenceCharacters,
+  sequenceCharactersRelations,
+
   // Libraries
   styles,
   styleAdaptations,
@@ -198,6 +215,11 @@ import {
   sequences,
   sequencesRelations,
 } from './sequences';
+
+import {
+  sequenceCharacters,
+  sequenceCharactersRelations,
+} from './sequence-characters';
 
 import {
   audio,

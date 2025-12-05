@@ -4,6 +4,7 @@
  */
 
 import { getEnv } from '#env';
+import { characterSheetWorkflow } from '@/app/api/workflows/[...any]/character-sheet-workflow';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { ProgressCallback } from '@/lib/ai/openrouter-client';
@@ -25,9 +26,18 @@ import {
   splitScriptIntoScenes,
 } from '@/lib/script';
 import { Scene } from '@/lib/script/types';
+import {
+  buildCharacterSheetPrompt,
+  buildPromptWithReferences,
+  characterService,
+  getCharactersForScene,
+  getSequenceCharacters,
+  getSequenceCharactersWithSheets,
+} from '@/lib/services/character.service';
 import { frameService } from '@/lib/services/frame.service';
 import type {
   AnalyzeScriptWorkflowInput,
+  CharacterSheetWorkflowInput,
   ImageWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow';
@@ -229,15 +239,87 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Emit Phase 2 complete
         await emit('phase:complete', { phase: 2 });
 
-        // Emit Phase 3 start
-        await emit('phase:start', {
-          phase: 3,
-          phaseName: 'Visual Prompts',
-          totalPhases: TOTAL_PHASES,
-        });
         return characterBible;
       }
     );
+
+    // ------------------------------------------------------------
+    // Phase 2.5: Create sequence characters and generate character sheets
+    if (sequenceId && characterBible.length > 0) {
+      await context.run('create-sequence-characters', async () => {
+        // Create sequence_characters records from character bible
+        const seqCharacters = await characterService.createFromBible(
+          sequenceId,
+          characterBible
+        );
+
+        console.log(
+          '[AnalyzeScriptWorkflow]',
+          `Created ${seqCharacters.length} sequence characters`
+        );
+
+        return seqCharacters;
+      });
+
+      // Generate character sheets in parallel
+      await context.run('generate-character-sheets', async () => {
+        const runtimeEnv = getEnv();
+        const falConcurrencyLimit = (
+          runtimeEnv as unknown as Record<string, string>
+        ).FAL_CONCURRENCY_LIMIT;
+        const flowControl: FlowControl = {
+          key: 'fal-requests',
+          rate: 10,
+          period: '5s',
+          parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
+        };
+        const vercelAutomationBypassSecret =
+          process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+        const headers = vercelAutomationBypassSecret
+          ? { 'x-vercel-protection-bypass': vercelAutomationBypassSecret }
+          : undefined;
+
+        // Get fresh character list with IDs
+        const seqCharacters = await getSequenceCharacters(sequenceId);
+
+        await Promise.all(
+          seqCharacters.map(async (char) => {
+            const sheetPrompt = buildCharacterSheetPrompt(char.metadata);
+
+            const sheetInput: CharacterSheetWorkflowInput = {
+              userId: input.userId!,
+              teamId: input.teamId!,
+              sequenceId,
+              characterDbId: char.id,
+              characterName: char.name,
+              sheetPrompt,
+              imageModel: imageModel,
+            };
+
+            await context.invoke('character-sheet', {
+              workflow: characterSheetWorkflow,
+              body: sheetInput,
+              retries: 3,
+              retryDelay: 'pow(2, retried) * 1000',
+              flowControl,
+              headers,
+            });
+          })
+        );
+
+        console.log(
+          '[AnalyzeScriptWorkflow]',
+          `Triggered character sheet generation for ${seqCharacters.length} characters`
+        );
+      });
+    }
+
+    // Emit Phase 3 start
+    await emit('phase:start', {
+      phase: 3,
+      phaseName: 'Visual Prompts',
+      totalPhases: TOTAL_PHASES,
+    });
 
     // ------------------------------------------------------------
     // Process scenes in batches for phases 3-5
@@ -437,9 +519,13 @@ export const analyzeScriptWorkflow = createWorkflow(
     }
 
     // Step 8: Generate thumbnails in parallel if enabled
-    if (imageModel) {
+    if (imageModel && sequenceId) {
       // Map aspect ratio to image size preset
       const imageSize = aspectRatioToImageSize(aspectRatio);
+
+      // Get all characters with completed sheets for reference
+      const charactersWithSheets =
+        await getSequenceCharactersWithSheets(sequenceId);
 
       await Promise.all(
         completeScenes.map(async (scene) => {
@@ -456,17 +542,33 @@ export const analyzeScriptWorkflow = createWorkflow(
             (frame) => frame.sceneId === scene.sceneId
           );
 
+          // Get characters for this scene and build enhanced prompt with references
+          const sceneCharTags = scene.continuity?.characterTags || [];
+          const sceneCharacters = await getCharactersForScene(
+            sequenceId,
+            sceneCharTags
+          );
+          const charsWithSheets = sceneCharacters.filter(
+            (c) =>
+              c.sheetImageUrl &&
+              charactersWithSheets.some((cs) => cs.id === c.id)
+          );
+          const { prompt: enhancedPrompt, referenceUrls } =
+            buildPromptWithReferences(visualPrompt, charsWithSheets);
+
           // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
-            prompt: visualPrompt,
+            prompt: enhancedPrompt,
             model: imageModel,
             imageSize,
             numImages: 1,
             // Not required, but can be used to update the frame thumbnail
             frameId: frame?.frameId,
             sequenceId,
+            // Pass character reference images for consistency
+            referenceImageUrls: referenceUrls,
           };
           const runtimeEnv = getEnv();
           const falConcurrencyLimit = (

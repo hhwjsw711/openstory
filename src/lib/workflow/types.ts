@@ -38,6 +38,8 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
   numImages?: number;
   seed?: number;
   frameId?: string; // Optional: update frame thumbnail
+  /** Reference images for character consistency (auto-switches to edit endpoint) */
+  referenceImageUrls?: string[];
 }
 
 /**
@@ -107,6 +109,20 @@ export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContex
 }
 
 /**
+ * Character sheet generation workflow input
+ */
+export interface CharacterSheetWorkflowInput extends SequenceWorkflowContext {
+  /** sequence_characters.id */
+  characterDbId: string;
+  /** Character bible entry from script analysis */
+  characterName: string;
+  /** Pre-built character sheet prompt */
+  sheetPrompt: string;
+  /** Image model to use (defaults to nano_banana_pro) */
+  imageModel?: TextToImageModel;
+}
+
+/**
  * Script analysis workflow input
  */
 export interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
@@ -156,4 +172,10 @@ export interface BatchMotionWorkflowResult {
   processedFrames: string[];
   failedFrames: Array<{ frameId: string; error: string }>;
   totalProcessed: number;
+}
+
+export interface CharacterSheetWorkflowResult {
+  characterDbId: string;
+  sheetImageUrl: string;
+  sheetImagePath: string;
 }

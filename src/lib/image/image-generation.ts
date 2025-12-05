@@ -1,4 +1,8 @@
-import { getTextToImageModelId, type TextToImageModel } from '@/lib/ai/models';
+import {
+  getEditEndpoint,
+  getTextToImageModelId,
+  type TextToImageModel,
+} from '@/lib/ai/models';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
@@ -54,6 +58,9 @@ export type ImageGenerationParams = {
   safetyTolerance?: number; // FLUX Pro
   acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell/Flux 2
   enablePromptExpansion?: boolean; // FLUX 2
+
+  // Reference images for character consistency (auto-switches to edit endpoint)
+  referenceImageUrls?: string[];
 };
 
 /**
@@ -396,7 +403,13 @@ export async function generateImageWithProvider(
     }
 
     case 'nano_banana_pro': {
-      const resp = await fal.subscribe(modelId, {
+      // Auto-switch to edit endpoint when reference images are provided
+      const hasReferences =
+        params.referenceImageUrls && params.referenceImageUrls.length > 0;
+      const editEndpoint = getEditEndpoint(params.model);
+      const endpoint = hasReferences && editEndpoint ? editEndpoint : modelId;
+
+      const resp = await fal.subscribe(endpoint, {
         input: {
           prompt: params.prompt,
           aspect_ratio: imageSizeToAspectRatio(
@@ -407,6 +420,8 @@ export async function generateImageWithProvider(
             num_images: params.numImages,
           }),
           ...(params.outputFormat && { output_format: params.outputFormat }),
+          // Pass reference images when using edit endpoint
+          ...(hasReferences && { image_urls: params.referenceImageUrls }),
           sync_mode: false,
         },
         logs: true,
