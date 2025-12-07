@@ -9,6 +9,7 @@ import type {
   TextToImageModel,
 } from '@/lib/ai/models';
 import { AnalysisModelId } from '@/lib/ai/models.config';
+import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
@@ -114,10 +115,10 @@ export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContex
 export interface CharacterSheetWorkflowInput extends SequenceWorkflowContext {
   /** sequence_characters.id */
   characterDbId: string;
-  /** Character bible entry from script analysis */
+  /** Character name for logging */
   characterName: string;
-  /** Pre-built character sheet prompt */
-  sheetPrompt: string;
+  /** Character metadata from script analysis */
+  characterMetadata: CharacterBibleEntry;
   /** Image model to use (defaults to nano_banana_pro) */
   imageModel?: TextToImageModel;
 }

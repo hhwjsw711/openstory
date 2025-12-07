@@ -27,7 +27,6 @@ import {
 } from '@/lib/script';
 import { Scene } from '@/lib/script/types';
 import {
-  buildCharacterSheetPrompt,
   buildPromptWithReferences,
   createFromBible,
   getCharactersForScene,
@@ -295,19 +294,15 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       await Promise.all(
         seqCharacters.map(async (char) => {
-          const sheetPrompt = buildCharacterSheetPrompt(char.metadata);
-
           const sheetInput: CharacterSheetWorkflowInput = {
             userId: input.userId!,
             teamId: input.teamId!,
             sequenceId,
             characterDbId: char.id,
             characterName: char.name,
-            sheetPrompt,
+            characterMetadata: char.metadata,
             imageModel: imageModel,
           };
-
-          console.log('sheetInput', sheetInput);
 
           await context.invoke('character-sheet', {
             workflowRunId: char.id,

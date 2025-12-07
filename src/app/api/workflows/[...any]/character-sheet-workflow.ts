@@ -15,6 +15,7 @@ import {
   ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
@@ -29,15 +30,15 @@ export const characterSheetWorkflow = createWorkflow(
   async (context: WorkflowContext<CharacterSheetWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Step 1: Validate and set generating status
+    // Step 1: Validate and build prompt
     const generationParams: ImageGenerationParams = await context.run(
-      'set-generating-status',
+      'build-prompt',
       async () => {
         if (!input.characterDbId) {
           throw new WorkflowValidationError('characterDbId is required');
         }
-        if (!input.sheetPrompt) {
-          throw new WorkflowValidationError('sheetPrompt is required');
+        if (!input.characterMetadata) {
+          throw new WorkflowValidationError('characterMetadata is required');
         }
         if (!input.sequenceId || !input.teamId) {
           throw new WorkflowValidationError(
@@ -50,14 +51,13 @@ export const characterSheetWorkflow = createWorkflow(
           `Starting sheet generation for character ${input.characterName} (${input.characterDbId})`
         );
 
-        // Workflow run ID is now set to characterDbId via context.invoke({ workflowRunId: ... })
-
+        const sheetPrompt = buildCharacterSheetPrompt(input.characterMetadata);
         const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
         return {
           model,
-          prompt: input.sheetPrompt,
-          // Character sheets use square aspect ratio for turnaround views
+          prompt: sheetPrompt,
+          // Character sheets use landscape aspect ratio for multi-panel layout
           imageSize: 'landscape_16_9' as const,
           numImages: 1,
         };
