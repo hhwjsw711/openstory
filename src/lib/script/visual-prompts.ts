@@ -84,7 +84,7 @@ export async function generateVisualPromptsForScenes(
   const characterBibleJson = JSON.stringify(characterBible, null, 2);
   const styleConfigJson = JSON.stringify(styleConfig, null, 2);
 
-  const userPrompt = `Generate complete visual prompts for the scenes using the character bible and director style.
+  const userPrompt = `Generate complete visual prompts for the scenes using the character bible, director style, and aspect ratio.
 
 <SCENES>
 ${scenesJson}

@@ -112,7 +112,7 @@ export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContex
 /**
  * Character sheet generation workflow input
  */
-export interface CharacterSheetWorkflowInput extends SequenceWorkflowContext {
+export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowContext> {
   /** sequence_characters.id */
   characterDbId: string;
   /** Character name for logging */
@@ -176,7 +176,7 @@ export interface BatchMotionWorkflowResult {
 }
 
 export interface CharacterSheetWorkflowResult {
-  characterDbId: string;
   sheetImageUrl: string;
-  sheetImagePath: string;
+  characterDbId?: string;
+  sheetImagePath?: string;
 }

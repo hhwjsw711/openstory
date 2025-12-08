@@ -41,6 +41,12 @@ export function Header({ className }: HeaderProps) {
             >
               Create New
             </Link>
+            <Link
+              href="/eval"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Eval
+            </Link>
           </nav>
         </div>
 

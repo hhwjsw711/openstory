@@ -34,21 +34,13 @@ export const characterSheetWorkflow = createWorkflow(
     const generationParams: ImageGenerationParams = await context.run(
       'build-prompt',
       async () => {
-        if (!input.characterDbId) {
-          throw new WorkflowValidationError('characterDbId is required');
-        }
         if (!input.characterMetadata) {
           throw new WorkflowValidationError('characterMetadata is required');
-        }
-        if (!input.sequenceId || !input.teamId) {
-          throw new WorkflowValidationError(
-            'sequenceId and teamId are required'
-          );
         }
 
         console.log(
           '[CharacterSheetWorkflow]',
-          `Starting sheet generation for character ${input.characterName} (${input.characterDbId})`
+          `Starting sheet generation for character ${input.characterName}`
         );
 
         const sheetPrompt = buildCharacterSheetPrompt(input.characterMetadata);
@@ -74,64 +66,73 @@ export const characterSheetWorkflow = createWorkflow(
       return await generateImageWithProvider(generationParams);
     });
 
-    // Step 3: Upload to R2 storage
-    const storageResult = await context.run('upload-to-storage', async () => {
-      const imageUrl = imageResult.imageUrls[0];
-      if (!imageUrl) {
-        throw new Error('No image URL returned from generation');
-      }
+    let sheetImageUrl = imageResult.imageUrls[0];
+    let sheetImagePath: string | undefined = undefined;
 
-      console.log(
-        '[CharacterSheetWorkflow]',
-        `Uploading sheet to storage for ${input.characterName}`
-      );
+    if (input.characterDbId && input.teamId && input.sequenceId) {
+      // Step 3: Upload to R2 storage
+      const storageResult = await context.run('upload-to-storage', async () => {
+        const imageUrl = imageResult.imageUrls[0];
+        if (!imageUrl) {
+          throw new Error('No image URL returned from generation');
+        }
 
-      // Fetch the image
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch generated image: ${response.status}`);
-      }
-      const imageBlob = await response.blob();
+        console.log(
+          '[CharacterSheetWorkflow]',
+          `Uploading sheet to storage for ${input.characterName}`
+        );
 
-      // Build storage path: characters/{teamId}/{sequenceId}/{characterDbId}.png
-      const storagePath = `${input.teamId}/${input.sequenceId}/${input.characterDbId}.png`;
+        // Fetch the image
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch generated image: ${response.status}`
+          );
+        }
+        const imageBlob = await response.blob();
 
-      const result = await uploadFile(
-        STORAGE_BUCKETS.CHARACTERS,
-        storagePath,
-        imageBlob,
-        { contentType: 'image/png' }
-      );
+        // Build storage path: characters/{teamId}/{sequenceId}/{characterDbId}.png
+        const storagePath = `${input.teamId}/${input.sequenceId}/${input.characterDbId}.png`;
 
-      return {
-        url: result.publicUrl,
-        path: result.path,
-      };
-    });
+        const result = await uploadFile(
+          STORAGE_BUCKETS.CHARACTERS,
+          storagePath,
+          imageBlob,
+          { contentType: 'image/png' }
+        );
 
-    // Step 4: Update database with completed sheet
-    await context.run('update-database', async () => {
-      console.log(
-        '[CharacterSheetWorkflow]',
-        `Updating database for ${input.characterName}`
-      );
+        return {
+          url: result.publicUrl,
+          path: result.path,
+        };
+      });
 
-      await updateCharacterSheet(
-        input.characterDbId,
-        storageResult.url,
-        storageResult.path
-      );
-    });
+      // Step 4: Update database with completed sheet
+      await context.run('update-database', async () => {
+        console.log(
+          '[CharacterSheetWorkflow]',
+          `Updating database for ${input.characterName}`
+        );
 
+        await updateCharacterSheet(
+          input.characterDbId,
+          storageResult.url,
+          storageResult.path
+        );
+      });
+
+      sheetImagePath = storageResult.path;
+      sheetImageUrl = storageResult.url;
+    }
     console.log(
       '[CharacterSheetWorkflow]',
       `Character sheet workflow completed for ${input.characterName}`
     );
 
     const result: CharacterSheetWorkflowResult = {
+      sheetImageUrl,
+      sheetImagePath,
       characterDbId: input.characterDbId,
-      sheetImageUrl: storageResult.url,
-      sheetImagePath: storageResult.path,
     };
 
     return result;

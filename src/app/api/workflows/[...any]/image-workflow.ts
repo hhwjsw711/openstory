@@ -92,7 +92,7 @@ export const generateImageWorkflow = createWorkflow(
 
     let imageUrl: string = imageResult.imageUrls[0];
 
-    if (input.frameId) {
+    if (input.frameId && input.sequenceId && input.teamId) {
       await context.run('upload-to-storage', async () => {
         if (
           !input.frameId ||

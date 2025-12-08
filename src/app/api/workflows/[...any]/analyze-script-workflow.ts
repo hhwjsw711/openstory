@@ -29,9 +29,6 @@ import { Scene } from '@/lib/script/types';
 import {
   buildPromptWithReferences,
   createFromBible,
-  getCharactersForScene,
-  getSequenceCharacters,
-  getSequenceCharactersWithSheets,
 } from '@/lib/services/character.service';
 import { frameService } from '@/lib/services/frame.service';
 import type {
@@ -68,7 +65,35 @@ const emitSequenceEvent = async (
   }
 };
 
-const INCLUDE_VARIANTS = true;
+// ------------------------------------------------------------
+// Process scenes in batches for phases 3-5
+const BATCH_SIZE = 1; // Process this many scenes at a time
+
+/**
+ * Match characters to a scene by their continuity tags
+ * Pure function that works in-memory without DB queries
+ */
+function matchCharactersToScene(
+  allCharacters: SequenceCharacter[],
+  characterTags: string[]
+): SequenceCharacter[] {
+  if (characterTags.length === 0) return [];
+
+  return allCharacters.filter((char) => {
+    const metadata = char.metadata;
+    const consistencyTag = metadata.consistencyTag.toLowerCase();
+    const charName = char.name.toLowerCase();
+
+    return characterTags.some((tag) => {
+      const tagLower = tag.toLowerCase();
+      return (
+        tagLower.includes(consistencyTag) ||
+        tagLower.includes(charName) ||
+        tagLower.includes(metadata.characterId.toLowerCase())
+      );
+    });
+  });
+}
 
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
@@ -91,6 +116,27 @@ export const analyzeScriptWorkflow = createWorkflow(
       if (!sequenceId) return;
       await emitSequenceEvent(sequenceId, event, data);
     };
+
+    // Flow control for image and motion generation
+
+    const runtimeEnv = getEnv();
+    const falConcurrencyLimit = (
+      runtimeEnv as unknown as Record<string, string>
+    ).FAL_CONCURRENCY_LIMIT;
+    const flowControl: FlowControl = {
+      key: 'fal-requests', // Shared key for both image & motion
+      rate: 10,
+      period: '5s', // 5 seconds
+      parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
+    };
+    const vercelAutomationBypassSecret =
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+    const headers = vercelAutomationBypassSecret
+      ? {
+          'x-vercel-protection-bypass': vercelAutomationBypassSecret,
+        }
+      : undefined;
 
     // STEP: Split script into basic scenes and store in sequence metadata
     const { scenes, title, startTime } = await context.run(
@@ -163,7 +209,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Add the workflow to the sequence
         await updateSequenceWorkflow(
           sequenceId,
-          `analyze-script-shorter-prompts`
+          `analyze-script-shorter-prompts-batch-size-${BATCH_SIZE}`
         );
 
         // Build array of all frames to create with basic scene data
@@ -246,47 +292,29 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
-    // ------------------------------------------------------------
-    // Phase 3: Create sequence characters and generate character sheets
-    await emit('phase:start', {
-      phase: 3,
-      phaseName: 'Character Sheets',
-      totalPhases: TOTAL_PHASES,
-    });
+    // Characters with completed sheets - populated after character sheet generation
+    let charactersWithSheets: SequenceCharacter[] = [];
+
     if (sequenceId && characterBible.length > 0) {
-      await context.run('create-sequence-characters', async () => {
-        // Create sequence_characters records from character bible
-        const seqCharacters = await createFromBible(sequenceId, characterBible);
+      const seqCharacters = await context.run(
+        'create-sequence-characters',
+        async () => {
+          // Create sequence_characters records from character bible
+          const seqCharacters = await createFromBible(
+            sequenceId,
+            characterBible
+          );
 
-        console.log(
-          '[AnalyzeScriptWorkflow]',
-          `Created ${seqCharacters.length} sequence characters`
-        );
+          console.log(
+            '[AnalyzeScriptWorkflow]',
+            `Created ${seqCharacters.length} sequence characters`
+          );
 
-        return seqCharacters;
-      });
+          return seqCharacters;
+        }
+      );
 
-      // Generate character sheets in parallel
-      const runtimeEnv = getEnv();
-      const falConcurrencyLimit = (
-        runtimeEnv as unknown as Record<string, string>
-      ).FAL_CONCURRENCY_LIMIT;
-      const flowControl: FlowControl = {
-        key: 'fal-requests',
-        rate: 10,
-        period: '5s',
-        parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
-      };
-      const vercelAutomationBypassSecret =
-        process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-      const headers = vercelAutomationBypassSecret
-        ? { 'x-vercel-protection-bypass': vercelAutomationBypassSecret }
-        : undefined;
-
-      // Get fresh character list with IDs
-      const seqCharacters = await getSequenceCharacters(sequenceId);
-
-      await Promise.all(
+      const characterSheetWorkflowResults = await Promise.all(
         seqCharacters.map(async (char) => {
           const sheetInput: CharacterSheetWorkflowInput = {
             userId: input.userId!,
@@ -298,21 +326,47 @@ export const analyzeScriptWorkflow = createWorkflow(
             imageModel: imageModel,
           };
 
-          await context.invoke('character-sheet', {
-            workflowRunId: char.id,
-            workflow: characterSheetWorkflow,
-            body: sheetInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000',
-            flowControl,
-            headers,
-          });
+          const characterSheetWorkflowResult = await context.invoke(
+            'character-sheet',
+            {
+              workflowRunId: char.id,
+              workflow: characterSheetWorkflow,
+              body: sheetInput,
+              retries: 3,
+              retryDelay: 'pow(2, retried) * 1000',
+              flowControl,
+              headers,
+            }
+          );
+          return characterSheetWorkflowResult;
         })
       );
 
+      // Merge character sheet results with seqCharacters to build charactersWithSheets
+      // context.invoke returns { body, isFailed, isCanceled }
+      charactersWithSheets = seqCharacters
+        .map((char) => {
+          const sheetResult = characterSheetWorkflowResults.find(
+            (r) =>
+              !r.isFailed && !r.isCanceled && r.body?.characterDbId === char.id
+          );
+          if (sheetResult?.body?.sheetImageUrl) {
+            return {
+              ...char,
+              sheetImageUrl: sheetResult.body.sheetImageUrl,
+              sheetStatus: 'completed' as const,
+            };
+          }
+          return char;
+        })
+        .filter(
+          (c): c is SequenceCharacter & { sheetImageUrl: string } =>
+            !!c.sheetImageUrl
+        );
+
       console.log(
         '[AnalyzeScriptWorkflow]',
-        `Triggered character sheet generation for ${seqCharacters.length} characters`
+        `Generated ${charactersWithSheets.length} character sheets from ${seqCharacters.length} characters`
       );
     }
 
@@ -325,10 +379,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       phaseName: 'Visual Prompts',
       totalPhases: TOTAL_PHASES,
     });
-
-    // ------------------------------------------------------------
-    // Process scenes in batches for phases 3-5
-    const BATCH_SIZE = 5; // Process 5 scenes at a time
 
     const basicSceneBatches: Scene[][] = scenes.reduce((acc, scene, index) => {
       const batchIndex = Math.floor(index / BATCH_SIZE);
@@ -392,6 +442,80 @@ export const analyzeScriptWorkflow = createWorkflow(
           totalPhases: TOTAL_PHASES,
         });
       });
+    }
+    let imageUrls: string[] = [];
+    // Step 8: Generate thumbnails in parallel if enabled
+    if (imageModel) {
+      // Map aspect ratio to image size preset
+      const imageSize = aspectRatioToImageSize(aspectRatio);
+
+      // Build scene character map in-memory using characters from Phase 3
+      const sceneCharacterMap: Record<string, SequenceCharacter[]> = {};
+      for (const scene of scenesWithVisualPrompts) {
+        const sceneCharTags = scene.continuity?.characterTags || [];
+        sceneCharacterMap[scene.sceneId] = matchCharactersToScene(
+          charactersWithSheets,
+          sceneCharTags
+        );
+      }
+
+      imageUrls = await Promise.all(
+        scenesWithVisualPrompts.map(async (scene) => {
+          // Check if visual prompt exists
+          const visualPrompt = scene.prompts?.visual?.fullPrompt;
+          if (!visualPrompt) {
+            throw new WorkflowValidationError(
+              `Scene ${scene.sceneId} has no visual prompt`
+            );
+          }
+
+          // Optional: pass the frame ID to the image generation workflow
+          const frame = frameMapping.find(
+            (frame) => frame.sceneId === scene.sceneId
+          );
+
+          // Get characters for this scene and build enhanced prompt with references
+          // sceneCharacterMap already contains only characters with completed sheets
+          const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
+          const { prompt: enhancedPrompt, referenceUrls } =
+            buildPromptWithReferences(visualPrompt, charsWithSheets);
+
+          // Generate image for the frame using sequence's selected model
+          const imageInput: ImageWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            prompt: enhancedPrompt,
+            model: imageModel,
+            imageSize,
+            numImages: 1,
+            // Not required, but can be used to update the frame thumbnail
+            frameId: frame?.frameId,
+            sequenceId,
+            // Pass character reference images for consistency
+            referenceImageUrls: referenceUrls,
+          };
+
+          const {
+            body: imageBody,
+            isFailed: imageIsFailed,
+            isCanceled: imageIsCanceled,
+          } = await context.invoke('image', {
+            workflow: generateImageWorkflow,
+            body: imageInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl,
+            headers,
+          });
+
+          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+            throw new WorkflowValidationError(
+              `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
+            );
+          }
+          return imageBody.imageUrl;
+        })
+      );
     }
 
     // Step 6: Generate motion prompts for each batch
@@ -508,34 +632,10 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // Step 8: Generate thumbnails in parallel if enabled
-    if (imageModel && sequenceId) {
-      // Map aspect ratio to image size preset
-      const imageSize = aspectRatioToImageSize(aspectRatio);
-
-      const { charactersWithSheets, sceneCharacterMap } = await context.run(
-        'get-characters-with-and-without-sheets',
-        async () => {
-          // Get all characters with completed sheets for reference
-          const charactersWithSheets =
-            await getSequenceCharactersWithSheets(sequenceId);
-
-          const sceneCharacterMap: Record<string, SequenceCharacter[]> = {};
-          for (const scene of completeScenes) {
-            const sceneCharTags = scene.continuity?.characterTags || [];
-            const sceneCharacters = await getCharactersForScene(
-              sequenceId,
-              sceneCharTags
-            );
-            sceneCharacterMap[scene.sceneId] = sceneCharacters;
-          }
-
-          return { charactersWithSheets, sceneCharacterMap };
-        }
-      );
-
+    if (videoModel && imageUrls && imageUrls.length > 0) {
+      // Generate motion for each scene
       await Promise.all(
-        completeScenes.map(async (scene) => {
+        completeScenes.map(async (scene, index) => {
           // Check if visual prompt exists
           const visualPrompt = scene.prompts?.visual?.fullPrompt;
           if (!visualPrompt) {
@@ -548,69 +648,9 @@ export const analyzeScriptWorkflow = createWorkflow(
           const frame = frameMapping.find(
             (frame) => frame.sceneId === scene.sceneId
           );
-
-          // Get characters for this scene and build enhanced prompt with references
-          const sceneCharacters = sceneCharacterMap[scene.sceneId] || [];
-          const charsWithSheets = sceneCharacters.filter(
-            (c) =>
-              c.sheetImageUrl &&
-              charactersWithSheets.some((cs) => cs.id === c.id)
-          );
-          const { prompt: enhancedPrompt, referenceUrls } =
-            buildPromptWithReferences(visualPrompt, charsWithSheets);
-
-          // Generate image for the frame using sequence's selected model
-          const imageInput: ImageWorkflowInput = {
-            userId: input.userId,
-            teamId: input.teamId,
-            prompt: enhancedPrompt,
-            model: imageModel,
-            imageSize,
-            numImages: 1,
-            // Not required, but can be used to update the frame thumbnail
-            frameId: frame?.frameId,
-            sequenceId,
-            // Pass character reference images for consistency
-            referenceImageUrls: referenceUrls,
-          };
-          const runtimeEnv = getEnv();
-          const falConcurrencyLimit = (
-            runtimeEnv as unknown as Record<string, string>
-          ).FAL_CONCURRENCY_LIMIT;
-          const flowControl: FlowControl = {
-            key: 'fal-requests', // Shared key for both image & motion
-            rate: 10,
-            period: '5s', // 5 seconds
-            parallelism: falConcurrencyLimit
-              ? parseInt(falConcurrencyLimit)
-              : 10,
-          };
-          const vercelAutomationBypassSecret =
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
-          const headers = vercelAutomationBypassSecret
-            ? {
-                'x-vercel-protection-bypass': vercelAutomationBypassSecret,
-              }
-            : undefined;
-          const {
-            body: imageBody,
-            isFailed: imageIsFailed,
-            isCanceled: imageIsCanceled,
-          } = await context.invoke('image', {
-            workflow: generateImageWorkflow,
-            body: imageInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
-            headers,
-          });
-
-          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
-            throw new WorkflowValidationError(
-              `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
-            );
-          }
+          // ------------------------------------------------------------
+          // Generate motion for the frame using sequence's selected model
+          // ------------------------------------------------------------
           if (!autoGenerateMotion || !videoModel) {
             // Auto-generate motion is disabled or no video model selected, skip motion generation
             return;
@@ -629,7 +669,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             teamId: input.teamId,
             frameId: frame?.frameId,
             sequenceId,
-            imageUrl: imageBody.imageUrl,
+            imageUrl: imageUrls[index],
             prompt: motionPrompt,
             model: videoModel,
             aspectRatio,
