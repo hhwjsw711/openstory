@@ -10,7 +10,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   ...props
 }) => {
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-dvh overflow-hidden sm:h-screen sm:overflow-auto bg-background">
       <Header className="shrink-0" />
       <main
         className={cn(
