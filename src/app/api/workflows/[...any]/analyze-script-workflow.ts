@@ -575,6 +575,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             prompt: motionPrompt,
             model: videoModel,
             aspectRatio,
+            duration: scene.metadata.durationSeconds,
           };
 
           await context.invoke('motion', {

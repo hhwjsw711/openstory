@@ -184,7 +184,7 @@ describe('Motion Service', () => {
           supportsPrompt: true,
           supportsAudio: true,
           maxDuration: 10,
-          defaultDuration: 5,
+          defaultDuration: 10,
           requiresStringDuration: true,
         },
         pricing: {
@@ -219,7 +219,7 @@ describe('Motion Service', () => {
           supportsPrompt: true,
           supportsAudio: false,
           maxDuration: 10,
-          defaultDuration: 5,
+          defaultDuration: 10,
           requiresStringDuration: true,
         },
         pricing: {

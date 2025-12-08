@@ -100,7 +100,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportsPrompt: true,
       supportsAudio: false,
       maxDuration: 10,
-      defaultDuration: 5,
+      defaultDuration: 10,
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
@@ -124,7 +124,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportsPrompt: true,
       supportsAudio: true, // Native audio generation (Chinese/English)
       maxDuration: 10,
-      defaultDuration: 5,
+      defaultDuration: 10,
       fpsRange: { min: 24, max: 30, default: 30 },
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
@@ -170,7 +170,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportsPrompt: true,
       supportsAudio: false,
       maxDuration: 10,
-      defaultDuration: 5,
+      defaultDuration: 10,
       fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
