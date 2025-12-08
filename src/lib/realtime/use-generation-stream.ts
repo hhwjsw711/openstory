@@ -66,7 +66,6 @@ export function useGenerationStream(sequenceId?: string) {
             payload: data as {
               phase: number;
               phaseName: string;
-              totalPhases: number;
             },
           });
           break;

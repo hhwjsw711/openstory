@@ -22,7 +22,7 @@ import {
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { VISUAL_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
+import { getVisualPromptGenerationPrompt } from '@/lib/prompts';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
 
@@ -35,15 +35,19 @@ const visualPromptGenerationResultSchema = z.object({
   scenes: z.array(
     z.object({
       sceneId: z.string(),
-      variants: z.object({
-        cameraAngles: z.array(cameraAngleVariantSchema).length(3),
-        moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
-      }),
-      selectedVariant: z.object({
-        cameraAngle: z.enum(['A1', 'A2', 'A3']),
-        moodTreatment: z.enum(['C1', 'C2', 'C3']),
-        rationale: z.string().optional(),
-      }),
+      variants: z
+        .object({
+          cameraAngles: z.array(cameraAngleVariantSchema).length(3),
+          moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
+        })
+        .optional(),
+      selectedVariant: z
+        .object({
+          cameraAngle: z.enum(['A1', 'A2', 'A3']),
+          moodTreatment: z.enum(['C1', 'C2', 'C3']),
+          rationale: z.string().optional(),
+        })
+        .optional(),
       prompts: z.object({
         visual: visualPromptSchema,
       }),
@@ -80,7 +84,7 @@ export async function generateVisualPromptsForScenes(
   const characterBibleJson = JSON.stringify(characterBible, null, 2);
   const styleConfigJson = JSON.stringify(styleConfig, null, 2);
 
-  const userPrompt = `Generate complete visual prompts for the scenes using the character bible and director style.
+  const userPrompt = `Generate complete visual prompts for the scenes using the character bible, director style, and aspect ratio.
 
 <SCENES>
 ${scenesJson}
@@ -96,21 +100,7 @@ ${styleConfigJson}
 
 <ASPECT_RATIO>
 ${aspectRatio}
-</ASPECT_RATIO>
-
-For each scene:
-1. Generate 3 camera angle variants (A1, A2, A3)
-2. Generate 3 mood/lighting treatment variants (C1, C2, C3)
-3. Select best variants based on director style
-4. Generate complete visual prompt (200-400 words)
-   - Use EXACT character descriptions from Character Bible
-   - Include ALL details in prompt (no references to "same as before")
-   - Apply director style consistently
-5. Track continuity elements (characters, environment, colors, lighting, style)
-
-CRITICAL: Visual prompts MUST be self-contained. AI image generators have ZERO memory.
-
-Respond with ONLY valid JSON matching the schema.`;
+</ASPECT_RATIO>`;
 
   let finalContent = '';
 
@@ -118,7 +108,7 @@ Respond with ONLY valid JSON matching the schema.`;
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
-      systemMessage(VISUAL_PROMPT_GENERATION_PROMPT),
+      systemMessage(getVisualPromptGenerationPrompt()),
       userMessage(userPrompt),
     ],
   })) {
@@ -161,8 +151,6 @@ Respond with ONLY valid JSON matching the schema.`;
     }
     return {
       ...scene,
-      variants: enrichment.variants,
-      selectedVariant: enrichment.selectedVariant,
       prompts: enrichment.prompts,
       continuity: enrichment.continuity,
     };

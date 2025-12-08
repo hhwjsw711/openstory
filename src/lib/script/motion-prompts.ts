@@ -18,7 +18,7 @@ import {
   movementStyleVariantSchema,
   type Scene,
 } from '@/lib/ai/scene-analysis.schema';
-import { MOTION_PROMPT_GENERATION_PROMPT } from '@/lib/prompts';
+import { getMotionPromptGenerationPrompt } from '@/lib/prompts';
 import { z } from 'zod';
 
 /**
@@ -30,13 +30,17 @@ const motionPromptGenerationResultSchema = z.object({
   scenes: z.array(
     z.object({
       sceneId: z.string(),
-      variants: z.object({
-        movementStyles: z.array(movementStyleVariantSchema).length(3),
-      }),
-      selectedVariant: z.object({
-        movementStyle: z.enum(['B1', 'B2', 'B3']),
-        rationale: z.string().optional(),
-      }),
+      variants: z
+        .object({
+          movementStyles: z.array(movementStyleVariantSchema).length(3),
+        })
+        .optional(),
+      selectedVariant: z
+        .object({
+          movementStyle: z.enum(['B1', 'B2', 'B3']),
+          rationale: z.string().optional(),
+        })
+        .optional(),
       prompts: z.object({
         motion: motionPromptSchema,
       }),
@@ -69,21 +73,7 @@ export async function generateMotionPromptsForScenes(
 
 <SCENES>
 ${scenesJson}
-</SCENES>
-
-For each scene:
-1. Generate 3 movement style variants (B1: low energy/static, B2: medium energy, B3: high energy)
-2. Select best movement style based on scene's emotional needs
-3. Generate complete motion prompt (100-150 words)
-   - Describe camera equipment and mounting
-   - Specify start position and end position
-   - Include movement type, speed, and smoothness
-   - Note what remains in frame throughout
-   - Include duration and technical parameters
-
-CRITICAL: Motion prompts MUST be self-contained. AI video generators have ZERO memory.
-
-Respond with ONLY valid JSON matching the schema.`;
+</SCENES>`;
 
   let finalContent = '';
 
@@ -91,7 +81,7 @@ Respond with ONLY valid JSON matching the schema.`;
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
-      systemMessage(MOTION_PROMPT_GENERATION_PROMPT),
+      systemMessage(getMotionPromptGenerationPrompt()),
       userMessage(userPrompt),
     ],
   })) {
@@ -133,31 +123,8 @@ Respond with ONLY valid JSON matching the schema.`;
       );
     }
 
-    // At this point (phase 4), scene must have visual prompt data from phase 3
-    if (
-      !scene.variants?.cameraAngles ||
-      !scene.variants?.moodTreatments ||
-      !scene.selectedVariant?.cameraAngle ||
-      !scene.selectedVariant?.moodTreatment
-    ) {
-      throw new Error(
-        `Scene ${scene.sceneId} missing visual variants from phase 3`
-      );
-    }
-
     return {
       ...scene,
-      variants: {
-        cameraAngles: scene.variants.cameraAngles,
-        moodTreatments: scene.variants.moodTreatments,
-        movementStyles: enrichment.variants.movementStyles,
-      },
-      selectedVariant: {
-        cameraAngle: scene.selectedVariant.cameraAngle,
-        moodTreatment: scene.selectedVariant.moodTreatment,
-        movementStyle: enrichment.selectedVariant.movementStyle,
-        rationale: enrichment.selectedVariant.rationale,
-      },
       prompts: {
         ...scene.prompts,
         motion: enrichment.prompts.motion,

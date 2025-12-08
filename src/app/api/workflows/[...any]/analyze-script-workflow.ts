@@ -27,12 +27,8 @@ import {
 } from '@/lib/script';
 import { Scene } from '@/lib/script/types';
 import {
-  buildCharacterSheetPrompt,
   buildPromptWithReferences,
   createFromBible,
-  getCharactersForScene,
-  getSequenceCharacters,
-  getSequenceCharactersWithSheets,
 } from '@/lib/services/character.service';
 import { frameService } from '@/lib/services/frame.service';
 import type {
@@ -45,30 +41,44 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
+import { characterBibleWorkflow } from './character-bible-workflow';
+import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
+import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 // Total phases for realtime progress tracking
 const TOTAL_PHASES = 7;
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
-// Helper to safely emit events (no-op if realtime unavailable)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const emitSequenceEvent = async (
-  sequenceId: string,
-  event: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
-) => {
-  if (!sequenceId) return;
-  const channel = getGenerationChannel(sequenceId);
-  if (!channel) return;
-  try {
-    console.log('emitting event', event, data);
-    await channel.emit(`generation.${event}` as 'generation.complete', data);
-  } catch (error) {
-    console.warn('[StoryboardGenerationWorkflow] Failed to emit event:', error);
-  }
-};
+// ------------------------------------------------------------
+// Process scenes in batches for phases 3-5
+const BATCH_SIZE = 1; // Process this many scenes at a time
+
+/**
+ * Match characters to a scene by their continuity tags
+ * Pure function that works in-memory without DB queries
+ */
+function matchCharactersToScene(
+  allCharacters: SequenceCharacterMinimal[],
+  characterTags: string[]
+): SequenceCharacterMinimal[] {
+  if (characterTags.length === 0) return [];
+
+  return allCharacters.filter((char) => {
+    const metadata = char.metadata;
+    const consistencyTag = metadata.consistencyTag.toLowerCase();
+    const charName = char.name.toLowerCase();
+
+    return characterTags.some((tag) => {
+      const tagLower = tag.toLowerCase();
+      return (
+        tagLower.includes(consistencyTag) ||
+        tagLower.includes(charName) ||
+        tagLower.includes(metadata.characterId.toLowerCase())
+      );
+    });
+  });
+}
 
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
@@ -85,12 +95,26 @@ export const analyzeScriptWorkflow = createWorkflow(
       autoGenerateMotion = false,
     } = input;
 
-    // Helper to safely emit events (no-op if realtime unavailable)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const emit = async (event: string, data: any) => {
-      if (!sequenceId) return;
-      await emitSequenceEvent(sequenceId, event, data);
+    // Flow control for image and motion generation
+
+    const runtimeEnv = getEnv();
+    const falConcurrencyLimit = (
+      runtimeEnv as unknown as Record<string, string>
+    ).FAL_CONCURRENCY_LIMIT;
+    const flowControl: FlowControl = {
+      key: 'fal-requests', // Shared key for both image & motion
+      rate: 10,
+      period: '5s', // 5 seconds
+      parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
     };
+    const vercelAutomationBypassSecret =
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+    const headers = vercelAutomationBypassSecret
+      ? {
+          'x-vercel-protection-bypass': vercelAutomationBypassSecret,
+        }
+      : undefined;
 
     // STEP: Split script into basic scenes and store in sequence metadata
     const { scenes, title, startTime } = await context.run(
@@ -103,22 +127,16 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
 
         // Emit Phase 1 start
-        await emit('phase:start', {
+        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 1,
           phaseName: 'Scene Splitting',
-          totalPhases: TOTAL_PHASES,
         });
 
         const splitScriptProgressCallback: ProgressCallback = (progress: {
           type: 'chunk' | 'complete';
           text: string;
           parsed?: unknown;
-        }) => {
-          console.log(
-            '[StoryboardGenerationWorkflow] Split Script Progress:',
-            progress.type
-          );
-        };
+        }) => {};
         const result = await splitScriptIntoScenes(
           script,
           aspectRatio,
@@ -134,7 +152,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         // Emit scene:new for each scene that was split
         for (const scene of result.scenes) {
-          await emit('scene:new', {
+          await getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
             title: scene.metadata.title,
@@ -144,7 +162,10 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
 
         // Emit Phase 1 complete
-        await emit('phase:complete', { phase: 1 });
+        await getGenerationChannel(sequenceId).emit(
+          'generation.phase:complete',
+          { phase: 1 }
+        );
 
         return {
           scenes: result.scenes,
@@ -163,10 +184,15 @@ export const analyzeScriptWorkflow = createWorkflow(
         await updateSequenceTitle(sequenceId, title);
 
         // Emit sequence updated event so frontend can refresh title
-        await emit('updated', { title });
+        await getGenerationChannel(sequenceId).emit('generation.updated', {
+          title,
+        });
 
         // Add the workflow to the sequence
-        await updateSequenceWorkflow(sequenceId, 'analyze-script');
+        await updateSequenceWorkflow(
+          sequenceId,
+          `analyze-script-shorter-prompts-batch-size-${BATCH_SIZE}`
+        );
 
         // Build array of all frames to create with basic scene data
         const frameInserts = scenes.map(
@@ -199,11 +225,14 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Emit frame:created for each frame
         for (const { sceneId, frameId } of frameMapping) {
           const scene = scenes.find((s) => s.sceneId === sceneId);
-          await emit('frame:created', {
-            frameId,
-            sceneId,
-            orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
-          });
+          await getGenerationChannel(sequenceId).emit(
+            'generation.frame:created',
+            {
+              frameId,
+              sceneId,
+              orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+            }
+          );
         }
 
         return frameMapping;
@@ -219,18 +248,12 @@ export const analyzeScriptWorkflow = createWorkflow(
             type: 'chunk' | 'complete';
             text: string;
             parsed?: unknown;
-          }) => {
-            console.log(
-              '[StoryboardGenerationWorkflow] Extract Character Bible Progress:',
-              progress.type
-            );
-          };
+          }) => {};
 
         // Emit Phase 2 start
-        await emit('phase:start', {
+        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 2,
           phaseName: 'Character Extraction',
-          totalPhases: TOTAL_PHASES,
         });
         const characterBible = await extractCharacterBible(
           scenes,
@@ -247,186 +270,162 @@ export const analyzeScriptWorkflow = createWorkflow(
           });
         }
         // Emit Phase 2 complete
-        await emit('phase:complete', { phase: 2 });
+        await getGenerationChannel(sequenceId).emit(
+          'generation.phase:complete',
+          { phase: 2 }
+        );
+
+        // Start phase 3
 
         return characterBible;
       }
     );
 
-    // ------------------------------------------------------------
-    // Phase 3: Create sequence characters and generate character sheets
-    await emit('phase:start', {
-      phase: 3,
-      phaseName: 'Character Sheets',
-      totalPhases: TOTAL_PHASES,
-    });
-    if (sequenceId && characterBible.length > 0) {
-      await context.run('create-sequence-characters', async () => {
-        // Create sequence_characters records from character bible
-        const seqCharacters = await createFromBible(sequenceId, characterBible);
-
-        console.log(
-          '[AnalyzeScriptWorkflow]',
-          `Created ${seqCharacters.length} sequence characters`
-        );
-
-        return seqCharacters;
-      });
-
-      // Generate character sheets in parallel
-      const runtimeEnv = getEnv();
-      const falConcurrencyLimit = (
-        runtimeEnv as unknown as Record<string, string>
-      ).FAL_CONCURRENCY_LIMIT;
-      const flowControl: FlowControl = {
-        key: 'fal-requests',
-        rate: 10,
-        period: '5s',
-        parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
-      };
-      const vercelAutomationBypassSecret =
-        process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-      const headers = vercelAutomationBypassSecret
-        ? { 'x-vercel-protection-bypass': vercelAutomationBypassSecret }
-        : undefined;
-
-      // Get fresh character list with IDs
-      const seqCharacters = await getSequenceCharacters(sequenceId);
-
-      await Promise.all(
-        seqCharacters.map(async (char) => {
-          const sheetPrompt = buildCharacterSheetPrompt(char.metadata);
-
-          const sheetInput: CharacterSheetWorkflowInput = {
-            userId: input.userId!,
-            teamId: input.teamId!,
+    // Characters with completed sheets - populated after character sheet generation
+    const [{ body: charactersWithSheets }, { body: scenesWithVisualPrompts }] =
+      await Promise.all([
+        context.invoke('character-sheet-from-bible', {
+          workflow: characterBibleWorkflow,
+          body: {
             sequenceId,
-            characterDbId: char.id,
-            characterName: char.name,
-            sheetPrompt,
-            imageModel: imageModel,
-          };
-
-          console.log('sheetInput', sheetInput);
-
-          await context.invoke('character-sheet', {
-            workflowRunId: char.id,
-            workflow: characterSheetWorkflow,
-            body: sheetInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000',
-            flowControl,
-            headers,
-          });
-        })
-      );
-
-      console.log(
-        '[AnalyzeScriptWorkflow]',
-        `Triggered character sheet generation for ${seqCharacters.length} characters`
-      );
-    }
-
-    // Emit Phase 3 complete
-    await emit('phase:complete', { phase: 3 });
-
-    // Emit Phase 4 start
-    await emit('phase:start', {
-      phase: 4,
-      phaseName: 'Visual Prompts',
-      totalPhases: TOTAL_PHASES,
-    });
-
-    // ------------------------------------------------------------
-    // Process scenes in batches for phases 3-5
-    const BATCH_SIZE = 5; // Process 5 scenes at a time
-
-    const basicSceneBatches: Scene[][] = scenes.reduce((acc, scene, index) => {
-      const batchIndex = Math.floor(index / BATCH_SIZE);
-      if (!acc[batchIndex]) {
-        acc[batchIndex] = [];
-      }
-      acc[batchIndex].push(scene);
-      return acc;
-    }, [] as Scene[][]);
-
-    // ------------------------------------------------------------
-    // Step 5: Generate visual prompts for each batch
-    const visualPromptResults: Scene[][] = await Promise.all(
-      basicSceneBatches.map(async (batch, batchIndex) => {
-        return context.run(`visual-prompts-batch-${batchIndex}`, async () => {
-          const generateVisualPromptsProgressCallback: ProgressCallback =
-            (progress: {
-              type: 'chunk' | 'complete';
-              text: string;
-              parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Visual Prompts Progress:',
-                progress.type
-              );
-            };
-          return await generateVisualPromptsForScenes(
-            batch,
+            userId: input.userId,
+            teamId: input.teamId,
+            characterBible,
+          },
+        }),
+        context.invoke('visual-prompts', {
+          workflow: visualPromptWorkflow,
+          body: {
+            sequenceId,
+            scenes,
             aspectRatio,
             characterBible,
             styleConfig,
-            generateVisualPromptsProgressCallback,
-            { model: analysisModelId }
-          );
-        });
-      })
-    );
-    const scenesWithVisualPrompts = visualPromptResults.flat();
-    if (sequenceId) {
-      // Update frames with visual prompt data (Phase 3)
-      await context.run('update-frames-after-visual-prompts', async () => {
-        await Promise.all(
-          scenesWithVisualPrompts.map(async (scene) => {
-            const frame = frameMapping.find(
-              (frame) => frame.sceneId === scene.sceneId
-            );
-            if (!frame) return;
-            await frameService.updateFrame({
-              id: frame.frameId,
-              metadata: scene,
-            });
-            await emit('frame:updated', {
-              frameId: frame.frameId,
-              updateType: 'visual-prompt',
-              metadata: scene,
-            });
-          })
-        );
+            analysisModelId,
+            frameMapping,
+          },
+        }),
+      ]);
 
-        // Emit Phase 4 complete
-        await emit('phase:complete', { phase: 4 });
-        // Emit Phase 5 start
-        await emit('phase:start', {
+    // Emit Phase 4 complete
+    await context.run('visual-prompts-complete', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
+        phase: 4,
+      });
+      if (sequenceId) {
+        // This is the the time from the beginning to the start of image generation
+        await updateSequenceAnalysisDurationMs(
+          sequenceId,
+          Date.now() - startTime
+        );
+      }
+    });
+
+    let imageUrls: string[] = [];
+    // Step 8: Generate thumbnails in parallel if enabled
+    if (imageModel) {
+      // Map aspect ratio to image size preset
+      const imageSize = aspectRatioToImageSize(aspectRatio);
+
+      // Build scene character map in-memory using characters from Phase 3
+      const sceneCharacterMap: Record<string, SequenceCharacterMinimal[]> = {};
+      for (const scene of scenesWithVisualPrompts) {
+        const sceneCharTags = scene.continuity?.characterTags || [];
+        sceneCharacterMap[scene.sceneId] = matchCharactersToScene(
+          charactersWithSheets,
+          sceneCharTags
+        );
+      }
+      // Start phase 5
+      await context.run('frame-images-start', async () => {
+        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 5,
-          phaseName: 'Motion Prompts',
-          totalPhases: TOTAL_PHASES,
+          phaseName: 'Generate Images',
         });
       });
+      imageUrls = await Promise.all(
+        scenesWithVisualPrompts.map(async (scene) => {
+          // Check if visual prompt exists
+          const visualPrompt = scene.prompts?.visual?.fullPrompt;
+          if (!visualPrompt) {
+            throw new WorkflowValidationError(
+              `Scene ${scene.sceneId} has no visual prompt`
+            );
+          }
+
+          // Optional: pass the frame ID to the image generation workflow
+          const frame = frameMapping.find(
+            (frame) => frame.sceneId === scene.sceneId
+          );
+
+          // Get characters for this scene and build enhanced prompt with references
+          // sceneCharacterMap already contains only characters with completed sheets
+          const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
+          const { prompt: enhancedPrompt, referenceUrls } =
+            buildPromptWithReferences(visualPrompt, charsWithSheets);
+
+          // Generate image for the frame using sequence's selected model
+          const imageInput: ImageWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            prompt: enhancedPrompt,
+            model: imageModel,
+            imageSize,
+            numImages: 1,
+            // Not required, but can be used to update the frame thumbnail
+            frameId: frame?.frameId,
+            sequenceId,
+            // Pass character reference images for consistency
+            referenceImageUrls: referenceUrls,
+          };
+
+          const {
+            body: imageBody,
+            isFailed: imageIsFailed,
+            isCanceled: imageIsCanceled,
+          } = await context.invoke('image', {
+            workflow: generateImageWorkflow,
+            body: imageInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl,
+            headers,
+          });
+
+          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+            throw new WorkflowValidationError(
+              `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
+            );
+          }
+          return imageBody.imageUrl;
+        })
+      );
     }
+
+    // End phase 5, start phase 6
+    await context.run('frame-images-complete', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
+        phase: 5,
+      });
+
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 6,
+        phaseName: 'Motion Prompts',
+      });
+    });
 
     // Step 6: Generate motion prompts for each batch
     const motionPromptResults: Scene[][] = await Promise.all(
-      visualPromptResults.map(async (batchWithVisualPrompts, batchIndex) => {
+      scenesWithVisualPrompts.map(async (scene, batchIndex) => {
         return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
           const generateMotionPromptsProgressCallback: ProgressCallback =
             (progress: {
               type: 'chunk' | 'complete';
               text: string;
               parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Motion Prompts Progress:',
-                progress.type
-              );
-            };
+            }) => {};
           return await generateMotionPromptsForScenes(
-            batchWithVisualPrompts,
+            [scene],
             generateMotionPromptsProgressCallback,
             {
               model: analysisModelId,
@@ -451,24 +450,27 @@ export const analyzeScriptWorkflow = createWorkflow(
               id: frame.frameId,
               metadata: scene,
             });
-            await emit('frame:updated', {
-              frameId: frame.frameId,
-              updateType: 'motion-prompt',
-              metadata: scene,
-            });
+            await getGenerationChannel(sequenceId).emit(
+              'generation.frame:updated',
+              {
+                frameId: frame.frameId,
+                updateType: 'motion-prompt',
+                metadata: scene,
+              }
+            );
           })
         );
-
-        // Emit Phase 5 complete
-        await emit('phase:complete', { phase: 5 });
-        // Emit Phase 6 start
-        await emit('phase:start', {
-          phase: 6,
-          phaseName: 'Audio Design',
-          totalPhases: TOTAL_PHASES,
-        });
       });
     }
+    await context.run('motion-prompts-complete', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
+        phase: 6,
+      });
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 7,
+        phaseName: 'Audio Design',
+      });
+    });
     // Step 7: Generate audio design for each batch
     const audioDesignResults: Scene[][] = await Promise.all(
       motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
@@ -478,12 +480,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               type: 'chunk' | 'complete';
               text: string;
               parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Audio Design Progress:',
-                progress.type
-              );
-            };
+            }) => {};
 
           return await generateAudioDesignForScenes(
             batchWithMotionPrompts,
@@ -510,58 +507,37 @@ export const analyzeScriptWorkflow = createWorkflow(
               id: frame.frameId,
               metadata: scene,
             });
-            await emit('frame:updated', {
-              frameId: frame.frameId,
-              updateType: 'audio-design',
-              metadata: scene,
-            });
+            await getGenerationChannel(sequenceId).emit(
+              'generation.frame:updated',
+              {
+                frameId: frame.frameId,
+                updateType: 'audio-design',
+                metadata: scene,
+              }
+            );
           })
         );
 
-        await updateSequenceAnalysisDurationMs(
-          sequenceId,
-          Date.now() - startTime
+        await getGenerationChannel(sequenceId).emit(
+          'generation.phase:complete',
+          {
+            phase: 6,
+          }
         );
-        // Emit Phase 6 complete
-        await emit('phase:complete', { phase: 6 });
-
-        // Emit Phase 7 start (Image Generation)
-        await emit('phase:start', {
-          phase: 7,
-          phaseName: 'Image & Motion Generation',
-          totalPhases: TOTAL_PHASES,
-        });
       });
     }
 
-    // Step 8: Generate thumbnails in parallel if enabled
-    if (imageModel && sequenceId) {
-      // Map aspect ratio to image size preset
-      const imageSize = aspectRatioToImageSize(aspectRatio);
-
-      const { charactersWithSheets, sceneCharacterMap } = await context.run(
-        'get-characters-with-and-without-sheets',
-        async () => {
-          // Get all characters with completed sheets for reference
-          const charactersWithSheets =
-            await getSequenceCharactersWithSheets(sequenceId);
-
-          const sceneCharacterMap: Record<string, SequenceCharacter[]> = {};
-          for (const scene of completeScenes) {
-            const sceneCharTags = scene.continuity?.characterTags || [];
-            const sceneCharacters = await getCharactersForScene(
-              sequenceId,
-              sceneCharTags
-            );
-            sceneCharacterMap[scene.sceneId] = sceneCharacters;
-          }
-
-          return { charactersWithSheets, sceneCharacterMap };
-        }
-      );
-
+    if (videoModel && imageUrls && imageUrls.length > 0) {
+      // Start phase 7
+      await context.run('start-motion-generation', async () => {
+        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+          phase: 7,
+          phaseName: 'Motion Generation',
+        });
+      });
+      // Generate motion for each scene
       await Promise.all(
-        completeScenes.map(async (scene) => {
+        completeScenes.map(async (scene, index) => {
           // Check if visual prompt exists
           const visualPrompt = scene.prompts?.visual?.fullPrompt;
           if (!visualPrompt) {
@@ -574,69 +550,9 @@ export const analyzeScriptWorkflow = createWorkflow(
           const frame = frameMapping.find(
             (frame) => frame.sceneId === scene.sceneId
           );
-
-          // Get characters for this scene and build enhanced prompt with references
-          const sceneCharacters = sceneCharacterMap[scene.sceneId] || [];
-          const charsWithSheets = sceneCharacters.filter(
-            (c) =>
-              c.sheetImageUrl &&
-              charactersWithSheets.some((cs) => cs.id === c.id)
-          );
-          const { prompt: enhancedPrompt, referenceUrls } =
-            buildPromptWithReferences(visualPrompt, charsWithSheets);
-
-          // Generate image for the frame using sequence's selected model
-          const imageInput: ImageWorkflowInput = {
-            userId: input.userId,
-            teamId: input.teamId,
-            prompt: enhancedPrompt,
-            model: imageModel,
-            imageSize,
-            numImages: 1,
-            // Not required, but can be used to update the frame thumbnail
-            frameId: frame?.frameId,
-            sequenceId,
-            // Pass character reference images for consistency
-            referenceImageUrls: referenceUrls,
-          };
-          const runtimeEnv = getEnv();
-          const falConcurrencyLimit = (
-            runtimeEnv as unknown as Record<string, string>
-          ).FAL_CONCURRENCY_LIMIT;
-          const flowControl: FlowControl = {
-            key: 'fal-requests', // Shared key for both image & motion
-            rate: 10,
-            period: '5s', // 5 seconds
-            parallelism: falConcurrencyLimit
-              ? parseInt(falConcurrencyLimit)
-              : 10,
-          };
-          const vercelAutomationBypassSecret =
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
-          const headers = vercelAutomationBypassSecret
-            ? {
-                'x-vercel-protection-bypass': vercelAutomationBypassSecret,
-              }
-            : undefined;
-          const {
-            body: imageBody,
-            isFailed: imageIsFailed,
-            isCanceled: imageIsCanceled,
-          } = await context.invoke('image', {
-            workflow: generateImageWorkflow,
-            body: imageInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
-            headers,
-          });
-
-          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
-            throw new WorkflowValidationError(
-              `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
-            );
-          }
+          // ------------------------------------------------------------
+          // Generate motion for the frame using sequence's selected model
+          // ------------------------------------------------------------
           if (!autoGenerateMotion || !videoModel) {
             // Auto-generate motion is disabled or no video model selected, skip motion generation
             return;
@@ -655,7 +571,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             teamId: input.teamId,
             frameId: frame?.frameId,
             sequenceId,
-            imageUrl: imageBody.imageUrl,
+            imageUrl: imageUrls[index],
             prompt: motionPrompt,
             model: videoModel,
             aspectRatio,
@@ -687,7 +603,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       await updateSequenceStatus(sequenceId, 'failed');
 
       // Emit sequence failure event
-      await emitSequenceEvent(sequenceId, 'failed', {
+      await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: String(failResponse),
       });
 

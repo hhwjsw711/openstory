@@ -15,6 +15,7 @@ import {
   updateCharacterSheet as updateCharacterSheetHelper,
 } from '@/lib/db/helpers/sequence-characters';
 import type { NewSequenceCharacter, SequenceCharacter } from '@/lib/db/schema';
+import { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
 
 /**
  * Result of building a prompt with character references
@@ -207,7 +208,7 @@ function buildCharacterDescription(metadata: CharacterBibleEntry): string {
  */
 export function buildPromptWithReferences(
   basePrompt: string,
-  characters: SequenceCharacter[]
+  characters: SequenceCharacterMinimal[]
 ): PromptWithReferences {
   // Filter to only characters with completed sheets
   const charactersWithSheets = characters.filter(

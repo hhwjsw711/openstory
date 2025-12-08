@@ -7,7 +7,6 @@ import {
   StorageError,
   ValidationError,
   VelroError,
-  withRetry,
 } from './errors';
 
 describe('VelroError', () => {
@@ -160,103 +159,5 @@ describe('handleApiError', () => {
     expect(result.message).toBe('An unknown error occurred');
     expect(result.code).toBe('UNKNOWN_ERROR');
     expect(result.details).toEqual({ originalError: 'string' });
-  });
-});
-
-describe('withRetry', () => {
-  it('should succeed on first attempt', async () => {
-    const operation = mock().mockResolvedValue('success');
-    const result = await withRetry(operation, {
-      attempts: 3,
-      delayMs: 100,
-    });
-
-    expect(result).toBe('success');
-    expect(operation).toHaveBeenCalledTimes(1);
-  });
-
-  it('should retry on failure and eventually succeed', async () => {
-    const operation = mock()
-      .mockRejectedValueOnce(new Error('Fail 1'))
-      .mockRejectedValueOnce(new Error('Fail 2'))
-      .mockResolvedValue('success');
-
-    const result = await withRetry(operation, {
-      attempts: 3,
-      delayMs: 10,
-    });
-
-    expect(result).toBe('success');
-    expect(operation).toHaveBeenCalledTimes(3);
-  });
-
-  it('should throw after all attempts fail', async () => {
-    const error = new Error('Persistent failure');
-    const operation = mock().mockRejectedValue(error);
-
-    expect(
-      withRetry(operation, {
-        attempts: 3,
-        delayMs: 10,
-      })
-    ).rejects.toThrow('Persistent failure');
-
-    expect(operation).toHaveBeenCalledTimes(3);
-  });
-
-  it('should apply backoff multiplier', async () => {
-    const operation = mock()
-      .mockRejectedValueOnce(new Error('Fail 1'))
-      .mockRejectedValueOnce(new Error('Fail 2'))
-      .mockResolvedValue('success');
-
-    const startTime = Date.now();
-    await withRetry(operation, {
-      attempts: 3,
-      delayMs: 10,
-      backoffMultiplier: 2,
-    });
-    const endTime = Date.now();
-
-    // First delay: 10ms, Second delay: 20ms, Total minimum: 30ms
-    expect(endTime - startTime).toBeGreaterThanOrEqual(30);
-    expect(operation).toHaveBeenCalledTimes(3);
-  });
-
-  it('should respect shouldRetry callback', async () => {
-    const retryableError = new Error('Retryable');
-    const nonRetryableError = new Error('Do not retry');
-
-    const operation = mock()
-      .mockRejectedValueOnce(retryableError)
-      .mockRejectedValueOnce(nonRetryableError);
-
-    expect(
-      withRetry(operation, {
-        attempts: 3,
-        delayMs: 10,
-        shouldRetry: (error) => {
-          return error instanceof Error && error.message !== 'Do not retry';
-        },
-      })
-    ).rejects.toThrow('Do not retry');
-
-    // Should stop after non-retryable error
-    expect(operation).toHaveBeenCalledTimes(2);
-  });
-
-  it('should not retry when shouldRetry returns false on first attempt', async () => {
-    const error = new Error('Non-retryable');
-    const operation = mock().mockRejectedValue(error);
-
-    expect(
-      withRetry(operation, {
-        attempts: 3,
-        delayMs: 10,
-        shouldRetry: () => false,
-      })
-    ).rejects.toThrow('Non-retryable');
-
-    expect(operation).toHaveBeenCalledTimes(1);
   });
 });
