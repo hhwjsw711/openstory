@@ -68,7 +68,7 @@ const emitSequenceEvent = async (
   }
 };
 
-const INCLUDE_VARIANTS = false;
+const INCLUDE_VARIANTS = true;
 
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
@@ -163,7 +163,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Add the workflow to the sequence
         await updateSequenceWorkflow(
           sequenceId,
-          `analyze-script${INCLUDE_VARIANTS ? '' : '-without-variants'}`
+          `analyze-script-shorter-prompts`
         );
 
         // Build array of all frames to create with basic scene data
@@ -356,7 +356,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             characterBible,
             styleConfig,
             generateVisualPromptsProgressCallback,
-            { model: analysisModelId, includeVariants: INCLUDE_VARIANTS }
+            { model: analysisModelId }
           );
         });
       })
@@ -409,7 +409,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             generateMotionPromptsProgressCallback,
             {
               model: analysisModelId,
-              includeVariants: INCLUDE_VARIANTS,
             }
           );
         });

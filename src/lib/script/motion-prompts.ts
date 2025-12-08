@@ -62,11 +62,9 @@ export async function generateMotionPromptsForScenes(
   onProgress?: ProgressCallback,
   options?: {
     model?: string;
-    includeVariants?: boolean;
   }
 ): Promise<Scene[]> {
-  const { model = RECOMMENDED_MODELS.fast, includeVariants = false } =
-    options ?? {};
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
   // Build user prompt with scenes (including visual prompts for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
@@ -83,7 +81,7 @@ ${scenesJson}
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
-      systemMessage(getMotionPromptGenerationPrompt(includeVariants)),
+      systemMessage(getMotionPromptGenerationPrompt()),
       userMessage(userPrompt),
     ],
   })) {
@@ -125,43 +123,8 @@ ${scenesJson}
       );
     }
 
-    if (!includeVariants) {
-      return {
-        ...scene,
-        prompts: {
-          ...scene.prompts,
-          motion: enrichment.prompts.motion,
-        },
-      };
-    }
-
-    // At this point (phase 4), scene must have visual prompt data from phase 3 and variants data from phase 4
-    if (
-      !scene.variants?.cameraAngles ||
-      !scene.variants?.moodTreatments ||
-      !scene.selectedVariant?.cameraAngle ||
-      !scene.selectedVariant?.moodTreatment
-    ) {
-      throw new Error(
-        `Scene ${scene.sceneId} missing visual variants from phase 3`
-      );
-    }
-
     return {
       ...scene,
-
-      variants: {
-        cameraAngles: scene.variants.cameraAngles,
-        moodTreatments: scene.variants.moodTreatments,
-        movementStyles: enrichment.variants?.movementStyles,
-      },
-      selectedVariant: {
-        cameraAngle: scene.selectedVariant.cameraAngle,
-        moodTreatment: scene.selectedVariant.moodTreatment,
-        movementStyle: enrichment.selectedVariant?.movementStyle,
-        rationale: enrichment.selectedVariant?.rationale,
-      },
-
       prompts: {
         ...scene.prompts,
         motion: enrichment.prompts.motion,

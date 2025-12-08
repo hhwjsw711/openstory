@@ -75,11 +75,9 @@ export async function generateVisualPromptsForScenes(
   onProgress?: ProgressCallback,
   options?: {
     model?: string;
-    includeVariants?: boolean;
   }
 ): Promise<Scene[]> {
-  const { model = RECOMMENDED_MODELS.fast, includeVariants = false } =
-    options ?? {};
+  const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
   // Build user prompt with scenes, character bible, and style config
   const scenesJson = JSON.stringify(scenes, null, 2);
@@ -110,7 +108,7 @@ ${aspectRatio}
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
-      systemMessage(getVisualPromptGenerationPrompt(includeVariants)),
+      systemMessage(getVisualPromptGenerationPrompt()),
       userMessage(userPrompt),
     ],
   })) {
@@ -153,12 +151,6 @@ ${aspectRatio}
     }
     return {
       ...scene,
-      ...(includeVariants
-        ? {
-            variants: enrichment.variants,
-            selectedVariant: enrichment.selectedVariant,
-          }
-        : {}),
       prompts: enrichment.prompts,
       continuity: enrichment.continuity,
     };
