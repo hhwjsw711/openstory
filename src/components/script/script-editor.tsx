@@ -13,6 +13,7 @@ interface ScriptEditorProps {
   showCharacterCount?: boolean;
   loading?: boolean;
   autoFocus?: boolean;
+  fillHeight?: boolean;
 }
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
@@ -25,6 +26,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   showCharacterCount = true,
   loading = false,
   autoFocus = false,
+  fillHeight = false,
 }) => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -55,8 +57,15 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const hasError = Boolean(error) || isOverLimit;
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="relative">
+    <div
+      className={cn(
+        'flex flex-col gap-2 w-full',
+        fillHeight && 'flex-1 min-h-0'
+      )}
+    >
+      <div
+        className={cn('relative', fillHeight && 'flex-1 flex flex-col min-h-0')}
+      >
         <Textarea
           value={loading ? 'Loading...' : value}
           onChange={handleChange}
@@ -66,7 +75,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-32 max-h-[50vh] resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
+            'min-h-32 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
+            !fillHeight && 'max-h-[50vh]',
+            fillHeight && 'flex-1 min-h-0',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"

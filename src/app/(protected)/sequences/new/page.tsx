@@ -1,5 +1,4 @@
 'use client';
-import { PageContainer } from '@/components/layout';
 import { ScriptView } from '@/components/script/script-view';
 import { useUser } from '@/hooks/use-user';
 import { useRouter } from 'next/navigation';
@@ -23,12 +22,10 @@ export default function NewSequencePage() {
   );
 
   return (
-    <div className="h-full overflow-auto">
-      <PageContainer maxWidth="narrow">
-        {/* Page Header */}
-
+    <div className="h-full flex flex-col p-2 sm:block sm:h-auto sm:p-0 sm:overflow-auto">
+      <div className="flex-1 flex flex-col min-h-0 sm:flex-none sm:max-w-4xl sm:mx-auto sm:py-8 sm:px-4">
         <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
-      </PageContainer>
+      </div>
     </div>
   );
 }

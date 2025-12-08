@@ -219,10 +219,16 @@ export const ScriptView: FC<{
   const scriptValue = script || sequence?.script || '';
 
   return (
-    <Card variant="premium" className={flat ? 'border-none' : ''}>
-      <form onSubmit={handleSubmit}>
+    <Card
+      variant="premium"
+      className={`flex-1 sm:flex-none flex flex-col overflow-hidden ${flat ? 'border-none' : ''}`}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="flex-1 sm:flex-none flex flex-col overflow-hidden sm:overflow-visible"
+      >
         {/* Control bar */}
-        <CardHeader className="flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
+        <CardHeader className="flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40 shrink-0">
           <GenerationSettings
             aspectRatio={aspectRatio}
             analysisModels={analysisModels}
@@ -239,7 +245,7 @@ export const ScriptView: FC<{
           />
         </CardHeader>
 
-        <CardContent className="@container space-y-4 py-6">
+        <CardContent className="@container flex-1 sm:flex-none flex flex-col gap-4 py-6 min-h-0 overflow-hidden sm:overflow-visible">
           <ScriptEditor
             value={scriptValue}
             loading={!!loading}
@@ -248,6 +254,7 @@ export const ScriptView: FC<{
             showCharacterCount={false}
             maxLength={50000}
             autoFocus={autoFocus}
+            fillHeight
           />
 
           <StyleSelector
@@ -258,7 +265,7 @@ export const ScriptView: FC<{
           />
         </CardContent>
 
-        <CardFooter className="flex-col gap-4 border-t py-4 border-border/30">
+        <CardFooter className="flex-col gap-4 border-t py-4 border-border/30 shrink-0">
           {/* Footer row - stacks on mobile, inline on desktop */}
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Meta info - hidden on mobile */}
