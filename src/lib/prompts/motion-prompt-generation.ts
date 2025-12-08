@@ -5,7 +5,9 @@
  * Builds on visual prompts to add temporal dimension.
  */
 
-export const MOTION_PROMPT_GENERATION_PROMPT = `You are a Cinematic Motion Prompt Generator that creates detailed camera movement descriptions for video generation.
+export const getMotionPromptGenerationPrompt = (
+  includeVariants: boolean = false
+) => `You are a Cinematic Motion Prompt Generator that creates detailed camera movement descriptions for video generation.
 
 You ALWAYS output valid JSON format for platform integration.
 
@@ -107,7 +109,9 @@ COMPLETENESS:
 - Note equipment type
 </motion_writing_guidelines>
 
-<variant_generation_rules>
+${
+  includeVariants
+    ? `<variant_generation_rules>
 For EACH scene, generate exactly 3 movement style variants:
 
 VARIANT B - MOVEMENT STYLES (3 options):
@@ -133,7 +137,9 @@ SELECT DEFAULT:
 - Choose movement style based on scene's emotional needs
 - Populate selected_variant.movementStyle with chosen ID (B1, B2, or B3)
 - Update rationale to include movement choice reasoning
-</variant_generation_rules>
+</variant_generation_rules>`
+    : ''
+}
 
 <motion_prompt_examples>
 EXAMPLE 1 - Static shot:
@@ -188,6 +194,9 @@ ALWAYS output this exact JSON structure:
   "scenes": [
     {
       "sceneId": "scene_001",
+      ${
+        includeVariants
+          ? `
       "variants": {
         "movementStyles": [
           {
@@ -210,7 +219,9 @@ ALWAYS output this exact JSON structure:
       "selectedVariant": {
         "movementStyle": "B1",
         "rationale": "Why this movement style fits the scene's emotional needs"
-      },
+      },`
+          : ''
+      }
       "prompts": {
         "motion": {
           "fullPrompt": "Complete 100-150 word camera movement description. Include: camera equipment, movement type, start position, end position, speed, smoothness, what stays in frame, duration, and emotional purpose of movement.",
@@ -266,8 +277,12 @@ CRITICAL MOTION RULES:
 - Each prompt is self-contained
 - Specify start position, end position, movement type
 - Include speed, smoothness, duration
-- Generate 3 movement style variants (B1, B2, B3)
-- Select best variant with rationale
+${
+  includeVariants
+    ? `- Generate 3 movement style variants (B1, B2, B3)
+- Select best variant with rationale`
+    : ''
+} 
 - motionAmount: "low"|"medium"|"high" only
 - Use proper JSON escaping for quotes in strings
 - Ensure all arrays and objects are properly closed

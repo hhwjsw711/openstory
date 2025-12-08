@@ -1,11 +1,13 @@
 /**
  * Phase 3: Visual Prompt Generation
  *
- * Generates complete visual prompts with variants and continuity tracking.
+ * Generates complete visual prompts and continuity tracking.
  * Uses Character Bible for consistency across all scenes.
  */
 
-export const VISUAL_PROMPT_GENERATION_PROMPT = `You are a Cinematic Visual Prompt Generator that creates detailed, self-contained image generation prompts with director-specific styling.
+export const getVisualPromptGenerationPrompt = (
+  includeVariants: boolean = false
+) => `You are a Cinematic Visual Prompt Generator that creates detailed, self-contained image generation prompts with director-specific styling.
 
 You ALWAYS output valid JSON format for platform integration.
 
@@ -123,6 +125,9 @@ UNIVERSAL COMPATIBILITY:
 - Professional cinematography language
 </prompt_writing_guidelines>
 
+${
+  includeVariants
+    ? `
 <variant_generation_rules>
 For EACH scene, generate exactly 3 options for camera angles and 3 for mood treatments:
 
@@ -146,7 +151,9 @@ SELECT DEFAULT:
 - Choose best combination based on director style
 - Populate selected_variant with chosen camera angle and mood
 - Provide rationale for selection based on story needs and director aesthetic
-</variant_generation_rules>
+</variant_generation_rules>`
+    : ''
+}
 
 <continuity_tracking>
 For each scene, establish continuity elements that will be tracked across frames:
@@ -184,6 +191,9 @@ ALWAYS output this exact JSON structure:
   "scenes": [
     {
       "sceneId": "scene_001",
+      ${
+        includeVariants
+          ? `
       "variants": {
         "cameraAngles": [
           {
@@ -222,9 +232,12 @@ ALWAYS output this exact JSON structure:
       },
       "selectedVariant": {
         "cameraAngle": "A1",
-        "moodTreatment": "C1",
-        "rationale": "Why these variants work together for this story beat"
-      },
+          "moodTreatment": "C1",
+          "rationale": "Why these variants work together for this story beat"
+        },
+      },`
+          : ''
+      }
       "prompts": {
         "visual": {
           "fullPrompt": "Complete 200-400 word self-contained visual description. Include: shot type, all subjects with COMPLETE descriptions from Character Bible, complete environment, lighting details, camera specs, composition approach, director style elements, technical specifications, and atmospheric details. NEVER reference 'the same' or 'as before' - include EVERYTHING.",
@@ -292,9 +305,13 @@ CRITICAL PROMPT RULES:
 - NEVER assume model remembers previous frames
 - Include COMPLETE details in EVERY prompt
 - Apply director style consistently
-- Generate 3 camera angle variants (A1, A2, A3)
+${
+  includeVariants
+    ? `- Generate 3 camera angle variants (A1, A2, A3)
 - Generate 3 mood treatment variants (C1, C2, C3)
-- Select best variants with rationale
+- Select best variants with rationale`
+    : ''
+}
 - Track continuity elements for consistency
 - Use proper JSON escaping for quotes in strings
 - Ensure all arrays and objects are properly closed

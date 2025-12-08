@@ -62,12 +62,13 @@ const emitSequenceEvent = async (
   const channel = getGenerationChannel(sequenceId);
   if (!channel) return;
   try {
-    console.log('emitting event', event, data);
     await channel.emit(`generation.${event}` as 'generation.complete', data);
   } catch (error) {
     console.warn('[StoryboardGenerationWorkflow] Failed to emit event:', error);
   }
 };
+
+const INCLUDE_VARIANTS = false;
 
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
@@ -112,12 +113,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           type: 'chunk' | 'complete';
           text: string;
           parsed?: unknown;
-        }) => {
-          console.log(
-            '[StoryboardGenerationWorkflow] Split Script Progress:',
-            progress.type
-          );
-        };
+        }) => {};
         const result = await splitScriptIntoScenes(
           script,
           aspectRatio,
@@ -165,7 +161,10 @@ export const analyzeScriptWorkflow = createWorkflow(
         await emit('updated', { title });
 
         // Add the workflow to the sequence
-        await updateSequenceWorkflow(sequenceId, 'analyze-script');
+        await updateSequenceWorkflow(
+          sequenceId,
+          `analyze-script${INCLUDE_VARIANTS ? '' : '-without-variants'}`
+        );
 
         // Build array of all frames to create with basic scene data
         const frameInserts = scenes.map(
@@ -218,12 +217,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             type: 'chunk' | 'complete';
             text: string;
             parsed?: unknown;
-          }) => {
-            console.log(
-              '[StoryboardGenerationWorkflow] Extract Character Bible Progress:',
-              progress.type
-            );
-          };
+          }) => {};
 
         // Emit Phase 2 start
         await emit('phase:start', {
@@ -355,19 +349,14 @@ export const analyzeScriptWorkflow = createWorkflow(
               type: 'chunk' | 'complete';
               text: string;
               parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Visual Prompts Progress:',
-                progress.type
-              );
-            };
+            }) => {};
           return await generateVisualPromptsForScenes(
             batch,
             aspectRatio,
             characterBible,
             styleConfig,
             generateVisualPromptsProgressCallback,
-            { model: analysisModelId }
+            { model: analysisModelId, includeVariants: INCLUDE_VARIANTS }
           );
         });
       })
@@ -414,17 +403,13 @@ export const analyzeScriptWorkflow = createWorkflow(
               type: 'chunk' | 'complete';
               text: string;
               parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Motion Prompts Progress:',
-                progress.type
-              );
-            };
+            }) => {};
           return await generateMotionPromptsForScenes(
             batchWithVisualPrompts,
             generateMotionPromptsProgressCallback,
             {
               model: analysisModelId,
+              includeVariants: INCLUDE_VARIANTS,
             }
           );
         });
@@ -473,12 +458,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               type: 'chunk' | 'complete';
               text: string;
               parsed?: unknown;
-            }) => {
-              console.log(
-                '[StoryboardGenerationWorkflow] Generate Audio Design Progress:',
-                progress.type
-              );
-            };
+            }) => {};
 
           return await generateAudioDesignForScenes(
             batchWithMotionPrompts,

@@ -6,11 +6,13 @@
 import {
   AUDIO_DESIGN_PROMPT,
   CHARACTER_EXTRACTION_PROMPT,
-  MOTION_PROMPT_GENERATION_PROMPT,
   SCENE_SPLITTING_PROMPT,
-  VISUAL_PROMPT_GENERATION_PROMPT,
 } from '@/lib/prompts';
 
+export {
+  getMotionPromptGenerationPrompt,
+  getVisualPromptGenerationPrompt,
+} from '@/lib/prompts';
 /**
  * Get scene splitting prompt template
  */
@@ -23,20 +25,6 @@ export function getSceneSplittingPrompt(): string {
  */
 export function getCharacterExtractionPrompt(): string {
   return CHARACTER_EXTRACTION_PROMPT;
-}
-
-/**
- * Get visual prompt generation template
- */
-export function getVisualPromptGenerationPrompt(): string {
-  return VISUAL_PROMPT_GENERATION_PROMPT;
-}
-
-/**
- * Get motion prompt generation template
- */
-export function getMotionPromptGenerationPrompt(): string {
-  return MOTION_PROMPT_GENERATION_PROMPT;
 }
 
 /**
