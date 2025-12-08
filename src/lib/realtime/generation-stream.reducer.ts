@@ -49,7 +49,7 @@ export type GenerationStreamState = {
 export type GenerationStreamAction =
   | {
       type: 'PHASE_START';
-      payload: { phase: number; phaseName: string; totalPhases: number };
+      payload: { phase: number; phaseName: string };
     }
   | { type: 'PHASE_COMPLETE'; payload: { phase: number } }
   | { type: 'SCENE_NEW'; payload: StreamingScene }

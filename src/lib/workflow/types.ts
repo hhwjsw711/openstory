@@ -9,7 +9,10 @@ import type {
   TextToImageModel,
 } from '@/lib/ai/models';
 import { AnalysisModelId } from '@/lib/ai/models.config';
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
+import type {
+  CharacterBibleEntry,
+  Scene,
+} from '@/lib/ai/scene-analysis.schema';
 import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
@@ -123,6 +126,26 @@ export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowCon
   imageModel?: TextToImageModel;
 }
 
+/**
+ * Character sheet generation workflow input
+ */
+export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
+  // Character bible from script analysis
+  characterBible: CharacterBibleEntry[];
+
+  /** Image model to use (defaults to nano_banana_pro) */
+  imageModel?: TextToImageModel;
+}
+
+export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowContext> {
+  scenes: Scene[];
+  aspectRatio: AspectRatio;
+  characterBible: CharacterBibleEntry[];
+  styleConfig: DirectorDnaConfig;
+  analysisModelId: AnalysisModelId;
+  imageModel?: TextToImageModel;
+  frameMapping: { sceneId: string; frameId: string }[];
+}
 /**
  * Script analysis workflow input
  */

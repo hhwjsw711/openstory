@@ -10,6 +10,8 @@ import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-work
 import { generateStoryboardWorkflow } from '@/app/api/workflows/[...any]/storyboard-workflow';
 import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
 import { serveMany } from '@upstash/workflow/dist/nextjs';
+import { characterBibleWorkflow } from './character-bible-workflow';
+import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 export const { POST } = serveMany(
   {
@@ -18,6 +20,8 @@ export const { POST } = serveMany(
     motion: generateMotionWorkflow,
     'analyze-script': analyzeScriptWorkflow,
     'character-sheet': characterSheetWorkflow,
+    'character-sheet-from-bible': characterBibleWorkflow,
+    'visual-prompts': visualPromptWorkflow,
   },
   {
     baseUrl: getQStashWebhookUrl(),

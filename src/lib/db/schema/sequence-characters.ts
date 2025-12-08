@@ -83,3 +83,8 @@ export const sequenceCharactersRelations = relations(
 // Type exports
 export type SequenceCharacter = InferSelectModel<typeof sequenceCharacters>;
 export type NewSequenceCharacter = InferInsertModel<typeof sequenceCharacters>;
+
+export type SequenceCharacterMinimal = Pick<
+  SequenceCharacter,
+  'id' | 'characterId' | 'name' | 'metadata' | 'sheetImageUrl' | 'sheetStatus'
+>;

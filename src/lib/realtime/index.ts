@@ -14,7 +14,6 @@ export const realtimeSchema = {
     'phase:start': z.object({
       phase: z.number(),
       phaseName: z.string(),
-      totalPhases: z.number(),
     }),
     'phase:complete': z.object({
       phase: z.number(),
@@ -96,8 +95,12 @@ export function getRealtime() {
  * Get a channel for a specific sequence to emit/receive events.
  * @param sequenceId - The sequence ID to use as the channel identifier
  */
-export function getGenerationChannel(sequenceId: string) {
-  return getRealtime().channel(sequenceId);
+export function getGenerationChannel(sequenceId?: string) {
+  return sequenceId
+    ? getRealtime().channel(sequenceId)
+    : {
+        emit: () => null,
+      };
 }
 
 // Export the schema type for type inference
