@@ -91,6 +91,17 @@ export const regenerateMotionSchema = z.object({
   motionBucket: z.number().min(1).max(255).optional(),
 });
 
+export const generateVariantSchema = z.object({
+  model: z
+    .enum(Object.keys(IMAGE_MODELS) as [keyof typeof IMAGE_MODELS])
+    .optional(),
+  imageSize: z
+    .enum(['square_hd', 'portrait_16_9', 'landscape_16_9'])
+    .optional(),
+  numImages: z.number().min(1).max(4).optional(),
+  seed: z.number().int().optional(),
+});
+
 // Schemas for API endpoint frame creation (sequenceId comes from URL params)
 export const singleFrameSchema = createFrameSchema.omit({ sequenceId: true });
 
@@ -105,5 +116,6 @@ export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
 export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
 export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
 export type RegenerateMotionInput = z.infer<typeof regenerateMotionSchema>;
+export type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
 export type SingleFrameInput = z.infer<typeof singleFrameSchema>;
 export type BulkFrameInput = z.infer<typeof bulkFrameSchema>;

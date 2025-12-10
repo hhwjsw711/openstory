@@ -33,6 +33,15 @@ export interface RegenerateFrameInput {
   regenerateThumbnail?: boolean;
 }
 
+export interface GenerateVariantInput {
+  sequenceId: string;
+  frameId: string;
+  model?: string;
+  imageSize?: 'square_hd' | 'portrait_16_9' | 'landscape_16_9';
+  numImages?: number;
+  seed?: number;
+}
+
 // Query keys
 export const frameKeys = {
   all: ['frames'] as const,
@@ -503,6 +512,79 @@ export function useRegenerateFrame() {
       return { jobId: result.data.jobId };
     },
     onSuccess: async (_, { sequenceId, frameId }) => {
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frameId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+    },
+  });
+}
+
+// Hook for generating variant images for a frame
+export function useGenerateVariants() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ workflowRunId: string }, Error, GenerateVariantInput>({
+    mutationFn: async (input: GenerateVariantInput) => {
+      const { sequenceId, frameId, ...body } = input;
+
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}/generate-variants`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const result: {
+        success: boolean;
+        data?: { workflowRunId: string; frameId: string; message?: string };
+        message?: string;
+      } = await response.json();
+
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.data ||
+        !result.data.workflowRunId
+      ) {
+        throw new Error(result.message || 'Failed to generate variants');
+      }
+
+      return { workflowRunId: result.data.workflowRunId };
+    },
+    onSuccess: async (_, { sequenceId, frameId }) => {
+      // Optimistically update frame status to 'generating'
+      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), (oldFrame) => {
+        if (!oldFrame) return oldFrame;
+        return {
+          ...oldFrame,
+          variantImageStatus: 'generating' as const,
+        };
+      });
+
+      queryClient.setQueryData<Frame[]>(
+        frameKeys.list(sequenceId),
+        (oldFrames) => {
+          if (!oldFrames) return oldFrames;
+          return oldFrames.map((f) =>
+            f.id === frameId
+              ? {
+                  ...f,
+                  variantImageStatus: 'generating' as const,
+                }
+              : f
+          );
+        }
+      );
+
+      // Invalidate queries to pick up server updates
       await queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
       });
