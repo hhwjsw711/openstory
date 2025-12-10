@@ -8,9 +8,7 @@
     },
     "zsh": {
       "path": "/bin/zsh",
-      "args": [
-        "-l"
-      ],
+      "args": ["-l"],
       "icon": "terminal"
     }
   },
@@ -21,9 +19,7 @@
     },
     "zsh": {
       "path": "/bin/zsh",
-      "args": [
-        "-l"
-      ],
+      "args": ["-l"],
       "icon": "terminal"
     }
   },
@@ -39,16 +35,16 @@
   "githubPullRequests.createDefaultBaseBranch": "repositoryDefault",
   "task.allowAutomaticTasks": "on",
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[javascriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
@@ -57,12 +53,9 @@
     "editor.defaultFormatter": "vscode.json-language-features"
   },
   "task.problemMatchers.neverPrompt": false,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "oxc.typeAware": true,
-  "git.repositoryScanIgnoredFolders": [
-    "node_modules",
-    ".conductor",
-    ".trees"
-  ],
-  "typescript.experimental.useTsgo": true
+  "git.repositoryScanIgnoredFolders": ["node_modules", ".conductor", ".trees"],
+  "typescript.experimental.useTsgo": true,
+  "oxc.fmt.experimental": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode"
 }

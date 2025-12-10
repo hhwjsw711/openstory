@@ -8,7 +8,9 @@ import Cerebras from '@cerebras/cerebras_cloud_sdk';
 export type CerebrasRequestParams = Omit<
   Cerebras.Chat.ChatCompletionCreateParams,
   'stream'
-> & { stream?: false };
+> & {
+  stream?: false;
+};
 
 export type CerebrasResponse = Cerebras.Chat.ChatCompletion;
 

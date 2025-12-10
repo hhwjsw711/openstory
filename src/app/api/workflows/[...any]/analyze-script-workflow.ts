@@ -141,7 +141,9 @@ export const analyzeScriptWorkflow = createWorkflow(
           script,
           aspectRatio,
           splitScriptProgressCallback,
-          { model: analysisModelId }
+          {
+            model: analysisModelId,
+          }
         );
 
         if (!result.scenes || result.scenes.length === 0) {

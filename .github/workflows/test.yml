@@ -25,7 +25,7 @@ jobs:
         run: bun install
 
       - name: Run type checking
-        run: bun tsc --noEmit
+        run: bun typecheck
 
       - name: Run linting
         run: bun lint

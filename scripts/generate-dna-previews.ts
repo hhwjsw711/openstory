@@ -362,7 +362,10 @@ async function processWithConcurrencyLimit(
   progressTracker: ProgressTracker
 ): Promise<void> {
   const taskQueue: Array<{ task: Task; retryCount: number }> = tasks.map(
-    (task) => ({ task, retryCount: 0 })
+    (task) => ({
+      task,
+      retryCount: 0,
+    })
   );
   let currentIndex = 0;
   const running: Array<{

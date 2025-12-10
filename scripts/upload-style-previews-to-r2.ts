@@ -251,9 +251,7 @@ async function main() {
   }
 
   // Execute the upload
-  console.log(
-    `⬆️  Uploading images to public R2 bucket: ${R2_PUBLIC_BUCKET}\n`
-  );
+  console.log(`⬆️  Uploading images to public R2 bucket: ${R2_PUBLIC_BUCKET}\n`);
   let successCount = 0;
   let failCount = 0;
 

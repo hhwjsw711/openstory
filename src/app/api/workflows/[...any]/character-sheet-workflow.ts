@@ -98,7 +98,9 @@ export const characterSheetWorkflow = createWorkflow(
           STORAGE_BUCKETS.CHARACTERS,
           storagePath,
           imageBlob,
-          { contentType: 'image/png' }
+          {
+            contentType: 'image/png',
+          }
         );
 
         return {
