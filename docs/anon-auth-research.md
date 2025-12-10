@@ -592,7 +592,7 @@ export class AccountUpgradeManager {
 
     // Log migration attempt
     await this.db.execute(
-      `INSERT INTO migration_log (anon_id, auth_id, strategy, started_at) 
+      `INSERT INTO migration_log (anon_id, auth_id, strategy, started_at)
        VALUES ($1, $2, $3, NOW())`,
       [anonymousUserId, authenticatedUserId, strategy]
     );
@@ -602,16 +602,16 @@ export class AccountUpgradeManager {
 
       // Mark migration as successful
       await this.db.execute(
-        `UPDATE migration_log 
-         SET completed_at = NOW(), status = 'success' 
+        `UPDATE migration_log
+         SET completed_at = NOW(), status = 'success'
          WHERE anon_id = $1 AND auth_id = $2`,
         [anonymousUserId, authenticatedUserId]
       );
     } catch (error) {
       // Log failure
       await this.db.execute(
-        `UPDATE migration_log 
-         SET failed_at = NOW(), status = 'failed', error = $3 
+        `UPDATE migration_log
+         SET failed_at = NOW(), status = 'failed', error = $3
          WHERE anon_id = $1 AND auth_id = $2`,
         [anonymousUserId, authenticatedUserId, error.message]
       );

@@ -4,8 +4,6 @@
 #   https://lefthook.dev/configuration/
 #
 
-colors: false
-
 pre-push:
   commands:
     lint:
@@ -13,7 +11,7 @@ pre-push:
       run: bunx oxlint --type-aware {push_files}
     format:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
-      run: bunx prettier --no-color --check {push_files}
+      run: bunx oxfmt --check {push_files}
 
 pre-commit:
   commands:
@@ -23,8 +21,9 @@ pre-commit:
       stage_fixed: true
     format:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
-      run: bunx prettier --no-color --write {staged_files}
+      run: bunx oxfmt {staged_files}
       stage_fixed: true
     typecheck:
       glob: '*.{ts,tsx,mts,cts}'
-      run: bun tsc --noEmit --skipLibCheck
+      run: bun --bun tsgo --noEmit
+      stage_fixed: true

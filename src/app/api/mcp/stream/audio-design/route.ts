@@ -45,7 +45,10 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return new Response(
         JSON.stringify({ error: 'Invalid input', details: error.issues }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
     }
 
