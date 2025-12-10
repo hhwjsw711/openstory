@@ -4,7 +4,6 @@
  */
 
 import { getEnv } from '#env';
-import { characterSheetWorkflow } from '@/app/api/workflows/[...any]/character-sheet-workflow';
 import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
 import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
 import { ProgressCallback } from '@/lib/ai/openrouter-client';
@@ -16,24 +15,19 @@ import {
   updateSequenceTitle,
   updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
-import { NewFrame, SequenceCharacter } from '@/lib/db/schema';
+import { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
   generateAudioDesignForScenes,
   generateMotionPromptsForScenes,
-  generateVisualPromptsForScenes,
   splitScriptIntoScenes,
 } from '@/lib/script';
 import { Scene } from '@/lib/script/types';
-import {
-  buildPromptWithReferences,
-  createFromBible,
-} from '@/lib/services/character.service';
+import { buildPromptWithReferences } from '@/lib/services/character.service';
 import { frameService } from '@/lib/services/frame.service';
 import type {
   AnalyzeScriptWorkflowInput,
-  CharacterSheetWorkflowInput,
   ImageWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow';
@@ -44,9 +38,6 @@ import { createWorkflow } from '@upstash/workflow/nextjs';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
-
-// Total phases for realtime progress tracking
-const TOTAL_PHASES = 7;
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -308,20 +299,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           },
         }),
       ]);
-
-    // Emit Phase 4 complete
-    await context.run('visual-prompts-complete', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
-        phase: 4,
-      });
-      if (sequenceId) {
-        // This is the the time from the beginning to the start of image generation
-        await updateSequenceAnalysisDurationMs(
-          sequenceId,
-          Date.now() - startTime
-        );
-      }
-    });
 
     let imageUrls: string[] = [];
     // Step 8: Generate thumbnails in parallel if enabled

@@ -16,6 +16,7 @@ import type {
 import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
+import { WorkflowContext } from '@upstash/workflow';
 
 /**
  * Base workflow context that includes authentication
@@ -44,6 +45,22 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
   frameId?: string; // Optional: update frame thumbnail
   /** Reference images for character consistency (auto-switches to edit endpoint) */
   referenceImageUrls?: string[];
+}
+
+/**
+ * Image generation workflow input
+ */
+export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
+  thumbnailUrl: string;
+  model?: keyof typeof IMAGE_MODELS;
+  imageSize?: ImageSize;
+  numImages?: number;
+  seed?: number;
+  frameId?: string;
+}
+
+export interface VariantWorkflowResult {
+  variantImageUrl: string;
 }
 
 /**

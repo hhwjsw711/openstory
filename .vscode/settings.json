@@ -57,5 +57,6 @@
   "git.repositoryScanIgnoredFolders": ["node_modules", ".conductor", ".trees"],
   "typescript.experimental.useTsgo": true,
   "oxc.fmt.experimental": true,
-  "editor.defaultFormatter": "oxc.oxc-vscode"
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "oxc.fixKind": "dangerous_fix_or_suggestion"
 }

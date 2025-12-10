@@ -138,6 +138,10 @@ export const frames = sqliteTable(
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
     thumbnailPath: text('thumbnail_path'), // R2 storage path (not signed URL)
+    variantImageUrl: text('variant_image_url'), // R2 storage path (not signed URL)
+    variantImageStatus: text('variant_image_status')
+      .$type<FrameGenerationStatus>()
+      .default('pending'),
     videoUrl: text('video_url'),
     videoPath: text('video_path'), // R2 storage path (not signed URL)
     // Thumbnail generation status tracking

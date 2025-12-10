@@ -19,6 +19,8 @@ export const createFrameSchema = createInsertSchema(frames, {
   thumbnailStatus: () =>
     z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
   videoStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
+  variantImageStatus: () =>
+    z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
 }).omit({
   id: true,
   createdAt: true,
@@ -31,6 +33,8 @@ export const updateFrameSchema = createUpdateSchema(frames, {
   thumbnailStatus: () =>
     z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
   videoStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
+  variantImageStatus: () =>
+    z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
 }).omit({
   id: true,
   sequenceId: true,
