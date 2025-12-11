@@ -5,7 +5,6 @@ import { RealtimeProvider } from '@upstash/realtime/client';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { handlers } from '../src/lib/mocks/handlers';
 
-import React from 'react';
 import '../src/app/global.css';
 
 /*
@@ -27,17 +26,13 @@ const queryClient = new QueryClient({
   },
 });
 
-const withProviders: Decorator = (StoryFn) => {
-  return React.createElement(
-    QueryClientProvider,
-    { client: queryClient },
-    React.createElement(
-      RealtimeProvider,
-      { api: { url: '/api/realtime' }, maxReconnectAttempts: 1 },
-      React.createElement(StoryFn)
-    )
-  );
-};
+const withProviders: Decorator = (Story) => (
+  <QueryClientProvider client={queryClient}>
+    <RealtimeProvider api={{ url: '/api/realtime' }} maxReconnectAttempts={1}>
+      <Story />
+    </RealtimeProvider>
+  </QueryClientProvider>
+);
 
 const preview: Preview = {
   parameters: {
