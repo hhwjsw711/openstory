@@ -108,15 +108,21 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   const handleRegenerateEnd = useCallback(
-    (frameId: string, type: 'image' | 'motion') => {
+    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
       if (type === 'image') {
         setRegeneratingImages((prev) => {
           const next = new Set(prev);
           next.delete(frameId);
           return next;
         });
-      } else {
+      } else if (type === 'motion') {
         setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else if (type === 'scene-variants') {
+        setRegeneratingSceneVariants((prev) => {
           const next = new Set(prev);
           next.delete(frameId);
           return next;
@@ -148,8 +154,23 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       ) {
         handleRegenerateEnd(frame.id, 'motion');
       }
+
+      // Remove from scene variants regenerating set only when generation completes or fails
+      if (
+        regeneratingSceneVariants.has(frame.id) &&
+        (frame.variantImageStatus === 'completed' ||
+          frame.variantImageStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'scene-variants');
+      }
     });
-  }, [frames, regeneratingImages, regeneratingMotion, handleRegenerateEnd]);
+  }, [
+    frames,
+    regeneratingImages,
+    regeneratingMotion,
+    regeneratingSceneVariants,
+    handleRegenerateEnd,
+  ]);
 
   // Handler for batch motion generation
   const handleBatchMotionGeneration = useCallback(

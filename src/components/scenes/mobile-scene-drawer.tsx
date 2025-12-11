@@ -52,11 +52,14 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
   );
 
   // Calculate eligible frames for motion generation
+  // Include 'generating' status to allow retrying stuck jobs
   const eligibleFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
       (f) =>
-        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
+        (f.videoStatus === 'pending' ||
+          f.videoStatus === 'failed' ||
+          f.videoStatus === 'generating') &&
         f.thumbnailStatus === 'completed'
     );
   }, [frames]);
@@ -154,10 +157,9 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
           </ScrollArea>
 
           {hasEligibleFrames && (
-            <SheetFooter className="border-t pt-4 -mx-4 px-4">
+            <SheetFooter className="border-t pt-4 px-4 justify-center">
               <Button
                 variant="default"
-                className="w-full"
                 onClick={handleGenerateMotion}
                 disabled={isGenerating || isMotionInProgress}
               >

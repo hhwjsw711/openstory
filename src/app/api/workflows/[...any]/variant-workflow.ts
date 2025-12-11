@@ -14,7 +14,7 @@ import type {
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
-import { VARIANT_IMAGE_PROMPT } from '@/lib/prompts/variant-image';
+import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -39,6 +39,7 @@ export const generateVariantWorkflow = createWorkflow(
         );
 
         const model = input.model || DEFAULT_IMAGE_MODEL;
+        const imageSize = input.imageSize ?? DEFAULT_IMAGE_SIZE;
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
@@ -59,8 +60,8 @@ export const generateVariantWorkflow = createWorkflow(
         // Return the generation params so it shows in the workflow context for debugging
         return {
           model,
-          prompt: VARIANT_IMAGE_PROMPT,
-          imageSize: input.imageSize ?? DEFAULT_IMAGE_SIZE,
+          prompt: getVariantImagePrompt(imageSize),
+          imageSize,
           numImages: input.numImages ?? 1,
           seed: input.seed,
           referenceImageUrls: [input.thumbnailUrl],

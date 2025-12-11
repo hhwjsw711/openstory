@@ -36,12 +36,15 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Calculate eligible frames for motion generation
-  // Include pending and failed frames that have completed thumbnails
+  // Include pending, failed, and generating frames that have completed thumbnails
+  // 'generating' is included to allow retrying stuck jobs
   const eligibleFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
       (f) =>
-        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
+        (f.videoStatus === 'pending' ||
+          f.videoStatus === 'failed' ||
+          f.videoStatus === 'generating') &&
         f.thumbnailStatus === 'completed'
     );
   }, [frames]);
