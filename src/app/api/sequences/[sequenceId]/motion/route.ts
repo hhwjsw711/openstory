@@ -91,7 +91,7 @@ export async function POST(
         if (!frame.thumbnailUrl) continue;
 
         // Use description or empty string as fallback
-        const prompt = frame.description || '';
+        const prompt = frame.motionPrompt || '';
 
         // Trigger motion workflow
         const workflowInput: MotionWorkflowInput = {
