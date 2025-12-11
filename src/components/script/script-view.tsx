@@ -1,7 +1,6 @@
 'use client';
 
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
-import { ScriptEditor } from '@/components/script/script-editor';
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { Textarea } from '@/components/ui/textarea';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useStyles } from '@/hooks/use-styles';
@@ -29,6 +29,7 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
 import React, { useEffect, useMemo, useState, type FC } from 'react';
 
@@ -219,10 +220,16 @@ export const ScriptView: FC<{
   const scriptValue = script || sequence?.script || '';
 
   return (
-    <Card variant="premium" className={flat ? 'border-none' : ''}>
-      <form onSubmit={handleSubmit}>
+    <Card
+      variant="premium"
+      className={cn('flex flex-col min-h-0 max-h-full', flat && 'border-none')}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col min-h-0 max-h-full"
+      >
         {/* Control bar */}
-        <CardHeader className="flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
+        <CardHeader className="shrink-0 flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
           <GenerationSettings
             aspectRatio={aspectRatio}
             analysisModels={analysisModels}
@@ -239,26 +246,35 @@ export const ScriptView: FC<{
           />
         </CardHeader>
 
-        <CardContent className="@container space-y-4 py-6">
-          <ScriptEditor
-            value={scriptValue}
-            loading={!!loading}
-            onValueChange={setScript}
-            placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
-            showCharacterCount={false}
-            maxLength={50000}
-            autoFocus={autoFocus}
-          />
+        <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
+          <div className="min-h-0 overflow-hidden">
+            <Textarea
+              value={loading ? 'Loading...' : scriptValue}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                const newValue = e.target.value;
+                if (newValue.length <= 50000) {
+                  setScript(newValue);
+                }
+              }}
+              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+              disabled={loading}
+              autoFocus={autoFocus}
+              className="min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0"
+              data-testid="script-editor-textarea"
+            />
+          </div>
 
-          <StyleSelector
-            styles={styles}
-            selectedStyleId={styleId || sequence?.styleId || null}
-            onStyleSelect={setStyleId}
-            loading={isLoadingStyles}
-          />
+          <div className="shrink-0">
+            <StyleSelector
+              styles={styles}
+              selectedStyleId={styleId || sequence?.styleId || null}
+              onStyleSelect={setStyleId}
+              loading={isLoadingStyles}
+            />
+          </div>
         </CardContent>
 
-        <CardFooter className="flex-col gap-4 border-t py-4 border-border/30">
+        <CardFooter className="shrink-0 flex-col gap-4 border-t py-4 border-border/30">
           {/* Footer row - stacks on mobile, inline on desktop */}
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Meta info - hidden on mobile */}

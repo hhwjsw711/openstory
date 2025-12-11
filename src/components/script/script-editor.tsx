@@ -56,7 +56,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      <div className="relative">
+      <div className="relative min-h-0">
         <Textarea
           value={loading ? 'Loading...' : value}
           onChange={handleChange}
@@ -66,14 +66,14 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-32 max-h-[50vh] resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
+            'min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="shrink-0 flex items-center justify-between">
         {showCharacterCount && (
           <div className="text-sm text-muted-foreground">
             <span

@@ -23,10 +23,8 @@ export default function NewSequencePage() {
   );
 
   return (
-    <div className="h-full overflow-auto">
-      <PageContainer maxWidth="narrow">
-        {/* Page Header */}
-
+    <div className="h-full">
+      <PageContainer maxWidth="narrow" fullHeight>
         <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
       </PageContainer>
     </div>
