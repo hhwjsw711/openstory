@@ -98,14 +98,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       period: '5s', // 5 seconds
       parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
     };
-    const vercelAutomationBypassSecret =
-      process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
-    const headers = vercelAutomationBypassSecret
-      ? {
-          'x-vercel-protection-bypass': vercelAutomationBypassSecret,
-        }
-      : undefined;
 
     // STEP: Split script into basic scenes and store in sequence metadata
     const { scenes, title, startTime } = await context.run(
@@ -368,7 +360,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
             flowControl,
-            headers,
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
@@ -563,7 +554,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
             flowControl,
-            headers,
           });
         })
       );
