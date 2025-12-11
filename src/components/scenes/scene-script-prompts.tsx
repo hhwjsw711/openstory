@@ -531,7 +531,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             className="w-full"
           >
             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isGenerating ? 'Generating…' : 'Regenerate Image'}
+            {isGenerating
+              ? 'Generating…'
+              : frame?.thumbnailUrl
+                ? 'Regenerate Image'
+                : 'Generate Image'}
           </Button>
 
           {/* Copy button for current prompt */}
@@ -599,7 +603,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             {isGeneratingMotion && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isGeneratingMotion ? 'Generating…' : 'Regenerate Motion'}
+            {isGeneratingMotion
+              ? 'Generating…'
+              : frame?.videoUrl
+                ? 'Regenerate Motion'
+                : 'Generate Motion'}
           </Button>
 
           {/* Copy button for current prompt */}

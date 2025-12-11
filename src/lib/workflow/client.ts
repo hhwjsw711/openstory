@@ -22,6 +22,14 @@ function getQStashClient(): Client {
 
   return new Client({
     token,
+    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          'Upstash-Forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'x-vercel-protection-bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+        }
+      : undefined,
   });
 }
 
@@ -54,6 +62,8 @@ export async function triggerWorkflow(
     headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
       ? {
           'Upstash-Forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'X-Vercel-Protection-Bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
