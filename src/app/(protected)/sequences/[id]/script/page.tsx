@@ -40,9 +40,9 @@ export default function ScriptPage({
   };
 
   return (
-    <div className="h-full overflow-hidden">
-      <PageContainer maxWidth="narrow" data-testid="edit-script-page">
-        <PageHeader>
+    <div className="h-full" data-testid="edit-script-page">
+      <PageContainer maxWidth="narrow" fullHeight>
+        <PageHeader className="shrink-0">
           <PageHeading>Edit Script</PageHeading>
           <PageDescription>
             Update your script and regenerate the storyboard with new frames.

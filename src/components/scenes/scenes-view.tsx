@@ -9,6 +9,7 @@ import {
 } from '@/components/model/model-badge';
 import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
+import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
 import {
   SceneScriptPrompts,
@@ -107,15 +108,21 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   const handleRegenerateEnd = useCallback(
-    (frameId: string, type: 'image' | 'motion') => {
+    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
       if (type === 'image') {
         setRegeneratingImages((prev) => {
           const next = new Set(prev);
           next.delete(frameId);
           return next;
         });
-      } else {
+      } else if (type === 'motion') {
         setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else if (type === 'scene-variants') {
+        setRegeneratingSceneVariants((prev) => {
           const next = new Set(prev);
           next.delete(frameId);
           return next;
@@ -147,8 +154,23 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       ) {
         handleRegenerateEnd(frame.id, 'motion');
       }
+
+      // Remove from scene variants regenerating set only when generation completes or fails
+      if (
+        regeneratingSceneVariants.has(frame.id) &&
+        (frame.variantImageStatus === 'completed' ||
+          frame.variantImageStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'scene-variants');
+      }
     });
-  }, [frames, regeneratingImages, regeneratingMotion, handleRegenerateEnd]);
+  }, [
+    frames,
+    regeneratingImages,
+    regeneratingMotion,
+    regeneratingSceneVariants,
+    handleRegenerateEnd,
+  ]);
 
   // Handler for batch motion generation
   const handleBatchMotionGeneration = useCallback(
@@ -208,19 +230,34 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       </PageHeader>
 
       <div className="flex flex-1 min-h-0">
-        {/* Left: Scene List */}
-        <SceneList
-          frames={frames}
-          selectedFrameId={curSelectedFrameId}
-          aspectRatio={aspectRatio}
-          onSelectFrame={setSelectedFrameId}
-          regeneratingImages={regeneratingImages}
-          regeneratingMotion={regeneratingMotion}
-          onBatchGenerateMotion={handleBatchMotionGeneration}
-        />
+        {/* Desktop: Scene List sidebar */}
+        <div className="hidden md:block">
+          <SceneList
+            frames={frames}
+            selectedFrameId={curSelectedFrameId}
+            aspectRatio={aspectRatio}
+            onSelectFrame={setSelectedFrameId}
+            regeneratingImages={regeneratingImages}
+            regeneratingMotion={regeneratingMotion}
+            onBatchGenerateMotion={handleBatchMotionGeneration}
+          />
+        </div>
 
-        {/* Right: Scene Player */}
-        <ScrollArea className="flex-1 px-8 gap-8 flex flex-col">
+        {/* Mobile: Bottom drawer */}
+        <div className="md:hidden">
+          <MobileSceneDrawer
+            frames={frames}
+            selectedFrameId={curSelectedFrameId}
+            aspectRatio={aspectRatio}
+            onSelectFrame={setSelectedFrameId}
+            regeneratingImages={regeneratingImages}
+            regeneratingMotion={regeneratingMotion}
+            onBatchGenerateMotion={handleBatchMotionGeneration}
+          />
+        </div>
+
+        {/* Main content area */}
+        <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0">
           <div className="flex flex-1 min-h-0 justify-center pb-8">
             <ScenePlayer
               frames={frames}

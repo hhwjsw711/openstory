@@ -127,6 +127,7 @@ const meta: Meta<typeof SceneScriptPrompts> = {
     onTabChange: fn(),
     regeneratingImages: new Set<string>(),
     regeneratingMotion: new Set<string>(),
+    regeneratingSceneVariants: new Set<string>(),
     onRegenerateStart: fn(),
   },
   decorators: [

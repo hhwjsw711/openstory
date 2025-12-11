@@ -86,6 +86,21 @@ export function updateQueryCacheFromEvent(
       );
       break;
 
+    case 'generation.variant-image:progress':
+      queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+        old?.map((f) =>
+          f.id === data.frameId
+            ? {
+                ...f,
+                variantImageUrl:
+                  (data.variantImageUrl as string) ?? f.variantImageUrl,
+                variantImageStatus: data.status as Frame['variantImageStatus'],
+              }
+            : f
+        )
+      );
+      break;
+
     case 'generation.complete':
     case 'generation.failed':
     case 'generation.updated':

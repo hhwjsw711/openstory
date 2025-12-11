@@ -1,20 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NewSequencePage from './page';
-
-// Create a new QueryClient for each story to avoid state leakage
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
 
 const meta: Meta<typeof NewSequencePage> = {
   title: 'Pages/NewSequencePage',
@@ -28,13 +13,7 @@ const meta: Meta<typeof NewSequencePage> = {
       },
     },
   },
-  decorators: [
-    (Story) => (
-      <QueryClientProvider client={createQueryClient()}>
-        <Story />
-      </QueryClientProvider>
-    ),
-  ],
+  decorators: [(Story) => <Story />],
   argTypes: {
     searchParams: {
       description: 'URL search parameters including optional teamId',
