@@ -1,20 +1,18 @@
 /**
- * API endpoint for generating motion (video) from a frame's thumbnail
- * POST /api/sequences/[sequenceId]/frames/[frameId]/motion
+ * Motion Generation API Endpoint
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/motion - Generate motion video from frame thumbnail
  */
 
-import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-  requireAuth,
-} from '@/lib/auth/api-utils';
+import { DEFAULT_VIDEO_MODEL, type ImageToVideoModel } from '@/lib/ai/models';
+import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { getFrameWithSequence } from '@/lib/db/helpers/frames';
-import { ValidationError } from '@/lib/errors';
+import { handleApiError, ValidationError } from '@/lib/errors';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { MotionWorkflowInput } from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
+import { NextResponse } from 'next/server';
 
 export async function POST(
   request: Request,
@@ -23,8 +21,7 @@ export async function POST(
   try {
     const { sequenceId, frameId } = await params;
 
-    // Validate UUIDs
-
+    // Validate ULIDs
     try {
       ulidSchema.parse(sequenceId);
       ulidSchema.parse(frameId);
@@ -34,66 +31,103 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    const validated = generateMotionSchema.parse(body);
+    const validatedBody = generateMotionSchema.parse(body);
 
     // Authenticate user
-    const authResult = await requireAuth(request);
-    const user = authResult.user;
+    const user = await requireUser();
 
     // Get frame with sequence info
     const frameData = await getFrameWithSequence(frameId);
 
     if (!frameData || frameData.sequenceId !== sequenceId) {
-      throw new ValidationError('Frame not found in this sequence');
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Frame not found in this sequence',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 }
+      );
     }
 
     // Verify user has access to this frame
     await requireTeamMemberAccess(user.id, frameData.sequence.teamId);
 
-    // Check for thumbnail (either URL or path)
+    // Check for thumbnail (required for motion generation)
     const thumbnailUrl = frameData.thumbnailUrl;
     if (!thumbnailUrl) {
-      return createErrorResponse(
-        'Frame has no thumbnail to generate motion from',
-        400
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Frame has no thumbnail to generate motion from',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
       );
     }
 
-    // Trigger motion generation workflow
+    // Determine which prompt to use (priority: provided > stored > AI-generated > description)
+    const promptToUse =
+      validatedBody.prompt ||
+      frameData.motionPrompt ||
+      (frameData.metadata as { prompts?: { motion?: { fullPrompt?: string } } })
+        ?.prompts?.motion?.fullPrompt ||
+      frameData.description ||
+      '';
+
+    // Determine which model to use (priority: provided > frame's stored > sequence default > global default)
+    const modelToUse =
+      validatedBody.model ||
+      (frameData.motionModel as ImageToVideoModel | null) ||
+      (frameData.sequence.videoModel as ImageToVideoModel) ||
+      DEFAULT_VIDEO_MODEL;
+
+    // Trigger motion generation workflow with deduplication
     const workflowInput: MotionWorkflowInput = {
       userId: user.id,
       teamId: frameData.sequence.teamId,
       frameId,
       sequenceId: frameData.sequenceId,
-      imageUrl: thumbnailUrl, // Can be either path or URL
-      prompt: frameData.description || '',
-      model: validated.model,
-      duration: validated.duration,
-      fps: validated.fps,
-      motionBucket: validated.motionBucket,
+      imageUrl: thumbnailUrl,
+      prompt: promptToUse,
+      model: modelToUse,
+      duration: validatedBody.duration,
+      fps: validatedBody.fps,
+      motionBucket: validatedBody.motionBucket,
+      aspectRatio: frameData.sequence.aspectRatio as AspectRatio,
     };
 
-    // Publish to QStash to trigger the workflow
-    // Use deduplicationId to prevent duplicate motion workflows for the same frame
     const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
       deduplicationId: `motion-${frameId}`,
     });
 
-    return createSuccessResponse(
+    return NextResponse.json(
       {
-        workflowRunId,
-        frameId,
-        sequenceId: frameData.sequenceId,
+        success: true,
+        data: {
+          workflowRunId,
+          frameId,
+          message: 'Motion generation started',
+        },
+        timestamp: new Date().toISOString(),
       },
-      'Motion generation started successfully'
+      { status: 200 }
     );
   } catch (error) {
-    if (error instanceof ValidationError) {
-      return createErrorResponse(error.message, 400);
-    }
-    return createErrorResponse(
-      error instanceof Error ? error.message : 'Internal server error',
-      500
+    console.error(
+      '[POST /api/sequences/[sequenceId]/frames/[frameId]/motion] Error:',
+      error
+    );
+
+    const handledError = handleApiError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to generate motion',
+        error: handledError.toJSON(),
+        timestamp: new Date().toISOString(),
+      },
+      { status: handledError.statusCode }
     );
   }
 }

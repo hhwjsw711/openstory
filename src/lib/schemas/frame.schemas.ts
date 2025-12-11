@@ -74,17 +74,6 @@ export const generateMotionSchema = z.object({
       Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
     )
     .optional(),
-  duration: z.number().min(1).max(10).optional(),
-  fps: z.number().min(7).max(30).optional(),
-  motionBucket: z.number().min(1).max(255).optional(),
-});
-
-export const regenerateMotionSchema = z.object({
-  model: z
-    .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
-    )
-    .optional(),
   prompt: z.string().optional(),
   duration: z.number().min(1).max(10).optional(),
   fps: z.number().min(7).max(30).optional(),
@@ -115,7 +104,6 @@ export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
 export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
 export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
 export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
-export type RegenerateMotionInput = z.infer<typeof regenerateMotionSchema>;
 export type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
 export type SingleFrameInput = z.infer<typeof singleFrameSchema>;
 export type BulkFrameInput = z.infer<typeof bulkFrameSchema>;

@@ -243,7 +243,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-image`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -314,7 +314,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate-motion`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-motion`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

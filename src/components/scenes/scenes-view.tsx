@@ -163,11 +163,14 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       });
 
       try {
-        const response = await fetch(`/api/sequences/${sequenceId}/motion`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ frameIds }),
-        });
+        const response = await fetch(
+          `/api/sequences/${sequenceId}/generate-motion`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frameIds }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error('Failed to start batch motion generation');

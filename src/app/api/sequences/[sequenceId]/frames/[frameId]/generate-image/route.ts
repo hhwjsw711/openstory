@@ -1,6 +1,6 @@
 /**
  * Regenerate Frame API Endpoint
- * POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate - Regenerate a single frame's thumbnail
+ * POST /api/sequences/[sequenceId]/frames/[frameId]/generate-image - Regenerate a single frame's thumbnail
  */
 
 import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
@@ -113,7 +113,7 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      '[POST /api/sequences/[sequenceId]/frames/[frameId]/regenerate] Error:',
+      '[POST /api/sequences/[sequenceId]/frames/[frameId]/generate-image] Error:',
       error
     );
 

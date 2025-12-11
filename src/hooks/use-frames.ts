@@ -490,7 +490,7 @@ export function useRegenerateFrame() {
       const { sequenceId, frameId, ...body } = input;
 
       const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}/regenerate`,
+        `/api/sequences/${sequenceId}/frames/${frameId}/generate-image`,
         {
           method: 'POST',
           headers: {
