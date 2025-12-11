@@ -108,6 +108,8 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       '1507003211169-0a1dd7228f2d', // Portrait
     ])}/1920/1080`,
     thumbnailPath: `teams/${faker.string.uuid()}/sequences/${faker.string.uuid()}/frames/${faker.string.uuid()}/thumbnail.jpg`,
+    variantImageUrl: null,
+    variantImageStatus: 'pending',
     videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
       : null,

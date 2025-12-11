@@ -33,6 +33,21 @@ export interface RegenerateFrameInput {
   regenerateThumbnail?: boolean;
 }
 
+export interface GenerateVariantInput {
+  sequenceId: string;
+  frameId: string;
+  model?: string;
+  imageSize?: 'square_hd' | 'portrait_16_9' | 'landscape_16_9';
+  numImages?: number;
+  seed?: number;
+}
+
+export interface SelectVariantInput {
+  sequenceId: string;
+  frameId: string;
+  variantIndex: number;
+}
+
 // Query keys
 export const frameKeys = {
   all: ['frames'] as const,
@@ -475,7 +490,7 @@ export function useRegenerateFrame() {
       const { sequenceId, frameId, ...body } = input;
 
       const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}/regenerate`,
+        `/api/sequences/${sequenceId}/frames/${frameId}/generate-image`,
         {
           method: 'POST',
           headers: {
@@ -503,6 +518,168 @@ export function useRegenerateFrame() {
       return { jobId: result.data.jobId };
     },
     onSuccess: async (_, { sequenceId, frameId }) => {
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frameId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+    },
+  });
+}
+
+// Hook for generating variant images for a frame
+export function useGenerateVariants() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ workflowRunId: string }, Error, GenerateVariantInput>({
+    mutationFn: async (input: GenerateVariantInput) => {
+      const { sequenceId, frameId, ...body } = input;
+
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}/generate-variants`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const result: {
+        success: boolean;
+        data?: { workflowRunId: string; frameId: string; message?: string };
+        message?: string;
+      } = await response.json();
+
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.data ||
+        !result.data.workflowRunId
+      ) {
+        throw new Error(result.message || 'Failed to generate variants');
+      }
+
+      return { workflowRunId: result.data.workflowRunId };
+    },
+    onSuccess: async (_, { sequenceId, frameId }) => {
+      // Optimistically update frame status to 'generating'
+      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), (oldFrame) => {
+        if (!oldFrame) return oldFrame;
+        return {
+          ...oldFrame,
+          variantImageStatus: 'generating' as const,
+        };
+      });
+
+      queryClient.setQueryData<Frame[]>(
+        frameKeys.list(sequenceId),
+        (oldFrames) => {
+          if (!oldFrames) return oldFrames;
+          return oldFrames.map((f) =>
+            f.id === frameId
+              ? {
+                  ...f,
+                  variantImageStatus: 'generating' as const,
+                }
+              : f
+          );
+        }
+      );
+
+      // Invalidate queries to pick up server updates
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frameId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+    },
+  });
+}
+
+// Hook for selecting a variant panel and upscaling it
+export function useSelectVariant() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Frame, Error, SelectVariantInput>({
+    mutationFn: async (input: SelectVariantInput) => {
+      const { sequenceId, frameId, ...body } = input;
+
+      const response = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}/select-variant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const result: {
+        success: boolean;
+        data?: { frameId: string; thumbnailUrl: string; variantIndex: number };
+        message?: string;
+        error?: unknown;
+      } = await response.json();
+
+      if (!response.ok || !result.success || !result.data) {
+        const errorMessage =
+          result.message ||
+          (result.error &&
+          typeof result.error === 'object' &&
+          'message' in result.error
+            ? String(result.error.message)
+            : null) ||
+          `Failed to select variant (${response.status})`;
+        console.error('[useSelectVariant] API error:', {
+          status: response.status,
+          result,
+        });
+        throw new Error(errorMessage);
+      }
+
+      // Fetch updated frame
+      const frameResponse = await fetch(
+        `/api/sequences/${sequenceId}/frames/${frameId}`
+      );
+      const frameResult: {
+        success: boolean;
+        data?: Frame;
+      } = await frameResponse.json();
+
+      if (!frameResponse.ok || !frameResult.success || !frameResult.data) {
+        throw new Error('Failed to fetch updated frame');
+      }
+
+      return frameResult.data;
+    },
+    onSuccess: async (data, { sequenceId, frameId }) => {
+      // Update frame queries optimistically
+      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), data);
+
+      queryClient.setQueryData<Frame[]>(
+        frameKeys.list(sequenceId),
+        (oldFrames) => {
+          if (!oldFrames) return oldFrames;
+          return oldFrames.map((f) =>
+            f.id === frameId
+              ? {
+                  ...f,
+                  thumbnailUrl: data.thumbnailUrl,
+                  thumbnailStatus: data.thumbnailStatus,
+                }
+              : f
+          );
+        }
+      );
+
+      // Invalidate queries to ensure consistency
       await queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
       });

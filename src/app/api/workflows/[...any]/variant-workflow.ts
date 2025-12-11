@@ -7,15 +7,19 @@ import {
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
+import type {
+  VariantWorkflowInput,
+  VariantWorkflowResult,
+} from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
+import { VARIANT_IMAGE_PROMPT } from '@/lib/prompts/variant-image';
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
-export const generateImageWorkflow = createWorkflow(
-  async (context: WorkflowContext<ImageWorkflowInput>) => {
+export const generateVariantWorkflow = createWorkflow(
+  async (context: WorkflowContext<VariantWorkflowInput>) => {
     const input = context.requestPayload;
 
     // Step 1: Set status to generating if frameId is provided
@@ -23,15 +27,15 @@ export const generateImageWorkflow = createWorkflow(
       'set-generating-status',
       async () => {
         // Validate required fields
-        if (!input.prompt || input.prompt.trim().length === 0) {
+        if (!input.thumbnailUrl || input.thumbnailUrl.trim().length === 0) {
           throw new WorkflowValidationError(
-            'Prompt is required for image generation'
+            'Thumbnail URL is required for variant image generation'
           );
         }
 
         console.log(
-          '[ImageWorkflow]',
-          `Starting image generation workflow for user ${input.userId}`
+          '[VariantWorkflow]',
+          `Starting variant image generation workflow for user ${input.userId}`
         );
 
         const model = input.model || DEFAULT_IMAGE_MODEL;
@@ -39,15 +43,12 @@ export const generateImageWorkflow = createWorkflow(
         if (input.frameId) {
           // update frame status to generating and store user prompt
           await updateFrame(input.frameId, {
-            thumbnailStatus: 'generating',
-            thumbnailWorkflowRunId: context.workflowRunId,
-            imageModel: model,
-            imagePrompt: input.prompt,
+            variantImageStatus: 'generating',
           });
 
           // Emit realtime progress
           await getGenerationChannel(input.sequenceId)?.emit(
-            'generation.image:progress',
+            'generation.variant-image:progress',
             {
               frameId: input.frameId,
               status: 'generating',
@@ -58,11 +59,11 @@ export const generateImageWorkflow = createWorkflow(
         // Return the generation params so it shows in the workflow context for debugging
         return {
           model,
-          prompt: input.prompt,
+          prompt: VARIANT_IMAGE_PROMPT,
           imageSize: input.imageSize ?? DEFAULT_IMAGE_SIZE,
           numImages: input.numImages ?? 1,
           seed: input.seed,
-          referenceImageUrls: input.referenceImageUrls,
+          referenceImageUrls: [input.thumbnailUrl],
         };
       }
     );
@@ -70,8 +71,8 @@ export const generateImageWorkflow = createWorkflow(
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
-        '[ImageWorkflow]',
-        `Generating image ${input.frameId} with model ${generationParams.model}`
+        '[VariantWorkflow]',
+        `Generating variant image ${input.frameId} with model ${generationParams.model}`
       );
 
       return await generateImageWithProvider(generationParams);
@@ -106,45 +107,33 @@ export const generateImageWorkflow = createWorkflow(
         imageUrl = result.url;
 
         await updateFrame(input.frameId, {
-          thumbnailPath: result.path || null, // Store R2 path (permanent)
-          thumbnailUrl: result.url, // Store public URL (permanent, not signed)
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-          thumbnailError: null,
-          // Clear motion fields since the thumbnail changed
-          videoUrl: null,
-          videoPath: null,
-          videoStatus: 'pending',
-          videoWorkflowRunId: null,
-          videoGeneratedAt: null,
-          videoError: null,
+          variantImageUrl: result.url, // Store public URL (permanent, not signed)
+          variantImageStatus: 'completed',
         });
 
         // Emit completion progress
         await getGenerationChannel(input.sequenceId)?.emit(
-          'generation.image:progress',
+          'generation.variant-image:progress',
           {
             frameId: input.frameId,
             status: 'completed',
-            thumbnailUrl: result.url,
+            variantImageUrl: result.url,
           }
         );
 
         console.log(
-          '[ImageWorkflow]',
+          '[VariantWorkflow]',
           `Image uploaded to storage: ${result.path}`
         );
         return { url: result.url, path: result.path };
       });
     }
 
-    console.log('[ImageWorkflow]', 'Image generation workflow completed');
+    console.log('[VariantWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
-    const result: ImageWorkflowResult = {
-      imageUrl: imageUrl,
-      frameId: input.frameId,
-      sequenceId: input.sequenceId,
+    const result: VariantWorkflowResult = {
+      variantImageUrl: imageUrl,
     };
 
     return result;
@@ -163,9 +152,8 @@ export const generateImageWorkflow = createWorkflow(
         // Emit failure progress
         if (input.sequenceId) {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await getGenerationChannel(input.sequenceId)?.emit(
-              'generation.image:progress',
+              'generation.variant-image:progress',
               {
                 frameId: input.frameId,
                 status: 'failed',
@@ -177,7 +165,7 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         console.error(
-          '[ImageWorkflow]',
+          '[VariantWorkflow]',
           `Image generation failed for frame ${input.frameId}: ${failResponse}`
         );
       }

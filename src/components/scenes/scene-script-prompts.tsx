@@ -13,11 +13,16 @@ import {
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import {
+  type AspectRatio,
+  aspectRatioToImageSize,
+} from '@/lib/constants/aspect-ratios';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useGenerateVariants, useSelectVariant } from '@/hooks/use-frames';
+import { VariantSelector } from './variant-selector';
 
 export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
@@ -27,7 +32,11 @@ type SceneScriptPromptsProps = {
   onTabChange: (tab: TabValue) => void;
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
-  onRegenerateStart: (frameId: string, type: 'image' | 'motion') => void;
+  regeneratingSceneVariants: Set<string>;
+  onRegenerateStart: (
+    frameId: string,
+    type: 'image' | 'motion' | 'scene-variants'
+  ) => void;
   aspectRatio?: AspectRatio;
 };
 
@@ -97,6 +106,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   onTabChange,
   regeneratingImages,
   regeneratingMotion,
+  regeneratingSceneVariants,
   onRegenerateStart,
   aspectRatio,
 }) => {
@@ -118,6 +128,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   >(undefined);
 
   const queryClient = useQueryClient();
+  const generateVariants = useGenerateVariants();
+  const selectVariant = useSelectVariant();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -231,7 +243,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-image`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -302,7 +314,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     try {
       const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/regenerate-motion`,
+        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-motion`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -334,6 +346,50 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     queryClient,
     onRegenerateStart,
   ]);
+
+  const handleGenerateSceneVariants = useCallback(async () => {
+    if (!frame?.id || !frame?.sequenceId) return;
+
+    onRegenerateStart(frame.id, 'scene-variants');
+
+    try {
+      await generateVariants.mutateAsync({
+        sequenceId: frame.sequenceId,
+        frameId: frame.id,
+        model: selectedImageModel,
+        imageSize: aspectRatio
+          ? aspectRatioToImageSize(aspectRatio)
+          : undefined,
+      });
+    } catch (error) {
+      console.error('Failed to generate scene variants:', error);
+      // Error handling is done by the mutation hook
+    }
+  }, [
+    frame,
+    generateVariants,
+    selectedImageModel,
+    aspectRatio,
+    onRegenerateStart,
+  ]);
+
+  const handleVariantSelect = useCallback(
+    async (index: number) => {
+      if (!frame?.id || !frame?.sequenceId) return;
+
+      try {
+        await selectVariant.mutateAsync({
+          sequenceId: frame.sequenceId,
+          frameId: frame.id,
+          variantIndex: index,
+        });
+      } catch (error) {
+        console.error('Failed to select variant:', error);
+        // Error handling is done by the mutation hook
+      }
+    },
+    [frame, selectVariant]
+  );
 
   // Update local state when frame image prompt changes
   useEffect(() => {
@@ -378,6 +434,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     frame?.videoStatus === 'generating' ||
     (frame?.id ? regeneratingMotion.has(frame.id) : false);
 
+  const isGeneratingSceneVariants =
+    frame?.variantImageStatus === 'generating' ||
+    (frame?.id ? regeneratingSceneVariants.has(frame.id) : false);
+
   return (
     <Tabs
       value={selectedTab}
@@ -388,6 +448,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
+        <TabsTrigger value="scene-variants">Scene Variants</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">
@@ -470,7 +531,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             className="w-full"
           >
             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isGenerating ? 'Generating…' : 'Regenerate Image'}
+            {isGenerating
+              ? 'Generating…'
+              : frame?.thumbnailUrl
+                ? 'Regenerate Image'
+                : 'Generate Image'}
           </Button>
 
           {/* Copy button for current prompt */}
@@ -538,7 +603,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             {isGeneratingMotion && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isGeneratingMotion ? 'Generating…' : 'Regenerate Motion'}
+            {isGeneratingMotion
+              ? 'Generating…'
+              : frame?.videoUrl
+                ? 'Regenerate Motion'
+                : 'Generate Motion'}
           </Button>
 
           {/* Copy button for current prompt */}
@@ -559,6 +628,54 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
                 <CopyIcon className="h-4 w-4" /> Copy Prompt
               </span>
             )}
+          </Button>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="scene-variants">
+        <div className="space-y-4">
+          {/* Variant Selector */}
+          {frame?.variantImageUrl ? (
+            <VariantSelector
+              variantImageUrl={frame.variantImageUrl}
+              selectedVariantIndex={null} // TODO: Store selected variant index in frame metadata if needed
+              onVariantSelect={handleVariantSelect}
+              loading={isGeneratingSceneVariants || selectVariant.isPending}
+              disabled={isGeneratingSceneVariants || selectVariant.isPending}
+              aspectRatio={aspectRatio}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
+              No variant image available. Generate variants to see options.
+            </div>
+          )}
+
+          {/* Model selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model</label>
+            <ImageModelSelector
+              selectedModel={selectedImageModel || imageModel}
+              onModelChange={setSelectedImageModel}
+              disabled={isGenerating || isGeneratingSceneVariants}
+            />
+          </div>
+
+          {/* Regenerate button */}
+          <Button
+            onClick={handleGenerateSceneVariants}
+            disabled={
+              isGeneratingSceneVariants || generateVariants.isPending || !frame
+            }
+            className="w-full"
+          >
+            {(isGeneratingSceneVariants || generateVariants.isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {isGeneratingSceneVariants || generateVariants.isPending
+              ? 'Generating…'
+              : frame?.variantImageUrl
+                ? 'Regenerate Scene Variants'
+                : 'Generate Scene Variants'}
           </Button>
         </div>
       </TabsContent>

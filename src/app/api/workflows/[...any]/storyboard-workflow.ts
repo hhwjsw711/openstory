@@ -35,14 +35,6 @@ export const generateStoryboardWorkflow = createWorkflow(
   async (context: WorkflowContext<StoryboardWorkflowInput>) => {
     const input = context.requestPayload;
 
-    const vercelAutomationBypassSecret =
-      process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
-    const headers = vercelAutomationBypassSecret
-      ? {
-          'x-vercel-protection-bypass': vercelAutomationBypassSecret,
-        }
-      : undefined;
     // Helper to safely emit events (no-op if realtime unavailable)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emit = async (event: string, data: any) => {
@@ -160,7 +152,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       },
       retries: 3,
       retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-      headers,
     });
 
     // Emit generation complete

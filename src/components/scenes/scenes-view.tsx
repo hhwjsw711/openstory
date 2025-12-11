@@ -57,6 +57,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     new Set()
   );
 
+  const [regeneratingSceneVariants, setRegeneratingSceneVariants] = useState<
+    Set<string>
+  >(new Set());
+
   // Initial fetch to determine sequence status - disable default polling
   const { data: sequence } = useSequence(sequenceId, {
     refetchInterval: false,
@@ -90,11 +94,13 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   // Helper functions to manage regeneration state
   const handleRegenerateStart = useCallback(
-    (frameId: string, type: 'image' | 'motion') => {
+    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
       if (type === 'image') {
         setRegeneratingImages((prev) => new Set(prev).add(frameId));
-      } else {
+      } else if (type === 'motion') {
         setRegeneratingMotion((prev) => new Set(prev).add(frameId));
+      } else if (type === 'scene-variants') {
+        setRegeneratingSceneVariants((prev) => new Set(prev).add(frameId));
       }
     },
     []
@@ -144,6 +150,44 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     });
   }, [frames, regeneratingImages, regeneratingMotion, handleRegenerateEnd]);
 
+  // Handler for batch motion generation
+  const handleBatchMotionGeneration = useCallback(
+    async (frameIds: string[]) => {
+      if (!sequenceId || frameIds.length === 0) return;
+
+      // Mark all frames as regenerating
+      setRegeneratingMotion((prev) => {
+        const next = new Set(prev);
+        frameIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      try {
+        const response = await fetch(
+          `/api/sequences/${sequenceId}/generate-motion`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frameIds }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to start batch motion generation');
+        }
+      } catch (error) {
+        // On error, remove from regenerating set
+        setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          frameIds.forEach((id) => next.delete(id));
+          return next;
+        });
+        throw error;
+      }
+    },
+    [sequenceId]
+  );
+
   return (
     <PageContainer maxWidth="full" fullHeight={true} padding="none">
       <PageHeader>
@@ -172,6 +216,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           onSelectFrame={setSelectedFrameId}
           regeneratingImages={regeneratingImages}
           regeneratingMotion={regeneratingMotion}
+          onBatchGenerateMotion={handleBatchMotionGeneration}
         />
 
         {/* Right: Scene Player */}
@@ -192,6 +237,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             onTabChange={setSelectedTab}
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
+            regeneratingSceneVariants={regeneratingSceneVariants}
             onRegenerateStart={handleRegenerateStart}
             aspectRatio={aspectRatio}
           />

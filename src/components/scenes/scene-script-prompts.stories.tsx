@@ -11,6 +11,8 @@ const mockFrame: Frame = {
   durationMs: 3000,
   thumbnailUrl: 'https://picsum.photos/seed/coffee/320/180',
   thumbnailPath: 'teams/mock/sequences/mock/frames/frame-1/thumbnail.jpg',
+  variantImageUrl: null,
+  variantImageStatus: 'pending',
   videoUrl: null,
   videoPath: null,
   thumbnailStatus: 'completed',

@@ -11,7 +11,9 @@ import { generateStoryboardWorkflow } from '@/app/api/workflows/[...any]/storybo
 import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
 import { serveMany } from '@upstash/workflow/dist/nextjs';
 import { characterBibleWorkflow } from './character-bible-workflow';
+import { upscaleVariantWorkflow } from './upscale-variant-workflow';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
+import { generateVariantWorkflow } from './variant-workflow';
 
 export const { POST } = serveMany(
   {
@@ -22,6 +24,8 @@ export const { POST } = serveMany(
     'character-sheet': characterSheetWorkflow,
     'character-sheet-from-bible': characterBibleWorkflow,
     'visual-prompts': visualPromptWorkflow,
+    'variant-image': generateVariantWorkflow,
+    'upscale-variant': upscaleVariantWorkflow,
   },
   {
     baseUrl: getQStashWebhookUrl(),

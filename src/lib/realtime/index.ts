@@ -49,6 +49,13 @@ export const realtimeSchema = {
       thumbnailUrl: z.string().optional(),
     }),
 
+    // Image generation progress
+    'variant-image:progress': z.object({
+      frameId: z.string(),
+      status: z.enum(['pending', 'generating', 'completed', 'failed']),
+      variantImageUrl: z.string().optional(),
+    }),
+
     // Video generation progress
     'video:progress': z.object({
       frameId: z.string(),

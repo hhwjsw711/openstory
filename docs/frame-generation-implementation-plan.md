@@ -87,7 +87,7 @@ interface UpdateFrameRequest {
 }
 ```
 
-#### `/frames/regenerate` - POST
+#### `/frames/generate-image` - POST
 
 ```typescript
 interface RegenerateFrameRequest {

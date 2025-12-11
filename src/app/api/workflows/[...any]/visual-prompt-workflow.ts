@@ -5,33 +5,9 @@
  * These sheets are later used as reference images when generating scene images.
  */
 
-import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import {
-  createSequenceCharacter,
-  updateCharacterSheet,
-  updateSheetStatus,
-} from '@/lib/db/helpers/sequence-characters';
-import {
-  generateImageWithProvider,
-  ImageGenerationParams,
-} from '@/lib/image/image-generation';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import {
-  buildCharacterSheetPrompt,
-  createFromBible,
-} from '@/lib/services/character.service';
-import type {
-  CharacterBibleWorkflowInput,
-  CharacterSheetWorkflowInput,
-  CharacterSheetWorkflowResult,
-  VisualPromptWorkflowInput,
-} from '@/lib/workflow';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
+import type { VisualPromptWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/nextjs';
-import { SequenceCharacter } from '@/lib/db/schema';
-import { generateId } from 'better-auth';
-import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
 import { getGenerationChannel } from '@/lib/realtime';
 import { Scene } from '@/lib/script/types';
 import { generateVisualPromptsForScenes } from '@/lib/script';
