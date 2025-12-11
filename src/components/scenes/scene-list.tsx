@@ -1,9 +1,11 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
-import { memo } from 'react';
+import { Loader2, Video } from 'lucide-react';
+import { memo, useMemo, useState } from 'react';
 import { SceneListItem } from './scene-list-item';
 
 type SceneListProps = {
@@ -13,6 +15,7 @@ type SceneListProps = {
   onSelectFrame: (frameId: string) => void;
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
+  onBatchGenerateMotion?: (frameIds: string[]) => Promise<void>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -28,7 +31,35 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   onSelectFrame,
   regeneratingImages,
   regeneratingMotion,
+  onBatchGenerateMotion,
 }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Calculate eligible frames for motion generation
+  // Include pending and failed frames that have completed thumbnails
+  const eligibleFrames = useMemo(() => {
+    if (!frames) return [];
+    return frames.filter(
+      (f) =>
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
+        f.thumbnailStatus === 'completed'
+    );
+  }, [frames]);
+
+  const handleGenerateMotion = async () => {
+    if (!onBatchGenerateMotion || eligibleFrames.length === 0) return;
+
+    setIsGenerating(true);
+    try {
+      await onBatchGenerateMotion(eligibleFrames.map((f) => f.id));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const hasEligibleFrames = eligibleFrames.length > 0;
+  const isMotionInProgress = regeneratingMotion.size > 0;
+
   return (
     <div className="flex h-full w-80 flex-col border-r bg-background">
       {/* Header */}
@@ -39,7 +70,6 @@ const SceneListComponent: React.FC<SceneListProps> = ({
       </div>
 
       {/* Scene list */}
-
       <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col gap-3 p-4">
           {(frames === undefined || frames.length === 0) &&
@@ -71,6 +101,31 @@ const SceneListComponent: React.FC<SceneListProps> = ({
             ))}
         </div>
       </ScrollArea>
+
+      {/* Sticky footer with Generate Motion button */}
+      {hasEligibleFrames && (
+        <div className="sticky bottom-0 border-t bg-background p-4">
+          <Button
+            variant="default"
+            className="w-full"
+            onClick={handleGenerateMotion}
+            disabled={isGenerating || isMotionInProgress}
+          >
+            {isGenerating || isMotionInProgress ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Video className="mr-2 h-4 w-4" />
+                Generate Motion ({eligibleFrames.length}{' '}
+                {eligibleFrames.length === 1 ? 'frame' : 'frames'})
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -94,6 +149,11 @@ const areEqual = (
     prevProps.regeneratingImages !== nextProps.regeneratingImages ||
     prevProps.regeneratingMotion !== nextProps.regeneratingMotion
   ) {
+    return false;
+  }
+
+  // Compare callback references
+  if (prevProps.onBatchGenerateMotion !== nextProps.onBatchGenerateMotion) {
     return false;
   }
 
