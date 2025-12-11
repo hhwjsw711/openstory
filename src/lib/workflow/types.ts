@@ -16,7 +16,6 @@ import type {
 import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
-import { WorkflowContext } from '@upstash/workflow';
 
 /**
  * Base workflow context that includes authentication
@@ -219,4 +218,21 @@ export interface CharacterSheetWorkflowResult {
   sheetImageUrl: string;
   characterDbId?: string;
   sheetImagePath?: string;
+}
+
+/**
+ * Upscale variant workflow input
+ * Upscales a cropped variant tile to higher resolution
+ */
+export interface UpscaleVariantWorkflowInput extends SequenceWorkflowContext {
+  frameId: string;
+  /** URL of the cropped tile to upscale */
+  croppedTileUrl: string;
+  /** R2 path of the cropped tile (for replacement) */
+  croppedTilePath: string;
+}
+
+export interface UpscaleVariantWorkflowResult {
+  upscaledUrl: string;
+  upscaledPath: string;
 }

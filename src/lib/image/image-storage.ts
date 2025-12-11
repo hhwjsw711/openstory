@@ -21,6 +21,14 @@ interface UploadImageOptions {
   frameId: string;
 }
 
+interface UploadImageBufferOptions {
+  imageBuffer: Buffer;
+  teamId: string;
+  sequenceId: string;
+  frameId: string;
+  contentType: string;
+}
+
 type StorageResult = {
   url: string;
   path: string;
@@ -72,6 +80,51 @@ export async function uploadImageToStorage(
     {
       contentType,
       upsert: true, // Overwrite if exists
+    }
+  );
+
+  return {
+    url: result.publicUrl,
+    path: storagePath,
+  };
+}
+
+/**
+ * Upload an image buffer directly to R2 Storage
+ * Used when we have the image data in memory (e.g., after cropping with Sharp)
+ */
+export async function uploadImageBufferToStorage(
+  options: UploadImageBufferOptions
+): Promise<StorageResult> {
+  const { imageBuffer, teamId, sequenceId, frameId, contentType } = options;
+
+  // Determine extension from content type
+  let extension = 'png';
+  if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+    extension = 'jpg';
+  } else if (contentType.includes('webp')) {
+    extension = 'webp';
+  } else if (contentType.includes('gif')) {
+    extension = 'gif';
+  }
+
+  // Generate ULID-based filename
+  const ulid = generateId();
+  const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
+
+  // Create blob from buffer (convert to Uint8Array for compatibility)
+  const imageBlob = new Blob([new Uint8Array(imageBuffer)], {
+    type: contentType,
+  });
+
+  // Upload to R2 Storage
+  const result = await uploadFile(
+    STORAGE_BUCKETS.THUMBNAILS,
+    storagePath,
+    imageBlob,
+    {
+      contentType,
+      upsert: true,
     }
   );
 

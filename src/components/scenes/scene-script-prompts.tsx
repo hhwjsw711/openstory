@@ -15,16 +15,14 @@ import {
 } from '@/lib/ai/models';
 import {
   type AspectRatio,
-  aspectRatioToDimensions,
   aspectRatioToImageSize,
-  DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
 import { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useGenerateVariants } from '@/hooks/use-frames';
+import { useGenerateVariants, useSelectVariant } from '@/hooks/use-frames';
+import { VariantSelector } from './variant-selector';
 
 export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
@@ -131,6 +129,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
+  const selectVariant = useSelectVariant();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -374,6 +373,24 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     onRegenerateStart,
   ]);
 
+  const handleVariantSelect = useCallback(
+    async (index: number) => {
+      if (!frame?.id || !frame?.sequenceId) return;
+
+      try {
+        await selectVariant.mutateAsync({
+          sequenceId: frame.sequenceId,
+          frameId: frame.id,
+          variantIndex: index,
+        });
+      } catch (error) {
+        console.error('Failed to select variant:', error);
+        // Error handling is done by the mutation hook
+      }
+    },
+    [frame, selectVariant]
+  );
+
   // Update local state when frame image prompt changes
   useEffect(() => {
     setEditedImagePrompt(imagePrompt || '');
@@ -420,10 +437,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const isGeneratingSceneVariants =
     frame?.variantImageStatus === 'generating' ||
     (frame?.id ? regeneratingSceneVariants.has(frame.id) : false);
-
-  const imageDimensions = aspectRatioToDimensions(
-    aspectRatio || DEFAULT_ASPECT_RATIO
-  );
 
   return (
     <Tabs
@@ -613,14 +626,20 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       <TabsContent value="scene-variants">
         <div className="space-y-4">
-          {/* Editable prompt */}
-          {frame?.variantImageUrl && (
-            <Image
-              src={frame?.variantImageUrl}
-              width={imageDimensions.width}
-              height={imageDimensions.height}
-              alt="Scene Variant"
+          {/* Variant Selector */}
+          {frame?.variantImageUrl ? (
+            <VariantSelector
+              variantImageUrl={frame.variantImageUrl}
+              selectedVariantIndex={null} // TODO: Store selected variant index in frame metadata if needed
+              onVariantSelect={handleVariantSelect}
+              loading={isGeneratingSceneVariants || selectVariant.isPending}
+              disabled={isGeneratingSceneVariants || selectVariant.isPending}
+              aspectRatio={aspectRatio}
             />
+          ) : (
+            <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
+              No variant image available. Generate variants to see options.
+            </div>
           )}
 
           {/* Model selector */}
@@ -629,7 +648,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             <ImageModelSelector
               selectedModel={selectedImageModel || imageModel}
               onModelChange={setSelectedImageModel}
-              disabled={isGenerating}
+              disabled={isGenerating || isGeneratingSceneVariants}
             />
           </div>
 

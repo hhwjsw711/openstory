@@ -59,6 +59,8 @@ export async function triggerWorkflow(
       ? {
           'x-vercel-protection-bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'Upstash-Forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
   });

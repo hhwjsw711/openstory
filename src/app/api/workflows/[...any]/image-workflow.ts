@@ -111,6 +111,13 @@ export const generateImageWorkflow = createWorkflow(
           thumbnailStatus: 'completed',
           thumbnailGeneratedAt: new Date(),
           thumbnailError: null,
+          // Clear motion fields since the thumbnail changed
+          videoUrl: null,
+          videoPath: null,
+          videoStatus: 'pending',
+          videoWorkflowRunId: null,
+          videoGeneratedAt: null,
+          videoError: null,
         });
 
         // Emit completion progress
