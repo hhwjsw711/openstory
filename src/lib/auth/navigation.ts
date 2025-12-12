@@ -3,6 +3,10 @@
  * Helpers for navigating to auth pages with redirect preservation
  */
 
+import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
+import { Route as loginRoute } from '@/routes/_auth/login';
+import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
+
 /**
  * Build a login URL with redirect preservation
  * @param currentPath - Current path to redirect back to after login (default: current pathname)
@@ -12,19 +16,23 @@ export function getLoginUrl(currentPath?: string): string {
   // Get current path from window if not provided (client-side only)
   const redirectTo =
     currentPath ||
-    (typeof window !== 'undefined' ? window.location.pathname : '/sequences');
+    (typeof window !== 'undefined'
+      ? window.location.pathname
+      : sequencesRoute.fullPath);
 
   // Only add redirectTo if it's not a default or auth route
-  const isDefaultRoute = redirectTo === '/' || redirectTo === '/sequences';
+  const isDefaultRoute =
+    redirectTo === '/' || redirectTo === sequencesRoute.fullPath;
   const isAuthRoute =
-    redirectTo.startsWith('/login') || redirectTo.startsWith('/invite-code');
+    redirectTo.startsWith(loginRoute.fullPath) ||
+    redirectTo.startsWith(inviteCodeRoute.fullPath);
 
   if (isDefaultRoute || isAuthRoute) {
-    return '/login';
+    return loginRoute.fullPath;
   }
 
   const params = new URLSearchParams({ redirectTo });
-  return `/login?${params.toString()}`;
+  return `${loginRoute.fullPath}?${params.toString()}`;
 }
 
 /**
@@ -40,31 +48,38 @@ export function getSignupUrl(currentPath?: string): string {
 
 /**
  * Navigate to login page with current path as redirect
- * For use in client components with Next.js router
- * @param router - Next.js router instance
+ * For use in client components with TanStack Router
+ * @param navigate - TanStack Router navigate function
  * @param currentPath - Optional path to redirect back to (defaults to current window.location.pathname)
  */
 export function navigateToLogin(
-  router: { push: (url: string) => void | Promise<void> },
+  navigate: (options: { to: string; search?: { redirectTo?: string } }) => void,
   currentPath?: string
 ): void {
-  const loginUrl = getLoginUrl(currentPath);
-  router.push(loginUrl);
+  const redirectTo =
+    currentPath ||
+    (typeof window !== 'undefined'
+      ? window.location.href
+      : sequencesRoute.fullPath);
+  navigate({
+    to: loginRoute.fullPath,
+    search: { redirectTo },
+  });
 }
 
 /**
  * Navigate to signup page with current path as redirect
  * @deprecated Use navigateToLogin instead - signup and signin are now unified
- * For use in client components with Next.js router
- * @param router - Next.js router instance
+ * For use in client components with TanStack Router
+ * @param navigate - TanStack Router navigate function
  * @param currentPath - Optional path to redirect back to (defaults to current window.location.pathname)
  */
 export function navigateToSignup(
-  router: { push: (url: string) => void | Promise<void> },
+  navigate: (options: { to: string; search?: { redirectTo?: string } }) => void,
   currentPath?: string
 ): void {
   // Signup is now the same as login - redirect to login page
-  navigateToLogin(router, currentPath);
+  navigateToLogin(navigate, currentPath);
 }
 
 /**
@@ -91,13 +106,13 @@ export function getRedirectFromParams(
     if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
       // Prevent redirecting back to auth pages
       if (
-        !redirectTo.startsWith('/login') &&
-        !redirectTo.startsWith('/invite-code')
+        !redirectTo.startsWith(loginRoute.fullPath) &&
+        !redirectTo.startsWith(inviteCodeRoute.fullPath)
       ) {
         return redirectTo;
       }
     }
   }
 
-  return '/sequences';
+  return sequencesRoute.fullPath;
 }

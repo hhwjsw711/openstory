@@ -3,10 +3,13 @@
  * Main navigation header with branding and user badge
  */
 
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { VelroLogo } from '@/components/icons';
+import { Route as evalRoute } from '@/routes/_protected/eval';
+import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
+import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
 import { UserBadge } from './user-badge';
+import { Link } from '@tanstack/react-router';
 
 interface HeaderProps {
   className?: string;
@@ -23,26 +26,26 @@ export function Header({ className }: HeaderProps) {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
-          <Link href="/sequences" className="flex items-center">
+          <Link to={sequencesRoute.fullPath} className="flex items-center">
             <VelroLogo size="md" />
           </Link>
 
           {/* Main navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <Link
-              href="/sequences"
+              to={sequencesRoute.fullPath}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Sequences
             </Link>
             <Link
-              href="/sequences/new"
+              to={sequencesNewRoute.fullPath}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Create New
             </Link>
             <Link
-              href="/eval"
+              to={evalRoute.fullPath}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Eval

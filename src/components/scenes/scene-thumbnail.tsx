@@ -6,7 +6,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import { memo } from 'react';
 
 type SceneThumbnailProps = {

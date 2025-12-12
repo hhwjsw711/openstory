@@ -3,8 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
+import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 type InviteCodeFormProps = {
@@ -12,9 +13,9 @@ type InviteCodeFormProps = {
 };
 
 export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
-  redirectTo = '/sequences',
+  redirectTo = sequencesRoute.fullPath,
 }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -34,13 +35,17 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
         body: JSON.stringify({ code }),
       });
 
-      const data = (await response.json()) as {
-        success: boolean;
-        error?: string;
-      };
+      const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        setError(data.error || 'Failed to activate account');
+      if (
+        !response.ok ||
+        data === null ||
+        typeof data !== 'object' ||
+        !('success' in data && data.success)
+      ) {
+        setError(
+          (data as { error?: string }).error || 'Failed to activate account'
+        );
         setIsLoading(false);
         return;
       }
@@ -52,8 +57,8 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
       // Validate redirect URL to prevent open redirects
       const validatedRedirect = getRedirectFromParams({ redirectTo });
 
-      // Use window.location for hard refresh to ensure session is updated
-      window.location.href = validatedRedirect;
+      // Navigate to validated redirect
+      void navigate({ to: validatedRedirect, replace: true });
     } catch (err) {
       console.error('Activation error:', err);
       setError('An unexpected error occurred. Please try again.');

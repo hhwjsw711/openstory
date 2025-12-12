@@ -119,9 +119,7 @@ export async function getUserWithTeam(): Promise<{
     // If user has multiple teams, select the one with the highest role
     let selectedTeam = teamMembersList[0];
     if (teamMembersList.length > 1) {
-      const highestRole = getHighestRole(
-        teamMembersList.map((tm) => tm.role as TeamRole)
-      );
+      const highestRole = getHighestRole(teamMembersList.map((tm) => tm.role));
       selectedTeam =
         teamMembersList.find((tm) => tm.role === highestRole) ||
         teamMembersList[0];

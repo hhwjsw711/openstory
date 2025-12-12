@@ -5,17 +5,18 @@
 
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
-import { useCallback } from 'react';
 import { getLoginUrl, getSignupUrl } from '@/lib/auth/navigation';
+import { Route as loginRoute } from '@/routes/_auth/login';
+import { useLocation, useNavigate } from '@tanstack/react-router';
+import { useCallback } from 'react';
 
 /**
  * Hook for auth navigation with redirect preservation
  * Automatically uses current pathname for redirect
  */
 export function useAuthNavigation() {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   /**
    * Navigate to login page, preserving current path for redirect
@@ -23,10 +24,13 @@ export function useAuthNavigation() {
    */
   const goToLogin = useCallback(
     (customPath?: string) => {
-      const loginUrl = getLoginUrl(customPath || pathname);
-      router.push(loginUrl);
+      const redirectTo = customPath || location.href;
+      void navigate({
+        to: loginRoute.fullPath,
+        search: { redirectTo },
+      });
     },
-    [router, pathname]
+    [navigate, location.href]
   );
 
   /**
@@ -36,24 +40,24 @@ export function useAuthNavigation() {
    */
   const goToSignup = useCallback(
     (customPath?: string) => {
-      const signupUrl = getSignupUrl(customPath || pathname);
-      router.push(signupUrl);
+      // Signup is now the same as login - redirect to login page
+      goToLogin(customPath);
     },
-    [router, pathname]
+    [goToLogin]
   );
 
   /**
    * Get the login URL with redirect preservation (without navigating)
    * Useful for Link components
    */
-  const loginUrl = getLoginUrl(pathname);
+  const loginUrl = getLoginUrl(location.pathname);
 
   /**
    * Get the signup URL with redirect preservation (without navigating)
    * @deprecated Use loginUrl instead - signup and signin are now unified
    * Useful for Link components
    */
-  const signupUrl = getSignupUrl(pathname);
+  const signupUrl = getSignupUrl(location.pathname);
 
   return {
     goToLogin,

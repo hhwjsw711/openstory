@@ -12,7 +12,8 @@ import {
 } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { nextCookies } from 'better-auth/next-js';
+import { tanstackStartCookies } from 'better-auth/tanstack-start';
+
 import { oAuthProxy } from 'better-auth/plugins';
 
 import { getDb } from '#db-client';
@@ -132,7 +133,7 @@ export function getAuth() {
     // Configure plugins
     plugins: [
       // Next.js cookie integration
-      nextCookies(),
+      tanstackStartCookies(),
       // OAuth Proxy for preview deployments
       oAuthProxy({
         currentURL: APP_URL,

@@ -9,8 +9,9 @@ import { useSequences } from '@/hooks/use-sequences';
 import { getAspectRatioData } from '@/lib/constants/aspect-ratios';
 import { formatDistanceToNow } from '@/lib/utils';
 import { formatDuration } from '@/lib/utils/format-duration';
+import { Route as sequencesScenesRoute } from '@/routes/_protected/sequences/$id/scenes';
 import { Calendar, Clock, Timer, VideoIcon } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 interface SequencesListProps {
@@ -55,7 +56,11 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
         const ratioData = getAspectRatioData(sequence.aspectRatio);
 
         return (
-          <Link key={sequence.id} href={`/sequences/${sequence.id}/scenes`}>
+          <Link
+            key={sequence.id}
+            to={sequencesScenesRoute.fullPath}
+            params={{ id: sequence.id }}
+          >
             <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">

@@ -10,9 +10,9 @@ export default defineConfig({
     port: 3000,
   },
   plugins: [
+    tsconfigPaths(),
     tailwindcss(),
     // Enables Vite to resolve imports using path aliases.
-    tsconfigPaths(),
     tanstackStart({
       srcDirectory: 'src', // This is the default
       router: {
@@ -22,4 +22,7 @@ export default defineConfig({
     }),
     viteReact(),
   ],
+  ssr: {
+    noExternal: ['@upstash/realtime'],
+  },
 });

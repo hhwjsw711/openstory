@@ -48,7 +48,7 @@ export async function getUserRole(
     return null;
   }
 
-  return membership.role as TeamRole;
+  return membership.role;
 }
 
 /**
@@ -313,7 +313,7 @@ export async function getUserTeams(userId: string): Promise<
 
   return memberships.map((m) => ({
     teamId: m.teamId,
-    role: m.role as TeamRole,
+    role: m.role,
     teamName: m.teamName,
     joinedAt: m.joinedAt.toISOString(),
   }));

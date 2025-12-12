@@ -37,7 +37,7 @@ export const Select: React.FC<SelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const isControlled = value !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue || '');
-  const selectedValue = isControlled ? (value as string) : internalValue;
+  const selectedValue = isControlled ? value : internalValue;
   const containerRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 

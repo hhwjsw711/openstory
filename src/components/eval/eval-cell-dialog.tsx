@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Frame } from '@/types/database';
 import { FileTextIcon, ImageIcon, TextIcon } from 'lucide-react';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import type React from 'react';
 import { useEffect } from 'react';
 import { getSceneScript, getVisualPrompt } from './eval-scene-cell';

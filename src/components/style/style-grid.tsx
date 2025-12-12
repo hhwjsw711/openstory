@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Style } from '@/types/database';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import type { FC, KeyboardEvent } from 'react';
 import { useCallback, useRef, useEffect, useState } from 'react';
 
@@ -87,10 +87,9 @@ const StyleCard: FC<StyleCardProps> = ({
             <Image
               src={style.previewUrl}
               alt={`${style.name} style preview`}
-              fill
+              layout="fullWidth"
+              aspectRatio={1}
               className="object-cover"
-              loading="lazy"
-              sizes="(min-width: 1280px) 280px, (min-width: 1024px) 240px, (min-width: 768px) 200px, 160px"
             />
           ) : (
             <div className="flex h-full items-center justify-center">

@@ -9,38 +9,711 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
+import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiStylesRouteImport } from './routes/api/styles'
+import { Route as ApiSequencesRouteImport } from './routes/api/sequences'
+import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
+import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
+import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
+import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
+import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
+import { Route as ApiUserTeamsRouteImport } from './routes/api/user/teams'
+import { Route as ApiUserTeamRouteImport } from './routes/api/user/team'
+import { Route as ApiUserMeRouteImport } from './routes/api/user/me'
+import { Route as ApiStylesStyleIdRouteImport } from './routes/api/styles/$styleId'
+import { Route as ApiSequencesSequenceIdRouteImport } from './routes/api/sequences/$sequenceId'
+import { Route as ApiScriptEnhanceRouteImport } from './routes/api/script/enhance'
+import { Route as ApiPromptsShortenRouteImport } from './routes/api/prompts/shorten'
+import { Route as ApiInviteCodesValidateRouteImport } from './routes/api/invite-codes/validate'
+import { Route as ApiInviteCodesActivateRouteImport } from './routes/api/invite-codes/activate'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
+import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
+import { Route as ApiUserTeamsCheckRouteImport } from './routes/api/user/teams/check'
+import { Route as ApiTeamsTeamIdMembersRouteImport } from './routes/api/teams/$teamId/members'
+import { Route as ApiTeamsTeamIdInviteRouteImport } from './routes/api/teams/$teamId/invite'
+import { Route as ApiSequencesSequenceIdMotionRouteImport } from './routes/api/sequences/$sequenceId/motion'
+import { Route as ApiSequencesSequenceIdFramesRouteImport } from './routes/api/sequences/$sequenceId/frames'
+import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
+import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
+import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts'
+import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters'
+import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design'
+import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
+import { Route as ApiFramesFrameIdDownloadRouteImport } from './routes/api/frames/$frameId/download'
+import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
+import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
+import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
+import { Route as ApiTeamsTeamIdMembersUserIdRouteImport } from './routes/api/teams/$teamId/members/$userId'
+import { Route as ApiSequencesSequenceIdFramesReorderRouteImport } from './routes/api/sequences/$sequenceId/frames/reorder'
+import { Route as ApiSequencesSequenceIdFramesGenerateRouteImport } from './routes/api/sequences/$sequenceId/frames/generate'
+import { Route as ApiSequencesSequenceIdFramesFrameIdRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId'
+import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
+import { Route as ApiTeamsTeamIdMembersUserIdRoleRouteImport } from './routes/api/teams/$teamId/members/$userId/role'
+import { Route as ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/select-variant'
+import { Route as ApiSequencesSequenceIdFramesFrameIdMotionRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/motion'
+import { Route as ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+import { Route as ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/generate-image'
 
+const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
+  id: '/_protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRouteRoute = AuthRouteRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStylesRoute = ApiStylesRouteImport.update({
+  id: '/api/styles',
+  path: '/api/styles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSequencesRoute = ApiSequencesRouteImport.update({
+  id: '/api/sequences',
+  path: '/api/sequences',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
+  id: '/api/realtime',
+  path: '/api/realtime',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
+  id: '/eval',
+  path: '/eval',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
+  id: '/invite-code',
+  path: '/invite-code',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
+  id: '/sequences/',
+  path: '/sequences/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
+  id: '/api/workflows/$',
+  path: '/api/workflows/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserTeamsRoute = ApiUserTeamsRouteImport.update({
+  id: '/api/user/teams',
+  path: '/api/user/teams',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserTeamRoute = ApiUserTeamRouteImport.update({
+  id: '/api/user/team',
+  path: '/api/user/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserMeRoute = ApiUserMeRouteImport.update({
+  id: '/api/user/me',
+  path: '/api/user/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStylesStyleIdRoute = ApiStylesStyleIdRouteImport.update({
+  id: '/$styleId',
+  path: '/$styleId',
+  getParentRoute: () => ApiStylesRoute,
+} as any)
+const ApiSequencesSequenceIdRoute = ApiSequencesSequenceIdRouteImport.update({
+  id: '/$sequenceId',
+  path: '/$sequenceId',
+  getParentRoute: () => ApiSequencesRoute,
+} as any)
+const ApiScriptEnhanceRoute = ApiScriptEnhanceRouteImport.update({
+  id: '/api/script/enhance',
+  path: '/api/script/enhance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPromptsShortenRoute = ApiPromptsShortenRouteImport.update({
+  id: '/api/prompts/shorten',
+  path: '/api/prompts/shorten',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInviteCodesValidateRoute = ApiInviteCodesValidateRouteImport.update({
+  id: '/api/invite-codes/validate',
+  path: '/api/invite-codes/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInviteCodesActivateRoute = ApiInviteCodesActivateRouteImport.update({
+  id: '/api/invite-codes/activate',
+  path: '/api/invite-codes/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
+  id: '/sequences/new',
+  path: '/sequences/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ApiWorkflowsStatusRunIdRoute = ApiWorkflowsStatusRunIdRouteImport.update({
+  id: '/api/workflows/status/$runId',
+  path: '/api/workflows/status/$runId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserTeamsCheckRoute = ApiUserTeamsCheckRouteImport.update({
+  id: '/check',
+  path: '/check',
+  getParentRoute: () => ApiUserTeamsRoute,
+} as any)
+const ApiTeamsTeamIdMembersRoute = ApiTeamsTeamIdMembersRouteImport.update({
+  id: '/api/teams/$teamId/members',
+  path: '/api/teams/$teamId/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTeamsTeamIdInviteRoute = ApiTeamsTeamIdInviteRouteImport.update({
+  id: '/api/teams/$teamId/invite',
+  path: '/api/teams/$teamId/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSequencesSequenceIdMotionRoute =
+  ApiSequencesSequenceIdMotionRouteImport.update({
+    id: '/motion',
+    path: '/motion',
+    getParentRoute: () => ApiSequencesSequenceIdRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesRoute =
+  ApiSequencesSequenceIdFramesRouteImport.update({
+    id: '/frames',
+    path: '/frames',
+    getParentRoute: () => ApiSequencesSequenceIdRoute,
+  } as any)
+const ApiMcpStreamVisualPromptsRoute =
+  ApiMcpStreamVisualPromptsRouteImport.update({
+    id: '/stream/visual-prompts',
+    path: '/stream/visual-prompts',
+    getParentRoute: () => ApiMcpRoute,
+  } as any)
+const ApiMcpStreamSplitScenesRoute = ApiMcpStreamSplitScenesRouteImport.update({
+  id: '/stream/split-scenes',
+  path: '/stream/split-scenes',
+  getParentRoute: () => ApiMcpRoute,
+} as any)
+const ApiMcpStreamMotionPromptsRoute =
+  ApiMcpStreamMotionPromptsRouteImport.update({
+    id: '/stream/motion-prompts',
+    path: '/stream/motion-prompts',
+    getParentRoute: () => ApiMcpRoute,
+  } as any)
+const ApiMcpStreamExtractCharactersRoute =
+  ApiMcpStreamExtractCharactersRouteImport.update({
+    id: '/stream/extract-characters',
+    path: '/stream/extract-characters',
+    getParentRoute: () => ApiMcpRoute,
+  } as any)
+const ApiMcpStreamAudioDesignRoute = ApiMcpStreamAudioDesignRouteImport.update({
+  id: '/stream/audio-design',
+  path: '/stream/audio-design',
+  getParentRoute: () => ApiMcpRoute,
+} as any)
+const ApiMcpStreamAnalyzeScriptRoute =
+  ApiMcpStreamAnalyzeScriptRouteImport.update({
+    id: '/stream/analyze-script',
+    path: '/stream/analyze-script',
+    getParentRoute: () => ApiMcpRoute,
+  } as any)
+const ApiFramesFrameIdDownloadRoute =
+  ApiFramesFrameIdDownloadRouteImport.update({
+    id: '/api/frames/$frameId/download',
+    path: '/api/frames/$frameId/download',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProtectedSequencesIdScriptRoute =
+  ProtectedSequencesIdScriptRouteImport.update({
+    id: '/sequences/$id/script',
+    path: '/sequences/$id/script',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedSequencesIdScenesRoute =
+  ProtectedSequencesIdScenesRouteImport.update({
+    id: '/sequences/$id/scenes',
+    path: '/sequences/$id/scenes',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ApiTeamsInvitationsInvitationIdAcceptRoute =
+  ApiTeamsInvitationsInvitationIdAcceptRouteImport.update({
+    id: '/api/teams/invitations/$invitationId/accept',
+    path: '/api/teams/invitations/$invitationId/accept',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTeamsTeamIdMembersUserIdRoute =
+  ApiTeamsTeamIdMembersUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => ApiTeamsTeamIdMembersRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesReorderRoute =
+  ApiSequencesSequenceIdFramesReorderRouteImport.update({
+    id: '/reorder',
+    path: '/reorder',
+    getParentRoute: () => ApiSequencesSequenceIdFramesRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesGenerateRoute =
+  ApiSequencesSequenceIdFramesGenerateRouteImport.update({
+    id: '/generate',
+    path: '/generate',
+    getParentRoute: () => ApiSequencesSequenceIdFramesRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesFrameIdRoute =
+  ApiSequencesSequenceIdFramesFrameIdRouteImport.update({
+    id: '/$frameId',
+    path: '/$frameId',
+    getParentRoute: () => ApiSequencesSequenceIdFramesRoute,
+  } as any)
+const ApiSequencesSequenceIdChaptersVttRoute =
+  ApiSequencesSequenceIdChaptersVttRouteImport.update({
+    id: '/chapters/vtt',
+    path: '/chapters/vtt',
+    getParentRoute: () => ApiSequencesSequenceIdRoute,
+  } as any)
+const ApiTeamsTeamIdMembersUserIdRoleRoute =
+  ApiTeamsTeamIdMembersUserIdRoleRouteImport.update({
+    id: '/role',
+    path: '/role',
+    getParentRoute: () => ApiTeamsTeamIdMembersUserIdRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute =
+  ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport.update({
+    id: '/select-variant',
+    path: '/select-variant',
+    getParentRoute: () => ApiSequencesSequenceIdFramesFrameIdRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesFrameIdMotionRoute =
+  ApiSequencesSequenceIdFramesFrameIdMotionRouteImport.update({
+    id: '/motion',
+    path: '/motion',
+    getParentRoute: () => ApiSequencesSequenceIdFramesFrameIdRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute =
+  ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport.update({
+    id: '/generate-variants',
+    path: '/generate-variants',
+    getParentRoute: () => ApiSequencesSequenceIdFramesFrameIdRoute,
+  } as any)
+const ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute =
+  ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport.update({
+    id: '/generate-image',
+    path: '/generate-image',
+    getParentRoute: () => ApiSequencesSequenceIdFramesFrameIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/invite-code': typeof AuthInviteCodeRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/eval': typeof ProtectedEvalRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRouteWithChildren
+  '/api/realtime': typeof ApiRealtimeRoute
+  '/api/sequences': typeof ApiSequencesRouteWithChildren
+  '/api/styles': typeof ApiStylesRouteWithChildren
+  '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite-codes/activate': typeof ApiInviteCodesActivateRoute
+  '/api/invite-codes/validate': typeof ApiInviteCodesValidateRoute
+  '/api/prompts/shorten': typeof ApiPromptsShortenRoute
+  '/api/script/enhance': typeof ApiScriptEnhanceRoute
+  '/api/sequences/$sequenceId': typeof ApiSequencesSequenceIdRouteWithChildren
+  '/api/styles/$styleId': typeof ApiStylesStyleIdRoute
+  '/api/user/me': typeof ApiUserMeRoute
+  '/api/user/team': typeof ApiUserTeamRoute
+  '/api/user/teams': typeof ApiUserTeamsRouteWithChildren
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/sequences': typeof ProtectedSequencesIndexRoute
+  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
+  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
+  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
+  '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
+  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
+  '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
+  '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
+  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
+  '/api/sequences/$sequenceId/frames/$frameId': typeof ApiSequencesSequenceIdFramesFrameIdRouteWithChildren
+  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
+  '/api/sequences/$sequenceId/frames/reorder': typeof ApiSequencesSequenceIdFramesReorderRoute
+  '/api/teams/$teamId/members/$userId': typeof ApiTeamsTeamIdMembersUserIdRouteWithChildren
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
+  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
+  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
+  '/api/teams/$teamId/members/$userId/role': typeof ApiTeamsTeamIdMembersUserIdRoleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/invite-code': typeof AuthInviteCodeRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/eval': typeof ProtectedEvalRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRouteWithChildren
+  '/api/realtime': typeof ApiRealtimeRoute
+  '/api/sequences': typeof ApiSequencesRouteWithChildren
+  '/api/styles': typeof ApiStylesRouteWithChildren
+  '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite-codes/activate': typeof ApiInviteCodesActivateRoute
+  '/api/invite-codes/validate': typeof ApiInviteCodesValidateRoute
+  '/api/prompts/shorten': typeof ApiPromptsShortenRoute
+  '/api/script/enhance': typeof ApiScriptEnhanceRoute
+  '/api/sequences/$sequenceId': typeof ApiSequencesSequenceIdRouteWithChildren
+  '/api/styles/$styleId': typeof ApiStylesStyleIdRoute
+  '/api/user/me': typeof ApiUserMeRoute
+  '/api/user/team': typeof ApiUserTeamRoute
+  '/api/user/teams': typeof ApiUserTeamsRouteWithChildren
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/sequences': typeof ProtectedSequencesIndexRoute
+  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
+  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
+  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
+  '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
+  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
+  '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
+  '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
+  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
+  '/api/sequences/$sequenceId/frames/$frameId': typeof ApiSequencesSequenceIdFramesFrameIdRouteWithChildren
+  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
+  '/api/sequences/$sequenceId/frames/reorder': typeof ApiSequencesSequenceIdFramesReorderRoute
+  '/api/teams/$teamId/members/$userId': typeof ApiTeamsTeamIdMembersUserIdRouteWithChildren
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
+  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
+  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
+  '/api/teams/$teamId/members/$userId/role': typeof ApiTeamsTeamIdMembersUserIdRoleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_auth': typeof AuthRouteRouteWithChildren
+  '/_protected': typeof ProtectedRouteRouteWithChildren
+  '/_auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/_auth/invite-code': typeof AuthInviteCodeRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/reset-password': typeof AuthResetPasswordRoute
+  '/_auth/signup': typeof AuthSignupRoute
+  '/_protected/eval': typeof ProtectedEvalRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRouteWithChildren
+  '/api/realtime': typeof ApiRealtimeRoute
+  '/api/sequences': typeof ApiSequencesRouteWithChildren
+  '/api/styles': typeof ApiStylesRouteWithChildren
+  '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite-codes/activate': typeof ApiInviteCodesActivateRoute
+  '/api/invite-codes/validate': typeof ApiInviteCodesValidateRoute
+  '/api/prompts/shorten': typeof ApiPromptsShortenRoute
+  '/api/script/enhance': typeof ApiScriptEnhanceRoute
+  '/api/sequences/$sequenceId': typeof ApiSequencesSequenceIdRouteWithChildren
+  '/api/styles/$styleId': typeof ApiStylesStyleIdRoute
+  '/api/user/me': typeof ApiUserMeRoute
+  '/api/user/team': typeof ApiUserTeamRoute
+  '/api/user/teams': typeof ApiUserTeamsRouteWithChildren
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
+  '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
+  '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
+  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
+  '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
+  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
+  '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
+  '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
+  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
+  '/api/sequences/$sequenceId/frames/$frameId': typeof ApiSequencesSequenceIdFramesFrameIdRouteWithChildren
+  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
+  '/api/sequences/$sequenceId/frames/reorder': typeof ApiSequencesSequenceIdFramesReorderRoute
+  '/api/teams/$teamId/members/$userId': typeof ApiTeamsTeamIdMembersUserIdRouteWithChildren
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
+  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
+  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
+  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
+  '/api/teams/$teamId/members/$userId/role': typeof ApiTeamsTeamIdMembersUserIdRoleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/forgot-password'
+    | '/invite-code'
+    | '/login'
+    | '/reset-password'
+    | '/signup'
+    | '/eval'
+    | '/api/health'
+    | '/api/mcp'
+    | '/api/realtime'
+    | '/api/sequences'
+    | '/api/styles'
+    | '/sequences/new'
+    | '/api/auth/$'
+    | '/api/invite-codes/activate'
+    | '/api/invite-codes/validate'
+    | '/api/prompts/shorten'
+    | '/api/script/enhance'
+    | '/api/sequences/$sequenceId'
+    | '/api/styles/$styleId'
+    | '/api/user/me'
+    | '/api/user/team'
+    | '/api/user/teams'
+    | '/api/workflows/$'
+    | '/sequences'
+    | '/sequences/$id/scenes'
+    | '/sequences/$id/script'
+    | '/api/frames/$frameId/download'
+    | '/api/mcp/stream/analyze-script'
+    | '/api/mcp/stream/audio-design'
+    | '/api/mcp/stream/extract-characters'
+    | '/api/mcp/stream/motion-prompts'
+    | '/api/mcp/stream/split-scenes'
+    | '/api/mcp/stream/visual-prompts'
+    | '/api/sequences/$sequenceId/frames'
+    | '/api/sequences/$sequenceId/motion'
+    | '/api/teams/$teamId/invite'
+    | '/api/teams/$teamId/members'
+    | '/api/user/teams/check'
+    | '/api/workflows/status/$runId'
+    | '/api/sequences/$sequenceId/chapters/vtt'
+    | '/api/sequences/$sequenceId/frames/$frameId'
+    | '/api/sequences/$sequenceId/frames/generate'
+    | '/api/sequences/$sequenceId/frames/reorder'
+    | '/api/teams/$teamId/members/$userId'
+    | '/api/teams/invitations/$invitationId/accept'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+    | '/api/sequences/$sequenceId/frames/$frameId/motion'
+    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
+    | '/api/teams/$teamId/members/$userId/role'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/forgot-password'
+    | '/invite-code'
+    | '/login'
+    | '/reset-password'
+    | '/signup'
+    | '/eval'
+    | '/api/health'
+    | '/api/mcp'
+    | '/api/realtime'
+    | '/api/sequences'
+    | '/api/styles'
+    | '/sequences/new'
+    | '/api/auth/$'
+    | '/api/invite-codes/activate'
+    | '/api/invite-codes/validate'
+    | '/api/prompts/shorten'
+    | '/api/script/enhance'
+    | '/api/sequences/$sequenceId'
+    | '/api/styles/$styleId'
+    | '/api/user/me'
+    | '/api/user/team'
+    | '/api/user/teams'
+    | '/api/workflows/$'
+    | '/sequences'
+    | '/sequences/$id/scenes'
+    | '/sequences/$id/script'
+    | '/api/frames/$frameId/download'
+    | '/api/mcp/stream/analyze-script'
+    | '/api/mcp/stream/audio-design'
+    | '/api/mcp/stream/extract-characters'
+    | '/api/mcp/stream/motion-prompts'
+    | '/api/mcp/stream/split-scenes'
+    | '/api/mcp/stream/visual-prompts'
+    | '/api/sequences/$sequenceId/frames'
+    | '/api/sequences/$sequenceId/motion'
+    | '/api/teams/$teamId/invite'
+    | '/api/teams/$teamId/members'
+    | '/api/user/teams/check'
+    | '/api/workflows/status/$runId'
+    | '/api/sequences/$sequenceId/chapters/vtt'
+    | '/api/sequences/$sequenceId/frames/$frameId'
+    | '/api/sequences/$sequenceId/frames/generate'
+    | '/api/sequences/$sequenceId/frames/reorder'
+    | '/api/teams/$teamId/members/$userId'
+    | '/api/teams/invitations/$invitationId/accept'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+    | '/api/sequences/$sequenceId/frames/$frameId/motion'
+    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
+    | '/api/teams/$teamId/members/$userId/role'
+  id:
+    | '__root__'
+    | '/'
+    | '/_auth'
+    | '/_protected'
+    | '/_auth/forgot-password'
+    | '/_auth/invite-code'
+    | '/_auth/login'
+    | '/_auth/reset-password'
+    | '/_auth/signup'
+    | '/_protected/eval'
+    | '/api/health'
+    | '/api/mcp'
+    | '/api/realtime'
+    | '/api/sequences'
+    | '/api/styles'
+    | '/_protected/sequences/new'
+    | '/api/auth/$'
+    | '/api/invite-codes/activate'
+    | '/api/invite-codes/validate'
+    | '/api/prompts/shorten'
+    | '/api/script/enhance'
+    | '/api/sequences/$sequenceId'
+    | '/api/styles/$styleId'
+    | '/api/user/me'
+    | '/api/user/team'
+    | '/api/user/teams'
+    | '/api/workflows/$'
+    | '/_protected/sequences/'
+    | '/_protected/sequences/$id/scenes'
+    | '/_protected/sequences/$id/script'
+    | '/api/frames/$frameId/download'
+    | '/api/mcp/stream/analyze-script'
+    | '/api/mcp/stream/audio-design'
+    | '/api/mcp/stream/extract-characters'
+    | '/api/mcp/stream/motion-prompts'
+    | '/api/mcp/stream/split-scenes'
+    | '/api/mcp/stream/visual-prompts'
+    | '/api/sequences/$sequenceId/frames'
+    | '/api/sequences/$sequenceId/motion'
+    | '/api/teams/$teamId/invite'
+    | '/api/teams/$teamId/members'
+    | '/api/user/teams/check'
+    | '/api/workflows/status/$runId'
+    | '/api/sequences/$sequenceId/chapters/vtt'
+    | '/api/sequences/$sequenceId/frames/$frameId'
+    | '/api/sequences/$sequenceId/frames/generate'
+    | '/api/sequences/$sequenceId/frames/reorder'
+    | '/api/teams/$teamId/members/$userId'
+    | '/api/teams/invitations/$invitationId/accept'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
+    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+    | '/api/sequences/$sequenceId/frames/$frameId/motion'
+    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
+    | '/api/teams/$teamId/members/$userId/role'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRouteRoute: typeof AuthRouteRouteWithChildren
+  ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiMcpRoute: typeof ApiMcpRouteWithChildren
+  ApiRealtimeRoute: typeof ApiRealtimeRoute
+  ApiSequencesRoute: typeof ApiSequencesRouteWithChildren
+  ApiStylesRoute: typeof ApiStylesRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiInviteCodesActivateRoute: typeof ApiInviteCodesActivateRoute
+  ApiInviteCodesValidateRoute: typeof ApiInviteCodesValidateRoute
+  ApiPromptsShortenRoute: typeof ApiPromptsShortenRoute
+  ApiScriptEnhanceRoute: typeof ApiScriptEnhanceRoute
+  ApiUserMeRoute: typeof ApiUserMeRoute
+  ApiUserTeamRoute: typeof ApiUserTeamRoute
+  ApiUserTeamsRoute: typeof ApiUserTeamsRouteWithChildren
+  ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
+  ApiFramesFrameIdDownloadRoute: typeof ApiFramesFrameIdDownloadRoute
+  ApiTeamsTeamIdInviteRoute: typeof ApiTeamsTeamIdInviteRoute
+  ApiTeamsTeamIdMembersRoute: typeof ApiTeamsTeamIdMembersRouteWithChildren
+  ApiWorkflowsStatusRunIdRoute: typeof ApiWorkflowsStatusRunIdRoute
+  ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof ProtectedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +721,573 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/styles': {
+      id: '/api/styles'
+      path: '/api/styles'
+      fullPath: '/api/styles'
+      preLoaderRoute: typeof ApiStylesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sequences': {
+      id: '/api/sequences'
+      path: '/api/sequences'
+      fullPath: '/api/sequences'
+      preLoaderRoute: typeof ApiSequencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/realtime': {
+      id: '/api/realtime'
+      path: '/api/realtime'
+      fullPath: '/api/realtime'
+      preLoaderRoute: typeof ApiRealtimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/eval': {
+      id: '/_protected/eval'
+      path: '/eval'
+      fullPath: '/eval'
+      preLoaderRoute: typeof ProtectedEvalRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_auth/reset-password': {
+      id: '/_auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_auth/invite-code': {
+      id: '/_auth/invite-code'
+      path: '/invite-code'
+      fullPath: '/invite-code'
+      preLoaderRoute: typeof AuthInviteCodeRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_protected/sequences/': {
+      id: '/_protected/sequences/'
+      path: '/sequences'
+      fullPath: '/sequences'
+      preLoaderRoute: typeof ProtectedSequencesIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/api/workflows/$': {
+      id: '/api/workflows/$'
+      path: '/api/workflows/$'
+      fullPath: '/api/workflows/$'
+      preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/teams': {
+      id: '/api/user/teams'
+      path: '/api/user/teams'
+      fullPath: '/api/user/teams'
+      preLoaderRoute: typeof ApiUserTeamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/team': {
+      id: '/api/user/team'
+      path: '/api/user/team'
+      fullPath: '/api/user/team'
+      preLoaderRoute: typeof ApiUserTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/me': {
+      id: '/api/user/me'
+      path: '/api/user/me'
+      fullPath: '/api/user/me'
+      preLoaderRoute: typeof ApiUserMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/styles/$styleId': {
+      id: '/api/styles/$styleId'
+      path: '/$styleId'
+      fullPath: '/api/styles/$styleId'
+      preLoaderRoute: typeof ApiStylesStyleIdRouteImport
+      parentRoute: typeof ApiStylesRoute
+    }
+    '/api/sequences/$sequenceId': {
+      id: '/api/sequences/$sequenceId'
+      path: '/$sequenceId'
+      fullPath: '/api/sequences/$sequenceId'
+      preLoaderRoute: typeof ApiSequencesSequenceIdRouteImport
+      parentRoute: typeof ApiSequencesRoute
+    }
+    '/api/script/enhance': {
+      id: '/api/script/enhance'
+      path: '/api/script/enhance'
+      fullPath: '/api/script/enhance'
+      preLoaderRoute: typeof ApiScriptEnhanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prompts/shorten': {
+      id: '/api/prompts/shorten'
+      path: '/api/prompts/shorten'
+      fullPath: '/api/prompts/shorten'
+      preLoaderRoute: typeof ApiPromptsShortenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invite-codes/validate': {
+      id: '/api/invite-codes/validate'
+      path: '/api/invite-codes/validate'
+      fullPath: '/api/invite-codes/validate'
+      preLoaderRoute: typeof ApiInviteCodesValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invite-codes/activate': {
+      id: '/api/invite-codes/activate'
+      path: '/api/invite-codes/activate'
+      fullPath: '/api/invite-codes/activate'
+      preLoaderRoute: typeof ApiInviteCodesActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/sequences/new': {
+      id: '/_protected/sequences/new'
+      path: '/sequences/new'
+      fullPath: '/sequences/new'
+      preLoaderRoute: typeof ProtectedSequencesNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/api/workflows/status/$runId': {
+      id: '/api/workflows/status/$runId'
+      path: '/api/workflows/status/$runId'
+      fullPath: '/api/workflows/status/$runId'
+      preLoaderRoute: typeof ApiWorkflowsStatusRunIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/teams/check': {
+      id: '/api/user/teams/check'
+      path: '/check'
+      fullPath: '/api/user/teams/check'
+      preLoaderRoute: typeof ApiUserTeamsCheckRouteImport
+      parentRoute: typeof ApiUserTeamsRoute
+    }
+    '/api/teams/$teamId/members': {
+      id: '/api/teams/$teamId/members'
+      path: '/api/teams/$teamId/members'
+      fullPath: '/api/teams/$teamId/members'
+      preLoaderRoute: typeof ApiTeamsTeamIdMembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/teams/$teamId/invite': {
+      id: '/api/teams/$teamId/invite'
+      path: '/api/teams/$teamId/invite'
+      fullPath: '/api/teams/$teamId/invite'
+      preLoaderRoute: typeof ApiTeamsTeamIdInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sequences/$sequenceId/motion': {
+      id: '/api/sequences/$sequenceId/motion'
+      path: '/motion'
+      fullPath: '/api/sequences/$sequenceId/motion'
+      preLoaderRoute: typeof ApiSequencesSequenceIdMotionRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdRoute
+    }
+    '/api/sequences/$sequenceId/frames': {
+      id: '/api/sequences/$sequenceId/frames'
+      path: '/frames'
+      fullPath: '/api/sequences/$sequenceId/frames'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdRoute
+    }
+    '/api/mcp/stream/visual-prompts': {
+      id: '/api/mcp/stream/visual-prompts'
+      path: '/stream/visual-prompts'
+      fullPath: '/api/mcp/stream/visual-prompts'
+      preLoaderRoute: typeof ApiMcpStreamVisualPromptsRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/mcp/stream/split-scenes': {
+      id: '/api/mcp/stream/split-scenes'
+      path: '/stream/split-scenes'
+      fullPath: '/api/mcp/stream/split-scenes'
+      preLoaderRoute: typeof ApiMcpStreamSplitScenesRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/mcp/stream/motion-prompts': {
+      id: '/api/mcp/stream/motion-prompts'
+      path: '/stream/motion-prompts'
+      fullPath: '/api/mcp/stream/motion-prompts'
+      preLoaderRoute: typeof ApiMcpStreamMotionPromptsRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/mcp/stream/extract-characters': {
+      id: '/api/mcp/stream/extract-characters'
+      path: '/stream/extract-characters'
+      fullPath: '/api/mcp/stream/extract-characters'
+      preLoaderRoute: typeof ApiMcpStreamExtractCharactersRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/mcp/stream/audio-design': {
+      id: '/api/mcp/stream/audio-design'
+      path: '/stream/audio-design'
+      fullPath: '/api/mcp/stream/audio-design'
+      preLoaderRoute: typeof ApiMcpStreamAudioDesignRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/mcp/stream/analyze-script': {
+      id: '/api/mcp/stream/analyze-script'
+      path: '/stream/analyze-script'
+      fullPath: '/api/mcp/stream/analyze-script'
+      preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport
+      parentRoute: typeof ApiMcpRoute
+    }
+    '/api/frames/$frameId/download': {
+      id: '/api/frames/$frameId/download'
+      path: '/api/frames/$frameId/download'
+      fullPath: '/api/frames/$frameId/download'
+      preLoaderRoute: typeof ApiFramesFrameIdDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/sequences/$id/script': {
+      id: '/_protected/sequences/$id/script'
+      path: '/sequences/$id/script'
+      fullPath: '/sequences/$id/script'
+      preLoaderRoute: typeof ProtectedSequencesIdScriptRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/sequences/$id/scenes': {
+      id: '/_protected/sequences/$id/scenes'
+      path: '/sequences/$id/scenes'
+      fullPath: '/sequences/$id/scenes'
+      preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/api/teams/invitations/$invitationId/accept': {
+      id: '/api/teams/invitations/$invitationId/accept'
+      path: '/api/teams/invitations/$invitationId/accept'
+      fullPath: '/api/teams/invitations/$invitationId/accept'
+      preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/teams/$teamId/members/$userId': {
+      id: '/api/teams/$teamId/members/$userId'
+      path: '/$userId'
+      fullPath: '/api/teams/$teamId/members/$userId'
+      preLoaderRoute: typeof ApiTeamsTeamIdMembersUserIdRouteImport
+      parentRoute: typeof ApiTeamsTeamIdMembersRoute
+    }
+    '/api/sequences/$sequenceId/frames/reorder': {
+      id: '/api/sequences/$sequenceId/frames/reorder'
+      path: '/reorder'
+      fullPath: '/api/sequences/$sequenceId/frames/reorder'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesReorderRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesRoute
+    }
+    '/api/sequences/$sequenceId/frames/generate': {
+      id: '/api/sequences/$sequenceId/frames/generate'
+      path: '/generate'
+      fullPath: '/api/sequences/$sequenceId/frames/generate'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesGenerateRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesRoute
+    }
+    '/api/sequences/$sequenceId/frames/$frameId': {
+      id: '/api/sequences/$sequenceId/frames/$frameId'
+      path: '/$frameId'
+      fullPath: '/api/sequences/$sequenceId/frames/$frameId'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesRoute
+    }
+    '/api/sequences/$sequenceId/chapters/vtt': {
+      id: '/api/sequences/$sequenceId/chapters/vtt'
+      path: '/chapters/vtt'
+      fullPath: '/api/sequences/$sequenceId/chapters/vtt'
+      preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdRoute
+    }
+    '/api/teams/$teamId/members/$userId/role': {
+      id: '/api/teams/$teamId/members/$userId/role'
+      path: '/role'
+      fullPath: '/api/teams/$teamId/members/$userId/role'
+      preLoaderRoute: typeof ApiTeamsTeamIdMembersUserIdRoleRouteImport
+      parentRoute: typeof ApiTeamsTeamIdMembersUserIdRoute
+    }
+    '/api/sequences/$sequenceId/frames/$frameId/select-variant': {
+      id: '/api/sequences/$sequenceId/frames/$frameId/select-variant'
+      path: '/select-variant'
+      fullPath: '/api/sequences/$sequenceId/frames/$frameId/select-variant'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesFrameIdRoute
+    }
+    '/api/sequences/$sequenceId/frames/$frameId/motion': {
+      id: '/api/sequences/$sequenceId/frames/$frameId/motion'
+      path: '/motion'
+      fullPath: '/api/sequences/$sequenceId/frames/$frameId/motion'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdMotionRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesFrameIdRoute
+    }
+    '/api/sequences/$sequenceId/frames/$frameId/generate-variants': {
+      id: '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+      path: '/generate-variants'
+      fullPath: '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesFrameIdRoute
+    }
+    '/api/sequences/$sequenceId/frames/$frameId/generate-image': {
+      id: '/api/sequences/$sequenceId/frames/$frameId/generate-image'
+      path: '/generate-image'
+      fullPath: '/api/sequences/$sequenceId/frames/$frameId/generate-image'
+      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport
+      parentRoute: typeof ApiSequencesSequenceIdFramesFrameIdRoute
+    }
   }
 }
 
+interface AuthRouteRouteChildren {
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthInviteCodeRoute: typeof AuthInviteCodeRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthInviteCodeRoute: AuthInviteCodeRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
+  AuthRouteRouteChildren,
+)
+
+interface ProtectedRouteRouteChildren {
+  ProtectedEvalRoute: typeof ProtectedEvalRoute
+  ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
+  ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
+  ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
+  ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
+}
+
+const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedEvalRoute: ProtectedEvalRoute,
+  ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
+  ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
+  ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
+  ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
+}
+
+const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
+  ProtectedRouteRouteChildren,
+)
+
+interface ApiMcpRouteChildren {
+  ApiMcpStreamAnalyzeScriptRoute: typeof ApiMcpStreamAnalyzeScriptRoute
+  ApiMcpStreamAudioDesignRoute: typeof ApiMcpStreamAudioDesignRoute
+  ApiMcpStreamExtractCharactersRoute: typeof ApiMcpStreamExtractCharactersRoute
+  ApiMcpStreamMotionPromptsRoute: typeof ApiMcpStreamMotionPromptsRoute
+  ApiMcpStreamSplitScenesRoute: typeof ApiMcpStreamSplitScenesRoute
+  ApiMcpStreamVisualPromptsRoute: typeof ApiMcpStreamVisualPromptsRoute
+}
+
+const ApiMcpRouteChildren: ApiMcpRouteChildren = {
+  ApiMcpStreamAnalyzeScriptRoute: ApiMcpStreamAnalyzeScriptRoute,
+  ApiMcpStreamAudioDesignRoute: ApiMcpStreamAudioDesignRoute,
+  ApiMcpStreamExtractCharactersRoute: ApiMcpStreamExtractCharactersRoute,
+  ApiMcpStreamMotionPromptsRoute: ApiMcpStreamMotionPromptsRoute,
+  ApiMcpStreamSplitScenesRoute: ApiMcpStreamSplitScenesRoute,
+  ApiMcpStreamVisualPromptsRoute: ApiMcpStreamVisualPromptsRoute,
+}
+
+const ApiMcpRouteWithChildren =
+  ApiMcpRoute._addFileChildren(ApiMcpRouteChildren)
+
+interface ApiSequencesSequenceIdFramesFrameIdRouteChildren {
+  ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
+  ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
+  ApiSequencesSequenceIdFramesFrameIdMotionRoute: typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
+  ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute: typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
+}
+
+const ApiSequencesSequenceIdFramesFrameIdRouteChildren: ApiSequencesSequenceIdFramesFrameIdRouteChildren =
+  {
+    ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute:
+      ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute,
+    ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute:
+      ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute,
+    ApiSequencesSequenceIdFramesFrameIdMotionRoute:
+      ApiSequencesSequenceIdFramesFrameIdMotionRoute,
+    ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute:
+      ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute,
+  }
+
+const ApiSequencesSequenceIdFramesFrameIdRouteWithChildren =
+  ApiSequencesSequenceIdFramesFrameIdRoute._addFileChildren(
+    ApiSequencesSequenceIdFramesFrameIdRouteChildren,
+  )
+
+interface ApiSequencesSequenceIdFramesRouteChildren {
+  ApiSequencesSequenceIdFramesFrameIdRoute: typeof ApiSequencesSequenceIdFramesFrameIdRouteWithChildren
+  ApiSequencesSequenceIdFramesGenerateRoute: typeof ApiSequencesSequenceIdFramesGenerateRoute
+  ApiSequencesSequenceIdFramesReorderRoute: typeof ApiSequencesSequenceIdFramesReorderRoute
+}
+
+const ApiSequencesSequenceIdFramesRouteChildren: ApiSequencesSequenceIdFramesRouteChildren =
+  {
+    ApiSequencesSequenceIdFramesFrameIdRoute:
+      ApiSequencesSequenceIdFramesFrameIdRouteWithChildren,
+    ApiSequencesSequenceIdFramesGenerateRoute:
+      ApiSequencesSequenceIdFramesGenerateRoute,
+    ApiSequencesSequenceIdFramesReorderRoute:
+      ApiSequencesSequenceIdFramesReorderRoute,
+  }
+
+const ApiSequencesSequenceIdFramesRouteWithChildren =
+  ApiSequencesSequenceIdFramesRoute._addFileChildren(
+    ApiSequencesSequenceIdFramesRouteChildren,
+  )
+
+interface ApiSequencesSequenceIdRouteChildren {
+  ApiSequencesSequenceIdFramesRoute: typeof ApiSequencesSequenceIdFramesRouteWithChildren
+  ApiSequencesSequenceIdMotionRoute: typeof ApiSequencesSequenceIdMotionRoute
+  ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
+}
+
+const ApiSequencesSequenceIdRouteChildren: ApiSequencesSequenceIdRouteChildren =
+  {
+    ApiSequencesSequenceIdFramesRoute:
+      ApiSequencesSequenceIdFramesRouteWithChildren,
+    ApiSequencesSequenceIdMotionRoute: ApiSequencesSequenceIdMotionRoute,
+    ApiSequencesSequenceIdChaptersVttRoute:
+      ApiSequencesSequenceIdChaptersVttRoute,
+  }
+
+const ApiSequencesSequenceIdRouteWithChildren =
+  ApiSequencesSequenceIdRoute._addFileChildren(
+    ApiSequencesSequenceIdRouteChildren,
+  )
+
+interface ApiSequencesRouteChildren {
+  ApiSequencesSequenceIdRoute: typeof ApiSequencesSequenceIdRouteWithChildren
+}
+
+const ApiSequencesRouteChildren: ApiSequencesRouteChildren = {
+  ApiSequencesSequenceIdRoute: ApiSequencesSequenceIdRouteWithChildren,
+}
+
+const ApiSequencesRouteWithChildren = ApiSequencesRoute._addFileChildren(
+  ApiSequencesRouteChildren,
+)
+
+interface ApiStylesRouteChildren {
+  ApiStylesStyleIdRoute: typeof ApiStylesStyleIdRoute
+}
+
+const ApiStylesRouteChildren: ApiStylesRouteChildren = {
+  ApiStylesStyleIdRoute: ApiStylesStyleIdRoute,
+}
+
+const ApiStylesRouteWithChildren = ApiStylesRoute._addFileChildren(
+  ApiStylesRouteChildren,
+)
+
+interface ApiUserTeamsRouteChildren {
+  ApiUserTeamsCheckRoute: typeof ApiUserTeamsCheckRoute
+}
+
+const ApiUserTeamsRouteChildren: ApiUserTeamsRouteChildren = {
+  ApiUserTeamsCheckRoute: ApiUserTeamsCheckRoute,
+}
+
+const ApiUserTeamsRouteWithChildren = ApiUserTeamsRoute._addFileChildren(
+  ApiUserTeamsRouteChildren,
+)
+
+interface ApiTeamsTeamIdMembersUserIdRouteChildren {
+  ApiTeamsTeamIdMembersUserIdRoleRoute: typeof ApiTeamsTeamIdMembersUserIdRoleRoute
+}
+
+const ApiTeamsTeamIdMembersUserIdRouteChildren: ApiTeamsTeamIdMembersUserIdRouteChildren =
+  {
+    ApiTeamsTeamIdMembersUserIdRoleRoute: ApiTeamsTeamIdMembersUserIdRoleRoute,
+  }
+
+const ApiTeamsTeamIdMembersUserIdRouteWithChildren =
+  ApiTeamsTeamIdMembersUserIdRoute._addFileChildren(
+    ApiTeamsTeamIdMembersUserIdRouteChildren,
+  )
+
+interface ApiTeamsTeamIdMembersRouteChildren {
+  ApiTeamsTeamIdMembersUserIdRoute: typeof ApiTeamsTeamIdMembersUserIdRouteWithChildren
+}
+
+const ApiTeamsTeamIdMembersRouteChildren: ApiTeamsTeamIdMembersRouteChildren = {
+  ApiTeamsTeamIdMembersUserIdRoute:
+    ApiTeamsTeamIdMembersUserIdRouteWithChildren,
+}
+
+const ApiTeamsTeamIdMembersRouteWithChildren =
+  ApiTeamsTeamIdMembersRoute._addFileChildren(
+    ApiTeamsTeamIdMembersRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRouteRoute: AuthRouteRouteWithChildren,
+  ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiMcpRoute: ApiMcpRouteWithChildren,
+  ApiRealtimeRoute: ApiRealtimeRoute,
+  ApiSequencesRoute: ApiSequencesRouteWithChildren,
+  ApiStylesRoute: ApiStylesRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiInviteCodesActivateRoute: ApiInviteCodesActivateRoute,
+  ApiInviteCodesValidateRoute: ApiInviteCodesValidateRoute,
+  ApiPromptsShortenRoute: ApiPromptsShortenRoute,
+  ApiScriptEnhanceRoute: ApiScriptEnhanceRoute,
+  ApiUserMeRoute: ApiUserMeRoute,
+  ApiUserTeamRoute: ApiUserTeamRoute,
+  ApiUserTeamsRoute: ApiUserTeamsRouteWithChildren,
+  ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
+  ApiFramesFrameIdDownloadRoute: ApiFramesFrameIdDownloadRoute,
+  ApiTeamsTeamIdInviteRoute: ApiTeamsTeamIdInviteRoute,
+  ApiTeamsTeamIdMembersRoute: ApiTeamsTeamIdMembersRouteWithChildren,
+  ApiWorkflowsStatusRunIdRoute: ApiWorkflowsStatusRunIdRoute,
+  ApiTeamsInvitationsInvitationIdAcceptRoute:
+    ApiTeamsInvitationsInvitationIdAcceptRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

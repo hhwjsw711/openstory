@@ -13,9 +13,10 @@ import scene8 from '@/assets/community/scene8.jpg';
 import { ScriptView } from '@/components/script/script-view';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
+import { Route as sequencesScenesRoute } from '@/routes/_protected/sequences/$id/scenes';
 import { Sparkles } from 'lucide-react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { Image } from '@unpic/react';
+import { useNavigate } from '@tanstack/react-router';
 
 const communityCreations = [
   {
@@ -100,7 +101,7 @@ const headingPhrases = [
 ];
 
 export const HomeView: FC = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -150,10 +151,13 @@ export const HomeView: FC = () => {
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
         // Navigate to storyboard page after successful generation
-        router.push(`/sequences/${sequenceIds[0]}/scenes`);
+        void navigate({
+          to: sequencesScenesRoute.fullPath,
+          params: { id: sequenceIds[0] },
+        });
       }
     },
-    [router]
+    [navigate]
   );
 
   return (
@@ -226,6 +230,8 @@ export const HomeView: FC = () => {
                 <Image
                   src={creation.image}
                   alt={creation.title}
+                  layout="fullWidth"
+                  aspectRatio={3 / 4}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">

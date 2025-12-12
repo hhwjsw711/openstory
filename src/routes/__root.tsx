@@ -1,10 +1,11 @@
-import appCss from '~/styles/global.css?url';
+import appCss from '@/styles/global.css?url';
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
 } from '@tanstack/react-router';
+import { Providers } from '@/components/providers';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -38,11 +39,11 @@ function RootLayout() {
         <HeadContent />
       </head>
       <body>
-        <Outlet />
+        <Providers>
+          <Outlet />
+        </Providers>
         <Scripts />
       </body>
     </html>
   );
 }
-
-// TODO TOM include providers

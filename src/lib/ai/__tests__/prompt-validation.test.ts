@@ -7,7 +7,7 @@ import {
 import { enhanceScript } from '../script-enhancer';
 
 // Mock OpenAI for security tests
-const mockChatCompletionsCreate = mock() as Mock<() => Promise<any>>;
+const mockChatCompletionsCreate = mock();
 
 mock.module('openai', () => {
   return {
