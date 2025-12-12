@@ -48,7 +48,7 @@ if [ $? -eq 0 ]; then
     echo ""
     echo -e "${YELLOW}💡 To use these certificates with Next.js dev server:${NC}"
     echo "  Add to package.json scripts:"
-    echo "    \"dev:https\": \"next dev --turbopack --experimental-https --experimental-https-key $KEY_FILE --experimental-https-cert $CERT_FILE\""
+    echo "    \"dev:https\": \"next dev --experimental-https --experimental-https-key $KEY_FILE --experimental-https-cert $CERT_FILE\""
     echo ""
     echo -e "${GREEN}Setup complete!${NC}"
 else
