@@ -158,9 +158,10 @@ function saveSettings(settings: GenerationSettings): void {
  * @returns Object with current settings and save function
  */
 export function useGenerationSettings() {
-  const [settings, setSettings] = useState<GenerationSettings>(() =>
-    loadSettings()
-  );
+  // Always initialize with defaults to prevent hydration mismatch
+  // localStorage values are loaded in useEffect after mount
+  const [settings, setSettings] =
+    useState<GenerationSettings>(DEFAULT_SETTINGS);
 
   // Load settings on mount (client-side only)
   useEffect(() => {

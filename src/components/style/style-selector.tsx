@@ -170,7 +170,6 @@ export function StyleSelector({
                     src={style.previewUrl}
                     alt={style.name}
                     layout="fullWidth"
-                    aspectRatio={1}
                     className="object-cover"
                   />
                 ) : (

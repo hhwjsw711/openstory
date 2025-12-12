@@ -88,7 +88,6 @@ const StyleCard: FC<StyleCardProps> = ({
               src={style.previewUrl}
               alt={`${style.name} style preview`}
               layout="fullWidth"
-              aspectRatio={1}
               className="object-cover"
             />
           ) : (
