@@ -4,15 +4,6 @@
 #   https://lefthook.dev/configuration/
 #
 
-pre-push:
-  commands:
-    lint:
-      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
-      run: bunx oxlint --type-aware {push_files}
-    format:
-      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
-      run: bunx oxfmt --check {push_files}
-
 pre-commit:
   commands:
     lint:
