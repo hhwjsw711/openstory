@@ -118,7 +118,7 @@ export function getProductionDeploymentAppUrl(): string {
 export const PRODUCTION_DEPLOYMENT_APP_URL = getProductionDeploymentAppUrl();
 
 export function isProductionDeployment(): boolean {
-  return PRODUCTION_DEPLOYMENT_APP_URL === APP_URL;
+  return !isLocalDevelopment() && PRODUCTION_DEPLOYMENT_APP_URL === APP_URL;
 }
 
 export function isPreviewDeployment(): boolean {

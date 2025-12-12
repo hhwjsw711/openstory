@@ -11,7 +11,7 @@ import type { User } from '@/lib/auth/config';
 import type { TeamRole } from '@/lib/auth/constants';
 import { hasMinimumRole } from '@/lib/auth/constants';
 import { getUserRole } from '@/lib/auth/permissions';
-import { getUser } from '@/lib/auth/server';
+import { getCurrentUserFn } from '@/lib/auth/server';
 
 /**
  * Get the current authenticated user
@@ -26,7 +26,7 @@ import { getUser } from '@/lib/auth/server';
  * ```
  */
 export async function requireUser(): Promise<User> {
-  const user = await getUser();
+  const user = await getCurrentUserFn();
 
   if (!user) {
     throw new Error('Authentication required');

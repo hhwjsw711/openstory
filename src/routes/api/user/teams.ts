@@ -4,7 +4,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { getUser } from '@/lib/auth/server';
+import { getCurrentUserFn } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
 import { getUserTeams } from '@/lib/db/helpers';
 
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/api/user/teams')({
     handlers: {
       GET: async () => {
         try {
-          const user = await getUser();
+          const user = await getCurrentUserFn();
 
           if (!user) {
             return Response.json(

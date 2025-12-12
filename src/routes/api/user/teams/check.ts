@@ -5,7 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-import { getUser } from '@/lib/auth/server';
+import { getCurrentUserFn } from '@/lib/auth/server';
 import { handleApiError } from '@/lib/errors';
 import { canAccessTeam } from '@/lib/db/helpers';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/api/user/teams/check')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const user = await getUser();
+          const user = await getCurrentUserFn();
 
           if (!user) {
             return Response.json(

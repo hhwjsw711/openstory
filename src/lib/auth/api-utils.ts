@@ -3,7 +3,6 @@
  * Provides helper functions for API route authentication and authorization
  */
 
-import { NextResponse } from 'next/server';
 import { getUserRole } from '@/lib/auth/permissions';
 import type { Session, User } from './config';
 import { getAuth } from './config';
@@ -13,19 +12,10 @@ interface AuthResult {
   session: Session;
 }
 
-interface AuthError {
-  success: false;
-  message: string;
-  status: number;
-  timestamp: string;
-}
-
 /**
  * Authenticate API request and return user/session or error response
  */
-export async function authenticateApiRequest(
-  request: Request
-): Promise<AuthResult | NextResponse<AuthError>> {
+export async function authenticateApiRequest(request: Request) {
   try {
     const auth = getAuth();
     const session = await auth.api.getSession({
@@ -33,7 +23,7 @@ export async function authenticateApiRequest(
     });
 
     if (!session?.user) {
-      return NextResponse.json(
+      return Response.json(
         {
           success: false,
           message: 'Authentication required',
@@ -51,7 +41,7 @@ export async function authenticateApiRequest(
   } catch (error) {
     console.error('[API Auth] Authentication error:', error);
 
-    return NextResponse.json(
+    return Response.json(
       {
         success: false,
         message: 'Authentication failed',
@@ -69,14 +59,11 @@ export async function authenticateApiRequest(
  * SECURITY: Queries database to verify actual team membership
  * instead of relying on optional user.teamId field
  */
-export async function checkTeamAccess(
-  request: Request,
-  teamId: string
-): Promise<AuthResult | NextResponse<AuthError>> {
+export async function checkTeamAccess(request: Request, teamId: string) {
   const authResult = await authenticateApiRequest(request);
 
   // If authentication failed, return the error response
-  if (authResult instanceof NextResponse) {
+  if (authResult instanceof Response) {
     return authResult;
   }
 
@@ -86,7 +73,7 @@ export async function checkTeamAccess(
   const role = await getUserRole(user.id, teamId);
 
   if (!role) {
-    return NextResponse.json(
+    return Response.json(
       {
         success: false,
         message: 'Access denied',
@@ -107,7 +94,7 @@ export async function checkTeamAccess(
 export async function requireAuth(request: Request): Promise<AuthResult> {
   const authResult = await authenticateApiRequest(request);
 
-  if (authResult instanceof NextResponse) {
+  if (authResult instanceof Response) {
     throw authResult;
   }
 
@@ -148,8 +135,8 @@ export function createErrorResponse(
   message: string,
   status: number = 400,
   details?: Record<string, unknown>
-): NextResponse<AuthError> {
-  return NextResponse.json(
+) {
+  return Response.json(
     {
       success: false,
       message,
@@ -168,13 +155,8 @@ export function createSuccessResponse<T>(
   data: T,
   message?: string,
   status: number = 200
-): NextResponse<{
-  success: true;
-  data: T;
-  message?: string;
-  timestamp: string;
-}> {
-  return NextResponse.json(
+) {
+  return Response.json(
     {
       success: true,
       data,

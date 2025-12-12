@@ -3,7 +3,6 @@
  * Provides role-based access control functions for team resources
  */
 
-import { NextResponse } from 'next/server';
 import {
   getUserTeam,
   getUserTeams as getTeamsHelper,
@@ -129,7 +128,7 @@ export async function requireAdmin(
   const user = await getAuthenticatedUser(request);
 
   if (!user) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Authentication required',
@@ -143,7 +142,7 @@ export async function requireAdmin(
   const role = await getUserRole(user.id, teamId);
 
   if (!role) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Access denied: not a member of this team',
@@ -155,7 +154,7 @@ export async function requireAdmin(
   }
 
   if (!hasMinimumRole(role, 'admin')) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Access denied: admin or owner role required',
@@ -180,7 +179,7 @@ export async function requireOwner(
   const user = await getAuthenticatedUser(request);
 
   if (!user) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Authentication required',
@@ -194,7 +193,7 @@ export async function requireOwner(
   const role = await getUserRole(user.id, teamId);
 
   if (!role) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Access denied: not a member of this team',
@@ -206,7 +205,7 @@ export async function requireOwner(
   }
 
   if (role !== 'owner') {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Access denied: owner role required',
@@ -258,7 +257,7 @@ export async function verifyTeamResourceAccess(
   const user = await getAuthenticatedUser(request);
 
   if (!user) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Authentication required',
@@ -272,7 +271,7 @@ export async function verifyTeamResourceAccess(
   const role = await getUserRole(user.id, resourceTeamId);
 
   if (!role) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: 'Access denied: not a member of this team',
@@ -284,7 +283,7 @@ export async function verifyTeamResourceAccess(
   }
 
   if (!hasMinimumRole(role, requiredRole)) {
-    throw NextResponse.json(
+    throw Response.json(
       {
         success: false,
         message: `Access denied: ${requiredRole} role or higher required`,

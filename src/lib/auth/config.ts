@@ -21,18 +21,13 @@ import { getEnv } from '#env';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
 
 // Singleton auth instance cache
-let _authInstance: ReturnType<typeof betterAuth> | undefined;
+let _authInstance: ReturnType<typeof createAuth> | undefined;
 
 /**
- * Get or create Better Auth instance
- * This function initializes the database connection lazily when first called,
- * making it compatible with Cloudflare Workers where env is request-scoped
+ * Create Better Auth instance
+ * Separated for type inference - the return type is used for the singleton cache
  */
-export function getAuth() {
-  if (_authInstance) {
-    return _authInstance;
-  }
-
+function createAuth() {
   const runtimeEnv = getEnv();
   const skipStateCookie = !isProductionDeployment();
   console.log('[Auth Config] Creating auth instance', {
@@ -42,8 +37,7 @@ export function getAuth() {
     skipStateCookieCheck: skipStateCookie,
   });
 
-  // getDb() is now called during request handling, not module initialization
-  _authInstance = betterAuth({
+  return betterAuth({
     database: drizzleAdapter(getDb(), {
       provider: 'sqlite',
       schema: {
@@ -164,7 +158,7 @@ export function getAuth() {
         status: {
           type: 'string',
           required: false,
-          defaultValue: 'pending',
+          defaultValue: 'pending' as const,
         },
       },
     },
@@ -177,16 +171,16 @@ export function getAuth() {
       },
     },
   });
-
-  return _authInstance;
 }
 
+/**
+ * Get or create Better Auth instance (singleton)
+ * Compatible with Cloudflare Workers where env is request-scoped
+ */
+export function getAuth() {
+  return (_authInstance ??= createAuth());
+}
 // Type inference for the auth instance with custom fields
 export type Auth = ReturnType<typeof getAuth>;
 export type Session = ReturnType<typeof getAuth>['$Infer']['Session'];
-export type User = ReturnType<typeof getAuth>['$Infer']['Session']['user'] & {
-  teamId?: string | null;
-  teamRole?: string | null;
-  teamName?: string | null;
-  teamSlug?: string | null;
-};
+export type User = ReturnType<typeof getAuth>['$Infer']['Session']['user'];

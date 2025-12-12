@@ -4,7 +4,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { getSession } from '@/lib/auth/server';
+import { getSessionFn } from '@/lib/auth/server';
 import { ensureUserAndTeam, getUserDefaultTeam } from '@/lib/db/helpers';
 import { handleApiError } from '@/lib/errors';
 
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/api/user/me')({
     handlers: {
       GET: async () => {
         try {
-          const session = await getSession();
+          const session = await getSessionFn();
 
           if (!session?.user) {
             // No session exists - authentication required
