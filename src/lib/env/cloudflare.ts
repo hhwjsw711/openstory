@@ -1,3 +1,5 @@
+import { env } from 'cloudflare:workers';
+
 export const getEnv = () => {
-  return process.env;
+  return env;
 };
