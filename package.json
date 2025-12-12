@@ -117,6 +117,7 @@
   },
   "imports": {
     "#env": {
+      "workers": "./src/lib/env/cloudflare.ts",
       "default": "./src/lib/env/default.ts"
     },
     "#db-client": {

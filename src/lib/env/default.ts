@@ -1,8 +1,5 @@
-import { env } from 'cloudflare:workers';
+console.log('default env');
 
 export const getEnv = () => {
-  if (process.env.BUILD_CLOUDFLARE) {
-    return env;
-  }
   return process.env;
 };
