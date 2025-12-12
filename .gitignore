@@ -81,6 +81,10 @@ storybook-static
 worker-configuration.d.ts
 .wrangler/
 
+# output
+.output/
+dist/
+
 # opennext
 .open-next
 

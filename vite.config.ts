@@ -1,4 +1,5 @@
 // vite.config.ts
+import path from 'path';
 import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
@@ -8,11 +9,30 @@ import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
 
+const vidstackPath = path.resolve('node_modules/@vidstack/react');
+
 export default defineConfig({
   server: {
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
+  },
+  resolve: {
+    alias: process.env.BUILD_CLOUDFLARE
+      ? [
+          {
+            find: /^@vidstack\/react\/player\/layouts\/default$/,
+            replacement: path.join(
+              vidstackPath,
+              'prod/player/vidstack-default-layout.js'
+            ),
+          },
+          {
+            find: /^@vidstack\/react$/,
+            replacement: path.join(vidstackPath, 'prod/vidstack.js'),
+          },
+        ]
+      : undefined,
   },
   plugins: [
     tsconfigPaths(),
@@ -31,6 +51,6 @@ export default defineConfig({
     viteReact(),
   ],
   ssr: {
-    noExternal: ['@upstash/realtime'],
+    noExternal: ['@upstash/realtime', '@vidstack/react'],
   },
 });
