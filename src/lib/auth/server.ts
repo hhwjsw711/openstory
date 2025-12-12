@@ -5,7 +5,7 @@
 
 import { TeamMember, teamMembers } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
-import type { Session, User } from './config';
+import type { User } from './config';
 import { getAuth } from './config';
 import { getHighestRole } from './constants';
 import { createServerFn } from '@tanstack/react-start';

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  "main": "@tanstack/react-start/server-entry",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": [

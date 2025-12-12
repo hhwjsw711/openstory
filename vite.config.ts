@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 
 import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -16,7 +17,9 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    nitro(),
+    process.env.BUILD_CLOUDFLARE
+      ? cloudflare({ viteEnvironment: { name: 'ssr' } })
+      : nitro(),
     // Enables Vite to resolve imports using path aliases.
     tanstackStart({
       srcDirectory: 'src', // This is the default
