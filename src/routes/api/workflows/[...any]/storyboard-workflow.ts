@@ -4,7 +4,7 @@
  */
 
 import { getDb } from '#db-client';
-import { analyzeScriptWorkflow } from '@/app/api/workflows/[...any]/analyze-script-workflow';
+import { analyzeScriptWorkflow } from '@/routes/api/workflows/[...any]/analyze-script-workflow';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,

@@ -4,8 +4,8 @@
  */
 
 import { getEnv } from '#env';
-import { generateImageWorkflow } from '@/app/api/workflows/[...any]/image-workflow';
-import { generateMotionWorkflow } from '@/app/api/workflows/[...any]/motion-workflow';
+import { generateImageWorkflow } from '@/routes/api/workflows/[...any]/image-workflow';
+import { generateMotionWorkflow } from '@/routes/api/workflows/[...any]/motion-workflow';
 import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
