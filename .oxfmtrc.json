@@ -11,6 +11,7 @@
     "*.gen.ts",
     ".vscode/**",
     "bun.lockb",
-    "gen.types.ts"
+    "gen.types.ts",
+    "routeTree.gen.ts"
   ]
 }
