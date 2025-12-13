@@ -16,11 +16,14 @@ import {
   updateSequenceSchema,
 } from '@/lib/schemas/sequence.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  sequenceService,
-  type SequenceWithDetails,
-} from '@/lib/services/sequence.service';
 import { getSequenceById } from '@/lib/db/helpers/queries';
+import {
+  createSequence,
+  deleteSequence,
+  getSequence,
+  getSequencesByTeam,
+  updateSequence,
+} from '@/lib/db/helpers/sequences';
 import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import {
   DEFAULT_ANALYSIS_MODEL,
@@ -43,7 +46,7 @@ export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   // @ts-expect-error - Deep type inference issue with SequenceMetadata index signature
   .handler(async ({ context }) => {
-    return sequenceService.getSequencesByTeam(context.teamId);
+    return getSequencesByTeam(context.teamId);
   });
 
 // ============================================================================
@@ -75,7 +78,7 @@ export const getSequenceFn = createServerFn({ method: 'GET' })
 
     await requireTeamMemberAccess(context.user.id, seq.teamId);
 
-    return sequenceService.getSequence(data.sequenceId, data.includeFrames);
+    return getSequence(data.sequenceId, data.includeFrames);
   });
 
 // ============================================================================
@@ -108,7 +111,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     // Create sequences in parallel for each selected model
     const sequences = await Promise.all(
       analysisModels.map(async (modelId) => {
-        const sequence = await sequenceService.createSequence({
+        const sequence = await createSequence({
           teamId,
           userId: context.user.id,
           title: data.title || 'Untitled Sequence',
@@ -176,7 +179,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
       updateData.analysisModel !== undefined;
 
     // Update sequence
-    const sequence = await sequenceService.updateSequence({
+    const sequence = await updateSequence({
       id: sequenceId,
       userId: context.user.id,
       aspectRatio: updateData.aspectRatio ?? DEFAULT_ASPECT_RATIO,
@@ -232,7 +235,7 @@ export const deleteSequenceFn = createServerFn({ method: 'POST' })
     await requireTeamMemberAccess(context.user.id, sequence.teamId, 'admin');
 
     // Delete the sequence (frames will be cascade deleted)
-    await sequenceService.deleteSequence(data.sequenceId);
+    await deleteSequence(data.sequenceId);
 
     return { success: true };
   });
