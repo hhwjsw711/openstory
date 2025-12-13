@@ -116,9 +116,6 @@ function createAuth(request: Request) {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
         enabled: true,
-        // Redirect URI required for oAuthProxy to work on preview branches
-        redirectURI: `${getProductionDeploymentAppUrl(request)}/api/auth/callback/google`,
-        // Sign-up enabled - access code validation happens after auth via activation flow
       },
     },
 
