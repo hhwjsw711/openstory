@@ -37,6 +37,7 @@
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/react-start": "^1.141.1",
         "@tanstack/react-virtual": "^3.13.13",
+        "@tanstack/zod-adapter": "^1.141.2",
         "@unpic/react": "^1.0.2",
         "@upstash/qstash": "^2.8.4",
         "@upstash/realtime": "^1.0.0",
@@ -1241,6 +1242,8 @@
     "@tanstack/virtual-core": ["@tanstack/virtual-core@3.13.13", "", {}, "sha512-uQFoSdKKf5S8k51W5t7b2qpfkyIbdHMzAn+AMQvHPxKUPeo1SsGaA4JRISQT87jm28b7z8OEqPcg1IOZagQHcA=="],
 
     "@tanstack/virtual-file-routes": ["@tanstack/virtual-file-routes@1.141.0", "", {}, "sha512-CJrWtr6L9TVzEImm9S7dQINx+xJcYP/aDkIi6gnaWtIgbZs1pnzsE0yJc2noqXZ+yAOqLx3TBGpBEs9tS0P9/A=="],
+
+    "@tanstack/zod-adapter": ["@tanstack/zod-adapter@1.141.2", "", { "peerDependencies": { "@tanstack/react-router": ">=1.43.2", "zod": "^3.23.8" } }, "sha512-pOH+cgOMjzReKn6QcPpZwkbNXvCp9QChWIjP8XSGVxhI8tdmfDkJ421jLD4qhecJdtQkmGAE0HWMquK0eFxTKw=="],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.1", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg=="],
 
