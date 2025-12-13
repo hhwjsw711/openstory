@@ -8,7 +8,6 @@ import { canAccessTeam } from '@/lib/db/helpers/team-permissions';
 import {
   NewSequence,
   Sequence,
-  SequenceMetadata,
   SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { AuthenticationError, ValidationError } from '@/lib/errors';
@@ -35,7 +34,6 @@ export type UpdateSequenceParams = {
   script?: string | null;
   styleId?: string;
   status?: SequenceStatus;
-  metadata?: Record<string, unknown>;
   analysisModel?: string;
   aspectRatio?: AspectRatio;
   imageModel?: string;
@@ -99,7 +97,6 @@ export async function updateSequence(
     script: params.script,
     styleId: params.styleId,
     status: params.status,
-    metadata: params.metadata,
     analysisModel: params.analysisModel,
     imageModel: params.imageModel,
     videoModel: params.videoModel,
@@ -125,49 +122,6 @@ export async function updateSequence(
  */
 export async function deleteSequence(sequenceId: string): Promise<void> {
   await getDb().delete(sequences).where(eq(sequences.id, sequenceId));
-}
-
-/**
- * Get a single sequence by ID
- */
-export async function getSequence(
-  sequenceId: string,
-  includeFrames = false
-): Promise<SequenceWithDetails> {
-  if (includeFrames) {
-    const data = await getDb().query.sequences.findFirst({
-      where: eq(sequences.id, sequenceId),
-      with: {
-        frames: {
-          columns: {
-            id: true,
-            orderIndex: true,
-            description: true,
-            thumbnailUrl: true,
-            videoUrl: true,
-          },
-          orderBy: (frames, { asc }) => [asc(frames.orderIndex)],
-        },
-      },
-    });
-
-    if (!data) {
-      throw new ValidationError('Sequence not found');
-    }
-
-    return data as SequenceWithDetails;
-  }
-
-  const [data] = await getDb()
-    .select()
-    .from(sequences)
-    .where(eq(sequences.id, sequenceId));
-
-  if (!data) {
-    throw new ValidationError('Sequence not found');
-  }
-
-  return data;
 }
 
 // ============================================================================
@@ -209,42 +163,6 @@ export async function getSequenceForUser({
     throw new ValidationError('Sequence not found');
   }
   return sequence;
-}
-/**
- * Update sequence metadata fields without losing existing data
- * Uses read-merge-update pattern for partial JSONB updates
- */
-export async function updateSequenceMetadata(
-  sequenceId: string,
-  metadataUpdates: Partial<SequenceMetadata>,
-  otherFields?: {
-    status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived';
-    [key: string]: unknown;
-  }
-) {
-  // Read existing metadata
-  const existing = await getDb().query.sequences.findFirst({
-    where: eq(sequences.id, sequenceId),
-    columns: { metadata: true },
-  });
-
-  const existingMetadata = existing?.metadata || {};
-
-  // Merge metadata
-  const updatedMetadata: SequenceMetadata = {
-    ...existingMetadata,
-    ...metadataUpdates,
-  };
-
-  // Update sequence
-  await getDb()
-    .update(sequences)
-    .set({
-      metadata: updatedMetadata,
-      updatedAt: new Date(),
-      ...otherFields,
-    })
-    .where(eq(sequences.id, sequenceId));
 }
 
 export async function updateSequenceStatus(

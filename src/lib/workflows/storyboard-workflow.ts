@@ -128,7 +128,6 @@ export const generateStoryboardWorkflow = createWorkflow(
         sequenceId: sequence.id,
         script: sequence.script,
         aspectRatio: sequence.aspectRatio,
-        metadata: sequence.metadata,
         styleConfig,
         analysisModelId,
         imageModel,

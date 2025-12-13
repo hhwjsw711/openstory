@@ -20,7 +20,6 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import {
   createSequence,
   deleteSequence,
-  getSequence,
   getSequencesByTeam,
   updateSequence,
 } from '@/lib/db/helpers/sequences';
@@ -44,7 +43,6 @@ import type { Sequence } from '@/lib/db/schema';
  */
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
-  // @ts-expect-error - Deep type inference issue with SequenceMetadata index signature
   .handler(async ({ context }) => {
     return getSequencesByTeam(context.teamId);
   });
@@ -55,30 +53,18 @@ export const getSequencesFn = createServerFn({ method: 'GET' })
 
 const getSequenceInputSchema = z.object({
   sequenceId: ulidSchema,
-  includeFrames: z.boolean().default(false),
 });
 
 /**
  * Get a single sequence by ID
  * @param sequenceId - The sequence ID
- * @param includeFrames - Whether to include frames (default: false)
  * @returns The sequence with optional frames
  */
 export const getSequenceFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(getSequenceInputSchema))
-  // @ts-expect-error - Deep type inference issue with SequenceMetadata index signature
-  .handler(async ({ data, context }) => {
-    // Verify user has access to the sequence's team
-    const seq = await getSequenceById(data.sequenceId);
-
-    if (!seq) {
-      throw new Error('Sequence not found');
-    }
-
-    await requireTeamMemberAccess(context.user.id, seq.teamId);
-
-    return getSequence(data.sequenceId, data.includeFrames);
+  .handler(async ({ context }) => {
+    return context.sequence;
   });
 
 // ============================================================================
@@ -93,7 +79,6 @@ export const getSequenceFn = createServerFn({ method: 'GET' })
 export const createSequenceFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createSequenceSchema))
-  // @ts-expect-error - Deep type inference issue with SequenceMetadata index signature
   .handler(async ({ data, context }) => {
     const teamId = data.teamId || context.teamId;
 
@@ -167,7 +152,6 @@ const updateSequenceInputSchema = updateSequenceSchema.extend({
 export const updateSequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(updateSequenceInputSchema))
-  // @ts-expect-error - Deep type inference issue with SequenceMetadata index signature
   .handler(async ({ data, context }) => {
     const { sequenceId, ...updateData } = data;
 
@@ -184,7 +168,6 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
       userId: context.user.id,
       aspectRatio: updateData.aspectRatio ?? DEFAULT_ASPECT_RATIO,
       ...updateData,
-      metadata: updateData.metadata ?? undefined,
       status: needToRegenerateStoryboard ? 'processing' : undefined,
     });
 

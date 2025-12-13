@@ -58,5 +58,6 @@
   "typescript.experimental.useTsgo": true,
   "oxc.fmt.experimental": true,
   "editor.defaultFormatter": "oxc.oxc-vscode",
-  "oxc.fixKind": "dangerous_fix_or_suggestion"
+  "oxc.fixKind": "dangerous_fix_or_suggestion",
+  "oxc.fmt.configPath": ".oxfmtrc.json"
 }

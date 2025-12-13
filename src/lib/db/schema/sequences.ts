@@ -46,14 +46,6 @@ export const FRAME_GENERATION_STATUSES = [
 export type FrameGenerationStatus = (typeof FRAME_GENERATION_STATUSES)[number];
 
 /**
- * Type for sequence metadata JSON field
- */
-export type SequenceMetadata = {
-  characterBible?: unknown; // Character bible structure from script analysis
-  [key: string]: unknown; // Allow other fields
-};
-
-/**
  * Sequences table
  * Main video sequence/project entity
  */
@@ -70,9 +62,6 @@ export const sequences = sqliteTable(
     title: text({ length: 500 }).notNull(),
     script: text(),
     status: text().$type<SequenceStatus>().default('draft').notNull(),
-    metadata: text({ mode: 'json' })
-      .$type<SequenceMetadata>()
-      .$defaultFn(() => ({})),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),

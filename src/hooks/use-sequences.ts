@@ -45,8 +45,7 @@ export function useSequence(
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
-      const data = await getSequenceFn({ data: { sequenceId: id! } });
-      return data as Sequence;
+      return await getSequenceFn({ data: { sequenceId: id! } });
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,

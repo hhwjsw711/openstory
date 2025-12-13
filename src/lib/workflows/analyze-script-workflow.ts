@@ -10,7 +10,6 @@ import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   updateSequenceAnalysisDurationMs,
-  updateSequenceMetadata,
   updateSequenceStatus,
   updateSequenceTitle,
   updateSequenceWorkflow,
@@ -240,12 +239,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           }
         );
 
-        if (sequenceId) {
-          // Store character bible in sequence metadata
-          await updateSequenceMetadata(sequenceId, {
-            characterBible,
-          });
-        }
         // Emit Phase 2 complete
         await getGenerationChannel(sequenceId).emit(
           'generation.phase:complete',
