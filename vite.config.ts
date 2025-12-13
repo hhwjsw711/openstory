@@ -10,8 +10,10 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
 
 const vidstackPath = path.resolve('node_modules/@vidstack/react');
-
 export default defineConfig({
+  // Prevent Vite from replacing process.env at build time
+  // This allows workerd's nodejs_compat_populate_process_env to work
+
   server: {
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal

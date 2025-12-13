@@ -1,9 +1,10 @@
 /**
  * Image Cropping Utility
- * Uses Sharp to crop tiles from grid images
+ * Uses @cf-wasm/photon (WASM-based) to crop tiles from grid images
+ * Compatible with Cloudflare Workers (Sharp's native binaries don't work in workerd)
  */
 
-import sharp from 'sharp';
+import { PhotonImage, crop } from '@cf-wasm/photon';
 
 export type CropTileOptions = {
   gridImageUrl: string;
@@ -40,36 +41,45 @@ export async function cropTileFromGrid(
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  const imageBuffer = Buffer.from(arrayBuffer);
+  const inputBytes = new Uint8Array(arrayBuffer);
 
-  // Get image dimensions
-  const metadata = await sharp(imageBuffer).metadata();
-  if (!metadata.width || !metadata.height) {
-    throw new Error('Could not determine image dimensions');
+  // Create PhotonImage instance from bytes
+  const inputImage = PhotonImage.new_from_byteslice(inputBytes);
+
+  try {
+    // Get image dimensions
+    const width = inputImage.get_width();
+    const height = inputImage.get_height();
+
+    // Calculate tile dimensions (each tile is 1/3 of grid)
+    const tileWidth = Math.floor(width / 3);
+    const tileHeight = Math.floor(height / 3);
+
+    // Calculate crop coordinates (row/col are 1-indexed)
+    // Photon crop takes (x1, y1, x2, y2) - top-left and bottom-right corners
+    const x1 = (col - 1) * tileWidth;
+    const y1 = (row - 1) * tileHeight;
+    const x2 = x1 + tileWidth;
+    const y2 = y1 + tileHeight;
+
+    // Crop the tile
+    const croppedImage = crop(inputImage, x1, y1, x2, y2);
+
+    try {
+      // Get PNG bytes
+      const outputBytes = croppedImage.get_bytes();
+
+      return {
+        buffer: Buffer.from(outputBytes),
+        width: tileWidth,
+        height: tileHeight,
+      };
+    } finally {
+      // Free cropped image memory
+      croppedImage.free();
+    }
+  } finally {
+    // Free input image memory
+    inputImage.free();
   }
-
-  // Calculate tile dimensions (each tile is 1/3 of grid)
-  const tileWidth = Math.floor(metadata.width / 3);
-  const tileHeight = Math.floor(metadata.height / 3);
-
-  // Calculate offset (row/col are 1-indexed)
-  const left = (col - 1) * tileWidth;
-  const top = (row - 1) * tileHeight;
-
-  // Extract the tile
-  const croppedBuffer = await sharp(imageBuffer)
-    .extract({
-      left,
-      top,
-      width: tileWidth,
-      height: tileHeight,
-    })
-    .png()
-    .toBuffer();
-
-  return {
-    buffer: croppedBuffer,
-    width: tileWidth,
-    height: tileHeight,
-  };
 }

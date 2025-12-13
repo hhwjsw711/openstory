@@ -1,6 +1,9 @@
 /**
  * Environment utility functions for checking feature availability
  * based on environment variables and deployment context.
+ *
+ * IMPORTANT: All functions use lazy evaluation to support Cloudflare Workers
+ * where process.env is only populated at request time.
  */
 
 /**
@@ -17,7 +20,6 @@ export type DeploymentPlatform =
  * Detect which platform the app is running on
  */
 export function getDeploymentPlatform(): DeploymentPlatform {
-  // Note this should use process.env at build time, not getEnv()
   if (process.env.CF_PAGES) {
     return 'cloudflare';
   }
@@ -73,52 +75,86 @@ function getAppUrl(): string {
 /**
  * Server-side application URL
  * Used by Better Auth, QStash webhooks, and internal API calls
+ * Lazily evaluated to support Cloudflare Workers
  */
-export const APP_URL = process.env.APP_URL || getAppUrl();
+let _appUrl: string | undefined;
+export function getServerAppUrl(): string {
+  return (_appUrl ??= process.env.APP_URL || getAppUrl());
+}
 
 /**
  * Client-side application URL
- * Falls back to window.location.origin in browser for dynamic detection
+ * Falls back to window.location.origin in browser
  */
-export const NEXT_PUBLIC_APP_URL =
-  typeof window !== 'undefined'
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL || APP_URL;
-
-/**
- * This returns the app URL for production deployments
- * This is used in the redirect URIs for OAuth providers on preview branches
- */
-export function getProductionDeploymentAppUrl(): string {
-  if (
-    APP_URL === 'https://app.velro.ai' ||
-    APP_URL === 'https://r.velro.ai' ||
-    APP_URL === 'https://v.velro.ai' ||
-    APP_URL === 'https://cf.velro.ai'
-  ) {
-    return APP_URL;
+let _clientAppUrl: string | undefined;
+export function getClientAppUrl(): string {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
-  if (/https:\/\/.*\.velro.ai/.test(APP_URL)) {
-    return 'https://app.velro.ai';
-  }
-  if (/https:\/\/.*\.velro.workers.dev/.test(APP_URL)) {
-    return 'https://frontend-prd.velro.workers.dev';
-  }
-  if (/https:\/\/velro.*\.vercel.app/.test(APP_URL)) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (/https:\/\/.*\.railway.app/.test(APP_URL)) {
-    return 'https://velro.up.railway.app'; // production deployment
-  }
-
-  // Otherwise, return the original app URL
-  return APP_URL;
+  return (_clientAppUrl ??=
+    process.env.NEXT_PUBLIC_APP_URL || getServerAppUrl());
 }
 
+/**
+ * @deprecated Use getServerAppUrl() instead for Cloudflare Workers compatibility
+ */
+export const APP_URL = getServerAppUrl();
+
+/**
+ * @deprecated Use getClientAppUrl() instead for Cloudflare Workers compatibility
+ */
+export const NEXT_PUBLIC_APP_URL = getClientAppUrl();
+
+/**
+ * Get production deployment app URL
+ * Used for OAuth redirects on preview branches
+ */
+let _productionAppUrl: string | undefined;
+export function getProductionDeploymentAppUrl(): string {
+  if (_productionAppUrl) return _productionAppUrl;
+
+  const appUrl = getServerAppUrl();
+
+  if (
+    appUrl === 'https://app.velro.ai' ||
+    appUrl === 'https://r.velro.ai' ||
+    appUrl === 'https://v.velro.ai' ||
+    appUrl === 'https://cf.velro.ai'
+  ) {
+    _productionAppUrl = appUrl;
+    return appUrl;
+  }
+  if (/https:\/\/.*\.velro.ai/.test(appUrl)) {
+    _productionAppUrl = 'https://app.velro.ai';
+    return _productionAppUrl;
+  }
+  if (/https:\/\/.*\.velro.workers.dev/.test(appUrl)) {
+    _productionAppUrl = 'https://frontend-prd.velro.workers.dev';
+    return _productionAppUrl;
+  }
+  if (/https:\/\/velro.*\.vercel.app/.test(appUrl)) {
+    _productionAppUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+    return _productionAppUrl;
+  }
+  if (/https:\/\/.*\.railway.app/.test(appUrl)) {
+    _productionAppUrl = 'https://velro.up.railway.app';
+    return _productionAppUrl;
+  }
+
+  _productionAppUrl = appUrl;
+  return appUrl;
+}
+
+/**
+ * @deprecated Use getProductionDeploymentAppUrl() instead
+ */
 export const PRODUCTION_DEPLOYMENT_APP_URL = getProductionDeploymentAppUrl();
 
 export function isProductionDeployment(): boolean {
-  return !isLocalDevelopment() && PRODUCTION_DEPLOYMENT_APP_URL === APP_URL;
+  return (
+    !isLocalDevelopment() &&
+    getProductionDeploymentAppUrl() === getServerAppUrl()
+  );
 }
 
 export function isPreviewDeployment(): boolean {
@@ -127,10 +163,9 @@ export function isPreviewDeployment(): boolean {
 
 /**
  * Check if we're running in local development environment
- * Detected by checking if Supabase URL points to localhost or 127.0.0.1
  */
 export function isLocalDevelopment(): boolean {
-  const appUrl = NEXT_PUBLIC_APP_URL;
+  const appUrl = getClientAppUrl();
 
   if (!appUrl) {
     return false;

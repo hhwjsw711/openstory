@@ -3,11 +3,7 @@
   "main": "@tanstack/react-start/server-entry",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public",
-    "nodejs_compat_populate_process_env",
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
