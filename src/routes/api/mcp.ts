@@ -59,7 +59,10 @@ import {
 
 // Import resources
 import { formatStylesAsText } from '@/lib/mcp/resources/styles';
-import { generationMotionOptionsSchema } from '@/lib/services/motion.service';
+import {
+  type GenerateMotionOptions,
+  generationMotionOptionsSchema,
+} from '@/lib/motion/motion-generation';
 
 // Lazy initialization to avoid Cloudflare Workers global scope restrictions
 let _handler: ReturnType<typeof createMcpHandler> | null = null;
@@ -146,7 +149,7 @@ function getMcpHandler() {
               'Convert image to video with camera movement. Returns the video as base64.',
             inputSchema: generationMotionOptionsSchema, // ZodRawShape - Zod v4 types are incompatible but runtime works correctly
           },
-          async (args) => {
+          async (args: GenerateMotionOptions) => {
             console.log(`[MCP] Tool called: generate_motion`);
             const result = await generateMotionTool({
               imageUrl: args.imageUrl,

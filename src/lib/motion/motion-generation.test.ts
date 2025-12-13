@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import { mockSubscribe } from './__mocks__/fal-client.mock';
-import { generateMotionForFrame } from './motion.service';
+import { generateMotionForFrame } from './motion-generation';
 
 describe('Motion Service', () => {
   beforeEach(() => {

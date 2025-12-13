@@ -10,8 +10,8 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 // Import motion service
-import { generateMotionForFrame } from '@/lib/services/motion.service';
-
+import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 
 export const maxDuration = 800; // This function can run for a maximum of 800 seconds
@@ -133,9 +133,6 @@ export const generateMotionWorkflow = createWorkflow(
             cause: JSON.stringify(videoResult),
           });
         }
-
-        const { uploadVideoToStorage } =
-          await import('@/lib/services/video-storage.service');
 
         const result = await uploadVideoToStorage({
           videoUrl: videoResult.videoUrl,
