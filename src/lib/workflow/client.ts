@@ -4,8 +4,9 @@
 
 import { getEnv } from '#env';
 import { ConfigurationError } from '@/lib/errors';
-import { getQStashWebhookUrl } from '@/lib/utils/get-base-url';
 import { Client } from '@upstash/workflow';
+import { getServerAppUrl } from '../utils/environment';
+import { getRequest } from '@tanstack/react-start/server';
 /**
  * Gets the QStash client for direct API operations
  * Most workflow operations should use the serve() function in route files
@@ -34,11 +35,31 @@ function getQStashClient(): Client {
 }
 
 /**
+ * Get the URL for QStash webhooks
+ * In production, QStash needs a publicly accessible URL
+ * In local development, we use a local QStash server that can reach localhost
+ */
+function getQStashWebhookUrl(request: Request): string {
+  // Use centralized APP_URL, but convert localhost to host.docker.internal
+  // for QStash running in Docker to reach the Next.js app
+  const serverAppUrl = getServerAppUrl(request);
+  if (
+    serverAppUrl.includes('localhost') ||
+    serverAppUrl.includes('127.0.0.1')
+  ) {
+    const appUrl = new URL(serverAppUrl);
+    return `http://host.docker.internal${appUrl.port ? `:${appUrl.port}` : ''}`;
+  }
+
+  return serverAppUrl;
+}
+
+/**
  * Gets the external webhook base URL for workflow endpoints
  * Used by QStash to call back to workflows
  */
-function getWorkflowBaseUrl(): string {
-  const apiUrl = getQStashWebhookUrl();
+function getWorkflowBaseUrl(request: Request): string {
+  const apiUrl = getQStashWebhookUrl(request);
   return `${apiUrl}/api/workflows`;
 }
 
@@ -50,7 +71,8 @@ export async function triggerWorkflow(
   }
 ) {
   const qstash = getQStashClient();
-  const baseUrl = getWorkflowBaseUrl();
+  const request = getRequest();
+  const baseUrl = getWorkflowBaseUrl(request);
 
   const response = await qstash.trigger({
     url: `${baseUrl}${url}`,

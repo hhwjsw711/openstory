@@ -5,20 +5,17 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import {
-  APP_URL,
-  getClientAppUrl,
   getDeploymentPlatform,
   getProductionDeploymentAppUrl,
   getServerAppUrl,
   isProductionDeployment,
-  PRODUCTION_DEPLOYMENT_APP_URL,
 } from '@/lib/utils/environment';
-import { getEnv } from '#env';
+import { getAuth } from '@/lib/auth/config';
 
 export const Route = createFileRoute('/api/health')({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         // Sanitize function to hide sensitive values
         const sanitize = (value: string | undefined): string => {
           if (!value) return '<not set>';
@@ -33,9 +30,7 @@ export const Route = createFileRoute('/api/health')({
           status: 'ok',
           timestamp: new Date().toISOString(),
           platform: getDeploymentPlatform(),
-          getEnv: getEnv(),
-          processEnv: process.env,
-          importMetaEnv: import.meta.env,
+
           deployment: {
             // Vercel-specific
             vercel: process.env.VERCEL,
@@ -56,17 +51,16 @@ export const Route = createFileRoute('/api/health')({
             nodeEnv: process.env.NODE_ENV || 'not set',
           },
           urls: {
-            APP_URL: APP_URL,
-            getServerAppUrl: getServerAppUrl(),
-            getClientAppUrl: getClientAppUrl(),
-            getProductionDeploymentAppUrl: getProductionDeploymentAppUrl(),
-            isProductionDeployment: isProductionDeployment(),
-            appUrl: APP_URL,
+            getServerAppUrl: getServerAppUrl(request),
+            getProductionDeploymentAppUrl:
+              getProductionDeploymentAppUrl(request),
+            isProductionDeployment: isProductionDeployment(request),
             explicitAppUrl: process.env.APP_URL || 'not set',
-            productionDeploymentAppUrl: PRODUCTION_DEPLOYMENT_APP_URL,
+            PRODUCTION_DEPLOYMENT_APP_URL:
+              process.env.PRODUCTION_DEPLOYMENT_APP_URL || 'not set',
           },
           auth: {
-            baseUrl: APP_URL, // This is what Better Auth uses
+            auth: getAuth(request), // This is what Better Auth uses
           },
           database: {
             tursoUrl: process.env.TURSO_DATABASE_URL || 'not set',
