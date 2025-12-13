@@ -5,6 +5,13 @@ import {
 } from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  getSequencesFn,
+  getSequenceFn,
+  createSequenceFn,
+  updateSequenceFn,
+  deleteSequenceFn,
+} from '@/functions/sequences';
 
 // Query keys
 export const sequenceKeys = {
@@ -20,15 +27,8 @@ export function useSequences(teamId?: string) {
   return useQuery<Sequence[]>({
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
-      const response = await fetch('/api/sequences');
-      const result: { success: boolean; data?: Sequence[]; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to load sequences');
-      }
-
-      return result.data;
+      const data = await getSequencesFn();
+      return data as Sequence[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -45,15 +45,8 @@ export function useSequence(
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
-      const response = await fetch(`/api/sequences/${id}`);
-      const result: { success: boolean; data?: Sequence; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to load sequence');
-      }
-
-      return result.data;
+      const data = await getSequenceFn({ data: { sequenceId: id! } });
+      return data as Sequence;
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
@@ -92,12 +85,8 @@ export function useCreateSequence() {
     CreateSequenceInput
   >({
     mutationFn: async (input) => {
-      const response = await fetch('/api/sequences', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const sequences = await createSequenceFn({
+        data: {
           script: input.script,
           styleId: input.styleId,
           title: input.title || 'Untitled Sequence',
@@ -107,19 +96,12 @@ export function useCreateSequence() {
           imageModel: input.imageModel,
           videoModel: input.videoModel,
           autoGenerateMotion: input.autoGenerateMotion,
-        }),
+        },
       });
 
-      const result: { success: boolean; data?: Sequence[]; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to create sequence');
-      }
-
       return {
-        data: result.data,
-        message: result.message || 'Sequence created successfully',
+        data: sequences as Sequence[],
+        message: 'Sequence created successfully',
       };
     },
     onSuccess: () => {
@@ -138,22 +120,14 @@ export function useUpdateSequence() {
 
   return useMutation<Sequence, Error, UpdateSequenceInput & { id: string }>({
     mutationFn: async (input: UpdateSequenceInput & { id: string }) => {
-      const response = await fetch(`/api/sequences/${input.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
+      const { id, ...updateData } = input;
+      const data = await updateSequenceFn({
+        data: {
+          sequenceId: id,
+          ...updateData,
         },
-        body: JSON.stringify(input),
       });
-
-      const result: { success: boolean; data?: Sequence; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to update sequence');
-      }
-
-      return result.data;
+      return data as Sequence;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -174,16 +148,7 @@ export function useDeleteSequence() {
 
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/sequences/${id}`, {
-        method: 'DELETE',
-      });
-
-      const result: { success: boolean; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to delete sequence');
-      }
+      await deleteSequenceFn({ data: { sequenceId: id } });
     },
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
