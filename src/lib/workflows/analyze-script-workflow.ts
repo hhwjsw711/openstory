@@ -301,6 +301,13 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
       // Start phase 5
       await context.run('frame-images-start', async () => {
+        if (sequenceId) {
+          // Time to first image
+          await updateSequenceAnalysisDurationMs(
+            sequenceId,
+            Date.now() - startTime
+          );
+        }
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 5,
           phaseName: 'Generate Images',
