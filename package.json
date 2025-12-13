@@ -53,8 +53,8 @@
     "cf:build:prd": "bun --bun run cf:typegen:prd && BUILD_CLOUDFLARE=1 bun --bun run build",
     "cf:build:stg": "bun --bun run cf:typegen:stg && BUILD_CLOUDFLARE=1 bun --bun run build",
     "cf:preview": "BUILD_CLOUDFLARE=1 vite preview",
-    "cf:deploy:prd": "bun --bun run cf:build:prd && cd dist/server && wrangler deploy --env=prd --name=frontend-prd",
-    "cf:deploy:stg": "bun --bun run cf:build:stg && cd dist/server && wrangler deploy --env=stg --name=frontend-stg"
+    "cf:deploy:prd": "bun --bun run cf:build:prd && wrangler deploy --env=prd --name=frontend-prd",
+    "cf:deploy:stg": "bun --bun run cf:build:stg && wrangler deploy --env=stg --name=frontend-stg"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.948.0",
