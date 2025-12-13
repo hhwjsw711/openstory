@@ -70,7 +70,7 @@ export function getProductionDeploymentAppUrl(request: Request): string {
     return _productionAppUrl;
   }
   if (/https:\/\/.*\.velro.workers.dev/.test(appUrl)) {
-    _productionAppUrl = 'https://frontend-prd.velro.workers.dev';
+    _productionAppUrl = 'https://cf.velro.ai';
     return _productionAppUrl;
   }
   if (/https:\/\/velro.*\.vercel.app/.test(appUrl)) {

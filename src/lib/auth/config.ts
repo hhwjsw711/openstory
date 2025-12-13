@@ -14,8 +14,6 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { tanstackStartCookies } from 'better-auth/tanstack-start';
 
-import { oAuthProxy } from 'better-auth/plugins';
-
 import { getDb } from '#db-client';
 import { getEnv } from '#env';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
@@ -128,11 +126,6 @@ function createAuth(request: Request) {
     plugins: [
       // Next.js cookie integration
       tanstackStartCookies(),
-      // OAuth Proxy for preview deployments
-      oAuthProxy({
-        currentURL: getServerAppUrl(request),
-        productionURL: getProductionDeploymentAppUrl(request),
-      }),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
