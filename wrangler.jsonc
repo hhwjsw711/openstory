@@ -21,10 +21,6 @@
           "remote": true,
         },
       ],
-      "assets": {
-        "directory": ".open-next/assets",
-        "binding": "ASSETS-STG",
-      },
       "observability": {
         "logs": {
           "enabled": true,
@@ -51,10 +47,6 @@
           "remote": true,
         },
       ],
-      "assets": {
-        "directory": ".open-next/assets",
-        "binding": "ASSETS",
-      },
       "observability": {
         "logs": {
           "enabled": true,
