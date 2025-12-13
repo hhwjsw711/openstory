@@ -6,9 +6,14 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   APP_URL,
+  getClientAppUrl,
   getDeploymentPlatform,
+  getProductionDeploymentAppUrl,
+  getServerAppUrl,
+  isProductionDeployment,
   PRODUCTION_DEPLOYMENT_APP_URL,
 } from '@/lib/utils/environment';
+import { getEnv } from '#env';
 
 export const Route = createFileRoute('/api/health')({
   server: {
@@ -28,6 +33,7 @@ export const Route = createFileRoute('/api/health')({
           status: 'ok',
           timestamp: new Date().toISOString(),
           platform: getDeploymentPlatform(),
+          getEnv: getEnv(),
           processEnv: process.env,
           importMetaEnv: import.meta.env,
           deployment: {
@@ -50,6 +56,11 @@ export const Route = createFileRoute('/api/health')({
             nodeEnv: process.env.NODE_ENV || 'not set',
           },
           urls: {
+            APP_URL: APP_URL,
+            getServerAppUrl: getServerAppUrl(),
+            getClientAppUrl: getClientAppUrl(),
+            getProductionDeploymentAppUrl: getProductionDeploymentAppUrl(),
+            isProductionDeployment: isProductionDeployment(),
             appUrl: APP_URL,
             explicitAppUrl: process.env.APP_URL || 'not set',
             productionDeploymentAppUrl: PRODUCTION_DEPLOYMENT_APP_URL,
