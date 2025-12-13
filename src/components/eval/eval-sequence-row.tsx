@@ -51,7 +51,7 @@ export const EvalSequenceRow: React.FC<EvalSequenceRowProps> = ({
         return (
           <div
             key={i}
-            className="shrink-0 h-full overflow-hidden"
+            className="shrink-0 h-full"
             style={{ width: CELL_WIDTH }}
           >
             <EvalSceneCell

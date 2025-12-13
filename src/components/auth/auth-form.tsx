@@ -17,9 +17,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
+import { Route as forgotPasswordRoute } from '@/routes/_auth/forgot-password';
+import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
+import { Route as loginRoute } from '@/routes/_auth/login';
+import { Route as signupRoute } from '@/routes/_auth/signup';
 import { useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 interface AuthFormProps {
@@ -33,7 +36,7 @@ export function AuthForm({
   emailEntered,
   redirectTo = '/sequences',
 }: AuthFormProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState(emailEntered || '');
   const [password, setPassword] = useState('');
@@ -78,9 +81,10 @@ export function AuthForm({
 
         // New users have status: 'pending' by default - redirect to invite code
         setSuccess('Account created! Please enter your invite code...');
-        router.push(
-          '/invite-code?redirectTo=' + encodeURIComponent(redirectTo)
-        );
+        void navigate({
+          to: inviteCodeRoute.fullPath,
+          search: { redirectTo },
+        });
       } else {
         // Sign in flow
         const signInResult = await authClient.signIn.email({
@@ -100,7 +104,7 @@ export function AuthForm({
         await queryClient.invalidateQueries({ queryKey: ['session'] });
 
         setSuccess('Signed in! Redirecting...');
-        router.push(redirectTo);
+        void navigate({ to: redirectTo });
       }
     } catch (err) {
       console.error('[AuthForm] Error:', err);
@@ -119,7 +123,9 @@ export function AuthForm({
         callbackURL: redirectTo,
         // Redirect new Google users to invite code page
         newUserCallbackURL:
-          '/invite-code?redirectTo=' + encodeURIComponent(redirectTo),
+          inviteCodeRoute.fullPath +
+          '?redirectTo=' +
+          encodeURIComponent(redirectTo),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);
@@ -223,7 +229,7 @@ export function AuthForm({
               <Label htmlFor="password">Password</Label>
               {!isSignup && (
                 <Link
-                  href="/forgot-password"
+                  to={forgotPasswordRoute.fullPath}
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot password?
@@ -258,7 +264,8 @@ export function AuthForm({
             <p className="text-muted-foreground">
               Already have an account?{' '}
               <Link
-                href={`/login?redirectTo=${encodeURIComponent(redirectTo)}${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+                to={loginRoute.fullPath}
+                search={{ redirectTo, email: email || undefined }}
                 className="text-primary hover:underline font-medium"
               >
                 Sign in
@@ -268,7 +275,8 @@ export function AuthForm({
             <p className="text-muted-foreground">
               Don't have an account?{' '}
               <Link
-                href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+                to={signupRoute.fullPath}
+                search={{ redirectTo, email: email || undefined }}
                 className="text-primary hover:underline font-medium"
               >
                 Create one

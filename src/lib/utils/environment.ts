@@ -1,6 +1,9 @@
 /**
  * Environment utility functions for checking feature availability
  * based on environment variables and deployment context.
+ *
+ * IMPORTANT: All functions use lazy evaluation to support Cloudflare Workers
+ * where process.env is only populated at request time.
  */
 
 /**
@@ -17,7 +20,6 @@ export type DeploymentPlatform =
  * Detect which platform the app is running on
  */
 export function getDeploymentPlatform(): DeploymentPlatform {
-  // Note this should use process.env at build time, not getEnv()
   if (process.env.CF_PAGES) {
     return 'cloudflare';
   }
@@ -34,120 +36,60 @@ export function getDeploymentPlatform(): DeploymentPlatform {
 }
 
 /**
- * Check if running on Cloudflare Pages/Workers
- */
-export function isCloudflare(): boolean {
-  return !!process.env.OPEN_NEXT_ORIGIN;
-}
-
-/**
- * Get the application URL with platform-specific fallbacks
- * Priority: APP_URL → CF_PAGES_URL → RAILWAY_PUBLIC_DOMAIN → VERCEL_URL → localhost
- */
-function getAppUrl(): string {
-  // Cloudflare Pages deployment
-  if (process.env.CF_PAGES_URL) {
-    return process.env.CF_PAGES_URL;
-  }
-
-  // Railway deployment - use public domain
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
-  }
-
-  // Vercel deployment
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-
-  if (process.env.OPEN_NEXT_ORIGIN) {
-    // running in Open Next
-    const openNextOrigin = JSON.parse(process.env.OPEN_NEXT_ORIGIN);
-    const defaultOrigin = openNextOrigin.default;
-    return `${defaultOrigin.protocol}://${defaultOrigin.host}${defaultOrigin.port ? `:${defaultOrigin.port}` : ''}`;
-  }
-  // Local development default
-  return 'http://localhost:3000';
-}
-
-/**
  * Server-side application URL
  * Used by Better Auth, QStash webhooks, and internal API calls
+ * Lazily evaluated to support Cloudflare Workers
  */
-export const APP_URL = process.env.APP_URL || getAppUrl();
+export function getServerAppUrl(request: Request): string {
+  const url = new URL(request.url);
+  return url.origin;
+}
 
 /**
- * Client-side application URL
- * Falls back to window.location.origin in browser for dynamic detection
+ * Get production deployment app URL
+ * Used for OAuth redirects on preview branches
  */
-export const NEXT_PUBLIC_APP_URL =
-  typeof window !== 'undefined'
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL || APP_URL;
+export function getProductionDeploymentAppUrl(request: Request): string {
+  const appUrl = getServerAppUrl(request);
 
-/**
- * This returns the app URL for production deployments
- * This is used in the redirect URIs for OAuth providers on preview branches
- */
-export function getProductionDeploymentAppUrl(): string {
   if (
-    APP_URL === 'https://app.velro.ai' ||
-    APP_URL === 'https://r.velro.ai' ||
-    APP_URL === 'https://v.velro.ai' ||
-    APP_URL === 'https://cf.velro.ai'
+    appUrl === 'https://app.velro.ai' ||
+    appUrl === 'https://r.velro.ai' ||
+    appUrl === 'https://v.velro.ai' ||
+    appUrl === 'https://cf.velro.ai'
   ) {
-    return APP_URL;
+    return appUrl;
   }
-  if (/https:\/\/.*\.velro.ai/.test(APP_URL)) {
+  if (/https:\/\/.*\.velro.ai/.test(appUrl)) {
     return 'https://app.velro.ai';
   }
-  if (/https:\/\/.*\.velro.workers.dev/.test(APP_URL)) {
-    return 'https://frontend-prd.velro.workers.dev';
+  if (/https:\/\/.*\.velro.workers.dev/.test(appUrl)) {
+    return 'https://cf.velro.ai';
   }
-  if (/https:\/\/velro.*\.vercel.app/.test(APP_URL)) {
+  if (/https:\/\/velro.*\.vercel.app/.test(appUrl)) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
-  if (/https:\/\/.*\.railway.app/.test(APP_URL)) {
-    return 'https://velro.up.railway.app'; // production deployment
+  if (/https:\/\/.*\.railway.app/.test(appUrl)) {
+    return 'https://velro.up.railway.app';
   }
 
-  // Otherwise, return the original app URL
-  return APP_URL;
+  return appUrl;
 }
 
-export const PRODUCTION_DEPLOYMENT_APP_URL = getProductionDeploymentAppUrl();
-
-export function isProductionDeployment(): boolean {
-  return PRODUCTION_DEPLOYMENT_APP_URL === APP_URL;
+export function isProductionDeployment(request: Request): boolean {
+  return (
+    !isLocalDevelopment() &&
+    getProductionDeploymentAppUrl(request) === getServerAppUrl(request)
+  );
 }
 
-export function isPreviewDeployment(): boolean {
-  return !isLocalDevelopment() && !isProductionDeployment();
+export function isPreviewDeployment(request: Request): boolean {
+  return !isLocalDevelopment() && !isProductionDeployment(request);
 }
 
 /**
  * Check if we're running in local development environment
- * Detected by checking if Supabase URL points to localhost or 127.0.0.1
  */
 export function isLocalDevelopment(): boolean {
-  const appUrl = NEXT_PUBLIC_APP_URL;
-
-  if (!appUrl) {
-    return false;
-  }
-
-  try {
-    const url = new URL(appUrl);
-    const hostname = url.hostname.toLowerCase();
-
-    return (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.startsWith('192.168.') || // Local network
-      hostname.endsWith('.local') // mDNS
-    );
-  } catch {
-    // If URL parsing fails, assume production
-    return false;
-  }
+  return process.env.NODE_ENV === 'development';
 }

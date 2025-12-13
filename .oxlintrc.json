@@ -1,13 +1,5 @@
 {
-  "plugins": [
-    "eslint",
-    "typescript",
-    "unicorn",
-    "react",
-    "react-perf",
-    "nextjs",
-    "oxc"
-  ],
+  "plugins": ["eslint", "typescript", "unicorn", "react", "react-perf", "oxc"],
   "extends": ["recommended"],
   "ignorePatterns": ["**/mockServiceWorker.js", "*.gen.ts"],
   "rules": {

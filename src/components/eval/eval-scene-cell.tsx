@@ -3,7 +3,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Frame } from '@/types/database';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import type React from 'react';
 import { EvalCellDialog } from './eval-cell-dialog';
 import type { ViewMode } from './eval-view';

@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSelectionDialog } from './style-selection-dialog';
 
@@ -169,9 +169,8 @@ export function StyleSelector({
                   <Image
                     src={style.previewUrl}
                     alt={style.name}
-                    fill
+                    layout="fullWidth"
                     className="object-cover"
-                    sizes="80px"
                   />
                 ) : (
                   <div className="w-full h-full bg-linear-to-br from-muted to-muted-foreground/20" />

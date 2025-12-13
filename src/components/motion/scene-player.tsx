@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { AlertCircle, VideoIcon } from 'lucide-react';
-import Image from 'next/image';
+import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';

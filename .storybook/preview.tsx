@@ -5,7 +5,7 @@ import { RealtimeProvider } from '@upstash/realtime/client';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { handlers } from '../src/lib/mocks/handlers';
 
-import '../src/app/global.css';
+import '../src/styles/global.css';
 
 /*
  * Initializes MSW with our API handlers
