@@ -46,19 +46,7 @@ function createAuth(request: Request) {
       },
     }),
     secret: runtimeEnv.BETTER_AUTH_SECRET,
-    baseURL: getServerAppUrl(request),
-
     // Trusted origins for CSRF protection and OAuth proxy
-    // Wildcard patterns allow OAuth proxy to redirect from production to preview branches
-    trustedOrigins: [
-      getServerAppUrl(request),
-      'http://localhost:3000', // Local development (for OAuth proxy redirect)
-      'https://*.velro.ai',
-      'https://*.vercel.app',
-      'https://*.railway.app',
-      'https://app.velro.ai', // Production
-      'https://*.velro.workers.dev', // All Cloudflare Pages previews
-    ],
 
     // Session configuration
     // SECURITY: 90-day expiration mitigates:

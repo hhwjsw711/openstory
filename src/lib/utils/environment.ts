@@ -40,7 +40,6 @@ export function getDeploymentPlatform(): DeploymentPlatform {
  * Used by Better Auth, QStash webhooks, and internal API calls
  * Lazily evaluated to support Cloudflare Workers
  */
-let _appUrl: string | undefined;
 export function getServerAppUrl(request: Request): string {
   const url = new URL(request.url);
   return url.origin;
@@ -50,10 +49,7 @@ export function getServerAppUrl(request: Request): string {
  * Get production deployment app URL
  * Used for OAuth redirects on preview branches
  */
-let _productionAppUrl: string | undefined;
 export function getProductionDeploymentAppUrl(request: Request): string {
-  if (_productionAppUrl) return _productionAppUrl;
-
   const appUrl = getServerAppUrl(request);
 
   if (
@@ -62,27 +58,21 @@ export function getProductionDeploymentAppUrl(request: Request): string {
     appUrl === 'https://v.velro.ai' ||
     appUrl === 'https://cf.velro.ai'
   ) {
-    _productionAppUrl = appUrl;
     return appUrl;
   }
   if (/https:\/\/.*\.velro.ai/.test(appUrl)) {
-    _productionAppUrl = 'https://app.velro.ai';
-    return _productionAppUrl;
+    return 'https://app.velro.ai';
   }
   if (/https:\/\/.*\.velro.workers.dev/.test(appUrl)) {
-    _productionAppUrl = 'https://cf.velro.ai';
-    return _productionAppUrl;
+    return 'https://cf.velro.ai';
   }
   if (/https:\/\/velro.*\.vercel.app/.test(appUrl)) {
-    _productionAppUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-    return _productionAppUrl;
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
   if (/https:\/\/.*\.railway.app/.test(appUrl)) {
-    _productionAppUrl = 'https://velro.up.railway.app';
-    return _productionAppUrl;
+    return 'https://velro.up.railway.app';
   }
 
-  _productionAppUrl = appUrl;
   return appUrl;
 }
 
