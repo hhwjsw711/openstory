@@ -28,6 +28,8 @@ export const Route = createFileRoute('/api/health')({
           status: 'ok',
           timestamp: new Date().toISOString(),
           platform: getDeploymentPlatform(),
+          processEnv: process.env,
+          importMetaEnv: import.meta.env,
           deployment: {
             // Vercel-specific
             vercel: process.env.VERCEL,
