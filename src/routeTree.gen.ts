@@ -40,7 +40,7 @@ import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workfl
 import { Route as ApiUserTeamsCheckRouteImport } from './routes/api/user/teams/check'
 import { Route as ApiTeamsTeamIdMembersRouteImport } from './routes/api/teams/$teamId/members'
 import { Route as ApiTeamsTeamIdInviteRouteImport } from './routes/api/teams/$teamId/invite'
-import { Route as ApiSequencesSequenceIdMotionRouteImport } from './routes/api/sequences/$sequenceId/motion'
+import { Route as ApiSequencesSequenceIdGenerateMotionRouteImport } from './routes/api/sequences/$sequenceId/generate-motion'
 import { Route as ApiSequencesSequenceIdFramesRouteImport } from './routes/api/sequences/$sequenceId/frames'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
 import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
@@ -216,10 +216,10 @@ const ApiTeamsTeamIdInviteRoute = ApiTeamsTeamIdInviteRouteImport.update({
   path: '/api/teams/$teamId/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSequencesSequenceIdMotionRoute =
-  ApiSequencesSequenceIdMotionRouteImport.update({
-    id: '/motion',
-    path: '/motion',
+const ApiSequencesSequenceIdGenerateMotionRoute =
+  ApiSequencesSequenceIdGenerateMotionRouteImport.update({
+    id: '/generate-motion',
+    path: '/generate-motion',
     getParentRoute: () => ApiSequencesSequenceIdRoute,
   } as any)
 const ApiSequencesSequenceIdFramesRoute =
@@ -383,7 +383,7 @@ export interface FileRoutesByFullPath {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
-  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
   '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
   '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
@@ -436,7 +436,7 @@ export interface FileRoutesByTo {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
-  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
   '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
   '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
@@ -492,7 +492,7 @@ export interface FileRoutesById {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/sequences/$sequenceId/frames': typeof ApiSequencesSequenceIdFramesRouteWithChildren
-  '/api/sequences/$sequenceId/motion': typeof ApiSequencesSequenceIdMotionRoute
+  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/teams/$teamId/invite': typeof ApiTeamsTeamIdInviteRoute
   '/api/teams/$teamId/members': typeof ApiTeamsTeamIdMembersRouteWithChildren
   '/api/user/teams/check': typeof ApiUserTeamsCheckRoute
@@ -547,7 +547,7 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/sequences/$sequenceId/frames'
-    | '/api/sequences/$sequenceId/motion'
+    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/teams/$teamId/invite'
     | '/api/teams/$teamId/members'
     | '/api/user/teams/check'
@@ -600,7 +600,7 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/sequences/$sequenceId/frames'
-    | '/api/sequences/$sequenceId/motion'
+    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/teams/$teamId/invite'
     | '/api/teams/$teamId/members'
     | '/api/user/teams/check'
@@ -655,7 +655,7 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/sequences/$sequenceId/frames'
-    | '/api/sequences/$sequenceId/motion'
+    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/teams/$teamId/invite'
     | '/api/teams/$teamId/members'
     | '/api/user/teams/check'
@@ -917,11 +917,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTeamsTeamIdInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sequences/$sequenceId/motion': {
-      id: '/api/sequences/$sequenceId/motion'
-      path: '/motion'
-      fullPath: '/api/sequences/$sequenceId/motion'
-      preLoaderRoute: typeof ApiSequencesSequenceIdMotionRouteImport
+    '/api/sequences/$sequenceId/generate-motion': {
+      id: '/api/sequences/$sequenceId/generate-motion'
+      path: '/generate-motion'
+      fullPath: '/api/sequences/$sequenceId/generate-motion'
+      preLoaderRoute: typeof ApiSequencesSequenceIdGenerateMotionRouteImport
       parentRoute: typeof ApiSequencesSequenceIdRoute
     }
     '/api/sequences/$sequenceId/frames': {
@@ -1182,7 +1182,7 @@ const ApiSequencesSequenceIdFramesRouteWithChildren =
 
 interface ApiSequencesSequenceIdRouteChildren {
   ApiSequencesSequenceIdFramesRoute: typeof ApiSequencesSequenceIdFramesRouteWithChildren
-  ApiSequencesSequenceIdMotionRoute: typeof ApiSequencesSequenceIdMotionRoute
+  ApiSequencesSequenceIdGenerateMotionRoute: typeof ApiSequencesSequenceIdGenerateMotionRoute
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
 }
 
@@ -1190,7 +1190,8 @@ const ApiSequencesSequenceIdRouteChildren: ApiSequencesSequenceIdRouteChildren =
   {
     ApiSequencesSequenceIdFramesRoute:
       ApiSequencesSequenceIdFramesRouteWithChildren,
-    ApiSequencesSequenceIdMotionRoute: ApiSequencesSequenceIdMotionRoute,
+    ApiSequencesSequenceIdGenerateMotionRoute:
+      ApiSequencesSequenceIdGenerateMotionRoute,
     ApiSequencesSequenceIdChaptersVttRoute:
       ApiSequencesSequenceIdChaptersVttRoute,
   }

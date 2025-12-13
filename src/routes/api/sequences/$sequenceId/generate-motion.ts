@@ -28,7 +28,9 @@ const requestSchema = z.object({
   frameIds: z.array(ulidSchema).optional(), // Optional: specific frames to generate
 });
 
-export const Route = createFileRoute('/api/sequences/$sequenceId/motion')({
+export const Route = createFileRoute(
+  '/api/sequences/$sequenceId/generate-motion'
+)({
   server: {
     handlers: {
       POST: async ({ request, params }) => {
