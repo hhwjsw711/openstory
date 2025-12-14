@@ -36,8 +36,6 @@ export default {
     'postcss',
     // Tailwind (used via @tailwindcss/vite)
     'tailwindcss',
-    // Lefthook (git hooks, not imported)
-    'lefthook',
     // Testing library (used in test setup)
     '@testing-library/jest-dom',
     '@testing-library/react',
@@ -47,8 +45,4 @@ export default {
     // shadcn CLI tool
     'shadcn',
   ],
-  // Disable drizzle plugin - config requires env vars
-  drizzle: false,
-  // Disable lefthook plugin - fails in git worktrees
-  lefthook: false,
 } satisfies KnipConfig;
