@@ -31,3 +31,21 @@ export {
 // Frame Operations
 
 // Sequence Character Operations
+
+// Character Library Operations
+export {
+  createCharacter,
+  createCharacterMediaRecord,
+  createCharacterSheet,
+  deleteCharacter,
+  deleteCharacterMediaRecord,
+  deleteCharacterSheet,
+  getCharacterById,
+  getCharactersForSequence,
+  getCharacterSheetById,
+  getCharacterWithRelations,
+  getTeamCharacters,
+  toggleCharacterFavorite,
+  updateCharacter,
+  updateCharacterSheet,
+} from './characters';

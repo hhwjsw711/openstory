@@ -32,7 +32,7 @@ export { frames } from './frames';
 
 export type { Frame, NewFrame } from './frames';
 
-// Sequence Characters
+// Sequence Characters (legacy - to be deprecated)
 export { sequenceCharacters } from './sequence-characters';
 
 export type {
@@ -40,6 +40,29 @@ export type {
   SequenceCharacter,
   SheetStatus,
 } from './sequence-characters';
+
+// Character Library (new)
+export {
+  characterMedia,
+  characterSheets,
+  libraryCharacters,
+  sequenceCharacterUsages,
+} from './characters';
+
+export type {
+  CharacterMediaRecord,
+  CharacterMediaType,
+  CharacterSheet,
+  CharacterSheetSource,
+  LibraryCharacter,
+  LibraryCharacterWithRelations,
+  LibraryCharacterWithSheets,
+  NewCharacterMedia,
+  NewCharacterSheet,
+  NewLibraryCharacter,
+  NewSequenceCharacterUsage,
+  SequenceCharacterUsage,
+} from './characters';
 
 // Library Resources
 export { audio, characters, styles, vfx } from './libraries';
@@ -101,9 +124,19 @@ export const schema = {
   sequencesRelations,
   framesRelations,
 
-  // Sequence Characters
+  // Sequence Characters (legacy)
   sequenceCharacters,
   sequenceCharactersRelations,
+
+  // Character Library (new)
+  libraryCharacters,
+  libraryCharactersRelations,
+  characterSheets,
+  characterSheetsRelations,
+  characterMedia,
+  characterMediaRelations,
+  sequenceCharacterUsages,
+  sequenceCharacterUsagesRelations,
 
   // Libraries
   styles,
@@ -153,6 +186,17 @@ import {
   sequenceCharacters,
   sequenceCharactersRelations,
 } from './sequence-characters';
+
+import {
+  characterMedia,
+  characterMediaRelations,
+  characterSheets,
+  characterSheetsRelations,
+  libraryCharacters,
+  libraryCharactersRelations,
+  sequenceCharacterUsages,
+  sequenceCharacterUsagesRelations,
+} from './characters';
 
 import {
   audio,
