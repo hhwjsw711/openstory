@@ -17,7 +17,8 @@ import {
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
-import { frames } from './frames';
+// NOTE: frames imported in index.ts to avoid circular dependency
+// frames.ts imports sequences for foreign key reference
 import { styles } from './libraries';
 import { teams } from './teams';
 
@@ -87,28 +88,8 @@ export const sequences = sqliteTable(
   ]
 );
 
-// Relations
-export const sequencesRelations = relations(sequences, ({ one, many }) => ({
-  team: one(teams, {
-    fields: [sequences.teamId],
-    references: [teams.id],
-  }),
-  user_createdBy: one(user, {
-    fields: [sequences.createdBy],
-    references: [user.id],
-    relationName: 'sequences_createdBy_users_id',
-  }),
-  user_updatedBy: one(user, {
-    fields: [sequences.updatedBy],
-    references: [user.id],
-    relationName: 'sequences_updatedBy_users_id',
-  }),
-  style: one(styles, {
-    fields: [sequences.styleId],
-    references: [styles.id],
-  }),
-  frames: many(frames),
-}));
+// NOTE: sequencesRelations is defined in index.ts to avoid circular dependency
+// (frames.ts imports sequences for FK reference, sequences needs frames for relations)
 
 // Type exports
 export type Sequence = InferSelectModel<typeof sequences>;

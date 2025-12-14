@@ -3,6 +3,8 @@
  * Central export point for all database schemas and relations
  */
 
+import { relations } from 'drizzle-orm';
+
 // Import all schema components first (required for schema object)
 import { account, session, user, verification } from './auth';
 
@@ -15,7 +17,8 @@ import {
   teamsRelations,
 } from './teams';
 
-import { sequences, sequencesRelations } from './sequences';
+// NOTE: sequences imported without relations - defined below to avoid circular dependency
+import { sequences } from './sequences';
 
 import { frames, framesRelations } from './frames';
 
@@ -61,6 +64,36 @@ import {
 } from './credits';
 
 import { scriptAnalysisAudit } from './audit';
+
+// ============================================================================
+// Relations defined here to avoid circular dependencies
+// ============================================================================
+
+/**
+ * Sequences relations - defined here because frames.ts imports sequences
+ * for FK reference, creating a circular dependency if defined in sequences.ts
+ */
+export const sequencesRelations = relations(sequences, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [sequences.teamId],
+    references: [teams.id],
+  }),
+  user_createdBy: one(user, {
+    fields: [sequences.createdBy],
+    references: [user.id],
+    relationName: 'sequences_createdBy_users_id',
+  }),
+  user_updatedBy: one(user, {
+    fields: [sequences.updatedBy],
+    references: [user.id],
+    relationName: 'sequences_updatedBy_users_id',
+  }),
+  style: one(styles, {
+    fields: [sequences.styleId],
+    references: [styles.id],
+  }),
+  frames: many(frames),
+}));
 
 // Better Auth tables
 export { account, session, user, verification };
