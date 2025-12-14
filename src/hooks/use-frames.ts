@@ -12,7 +12,7 @@ import {
   reorderFramesFn,
 } from '@/functions/frames';
 
-export type CreateFrameInput = {
+type CreateFrameInput = {
   sequenceId: string;
   description: string;
   orderIndex: number;
@@ -22,7 +22,7 @@ export type CreateFrameInput = {
   metadata?: unknown;
 };
 
-export type UpdateFrameInput = {
+type UpdateFrameInput = {
   id: string;
   description?: string;
   orderIndex?: number;
@@ -32,18 +32,18 @@ export type UpdateFrameInput = {
   metadata?: unknown;
 };
 
-export type GenerateFramesInput = {
+type GenerateFramesInput = {
   sequenceId: string;
 };
 
-export type RegenerateFrameInput = {
+type RegenerateFrameInput = {
   sequenceId: string;
   frameId: string;
   regenerateDescription?: boolean;
   regenerateThumbnail?: boolean;
 };
 
-export type GenerateVariantInput = {
+type GenerateVariantInput = {
   sequenceId: string;
   frameId: string;
   model?: string;
@@ -52,7 +52,7 @@ export type GenerateVariantInput = {
   seed?: number;
 };
 
-export type SelectVariantInput = {
+type SelectVariantInput = {
   sequenceId: string;
   frameId: string;
   variantIndex: number;
@@ -78,7 +78,8 @@ export function useFramesBySequence(
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId ?? ''),
     queryFn: async () => {
-      const data = await getFramesFn({ data: { sequenceId: sequenceId! } });
+      if (!sequenceId) throw new Error('sequenceId is required');
+      const data = await getFramesFn({ data: { sequenceId } });
       return data;
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
@@ -120,7 +121,7 @@ export function useFramesBySequence(
 }
 
 // Hook for getting single frame
-export function useFrame(sequenceId: string, frameId: string) {
+function useFrame(sequenceId: string, frameId: string) {
   return useQuery<Frame>({
     queryKey: frameKeys.detail(frameId),
     queryFn: async () => {
@@ -133,7 +134,7 @@ export function useFrame(sequenceId: string, frameId: string) {
 }
 
 // Hook for creating frame
-export function useCreateFrame() {
+function useCreateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<Frame, Error, CreateFrameInput>({
@@ -162,7 +163,7 @@ export function useCreateFrame() {
 }
 
 // Hook for updating frame
-export function useUpdateFrame() {
+function useUpdateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<Frame, Error, UpdateFrameInput & { sequenceId: string }>({
@@ -191,7 +192,7 @@ export function useUpdateFrame() {
 }
 
 // Hook for deleting frame
-export function useDeleteFrame() {
+function useDeleteFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -220,7 +221,7 @@ export function useDeleteFrame() {
 }
 
 // Hook for reordering frames
-export function useReorderFrames() {
+function useReorderFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -283,7 +284,7 @@ export function useReorderFrames() {
 }
 
 // Hook for bulk creating frames
-export function useBulkCreateFrames() {
+function useBulkCreateFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -323,7 +324,7 @@ export function useBulkCreateFrames() {
 }
 
 // Hook for deleting all frames in a sequence
-export function useDeleteFramesBySequence() {
+function useDeleteFramesBySequence() {
   const queryClient = useQueryClient();
 
   return useMutation<string, Error, string>({
@@ -342,7 +343,7 @@ export function useDeleteFramesBySequence() {
 
 // Hook for generating frames with AI
 // NOTE: This triggers a workflow and should remain as fetch()
-export function useGenerateFrames() {
+function useGenerateFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -412,7 +413,7 @@ export function useGenerateFrames() {
 
 // Hook for regenerating a single frame
 // NOTE: This triggers a workflow and should remain as fetch()
-export function useRegenerateFrame() {
+function useRegenerateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<{ jobId: string }, Error, RegenerateFrameInput>({
@@ -614,7 +615,7 @@ export function useSelectVariant() {
 
 // Hook to check for active frame generation jobs for a sequence
 // NOTE: This checks workflow status and should remain as fetch()
-export function useActiveFrameGeneration(sequenceId: string) {
+function useActiveFrameGeneration(sequenceId: string) {
   const queryClient = useQueryClient();
 
   return useQuery({
@@ -661,7 +662,7 @@ export function useActiveFrameGeneration(sequenceId: string) {
 }
 
 // Hook to track preview image generation status for frames
-export function useFramePreviewStatus(frames: Frame[]) {
+function useFramePreviewStatus(frames: Frame[]) {
   // Get frames that might be generating previews (no thumbnailUrl but were recently created)
   const framesNeedingPreviews = useMemo(() => {
     return frames.filter((frame) => {

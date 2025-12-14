@@ -1,6 +1,6 @@
 import type { Style } from '@/types/database';
 
-export type FilterOptions = {
+type FilterOptions = {
   category: string;
   searchQuery: string;
 };

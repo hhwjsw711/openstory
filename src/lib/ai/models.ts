@@ -8,7 +8,7 @@ import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 /**
  * Text-to-video models
  */
-export const TEXT_TO_VIDEO_MODELS = {
+const TEXT_TO_VIDEO_MODELS = {
   minimax_hailuo: 'fal-ai/minimax-video/text-to-video',
   mochi_v1: 'fal-ai/mochi-v1/text-to-video',
   luma_dream_machine: 'fal-ai/luma-dream-machine',
@@ -191,7 +191,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
  * All video models combined (for backward compatibility - returns model IDs)
  * @deprecated Use IMAGE_TO_VIDEO_MODELS directly for full metadata
  */
-export const VIDEO_MODELS = {
+const VIDEO_MODELS = {
   ...TEXT_TO_VIDEO_MODELS,
   // Extract just the IDs for backward compatibility
   seedance_v1_pro: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro.id,
@@ -332,8 +332,8 @@ export const IMAGE_MODELS = {
 
 // Text to image model types
 export type TextToImageModel = keyof typeof IMAGE_MODELS;
-export type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
-export type TextToImageModelId = ImageModelConfig['id'];
+type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
+type TextToImageModelId = ImageModelConfig['id'];
 
 export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_pro';
 
@@ -350,7 +350,7 @@ export function getImageModelById(id: string): ImageModelConfig | undefined {
 }
 
 // Helper to get model display name
-export function getImageModelDisplayName(modelId: string): string {
+function getImageModelDisplayName(modelId: string): string {
   const model = getImageModelById(modelId);
   return model?.name ?? modelId;
 }
@@ -361,12 +361,12 @@ export type ImageToVideoModel = keyof typeof IMAGE_TO_VIDEO_MODELS;
 export type ImageToVideoModelConfig =
   (typeof IMAGE_TO_VIDEO_MODELS)[ImageToVideoModel];
 // Type for the video model ID
-export type ImageToVideoModelId = ImageToVideoModelConfig['id'];
+type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
 export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
 
 // Helper to get model ID from key (for backward compatibility)
-export function getImageToVideoModelId(
+function getImageToVideoModelId(
   modelKey: ImageToVideoModel
 ): ImageToVideoModelId {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
@@ -462,7 +462,7 @@ export function isModelCompatibleWithAspectRatio(
  * @param aspectRatio - The aspect ratio to filter by
  * @returns Array of compatible model keys
  */
-export function getModelsForAspectRatio(
+function getModelsForAspectRatio(
   aspectRatio: AspectRatio
 ): ImageToVideoModel[] {
   return Object.keys(IMAGE_TO_VIDEO_MODELS).filter((key) =>
@@ -519,6 +519,6 @@ export function getEditEndpoint(model: TextToImageModel): string | null {
  * @param model - The text-to-image model key
  * @returns true if the model has an edit endpoint for reference images
  */
-export function supportsReferenceImages(model: TextToImageModel): boolean {
+function supportsReferenceImages(model: TextToImageModel): boolean {
   return model in EDIT_ENDPOINTS;
 }

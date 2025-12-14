@@ -257,7 +257,7 @@ export type Style = InferSelectModel<typeof styles>;
 export type NewStyle = InferInsertModel<typeof styles>;
 
 export type StyleAdaptation = InferSelectModel<typeof styleAdaptations>;
-export type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
+type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
 
 export type Character = InferSelectModel<typeof characters>;
 export type NewCharacter = InferInsertModel<typeof characters>;

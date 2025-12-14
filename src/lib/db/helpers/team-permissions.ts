@@ -11,7 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 /**
  * Result from getUserTeam - contains team membership info
  */
-export type UserTeamMembership = {
+type UserTeamMembership = {
   teamId: string;
   role: TeamMemberRole;
   teamName: string;
@@ -21,7 +21,7 @@ export type UserTeamMembership = {
 /**
  * Team member with user details
  */
-export type TeamMemberWithDetails = {
+type TeamMemberWithDetails = {
   userId: string;
   role: TeamMemberRole;
   joinedAt: Date;
@@ -143,10 +143,7 @@ export async function canAccessTeam(
  * }
  * ```
  */
-export async function canManageTeam(
-  userId: string,
-  teamId: string
-): Promise<boolean> {
+async function canManageTeam(userId: string, teamId: string): Promise<boolean> {
   const membership = await getUserTeam(userId, teamId);
   if (!membership) {
     return false;
@@ -167,7 +164,7 @@ export async function canManageTeam(
  * console.log(`Team has ${members.length} members`);
  * ```
  */
-export async function getTeamMembers(
+async function getTeamMembers(
   teamId: string
 ): Promise<TeamMemberWithDetails[]> {
   const members = await getDb()
@@ -250,7 +247,7 @@ export async function getUserTeams(
  * // If we get here, user has access
  * ```
  */
-export async function requireTeamAccess(
+async function requireTeamAccess(
   userId: string,
   teamId: string
 ): Promise<UserTeamMembership> {

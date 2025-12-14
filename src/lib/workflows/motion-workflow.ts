@@ -14,7 +14,7 @@ import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 
-export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 /**
  * Motion generation workflow

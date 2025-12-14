@@ -41,7 +41,7 @@ export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
  * Require authentication - throws error if not authenticated
  * Use in Server Actions and API routes that require authentication
  */
-export async function requireAuth() {
+async function requireAuth() {
   const user = await getCurrentUserFn();
 
   if (!user) {
@@ -55,7 +55,7 @@ export async function requireAuth() {
  * Require active user status - throws error if user is pending or suspended
  * Use in routes that should only be accessible to active users
  */
-export async function requireActiveAuth() {
+async function requireActiveAuth() {
   const { user } = await requireAuth();
 
   // Check user status
@@ -76,7 +76,7 @@ export async function requireActiveAuth() {
  * Get user with team information
  * Returns user data with team context for authorization
  */
-export const getUserWithTeamFn = createServerFn({ method: 'GET' }).handler(
+const getUserWithTeamFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const session = await getSessionFn();
     if (!session?.user) {
@@ -134,7 +134,7 @@ export const getUserWithTeamFn = createServerFn({ method: 'GET' }).handler(
  * Check if user has access to a team resource
  * Used for team-based authorization
  */
-export async function checkTeamAccess(teamId: string): Promise<boolean> {
+async function checkTeamAccess(teamId: string): Promise<boolean> {
   const userWithTeam = await getUserWithTeamFn();
 
   if (!userWithTeam) {
@@ -148,7 +148,7 @@ export async function checkTeamAccess(teamId: string): Promise<boolean> {
  * Check if the current user has pending status
  * Returns true if user needs to activate their account
  */
-export async function isUserPending(): Promise<boolean> {
+async function isUserPending(): Promise<boolean> {
   const user = await getCurrentUserFn();
   if (!user) return false;
 
@@ -160,7 +160,7 @@ export async function isUserPending(): Promise<boolean> {
  * Check if the current user is active
  * Returns true if user has active status or no status field (legacy users)
  */
-export async function isUserActive(): Promise<boolean> {
+async function isUserActive(): Promise<boolean> {
   const user = await getCurrentUserFn();
   if (!user) return false;
 
@@ -173,9 +173,7 @@ export async function isUserActive(): Promise<boolean> {
 /**
  * Sign out the current user
  */
-export const signOutFn = createServerFn({ method: 'POST' }).handler(
-  async () => {
-    const request = getRequest();
-    return getAuth(request).api.signOut({ headers: request.headers });
-  }
-);
+const signOutFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const request = getRequest();
+  return getAuth(request).api.signOut({ headers: request.headers });
+});

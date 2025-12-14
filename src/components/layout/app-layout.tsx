@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type * as React from 'react';
 import { Header } from './header';
 
-export interface AppLayoutProps extends React.HTMLAttributes<HTMLElement> {}
+interface AppLayoutProps extends React.HTMLAttributes<HTMLElement> {}
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
   className,

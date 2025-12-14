@@ -105,7 +105,7 @@ export async function uploadVideoToStorage(
 /**
  * Generate a signed URL for temporary video access
  */
-export async function getSignedVideoUrl(
+async function getSignedVideoUrl(
   path: string,
   expiresIn: number = 3600 // 1 hour default
 ): Promise<StorageResult> {
@@ -153,7 +153,7 @@ export async function getVideoDownloadUrl(
 /**
  * Delete a video from storage
  */
-export async function deleteVideoFromStorage(
+async function deleteVideoFromStorage(
   path: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -172,7 +172,7 @@ export async function deleteVideoFromStorage(
 /**
  * List all videos for a sequence
  */
-export async function listSequenceVideos(
+async function listSequenceVideos(
   teamId: string,
   sequenceId: string
 ): Promise<{
@@ -211,7 +211,7 @@ export async function listSequenceVideos(
 /**
  * Calculate total storage used by a team
  */
-export async function calculateTeamStorageUsage(teamId: string): Promise<{
+async function calculateTeamStorageUsage(teamId: string): Promise<{
   success: boolean;
   totalBytes?: number;
   totalMB?: number;

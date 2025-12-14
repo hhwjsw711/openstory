@@ -16,7 +16,7 @@ export const splitScenesInputSchema = z.object({
 
 export type SplitScenesInput = z.infer<typeof splitScenesInputSchema>;
 
-export type SplitScenesOutput = {
+type SplitScenesOutput = {
   projectMetadata: ProjectMetadata;
   scenes: Scene[];
 };
@@ -56,7 +56,7 @@ export async function splitScenesTool(
 /**
  * Tool description for MCP
  */
-export const splitScenesToolDescription = {
+const splitScenesToolDescription = {
   name: 'split_scenes',
   description: `Split a script into logical scenes with metadata (Phase 1 of script analysis).
 

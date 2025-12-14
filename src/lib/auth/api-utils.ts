@@ -15,7 +15,7 @@ interface AuthResult {
 /**
  * Authenticate API request and return user/session or error response
  */
-export async function authenticateApiRequest(request: Request) {
+async function authenticateApiRequest(request: Request) {
   try {
     const auth = getAuth(request);
     const session = await auth.api.getSession({
@@ -59,7 +59,7 @@ export async function authenticateApiRequest(request: Request) {
  * SECURITY: Queries database to verify actual team membership
  * instead of relying on optional user.teamId field
  */
-export async function checkTeamAccess(request: Request, teamId: string) {
+async function checkTeamAccess(request: Request, teamId: string) {
   const authResult = await authenticateApiRequest(request);
 
   // If authentication failed, return the error response
@@ -105,9 +105,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
  * Get optional user from API request
  * Returns user data or null if not authenticated
  */
-export async function getOptionalUser(
-  request: Request
-): Promise<AuthResult | null> {
+async function getOptionalUser(request: Request): Promise<AuthResult | null> {
   try {
     const auth = getAuth(request);
     const session = await auth.api.getSession({
@@ -131,7 +129,7 @@ export async function getOptionalUser(
 /**
  * Create standardized error response
  */
-export function createErrorResponse(
+function createErrorResponse(
   message: string,
   status: number = 400,
   details?: Record<string, unknown>
@@ -151,7 +149,7 @@ export function createErrorResponse(
 /**
  * Create standardized success response
  */
-export function createSuccessResponse<T>(
+function createSuccessResponse<T>(
   data: T,
   message?: string,
   status: number = 200

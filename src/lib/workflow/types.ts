@@ -65,7 +65,7 @@ export interface VariantWorkflowResult {
 /**
  * Video generation workflow input
  */
-export interface VideoWorkflowInput extends Partial<SequenceWorkflowContext> {
+interface VideoWorkflowInput extends Partial<SequenceWorkflowContext> {
   prompt?: string;
   imageUrl?: string; // For image-to-video
   imageData?: string; // Base64 encoded
@@ -120,7 +120,7 @@ export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Batch motion generation workflow input
  */
-export interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContext> {
+interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContext> {
   frameIds?: string[]; // Optional: specific frames to process
   model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
   duration?: number;
@@ -165,7 +165,7 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
 /**
  * Script analysis workflow input
  */
-export interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
+interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
   script: string;
   language?: string;
   genre?: string;
@@ -174,7 +174,7 @@ export interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Frame generation result
  */
-export interface FrameGenerationResult {
+interface FrameGenerationResult {
   frames: Array<{
     description: string;
     orderIndex: number;
@@ -207,7 +207,7 @@ export interface MotionWorkflowResult {
   duration?: number;
 }
 
-export interface BatchMotionWorkflowResult {
+interface BatchMotionWorkflowResult {
   sequenceId: string;
   processedFrames: string[];
   failedFrames: Array<{ frameId: string; error: string }>;

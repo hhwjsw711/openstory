@@ -112,7 +112,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
   },
 ] as const;
 
-export type AnalysisModel = (typeof SCRIPT_ANALYSIS_MODELS)[number];
+type AnalysisModel = (typeof SCRIPT_ANALYSIS_MODELS)[number];
 export type AnalysisModelId = AnalysisModel['id'];
 
 /**
@@ -125,7 +125,7 @@ export function getAnalysisModelById(id: string): AnalysisModel | undefined {
 /**
  * Get display name for a model
  */
-export function getModelDisplayName(modelId: string): string {
+function getModelDisplayName(modelId: string): string {
   const model = getAnalysisModelById(modelId);
   return model?.name ?? modelId;
 }

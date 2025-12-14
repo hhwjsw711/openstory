@@ -519,7 +519,7 @@ Transform the content within the USER_SCRIPT tags into a professional, visually 
 
 // This is used to generate a storyboard when the user clicks the "Generate Storyboard" button
 // This enhances the script if needed then breaks it into frames
-export const storyboardPrompt = (
+const storyboardPrompt = (
   sanitizedScript: string,
   styleConfig: DirectorDnaConfig,
   aspectRatio: string

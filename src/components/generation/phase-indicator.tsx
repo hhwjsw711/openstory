@@ -15,7 +15,7 @@ type PhaseIndicatorProps = {
  * Shows completed phases with checkmarks, the active phase with a spinner,
  * and pending phases as empty circles.
  */
-export function PhaseIndicator({
+function PhaseIndicator({
   phases,
   currentPhase,
   className,

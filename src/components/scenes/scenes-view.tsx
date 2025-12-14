@@ -30,7 +30,7 @@ type ScenesViewProps = {
   sequenceId?: string;
 };
 
-export const getPlayerMaxClassNameByAspectRatio = (
+const getPlayerMaxClassNameByAspectRatio = (
   aspectRatio: AspectRatio
 ): string => {
   // Use Tailwind arbitrary values - map each aspect ratio to its specific classes

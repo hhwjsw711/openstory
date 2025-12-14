@@ -17,7 +17,7 @@ export type GenerateMotionPromptsInput = z.infer<
   typeof generateMotionPromptsInputSchema
 >;
 
-export type GenerateMotionPromptsOutput = {
+type GenerateMotionPromptsOutput = {
   scenes: Scene[];
 };
 
@@ -55,7 +55,7 @@ export async function generateMotionPromptsTool(
 /**
  * Tool description for MCP
  */
-export const generateMotionPromptsToolDescription = {
+const generateMotionPromptsToolDescription = {
   name: 'generate_motion_prompts',
   description: `Generate motion prompts for scenes (Phase 4 of script analysis).
 

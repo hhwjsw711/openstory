@@ -28,7 +28,7 @@ import { styles } from './libraries';
 import { teams } from './teams';
 
 // Enum values as constants (SQLite doesn't have native enums)
-export const SEQUENCE_STATUSES = [
+const SEQUENCE_STATUSES = [
   'draft',
   'processing',
   'completed',
@@ -43,7 +43,7 @@ export const FRAME_GENERATION_STATUSES = [
   'completed',
   'failed',
 ] as const;
-export type FrameGenerationStatus = (typeof FRAME_GENERATION_STATUSES)[number];
+type FrameGenerationStatus = (typeof FRAME_GENERATION_STATUSES)[number];
 
 /**
  * Sequences table
@@ -215,7 +215,7 @@ export const framesRelations = relations(frames, ({ one }) => ({
 // Type exports
 export type Sequence = InferSelectModel<typeof sequences>;
 export type NewSequence = InferInsertModel<typeof sequences>;
-export type UpdateSequence = Partial<Sequence>;
+type UpdateSequence = Partial<Sequence>;
 
 // Override the inferred Frame type to use Scene for metadata
 type InferredFrame = InferSelectModel<typeof frames>;

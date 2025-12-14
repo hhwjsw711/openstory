@@ -39,4 +39,4 @@ Strict Negative Constraint: No borders between images, Zero text. No dialogue bu
 }
 
 /** @deprecated Use getVariantImagePrompt(imageSize) instead */
-export const VARIANT_IMAGE_PROMPT = getVariantImagePrompt('landscape_16_9');
+const VARIANT_IMAGE_PROMPT = getVariantImagePrompt('landscape_16_9');

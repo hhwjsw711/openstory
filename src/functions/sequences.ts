@@ -87,7 +87,8 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       await requireTeamMemberAccess(context.user.id, data.teamId);
     }
 
-    if (!data.styleId || !data.aspectRatio) {
+    const { styleId, aspectRatio } = data;
+    if (!styleId || !aspectRatio) {
       throw new Error('Style ID and aspect ratio are required');
     }
 
@@ -101,8 +102,8 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
           userId: context.user.id,
           title: data.title || 'Untitled Sequence',
           script: data.script,
-          styleId: data.styleId!,
-          aspectRatio: data.aspectRatio!,
+          styleId,
+          aspectRatio,
           analysisModel:
             getAnalysisModelById(modelId)?.id || DEFAULT_ANALYSIS_MODEL,
           imageModel,

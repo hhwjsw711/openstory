@@ -26,7 +26,7 @@ interface RoleCheckResult {
   userId: string;
 }
 
-export interface AuthError {
+interface AuthError {
   success: false;
   message: string;
   status: number;
@@ -77,10 +77,7 @@ async function getAuthenticatedUser(request: Request): Promise<User | null> {
 /**
  * Check if user can manage team settings (admin or owner only)
  */
-export async function canManageTeam(
-  userId: string,
-  teamId: string
-): Promise<boolean> {
+async function canManageTeam(userId: string, teamId: string): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
 
   if (!role) {
@@ -93,7 +90,7 @@ export async function canManageTeam(
 /**
  * Check if user can delete team resources (admin or owner only)
  */
-export async function canDeleteResource(
+async function canDeleteResource(
   userId: string,
   teamId: string
 ): Promise<boolean> {
@@ -109,10 +106,7 @@ export async function canDeleteResource(
 /**
  * Check if user is owner of the team
  */
-export async function isTeamOwner(
-  userId: string,
-  teamId: string
-): Promise<boolean> {
+async function isTeamOwner(userId: string, teamId: string): Promise<boolean> {
   const role = await getUserRole(userId, teamId);
   return role === 'owner';
 }
@@ -121,7 +115,7 @@ export async function isTeamOwner(
  * Require user to have admin or owner role for a team
  * Returns user and role info or throws error response
  */
-export async function requireAdmin(
+async function requireAdmin(
   request: Request,
   teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
@@ -172,7 +166,7 @@ export async function requireAdmin(
  * Require user to have owner role for a team
  * Returns user and role info or throws error response
  */
-export async function requireOwner(
+async function requireOwner(
   request: Request,
   teamId: string
 ): Promise<{ user: User; role: TeamRole; teamId: string }> {
@@ -223,7 +217,7 @@ export async function requireOwner(
  * Check role and return result without throwing
  * Useful for conditional logic in Server Actions
  */
-export async function checkUserRole(
+async function checkUserRole(
   userId: string,
   teamId: string,
   requiredRole: TeamRole
@@ -249,7 +243,7 @@ export async function checkUserRole(
  * Verify user has permission to access a resource owned by a team
  * Returns team ID if user has access, throws error otherwise
  */
-export async function verifyTeamResourceAccess(
+async function verifyTeamResourceAccess(
   request: Request,
   resourceTeamId: string,
   requiredRole: TeamRole = 'member'
@@ -300,7 +294,7 @@ export async function verifyTeamResourceAccess(
 /**
  * Get all teams for a user with their roles
  */
-export async function getUserTeams(userId: string): Promise<
+async function getUserTeams(userId: string): Promise<
   Array<{
     teamId: string;
     role: TeamRole;

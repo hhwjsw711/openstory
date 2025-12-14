@@ -22,7 +22,7 @@ import { generateId } from '../id';
 import { user } from './auth';
 
 // Enum values as constants (SQLite doesn't have native enums)
-export const TRANSACTION_TYPES = [
+const TRANSACTION_TYPES = [
   'credit_purchase',
   'credit_usage',
   'credit_refund',

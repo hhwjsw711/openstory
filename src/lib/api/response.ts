@@ -25,7 +25,7 @@ type ErrorResponse = {
 /**
  * Create a JSON response with the standard Web Response API
  */
-export function json<T>(data: T, init?: ResponseInit): Response {
+function json<T>(data: T, init?: ResponseInit): Response {
   return new Response(JSON.stringify(data), {
     ...init,
     headers: {

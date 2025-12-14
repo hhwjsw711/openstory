@@ -13,7 +13,7 @@ import { ulidSchema } from '@/lib/schemas/id.schemas';
  * but do not enforce FrameMetadata typing to maintain flexibility.
  */
 
-export const createFrameSchema = createInsertSchema(frames, {
+const createFrameSchema = createInsertSchema(frames, {
   description: (schema) => schema.min(1).max(5000),
   durationMs: (schema) => schema.min(1),
   thumbnailStatus: () =>
@@ -42,11 +42,11 @@ export const updateFrameSchema = createUpdateSchema(frames, {
   updatedAt: true,
 });
 
-export const deleteFrameSchema = z.object({
+const deleteFrameSchema = z.object({
   id: ulidSchema,
 });
 
-export const generateFramesSchema = z.object({
+const generateFramesSchema = z.object({
   sequenceId: ulidSchema,
   options: z
     .object({
@@ -100,10 +100,10 @@ export const bulkFrameSchema = z.object({
 
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
-export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
-export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
-export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
-export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
-export type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
-export type SingleFrameInput = z.infer<typeof singleFrameSchema>;
-export type BulkFrameInput = z.infer<typeof bulkFrameSchema>;
+type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
+type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
+type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
+type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
+type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
+type SingleFrameInput = z.infer<typeof singleFrameSchema>;
+type BulkFrameInput = z.infer<typeof bulkFrameSchema>;

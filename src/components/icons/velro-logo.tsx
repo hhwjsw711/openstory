@@ -17,7 +17,7 @@ const velroLogoVariants = cva('', {
   },
 });
 
-export interface VelroLogoProps
+interface VelroLogoProps
   extends
     React.SVGProps<SVGSVGElement>,
     VariantProps<typeof velroLogoVariants> {}

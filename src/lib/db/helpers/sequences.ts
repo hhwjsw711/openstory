@@ -19,7 +19,7 @@ import { sequences } from '../schema';
 // Types
 // ============================================================================
 
-export type CreateSequenceParams = Omit<
+type CreateSequenceParams = Omit<
   Required<CreateSequenceInput>,
   'analysisModels' | 'analysisDurationMs' | 'metadata'
 > & {
@@ -27,7 +27,7 @@ export type CreateSequenceParams = Omit<
   userId: string;
 };
 
-export type UpdateSequenceParams = {
+type UpdateSequenceParams = {
   id: string;
   userId: string;
   title?: string;
@@ -40,7 +40,7 @@ export type UpdateSequenceParams = {
   videoModel?: string;
 };
 
-export type SequenceWithDetails = Sequence & {
+type SequenceWithDetails = Sequence & {
   frames?: Array<{
     id: string;
     orderIndex: number;

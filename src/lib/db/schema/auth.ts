@@ -85,13 +85,13 @@ export const verification = sqliteTable('verification', {
 });
 // Type exports
 export type User = InferSelectModel<typeof user>;
-export type NewUser = InferInsertModel<typeof user>;
+type NewUser = InferInsertModel<typeof user>;
 
 export type Session = InferSelectModel<typeof session>;
-export type NewSession = InferInsertModel<typeof session>;
+type NewSession = InferInsertModel<typeof session>;
 
 export type Account = InferSelectModel<typeof account>;
-export type NewAccount = InferInsertModel<typeof account>;
+type NewAccount = InferInsertModel<typeof account>;
 
 export type Verification = InferSelectModel<typeof verification>;
-export type NewVerification = InferInsertModel<typeof verification>;
+type NewVerification = InferInsertModel<typeof verification>;

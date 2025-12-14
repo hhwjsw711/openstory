@@ -47,7 +47,7 @@ export async function designAudioTool(
 /**
  * Tool description for MCP
  */
-export const designAudioToolDescription = {
+const designAudioToolDescription = {
   name: 'design_audio',
   description: `Generate audio design for scenes (Phase 5 of script analysis).
 

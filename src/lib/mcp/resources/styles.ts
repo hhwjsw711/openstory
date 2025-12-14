@@ -5,7 +5,7 @@
 
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 
-export type StylesResourceContent = {
+type StylesResourceContent = {
   styles: typeof DEFAULT_STYLE_TEMPLATES;
   totalStyles: number;
 };
@@ -13,7 +13,7 @@ export type StylesResourceContent = {
 /**
  * Get styles resource content
  */
-export function getStylesResource(): StylesResourceContent {
+function getStylesResource(): StylesResourceContent {
   return {
     styles: DEFAULT_STYLE_TEMPLATES,
     totalStyles: DEFAULT_STYLE_TEMPLATES.length,
@@ -58,7 +58,7 @@ export function formatStylesAsText(): string {
 /**
  * Resource description for MCP
  */
-export const stylesResourceDescription = {
+const stylesResourceDescription = {
   uri: 'velro://styles',
   name: 'Director DNA Styles',
   description:

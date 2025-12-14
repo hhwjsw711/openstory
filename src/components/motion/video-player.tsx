@@ -20,7 +20,7 @@ import {
 import { useRef } from 'react';
 import { CustomDownloadButton } from './custom-download-button';
 
-export type VideoPlayerProps = {
+type VideoPlayerProps = {
   src: string;
   chaptersUrl?: string;
   posterSrc?: string | null;

@@ -36,7 +36,7 @@ export type GenerateVisualPromptsInput = z.infer<
   typeof generateVisualPromptsInputSchema
 >;
 
-export type GenerateVisualPromptsOutput = {
+type GenerateVisualPromptsOutput = {
   scenes: Scene[];
 };
 
@@ -94,7 +94,7 @@ export async function generateVisualPromptsTool(
 /**
  * Tool description for MCP
  */
-export const generateVisualPromptsToolDescription = {
+const generateVisualPromptsToolDescription = {
   name: 'generate_visual_prompts',
   description: `Generate visual prompts for scenes (Phase 3 of script analysis).
 

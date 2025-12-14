@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
 
-export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
+type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
 type ScenePlayerProps = {
   frames?: Frame[];

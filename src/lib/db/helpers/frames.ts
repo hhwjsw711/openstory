@@ -23,7 +23,7 @@ import {
 /**
  * Frame with its parent sequence
  */
-export type FrameWithSequence = Frame & {
+type FrameWithSequence = Frame & {
   sequence: {
     id: string;
     teamId: string;
@@ -38,12 +38,12 @@ export type FrameWithSequence = Frame & {
 /**
  * Frame ordering options
  */
-export type FrameOrderBy = 'orderIndex' | 'createdAt' | 'updatedAt';
+type FrameOrderBy = 'orderIndex' | 'createdAt' | 'updatedAt';
 
 /**
  * Frame filtering options
  */
-export type FrameFilters = {
+type FrameFilters = {
   orderBy?: FrameOrderBy;
   ascending?: boolean;
   limit?: number;
@@ -70,7 +70,7 @@ export type FrameFilters = {
  * }
  * ```
  */
-export async function getFrameById(frameId: string): Promise<Frame | null> {
+async function getFrameById(frameId: string): Promise<Frame | null> {
   const result = await getDb()
     .select()
     .from(frames)
@@ -261,7 +261,7 @@ export async function deleteSequenceFrames(
  * await reorderFrames(sequenceId, [frame3.id, frame1.id, frame2.id]);
  * ```
  */
-export async function reorderFrames(
+async function reorderFrames(
   sequenceId: string,
   frameIds: string[]
 ): Promise<Frame[]> {
@@ -300,7 +300,7 @@ export async function reorderFrames(
  * await moveFrame(frameId, 2);
  * ```
  */
-export async function moveFrame(
+async function moveFrame(
   frameId: string,
   newOrderIndex: number
 ): Promise<Frame> {
@@ -376,7 +376,7 @@ export async function moveFrame(
  * const [frame1, frame2] = await swapFrames(frameId1, frameId2);
  * ```
  */
-export async function swapFrames(
+async function swapFrames(
   frameId1: string,
   frameId2: string
 ): Promise<[Frame, Frame]> {
@@ -453,7 +453,7 @@ export async function createFramesBulk(
  * ]);
  * ```
  */
-export async function updateFramesBulk(
+async function updateFramesBulk(
   updates: Array<{ id: string; data: Partial<NewFrame> }>
 ): Promise<Frame[]> {
   return await getDb().transaction(async (tx) => {
@@ -487,7 +487,7 @@ export async function updateFramesBulk(
  * console.log(`Deleted ${count} frames`);
  * ```
  */
-export async function deleteFramesBulk(frameIds: string[]): Promise<number> {
+async function deleteFramesBulk(frameIds: string[]): Promise<number> {
   const result = await getDb()
     .delete(frames)
     .where(inArray(frames.id, frameIds));
@@ -510,7 +510,7 @@ export async function deleteFramesBulk(frameIds: string[]): Promise<number> {
  * const frame = await updateFrameThumbnail(frameId, 'https://storage.../thumb.jpg');
  * ```
  */
-export async function updateFrameThumbnail(
+async function updateFrameThumbnail(
   frameId: string,
   thumbnailUrl: string
 ): Promise<Frame> {
@@ -529,7 +529,7 @@ export async function updateFrameThumbnail(
  * const frame = await updateFrameVideo(frameId, 'https://storage.../video.mp4');
  * ```
  */
-export async function updateFrameVideo(
+async function updateFrameVideo(
   frameId: string,
   videoUrl: string
 ): Promise<Frame> {
@@ -549,7 +549,7 @@ export async function updateFrameVideo(
  * const frame = await markFrameComplete(frameId, thumbUrl, videoUrl);
  * ```
  */
-export async function markFrameComplete(
+async function markFrameComplete(
   frameId: string,
   thumbnailUrl?: string,
   videoUrl?: string
@@ -579,7 +579,7 @@ export async function markFrameComplete(
  * console.log(`Need to generate ${framesToGenerate.length} thumbnails`);
  * ```
  */
-export async function getFramesWithoutThumbnails(
+async function getFramesWithoutThumbnails(
   sequenceId: string
 ): Promise<Frame[]> {
   return await getDb()
@@ -601,9 +601,7 @@ export async function getFramesWithoutThumbnails(
  * console.log(`Need to generate ${framesToAnimate.length} videos`);
  * ```
  */
-export async function getFramesWithoutVideo(
-  sequenceId: string
-): Promise<Frame[]> {
+async function getFramesWithoutVideo(sequenceId: string): Promise<Frame[]> {
   return await getDb()
     .select()
     .from(frames)
@@ -669,7 +667,7 @@ export async function getFrameWithSequence(
  * console.log(`Sequence has ${count} frames`);
  * ```
  */
-export async function countSequenceFrames(sequenceId: string): Promise<number> {
+async function countSequenceFrames(sequenceId: string): Promise<number> {
   const [result] = await getDb()
     .select({ count: getDb().$count(frames.id) })
     .from(frames)
@@ -690,9 +688,7 @@ export async function countSequenceFrames(sequenceId: string): Promise<number> {
  * console.log(`${incomplete.length} frames need generation`);
  * ```
  */
-export async function getIncompleteFrames(
-  sequenceId: string
-): Promise<Frame[]> {
+async function getIncompleteFrames(sequenceId: string): Promise<Frame[]> {
   return await getDb()
     .select()
     .from(frames)

@@ -23,7 +23,7 @@ export class WorkflowValidationError extends WorkflowNonRetryableError {
  * @example
  * throw new WorkflowAuthError('Missing user or team context');
  */
-export class WorkflowAuthError extends WorkflowNonRetryableError {
+class WorkflowAuthError extends WorkflowNonRetryableError {
   constructor(message: string) {
     super(message);
     this.name = 'WorkflowAuthError';
@@ -38,7 +38,7 @@ export class WorkflowAuthError extends WorkflowNonRetryableError {
  * @example
  * throw new WorkflowTransientError('AI service timeout - will retry');
  */
-export class WorkflowTransientError extends WorkflowError {
+class WorkflowTransientError extends WorkflowError {
   constructor(message: string) {
     super(message);
     this.name = 'WorkflowTransientError';
@@ -52,7 +52,7 @@ export class WorkflowTransientError extends WorkflowError {
  * @param error - Error message or analysis result to check
  * @returns true if error indicates invalid script
  */
-export function isInvalidScriptError(error: unknown): boolean {
+function isInvalidScriptError(error: unknown): boolean {
   if (!error) return false;
 
   const message =
@@ -82,7 +82,7 @@ export function isInvalidScriptError(error: unknown): boolean {
  * @param error - Error to check
  * @returns true if error is likely transient and should be retried
  */
-export function isTransientError(error: unknown): boolean {
+function isTransientError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
 
   const transientPatterns = [

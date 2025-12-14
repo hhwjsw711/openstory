@@ -27,11 +27,11 @@ import type {
 } from '@/lib/schemas/frame.schemas';
 import { and, eq } from 'drizzle-orm';
 // Type definitions - using Zod-inferred types for consistency with API validation
-export type CreateFrameParams = CreateFrameInput;
+type CreateFrameParams = CreateFrameInput;
 
-export type UpdateFrameParams = { id: string } & UpdateFrameInput;
+type UpdateFrameParams = { id: string } & UpdateFrameInput;
 
-export interface GenerateFramesParams {
+interface GenerateFramesParams {
   sequenceId: string;
   userId: string;
   options?: {
@@ -43,7 +43,7 @@ export interface GenerateFramesParams {
   };
 }
 
-export interface FrameGenerationResult {
+interface FrameGenerationResult {
   frameCount: number;
   jobId?: string;
   message: string;
@@ -55,7 +55,7 @@ export interface FrameGenerationResult {
  * Provides business logic for frame operations. All methods assume
  * the caller has already verified authentication and authorization.
  */
-export class FrameService {
+class FrameService {
   /**
    * Create a new frame
    *
@@ -368,7 +368,7 @@ export const frameService = new FrameService();
 /**
  * Status of each phase in the scene analysis pipeline
  */
-export interface SceneCompletionStatus {
+interface SceneCompletionStatus {
   hasBasicScene: boolean; // Phase 1: Scene split with metadata
   hasVisualPrompts: boolean; // Phase 3: Visual prompts + variants + continuity
   hasMotionPrompts: boolean; // Phase 4: Motion prompts + movement variants
@@ -382,7 +382,7 @@ export interface SceneCompletionStatus {
  * @param frame - The frame to check
  * @returns True if frame has all required scene data
  */
-export function isSceneComplete(frame: Frame): boolean {
+function isSceneComplete(frame: Frame): boolean {
   const scene = frame.metadata;
 
   if (!scene) {
@@ -421,7 +421,7 @@ export function isSceneComplete(frame: Frame): boolean {
  * @param frame - The frame to check
  * @returns Completion status for each phase
  */
-export function getSceneCompletionStatus(frame: Frame): SceneCompletionStatus {
+function getSceneCompletionStatus(frame: Frame): SceneCompletionStatus {
   const scene = frame.metadata;
 
   if (!scene) {

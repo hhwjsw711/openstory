@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
 }
 

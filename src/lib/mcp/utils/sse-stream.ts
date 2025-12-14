@@ -3,7 +3,7 @@
  * Creates ReadableStreams for streaming progress back to clients
  */
 
-export type SSEEmitter = {
+type SSEEmitter = {
   /** Emit a progress event */
   progress: (progress: number, total?: number, message?: string) => void;
   /** Emit a text chunk from LLM streaming */

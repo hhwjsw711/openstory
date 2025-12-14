@@ -12,7 +12,6 @@
  * - Works on all platforms (Bun, Node.js, Cloudflare Workers, Vercel)
  */
 
-export { getDb } from '#db-client';
 import { getDb } from '#db-client';
 
 /**

@@ -17,7 +17,7 @@ import { ValidationError } from '@/lib/errors';
 import { and, asc, eq } from 'drizzle-orm';
 import crypto from 'node:crypto';
 // Type definitions
-export interface TeamMember {
+interface TeamMember {
   userId: string;
   email: string;
   fullName: string | null;
@@ -26,7 +26,7 @@ export interface TeamMember {
   joinedAt: Date;
 }
 
-export interface TeamInvitation {
+interface TeamInvitation {
   id: string;
   teamId: string;
   email: string;
@@ -40,25 +40,25 @@ export interface TeamInvitation {
   acceptedAt: Date | null;
 }
 
-export interface CreateInvitationParams {
+interface CreateInvitationParams {
   teamId: string;
   email: string;
   role: 'member' | 'admin' | 'viewer';
   invitedBy: string;
 }
 
-export interface AcceptInvitationParams {
+interface AcceptInvitationParams {
   token: string;
   userId: string;
 }
 
-export interface RemoveMemberParams {
+interface RemoveMemberParams {
   teamId: string;
   userId: string;
   requestingUserId: string;
 }
 
-export interface UpdateMemberRoleParams {
+interface UpdateMemberRoleParams {
   teamId: string;
   userId: string;
   newRole: TeamRole;
@@ -71,7 +71,7 @@ export interface UpdateMemberRoleParams {
  * Provides business logic for team operations. All methods assume
  * the caller has already verified authentication and authorization.
  */
-export class TeamService {
+class TeamService {
   constructor() {}
 
   /**

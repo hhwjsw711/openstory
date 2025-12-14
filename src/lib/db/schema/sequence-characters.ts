@@ -15,7 +15,7 @@ import {
 import { generateId } from '../id';
 import { sequences } from './sequences';
 
-export const SHEET_STATUSES = [
+const SHEET_STATUSES = [
   'pending',
   'generating',
   'completed',

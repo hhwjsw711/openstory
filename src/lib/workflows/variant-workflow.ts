@@ -16,7 +16,7 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 
-export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {

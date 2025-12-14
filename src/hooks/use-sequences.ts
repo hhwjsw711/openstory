@@ -45,7 +45,8 @@ export function useSequence(
   return useQuery<Sequence>({
     queryKey: sequenceKeys.detail(id),
     queryFn: async () => {
-      return await getSequenceFn({ data: { sequenceId: id! } });
+      if (!id) throw new Error('sequenceId is required');
+      return await getSequenceFn({ data: { sequenceId: id } });
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
@@ -142,7 +143,7 @@ export function useUpdateSequence() {
 }
 
 // Hook for deleting sequence
-export function useDeleteSequence() {
+function useDeleteSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({

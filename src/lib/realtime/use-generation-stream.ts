@@ -180,5 +180,3 @@ export function useGenerationStream(sequenceId?: string) {
     reset,
   };
 }
-
-export type { GenerationStreamState };

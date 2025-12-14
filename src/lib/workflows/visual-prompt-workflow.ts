@@ -13,7 +13,7 @@ import { generateVisualPromptsForScenes } from '@/lib/script';
 import { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { frameService } from '@/lib/services/frame.service';
 
-export const maxDuration = 800;
+const maxDuration = 800;
 
 export const visualPromptWorkflow = createWorkflow(
   async (

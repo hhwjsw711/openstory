@@ -3,9 +3,9 @@
  * Handles events from the Upstash Realtime channel during storyboard generation.
  */
 
-export type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
+type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
-export type StreamingScene = {
+type StreamingScene = {
   sceneId: string;
   sceneNumber: number;
   title: string;
@@ -13,7 +13,7 @@ export type StreamingScene = {
   durationSeconds: number;
 };
 
-export type StreamingFrame = {
+type StreamingFrame = {
   frameId: string;
   sceneId: string;
   orderIndex: number;
@@ -46,7 +46,7 @@ export type GenerationStreamState = {
   error?: string;
 };
 
-export type GenerationStreamAction =
+type GenerationStreamAction =
   | {
       type: 'PHASE_START';
       payload: { phase: number; phaseName: string };

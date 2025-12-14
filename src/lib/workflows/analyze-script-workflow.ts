@@ -38,7 +38,7 @@ import { characterBibleWorkflow } from './character-bible-workflow';
 import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
-export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5

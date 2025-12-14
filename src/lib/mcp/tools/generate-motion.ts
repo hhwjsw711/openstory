@@ -10,14 +10,14 @@ import {
   MotionResult,
 } from '@/lib/motion/motion-generation';
 
-export type GenerateMotionFromScenesInput = Omit<
+type GenerateMotionFromScenesInput = Omit<
   GenerateMotionOptions,
   'imageUrl' | 'prompt'
 > & {
   scenes: Scene[];
 };
 
-export type SceneMotionResult = {
+type SceneMotionResult = {
   sceneId: string;
   sceneNumber: number;
   sceneTitle: string;
@@ -27,7 +27,7 @@ export type SceneMotionResult = {
   error?: string;
 };
 
-export type GenerateMotionFromScenesOutput = {
+type GenerateMotionFromScenesOutput = {
   results: SceneMotionResult[];
   totalGenerated: number;
   totalFailed: number;

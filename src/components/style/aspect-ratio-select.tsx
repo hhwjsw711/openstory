@@ -11,7 +11,7 @@ import { ASPECT_RATIOS, type AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 
-export type AspectRatioSelectProps = {
+type AspectRatioSelectProps = {
   value?: AspectRatio;
   onChange?: (value: AspectRatio) => void;
   disabled?: boolean;
