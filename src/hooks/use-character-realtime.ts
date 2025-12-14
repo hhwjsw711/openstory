@@ -12,6 +12,7 @@ type SheetProgressEvent = {
     status: 'generating' | 'completed' | 'failed';
     sheetId?: string;
     sheetImageUrl?: string;
+    headshotImageUrl?: string;
     error?: string;
   };
 };
@@ -43,9 +44,13 @@ export function useCharacterSheetRealtime(characterId?: string) {
         case 'completed':
           setIsGenerating(false);
           setError(null);
-          // Invalidate the character query to refresh sheets
+          // Invalidate character queries to refresh sheets and headshot
           void queryClient.invalidateQueries({
             queryKey: characterKeys.detail(data.characterId),
+          });
+          // Also invalidate list to show new headshot in character grid
+          void queryClient.invalidateQueries({
+            queryKey: characterKeys.lists(),
           });
           break;
 
@@ -65,9 +70,16 @@ export function useCharacterSheetRealtime(characterId?: string) {
     enabled: !!characterId,
   });
 
+  // Allow starting generation optimistically (before realtime event arrives)
+  const startGenerating = useCallback(() => {
+    setIsGenerating(true);
+    setError(null);
+  }, []);
+
   return {
     isGenerating,
     error,
     connectionStatus: status,
+    startGenerating,
   };
 }

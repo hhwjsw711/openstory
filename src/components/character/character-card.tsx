@@ -18,7 +18,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   onClick,
 }) => {
   const toggleFavorite = useToggleCharacterFavorite();
-  const previewUrl = character.defaultSheet?.imageUrl;
+  // Prefer character headshot (square), fall back to default sheet
+  const previewUrl = character.imageUrl ?? character.defaultSheet?.imageUrl;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();

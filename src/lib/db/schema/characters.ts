@@ -53,6 +53,8 @@ export const characters = sqliteTable(
       .references(() => teams.id, { onDelete: 'cascade' }),
     name: text({ length: 255 }).notNull(),
     description: text(),
+    imageUrl: text('image_url'), // Character avatar/headshot
+    imagePath: text('image_path'), // R2 storage path for avatar
     isFavorite: integer('is_favorite', { mode: 'boolean' }).default(false),
     isHumanGenerated: integer('is_human_generated', {
       mode: 'boolean',

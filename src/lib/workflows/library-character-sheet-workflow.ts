@@ -6,7 +6,11 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { createCharacterSheet, getCharacterById } from '@/lib/db/helpers';
+import {
+  createCharacterSheet,
+  getCharacterById,
+  updateCharacter,
+} from '@/lib/db/helpers';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
@@ -64,6 +68,36 @@ Mood: Objective, detailed, and clear, characteristic of a high-end visual refere
 Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.
 
 Maintain absolute consistency with reference images across all panels.`;
+}
+
+/**
+ * Build a prompt for generating a character headshot/avatar.
+ * Used as the character's profile image.
+ */
+function buildCharacterHeadshotPrompt(
+  name: string,
+  description?: string
+): string {
+  const descSection = description ? `\nCharacter notes: ${description}` : '';
+
+  return `Professional headshot portrait of ${name}, photorealistic, studio lighting.
+
+IMPORTANT: Use the provided reference images as the definitive source for this character's appearance.
+Match all physical details exactly: face shape, skin tone, hair color/style, eye color, and any distinguishing features.
+
+Requirements:
+- Head and shoulders portrait, centered composition
+- Neutral to friendly expression
+- Direct eye contact with camera
+- Soft, even professional studio lighting
+- Clean, solid neutral background
+- Sharp focus on face and eyes
+- High detail on facial features
+${descSection}
+
+Style: Professional portrait photography, headshot for actor/model portfolio.
+Aspect ratio: Square 1:1 format.
+Maintain absolute consistency with reference images.`;
 }
 
 export const libraryCharacterSheetWorkflow = createWorkflow(
@@ -185,6 +219,84 @@ export const libraryCharacterSheetWorkflow = createWorkflow(
       });
     });
 
+    // Step 5: Generate character headshot for avatar
+    const headshotResult = await context.run(
+      'generate-headshot-image',
+      async () => {
+        const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
+        const prompt = buildCharacterHeadshotPrompt(
+          input.characterName,
+          input.characterDescription
+        );
+
+        console.log(
+          '[LibraryCharacterSheetWorkflow]',
+          `Generating headshot with model ${model}`
+        );
+
+        return await generateImageWithProvider({
+          model,
+          prompt,
+          referenceImageUrls: input.referenceImageUrls,
+          imageSize: 'square_hd',
+          numImages: 1,
+        });
+      }
+    );
+
+    const headshotUrl = headshotResult.imageUrls[0];
+    if (!headshotUrl) {
+      throw new Error('No headshot URL returned from generation');
+    }
+
+    // Step 6: Upload headshot to R2 storage
+    const headshotStorageResult = await context.run(
+      'upload-headshot-to-storage',
+      async () => {
+        console.log(
+          '[LibraryCharacterSheetWorkflow]',
+          `Uploading headshot to storage`
+        );
+
+        // Fetch the generated headshot
+        const response = await fetch(headshotUrl);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch generated headshot: ${response.status}`
+          );
+        }
+        const imageBlob = await response.blob();
+
+        // Build storage path for headshot
+        const headshotPath = `${input.teamId}/${input.characterId}/headshot.png`;
+
+        const result = await uploadFile(
+          STORAGE_BUCKETS.CHARACTERS,
+          headshotPath,
+          imageBlob,
+          { contentType: 'image/png' }
+        );
+
+        return {
+          url: result.publicUrl,
+          path: result.path,
+        };
+      }
+    );
+
+    // Step 7: Update character with headshot
+    await context.run('update-character-headshot', async () => {
+      console.log(
+        '[LibraryCharacterSheetWorkflow]',
+        `Updating character with headshot`
+      );
+
+      await updateCharacter(input.characterId, input.teamId, {
+        imageUrl: headshotStorageResult.url,
+        imagePath: headshotStorageResult.path,
+      });
+    });
+
     // Emit completed status
     await context.run('emit-completed', async () => {
       console.log(
@@ -199,6 +311,7 @@ export const libraryCharacterSheetWorkflow = createWorkflow(
           status: 'completed',
           sheetId: sheet.id,
           sheetImageUrl: storageResult.url,
+          headshotImageUrl: headshotStorageResult.url,
         }
       );
     });
@@ -207,6 +320,8 @@ export const libraryCharacterSheetWorkflow = createWorkflow(
       sheetId: sheet.id,
       sheetImageUrl: storageResult.url,
       sheetImagePath: storageResult.path,
+      headshotImageUrl: headshotStorageResult.url,
+      headshotImagePath: headshotStorageResult.path,
     };
   },
   {

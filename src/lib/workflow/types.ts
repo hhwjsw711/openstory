@@ -260,4 +260,6 @@ export interface LibraryCharacterSheetWorkflowResult {
   sheetId: string;
   sheetImageUrl: string;
   sheetImagePath?: string;
+  headshotImageUrl?: string;
+  headshotImagePath?: string;
 }

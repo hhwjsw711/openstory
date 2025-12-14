@@ -17,6 +17,7 @@ export const realtimeSchema = {
       status: z.enum(['generating', 'completed', 'failed']),
       sheetId: z.string().optional(),
       sheetImageUrl: z.string().optional(),
+      headshotImageUrl: z.string().optional(),
       error: z.string().optional(),
     }),
   },

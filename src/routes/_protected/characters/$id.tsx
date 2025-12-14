@@ -41,8 +41,17 @@ function CharacterDetailPage() {
   const toggleFavorite = useToggleCharacterFavorite();
   const deleteCharacter = useDeleteCharacter();
   const generateSheet = useGenerateCharacterSheet();
-  const { isGenerating: isGeneratingSheet, error: sheetError } =
-    useCharacterSheetRealtime(id);
+  const {
+    isGenerating: isGeneratingSheet,
+    error: sheetError,
+    startGenerating,
+  } = useCharacterSheetRealtime(id);
+
+  const handleGenerateSheet = () => {
+    if (!character) return;
+    startGenerating(); // Show generating state immediately
+    generateSheet.mutate({ characterId: character.id });
+  };
 
   const handleDelete = async () => {
     if (!character) return;
@@ -160,15 +169,11 @@ function CharacterDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    generateSheet.mutate({ characterId: character.id })
-                  }
-                  disabled={generateSheet.isPending || isGeneratingSheet}
+                  onClick={handleGenerateSheet}
+                  disabled={isGeneratingSheet}
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  {generateSheet.isPending || isGeneratingSheet
-                    ? 'Generating…'
-                    : 'Generate Sheet'}
+                  {isGeneratingSheet ? 'Generating…' : 'Generate Sheet'}
                 </Button>
               )}
           </div>
@@ -190,15 +195,11 @@ function CharacterDetailPage() {
                     </p>
                   )}
                   <Button
-                    onClick={() =>
-                      generateSheet.mutate({ characterId: character.id })
-                    }
-                    disabled={generateSheet.isPending || isGeneratingSheet}
+                    onClick={handleGenerateSheet}
+                    disabled={isGeneratingSheet}
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    {generateSheet.isPending || isGeneratingSheet
-                      ? 'Generating…'
-                      : 'Generate Sheet'}
+                    {isGeneratingSheet ? 'Generating…' : 'Generate Sheet'}
                   </Button>
                 </div>
               ) : (
