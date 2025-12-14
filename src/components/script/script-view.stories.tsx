@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import type { Sequence } from '@/lib/db/schema/sequences';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

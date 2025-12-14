@@ -1,6 +1,6 @@
 import { useStyles } from '@/hooks/use-styles';
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
-import type { Meta, StoryObj } from '@storybook/nextjs';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { StyleSelectionDialogWithTrigger } from './style-selection-dialog';
 import { StyleSelectorButton } from './style-selector-button';
