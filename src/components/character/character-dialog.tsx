@@ -25,7 +25,6 @@ import type {
   CharacterMediaRecord,
   CharacterSheet,
 } from '@/lib/db/schema';
-import { useNavigate } from '@tanstack/react-router';
 import { Pencil, Plus, Upload, X } from 'lucide-react';
 
 type CharacterWithRelations = Character & {
@@ -54,7 +53,6 @@ type CharacterDialogProps =
 export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
   const { mode, trigger } = props;
   const character = mode === 'edit' ? props.character : null;
-  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
