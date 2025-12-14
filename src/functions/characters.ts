@@ -16,8 +16,10 @@ import {
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   createCharacter,
+  createCharacterMediaRecord,
   createCharacterSheet,
   deleteCharacter,
+  deleteCharacterMediaRecord,
   deleteCharacterSheet,
   getCharacterById,
   getCharactersForSequence,
@@ -28,6 +30,15 @@ import {
   toggleCharacterFavorite,
   updateCharacter,
 } from '@/lib/db/helpers';
+import {
+  getPublicUrl,
+  STORAGE_BUCKETS,
+  uploadFile,
+  deleteFile,
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/db/helpers/storage';
+import { generateId } from '@/lib/db/id';
 import type {
   CharacterSheetSource,
   CharacterWithSheets,
@@ -253,6 +264,116 @@ export const deleteCharacterSheetFn = createServerFn({ method: 'POST' })
 
     if (!deleted) {
       throw new Error('Failed to delete sheet');
+    }
+
+    return { success: true };
+  });
+
+// ============================================================================
+// Character Media Operations
+// ============================================================================
+
+const uploadMediaInputSchema = z.object({
+  characterId: ulidSchema,
+  type: z.enum(['image', 'video', 'recording']),
+  base64Data: z.string(),
+  filename: z.string(),
+});
+
+/**
+ * Upload character reference media
+ */
+export const uploadCharacterMediaFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(uploadMediaInputSchema))
+  .handler(async ({ context, data }) => {
+    // Verify character belongs to team
+    const character = await getCharacterById(data.characterId);
+
+    if (!character || character.teamId !== context.teamId) {
+      throw new Error('Character not found');
+    }
+
+    // Decode base64 data
+    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
+    const buffer = Buffer.from(base64Content, 'base64');
+    const blob = new Blob([buffer]);
+
+    // Generate storage path
+    const ext = getExtensionFromUrl(data.filename);
+    const mediaId = generateId();
+    const storagePath = `${context.teamId}/${data.characterId}/${mediaId}.${ext}`;
+
+    // Upload to R2
+    const result = await uploadFile(
+      STORAGE_BUCKETS.CHARACTERS,
+      storagePath,
+      blob,
+      {
+        contentType: getMimeTypeFromExtension(ext),
+      }
+    );
+
+    // Create database record
+    const media = await createCharacterMediaRecord({
+      id: mediaId,
+      characterId: data.characterId,
+      type: data.type,
+      url: result.publicUrl,
+      path: result.path,
+    });
+
+    return media;
+  });
+
+const deleteMediaInputSchema = z.object({
+  mediaId: ulidSchema,
+});
+
+/**
+ * Delete character reference media
+ */
+export const deleteCharacterMediaFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(deleteMediaInputSchema))
+  .handler(async ({ context, data }) => {
+    // Get media record via direct query
+    const { getDb } = await import('#db-client');
+    const { characterMedia } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const media = await getDb().query.characterMedia.findFirst({
+      where: eq(characterMedia.id, data.mediaId),
+    });
+
+    if (!media) {
+      throw new Error('Media not found');
+    }
+
+    // Verify character belongs to team
+    const character = await getCharacterById(media.characterId);
+
+    if (!character || character.teamId !== context.teamId) {
+      throw new Error('Media not found');
+    }
+
+    // Delete from storage if path exists
+    if (media.path) {
+      try {
+        await deleteFile(
+          STORAGE_BUCKETS.CHARACTERS,
+          media.path.replace('characters/', '')
+        );
+      } catch {
+        // Ignore storage deletion errors
+      }
+    }
+
+    // Delete database record
+    const deleted = await deleteCharacterMediaRecord(data.mediaId);
+
+    if (!deleted) {
+      throw new Error('Failed to delete media');
     }
 
     return { success: true };

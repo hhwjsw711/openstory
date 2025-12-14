@@ -1,5 +1,6 @@
 'use client';
 
+import { EditCharacterDialog } from '@/components/character';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
@@ -19,6 +20,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeft,
   ImageIcon,
+  Pencil,
   Sparkles,
   Star,
   Trash2,
@@ -94,6 +96,14 @@ function CharacterDetailPage() {
         <PageHeader
           actions={
             <div className="flex items-center gap-2">
+              <EditCharacterDialog
+                character={character}
+                trigger={
+                  <Button variant="outline" size="icon">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                }
+              />
               <Button
                 variant="outline"
                 size="icon"
@@ -135,24 +145,18 @@ function CharacterDetailPage() {
 
         {/* Character Sheets Section */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Character Sheets ({character.sheets.length})
-            </h2>
-            <Button disabled size="sm">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Sheet
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <ImageIcon className="h-5 w-5" />
+            Character Sheets ({character.sheets.length})
+          </h2>
 
           {character.sheets.length === 0 ? (
             <Card className="p-8 text-center">
               <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-muted-foreground mb-4">
-                No character sheets yet
+              <p className="text-muted-foreground">
+                Character sheets are automatically generated when this character
+                is used in a sequence.
               </p>
-              <Button disabled>Upload First Sheet</Button>
             </Card>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

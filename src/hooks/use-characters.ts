@@ -13,6 +13,8 @@ import {
   toggleCharacterFavoriteFn,
   createCharacterSheetFn,
   deleteCharacterSheetFn,
+  uploadCharacterMediaFn,
+  deleteCharacterMediaFn,
 } from '@/functions/characters';
 
 // Local hook input types
@@ -206,6 +208,48 @@ export function useDeleteCharacterSheet() {
   return useMutation<void, Error, { sheetId: string; characterId: string }>({
     mutationFn: async ({ sheetId }) => {
       await deleteCharacterSheetFn({ data: { sheetId } });
+    },
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: characterKeys.detail(variables.characterId),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for uploading character reference media
+ */
+export function useUploadCharacterMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      characterId: string;
+      type: 'image' | 'video' | 'recording';
+      base64Data: string;
+      filename: string;
+    }) => {
+      const data = await uploadCharacterMediaFn({ data: input });
+      return data;
+    },
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: characterKeys.detail(variables.characterId),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for deleting character reference media
+ */
+export function useDeleteCharacterMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { mediaId: string; characterId: string }>({
+    mutationFn: async ({ mediaId }) => {
+      await deleteCharacterMediaFn({ data: { mediaId } });
     },
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({
