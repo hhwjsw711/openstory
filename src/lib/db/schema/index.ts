@@ -65,14 +65,13 @@ export type {
 } from './characters';
 
 // Library Resources
-export { audio, characters, styles, vfx } from './libraries';
+export { audio, styles, vfx } from './libraries';
 
 export type {
   Audio,
-  Character,
   NewAudio,
-  NewCharacter,
   NewStyle,
+  NewStyleAdaptation,
   NewVfx,
   Style,
   StyleAdaptation,
@@ -141,12 +140,10 @@ export const schema = {
   // Libraries
   styles,
   styleAdaptations,
-  characters,
   vfx,
   audio,
   stylesRelations,
   styleAdaptationsRelations,
-  charactersRelations,
   vfxRelations,
   audioRelations,
 
@@ -201,8 +198,6 @@ import {
 import {
   audio,
   audioRelations,
-  characters,
-  charactersRelations,
   styleAdaptations,
   styleAdaptationsRelations,
   styles,

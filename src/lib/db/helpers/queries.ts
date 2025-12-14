@@ -6,15 +6,15 @@
 import { getDb } from '#db-client';
 import type {
   Audio,
-  Character,
   Frame,
+  LibraryCharacter,
   Sequence,
   Style,
   Vfx,
 } from '@/lib/db/schema';
 import {
   audio,
-  characters,
+  libraryCharacters,
   sequences,
   styles,
   teams,
@@ -203,12 +203,12 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
  * const characters = await getTeamCharacters(teamId);
  * ```
  */
-async function getTeamCharacters(teamId: string): Promise<Character[]> {
+async function getTeamCharacters(teamId: string): Promise<LibraryCharacter[]> {
   return await getDb()
     .select()
-    .from(characters)
-    .where(eq(characters.teamId, teamId))
-    .orderBy(desc(characters.createdAt));
+    .from(libraryCharacters)
+    .where(eq(libraryCharacters.teamId, teamId))
+    .orderBy(desc(libraryCharacters.createdAt));
 }
 
 /**
@@ -297,30 +297,6 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
 }
 
 /**
- * Get a single character by ID
- *
- * @param characterId - The character ID
- * @returns Character or null if not found
- *
- * @example
- * ```ts
- * const character = await getCharacterById(characterId);
- * if (!character) {
- *   return NextResponse.json({ error: 'Character not found' }, { status: 404 });
- * }
- * ```
- */
-async function getCharacterById(
-  characterId: string
-): Promise<Character | null> {
-  const result = await getDb()
-    .select()
-    .from(characters)
-    .where(eq(characters.id, characterId));
-  return result[0] ?? null;
-}
-
-/**
  * Get a team by ID
  *
  * @param teamId - The team ID
@@ -354,7 +330,7 @@ async function getTeamById(teamId: string) {
  */
 async function getTeamLibrary(teamId: string): Promise<{
   styles: Style[];
-  characters: Character[];
+  characters: LibraryCharacter[];
   vfx: Vfx[];
   audio: Audio[];
 }> {

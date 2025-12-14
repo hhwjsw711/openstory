@@ -98,40 +98,6 @@ export const styleAdaptations = sqliteTable(
 );
 
 /**
- * Characters library
- * LoRA models and character definitions
- */
-export const characters = sqliteTable(
-  'characters',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    teamId: text('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    name: text({ length: 255 }).notNull(),
-    loraUrl: text('lora_url'),
-    config: text({ mode: 'json' }).default('{}'),
-    previewUrl: text('preview_url'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    createdBy: text('created_by').references(() => user.id, {
-      onDelete: 'set null',
-    }),
-  },
-  (table) => [
-    index('idx_characters_name').on(table.name),
-    index('idx_characters_team_id').on(table.teamId),
-  ]
-);
-
-/**
  * VFX library
  * Visual effects presets and configurations
  */
@@ -223,17 +189,6 @@ export const styleAdaptationsRelations = relations(
   })
 );
 
-export const charactersRelations = relations(characters, ({ one }) => ({
-  team: one(teams, {
-    fields: [characters.teamId],
-    references: [teams.id],
-  }),
-  user: one(user, {
-    fields: [characters.createdBy],
-    references: [user.id],
-  }),
-}));
-
 export const vfxRelations = relations(vfx, ({ one }) => ({
   team: one(teams, {
     fields: [vfx.teamId],
@@ -261,10 +216,7 @@ export type Style = InferSelectModel<typeof styles>;
 export type NewStyle = InferInsertModel<typeof styles>;
 
 export type StyleAdaptation = InferSelectModel<typeof styleAdaptations>;
-type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
-
-export type Character = InferSelectModel<typeof characters>;
-export type NewCharacter = InferInsertModel<typeof characters>;
+export type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
 
 export type Vfx = InferSelectModel<typeof vfx>;
 export type NewVfx = InferInsertModel<typeof vfx>;
