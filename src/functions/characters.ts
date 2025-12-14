@@ -31,7 +31,6 @@ import {
   updateCharacter,
 } from '@/lib/db/helpers';
 import {
-  getPublicUrl,
   STORAGE_BUCKETS,
   uploadFile,
   deleteFile,
@@ -39,6 +38,8 @@ import {
   getMimeTypeFromExtension,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
+import type { LibraryCharacterSheetWorkflowInput } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow';
 import type {
   CharacterSheetSource,
   CharacterWithSheets,
@@ -377,4 +378,62 @@ export const deleteCharacterMediaFn = createServerFn({ method: 'POST' })
     }
 
     return { success: true };
+  });
+
+// ============================================================================
+// Generate Character Sheet
+// ============================================================================
+
+const generateSheetInputSchema = z.object({
+  characterId: ulidSchema,
+  sheetName: z.string().optional(),
+});
+
+/**
+ * Generate a character sheet from reference media
+ * Triggers the library-character-sheet workflow
+ */
+export const generateCharacterSheetFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(generateSheetInputSchema))
+  .handler(async ({ context, data }) => {
+    // Get character with relations to check for media
+    const character = await getCharacterWithRelations(data.characterId);
+
+    if (!character) {
+      throw new Error('Character not found');
+    }
+
+    if (character.teamId !== context.teamId) {
+      throw new Error('Character not found');
+    }
+
+    // Check that character has reference media
+    const imageMedia = character.media?.filter((m) => m.type === 'image') ?? [];
+    if (imageMedia.length === 0) {
+      throw new Error(
+        'Character must have at least one reference image to generate a sheet'
+      );
+    }
+
+    // Get reference image URLs
+    const referenceImageUrls = imageMedia.map((m) => m.url);
+
+    // Trigger the workflow
+    const workflowInput: LibraryCharacterSheetWorkflowInput = {
+      userId: context.user.id,
+      teamId: context.teamId,
+      characterId: character.id,
+      characterName: character.name,
+      characterDescription: character.description ?? undefined,
+      referenceImageUrls,
+      sheetName: data.sheetName,
+    };
+
+    const runId = await triggerWorkflow(
+      '/library-character-sheet',
+      workflowInput
+    );
+
+    return { runId };
   });

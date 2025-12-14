@@ -10,9 +10,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCharacterSheetRealtime } from '@/hooks/use-character-realtime';
 import {
   useCharacter,
   useDeleteCharacter,
+  useGenerateCharacterSheet,
   useToggleCharacterFavorite,
 } from '@/hooks/use-characters';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,9 @@ function CharacterDetailPage() {
   const { data: character, isLoading, error } = useCharacter(id);
   const toggleFavorite = useToggleCharacterFavorite();
   const deleteCharacter = useDeleteCharacter();
+  const generateSheet = useGenerateCharacterSheet();
+  const { isGenerating: isGeneratingSheet, error: sheetError } =
+    useCharacterSheetRealtime(id);
 
   const handleDelete = async () => {
     if (!character) return;
@@ -145,21 +150,67 @@ function CharacterDetailPage() {
 
         {/* Character Sheets Section */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <ImageIcon className="h-5 w-5" />
-            Character Sheets ({character.sheets.length})
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Character Sheets ({character.sheets.length})
+            </h2>
+            {character.media &&
+              character.media.filter((m) => m.type === 'image').length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    generateSheet.mutate({ characterId: character.id })
+                  }
+                  disabled={generateSheet.isPending || isGeneratingSheet}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {generateSheet.isPending || isGeneratingSheet
+                    ? 'Generating…'
+                    : 'Generate Sheet'}
+                </Button>
+              )}
+          </div>
 
           {character.sheets.length === 0 ? (
             <Card className="p-8 text-center">
               <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-muted-foreground">
-                Character sheets are automatically generated when this character
-                is used in a sequence.
-              </p>
+              {character.media &&
+              character.media.filter((m) => m.type === 'image').length > 0 ? (
+                <div>
+                  <p className="text-muted-foreground mb-3">
+                    {isGeneratingSheet
+                      ? 'Generating character sheet from your reference images…'
+                      : 'No character sheets yet. Generate one from your reference images.'}
+                  </p>
+                  {sheetError && (
+                    <p className="text-destructive text-sm mb-3">
+                      {sheetError}
+                    </p>
+                  )}
+                  <Button
+                    onClick={() =>
+                      generateSheet.mutate({ characterId: character.id })
+                    }
+                    disabled={generateSheet.isPending || isGeneratingSheet}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {generateSheet.isPending || isGeneratingSheet
+                      ? 'Generating…'
+                      : 'Generate Sheet'}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  Upload reference images to generate a character sheet, or
+                  sheets will be created when this character is used in a
+                  sequence.
+                </p>
+              )}
             </Card>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {character.sheets.map((sheet) => (
                 <Card
                   key={sheet.id}
@@ -168,7 +219,7 @@ function CharacterDetailPage() {
                     sheet.isDefault && 'ring-2 ring-primary'
                   )}
                 >
-                  <div className="aspect-square bg-muted relative">
+                  <div className="aspect-video bg-muted relative">
                     {sheet.imageUrl ? (
                       <img
                         src={sheet.imageUrl}

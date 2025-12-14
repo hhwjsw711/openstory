@@ -15,6 +15,7 @@ import {
   deleteCharacterSheetFn,
   uploadCharacterMediaFn,
   deleteCharacterMediaFn,
+  generateCharacterSheetFn,
 } from '@/functions/characters';
 
 // Local hook input types
@@ -256,5 +257,25 @@ export function useDeleteCharacterMedia() {
         queryKey: characterKeys.detail(variables.characterId),
       });
     },
+  });
+}
+
+/**
+ * Hook for generating a character sheet from reference media
+ * Triggers the library-character-sheet workflow
+ */
+export function useGenerateCharacterSheet() {
+  return useMutation<
+    { runId: string },
+    Error,
+    { characterId: string; sheetName?: string }
+  >({
+    mutationFn: async ({ characterId, sheetName }) => {
+      const data = await generateCharacterSheetFn({
+        data: { characterId, sheetName },
+      });
+      return data;
+    },
+    // No onSuccess needed - realtime events will update the cache
   });
 }
