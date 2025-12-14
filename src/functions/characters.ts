@@ -30,7 +30,7 @@ import {
 } from '@/lib/db/helpers';
 import type {
   CharacterSheetSource,
-  LibraryCharacterWithSheets,
+  CharacterWithSheets,
 } from '@/lib/db/schema';
 
 // ============================================================================
@@ -44,7 +44,7 @@ import type {
 export const getCharactersFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(listCharactersFilterSchema.optional()))
-  .handler(async ({ context, data }): Promise<LibraryCharacterWithSheets[]> => {
+  .handler(async ({ context, data }): Promise<CharacterWithSheets[]> => {
     // If filtering by sequence, get characters used in that sequence
     if (data?.sequenceId) {
       return getCharactersForSequence(context.teamId, data.sequenceId);

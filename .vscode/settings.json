@@ -59,5 +59,8 @@
   "oxc.fmt.experimental": true,
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "oxc.fixKind": "dangerous_fix_or_suggestion",
-  "oxc.fmt.configPath": ".oxfmtrc.json"
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "workbench.editor.closeOnFileDelete": false
 }

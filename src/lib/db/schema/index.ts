@@ -45,7 +45,7 @@ export type {
 export {
   characterMedia,
   characterSheets,
-  libraryCharacters,
+  characters,
   sequenceCharacterUsages,
 } from './characters';
 
@@ -54,12 +54,12 @@ export type {
   CharacterMediaType,
   CharacterSheet,
   CharacterSheetSource,
-  LibraryCharacter,
-  LibraryCharacterWithRelations,
-  LibraryCharacterWithSheets,
+  Character,
+  CharacterWithRelations,
+  CharacterWithSheets,
   NewCharacterMedia,
   NewCharacterSheet,
-  NewLibraryCharacter,
+  NewCharacter,
   NewSequenceCharacterUsage,
   SequenceCharacterUsage,
 } from './characters';
@@ -128,8 +128,8 @@ export const schema = {
   sequenceCharactersRelations,
 
   // Character Library (new)
-  libraryCharacters,
-  libraryCharactersRelations,
+  characters,
+  charactersRelations,
   characterSheets,
   characterSheetsRelations,
   characterMedia,
@@ -189,8 +189,8 @@ import {
   characterMediaRelations,
   characterSheets,
   characterSheetsRelations,
-  libraryCharacters,
-  libraryCharactersRelations,
+  characters,
+  charactersRelations,
   sequenceCharacterUsages,
   sequenceCharacterUsagesRelations,
 } from './characters';

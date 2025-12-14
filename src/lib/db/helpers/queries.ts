@@ -7,14 +7,14 @@ import { getDb } from '#db-client';
 import type {
   Audio,
   Frame,
-  LibraryCharacter,
+  Character,
   Sequence,
   Style,
   Vfx,
 } from '@/lib/db/schema';
 import {
   audio,
-  libraryCharacters,
+  characters,
   sequences,
   styles,
   teams,
@@ -203,12 +203,12 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
  * const characters = await getTeamCharacters(teamId);
  * ```
  */
-async function getTeamCharacters(teamId: string): Promise<LibraryCharacter[]> {
+async function getTeamCharacters(teamId: string): Promise<Character[]> {
   return await getDb()
     .select()
-    .from(libraryCharacters)
-    .where(eq(libraryCharacters.teamId, teamId))
-    .orderBy(desc(libraryCharacters.createdAt));
+    .from(characters)
+    .where(eq(characters.teamId, teamId))
+    .orderBy(desc(characters.createdAt));
 }
 
 /**
@@ -330,7 +330,7 @@ async function getTeamById(teamId: string) {
  */
 async function getTeamLibrary(teamId: string): Promise<{
   styles: Style[];
-  characters: LibraryCharacter[];
+  characters: Character[];
   vfx: Vfx[];
   audio: Audio[];
 }> {

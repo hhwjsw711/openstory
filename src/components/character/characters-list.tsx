@@ -3,12 +3,12 @@
 import { CharacterCard } from '@/components/character/character-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import type { LibraryCharacterWithSheets } from '@/lib/db/schema';
+import type { CharacterWithSheets } from '@/lib/db/schema';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 
 type CharactersListProps = {
-  characters?: LibraryCharacterWithSheets[];
+  characters?: CharacterWithSheets[];
   isLoading?: boolean;
   error?: Error | null;
 };

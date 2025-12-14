@@ -1,8 +1,4 @@
-import {
-  characterMedia,
-  characterSheets,
-  libraryCharacters,
-} from '@/lib/db/schema';
+import { characterMedia, characterSheets, characters } from '@/lib/db/schema';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -11,7 +7,7 @@ import { z } from 'zod';
  */
 
 // Character schemas
-export const createCharacterSchema = createInsertSchema(libraryCharacters, {
+export const createCharacterSchema = createInsertSchema(characters, {
   name: z.string().min(1).max(255),
   description: z.string().optional(),
 }).omit({
@@ -22,15 +18,13 @@ export const createCharacterSchema = createInsertSchema(libraryCharacters, {
   updatedAt: true,
 });
 
-export const updateCharacterSchema = createUpdateSchema(libraryCharacters).omit(
-  {
-    id: true,
-    teamId: true,
-    createdBy: true,
-    createdAt: true,
-    updatedAt: true,
-  }
-);
+export const updateCharacterSchema = createUpdateSchema(characters).omit({
+  id: true,
+  teamId: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // Character sheet schemas
 export const createCharacterSheetSchema = createInsertSchema(characterSheets, {

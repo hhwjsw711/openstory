@@ -1,6 +1,6 @@
 import type {
-  LibraryCharacter,
-  LibraryCharacterWithSheets,
+  Character,
+  CharacterWithSheets,
   CharacterSheet,
 } from '@/lib/db/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -50,7 +50,7 @@ export const characterKeys = {
  * Optionally filter by favorites or sequence usage
  */
 export function useCharacters(filters?: ListCharactersFilter, enabled = true) {
-  return useQuery<LibraryCharacterWithSheets[]>({
+  return useQuery<CharacterWithSheets[]>({
     queryKey: characterKeys.list(filters),
     queryFn: async () => {
       const data = await getCharactersFn({ data: filters });
@@ -82,7 +82,7 @@ export function useCharacter(id: string, enabled = true) {
 export function useCreateCharacter() {
   const queryClient = useQueryClient();
 
-  return useMutation<LibraryCharacter, Error, CreateCharacterInput>({
+  return useMutation<Character, Error, CreateCharacterInput>({
     mutationFn: async (input) => {
       const data = await createCharacterFn({ data: input });
       return data;
@@ -100,7 +100,7 @@ export function useUpdateCharacter() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    LibraryCharacter,
+    Character,
     Error,
     { id: string; input: UpdateCharacterInput }
   >({
@@ -146,7 +146,7 @@ export function useDeleteCharacter() {
 export function useToggleCharacterFavorite() {
   const queryClient = useQueryClient();
 
-  return useMutation<LibraryCharacter, Error, string>({
+  return useMutation<Character, Error, string>({
     mutationFn: async (id) => {
       const data = await toggleCharacterFavoriteFn({
         data: { characterId: id },

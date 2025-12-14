@@ -3,13 +3,13 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToggleCharacterFavorite } from '@/hooks/use-characters';
-import type { LibraryCharacterWithSheets } from '@/lib/db/schema';
+import type { CharacterWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { ImageIcon, Star, User } from 'lucide-react';
 import type React from 'react';
 
 type CharacterCardProps = {
-  character: LibraryCharacterWithSheets;
+  character: CharacterWithSheets;
   onClick?: () => void;
 };
 

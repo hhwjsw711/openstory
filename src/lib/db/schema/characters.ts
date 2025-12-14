@@ -41,8 +41,8 @@ export type CharacterMediaType = (typeof CHARACTER_MEDIA_TYPES)[number];
 // ============================================================================
 
 // Note: Keep as 'library_characters' until old characters table from libraries.ts is dropped
-export const libraryCharacters = sqliteTable(
-  'library_characters',
+export const characters = sqliteTable(
+  'characters',
   {
     id: text()
       .$defaultFn(() => generateId())
@@ -87,7 +87,7 @@ export const characterSheets = sqliteTable(
       .notNull(),
     characterId: text('character_id')
       .notNull()
-      .references(() => libraryCharacters.id, { onDelete: 'cascade' }),
+      .references(() => characters.id, { onDelete: 'cascade' }),
     name: text({ length: 255 }).notNull(), // e.g., "casual outfit", "formal wear"
     imageUrl: text('image_url'),
     imagePath: text('image_path'), // R2 storage path
@@ -123,7 +123,7 @@ export const characterMedia = sqliteTable(
       .notNull(),
     characterId: text('character_id')
       .notNull()
-      .references(() => libraryCharacters.id, { onDelete: 'cascade' }),
+      .references(() => characters.id, { onDelete: 'cascade' }),
     type: text().$type<CharacterMediaType>().notNull(),
     url: text().notNull(),
     path: text(), // R2 storage path
@@ -156,7 +156,7 @@ export const sequenceCharacterUsages = sqliteTable(
       .notNull(),
     characterId: text('character_id')
       .notNull()
-      .references(() => libraryCharacters.id, { onDelete: 'cascade' }),
+      .references(() => characters.id, { onDelete: 'cascade' }),
     characterSheetId: text('character_sheet_id').references(
       () => characterSheets.id,
       { onDelete: 'set null' }
@@ -192,46 +192,43 @@ export const sequenceCharacterUsages = sqliteTable(
 // Relations
 // ============================================================================
 
-export const libraryCharactersRelations = relations(
-  libraryCharacters,
-  ({ one, many }) => ({
-    team: one(teams, {
-      fields: [libraryCharacters.teamId],
-      references: [teams.id],
-    }),
-    createdByUser: one(user, {
-      fields: [libraryCharacters.createdBy],
-      references: [user.id],
-    }),
-    sheets: many(characterSheets),
-    media: many(characterMedia),
-    usages: many(sequenceCharacterUsages),
-  })
-);
+export const charactersRelations = relations(characters, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [characters.teamId],
+    references: [teams.id],
+  }),
+  createdByUser: one(user, {
+    fields: [characters.createdBy],
+    references: [user.id],
+  }),
+  sheets: many(characterSheets),
+  media: many(characterMedia),
+  usages: many(sequenceCharacterUsages),
+}));
 
 export const characterSheetsRelations = relations(
   characterSheets,
   ({ one }) => ({
-    character: one(libraryCharacters, {
+    character: one(characters, {
       fields: [characterSheets.characterId],
-      references: [libraryCharacters.id],
+      references: [characters.id],
     }),
   })
 );
 
 export const characterMediaRelations = relations(characterMedia, ({ one }) => ({
-  character: one(libraryCharacters, {
+  character: one(characters, {
     fields: [characterMedia.characterId],
-    references: [libraryCharacters.id],
+    references: [characters.id],
   }),
 }));
 
 export const sequenceCharacterUsagesRelations = relations(
   sequenceCharacterUsages,
   ({ one }) => ({
-    character: one(libraryCharacters, {
+    character: one(characters, {
       fields: [sequenceCharacterUsages.characterId],
-      references: [libraryCharacters.id],
+      references: [characters.id],
     }),
     sheet: one(characterSheets, {
       fields: [sequenceCharacterUsages.characterSheetId],
@@ -252,8 +249,8 @@ export const sequenceCharacterUsagesRelations = relations(
 // Type Exports
 // ============================================================================
 
-export type LibraryCharacter = InferSelectModel<typeof libraryCharacters>;
-export type NewLibraryCharacter = InferInsertModel<typeof libraryCharacters>;
+export type Character = InferSelectModel<typeof characters>;
+export type NewCharacter = InferInsertModel<typeof characters>;
 
 export type CharacterSheet = InferSelectModel<typeof characterSheets>;
 export type NewCharacterSheet = InferInsertModel<typeof characterSheets>;
@@ -269,13 +266,13 @@ export type NewSequenceCharacterUsage = InferInsertModel<
 >;
 
 // Composite types for API responses
-export type LibraryCharacterWithSheets = LibraryCharacter & {
+export type CharacterWithSheets = Character & {
   sheets: CharacterSheet[];
   sheetCount: number;
   defaultSheet: CharacterSheet | null;
 };
 
-export type LibraryCharacterWithRelations = LibraryCharacter & {
+export type CharacterWithRelations = Character & {
   sheets: CharacterSheet[];
   media: CharacterMediaRecord[];
   usages: SequenceCharacterUsage[];
