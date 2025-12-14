@@ -1,13 +1,16 @@
 'use client';
 
-import { CharacterFilters, CharactersList } from '@/components/character';
+import {
+  CharacterFilters,
+  CharactersList,
+  CreateCharacterDialog,
+} from '@/components/character';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
   PageHeader,
   PageHeading,
 } from '@/components/typography';
-import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useCharacters } from '@/hooks/use-characters';
 import { createFileRoute } from '@tanstack/react-router';
@@ -38,7 +41,7 @@ function CharactersPage() {
   return (
     <div className="h-full overflow-auto">
       <PageContainer>
-        <PageHeader actions={<Button disabled>Add Character</Button>}>
+        <PageHeader actions={<CreateCharacterDialog />}>
           <PageHeading>Character Library</PageHeading>
           <PageDescription>
             Manage your team's character library for consistent AI-generated
@@ -53,11 +56,7 @@ function CharactersPage() {
             icon={<User className="h-12 w-12" />}
             title="No characters yet"
             description="Add characters to your library to maintain visual consistency across your sequences."
-            action={
-              <Button disabled size="lg">
-                Add Your First Character
-              </Button>
-            }
+            action={<CreateCharacterDialog />}
           />
         ) : (
           <CharactersList
