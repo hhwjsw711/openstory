@@ -44,5 +44,14 @@ export default {
     '@vitest/coverage-v8',
     // shadcn CLI tool
     'shadcn',
+    // Cloudflare Workers runtime module (not an npm package)
+    'cloudflare',
+  ],
+  ignoreBinaries: [
+    // CLI tools used in package.json scripts
+    'mkcert',
+    'pbcopy',
+    'doppler',
+    'jq',
   ],
 } satisfies KnipConfig;
