@@ -23,15 +23,14 @@ export type {
 } from './teams';
 
 // Sequences
-export { frames, sequences } from './sequences';
+export { sequences } from './sequences';
 
-export type {
-  Frame,
-  NewFrame,
-  NewSequence,
-  Sequence,
-  SequenceStatus,
-} from './sequences';
+export type { NewSequence, Sequence, SequenceStatus } from './sequences';
+
+// Frames
+export { frames } from './frames';
+
+export type { Frame, NewFrame } from './frames';
 
 // Sequence Characters
 export { sequenceCharacters } from './sequence-characters';
@@ -146,12 +145,9 @@ import {
   teamsRelations,
 } from './teams';
 
-import {
-  frames,
-  framesRelations,
-  sequences,
-  sequencesRelations,
-} from './sequences';
+import { sequences, sequencesRelations } from './sequences';
+
+import { frames, framesRelations } from './frames';
 
 import {
   sequenceCharacters,

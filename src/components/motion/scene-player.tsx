@@ -74,10 +74,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     currentFrame.videoUrl;
   const hasFailedVideo = currentFrame && currentFrame.videoStatus === 'failed';
 
-  // Fetch download URL with proper Content-Disposition header
+  // Fetch signed download URL with Content-Disposition header (forces browser download)
   const { data: downloadData } = useFrameDownloadUrl(
-    currentFrame?.id,
-    !!hasCompletedVideo // Only fetch when video is available
+    { frameId: currentFrame?.id, sequenceId: currentFrame?.sequenceId },
+    !!hasCompletedVideo
   );
 
   // Handle video pause - disable autoplay when user manually pauses
@@ -114,10 +114,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       />
     );
   }
-
-  // Use filename from API (includes sequence + scene title) or generate fallback
-  const downloadFilename =
-    downloadData?.filename || `scene-${currentFrame.id}_velro.mp4`;
 
   // Get scene title for alt text
   const title = currentFrame.metadata?.metadata?.title;
@@ -171,7 +167,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             className="w-full h-full"
             autoPlay={shouldAutoPlay}
             enableDownload={!!currentFrame.videoUrl}
-            downloadFilename={downloadFilename}
+            downloadFilename={
+              downloadData?.filename || `scene-${currentFrame.id}_velro.mp4`
+            }
             downloadUrl={downloadData?.downloadUrl}
             onTimeUpdate={onTimeUpdate}
             onPause={handlePause}

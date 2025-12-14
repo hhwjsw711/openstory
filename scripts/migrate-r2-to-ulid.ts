@@ -9,7 +9,7 @@
  *   bun scripts/migrate-r2-to-ulid.ts                      # Dry run on Turso (requires env vars)
  */
 
-import { frames } from '@/lib/db/schema/sequences';
+import { frames } from '@/lib/db/schema/frames';
 import {
   copyFile,
   deleteFile,

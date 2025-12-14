@@ -652,7 +652,7 @@ export async function getFrameWithSequence(
     return null;
   }
 
-  return result as FrameWithSequence;
+  return result satisfies FrameWithSequence;
 }
 
 /**

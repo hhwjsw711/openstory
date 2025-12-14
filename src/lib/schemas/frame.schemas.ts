@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
-import { frames, FRAME_GENERATION_STATUSES } from '@/lib/db/schema/sequences';
+import { frames, FRAME_GENERATION_STATUSES } from '@/lib/db/schema/frames';
 import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 

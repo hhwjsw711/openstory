@@ -24,6 +24,7 @@ import {
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
+import { batchGenerateMotionFn } from '@/functions/frame-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
@@ -185,18 +186,12 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       });
 
       try {
-        const response = await fetch(
-          `/api/sequences/${sequenceId}/generate-motion`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ frameIds }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to start batch motion generation');
-        }
+        await batchGenerateMotionFn({
+          data: {
+            sequenceId,
+            frameIds,
+          },
+        });
       } catch (error) {
         // On error, remove from regenerating set
         setRegeneratingMotion((prev) => {

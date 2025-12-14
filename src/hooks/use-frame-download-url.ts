@@ -1,46 +1,32 @@
-/**
- * Hook to fetch download URL for a frame's video
- */
-
+import { getFrameDownloadUrlFn } from '@/functions/frames';
 import { useQuery } from '@tanstack/react-query';
 
-interface DownloadUrlResponse {
-  success: boolean;
-  data?: {
-    downloadUrl: string;
-    filename: string;
-  };
-  message?: string;
-}
+type UseFrameDownloadUrlParams = {
+  frameId?: string;
+  sequenceId?: string;
+};
 
+/**
+ * Hook to get a signed download URL for a frame's video.
+ * Uses Content-Disposition header to force browser download.
+ *
+ * @param params - Frame and sequence IDs
+ * @param enabled - Whether to fetch (default: true)
+ * @returns Query result with downloadUrl and filename
+ */
 export function useFrameDownloadUrl(
-  frameId: string | undefined,
+  { frameId, sequenceId }: UseFrameDownloadUrlParams,
   enabled = true
 ) {
   return useQuery({
-    queryKey: ['frame-download-url', frameId],
+    queryKey: ['frame-download-url', frameId, sequenceId],
     queryFn: async () => {
-      if (!frameId) {
-        throw new Error('Frame ID is required');
+      if (!frameId || !sequenceId) {
+        throw new Error('Frame ID and Sequence ID are required');
       }
-
-      const response = await fetch(`/api/frames/${frameId}/download`);
-
-      if (!response.ok) {
-        const responseJson: { error?: string } = await response.json();
-        throw new Error(responseJson.error || 'Failed to fetch download URL');
-      }
-
-      const data: DownloadUrlResponse = await response.json();
-
-      if (!data.success || !data.data) {
-        throw new Error(data.message || 'Failed to get download URL');
-      }
-
-      return data.data;
+      return getFrameDownloadUrlFn({ data: { frameId, sequenceId } });
     },
-    enabled: enabled && !!frameId,
+    enabled: enabled && !!frameId && !!sequenceId,
     staleTime: 30 * 60 * 1000, // 30 minutes (URLs expire in 1 hour)
-    gcTime: 45 * 60 * 1000, // 45 minutes
   });
 }

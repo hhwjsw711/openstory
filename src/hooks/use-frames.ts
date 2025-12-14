@@ -11,6 +11,14 @@ import {
   deleteFramesBySequenceFn,
   reorderFramesFn,
 } from '@/functions/frames';
+import {
+  generateFramesFn,
+  generateFrameImageFn,
+  generateFrameVariantsFn,
+  selectFrameVariantFn,
+} from '@/functions/frame-image';
+import type { TextToImageModel } from '@/lib/ai/models';
+import type { ImageSize } from '@/lib/constants/aspect-ratios';
 
 type CreateFrameInput = {
   sequenceId: string;
@@ -342,43 +350,20 @@ function useDeleteFramesBySequence() {
 }
 
 // Hook for generating frames with AI
-// NOTE: This triggers a workflow and should remain as fetch()
 function useGenerateFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    { jobId: string; message?: string },
+    { workflowRunId: string },
     Error,
     GenerateFramesInput,
     { previousFrames: Frame[] | undefined; sequenceId: string }
   >({
     mutationFn: async (input: GenerateFramesInput) => {
-      const response = await fetch(
-        `/api/sequences/${input.sequenceId}/frames/generate`,
-        {
-          method: 'POST',
-        }
-      );
-
-      const result: {
-        success: boolean;
-        data?: { jobId: string };
-        message?: string;
-      } = await response.json();
-
-      if (
-        !response.ok ||
-        !result.success ||
-        !result.data ||
-        !result.data.jobId
-      ) {
-        throw new Error(result.message || 'Failed to generate frames');
-      }
-
-      return {
-        jobId: result.data.jobId,
-        message: result.message,
-      };
+      const result = await generateFramesFn({
+        data: { sequenceId: input.sequenceId },
+      });
+      return { workflowRunId: result.workflowRunId };
     },
     onMutate: async ({ sequenceId }) => {
       await queryClient.cancelQueries({
@@ -395,10 +380,6 @@ function useGenerateFrames() {
       await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
-
-      await queryClient.invalidateQueries({
-        queryKey: ['active-job', sequenceId],
-      });
     },
     onError: (_, __, context) => {
       if (context?.previousFrames && context.sequenceId) {
@@ -412,41 +393,22 @@ function useGenerateFrames() {
 }
 
 // Hook for regenerating a single frame
-// NOTE: This triggers a workflow and should remain as fetch()
 function useRegenerateFrame() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ jobId: string }, Error, RegenerateFrameInput>({
+  return useMutation<{ workflowRunId: string }, Error, RegenerateFrameInput>({
     mutationFn: async (input: RegenerateFrameInput) => {
       const { sequenceId, frameId, ...body } = input;
 
-      const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}/generate-image`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      const result = await generateFrameImageFn({
+        data: {
+          sequenceId,
+          frameId,
+          ...body,
+        },
+      });
 
-      const result: {
-        success: boolean;
-        data?: { jobId: string };
-        message?: string;
-      } = await response.json();
-
-      if (
-        !response.ok ||
-        !result.success ||
-        !result.data ||
-        !result.data.jobId
-      ) {
-        throw new Error(result.message || 'Failed to regenerate frame');
-      }
-
-      return { jobId: result.data.jobId };
+      return { workflowRunId: result.workflowRunId };
     },
     onSuccess: async (_, { sequenceId, frameId }) => {
       await queryClient.invalidateQueries({
@@ -461,41 +423,25 @@ function useRegenerateFrame() {
 }
 
 // Hook for generating variant images for a frame
-// NOTE: This triggers a workflow and should remain as fetch()
 export function useGenerateVariants() {
   const queryClient = useQueryClient();
 
   return useMutation<{ workflowRunId: string }, Error, GenerateVariantInput>({
     mutationFn: async (input: GenerateVariantInput) => {
-      const { sequenceId, frameId, ...body } = input;
+      const { sequenceId, frameId, model, imageSize, numImages, seed } = input;
 
-      const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}/generate-variants`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      const result = await generateFrameVariantsFn({
+        data: {
+          sequenceId,
+          frameId,
+          model: model as TextToImageModel | undefined,
+          imageSize: imageSize as ImageSize | undefined,
+          numImages,
+          seed,
+        },
+      });
 
-      const result: {
-        success: boolean;
-        data?: { workflowRunId: string; frameId: string; message?: string };
-        message?: string;
-      } = await response.json();
-
-      if (
-        !response.ok ||
-        !result.success ||
-        !result.data ||
-        !result.data.workflowRunId
-      ) {
-        throw new Error(result.message || 'Failed to generate variants');
-      }
-
-      return { workflowRunId: result.data.workflowRunId };
+      return { workflowRunId: result.workflowRunId };
     },
     onSuccess: async (_, { sequenceId, frameId }) => {
       // Optimistically update frame status to 'generating'
@@ -535,55 +481,41 @@ export function useGenerateVariants() {
 }
 
 // Hook for selecting a variant panel and upscaling it
-// NOTE: This triggers a workflow and should remain as fetch()
 export function useSelectVariant() {
   const queryClient = useQueryClient();
 
-  return useMutation<Frame, Error, SelectVariantInput>({
+  return useMutation<
+    { frameId: string; thumbnailUrl: string; variantIndex: number },
+    Error,
+    SelectVariantInput
+  >({
     mutationFn: async (input: SelectVariantInput) => {
-      const { sequenceId, frameId, ...body } = input;
+      const { sequenceId, frameId, variantIndex } = input;
 
-      const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/${frameId}/select-variant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      const result = await selectFrameVariantFn({
+        data: {
+          sequenceId,
+          frameId,
+          variantIndex,
+        },
+      });
 
-      const result: {
-        success: boolean;
-        data?: { frameId: string; thumbnailUrl: string; variantIndex: number };
-        message?: string;
-        error?: unknown;
-      } = await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        const errorMessage =
-          result.message ||
-          (result.error &&
-          typeof result.error === 'object' &&
-          'message' in result.error
-            ? String(result.error.message)
-            : null) ||
-          `Failed to select variant (${response.status})`;
-        console.error('[useSelectVariant] API error:', {
-          status: response.status,
-          result,
-        });
-        throw new Error(errorMessage);
-      }
-
-      // Fetch updated frame using server function
-      const frame = await getFrameFn({ data: { sequenceId, frameId } });
-      return frame;
+      return {
+        frameId: result.frameId,
+        thumbnailUrl: result.thumbnailUrl,
+        variantIndex: result.variantIndex,
+      };
     },
     onSuccess: async (data, { sequenceId, frameId }) => {
-      // Update frame queries optimistically
-      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), data);
+      // Update frame queries with new thumbnail
+      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), (oldFrame) => {
+        if (!oldFrame) return oldFrame;
+        return {
+          ...oldFrame,
+          thumbnailUrl: data.thumbnailUrl,
+          thumbnailStatus: 'generating' as const, // Upscale is running
+        };
+      });
 
       queryClient.setQueryData<Frame[]>(
         frameKeys.list(sequenceId),
@@ -594,7 +526,7 @@ export function useSelectVariant() {
               ? {
                   ...f,
                   thumbnailUrl: data.thumbnailUrl,
-                  thumbnailStatus: data.thumbnailStatus,
+                  thumbnailStatus: 'generating' as const,
                 }
               : f
           );
@@ -609,54 +541,6 @@ export function useSelectVariant() {
       await queryClient.invalidateQueries({
         queryKey: frameKeys.list(sequenceId),
       });
-    },
-  });
-}
-
-// Hook to check for active frame generation jobs for a sequence
-// NOTE: This checks workflow status and should remain as fetch()
-function useActiveFrameGeneration(sequenceId: string) {
-  const queryClient = useQueryClient();
-
-  return useQuery({
-    queryKey: ['active-job', sequenceId],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/sequences/${sequenceId}/frames/generation/status`
-      );
-      const result: {
-        success: boolean;
-        data?: { status: string };
-        message?: string;
-      } = await response.json();
-
-      if (!response.ok || !result.success) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(result.message || 'Failed to get active job');
-      }
-
-      const job = result.data;
-
-      if (job && (job.status === 'running' || job.status === 'completed')) {
-        await queryClient.invalidateQueries({
-          queryKey: frameKeys.list(sequenceId),
-        });
-      }
-
-      return job;
-    },
-    enabled: !!sequenceId,
-    refetchInterval: (query) => {
-      if (
-        !query.state.data ||
-        query.state.data.status === 'completed' ||
-        query.state.data.status === 'failed'
-      ) {
-        return false;
-      }
-      return 2000;
     },
   });
 }

@@ -35,7 +35,7 @@ const isDryRun = !isExecute;
 const envIndex = process.argv.indexOf('--env');
 const environment = envIndex !== -1 ? process.argv[envIndex + 1] : 'dev';
 
-if (!['prd', 'stg', 'dev'].includes(environment)) {
+if (!['prd', 'stg'].includes(environment)) {
   console.error(`❌ Invalid environment: ${environment}`);
   console.error('   Valid options: prd, stg, dev');
   process.exit(1);

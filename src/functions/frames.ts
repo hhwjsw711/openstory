@@ -1,6 +1,6 @@
 /**
  * Frame Server Functions
- * End-to-end type-safe functions for frame operations
+ * CRUD operations for frames
  */
 
 import { createServerFn } from '@tanstack/react-start';
@@ -14,6 +14,7 @@ import {
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { frameService } from '@/lib/services/frame.service';
+import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import type { NewFrame } from '@/lib/db/schema';
 
 // ============================================================================
@@ -174,4 +175,42 @@ export const reorderFramesFn = createServerFn({ method: 'POST' })
     }));
     await frameService.reorderFrames(data.sequenceId, frameOrders);
     return { success: true };
+  });
+
+// ============================================================================
+// Get Frame Download URL
+// ============================================================================
+
+const getFrameDownloadUrlInputSchema = z.object({
+  sequenceId: ulidSchema,
+  frameId: ulidSchema,
+});
+
+/**
+ * Get a signed download URL for a frame's video
+ * Uses Content-Disposition header to force browser download
+ * @returns Download URL and filename for the video
+ */
+export const getFrameDownloadUrlFn = createServerFn({ method: 'GET' })
+  .middleware([frameAccessMiddleware])
+  .inputValidator(zodValidator(getFrameDownloadUrlInputSchema))
+  .handler(async ({ context }) => {
+    const { frame } = context;
+
+    if (!frame.videoPath) {
+      throw new Error('Frame does not have a video');
+    }
+
+    // Extract filename from the stored path (already has human-readable name)
+    const filename =
+      frame.videoPath.split('/').pop() || `scene-${frame.id}_velro.mp4`;
+
+    // Generate signed URL with Content-Disposition: attachment (forces download)
+    const downloadUrl = await getVideoDownloadUrl(
+      frame.videoPath,
+      filename,
+      3600
+    );
+
+    return { downloadUrl, filename };
   });

@@ -1,16 +1,8 @@
 'use client';
 
 import { useSession } from '@/lib/auth/client';
-import type { UserProfile } from '@/types/database';
+import { getCurrentUserFn, type CurrentUserData } from '@/functions/user';
 import { useQuery } from '@tanstack/react-query';
-
-interface UserData {
-  user: UserProfile;
-  isAuthenticated: boolean;
-  teamId?: string;
-  teamRole?: string;
-  teamName?: string;
-}
 
 /**
  * Hook for client components that need user data
@@ -22,22 +14,7 @@ export function useUser() {
 
   return useQuery({
     queryKey: ['current-user'],
-    queryFn: async (): Promise<UserData> => {
-      // Fetch user data - session guaranteed by middleware
-      const response = await fetch('/api/user/me');
-      const result: { success: boolean; data?: UserData; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to fetch user');
-      }
-
-      if (!result.data) {
-        throw new Error('No user data returned');
-      }
-
-      return result.data;
-    },
+    queryFn: (): Promise<CurrentUserData> => getCurrentUserFn(),
     enabled: !isSessionPending && !!session, // Only fetch if session exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Retry once on failure
