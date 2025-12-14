@@ -100,10 +100,10 @@ export const bulkFrameSchema = z.object({
 
 export type CreateFrameInput = z.infer<typeof createFrameSchema>;
 export type UpdateFrameInput = z.infer<typeof updateFrameSchema>;
-type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
-type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
-type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
-type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
-type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
-type SingleFrameInput = z.infer<typeof singleFrameSchema>;
-type BulkFrameInput = z.infer<typeof bulkFrameSchema>;
+export type DeleteFrameInput = z.infer<typeof deleteFrameSchema>;
+export type GenerateFramesInput = z.infer<typeof generateFramesSchema>;
+export type RegenerateFrameInput = z.infer<typeof regenerateFrameSchema>;
+export type GenerateMotionInput = z.infer<typeof generateMotionSchema>;
+export type GenerateVariantInput = z.infer<typeof generateVariantSchema>;
+export type SingleFrameInput = z.infer<typeof singleFrameSchema>;
+export type BulkFrameInput = z.infer<typeof bulkFrameSchema>;

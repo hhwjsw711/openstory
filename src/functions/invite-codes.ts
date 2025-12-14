@@ -14,28 +14,6 @@ import { user } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 // ============================================================================
-// Validate Invite Code
-// ============================================================================
-
-const validateCodeInputSchema = z.object({
-  code: z.string().min(1, 'Invite code is required'),
-});
-
-/**
- * Validate an invite code (no auth required)
- * @returns Whether the code is valid
- */
-export const validateInviteCodeFn = createServerFn({ method: 'POST' })
-  .inputValidator(zodValidator(validateCodeInputSchema))
-  .handler(async ({ data }) => {
-    const isValid = isValidAccessCode(data.code);
-    return {
-      isValid,
-      message: isValid ? 'Valid invite code' : 'Invalid invite code',
-    };
-  });
-
-// ============================================================================
 // Activate Invite Code
 // ============================================================================
 
