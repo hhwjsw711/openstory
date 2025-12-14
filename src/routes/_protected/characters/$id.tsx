@@ -1,6 +1,6 @@
 'use client';
 
-import { EditCharacterDialog } from '@/components/character';
+import { CharacterDialog } from '@/components/character';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
@@ -110,7 +110,8 @@ function CharacterDetailPage() {
         <PageHeader
           actions={
             <div className="flex items-center gap-2">
-              <EditCharacterDialog
+              <CharacterDialog
+                mode="edit"
                 character={character}
                 trigger={
                   <Button variant="outline" size="icon">

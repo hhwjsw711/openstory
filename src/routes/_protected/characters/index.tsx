@@ -1,9 +1,9 @@
 'use client';
 
 import {
+  CharacterDialog,
   CharacterFilters,
   CharactersList,
-  CreateCharacterDialog,
 } from '@/components/character';
 import { PageContainer } from '@/components/layout';
 import {
@@ -41,7 +41,7 @@ function CharactersPage() {
   return (
     <div className="h-full overflow-auto">
       <PageContainer>
-        <PageHeader actions={<CreateCharacterDialog />}>
+        <PageHeader actions={<CharacterDialog mode="create" />}>
           <PageHeading>Character Library</PageHeading>
           <PageDescription>
             Manage your team's character library for consistent AI-generated
@@ -56,7 +56,7 @@ function CharactersPage() {
             icon={<User className="h-12 w-12" />}
             title="No characters yet"
             description="Add characters to your library to maintain visual consistency across your sequences."
-            action={<CreateCharacterDialog />}
+            action={<CharacterDialog mode="create" />}
           />
         ) : (
           <CharactersList

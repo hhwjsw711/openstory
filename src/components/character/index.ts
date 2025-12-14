@@ -1,5 +1,4 @@
 export { CharacterCard } from './character-card';
+export { CharacterDialog } from './character-dialog';
 export { CharacterFilters } from './character-filters';
 export { CharactersList } from './characters-list';
-export { CreateCharacterDialog } from './create-character-dialog';
-export { EditCharacterDialog } from './edit-character-dialog';
