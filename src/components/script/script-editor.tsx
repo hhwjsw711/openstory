@@ -55,9 +55,11 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const hasError = Boolean(error) || isOverLimit;
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="relative min-h-0">
+    <>
+      <div className="min-h-0 overflow-hidden">
         <Textarea
+          name="script"
+          id="script"
           value={loading ? 'Loading...' : value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -66,7 +68,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0',
+            'min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"
@@ -103,6 +105,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 };

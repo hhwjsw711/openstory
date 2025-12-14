@@ -22,7 +22,6 @@ She answers anyway, her expression softening.
 SARAH (CONT'D)
 Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   status: 'draft',
-  metadata: {},
   createdAt: new Date('2024-01-15T10:30:00Z'),
   updatedAt: new Date('2024-01-15T10:30:00Z'),
   createdBy: null,

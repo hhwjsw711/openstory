@@ -9,12 +9,11 @@
 
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import {
-  createSequenceCharactersBulk,
   getSequenceCharacters as getSequenceCharactersHelper,
   getSequenceCharactersWithSheets as getSequenceCharactersWithSheetsHelper,
   updateCharacterSheet as updateCharacterSheetHelper,
 } from '@/lib/db/helpers/sequence-characters';
-import type { NewSequenceCharacter, SequenceCharacter } from '@/lib/db/schema';
+import type { SequenceCharacter } from '@/lib/db/schema';
 import { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
 
 /**
@@ -26,32 +25,6 @@ export type PromptWithReferences = {
   /** Array of character sheet URLs in order (for image_urls parameter) */
   referenceUrls: string[];
 };
-
-/**
- * Create sequence characters from a character bible
- *
- * @param sequenceId - The sequence ID
- * @param characterBible - Array of character bible entries from script analysis
- * @returns Array of created sequence characters
- */
-export async function createFromBible(
-  sequenceId: string,
-  characterBible: CharacterBibleEntry[]
-): Promise<SequenceCharacter[]> {
-  if (characterBible.length === 0) {
-    return [];
-  }
-
-  const newCharacters: NewSequenceCharacter[] = characterBible.map((entry) => ({
-    sequenceId,
-    characterId: entry.characterId,
-    name: entry.name,
-    metadata: entry,
-    sheetStatus: 'pending' as const,
-  }));
-
-  return await createSequenceCharactersBulk(newCharacters);
-}
 
 /**
  * Get all characters for a sequence
@@ -237,7 +210,9 @@ ${referenceLines.join('\n')}
 
 Generate the scene with characters matching their reference images exactly.`;
 
-  const referenceUrls = charactersWithSheets.map((c) => c.sheetImageUrl!);
+  const referenceUrls = charactersWithSheets
+    .map((c) => c.sheetImageUrl)
+    .filter((url): url is string => url !== null);
 
   return {
     prompt: enhancedPrompt,

@@ -8,7 +8,7 @@ import {
   generateMotionForFrame,
   GenerateMotionOptions,
   MotionResult,
-} from '@/lib/services/motion.service';
+} from '@/lib/motion/motion-generation';
 
 export type GenerateMotionFromScenesInput = Omit<
   GenerateMotionOptions,

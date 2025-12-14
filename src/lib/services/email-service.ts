@@ -23,20 +23,20 @@ function getEmailConfig(): {
   fromEmail: string;
   fromName: string;
 } {
-  const fromEmail =
-    getEnv().EMAIL_FROM ||
-    (process.env.NODE_ENV === 'development' ? 'onboarding@resend.dev' : null);
+  const envEmail = getEnv().EMAIL_FROM;
+  const isDev = process.env.NODE_ENV === 'development';
 
-  if (!fromEmail && process.env.NODE_ENV !== 'development') {
-    throw new Error(
-      'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
-    );
+  if (envEmail) {
+    return { fromEmail: envEmail, fromName: 'Velro' };
   }
 
-  return {
-    fromEmail: fromEmail!,
-    fromName: 'Velro',
-  };
+  if (isDev) {
+    return { fromEmail: 'onboarding@resend.dev', fromName: 'Velro' };
+  }
+
+  throw new Error(
+    'EMAIL_FROM environment variable is required in production. Must be a verified sender in Resend.'
+  );
 }
 
 interface SendEmailParams {

@@ -71,11 +71,6 @@ export const generateMockSequence = (
     updatedAt: faker.date.recent(),
     createdBy: faker.string.uuid(),
     updatedBy: faker.string.uuid(),
-    metadata: {
-      genre: faker.helpers.arrayElement(genres),
-      mood: faker.helpers.arrayElement(moods),
-      targetAudience: faker.helpers.arrayElement(audiences),
-    },
     workflow: null,
     ...overrides,
   };

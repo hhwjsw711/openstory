@@ -1,15 +1,23 @@
 import type { Style } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  getStylesFn,
+  getStyleFn,
+  createStyleFn,
+  updateStyleFn,
+  deleteStyleFn,
+} from '@/functions/styles';
 
-export interface CreateStyleInput {
+// Local hook input types (simpler than server schema types)
+export type CreateStyleInput = {
   name: string;
   description?: string;
-  config?: unknown;
+  config?: Record<string, unknown>;
   category?: string;
   tags?: string[];
-  is_public?: boolean;
-  preview_url?: string | null;
-}
+  isPublic?: boolean;
+  previewUrl?: string | null;
+};
 
 // Query keys
 export const styleKeys = {
@@ -25,15 +33,8 @@ export function useStyles(teamId?: string, enabled = true) {
   return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
-      const response = await fetch('/api/styles');
-      const result: { success: boolean; data?: Style[]; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to list styles');
-      }
-
-      return result.data;
+      const data = await getStylesFn();
+      return data as Style[];
     },
     staleTime: 10 * 60 * 1000, // 10 minutes (styles change less frequently)
     enabled,
@@ -45,15 +46,8 @@ export function useStyle(id: string) {
   return useQuery<Style>({
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
-      const response = await fetch(`/api/styles/${id}`);
-      const result: { success: boolean; data?: Style; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to get style');
-      }
-
-      return result.data;
+      const data = await getStyleFn({ data: { styleId: id } });
+      return data as Style;
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!id,
@@ -66,22 +60,10 @@ export function useCreateStyle() {
 
   return useMutation<Style, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
-      const response = await fetch('/api/styles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(input),
+      const data = await createStyleFn({
+        data: input as Parameters<typeof createStyleFn>[0]['data'],
       });
-
-      const result: { success: boolean; data?: Style; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to create style');
-      }
-
-      return result.data;
+      return data as Style;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
@@ -108,22 +90,13 @@ export function useUpdateStyle() {
       id: string;
       input: Partial<CreateStyleInput>;
     }) => {
-      const response = await fetch(`/api/styles/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(input),
+      const data = await updateStyleFn({
+        data: {
+          styleId: id,
+          ...input,
+        } as Parameters<typeof updateStyleFn>[0]['data'],
       });
-
-      const result: { success: boolean; data?: Style; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Failed to update style');
-      }
-
-      return result.data;
+      return data as Style;
     },
     onSuccess: async (data) => {
       if (data?.id) {
@@ -140,16 +113,7 @@ export function useDeleteStyle() {
 
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/styles/${id}`, {
-        method: 'DELETE',
-      });
-
-      const result: { success: boolean; message?: string } =
-        await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to delete style');
-      }
+      await deleteStyleFn({ data: { styleId: id } });
     },
     onSuccess: async (_, id) => {
       queryClient.removeQueries({ queryKey: styleKeys.detail(id) });

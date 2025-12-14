@@ -63,10 +63,9 @@ export const Route = createFileRoute(
           let allFrames = await getSequenceFrames(sequenceId);
 
           // Filter by specific frame IDs if provided
-          if (validatedData.frameIds && validatedData.frameIds.length > 0) {
-            allFrames = allFrames.filter((f) =>
-              validatedData.frameIds!.includes(f.id)
-            );
+          const { frameIds } = validatedData;
+          if (frameIds && frameIds.length > 0) {
+            allFrames = allFrames.filter((f) => frameIds.includes(f.id));
           }
 
           if (allFrames.length === 0) {

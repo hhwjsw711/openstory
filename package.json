@@ -90,6 +90,7 @@
     "@tanstack/react-router-devtools": "^1.141.1",
     "@tanstack/react-start": "^1.141.1",
     "@tanstack/react-virtual": "^3.13.13",
+    "@tanstack/zod-adapter": "^1.141.2",
     "@unpic/react": "^1.0.2",
     "@upstash/qstash": "^2.8.4",
     "@upstash/realtime": "^1.0.0",

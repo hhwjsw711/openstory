@@ -8,7 +8,7 @@ import { requireTeamMemberAccess, requireUser } from '@/lib/auth/action-utils';
 import { frames, sequences } from '@/lib/db/schema';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getVideoDownloadUrl } from '@/lib/services/video-storage.service';
+import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { eq } from 'drizzle-orm';
