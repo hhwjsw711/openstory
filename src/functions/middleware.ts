@@ -99,7 +99,7 @@ export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
  */
 export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
+  .inputValidator(zodValidator(z.looseObject({ sequenceId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     const sequence = await getSequenceById(data.sequenceId);
 
@@ -125,7 +125,7 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
 export const frameAccessMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
   .inputValidator(
-    zodValidator(z.object({ sequenceId: ulidSchema, frameId: ulidSchema }))
+    zodValidator(z.looseObject({ sequenceId: ulidSchema, frameId: ulidSchema }))
   )
   .server(async ({ next, context, data }) => {
     const frameData = await getFrameWithSequence(data.frameId);
@@ -166,7 +166,7 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
  */
 export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ teamId: ulidSchema })))
+  .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamMemberAccess(context.user.id, data.teamId);
 
@@ -184,7 +184,7 @@ export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
  */
 export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ teamId: ulidSchema })))
+  .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamAdminAccess(context.user.id, data.teamId);
 
@@ -202,7 +202,7 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
  */
 export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ teamId: ulidSchema })))
+  .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamOwnerAccess(context.user.id, data.teamId);
 

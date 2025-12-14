@@ -491,7 +491,7 @@ export function useSelectVariant() {
   >({
     mutationFn: async (input: SelectVariantInput) => {
       const { sequenceId, frameId, variantIndex } = input;
-
+      console.log('useSelectVariant', input);
       const result = await selectFrameVariantFn({
         data: {
           sequenceId,

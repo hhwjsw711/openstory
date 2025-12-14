@@ -344,7 +344,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const handleVariantSelect = useCallback(
     async (index: number) => {
       if (!frame?.id || !frame?.sequenceId) return;
-
+      console.log('handleVariantSelect', index);
       try {
         await selectVariant.mutateAsync({
           sequenceId: frame.sequenceId,
@@ -632,7 +632,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <Button
             onClick={handleGenerateSceneVariants}
             disabled={
-              isGeneratingSceneVariants || generateVariants.isPending || !frame
+              isGenerating ||
+              isGeneratingSceneVariants ||
+              generateVariants.isPending ||
+              !frame
             }
             className="w-full"
           >
