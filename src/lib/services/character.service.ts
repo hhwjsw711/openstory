@@ -210,7 +210,9 @@ ${referenceLines.join('\n')}
 
 Generate the scene with characters matching their reference images exactly.`;
 
-  const referenceUrls = charactersWithSheets.map((c) => c.sheetImageUrl!);
+  const referenceUrls = charactersWithSheets
+    .map((c) => c.sheetImageUrl)
+    .filter((url): url is string => url !== null);
 
   return {
     prompt: enhancedPrompt,

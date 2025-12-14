@@ -32,6 +32,7 @@ import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
 import React, { useEffect, useMemo, useState, type FC } from 'react';
+import { ScriptEditor } from './script-editor';
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -247,22 +248,15 @@ export const ScriptView: FC<{
         </CardHeader>
 
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
-          <div className="min-h-0 overflow-hidden">
-            <Textarea
-              value={loading ? 'Loading...' : scriptValue}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                const newValue = e.target.value;
-                if (newValue.length <= 50000) {
-                  setScript(newValue);
-                }
-              }}
-              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
-              disabled={loading}
-              autoFocus={autoFocus}
-              className="min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0"
-              data-testid="script-editor-textarea"
-            />
-          </div>
+          <ScriptEditor
+            value={scriptValue}
+            onValueChange={setScript}
+            maxLength={50000}
+            placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+            disabled={loading}
+            autoFocus={autoFocus}
+            showCharacterCount={false}
+          />
 
           <div className="shrink-0">
             <StyleSelector

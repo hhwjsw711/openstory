@@ -146,12 +146,13 @@ function applyFiltersAndSort(
     result = result.filter((s) => s.title.toLowerCase().includes(searchLower));
   }
 
-  if (filters.dateFrom) {
-    result = result.filter((s) => new Date(s.createdAt) >= filters.dateFrom!);
+  const { dateFrom, dateTo } = filters;
+  if (dateFrom) {
+    result = result.filter((s) => new Date(s.createdAt) >= dateFrom);
   }
 
-  if (filters.dateTo) {
-    result = result.filter((s) => new Date(s.createdAt) <= filters.dateTo!);
+  if (dateTo) {
+    result = result.filter((s) => new Date(s.createdAt) <= dateTo);
   }
 
   if (filters.analysisModel) {
