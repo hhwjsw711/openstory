@@ -7,7 +7,6 @@ const config: StorybookConfig = {
     '@storybook/addon-docs',
     '@storybook/addon-onboarding',
     '@storybook/addon-a11y',
-    '@storybook/addon-vitest',
     '@storybook/addon-themes',
   ],
   framework: {
@@ -15,21 +14,5 @@ const config: StorybookConfig = {
     options: {},
   },
   staticDirs: ['../public'],
-  viteFinal: async (config) => {
-    // Force Vite to pre-bundle React's CJS modules into ESM
-    // Fixes: ReferenceError: module is not defined in jsx-runtime.js
-    config.optimizeDeps = {
-      ...config.optimizeDeps,
-      include: [
-        ...(config.optimizeDeps?.include ?? []),
-        'react',
-        'react-dom',
-        'react/jsx-runtime',
-        'react/jsx-dev-runtime',
-        'react-dom/client',
-      ],
-    };
-    return config;
-  },
 };
 export default config;

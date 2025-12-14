@@ -40,8 +40,7 @@ export default {
     '@testing-library/jest-dom',
     '@testing-library/react',
     '@testing-library/user-event',
-    // Vitest coverage (CLI flag)
-    '@vitest/coverage-v8',
+
     // shadcn CLI tool
     'shadcn',
     // Cloudflare Workers runtime module (not an npm package)

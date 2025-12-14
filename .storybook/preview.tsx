@@ -1,5 +1,5 @@
 import { withThemeByClassName } from '@storybook/addon-themes';
-import type { Decorator, Preview } from '@storybook/react';
+import type { Decorator, Preview } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RealtimeProvider } from '@upstash/realtime/client';
 import { initialize, mswLoader } from 'msw-storybook-addon';
@@ -43,28 +43,14 @@ const preview: Preview = {
       },
     },
 
-    react: {
-      rootOptions: {
-        // Configure React root creation options
-        // See https://react.dev/reference/react-dom/client/createRoot#options
-        hydrationOptions: {
-          onRecoverableError: (error) => {
-            console.error('Recoverable React error:', error);
-          },
-        },
-      },
-    },
-
     backgrounds: {
-      disable: true, // Disable default backgrounds addon since we're using theme colors
+      disabled: true,
     },
 
     // Adds default padding around components
     layout: 'padded',
 
-    viewport: {
-      defaultViewport: 'responsive', // Default viewport size
-    },
+    viewport: {},
 
     // Configure MSW handlers globally for all stories
     msw: {
@@ -78,7 +64,9 @@ const preview: Preview = {
       test: 'todo',
     },
   },
+
   loaders: [mswLoader],
+
   decorators: [
     withProviders,
     withThemeByClassName({
@@ -89,6 +77,13 @@ const preview: Preview = {
       defaultTheme: 'dark',
     }),
   ],
+
+  initialGlobals: {
+    viewport: {
+      value: 'responsive',
+      isRotated: false,
+    },
+  },
 };
 
 export default preview;
