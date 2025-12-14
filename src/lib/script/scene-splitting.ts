@@ -15,7 +15,10 @@ import {
 } from '@/lib/ai/openrouter-client';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
-import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
+import {
+  type AspectRatio,
+  aspectRatioSchema,
+} from '@/lib/constants/aspect-ratios';
 import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts';
 import { z } from 'zod';
 

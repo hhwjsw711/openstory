@@ -5,8 +5,8 @@
 
 import {
   desc,
-  InferInsertModel,
-  InferSelectModel,
+  type InferInsertModel,
+  type InferSelectModel,
   relations,
 } from 'drizzle-orm';
 import {

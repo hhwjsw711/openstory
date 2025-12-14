@@ -5,7 +5,11 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/script';
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  type InferInsertModel,
+  type InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import {
   index,
   integer,

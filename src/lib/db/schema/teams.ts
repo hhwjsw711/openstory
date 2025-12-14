@@ -3,7 +3,11 @@
  * Team management, members, and invitations
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  type InferInsertModel,
+  type InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import {
   integer,
   sqliteTable,

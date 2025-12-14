@@ -6,8 +6,8 @@
 import type { Scene } from '@/lib/script';
 import {
   generateMotionForFrame,
-  GenerateMotionOptions,
-  MotionResult,
+  type GenerateMotionOptions,
+  type MotionResult,
 } from '@/lib/motion/motion-generation';
 
 type GenerateMotionFromScenesInput = Omit<

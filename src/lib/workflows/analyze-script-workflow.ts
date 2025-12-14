@@ -6,7 +6,7 @@
 import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import { ProgressCallback } from '@/lib/ai/openrouter-client';
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   updateSequenceAnalysisDurationMs,
@@ -14,7 +14,7 @@ import {
   updateSequenceTitle,
   updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
-import { NewFrame } from '@/lib/db/schema';
+import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import {
   extractCharacterBible,
@@ -22,7 +22,7 @@ import {
   generateMotionPromptsForScenes,
   splitScriptIntoScenes,
 } from '@/lib/script';
-import { Scene } from '@/lib/script/types';
+import type { Scene } from '@/lib/script/types';
 import { buildPromptWithReferences } from '@/lib/services/character.service';
 import { frameService } from '@/lib/services/frame.service';
 import type {
@@ -31,11 +31,11 @@ import type {
   MotionWorkflowInput,
 } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { FlowControl } from '@upstash/qstash';
+import type { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
+import type { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 const maxDuration = 800; // This function can run for a maximum of 800 seconds

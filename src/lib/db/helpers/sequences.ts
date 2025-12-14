@@ -1,17 +1,17 @@
 import { getDb } from '#db-client';
-import { AnalysisModelId } from '@/lib/ai/models.config';
+import type { AnalysisModelId } from '@/lib/ai/models.config';
 import {
-  AspectRatio,
+  type AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
 import { canAccessTeam } from '@/lib/db/helpers/team-permissions';
 import {
-  NewSequence,
-  Sequence,
-  SequenceStatus,
+  type NewSequence,
+  type Sequence,
+  type SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { AuthenticationError, ValidationError } from '@/lib/errors';
-import { CreateSequenceInput } from '@/lib/schemas/sequence.schemas';
+import type { CreateSequenceInput } from '@/lib/schemas/sequence.schemas';
 import { and, desc, eq } from 'drizzle-orm';
 import { sequences } from '../schema';
 

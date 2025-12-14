@@ -1,5 +1,5 @@
 import { withThemeByClassName } from '@storybook/addon-themes';
-import type { Decorator, Preview } from '@storybook/react-vite';
+import type { Decorator, Preview } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RealtimeProvider } from '@upstash/realtime/client';
 import { initialize, mswLoader } from 'msw-storybook-addon';

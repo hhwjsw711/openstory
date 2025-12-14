@@ -5,13 +5,13 @@
 
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import {
-  AspectRatio,
+  type AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
 import {
   desc,
-  InferInsertModel,
-  InferSelectModel,
+  type InferInsertModel,
+  type InferSelectModel,
   relations,
 } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';

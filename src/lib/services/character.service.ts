@@ -14,7 +14,7 @@ import {
   updateCharacterSheet as updateCharacterSheetHelper,
 } from '@/lib/db/helpers/sequence-characters';
 import type { SequenceCharacter } from '@/lib/db/schema';
-import { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
+import type { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
 
 /**
  * Result of building a prompt with character references

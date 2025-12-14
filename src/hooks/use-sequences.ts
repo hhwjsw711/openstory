@@ -1,7 +1,7 @@
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import {
-  CreateSequenceInput,
-  UpdateSequenceInput,
+  type CreateSequenceInput,
+  type UpdateSequenceInput,
 } from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

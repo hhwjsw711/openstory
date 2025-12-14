@@ -20,7 +20,7 @@ import {
   type AspectRatio,
   aspectRatioToImageSize,
 } from '@/lib/constants/aspect-ratios';
-import { Frame } from '@/types/database';
+import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';

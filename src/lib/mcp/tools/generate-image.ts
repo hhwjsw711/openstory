@@ -5,7 +5,7 @@
 
 import type { TextToImageModel } from '@/lib/ai/models';
 import { IMAGE_MODELS } from '@/lib/ai/models';
-import { ImageSize } from '@/lib/constants/aspect-ratios';
+import type { ImageSize } from '@/lib/constants/aspect-ratios';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,

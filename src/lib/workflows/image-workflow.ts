@@ -3,7 +3,7 @@ import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
   generateImageWithProvider,
-  ImageGenerationParams,
+  type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';

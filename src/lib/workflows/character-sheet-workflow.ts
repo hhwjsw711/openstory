@@ -12,7 +12,7 @@ import {
 } from '@/lib/db/helpers/sequence-characters';
 import {
   generateImageWithProvider,
-  ImageGenerationParams,
+  type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { buildCharacterSheetPrompt } from '@/lib/services/character.service';

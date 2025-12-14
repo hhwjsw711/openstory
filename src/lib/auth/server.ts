@@ -3,7 +3,7 @@
  * Provides session management for Server Actions and API routes
  */
 
-import { TeamMember, teamMembers } from '@/lib/db/schema';
+import { type TeamMember, teamMembers } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import type { User } from './config';
 import { getAuth } from './config';

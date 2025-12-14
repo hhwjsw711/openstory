@@ -14,7 +14,7 @@ import type { CharacterBibleWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from 'better-auth';
-import { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
+import type { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
 import { getGenerationChannel } from '@/lib/realtime';
 
 const maxDuration = 800;

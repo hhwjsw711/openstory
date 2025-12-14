@@ -8,13 +8,13 @@ import type {
   ImageToVideoModel,
   TextToImageModel,
 } from '@/lib/ai/models';
-import { AnalysisModelId } from '@/lib/ai/models.config';
+import type { AnalysisModelId } from '@/lib/ai/models.config';
 import type {
   CharacterBibleEntry,
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
-import { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
-import { DirectorDnaConfig } from '@/lib/services/director-dna-types';
+import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
+import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
 
 /**

@@ -1,4 +1,4 @@
-import { Style } from '@/types/database';
+import type { Style } from '@/types/database';
 
 /**
  * Get the R2 public assets domain from environment
