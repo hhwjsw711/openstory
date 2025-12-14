@@ -79,8 +79,8 @@ function isSceneComplete(scene: PartialScene): boolean {
  */
 function toBasicScene(scene: PartialScene): BasicScene {
   return {
-    sceneId: scene.sceneId!,
-    sceneNumber: scene.sceneNumber!,
+    sceneId: scene.sceneId ?? '',
+    sceneNumber: scene.sceneNumber ?? 0,
     title: scene.metadata?.title ?? '',
     scriptExtract: scene.originalScript?.extract ?? '',
     durationSeconds: scene.metadata?.durationSeconds ?? 0,

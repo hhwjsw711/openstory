@@ -78,7 +78,8 @@ export function useFramesBySequence(
   return useQuery<Frame[]>({
     queryKey: frameKeys.list(sequenceId ?? ''),
     queryFn: async () => {
-      const data = await getFramesFn({ data: { sequenceId: sequenceId! } });
+      if (!sequenceId) throw new Error('sequenceId is required');
+      const data = await getFramesFn({ data: { sequenceId } });
       return data;
     },
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness

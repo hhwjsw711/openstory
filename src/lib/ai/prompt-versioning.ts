@@ -16,8 +16,9 @@ const hashCache = new Map<string, string>();
 async function generateHash(content: string, length: number): Promise<string> {
   const cacheKey = `${content.substring(0, 100)}-${length}`;
 
-  if (hashCache.has(cacheKey)) {
-    return hashCache.get(cacheKey)!;
+  const cachedHash = hashCache.get(cacheKey);
+  if (cachedHash) {
+    return cachedHash;
   }
 
   const encoder = new TextEncoder();
