@@ -1,57 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Velro
 
-## Getting Started
+AI-powered video sequence platform.
 
-### Prerequisites
+## Tech Stack
 
-- Node.js 18+
-- bun (`npm install -g bun`)
+- **Runtime**: Bun
+- **Framework**: TanStack Start + TanStack Router + Vite
+- **Database**: Turso (libSQL) + Drizzle ORM
+- **Workflows**: QStash (durable execution)
+- **Storage**: Cloudflare R2
+- **Auth**: Better Auth
+- **Styling**: Tailwind v4 + shadcn/ui
 
-### Development Setup
-
-1. **Install dependencies:**
+## Setup
 
 ```bash
 bun install
+bun setup:env          # Configure local environment
+bun db:setup           # Migrate + seed database
 ```
 
-2. **Get Secrets**
+## Development
+
+Run in two terminals:
 
 ```bash
-# login to doppler
-doppler login
-
-# get dev secrets
-bun run secrets:dev
-```
-
-**Terminal 2 - QStash Tunnel (Job Queue)**
-
-```bash
+# Terminal 1: Async job processing
 bun qstash:dev
-```
 
-This creates a tunnel for QStash to reach your local API endpoints.
-
-**Terminal 3 - Next.js App**
-
-```bash
+# Terminal 2: Dev server
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-### Stopping Services
+## Scripts
 
-- Stop Next.js and QStash: Press `Ctrl+C` in their terminals
+| Command           | Description          |
+| ----------------- | -------------------- |
+| `bun dev`         | Start dev server     |
+| `bun build`       | Build for production |
+| `bun test`        | Run tests            |
+| `bun lint`        | Lint with oxlint     |
+| `bun format`      | Format with oxfmt    |
+| `bun typecheck`   | Type check           |
+| `bun db:generate` | Generate migrations  |
+| `bun db:migrate`  | Apply migrations     |
+| `bun db:studio`   | Open Drizzle Studio  |
+| `bun storybook`   | Start Storybook      |
 
-You can start editing the page by modifying `app/route.ts`. The page auto-updates as you edit the file.
+## Deployment
 
-## Learn More
+Supports Cloudflare Pages, Vercel, and Railway.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Cloudflare
+bun cf:deploy:stg   # Deploy to staging
+bun cf:deploy:prd   # Deploy to production
+```
