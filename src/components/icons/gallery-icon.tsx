@@ -17,7 +17,7 @@ const galleryIconVariants = cva('text-current', {
   },
 });
 
-export interface GalleryIconProps
+interface GalleryIconProps
   extends
     React.SVGProps<SVGSVGElement>,
     VariantProps<typeof galleryIconVariants> {}

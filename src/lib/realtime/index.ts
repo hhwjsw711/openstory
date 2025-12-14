@@ -111,4 +111,4 @@ export function getGenerationChannel(sequenceId?: string) {
 }
 
 // Export the schema type for type inference
-export type RealtimeSchema = typeof realtimeSchema;
+type RealtimeSchema = typeof realtimeSchema;

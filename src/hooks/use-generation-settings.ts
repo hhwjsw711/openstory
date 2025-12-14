@@ -22,7 +22,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'velro:generation-settings:v1';
 
-export type GenerationSettings = {
+type GenerationSettings = {
   aspectRatio: AspectRatio;
   analysisModels: AnalysisModelId[];
   imageModel: TextToImageModel;

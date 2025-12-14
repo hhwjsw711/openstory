@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
-import { frames, FRAME_GENERATION_STATUSES } from '@/lib/db/schema/sequences';
+import { frames, FRAME_GENERATION_STATUSES } from '@/lib/db/schema/frames';
 import { IMAGE_MODELS, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 
@@ -13,7 +13,7 @@ import { ulidSchema } from '@/lib/schemas/id.schemas';
  * but do not enforce FrameMetadata typing to maintain flexibility.
  */
 
-export const createFrameSchema = createInsertSchema(frames, {
+const createFrameSchema = createInsertSchema(frames, {
   description: (schema) => schema.min(1).max(5000),
   durationMs: (schema) => schema.min(1),
   thumbnailStatus: () =>
@@ -42,11 +42,11 @@ export const updateFrameSchema = createUpdateSchema(frames, {
   updatedAt: true,
 });
 
-export const deleteFrameSchema = z.object({
+const deleteFrameSchema = z.object({
   id: ulidSchema,
 });
 
-export const generateFramesSchema = z.object({
+const generateFramesSchema = z.object({
   sequenceId: ulidSchema,
   options: z
     .object({

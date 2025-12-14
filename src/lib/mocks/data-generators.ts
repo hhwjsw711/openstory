@@ -11,9 +11,7 @@ import { faker } from '@faker-js/faker';
 faker.seed(123);
 
 // Mock data generators
-export const generateMockSequence = (
-  overrides?: Partial<Sequence>
-): Sequence => {
+const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
   const genres = [
     'Action',
     'Comedy',
@@ -76,7 +74,7 @@ export const generateMockSequence = (
   };
 };
 
-export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
+const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
   const settings = [
     'City Street',
     'Forest',
@@ -230,7 +228,7 @@ export const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
   };
 };
 
-export const generateMockStyle = (overrides?: Partial<Style>): Style => {
+const generateMockStyle = (overrides?: Partial<Style>): Style => {
   const artStyles = [
     'Photorealistic cinematic style',
     'Anime-inspired with vibrant colors',
@@ -370,7 +368,7 @@ export const generateMockStyle = (overrides?: Partial<Style>): Style => {
   };
 };
 
-export const generateMockTeam = (overrides?: Partial<Team>): Team => {
+const generateMockTeam = (overrides?: Partial<Team>): Team => {
   const name = faker.company.name();
   return {
     id: faker.string.uuid(),
@@ -382,9 +380,7 @@ export const generateMockTeam = (overrides?: Partial<Team>): Team => {
   };
 };
 
-export const generateMockUser = (
-  overrides?: Partial<UserProfile>
-): UserProfile => {
+const generateMockUser = (overrides?: Partial<UserProfile>): UserProfile => {
   const fullName = faker.person.fullName();
   return {
     id: faker.string.uuid(),
@@ -404,7 +400,7 @@ export const generateMockUser = (
 };
 
 // Utility functions for generating arrays
-export const generateMockSequences = (count: number = 5): Sequence[] => {
+const generateMockSequences = (count: number = 5): Sequence[] => {
   return Array.from({ length: count }, () => generateMockSequence());
 };
 
@@ -424,10 +420,10 @@ export const generateMockStyles = (count: number = 8): Style[] => {
   return Array.from({ length: count }, () => generateMockStyle());
 };
 
-export const generateMockTeams = (count: number = 3): Team[] => {
+const generateMockTeams = (count: number = 3): Team[] => {
   return Array.from({ length: count }, () => generateMockTeam());
 };
 
-export const generateMockUsers = (count: number = 5): UserProfile[] => {
+const generateMockUsers = (count: number = 5): UserProfile[] => {
   return Array.from({ length: count }, () => generateMockUser());
 };

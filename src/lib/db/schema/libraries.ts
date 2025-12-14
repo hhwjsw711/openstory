@@ -3,7 +3,11 @@
  * Styles, characters, VFX, and audio assets for teams
  */
 
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  type InferInsertModel,
+  type InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
@@ -257,7 +261,7 @@ export type Style = InferSelectModel<typeof styles>;
 export type NewStyle = InferInsertModel<typeof styles>;
 
 export type StyleAdaptation = InferSelectModel<typeof styleAdaptations>;
-export type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
+type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
 
 export type Character = InferSelectModel<typeof characters>;
 export type NewCharacter = InferInsertModel<typeof characters>;

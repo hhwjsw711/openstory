@@ -12,7 +12,7 @@ import {
 } from '@/lib/db/helpers/sequence-characters';
 import {
   generateImageWithProvider,
-  ImageGenerationParams,
+  type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
@@ -24,7 +24,7 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const maxDuration = 800;
+const maxDuration = 800;
 
 export const characterSheetWorkflow = createWorkflow(
   async (context: WorkflowContext<CharacterSheetWorkflowInput>) => {

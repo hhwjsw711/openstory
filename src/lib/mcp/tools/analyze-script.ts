@@ -14,7 +14,7 @@ import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { z } from 'zod';
 
-export type PhaseProgressCallback = (
+type PhaseProgressCallback = (
   phase: number,
   phaseName: string,
   progress: number,
@@ -40,7 +40,7 @@ export const analyzeScriptInputSchema = z.object({
 });
 
 export type AnalyzeScriptInput = z.infer<typeof analyzeScriptInputSchema>;
-export type AnalyzeScriptOutput = SceneAnalysis;
+type AnalyzeScriptOutput = SceneAnalysis;
 
 function getStyleByName(name: string) {
   return DEFAULT_STYLE_TEMPLATES.find(
@@ -152,7 +152,7 @@ export async function analyzeScriptTool(
   }
 }
 
-export const analyzeScriptToolDescription = {
+const analyzeScriptToolDescription = {
   name: 'analyze_script',
   description: `Analyze script with 5-phase workflow. Available styles: ${getAllStyleNames().join(', ')}`,
   inputSchema: analyzeScriptInputSchema,

@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { activateInviteCodeFn } from '@/functions/invite-codes';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,28 +28,7 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/invite-codes/activate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      const data = await response.json();
-
-      if (
-        !response.ok ||
-        data === null ||
-        typeof data !== 'object' ||
-        !('success' in data && data.success)
-      ) {
-        setError(
-          (data as { error?: string }).error || 'Failed to activate account'
-        );
-        setIsLoading(false);
-        return;
-      }
+      await activateInviteCodeFn({ data: { code } });
 
       // Success! Invalidate session cache and redirect
       await queryClient.invalidateQueries({ queryKey: ['session'] });
@@ -60,8 +40,9 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
       // Navigate to validated redirect
       void navigate({ to: validatedRedirect, replace: true });
     } catch (err) {
-      console.error('Activation error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      const message =
+        err instanceof Error ? err.message : 'Failed to activate account';
+      setError(message);
       setIsLoading(false);
     }
   };

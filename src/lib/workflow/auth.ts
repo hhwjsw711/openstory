@@ -9,7 +9,7 @@ import type { SequenceWorkflowContext, UserWorkflowContext } from './types';
  * Validates that workflow context includes required authentication
  * @throws AuthenticationError if userId or teamId is missing
  */
-export function validateWorkflowAuth(
+function validateWorkflowAuth(
   context: unknown
 ): asserts context is UserWorkflowContext {
   const ctx = context as Partial<UserWorkflowContext>;
@@ -37,7 +37,7 @@ export function validateSequenceAuth(
  * Extracts auth context from workflow input
  * Validates and returns a WorkflowContext object
  */
-export function getWorkflowAuth(input: unknown): UserWorkflowContext {
+function getWorkflowAuth(input: unknown): UserWorkflowContext {
   validateWorkflowAuth(input);
   return {
     userId: input.userId,
@@ -49,9 +49,7 @@ export function getWorkflowAuth(input: unknown): UserWorkflowContext {
  * Checks if a workflow context has valid authentication
  * Non-throwing version of validateWorkflowAuth
  */
-export function hasWorkflowAuth(
-  context: unknown
-): context is UserWorkflowContext {
+function hasWorkflowAuth(context: unknown): context is UserWorkflowContext {
   const ctx = context as Partial<UserWorkflowContext>;
   return Boolean(ctx.userId && ctx.teamId);
 }
@@ -60,9 +58,7 @@ export function hasWorkflowAuth(
  * Checks if a workflow context has valid authentication
  * Non-throwing version of validateWorkflowAuth
  */
-export function hasSequenceAuth(
-  context: unknown
-): context is SequenceWorkflowContext {
+function hasSequenceAuth(context: unknown): context is SequenceWorkflowContext {
   const ctx = context as Partial<SequenceWorkflowContext>;
   return Boolean(ctx.sequenceId && ctx.teamId && ctx.userId);
 }

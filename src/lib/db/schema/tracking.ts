@@ -5,8 +5,8 @@
 
 import {
   desc,
-  InferInsertModel,
-  InferSelectModel,
+  type InferInsertModel,
+  type InferSelectModel,
   relations,
 } from 'drizzle-orm';
 import {
@@ -21,10 +21,10 @@ import { user } from './auth';
 import { teams } from './teams';
 
 // Enum values as constants (SQLite doesn't have native enums)
-export const FAL_REQUEST_STATUSES = ['pending', 'completed', 'failed'] as const;
+const FAL_REQUEST_STATUSES = ['pending', 'completed', 'failed'] as const;
 export type FalRequestStatus = (typeof FAL_REQUEST_STATUSES)[number];
 
-export const LETZAI_REQUEST_STATUSES = [
+const LETZAI_REQUEST_STATUSES = [
   'pending',
   'in_progress',
   'completed',

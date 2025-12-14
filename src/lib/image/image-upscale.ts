@@ -5,9 +5,9 @@
 
 import { fal } from '@fal-ai/client';
 
-export type VariantResolution = '1K' | '2K' | '4K';
+type VariantResolution = '1K' | '2K' | '4K';
 
-export type UpscaleResult = {
+type UpscaleResult = {
   imageUrl: string;
   requestId: string;
 };

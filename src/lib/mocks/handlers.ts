@@ -1,5 +1,5 @@
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
-import { Style } from '@/types/database';
+import type { Style } from '@/types/database';
 import { http, HttpResponse } from 'msw';
 import { generateMockFrames } from './data-generators';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';

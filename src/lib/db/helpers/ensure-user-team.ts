@@ -14,7 +14,7 @@ type UserWithTeamMembers = User & {
   teamMembers?: Array<{ teamId: string; role: string }>;
 };
 
-export interface EnsureUserTeamResult {
+interface EnsureUserTeamResult {
   success: boolean;
   data?: UserWithTeamMembers;
   error?: string;

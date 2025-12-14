@@ -5,7 +5,7 @@ import { useCallback, useReducer } from 'react';
 import { useRealtime } from './client';
 import {
   generationStreamReducer,
-  GenerationStreamState,
+  type GenerationStreamState,
   initialGenerationStreamState,
 } from './generation-stream.reducer';
 import { updateQueryCacheFromEvent } from './query-cache-updater';
@@ -180,5 +180,3 @@ export function useGenerationStream(sequenceId?: string) {
     reset,
   };
 }
-
-export type { GenerationStreamState };

@@ -40,24 +40,24 @@ const EnhancedScriptSchema = z.object({
   style_stack_recommendation: StyleStackRecommendationSchema,
 });
 
-export interface EnhanceScriptOptions {
+interface EnhanceScriptOptions {
   originalScript: string;
   targetDuration?: number; // Default 30 seconds
   tone?: 'dramatic' | 'comedic' | 'documentary' | 'action';
   style?: string; // Optional style context
 }
 
-export interface StyleStackRecommendation {
+interface StyleStackRecommendation {
   recommended_style_stack: string;
   reasoning: string;
 }
 
-export interface EnhancedScript {
+interface EnhancedScript {
   enhanced_script: string;
   style_stack_recommendation: StyleStackRecommendation;
 }
 
-export interface ScriptEnhancementResult {
+interface ScriptEnhancementResult {
   success: boolean;
   data?: EnhancedScript;
   error?: string;

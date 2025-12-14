@@ -1,6 +1,6 @@
 import z from 'zod';
 
-export type DirectorDnaParams = {
+type DirectorDnaParams = {
   prompt: string;
   directorialIntent: string;
   mood: string;
@@ -28,21 +28,21 @@ export const DirectorDnaConfigSchema = z.object({
 
 export type DirectorDnaConfig = z.infer<typeof DirectorDnaConfigSchema>;
 
-export type DirectorDnaResponseData = {
+type DirectorDnaResponseData = {
   message: string;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
 };
 
-export interface DNADirectorResponse {
+interface DNADirectorResponse {
   status: boolean;
   error?: string;
   data?: DirectorDnaResponseData;
   config?: Record<string, unknown>;
 }
 
-export interface DNADirectorTemplateMessage {
+interface DNADirectorTemplateMessage {
   role: 'system' | 'user' | 'assistant';
   content:
     | string
@@ -54,7 +54,7 @@ export interface DNADirectorTemplateMessage {
       >;
 }
 
-export interface DNADirectorTemplateMessageContent {
+interface DNADirectorTemplateMessageContent {
   scene: string;
   directorialIntent: string;
   characters: string[];

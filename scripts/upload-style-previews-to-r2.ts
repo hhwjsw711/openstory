@@ -21,6 +21,7 @@
 import { $ } from 'bun';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { PhotonImage, resize, SamplingFilter } from '@cf-wasm/photon';
 
 const PUBLIC_ASSETS_DIR = path.join(process.cwd(), 'public/assets/styles');
 const TEMP_DIR = path.join(process.cwd(), '.tmp/r2-upload');
@@ -35,7 +36,7 @@ const isDryRun = !isExecute;
 const envIndex = process.argv.indexOf('--env');
 const environment = envIndex !== -1 ? process.argv[envIndex + 1] : 'dev';
 
-if (!['prd', 'stg', 'dev'].includes(environment)) {
+if (!['prd', 'stg'].includes(environment)) {
   console.error(`❌ Invalid environment: ${environment}`);
   console.error('   Valid options: prd, stg, dev');
   process.exit(1);
@@ -78,35 +79,33 @@ type ImageInfo = {
 };
 
 /**
- * Downsample image to 512x512 using Bun's native image APIs
+ * Downsample image to 512x512 using @cf-wasm/photon (WASM-based)
  * Returns a Buffer of the resized JPEG
  */
 async function downsampleImage(inputPath: string): Promise<Buffer> {
-  // Read the original image
   const imageData = await readFile(inputPath);
+  const inputBytes = new Uint8Array(imageData);
 
-  // Use sharp for image processing (need to install it)
-  // For now, let's use a simpler approach with Bun's built-in APIs
-  // Note: Bun doesn't have built-in image resizing yet, so we'll need sharp
+  const inputImage = PhotonImage.new_from_byteslice(inputBytes);
 
   try {
-    // Try to import sharp dynamically
-    const sharp = await import('sharp');
+    // Resize using Lanczos3 filter for best quality
+    const resized = resize(
+      inputImage,
+      TARGET_SIZE,
+      TARGET_SIZE,
+      SamplingFilter.Lanczos3
+    );
 
-    const resized = await sharp
-      .default(imageData)
-      .resize(TARGET_SIZE, TARGET_SIZE, {
-        fit: 'cover',
-        position: 'center',
-      })
-      .jpeg({ quality: JPEG_QUALITY })
-      .toBuffer();
-
-    return resized;
-  } catch {
-    console.error('❌ Sharp not installed. Install it with: bun add sharp');
-    console.error('   Falling back to using original image without resizing.');
-    return Buffer.from(imageData);
+    try {
+      // Get JPEG bytes with specified quality
+      const outputBytes = resized.get_bytes_jpeg(JPEG_QUALITY);
+      return Buffer.from(outputBytes);
+    } finally {
+      resized.free();
+    }
+  } finally {
+    inputImage.free();
   }
 }
 

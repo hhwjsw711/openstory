@@ -4,7 +4,11 @@
  */
 
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
-import { InferInsertModel, InferSelectModel, relations } from 'drizzle-orm';
+import {
+  type InferInsertModel,
+  type InferSelectModel,
+  relations,
+} from 'drizzle-orm';
 import {
   index,
   integer,
@@ -15,7 +19,7 @@ import {
 import { generateId } from '../id';
 import { sequences } from './sequences';
 
-export const SHEET_STATUSES = [
+const SHEET_STATUSES = [
   'pending',
   'generating',
   'completed',

@@ -6,28 +6,10 @@
 // Better Auth tables
 export { account, session, user, verification } from './auth';
 
-export type {
-  Account,
-  NewAccount,
-  NewSession,
-  NewUser,
-  NewVerification,
-  Session,
-  User,
-  Verification,
-} from './auth';
+export type { Account, Session, User, Verification } from './auth';
 
 // Teams
-export {
-  INVITATION_STATUSES,
-  TEAM_MEMBER_ROLES,
-  teamInvitations,
-  teamInvitationsRelations,
-  teamMembers,
-  teamMembersRelations,
-  teams,
-  teamsRelations,
-} from './teams';
+export { teamInvitations, teamMembers, teams } from './teams';
 
 export type {
   InvitationStatus,
@@ -41,30 +23,17 @@ export type {
 } from './teams';
 
 // Sequences
-export {
-  FRAME_GENERATION_STATUSES,
-  frames,
-  framesRelations,
-  SEQUENCE_STATUSES,
-  sequences,
-  sequencesRelations,
-} from './sequences';
+export { sequences } from './sequences';
 
-export type {
-  Frame,
-  FrameGenerationStatus,
-  NewFrame,
-  NewSequence,
-  Sequence,
-  SequenceStatus,
-} from './sequences';
+export type { NewSequence, Sequence, SequenceStatus } from './sequences';
+
+// Frames
+export { frames } from './frames';
+
+export type { Frame, NewFrame } from './frames';
 
 // Sequence Characters
-export {
-  sequenceCharacters,
-  sequenceCharactersRelations,
-  SHEET_STATUSES,
-} from './sequence-characters';
+export { sequenceCharacters } from './sequence-characters';
 
 export type {
   NewSequenceCharacter,
@@ -73,18 +42,7 @@ export type {
 } from './sequence-characters';
 
 // Library Resources
-export {
-  audio,
-  audioRelations,
-  characters,
-  charactersRelations,
-  styleAdaptations,
-  styleAdaptationsRelations,
-  styles,
-  stylesRelations,
-  vfx,
-  vfxRelations,
-} from './libraries';
+export { audio, characters, styles, vfx } from './libraries';
 
 export type {
   Audio,
@@ -92,7 +50,6 @@ export type {
   NewAudio,
   NewCharacter,
   NewStyle,
-  NewStyleAdaptation,
   NewVfx,
   Style,
   StyleAdaptation,
@@ -100,15 +57,6 @@ export type {
 } from './libraries';
 
 // API Request Tracking
-export {
-  FAL_REQUEST_STATUSES,
-  falRequests,
-  falRequestsRelations,
-  LETZAI_REQUEST_STATUSES,
-  letzaiRequests,
-  letzaiRequestsRelations,
-} from './tracking';
-
 export type {
   FalRequest,
   FalRequestStatus,
@@ -119,14 +67,6 @@ export type {
 } from './tracking';
 
 // Credits and Transactions
-export {
-  credits,
-  creditsRelations,
-  TRANSACTION_TYPES,
-  transactions,
-  transactionsRelations,
-} from './credits';
-
 export type {
   Credit,
   NewCredit,
@@ -136,10 +76,6 @@ export type {
 } from './credits';
 
 // Audit
-export { scriptAnalysisAudit } from './audit';
-
-export type { InsertScriptAnalysisAudit, ScriptAnalysisAudit } from './audit';
-
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -209,12 +145,9 @@ import {
   teamsRelations,
 } from './teams';
 
-import {
-  frames,
-  framesRelations,
-  sequences,
-  sequencesRelations,
-} from './sequences';
+import { sequences, sequencesRelations } from './sequences';
+
+import { frames, framesRelations } from './frames';
 
 import {
   sequenceCharacters,

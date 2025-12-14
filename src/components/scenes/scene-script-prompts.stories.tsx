@@ -1,7 +1,7 @@
 import type { Frame } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
-import { SceneScriptPrompts, TabValue } from './scene-script-prompts';
+import { SceneScriptPrompts, type TabValue } from './scene-script-prompts';
 
 const mockFrame: Frame = {
   id: 'frame-1',

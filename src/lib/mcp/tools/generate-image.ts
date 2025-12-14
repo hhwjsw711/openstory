@@ -5,7 +5,7 @@
 
 import type { TextToImageModel } from '@/lib/ai/models';
 import { IMAGE_MODELS } from '@/lib/ai/models';
-import { ImageSize } from '@/lib/constants/aspect-ratios';
+import type { ImageSize } from '@/lib/constants/aspect-ratios';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -39,7 +39,7 @@ export const generateImageInputSchema = z.object({
   numImages: z.number().int().min(1).max(4).optional(),
 });
 
-export type GenerateImageInput = z.infer<typeof generateImageInputSchema>;
+type GenerateImageInput = z.infer<typeof generateImageInputSchema>;
 
 /**
  * Get style by name from templates
@@ -121,7 +121,7 @@ export async function generateImageTool(
 /**
  * Tool description for MCP
  */
-export const generateImageToolDescription = {
+const generateImageToolDescription = {
   name: 'generate_image',
   description: `Generate a single cinematic image with a director style applied. 
   

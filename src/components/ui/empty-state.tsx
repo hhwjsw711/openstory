@@ -34,7 +34,7 @@ const iconContainerVariants = cva(
   }
 );
 
-export interface EmptyStateProps
+interface EmptyStateProps
   extends
     React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof emptyStateVariants> {

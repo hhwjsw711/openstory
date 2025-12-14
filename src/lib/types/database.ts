@@ -47,69 +47,47 @@ import type {
 } from '@/lib/db/schema';
 
 // Re-export Database type
-export type { Database };
-
 // JSON type for metadata fields (compatible with Supabase Json type)
 export type Json = Record<string, unknown> | unknown[];
 
 // Table row types (SELECT results - use camelCase field names)
-export type {
-  Audio,
-  Character,
-  Frame,
-  Sequence,
-  Style,
-  Team,
-  TeamInvitation,
-  TeamMember,
-};
-export type VFX = Vfx; // Alias for consistency
-export type { Credit, FalRequest, StyleAdaptation, Transaction };
-export type LetzAIRequest = LetzaiRequest; // Alias for consistency
+export type { Frame, Sequence, Style, Team };
+type VFX = Vfx; // Alias for consistency
+type LetzAIRequest = LetzaiRequest; // Alias for consistency
 
 // BetterAuth table types
-export type { Account, Session, User, Verification };
-
 // User profile alias (for backward compatibility)
 export type UserProfile = User;
-export type UserProfileRow = User;
+type UserProfileRow = User;
 
 // Insert types (for creating new records)
-export type TeamInsert = NewTeam;
-export type TeamMemberInsert = NewTeamMember;
-export type TeamInvitationInsert = NewTeamInvitation;
-export type SequenceInsert = NewSequence;
-export type FrameInsert = NewFrame;
-export type StyleInsert = NewStyle;
-export type CharacterInsert = NewCharacter;
-export type AudioInsert = NewAudio;
-export type VFXInsert = NewVfx;
-export type CreditInsert = NewCredit;
-export type TransactionInsert = NewTransaction;
-export type FalRequestInsert = NewFalRequest;
-export type LetzAIRequestInsert = NewLetzaiRequest;
+type TeamInsert = NewTeam;
+type TeamMemberInsert = NewTeamMember;
+type TeamInvitationInsert = NewTeamInvitation;
+type SequenceInsert = NewSequence;
+type FrameInsert = NewFrame;
+type StyleInsert = NewStyle;
+type CharacterInsert = NewCharacter;
+type AudioInsert = NewAudio;
+type VFXInsert = NewVfx;
+type CreditInsert = NewCredit;
+type TransactionInsert = NewTransaction;
+type FalRequestInsert = NewFalRequest;
+type LetzAIRequestInsert = NewLetzaiRequest;
 
 // Update types (partial of row types - Drizzle handles this automatically)
-export type TeamUpdate = Partial<Team>;
-export type TeamMemberUpdate = Partial<TeamMember>;
-export type TeamInvitationUpdate = Partial<TeamInvitation>;
-export type SequenceUpdate = Partial<Sequence>;
-export type FrameUpdate = Partial<Frame>;
-export type StyleUpdate = Partial<Style>;
-export type CharacterUpdate = Partial<Character>;
-export type AudioUpdate = Partial<Audio>;
-export type VFXUpdate = Partial<Vfx>;
-export type CreditUpdate = Partial<Credit>;
-export type TransactionUpdate = Partial<Transaction>;
-export type FalRequestUpdate = Partial<FalRequest>;
-export type LetzAIRequestUpdate = Partial<LetzaiRequest>;
+type TeamUpdate = Partial<Team>;
+type TeamMemberUpdate = Partial<TeamMember>;
+type TeamInvitationUpdate = Partial<TeamInvitation>;
+type SequenceUpdate = Partial<Sequence>;
+type FrameUpdate = Partial<Frame>;
+type StyleUpdate = Partial<Style>;
+type CharacterUpdate = Partial<Character>;
+type AudioUpdate = Partial<Audio>;
+type VFXUpdate = Partial<Vfx>;
+type CreditUpdate = Partial<Credit>;
+type TransactionUpdate = Partial<Transaction>;
+type FalRequestUpdate = Partial<FalRequest>;
+type LetzAIRequestUpdate = Partial<LetzaiRequest>;
 
 // Enum types (re-export from schema)
-export type {
-  FalRequestStatus,
-  InvitationStatus,
-  LetzaiRequestStatus,
-  SequenceStatus,
-  TeamMemberRole,
-  TransactionType,
-};

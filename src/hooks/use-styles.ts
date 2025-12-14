@@ -9,7 +9,7 @@ import {
 } from '@/functions/styles';
 
 // Local hook input types (simpler than server schema types)
-export type CreateStyleInput = {
+type CreateStyleInput = {
   name: string;
   description?: string;
   config?: Record<string, unknown>;
@@ -20,7 +20,7 @@ export type CreateStyleInput = {
 };
 
 // Query keys
-export const styleKeys = {
+const styleKeys = {
   all: ['styles'] as const,
   lists: () => [...styleKeys.all, 'list'] as const,
   list: (teamId?: string) => [...styleKeys.lists(), teamId] as const,
@@ -42,7 +42,7 @@ export function useStyles(teamId?: string, enabled = true) {
 }
 
 // Hook for getting single style
-export function useStyle(id: string) {
+function useStyle(id: string) {
   return useQuery<Style>({
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
@@ -55,7 +55,7 @@ export function useStyle(id: string) {
 }
 
 // Hook for creating style
-export function useCreateStyle() {
+function useCreateStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<Style, Error, CreateStyleInput>({
@@ -72,7 +72,7 @@ export function useCreateStyle() {
 }
 
 // Hook for updating style
-export function useUpdateStyle() {
+function useUpdateStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -108,7 +108,7 @@ export function useUpdateStyle() {
 }
 
 // Hook for deleting style
-export function useDeleteStyle() {
+function useDeleteStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({

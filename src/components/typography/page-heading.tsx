@@ -24,7 +24,7 @@ const skeletonSizes = {
   hero: 'h-10 sm:h-14 w-[320px] sm:w-[480px]',
 } as const;
 
-export interface PageHeadingProps
+interface PageHeadingProps
   extends
     React.HTMLAttributes<HTMLHeadingElement>,
     VariantProps<typeof pageHeadingVariants> {

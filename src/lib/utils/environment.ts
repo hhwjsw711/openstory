@@ -9,7 +9,7 @@
 /**
  * Platform detection
  */
-export type DeploymentPlatform =
+type DeploymentPlatform =
   | 'cloudflare'
   | 'vercel'
   | 'railway'
@@ -83,7 +83,7 @@ export function isProductionDeployment(request: Request): boolean {
   );
 }
 
-export function isPreviewDeployment(request: Request): boolean {
+function isPreviewDeployment(request: Request): boolean {
   return !isLocalDevelopment() && !isProductionDeployment(request);
 }
 

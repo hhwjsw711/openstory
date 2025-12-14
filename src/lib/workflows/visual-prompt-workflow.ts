@@ -8,12 +8,12 @@ import type { VisualPromptWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getGenerationChannel } from '@/lib/realtime';
-import { Scene } from '@/lib/script/types';
+import type { Scene } from '@/lib/script/types';
 import { generateVisualPromptsForScenes } from '@/lib/script';
-import { ProgressCallback } from '@/lib/ai/openrouter-client';
+import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { frameService } from '@/lib/services/frame.service';
 
-export const maxDuration = 800;
+const maxDuration = 800;
 
 export const visualPromptWorkflow = createWorkflow(
   async (

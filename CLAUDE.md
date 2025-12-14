@@ -1,13 +1,13 @@
 # CLAUDE.md
 
-AI-powered video sequence platform built with Next.js 15, optimized for edge deployment.
+AI-powered video sequence platform built with TanStack Start, optimized for edge deployment.
 
 ## Architecture Overview
 
 **Tech Stack:**
 
 - **Runtime**: Bun (not Node.js)
-- **Framework**: Next.js 15 + App Router + Turbopack
+- **Framework**: TanStack Start + TanStack Router + Vite
 - **Database**: Turso (libSQL/SQLite) + Drizzle ORM
 - **Workflows**: QStash (durable execution for AI tasks)
 - **Storage**: Cloudflare R2 (S3-compatible)
@@ -17,7 +17,7 @@ AI-powered video sequence platform built with Next.js 15, optimized for edge dep
 
 **Core Principles:**
 
-- Database access ONLY in API routes (never in components)
+- Database access ONLY in server handlers (never in components)
 - Anonymous-first → upgrade to save work
 - Team-based resources (sequences, styles, characters)
 - Script-driven generation for consistency
@@ -52,40 +52,60 @@ bun scripts/setup-r2-buckets.sh    # Setup storage (follow prompts)
 
 ---
 
-## API Route Pattern
+## Server Handler Pattern
 
-All API routes follow this structure:
+All API routes use TanStack Start server handlers:
 
 ```typescript
-export async function POST(req: Request) {
-  // 1. Validate input
-  const input = schema.parse(await req.json());
+// src/routes/api/example/$id.ts
+import { createFileRoute } from '@tanstack/react-router';
+import { json } from '@tanstack/react-start';
+import { requireUser } from '@/lib/auth/action-utils';
+import { handleApiError } from '@/lib/errors';
 
-  // 2. Check auth/team permissions
-  const { user, team } = await requireAuth(req);
+export const Route = createFileRoute('/api/example/$id')({
+  server: {
+    handlers: {
+      POST: async ({ params, request }) => {
+        try {
+          // 1. Validate input
+          const input = schema.parse(await request.json());
 
-  // 3. Execute business logic (DB operations ONLY here)
-  const record = await db.insert(table).values({
-    ...input,
-    teamId: team.id,
-  });
+          // 2. Check auth/team permissions
+          const user = await requireUser();
 
-  // 4. Trigger workflows for async AI tasks
-  const { messageId } = await qstash.publishJSON({
-    url: `${getQStashWebhookUrl()}/workflows/image`,
-    body: { userId: user.id, teamId: team.id, ...input },
-  });
+          // 3. Execute business logic (DB operations ONLY here)
+          const record = await db.insert(table).values({
+            ...input,
+            teamId: user.teamId,
+          });
 
-  // 5. Return standardized response
-  return json({ id: record.id, workflowRunId: messageId });
-}
+          // 4. Trigger workflows for async AI tasks
+          const { messageId } = await qstash.publishJSON({
+            url: `${getQStashWebhookUrl()}/workflows/image`,
+            body: { userId: user.id, teamId: user.teamId, ...input },
+          });
+
+          // 5. Return standardized response
+          return json({ id: record.id, workflowRunId: messageId });
+        } catch (error) {
+          const handledError = handleApiError(error);
+          return json(
+            { success: false, error: handledError.toJSON() },
+            { status: handledError.statusCode }
+          );
+        }
+      },
+    },
+  },
+});
 ```
 
 ---
 
 ## Workflow Pattern
 
-**Triggering workflows (from API routes):**
+**Triggering workflows (from server handlers):**
 
 ```typescript
 // ❌ WRONG - Direct fetch() calls don't include QStash signatures
@@ -103,20 +123,30 @@ const { messageId } = await qstash.publishJSON({
 const workflowRunId = messageId;
 ```
 
-**Implementing workflows:**
+**Implementing workflows (TanStack Start + serveMany):**
 
 ```typescript
-// /app/api/workflows/[...any]/route.ts - Register with serveMany
-export const { POST } = serveMany(
-  {
-    image: generateImageWorkflow,
-    motion: generateMotionWorkflow,
-    storyboard: generateStoryboardWorkflow,
-  },
-  { baseUrl: getQStashWebhookUrl() }
-);
+// src/routes/api/workflows/$.ts - Register with serveMany
+import { createFileRoute } from '@tanstack/react-router';
+import { serveMany } from '@upstash/workflow/tanstack';
 
-// Individual workflow
+const handler = serveMany({
+  image: generateImageWorkflow,
+  motion: generateMotionWorkflow,
+  storyboard: generateStoryboardWorkflow,
+});
+
+export const Route = createFileRoute('/api/workflows/$')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        return handler.POST({ request });
+      },
+    },
+  },
+});
+
+// Individual workflow (src/lib/workflows/image-workflow.ts)
 export const generateImageWorkflow = async (
   context: WorkflowContext<ImageWorkflowInput>
 ) => {
@@ -276,7 +306,7 @@ bun db:migrate   # Apply migrations to local.db
 - **NEVER** manually write migration SQL files
 - **ULID** primary keys (not UUID)
 - **Typed JSONB**: `frame.metadata` typed as `Scene`
-- **DB access ONLY in API routes** (never in components)
+- **DB access ONLY in server handlers** (never in components)
 
 ---
 
@@ -286,7 +316,6 @@ bun db:migrate   # Apply migrations to local.db
 
 ```tsx
 // ❌ BAD - useState + useEffect
-'use client';
 import { useEffect, useState } from 'react';
 
 export default function UserProfile({ userId }: { userId: string }) {
@@ -307,7 +336,6 @@ export default function UserProfile({ userId }: { userId: string }) {
 }
 
 // ✅ GOOD - TanStack Query + Suspense + vanilla TS logic
-('use client');
 import { Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -399,7 +427,6 @@ export const FrameGrid: React.FC<{ frames: Frame[] }> = ({ frames }) => {
 
 ```tsx
 // ❌ BAD - Multiple useState, scattered logic
-'use client';
 import { useEffect, useState } from 'react';
 
 function FrameEditor({ frameId }: { frameId: string }) {
@@ -424,7 +451,6 @@ function FrameEditor({ frameId }: { frameId: string }) {
 }
 
 // ✅ GOOD - Suspense + reducer for complex state
-('use client');
 import { Suspense, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { frameReducer, initialState } from './frame-editor.reducer'; // vanilla TS
@@ -511,7 +537,6 @@ export function frameReducer(
 
 ```tsx
 // ❌ BAD - Controlled inputs everywhere, manual validation
-'use client';
 import { useState } from 'react';
 
 function ScriptForm() {
@@ -539,32 +564,40 @@ function ScriptForm() {
   );
 }
 
-// ✅ GOOD - useActionState + server validation + progressive enhancement
-('use client');
-import { useActionState } from 'react';
-import { createScriptAction } from './actions'; // server action
+// ✅ GOOD - TanStack Query mutation + Zod validation
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { createScript } from '@/lib/api/scripts'; // vanilla TS function
+import { scriptSchema } from '@/lib/schemas/script'; // Zod schema
 
 export const ScriptForm: React.FC = () => {
-  const [state, formAction, isPending] = useActionState(
-    createScriptAction,
-    null
-  );
+  const mutation = useMutation({
+    mutationFn: createScript,
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const result = scriptSchema.safeParse(Object.fromEntries(formData));
+
+    if (!result.success) {
+      // Handle validation errors
+      return;
+    }
+
+    mutation.mutate(result.data);
+  };
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Input
           name="title"
           placeholder="Script title…"
           autoComplete="off"
           required
-          aria-invalid={!!state?.errors?.title}
         />
-        {state?.errors?.title && (
-          <p className="text-sm text-destructive">{state.errors.title}</p>
-        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -573,15 +606,11 @@ export const ScriptForm: React.FC = () => {
           placeholder="Write your script…"
           className="min-h-[200px] resize-y"
           required
-          aria-invalid={!!state?.errors?.content}
         />
-        {state?.errors?.content && (
-          <p className="text-sm text-destructive">{state.errors.content}</p>
-        )}
       </div>
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Creating…' : 'Create Script'}
+      <Button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? 'Creating…' : 'Create Script'}
       </Button>
     </form>
   );
@@ -656,7 +685,7 @@ export default function Component({ id }) {
 }
 
 // ✅ GOOD
-// File: user-profile.tsx
+// File: src/components/user-profile.tsx
 import { formatUserName } from '@/lib/users/format-user-name'; // vanilla TS
 
 type UserProfileProps = {
@@ -676,13 +705,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
   );
 };
 
-// File: page.tsx (route)
-export default function UserProfilePage({
-  params,
-}: {
-  params: { userId: string };
-}) {
-  return <UserProfile userId={params.userId} />;
+// File: src/routes/_protected/users/$userId.tsx (TanStack Router)
+import { createFileRoute } from '@tanstack/react-router';
+import { UserProfile } from '@/components/user-profile';
+
+export const Route = createFileRoute('/_protected/users/$userId')({
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const { userId } = Route.useParams();
+  return <UserProfile userId={userId} />;
 }
 ```
 
@@ -693,7 +726,8 @@ export default function UserProfilePage({
 - **Styling**: shadcn/ui base components + layout-only Tailwind (flex, gap, grid)
 - **Layout**: Flexbox + gap (never margin on components), CSS display for show/hide
 - **Files**: kebab-case.tsx, named exports, vanilla TS for logic
-- **Forms**: useActionState, server validation, progressive enhancement
+- **Forms**: TanStack Query mutations + Zod validation
+- **Routing**: TanStack Router with `createFileRoute`, params via `Route.useParams()`
 - **Imports**: Direct (useState not React.useState), @ alias, no default exports
 
 ---
@@ -717,9 +751,9 @@ export default function UserProfilePage({
 
 **State & Navigation:**
 
-- MUST: URL reflects state (filters/tabs/pagination) - prefer [nuqs](https://nuqs.dev)
+- MUST: URL reflects state (filters/tabs/pagination) - use TanStack Router search params
 - MUST: Back/Forward restores scroll
-- MUST: Links are `<a>`/`<Link>` (support Cmd/Ctrl/middle-click)
+- MUST: Links use TanStack Router `<Link>` (supports Cmd/Ctrl/middle-click)
 
 **Feedback:**
 
@@ -767,7 +801,7 @@ export default function UserProfilePage({
 
 **Test location:**
 
-- API routes: `__tests__/` directories alongside routes
+- Server handlers: `__tests__/` directories alongside routes
 - Services/utils: Same directory as module (`service.test.ts`)
 
 **Focus:** Business logic (not React components)

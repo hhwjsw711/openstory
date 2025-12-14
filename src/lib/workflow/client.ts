@@ -93,7 +93,7 @@ export async function triggerWorkflow(
   return response.workflowRunId;
 }
 
-export async function cancelWorkflow(workflowId: string) {
+async function cancelWorkflow(workflowId: string) {
   const qstash = getQStashClient();
   const response = await qstash.cancel({ ids: [workflowId] });
   return response.cancelled;

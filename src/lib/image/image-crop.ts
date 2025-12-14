@@ -6,13 +6,13 @@
 
 import { PhotonImage, crop } from '@cf-wasm/photon';
 
-export type CropTileOptions = {
+type CropTileOptions = {
   gridImageUrl: string;
   row: number; // 1-3 (1 = top row)
   col: number; // 1-3 (1 = left column)
 };
 
-export type CropTileResult = {
+type CropTileResult = {
   buffer: Buffer;
   width: number;
   height: number;

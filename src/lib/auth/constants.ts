@@ -9,7 +9,7 @@
  * Role hierarchy for team-based access control
  * Higher numbers = more permissions
  */
-export const ROLE_HIERARCHY = {
+const ROLE_HIERARCHY = {
   viewer: 1,
   member: 2,
   admin: 3,
@@ -24,7 +24,7 @@ export type TeamRole = keyof typeof ROLE_HIERARCHY;
 /**
  * Get the numeric level for a role
  */
-export function getRoleLevel(role: TeamRole): number {
+function getRoleLevel(role: TeamRole): number {
   return ROLE_HIERARCHY[role];
 }
 
@@ -63,7 +63,7 @@ export const INVITATION_CONFIG = {
 /**
  * Session configuration
  */
-export const SESSION_CONFIG = {
+const SESSION_CONFIG = {
   EXPIRES_IN: 60 * 60 * 24 * 365, // 1 year
   UPDATE_AGE: 60 * 60 * 24, // 1 day
   COOKIE_CACHE_MAX_AGE: 5 * 60, // 5 minutes

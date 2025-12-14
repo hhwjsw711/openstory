@@ -31,9 +31,9 @@ const openRouterResponseSchema = z.object({
   model: z.string(),
 });
 
-export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
+type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
 
-export type StreamChunk = {
+type StreamChunk = {
   delta: string; // Text chunk
   accumulated: string; // Full accumulated text so far
   done: boolean; // Whether stream is complete
@@ -45,7 +45,7 @@ export type ProgressCallback = (progress: {
   parsed?: unknown; // Parsed result (only on complete)
 }) => void;
 
-export type OpenRouterMessageContent =
+type OpenRouterMessageContent =
   | string
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
@@ -54,19 +54,19 @@ export type OpenRouterMessageContent =
       | { type: 'image_url'; image_url: { url: string } }
     >;
 
-export interface OpenRouterMessage {
+interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: OpenRouterMessageContent;
 }
 
-export interface OpenRouterProviderPreference {
+interface OpenRouterProviderPreference {
   order?: string[];
   only?: string[];
   ignore?: string[];
   allow_fallbacks?: boolean;
 }
 
-export interface OpenRouterRequestParams {
+interface OpenRouterRequestParams {
   model: string;
   messages: OpenRouterMessage[];
   temperature?: number;
@@ -286,7 +286,7 @@ export function userMessage(content: string): OpenRouterMessage {
 /**
  * Helper function to create an assistant message
  */
-export function assistantMessage(content: string): OpenRouterMessage {
+function assistantMessage(content: string): OpenRouterMessage {
   return { role: 'assistant', content };
 }
 

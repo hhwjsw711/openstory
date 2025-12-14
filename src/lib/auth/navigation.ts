@@ -12,7 +12,7 @@ import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
  * @param currentPath - Current path to redirect back to after login (default: current pathname)
  * @returns Login URL with redirectTo query param
  */
-export function getLoginUrl(currentPath?: string): string {
+function getLoginUrl(currentPath?: string): string {
   // Get current path from window if not provided (client-side only)
   const redirectTo =
     currentPath ||
@@ -41,7 +41,7 @@ export function getLoginUrl(currentPath?: string): string {
  * @param currentPath - Current path to redirect back to after signup (default: current pathname)
  * @returns Login URL with redirectTo query param
  */
-export function getSignupUrl(currentPath?: string): string {
+function getSignupUrl(currentPath?: string): string {
   // Signup is now the same as login - redirect to login page
   return getLoginUrl(currentPath);
 }
@@ -52,7 +52,7 @@ export function getSignupUrl(currentPath?: string): string {
  * @param navigate - TanStack Router navigate function
  * @param currentPath - Optional path to redirect back to (defaults to current window.location.pathname)
  */
-export function navigateToLogin(
+function navigateToLogin(
   navigate: (options: { to: string; search?: { redirectTo?: string } }) => void,
   currentPath?: string
 ): void {
@@ -74,7 +74,7 @@ export function navigateToLogin(
  * @param navigate - TanStack Router navigate function
  * @param currentPath - Optional path to redirect back to (defaults to current window.location.pathname)
  */
-export function navigateToSignup(
+function navigateToSignup(
   navigate: (options: { to: string; search?: { redirectTo?: string } }) => void,
   currentPath?: string
 ): void {

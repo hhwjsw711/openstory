@@ -25,7 +25,7 @@ import { and, asc, desc, eq, isNull, or } from 'drizzle-orm';
 /**
  * Sequence with all its frames
  */
-export type SequenceWithFrames = Sequence & {
+type SequenceWithFrames = Sequence & {
   frames: Frame[];
   style: Style | null;
 };
@@ -46,7 +46,7 @@ export type SequenceWithFrames = Sequence & {
  * console.log(`Sequence has ${sequence.frames.length} frames`);
  * ```
  */
-export async function getSequenceWithFrames(
+async function getSequenceWithFrames(
   sequenceId: string
 ): Promise<SequenceWithFrames | null> {
   const result = await getDb().query.sequences.findFirst({
@@ -79,7 +79,7 @@ export async function getSequenceWithFrames(
  * const sequences = await getTeamSequences(teamId, { limit: 10 });
  * ```
  */
-export async function getTeamSequences(
+async function getTeamSequences(
   teamId: string,
   options?: {
     limit?: number;
@@ -126,7 +126,7 @@ export async function getTeamSequences(
  * const templates = await getTeamStyles(teamId, { templatesOnly: true });
  * ```
  */
-export async function getTeamStyles(
+async function getTeamStyles(
   teamId: string,
   options?: {
     templatesOnly?: boolean;
@@ -203,7 +203,7 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
  * const characters = await getTeamCharacters(teamId);
  * ```
  */
-export async function getTeamCharacters(teamId: string): Promise<Character[]> {
+async function getTeamCharacters(teamId: string): Promise<Character[]> {
   return await getDb()
     .select()
     .from(characters)
@@ -222,7 +222,7 @@ export async function getTeamCharacters(teamId: string): Promise<Character[]> {
  * const vfxPresets = await getTeamVfx(teamId);
  * ```
  */
-export async function getTeamVfx(teamId: string): Promise<Vfx[]> {
+async function getTeamVfx(teamId: string): Promise<Vfx[]> {
   return await getDb()
     .select()
     .from(vfx)
@@ -241,7 +241,7 @@ export async function getTeamVfx(teamId: string): Promise<Vfx[]> {
  * const audioFiles = await getTeamAudio(teamId);
  * ```
  */
-export async function getTeamAudio(teamId: string): Promise<Audio[]> {
+async function getTeamAudio(teamId: string): Promise<Audio[]> {
   return await getDb()
     .select()
     .from(audio)
@@ -310,7 +310,7 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
  * }
  * ```
  */
-export async function getCharacterById(
+async function getCharacterById(
   characterId: string
 ): Promise<Character | null> {
   const result = await getDb()
@@ -334,7 +334,7 @@ export async function getCharacterById(
  * }
  * ```
  */
-export async function getTeamById(teamId: string) {
+async function getTeamById(teamId: string) {
   const result = await getDb().select().from(teams).where(eq(teams.id, teamId));
   return result[0] ?? null;
 }
@@ -352,7 +352,7 @@ export async function getTeamById(teamId: string) {
  * console.log(`Team has ${library.styles.length} styles`);
  * ```
  */
-export async function getTeamLibrary(teamId: string): Promise<{
+async function getTeamLibrary(teamId: string): Promise<{
   styles: Style[];
   characters: Character[];
   vfx: Vfx[];
@@ -386,7 +386,7 @@ export async function getTeamLibrary(teamId: string): Promise<{
  * const processing = await countTeamSequences(teamId, 'processing');
  * ```
  */
-export async function countTeamSequences(
+async function countTeamSequences(
   teamId: string,
   status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived'
 ): Promise<number> {
@@ -417,9 +417,7 @@ export async function countTeamSequences(
  * }
  * ```
  */
-export async function getSequencesWithoutStyle(
-  teamId: string
-): Promise<Sequence[]> {
+async function getSequencesWithoutStyle(teamId: string): Promise<Sequence[]> {
   return await getDb()
     .select()
     .from(sequences)
@@ -440,7 +438,7 @@ export async function getSequencesWithoutStyle(
  * const recentStyles = await getRecentlyUsedStyles(teamId, 3);
  * ```
  */
-export async function getRecentlyUsedStyles(
+async function getRecentlyUsedStyles(
   teamId: string,
   limit = 5
 ): Promise<Style[]> {

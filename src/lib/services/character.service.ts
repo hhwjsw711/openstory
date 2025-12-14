@@ -14,12 +14,12 @@ import {
   updateCharacterSheet as updateCharacterSheetHelper,
 } from '@/lib/db/helpers/sequence-characters';
 import type { SequenceCharacter } from '@/lib/db/schema';
-import { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
+import type { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
 
 /**
  * Result of building a prompt with character references
  */
-export type PromptWithReferences = {
+type PromptWithReferences = {
   /** Enhanced prompt with character reference mapping appended */
   prompt: string;
   /** Array of character sheet URLs in order (for image_urls parameter) */
@@ -32,7 +32,7 @@ export type PromptWithReferences = {
  * @param sequenceId - The sequence ID
  * @returns Array of sequence characters
  */
-export async function getSequenceCharacters(
+async function getSequenceCharacters(
   sequenceId: string
 ): Promise<SequenceCharacter[]> {
   return await getSequenceCharactersHelper(sequenceId);
@@ -44,7 +44,7 @@ export async function getSequenceCharacters(
  * @param sequenceId - The sequence ID
  * @returns Array of sequence characters with completed sheets
  */
-export async function getSequenceCharactersWithSheets(
+async function getSequenceCharactersWithSheets(
   sequenceId: string
 ): Promise<SequenceCharacter[]> {
   return await getSequenceCharactersWithSheetsHelper(sequenceId);
@@ -62,7 +62,7 @@ export async function getSequenceCharactersWithSheets(
  * @param characterTags - Array of character tag strings from scene continuity
  * @returns Array of matched sequence characters
  */
-export async function getCharactersForScene(
+async function getCharactersForScene(
   sequenceId: string,
   characterTags: string[]
 ): Promise<SequenceCharacter[]> {
@@ -109,7 +109,7 @@ export async function getCharactersForScene(
  * @param sheetImagePath - The R2 storage path
  * @returns Updated sequence character
  */
-export async function updateSheet(
+async function updateSheet(
   id: string,
   sheetImageUrl: string,
   sheetImagePath: string

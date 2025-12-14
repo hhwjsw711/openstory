@@ -1,4 +1,4 @@
-import { Style } from '@/types/database';
+import type { Style } from '@/types/database';
 
 /**
  * Get the R2 public assets domain from environment
@@ -281,7 +281,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
 ];
 
 // Slug for the system templates team
-export const SYSTEM_TEAM_SLUG = 'system-templates';
+const SYSTEM_TEAM_SLUG = 'system-templates';
 
 // System styles without teamId - teamId will be added during seeding
 export const DEFAULT_SYSTEM_STYLES: Omit<Style, 'id' | 'teamId'>[] =

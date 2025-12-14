@@ -3,7 +3,7 @@ import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
   generateImageWithProvider,
-  ImageGenerationParams,
+  type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -16,7 +16,7 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 
-export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {

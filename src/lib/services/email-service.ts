@@ -49,7 +49,7 @@ interface SendEmailParams {
 /**
  * Send an email using Resend
  */
-export async function sendEmail({
+async function sendEmail({
   to,
   subject,
   html,

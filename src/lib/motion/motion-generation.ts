@@ -6,13 +6,16 @@
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODELS,
-  ImageToVideoModel,
+  type ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
 
 // Re-export for tests
 import { getEnv } from '#env';
-import { AspectRatio, aspectRatioSchema } from '@/lib/constants/aspect-ratios';
+import {
+  type AspectRatio,
+  aspectRatioSchema,
+} from '@/lib/constants/aspect-ratios';
 import type { QueueStatus } from '@fal-ai/client';
 import { createFalClient, isQueueStatus } from '@fal-ai/client';
 import { z } from 'zod';

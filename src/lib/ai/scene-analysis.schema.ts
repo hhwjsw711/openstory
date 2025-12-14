@@ -27,7 +27,7 @@ export const characterBibleEntrySchema = z.object({
 // Project Metadata Schema
 // ============================================================================
 
-export const projectMetadataSchema = z.object({
+const projectMetadataSchema = z.object({
   title: z.string(),
   aspectRatio: z.string(),
   generatedAt: z.string(),
@@ -59,7 +59,7 @@ export const moodTreatmentVariantSchema = z.object({
   tone: z.string(),
 });
 
-export const variantsSchema = z.object({
+const variantsSchema = z.object({
   cameraAngles: z.array(cameraAngleVariantSchema).length(3),
   movementStyles: z.array(movementStyleVariantSchema).length(3).optional(), // Added in phase 4
   moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
@@ -69,7 +69,7 @@ export const variantsSchema = z.object({
 // Selected Variant Schema
 // ============================================================================
 
-export const selectedVariantSchema = z.object({
+const selectedVariantSchema = z.object({
   cameraAngle: z.enum(['A1', 'A2', 'A3']),
   movementStyle: z.enum(['B1', 'B2', 'B3']).optional(), // Added in phase 4
   moodTreatment: z.enum(['C1', 'C2', 'C3']),
@@ -80,7 +80,7 @@ export const selectedVariantSchema = z.object({
 // Prompt Component Schemas
 // ============================================================================
 
-export const visualPromptComponentsSchema = z.object({
+const visualPromptComponentsSchema = z.object({
   sceneDescription: z.string(),
   subject: z.string(),
   environment: z.string(),
@@ -92,7 +92,7 @@ export const visualPromptComponentsSchema = z.object({
   atmosphere: z.string(),
 });
 
-export const visualPromptParametersSchema = z.object({
+const visualPromptParametersSchema = z.object({
   dimensions: z.object({
     width: z.number(),
     height: z.number(),
@@ -114,7 +114,7 @@ export const visualPromptSchema = z.object({
   parameters: visualPromptParametersSchema,
 });
 
-export const motionPromptComponentsSchema = z.object({
+const motionPromptComponentsSchema = z.object({
   cameraMovement: z.string(),
   startPosition: z.string(),
   endPosition: z.string(),
@@ -125,7 +125,7 @@ export const motionPromptComponentsSchema = z.object({
   equipment: z.string(),
 });
 
-export const motionPromptParametersSchema = z.object({
+const motionPromptParametersSchema = z.object({
   durationSeconds: z.number(),
   fps: z.number(),
   motionAmount: z
@@ -147,7 +147,7 @@ export const motionPromptSchema = z.object({
   parameters: motionPromptParametersSchema,
 });
 
-export const promptsSchema = z.object({
+const promptsSchema = z.object({
   visual: visualPromptSchema.optional(), // Added in phase 3
   motion: motionPromptSchema.optional(), // Added in phase 4
 });
@@ -156,14 +156,14 @@ export const promptsSchema = z.object({
 // Audio Design Schemas
 // ============================================================================
 
-export const musicSchema = z.object({
+const musicSchema = z.object({
   presence: z.enum(['none', 'minimal', 'moderate', 'full']),
   style: z.string().nullable().default('').optional(), // Handle null when no music
   mood: z.string().nullable().default('').optional(), // Handle null when no music
   rationale: z.string().optional(),
 });
 
-export const soundEffectSchema = z.object({
+const soundEffectSchema = z.object({
   sfxId: z.string(),
   type: z.string().catch('ambient'), // Accept any string, default to ambient
   description: z.string(),
@@ -176,17 +176,17 @@ export const soundEffectSchema = z.object({
   spatialPosition: z.string().catch('center'), // Accept any string, default to center
 });
 
-export const dialogueLineSchema = z.object({
+const dialogueLineSchema = z.object({
   character: z.string().nullable(),
   line: z.string(),
 });
 
-export const dialogueSchema = z.object({
+const dialogueSchema = z.object({
   presence: z.boolean(),
   lines: z.array(dialogueLineSchema),
 });
 
-export const ambientSchema = z.object({
+const ambientSchema = z.object({
   roomTone: z.string(),
   atmosphere: z.string(),
 });
@@ -214,7 +214,7 @@ export const continuitySchema = z.object({
 // Original Script Schema
 // ============================================================================
 
-export const originalScriptSchema = z.object({
+const originalScriptSchema = z.object({
   extract: z.string(),
   lineNumber: z.number(),
   dialogue: z.array(dialogueLineSchema),
@@ -224,7 +224,7 @@ export const originalScriptSchema = z.object({
 // Scene Metadata Schema
 // ============================================================================
 
-export const sceneMetadataSchema = z.object({
+const sceneMetadataSchema = z.object({
   title: z.string(),
   durationSeconds: z.number(),
   location: z.string(),
@@ -268,7 +268,7 @@ export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
 export type CharacterBibleEntry = z.infer<typeof characterBibleEntrySchema>;
 export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;
-export type VisualPrompt = z.infer<typeof visualPromptSchema>;
-export type MotionPrompt = z.infer<typeof motionPromptSchema>;
-export type AudioDesign = z.infer<typeof audioDesignSchema>;
-export type Continuity = z.infer<typeof continuitySchema>;
+type VisualPrompt = z.infer<typeof visualPromptSchema>;
+type MotionPrompt = z.infer<typeof motionPromptSchema>;
+type AudioDesign = z.infer<typeof audioDesignSchema>;
+type Continuity = z.infer<typeof continuitySchema>;

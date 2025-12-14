@@ -94,7 +94,7 @@ export const handleApiError = (error: unknown): VelroError => {
 /**
  * Create standardized error response for Server Actions
  */
-export function createActionErrorResponse(error: unknown): {
+function createActionErrorResponse(error: unknown): {
   success: false;
   error: string;
   code?: string;

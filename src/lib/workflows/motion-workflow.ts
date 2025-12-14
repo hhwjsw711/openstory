@@ -3,7 +3,8 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
-import { updateFrame } from '@/lib/db/helpers/frames';
+import { getFrameWithSequence, updateFrame } from '@/lib/db/helpers/frames';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -14,7 +15,7 @@ import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 
-export const maxDuration = 800; // This function can run for a maximum of 800 seconds
+const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 /**
  * Motion generation workflow
@@ -121,7 +122,18 @@ export const generateMotionWorkflow = createWorkflow(
     let videoUrl: string = videoResult.videoUrl || '';
 
     if (input.frameId) {
-      // Step 3: Upload video to storage
+      // Step 3: Fetch frame and sequence data for human-readable filename
+      const frameData = await context.run('fetch-frame-data', async () => {
+        if (!input.frameId) throw new Error('Frame ID required');
+        const frame = await getFrameWithSequence(input.frameId);
+        if (!frame) throw new Error('Frame not found');
+        return {
+          sequenceTitle: frame.sequence.title,
+          sceneTitle: frame.metadata?.metadata?.title,
+        };
+      });
+
+      // Step 4: Upload video to storage with human-readable filename
       const storageResult = await context.run('upload-to-storage', async () => {
         if (
           !videoResult.videoUrl ||
@@ -139,6 +151,8 @@ export const generateMotionWorkflow = createWorkflow(
           teamId: input.teamId,
           sequenceId: input.sequenceId,
           frameId: input.frameId,
+          sequenceTitle: frameData.sequenceTitle,
+          sceneTitle: frameData.sceneTitle,
         });
 
         if (!result.success || !result.path) {
@@ -149,7 +163,7 @@ export const generateMotionWorkflow = createWorkflow(
       });
 
       videoUrl = storageResult.url;
-      // Step 4: Update frame with video path, URL, and status
+      // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
         try {
           if (

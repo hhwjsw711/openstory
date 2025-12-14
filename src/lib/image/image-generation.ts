@@ -7,7 +7,7 @@ import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
-import { ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
+import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 
 import { fal } from '@fal-ai/client';
 

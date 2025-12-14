@@ -15,11 +15,30 @@ import {
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 
-interface UploadVideoOptions {
+type UploadVideoOptions = {
   videoUrl: string;
   teamId: string;
   sequenceId: string;
   frameId: string;
+  sequenceTitle: string;
+  sceneTitle?: string;
+};
+
+/**
+ * Convert a string to a URL-safe slug
+ * - Lowercase
+ * - Replace spaces and special chars with hyphens
+ * - Remove consecutive hyphens
+ * - Trim hyphens from start/end
+ * - Limit length to 50 chars
+ */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50);
 }
 
 type StorageResult =
@@ -35,13 +54,15 @@ type StorageResult =
 
 /**
  * Upload a video from URL to R2 Storage
- * Uses ULID-based filename and preserves original file extension
+ * Uses human-readable filename with short hash for uniqueness:
+ * {sequence-slug}_{scene-slug}_{hash}_velro.{ext}
  */
 export async function uploadVideoToStorage(
   options: UploadVideoOptions
 ): Promise<StorageResult> {
   try {
-    const { videoUrl, teamId, sequenceId, frameId } = options;
+    const { videoUrl, teamId, sequenceId, frameId, sequenceTitle, sceneTitle } =
+      options;
 
     // Download video from URL first
     const response = await fetch(videoUrl);
@@ -68,9 +89,13 @@ export async function uploadVideoToStorage(
       else extension = 'mp4'; // Default to mp4 for videos
     }
 
-    // Generate ULID-based filename
+    // Generate human-readable filename with short hash for uniqueness
     const ulid = generateId();
-    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
+    const shortHash = ulid.slice(0, 6).toLowerCase();
+    const sequenceSlug = slugify(sequenceTitle) || 'video';
+    const sceneSlug = sceneTitle ? slugify(sceneTitle) : 'scene';
+    const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_velro.${extension}`;
+    const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${filename}`;
 
     const videoBlob = await response.blob();
 
@@ -105,7 +130,7 @@ export async function uploadVideoToStorage(
 /**
  * Generate a signed URL for temporary video access
  */
-export async function getSignedVideoUrl(
+async function getSignedVideoUrl(
   path: string,
   expiresIn: number = 3600 // 1 hour default
 ): Promise<StorageResult> {
@@ -153,7 +178,7 @@ export async function getVideoDownloadUrl(
 /**
  * Delete a video from storage
  */
-export async function deleteVideoFromStorage(
+async function deleteVideoFromStorage(
   path: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -172,7 +197,7 @@ export async function deleteVideoFromStorage(
 /**
  * List all videos for a sequence
  */
-export async function listSequenceVideos(
+async function listSequenceVideos(
   teamId: string,
   sequenceId: string
 ): Promise<{
@@ -211,7 +236,7 @@ export async function listSequenceVideos(
 /**
  * Calculate total storage used by a team
  */
-export async function calculateTeamStorageUsage(teamId: string): Promise<{
+async function calculateTeamStorageUsage(teamId: string): Promise<{
   success: boolean;
   totalBytes?: number;
   totalMB?: number;

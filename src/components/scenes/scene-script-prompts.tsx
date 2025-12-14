@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { shortenPromptFn } from '@/functions/ai';
+import { generateFrameImageFn } from '@/functions/frame-image';
+import { generateFrameMotionFn } from '@/functions/frame-motion';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -17,7 +20,7 @@ import {
   type AspectRatio,
   aspectRatioToImageSize,
 } from '@/lib/constants/aspect-ratios';
-import { Frame } from '@/types/database';
+import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -168,35 +171,14 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setIsShortening(true);
 
     try {
-      const response = await fetch('/api/prompts/shorten', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: currentPrompt }),
-      });
+      const result = await shortenPromptFn({ data: { prompt: currentPrompt } });
 
-      if (!response.ok) {
-        throw new Error('Failed to shorten prompt');
-      }
-      const result: {
-        success: boolean;
-        data?: {
-          shortenedPrompt: string;
-          reductionPercent: number;
-          originalLength: number;
-          shortenedLength: number;
-        };
-      } = await response.json();
-
-      if (result.success && result.data?.shortenedPrompt) {
-        setEditedImagePrompt(result.data.shortenedPrompt);
-        setShortenSuccess(
-          `Prompt shortened by ${result.data.reductionPercent}% (${result.data.originalLength} → ${result.data.shortenedLength} chars)`
-        );
-        // Clear success message after 5 seconds
-        setTimeout(() => setShortenSuccess(null), 5000);
-      } else {
-        throw new Error('Invalid response from server');
-      }
+      setEditedImagePrompt(result.shortenedPrompt);
+      setShortenSuccess(
+        `Prompt shortened by ${result.reductionPercent}% (${result.originalLength} → ${result.shortenedLength} chars)`
+      );
+      // Clear success message after 5 seconds
+      setTimeout(() => setShortenSuccess(null), 5000);
     } catch (error) {
       console.error('Failed to shorten prompt:', error);
       const errorMessage =
@@ -242,21 +224,14 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     });
 
     try {
-      const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-image`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: selectedImageModel,
-            prompt: editedImagePrompt || undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to regenerate image');
-      }
+      await generateFrameImageFn({
+        data: {
+          sequenceId: frame.sequenceId,
+          frameId: frame.id,
+          model: selectedImageModel,
+          prompt: editedImagePrompt || undefined,
+        },
+      });
 
       // Don't invalidate immediately - let auto-polling pick up server updates
       // The optimistic update shows 'generating' instantly, and the workflow
@@ -313,21 +288,14 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     });
 
     try {
-      const response = await fetch(
-        `/api/sequences/${frame.sequenceId}/frames/${frame.id}/generate-motion`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: selectedMotionModel,
-            prompt: editedMotionPrompt || undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to regenerate motion');
-      }
+      await generateFrameMotionFn({
+        data: {
+          sequenceId: frame.sequenceId,
+          frameId: frame.id,
+          model: selectedMotionModel,
+          prompt: editedMotionPrompt || undefined,
+        },
+      });
 
       // Don't invalidate immediately - let auto-polling pick up server updates
     } catch (error) {
@@ -376,7 +344,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const handleVariantSelect = useCallback(
     async (index: number) => {
       if (!frame?.id || !frame?.sequenceId) return;
-
+      console.log('handleVariantSelect', index);
       try {
         await selectVariant.mutateAsync({
           sequenceId: frame.sequenceId,
@@ -664,7 +632,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <Button
             onClick={handleGenerateSceneVariants}
             disabled={
-              isGeneratingSceneVariants || generateVariants.isPending || !frame
+              isGenerating ||
+              isGeneratingSceneVariants ||
+              generateVariants.isPending ||
+              !frame
             }
             className="w-full"
           >

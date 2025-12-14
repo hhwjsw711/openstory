@@ -15,7 +15,7 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const maxDuration = 300; // 5 minutes max
+const maxDuration = 300; // 5 minutes max
 
 export const upscaleVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {

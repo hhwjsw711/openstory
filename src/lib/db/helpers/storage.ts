@@ -44,7 +44,7 @@ export type StorageBucket =
 /**
  * Upload result with URL and path information
  */
-export type UploadResult = {
+type UploadResult = {
   path: string;
   publicUrl: string;
   fullPath: string;
@@ -382,7 +382,7 @@ export async function deleteFile(
  * ]);
  * ```
  */
-export async function deleteFiles(
+async function deleteFiles(
   bucket: StorageBucket,
   paths: string[]
 ): Promise<void> {
@@ -484,7 +484,7 @@ export async function listFiles(
  * );
  * ```
  */
-export async function moveFile(
+async function moveFile(
   bucket: StorageBucket,
   fromPath: string,
   toPath: string

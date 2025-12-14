@@ -41,7 +41,7 @@ export const getStylesFn = createServerFn({ method: 'GET' })
  * Get public styles only (for unauthenticated users or fallback)
  * @returns Array of public styles
  */
-export const getPublicStylesFn = createServerFn({ method: 'GET' })
+const getPublicStylesFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
     return getPublicStyles();

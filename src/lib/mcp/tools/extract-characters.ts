@@ -19,7 +19,7 @@ export type ExtractCharactersInput = z.infer<
   typeof extractCharactersInputSchema
 >;
 
-export type ExtractCharactersOutput = {
+type ExtractCharactersOutput = {
   characterBible: CharacterBibleEntry[];
 };
 
@@ -57,7 +57,7 @@ export async function extractCharactersTool(
 /**
  * Tool description for MCP
  */
-export const extractCharactersToolDescription = {
+const extractCharactersToolDescription = {
   name: 'extract_characters',
   description: `Extract character bible from scenes (Phase 2 of script analysis).
 

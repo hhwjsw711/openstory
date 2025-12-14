@@ -23,27 +23,19 @@ import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
-import { Route as ApiUserMeRouteImport } from './routes/api/user/me'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
-import { Route as ApiSequencesSequenceIdGenerateMotionRouteImport } from './routes/api/sequences/$sequenceId/generate-motion'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
 import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
 import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts'
 import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters'
 import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design'
 import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
-import { Route as ApiFramesFrameIdDownloadRouteImport } from './routes/api/frames/$frameId/download'
 import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
 import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
 import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
-import { Route as ApiSequencesSequenceIdFramesGenerateRouteImport } from './routes/api/sequences/$sequenceId/frames/generate'
 import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
-import { Route as ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/select-variant'
-import { Route as ApiSequencesSequenceIdFramesFrameIdMotionRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/motion'
-import { Route as ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-import { Route as ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport } from './routes/api/sequences/$sequenceId/frames/$frameId/generate-image'
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
@@ -113,11 +105,6 @@ const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   path: '/api/workflows/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUserMeRoute = ApiUserMeRouteImport.update({
-  id: '/api/user/me',
-  path: '/api/user/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -133,12 +120,6 @@ const ApiWorkflowsStatusRunIdRoute = ApiWorkflowsStatusRunIdRouteImport.update({
   path: '/api/workflows/status/$runId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSequencesSequenceIdGenerateMotionRoute =
-  ApiSequencesSequenceIdGenerateMotionRouteImport.update({
-    id: '/api/sequences/$sequenceId/generate-motion',
-    path: '/api/sequences/$sequenceId/generate-motion',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiMcpStreamVisualPromptsRoute =
   ApiMcpStreamVisualPromptsRouteImport.update({
     id: '/stream/visual-prompts',
@@ -173,12 +154,6 @@ const ApiMcpStreamAnalyzeScriptRoute =
     path: '/stream/analyze-script',
     getParentRoute: () => ApiMcpRoute,
   } as any)
-const ApiFramesFrameIdDownloadRoute =
-  ApiFramesFrameIdDownloadRouteImport.update({
-    id: '/api/frames/$frameId/download',
-    path: '/api/frames/$frameId/download',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ProtectedSequencesIdScriptRoute =
   ProtectedSequencesIdScriptRouteImport.update({
     id: '/sequences/$id/script',
@@ -197,40 +172,10 @@ const ApiTeamsInvitationsInvitationIdAcceptRoute =
     path: '/api/teams/invitations/$invitationId/accept',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiSequencesSequenceIdFramesGenerateRoute =
-  ApiSequencesSequenceIdFramesGenerateRouteImport.update({
-    id: '/api/sequences/$sequenceId/frames/generate',
-    path: '/api/sequences/$sequenceId/frames/generate',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiSequencesSequenceIdChaptersVttRoute =
   ApiSequencesSequenceIdChaptersVttRouteImport.update({
     id: '/api/sequences/$sequenceId/chapters/vtt',
     path: '/api/sequences/$sequenceId/chapters/vtt',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute =
-  ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport.update({
-    id: '/api/sequences/$sequenceId/frames/$frameId/select-variant',
-    path: '/api/sequences/$sequenceId/frames/$frameId/select-variant',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSequencesSequenceIdFramesFrameIdMotionRoute =
-  ApiSequencesSequenceIdFramesFrameIdMotionRouteImport.update({
-    id: '/api/sequences/$sequenceId/frames/$frameId/motion',
-    path: '/api/sequences/$sequenceId/frames/$frameId/motion',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute =
-  ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport.update({
-    id: '/api/sequences/$sequenceId/frames/$frameId/generate-variants',
-    path: '/api/sequences/$sequenceId/frames/$frameId/generate-variants',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute =
-  ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport.update({
-    id: '/api/sequences/$sequenceId/frames/$frameId/generate-image',
-    path: '/api/sequences/$sequenceId/frames/$frameId/generate-image',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -247,27 +192,19 @@ export interface FileRoutesByFullPath {
   '/api/realtime': typeof ApiRealtimeRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/user/me': typeof ApiUserMeRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
-  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
-  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -282,27 +219,19 @@ export interface FileRoutesByTo {
   '/api/realtime': typeof ApiRealtimeRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/user/me': typeof ApiUserMeRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
-  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
-  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -320,27 +249,19 @@ export interface FileRoutesById {
   '/api/realtime': typeof ApiRealtimeRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/user/me': typeof ApiUserMeRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/api/frames/$frameId/download': typeof ApiFramesFrameIdDownloadRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/sequences/$sequenceId/generate-motion': typeof ApiSequencesSequenceIdGenerateMotionRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/sequences/$sequenceId/frames/generate': typeof ApiSequencesSequenceIdFramesGenerateRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-image': typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
-  '/api/sequences/$sequenceId/frames/$frameId/generate-variants': typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
-  '/api/sequences/$sequenceId/frames/$frameId/motion': typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
-  '/api/sequences/$sequenceId/frames/$frameId/select-variant': typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -357,27 +278,19 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/sequences/new'
     | '/api/auth/$'
-    | '/api/user/me'
     | '/api/workflows/$'
     | '/sequences'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
-    | '/api/frames/$frameId/download'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/workflows/status/$runId'
     | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/sequences/$sequenceId/frames/generate'
     | '/api/teams/invitations/$invitationId/accept'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-    | '/api/sequences/$sequenceId/frames/$frameId/motion'
-    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -392,27 +305,19 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/sequences/new'
     | '/api/auth/$'
-    | '/api/user/me'
     | '/api/workflows/$'
     | '/sequences'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
-    | '/api/frames/$frameId/download'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/workflows/status/$runId'
     | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/sequences/$sequenceId/frames/generate'
     | '/api/teams/invitations/$invitationId/accept'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-    | '/api/sequences/$sequenceId/frames/$frameId/motion'
-    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
   id:
     | '__root__'
     | '/'
@@ -429,27 +334,19 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/_protected/sequences/new'
     | '/api/auth/$'
-    | '/api/user/me'
     | '/api/workflows/$'
     | '/_protected/sequences/'
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
-    | '/api/frames/$frameId/download'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/sequences/$sequenceId/generate-motion'
     | '/api/workflows/status/$runId'
     | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/sequences/$sequenceId/frames/generate'
     | '/api/teams/invitations/$invitationId/accept'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-    | '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-    | '/api/sequences/$sequenceId/frames/$frameId/motion'
-    | '/api/sequences/$sequenceId/frames/$frameId/select-variant'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -460,18 +357,10 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRouteWithChildren
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiUserMeRoute: typeof ApiUserMeRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
-  ApiFramesFrameIdDownloadRoute: typeof ApiFramesFrameIdDownloadRoute
-  ApiSequencesSequenceIdGenerateMotionRoute: typeof ApiSequencesSequenceIdGenerateMotionRoute
   ApiWorkflowsStatusRunIdRoute: typeof ApiWorkflowsStatusRunIdRoute
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
-  ApiSequencesSequenceIdFramesGenerateRoute: typeof ApiSequencesSequenceIdFramesGenerateRoute
   ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute
-  ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute
-  ApiSequencesSequenceIdFramesFrameIdMotionRoute: typeof ApiSequencesSequenceIdFramesFrameIdMotionRoute
-  ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute: typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -574,13 +463,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/user/me': {
-      id: '/api/user/me'
-      path: '/api/user/me'
-      fullPath: '/api/user/me'
-      preLoaderRoute: typeof ApiUserMeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -600,13 +482,6 @@ declare module '@tanstack/react-router' {
       path: '/api/workflows/status/$runId'
       fullPath: '/api/workflows/status/$runId'
       preLoaderRoute: typeof ApiWorkflowsStatusRunIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/generate-motion': {
-      id: '/api/sequences/$sequenceId/generate-motion'
-      path: '/api/sequences/$sequenceId/generate-motion'
-      fullPath: '/api/sequences/$sequenceId/generate-motion'
-      preLoaderRoute: typeof ApiSequencesSequenceIdGenerateMotionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/mcp/stream/visual-prompts': {
@@ -651,13 +526,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport
       parentRoute: typeof ApiMcpRoute
     }
-    '/api/frames/$frameId/download': {
-      id: '/api/frames/$frameId/download'
-      path: '/api/frames/$frameId/download'
-      fullPath: '/api/frames/$frameId/download'
-      preLoaderRoute: typeof ApiFramesFrameIdDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_protected/sequences/$id/script': {
       id: '/_protected/sequences/$id/script'
       path: '/sequences/$id/script'
@@ -679,46 +547,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sequences/$sequenceId/frames/generate': {
-      id: '/api/sequences/$sequenceId/frames/generate'
-      path: '/api/sequences/$sequenceId/frames/generate'
-      fullPath: '/api/sequences/$sequenceId/frames/generate'
-      preLoaderRoute: typeof ApiSequencesSequenceIdFramesGenerateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/sequences/$sequenceId/chapters/vtt': {
       id: '/api/sequences/$sequenceId/chapters/vtt'
       path: '/api/sequences/$sequenceId/chapters/vtt'
       fullPath: '/api/sequences/$sequenceId/chapters/vtt'
       preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/frames/$frameId/select-variant': {
-      id: '/api/sequences/$sequenceId/frames/$frameId/select-variant'
-      path: '/api/sequences/$sequenceId/frames/$frameId/select-variant'
-      fullPath: '/api/sequences/$sequenceId/frames/$frameId/select-variant'
-      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdSelectVariantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/frames/$frameId/motion': {
-      id: '/api/sequences/$sequenceId/frames/$frameId/motion'
-      path: '/api/sequences/$sequenceId/frames/$frameId/motion'
-      fullPath: '/api/sequences/$sequenceId/frames/$frameId/motion'
-      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdMotionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/frames/$frameId/generate-variants': {
-      id: '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-      path: '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-      fullPath: '/api/sequences/$sequenceId/frames/$frameId/generate-variants'
-      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/frames/$frameId/generate-image': {
-      id: '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-      path: '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-      fullPath: '/api/sequences/$sequenceId/frames/$frameId/generate-image'
-      preLoaderRoute: typeof ApiSequencesSequenceIdFramesFrameIdGenerateImageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -793,26 +626,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiUserMeRoute: ApiUserMeRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
-  ApiFramesFrameIdDownloadRoute: ApiFramesFrameIdDownloadRoute,
-  ApiSequencesSequenceIdGenerateMotionRoute:
-    ApiSequencesSequenceIdGenerateMotionRoute,
   ApiWorkflowsStatusRunIdRoute: ApiWorkflowsStatusRunIdRoute,
   ApiSequencesSequenceIdChaptersVttRoute:
     ApiSequencesSequenceIdChaptersVttRoute,
-  ApiSequencesSequenceIdFramesGenerateRoute:
-    ApiSequencesSequenceIdFramesGenerateRoute,
   ApiTeamsInvitationsInvitationIdAcceptRoute:
     ApiTeamsInvitationsInvitationIdAcceptRoute,
-  ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute:
-    ApiSequencesSequenceIdFramesFrameIdGenerateImageRoute,
-  ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute:
-    ApiSequencesSequenceIdFramesFrameIdGenerateVariantsRoute,
-  ApiSequencesSequenceIdFramesFrameIdMotionRoute:
-    ApiSequencesSequenceIdFramesFrameIdMotionRoute,
-  ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute:
-    ApiSequencesSequenceIdFramesFrameIdSelectVariantRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

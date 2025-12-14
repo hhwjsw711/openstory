@@ -2,13 +2,13 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export interface SelectProps extends Omit<
+interface SelectProps extends Omit<
   React.HTMLAttributes<HTMLDivElement>,
   'onChange'
 > {

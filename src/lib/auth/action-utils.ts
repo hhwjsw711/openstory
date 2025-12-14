@@ -137,7 +137,7 @@ export async function requireTeamOwnerAccess(
  * console.log(`${user.email} has ${role} access`);
  * ```
  */
-export async function requireUserWithTeamAccess(
+async function requireUserWithTeamAccess(
   teamId: string,
   minRole: TeamRole = 'member'
 ): Promise<{ user: User; role: TeamRole }> {
@@ -166,7 +166,7 @@ export async function requireUserWithTeamAccess(
  * }
  * ```
  */
-export async function checkTeamAccess(
+async function checkTeamAccess(
   userId: string,
   teamId: string,
   minRole: TeamRole = 'member'

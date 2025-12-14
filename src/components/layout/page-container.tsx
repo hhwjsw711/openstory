@@ -28,7 +28,7 @@ const pageContainerVariants = cva('container mx-auto px-4', {
   },
 });
 
-export interface PageContainerProps
+interface PageContainerProps
   extends
     React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof pageContainerVariants> {}
