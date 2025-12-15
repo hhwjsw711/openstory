@@ -23,6 +23,7 @@ import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code';
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password';
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index';
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$';
+import { Route as ApiUserMeRouteImport } from './routes/api/user/me';
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$';
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new';
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId';
@@ -103,6 +104,11 @@ const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
 const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   id: '/api/workflows/$',
   path: '/api/workflows/$',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiUserMeRoute = ApiUserMeRouteImport.update({
+  id: '/api/user/me',
+  path: '/api/user/me',
   getParentRoute: () => rootRouteImport,
 } as any);
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/api/realtime': typeof ApiRealtimeRoute;
   '/sequences/new': typeof ProtectedSequencesNewRoute;
   '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/user/me': typeof ApiUserMeRoute;
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
   '/sequences': typeof ProtectedSequencesIndexRoute;
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/api/realtime': typeof ApiRealtimeRoute;
   '/sequences/new': typeof ProtectedSequencesNewRoute;
   '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/user/me': typeof ApiUserMeRoute;
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
   '/sequences': typeof ProtectedSequencesIndexRoute;
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
@@ -249,6 +257,7 @@ export interface FileRoutesById {
   '/api/realtime': typeof ApiRealtimeRoute;
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute;
   '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/user/me': typeof ApiUserMeRoute;
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute;
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/sequences/new'
     | '/api/auth/$'
+    | '/api/user/me'
     | '/api/workflows/$'
     | '/sequences'
     | '/sequences/$id/scenes'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/sequences/new'
     | '/api/auth/$'
+    | '/api/user/me'
     | '/api/workflows/$'
     | '/sequences'
     | '/sequences/$id/scenes'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/_protected/sequences/new'
     | '/api/auth/$'
+    | '/api/user/me'
     | '/api/workflows/$'
     | '/_protected/sequences/'
     | '/_protected/sequences/$id/scenes'
@@ -357,6 +369,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRouteWithChildren;
   ApiRealtimeRoute: typeof ApiRealtimeRoute;
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
+  ApiUserMeRoute: typeof ApiUserMeRoute;
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute;
   ApiWorkflowsStatusRunIdRoute: typeof ApiWorkflowsStatusRunIdRoute;
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute;
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workflows/$';
       fullPath: '/api/workflows/$';
       preLoaderRoute: typeof ApiWorkflowsSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/api/user/me': {
+      id: '/api/user/me';
+      path: '/api/user/me';
+      fullPath: '/api/user/me';
+      preLoaderRoute: typeof ApiUserMeRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/api/auth/$': {
@@ -626,6 +646,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiUserMeRoute: ApiUserMeRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
   ApiWorkflowsStatusRunIdRoute: ApiWorkflowsStatusRunIdRoute,
   ApiSequencesSequenceIdChaptersVttRoute:
