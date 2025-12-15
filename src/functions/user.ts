@@ -9,10 +9,51 @@ import { z } from 'zod';
 import { authMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
+  ensureUserAndTeam,
   getUserDefaultTeam,
   getUserTeams,
   canAccessTeam,
 } from '@/lib/db/helpers';
+import { UserProfile } from '@/lib/types/database';
+
+// ============================================================================
+// Get Current User
+// ============================================================================
+
+export type CurrentUserData = {
+  user: UserProfile;
+  isAuthenticated: boolean;
+  teamId?: string;
+  teamRole?: string;
+  teamName?: string;
+};
+
+/**
+ * Get the current authenticated user with team information
+ * Ensures user and team exist in the database
+ * @returns Current user profile with team data
+ */
+export const getCurrentUserFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<CurrentUserData> => {
+    // Ensure user and team exist
+    const ensureResult = await ensureUserAndTeam(context.user);
+
+    if (!ensureResult.success || !ensureResult.data) {
+      throw new Error(ensureResult.error || 'Failed to ensure user and team');
+    }
+
+    // Get complete team info with team name
+    const teamMembership = await getUserDefaultTeam(context.user.id);
+
+    return {
+      user: ensureResult.data,
+      isAuthenticated: true,
+      teamId: teamMembership?.teamId,
+      teamRole: teamMembership?.role,
+      teamName: teamMembership?.teamName,
+    };
+  });
 
 // ============================================================================
 // Get User's Default Team
