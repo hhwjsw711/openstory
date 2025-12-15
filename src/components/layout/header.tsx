@@ -5,6 +5,7 @@
 
 import { cn } from '@/lib/utils';
 import { VelroLogo } from '@/components/icons';
+import { Route as charactersRoute } from '@/routes/_protected/characters/index';
 import { Route as evalRoute } from '@/routes/_protected/eval';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
@@ -33,19 +34,25 @@ export function Header({ className }: HeaderProps) {
           {/* Main navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <Link
-              to={sequencesRoute.fullPath}
+              to={sequencesRoute.to}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Sequences
             </Link>
             <Link
-              to={sequencesNewRoute.fullPath}
+              to={sequencesNewRoute.to}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Create New
             </Link>
             <Link
-              to={evalRoute.fullPath}
+              to={charactersRoute.to}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Characters
+            </Link>
+            <Link
+              to={evalRoute.to}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Eval

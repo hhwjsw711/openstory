@@ -6,8 +6,8 @@
 import { getDb } from '#db-client';
 import type {
   Audio,
-  Character,
   Frame,
+  Character,
   Sequence,
   Style,
   Vfx,
@@ -293,30 +293,6 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
     .from(styles)
     .where(eq(styles.id, styleId))
     .limit(1);
-  return result[0] ?? null;
-}
-
-/**
- * Get a single character by ID
- *
- * @param characterId - The character ID
- * @returns Character or null if not found
- *
- * @example
- * ```ts
- * const character = await getCharacterById(characterId);
- * if (!character) {
- *   return NextResponse.json({ error: 'Character not found' }, { status: 404 });
- * }
- * ```
- */
-async function getCharacterById(
-  characterId: string
-): Promise<Character | null> {
-  const result = await getDb()
-    .select()
-    .from(characters)
-    .where(eq(characters.id, characterId));
   return result[0] ?? null;
 }
 

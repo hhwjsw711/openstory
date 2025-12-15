@@ -20,16 +20,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/use-user';
-import { useSession } from '@/lib/auth/client';
 import { authClient } from '@/lib/auth/client';
 
 export function UserBadge() {
-  const { data: userData, isLoading } = useUser();
-  const { data: session } = useSession();
+  const { data: user, isLoading } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Show loading state or no user data
-  if (isLoading || !userData) {
+  if (isLoading || !user) {
     return (
       <div className="flex items-center gap-2">
         <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
@@ -38,8 +36,7 @@ export function UserBadge() {
   }
 
   // Authenticated user - show user menu
-  const user = userData.user;
-  const userEmail = session?.user?.email;
+  const userEmail = user.email;
   const displayName = user.fullName || userEmail || 'User';
   const initials = getInitials(displayName);
 

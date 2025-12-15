@@ -20,5 +20,5 @@ export const {
 } = authClient;
 
 // Type exports for TypeScript support
-type AuthClient = typeof authClient;
-type SessionData = typeof authClient.$Infer.Session;
+export type AuthClient = typeof authClient;
+export type SessionData = typeof authClient.$Infer.Session;

@@ -3,13 +3,105 @@
  * Central export point for all database schemas and relations
  */
 
+import { relations } from 'drizzle-orm';
+
+// Import all schema components first (required for schema object)
+import { account, session, user, verification } from './auth';
+
+import {
+  teamInvitations,
+  teamInvitationsRelations,
+  teamMembers,
+  teamMembersRelations,
+  teams,
+  teamsRelations,
+} from './teams';
+
+// NOTE: sequences imported without relations - defined below to avoid circular dependency
+import { sequences } from './sequences';
+
+import { frames, framesRelations } from './frames';
+
+import {
+  sequenceCharacters,
+  sequenceCharactersRelations,
+} from './sequence-characters';
+
+import {
+  characterMedia,
+  characterMediaRelations,
+  characterSheets,
+  characterSheetsRelations,
+  characters,
+  charactersRelations,
+  sequenceCharacterUsages,
+  sequenceCharacterUsagesRelations,
+} from './characters';
+
+import {
+  audio,
+  audioRelations,
+  styleAdaptations,
+  styleAdaptationsRelations,
+  styles,
+  stylesRelations,
+  vfx,
+  vfxRelations,
+} from './libraries';
+
+import {
+  falRequests,
+  falRequestsRelations,
+  letzaiRequests,
+  letzaiRequestsRelations,
+} from './tracking';
+
+import {
+  credits,
+  creditsRelations,
+  transactions,
+  transactionsRelations,
+} from './credits';
+
+import { scriptAnalysisAudit } from './audit';
+
+// ============================================================================
+// Relations defined here to avoid circular dependencies
+// ============================================================================
+
+/**
+ * Sequences relations - defined here because frames.ts imports sequences
+ * for FK reference, creating a circular dependency if defined in sequences.ts
+ */
+export const sequencesRelations = relations(sequences, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [sequences.teamId],
+    references: [teams.id],
+  }),
+  user_createdBy: one(user, {
+    fields: [sequences.createdBy],
+    references: [user.id],
+    relationName: 'sequences_createdBy_users_id',
+  }),
+  user_updatedBy: one(user, {
+    fields: [sequences.updatedBy],
+    references: [user.id],
+    relationName: 'sequences_updatedBy_users_id',
+  }),
+  style: one(styles, {
+    fields: [sequences.styleId],
+    references: [styles.id],
+  }),
+  frames: many(frames),
+}));
+
 // Better Auth tables
-export { account, session, user, verification } from './auth';
+export { account, session, user, verification };
 
 export type { Account, Session, User, Verification } from './auth';
 
 // Teams
-export { teamInvitations, teamMembers, teams } from './teams';
+export { teamInvitations, teamMembers, teams };
 
 export type {
   InvitationStatus,
@@ -23,17 +115,17 @@ export type {
 } from './teams';
 
 // Sequences
-export { sequences } from './sequences';
+export { sequences };
 
 export type { NewSequence, Sequence, SequenceStatus } from './sequences';
 
 // Frames
-export { frames } from './frames';
+export { frames };
 
 export type { Frame, NewFrame } from './frames';
 
-// Sequence Characters
-export { sequenceCharacters } from './sequence-characters';
+// Sequence Characters (legacy - to be deprecated)
+export { sequenceCharacters };
 
 export type {
   NewSequenceCharacter,
@@ -41,15 +133,32 @@ export type {
   SheetStatus,
 } from './sequence-characters';
 
+// Character Library (new)
+export { characterMedia, characterSheets, characters, sequenceCharacterUsages };
+
+export type {
+  CharacterMediaRecord,
+  CharacterMediaType,
+  CharacterSheet,
+  CharacterSheetSource,
+  Character,
+  CharacterWithRelations,
+  CharacterWithSheets,
+  NewCharacterMedia,
+  NewCharacterSheet,
+  NewCharacter,
+  NewSequenceCharacterUsage,
+  SequenceCharacterUsage,
+} from './characters';
+
 // Library Resources
-export { audio, characters, styles, vfx } from './libraries';
+export { audio, styles, vfx };
 
 export type {
   Audio,
-  Character,
   NewAudio,
-  NewCharacter,
   NewStyle,
+  NewStyleAdaptation,
   NewVfx,
   Style,
   StyleAdaptation,
@@ -75,7 +184,6 @@ export type {
   TransactionType,
 } from './credits';
 
-// Audit
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -101,19 +209,27 @@ export const schema = {
   sequencesRelations,
   framesRelations,
 
-  // Sequence Characters
+  // Sequence Characters (legacy)
   sequenceCharacters,
   sequenceCharactersRelations,
+
+  // Character Library (new)
+  characters,
+  charactersRelations,
+  characterSheets,
+  characterSheetsRelations,
+  characterMedia,
+  characterMediaRelations,
+  sequenceCharacterUsages,
+  sequenceCharacterUsagesRelations,
 
   // Libraries
   styles,
   styleAdaptations,
-  characters,
   vfx,
   audio,
   stylesRelations,
   styleAdaptationsRelations,
-  charactersRelations,
   vfxRelations,
   audioRelations,
 
@@ -132,53 +248,3 @@ export const schema = {
   // Audit
   scriptAnalysisAudit,
 };
-
-// Import statements (not exported, just for local use)
-import { account, session, user, verification } from './auth';
-
-import {
-  teamInvitations,
-  teamInvitationsRelations,
-  teamMembers,
-  teamMembersRelations,
-  teams,
-  teamsRelations,
-} from './teams';
-
-import { sequences, sequencesRelations } from './sequences';
-
-import { frames, framesRelations } from './frames';
-
-import {
-  sequenceCharacters,
-  sequenceCharactersRelations,
-} from './sequence-characters';
-
-import {
-  audio,
-  audioRelations,
-  characters,
-  charactersRelations,
-  styleAdaptations,
-  styleAdaptationsRelations,
-  styles,
-  stylesRelations,
-  vfx,
-  vfxRelations,
-} from './libraries';
-
-import {
-  falRequests,
-  falRequestsRelations,
-  letzaiRequests,
-  letzaiRequestsRelations,
-} from './tracking';
-
-import {
-  credits,
-  creditsRelations,
-  transactions,
-  transactionsRelations,
-} from './credits';
-
-import { scriptAnalysisAudit } from './audit';

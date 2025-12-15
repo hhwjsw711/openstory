@@ -9,6 +9,19 @@ import { z } from 'zod';
  * - generation.* - Events for the overall generation process
  */
 export const realtimeSchema = {
+  // Character library events
+  character: {
+    // Sheet generation progress
+    'sheet:progress': z.object({
+      characterId: z.string(),
+      status: z.enum(['generating', 'completed', 'failed']),
+      sheetId: z.string().optional(),
+      sheetImageUrl: z.string().optional(),
+      headshotImageUrl: z.string().optional(),
+      error: z.string().optional(),
+    }),
+  },
+
   generation: {
     // Phase lifecycle events
     'phase:start': z.object({
@@ -105,6 +118,18 @@ export function getRealtime() {
 export function getGenerationChannel(sequenceId?: string) {
   return sequenceId
     ? getRealtime().channel(sequenceId)
+    : {
+        emit: () => null,
+      };
+}
+
+/**
+ * Get a channel for character library events.
+ * @param characterId - The character ID to use as the channel identifier
+ */
+export function getCharacterChannel(characterId?: string) {
+  return characterId
+    ? getRealtime().channel(`character:${characterId}`)
     : {
         emit: () => null,
       };

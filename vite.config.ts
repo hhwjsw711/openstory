@@ -45,7 +45,11 @@ export default defineConfig({
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
-      : nitro(),
+      : nitro({
+          rollupConfig: {
+            treeshake: false,
+          },
+        }),
     // Enables Vite to resolve imports using path aliases.
     tanstackStart({
       srcDirectory: 'src', // This is the default
