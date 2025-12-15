@@ -1,27 +1,21 @@
-'use client';
 import { PageContainer } from '@/components/layout';
 import { ScriptView } from '@/components/script/script-view';
-import { useUser } from '@/hooks/use-user';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';
-
+import { Route as ScenesRoute } from '@/routes/_protected/sequences/$id/scenes';
 export const Route = createFileRoute('/_protected/sequences/new')({
   component: NewSequencePage,
 });
 
 function NewSequencePage() {
-  // Verify session
-  const { data: userData } = useUser();
-  const _user = userData?.user;
-
   const navigate = useNavigate();
 
   const handleSuccess = useCallback(
     (sequenceIds: string[]) => {
       if (sequenceIds.length > 0) {
         // Navigate to storyboard page after successful generation
-        navigate({
-          to: '/sequences/$id/scenes',
+        void navigate({
+          to: ScenesRoute.to,
           params: { id: sequenceIds[0] },
         });
       }

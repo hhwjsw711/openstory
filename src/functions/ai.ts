@@ -170,7 +170,7 @@ const enhanceScriptInputSchema = z.object({
  * Enhance a script using AI
  * @returns The enhanced script with recommendations
  */
-const enhanceScriptFn = createServerFn({ method: 'POST' })
+export const enhanceScriptFn = createServerFn({ method: 'POST' })
   .inputValidator(zodValidator(enhanceScriptInputSchema))
   .handler(async ({ data }) => {
     const clientIP = getClientIP();

@@ -26,7 +26,7 @@ export type CurrentUserData = {
  * Ensures user and team exist in the database
  * @returns Current user profile with team data
  */
-export const getCurrentUserFn = createServerFn({ method: 'GET' })
+export const getCurrentUserProfileFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<CurrentUserData> => {
     // Ensure user and team exist

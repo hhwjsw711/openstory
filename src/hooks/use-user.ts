@@ -1,8 +1,9 @@
 'use client';
 
 import { useSession } from '@/lib/auth/client';
-import { getCurrentUserFn, type CurrentUserData } from '@/functions/user';
 import { useQuery } from '@tanstack/react-query';
+import { getCurrentUserFn } from '@/lib/auth/server';
+import type { User } from '@/lib/auth/config';
 
 /**
  * Hook for client components that need user data
@@ -14,7 +15,7 @@ export function useUser() {
 
   return useQuery({
     queryKey: ['current-user'],
-    queryFn: (): Promise<CurrentUserData> => getCurrentUserFn(),
+    queryFn: async (): Promise<User | undefined> => getCurrentUserFn(),
     enabled: !isSessionPending && !!session, // Only fetch if session exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Retry once on failure
