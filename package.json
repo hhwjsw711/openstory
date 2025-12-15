@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",
-    "start": "vite start",
+    "start": "bun --bun run .output/server/index.mjs",
     "preview": "vite preview",
     "build:bun": "bun run --bun vite build",
     "start:bun": "bun --bun .output/server/index.mjs",

@@ -43,10 +43,6 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    process.env.BUILD_CLOUDFLARE
-      ? cloudflare({ viteEnvironment: { name: 'ssr' } })
-      : nitro(),
-    // Enables Vite to resolve imports using path aliases.
     tanstackStart({
       srcDirectory: 'src', // This is the default
       router: {
@@ -54,8 +50,14 @@ export default defineConfig({
         routesDirectory: 'routes', // Defaults to "routes", relative to srcDirectory
       },
     }),
+    process.env.BUILD_CLOUDFLARE
+      ? cloudflare({ viteEnvironment: { name: 'ssr' } })
+      : nitro({ preset: 'bun' }),
+    // Enables Vite to resolve imports using path aliases.
+
     viteReact(),
   ],
+  nitro: {},
   ssr: {
     noExternal: ['@upstash/realtime', '@vidstack/react'],
   },
