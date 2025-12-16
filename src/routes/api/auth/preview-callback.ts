@@ -6,6 +6,9 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
+import { serializeSignedCookie } from 'better-call';
+
+import { getEnv } from '#env';
 import {
   createPreviewSession,
   verifyPreviewTransferToken,
@@ -39,8 +42,8 @@ export const Route = createFileRoute('/api/auth/preview-callback')({
           // Build redirect URL
           const redirectUrl = new URL(callbackUrl, request.url);
 
-          // Build cookie
-          const cookie = buildSessionCookie(sessionToken, request);
+          // Build signed cookie (Better Auth expects signed cookies)
+          const cookie = await buildSignedSessionCookie(sessionToken, request);
 
           console.log('[Preview Callback] Session created, redirecting', {
             userId,
@@ -54,7 +57,7 @@ export const Route = createFileRoute('/api/auth/preview-callback')({
             status: 302,
             headers: {
               Location: redirectUrl.toString(),
-              'Set-Cookie': buildSessionCookie(sessionToken, request),
+              'Set-Cookie': cookie,
             },
           });
         } catch (error) {
@@ -70,10 +73,13 @@ export const Route = createFileRoute('/api/auth/preview-callback')({
 });
 
 /**
- * Build session cookie string for Better Auth
- * Uses __Secure- prefix on HTTPS (required by Better Auth)
+ * Build signed session cookie string for Better Auth
+ * Uses serializeSignedCookie from better-call to match Better Auth's format
  */
-function buildSessionCookie(sessionToken: string, request: Request): string {
+async function buildSignedSessionCookie(
+  sessionToken: string,
+  request: Request
+): Promise<string> {
   const isSecure = request.url.startsWith('https://');
   const maxAge = 90 * 24 * 60 * 60; // 90 days in seconds
 
@@ -82,19 +88,20 @@ function buildSessionCookie(sessionToken: string, request: Request): string {
     ? '__Secure-better-auth.session_token'
     : 'better-auth.session_token';
 
-  const parts = [
-    `${cookieName}=${sessionToken}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${maxAge}`,
-  ];
-
-  if (isSecure) {
-    parts.push('Secure');
+  const secret = getEnv().BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error('BETTER_AUTH_SECRET not configured');
   }
 
-  return parts.join('; ');
+  // Use better-call's serializeSignedCookie to sign the token
+  // This creates the format: {token}.{hmac-signature}
+  return serializeSignedCookie(cookieName, sessionToken, secret, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge,
+    secure: isSecure,
+  });
 }
 
 /**
