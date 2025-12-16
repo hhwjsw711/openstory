@@ -1,0 +1,67 @@
+name: Preview URL Comment
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  comment-preview-url:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    steps:
+      - name: Wait for Cloudflare Pages
+        id: cf-pages
+        uses: WalshyDev/cf-pages-await@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          project: velro
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment Preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.cf-pages.outputs.url }}';
+            const alias = '${{ steps.cf-pages.outputs.alias }}';
+            const environment = '${{ steps.cf-pages.outputs.environment }}';
+
+            const body = `## Cloudflare Pages Preview
+
+            | Environment | URL |
+            |-------------|-----|
+            | ${environment} | ${url} |
+            | Branch alias | ${alias} |
+
+            Deployed commit: \`${context.sha.substring(0, 7)}\``;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Cloudflare Pages Preview')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
