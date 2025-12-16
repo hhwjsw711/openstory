@@ -33,10 +33,24 @@ export const Route = createFileRoute('/api/auth/preview-oauth')({
         console.log('[Preview OAuth] Initiating OAuth for preview', {
           previewUrl,
           callbackUrl,
+          origin: url.origin,
         });
 
         // Use Better Auth's internal API to start OAuth with additionalData
         const auth = getAuth(request);
+
+        const requestBody = {
+          provider: 'google',
+          callbackURL: callbackUrl,
+          additionalData: {
+            previewUrl,
+            callbackUrl,
+          },
+        };
+        console.log(
+          '[Preview OAuth] Request body:',
+          JSON.stringify(requestBody, null, 2)
+        );
 
         // Call the sign-in/social handler with additionalData
         const signInRequest = new Request(
@@ -50,14 +64,7 @@ export const Route = createFileRoute('/api/auth/preview-oauth')({
               // Forward cookies from original request
               Cookie: request.headers.get('Cookie') || '',
             },
-            body: JSON.stringify({
-              provider: 'google',
-              callbackURL: callbackUrl,
-              additionalData: {
-                previewUrl,
-                callbackUrl,
-              },
-            }),
+            body: JSON.stringify(requestBody),
           }
         );
 
