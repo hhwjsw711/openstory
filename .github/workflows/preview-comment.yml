@@ -6,11 +6,12 @@ on:
 
 jobs:
   comment-preview-url:
-    # Only run for Cloudflare Workers builds on PRs
+    # Only run for Cloudflare Workers stg builds on PRs
     if: |
       github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
       github.event.check_run.conclusion == 'success' &&
-      github.event.check_run.pull_requests[0]
+      contains(github.event.check_run.name, 'frontend-stg') &&
+      github.event.check_run.pull_requests != ''
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -23,7 +24,7 @@ jobs:
         run: |
           # Get latest version for the worker
           RESPONSE=$(curl -s -X GET \
-            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/frontend/versions" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/frontend-stg/versions" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json")
 
@@ -43,7 +44,7 @@ jobs:
 
           SUBDOMAIN=$(echo "$SUBDOMAIN_RESPONSE" | jq -r '.result.subdomain')
 
-          PREVIEW_URL="https://${VERSION_ID}-frontend.${SUBDOMAIN}.workers.dev"
+          PREVIEW_URL="https://${VERSION_ID}-frontend-stg.${SUBDOMAIN}.workers.dev"
           echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
           echo "Preview URL: ${PREVIEW_URL}"
 
@@ -52,9 +53,16 @@ jobs:
         with:
           script: |
             const previewUrl = '${{ steps.preview.outputs.preview_url }}';
-            const prNumber = context.payload.check_run.pull_requests[0].number;
+            const prs = context.payload.check_run.pull_requests;
 
-            const body = `## 🚀 Cloudflare Workers Preview
+            if (!prs || prs.length === 0) {
+              console.log('No pull requests associated with this check run');
+              return;
+            }
+
+            const prNumber = prs[0].number;
+
+            const body = `## Cloudflare Workers Preview
 
             | Preview URL |
             |-------------|
