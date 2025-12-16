@@ -25,10 +25,48 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
-interface AuthFormProps {
+type AuthFormProps = {
   mode: 'signin' | 'signup';
   emailEntered?: string;
   redirectTo?: string;
+};
+
+// Production hosts that should NOT be treated as preview
+const PRODUCTION_HOSTS = [
+  'app.velro.ai',
+  'cf.velro.ai',
+  'r.velro.ai',
+  'v.velro.ai',
+  'velro.up.railway.app',
+  'velro-prd.vercel.app',
+];
+
+/**
+ * Detect if we're on a preview deployment and return the origin URL
+ * Returns undefined for production deployments
+ */
+function getPreviewOrigin(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+
+  const origin = window.location.origin;
+  const hostname = new URL(origin).hostname;
+
+  // Not a preview if on production hosts
+  if (PRODUCTION_HOSTS.includes(hostname)) return undefined;
+
+  // Localhost works fine without preview transfer
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
+
+  // Vercel preview deployments
+  if (/^velro-.*\.vercel\.app$/.test(hostname)) return origin;
+
+  // Velro subdomains (preview branches)
+  if (/.*\.velro\.ai$/.test(hostname)) return origin;
+
+  // Cloudflare Workers preview
+  if (/.*\.velro\.workers\.dev$/.test(hostname)) return origin;
+
+  return undefined;
 }
 
 export function AuthForm({
@@ -50,7 +88,9 @@ export function AuthForm({
     ? 'Create a new account to get started'
     : 'Sign in to your account';
 
-  // Enable Google Auth on all environments (handled by oAuthProxy on previews)
+  // Enable Google Auth on all environments
+  // Preview deployments pass additionalData through OAuth state
+  // and redirect back via signed JWT after auth completes on production
   const showGoogleAuth = true;
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
@@ -118,6 +158,15 @@ export function AuthForm({
     setIsLoading(true);
 
     try {
+      // Detect if we're on a preview deployment
+      const previewUrl = getPreviewOrigin();
+
+      if (previewUrl) {
+        console.log('[AuthForm] Preview deployment detected, passing URL', {
+          previewUrl,
+        });
+      }
+
       await authClient.signIn.social({
         provider: 'google',
         callbackURL: redirectTo,
@@ -126,6 +175,13 @@ export function AuthForm({
           inviteCodeRoute.fullPath +
           '?redirectTo=' +
           encodeURIComponent(redirectTo),
+        // Pass preview URL through OAuth state if on preview deployment
+        ...(previewUrl && {
+          additionalData: {
+            previewUrl,
+            callbackUrl: redirectTo, // Original callback path
+          },
+        }),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);

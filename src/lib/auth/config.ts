@@ -10,6 +10,7 @@ import {
   getServerAppUrl,
   isProductionDeployment,
 } from '@/lib/utils/environment';
+import { createAuthMiddleware, getOAuthState } from 'better-auth/api';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { tanstackStartCookies } from 'better-auth/tanstack-start';
@@ -17,6 +18,7 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start';
 import { getDb } from '#db-client';
 import { getEnv } from '#env';
 import { sendPasswordResetEmail } from '@/lib/services/email-service';
+import { generatePreviewTransferToken, isPreviewUrl } from './preview-transfer';
 
 // Singleton auth instance cache
 let _authInstance: ReturnType<typeof createAuth> | undefined;
@@ -97,13 +99,17 @@ function createAuth(request: Request) {
     },
 
     // Social providers
-    // Google OAuth enabled on all environments via oAuthProxy plugin
-    // Preview branches proxy OAuth requests to production
+    // Google OAuth enabled on all environments
+    // Preview branches pass additionalData through OAuth state
+    // and redirect back via signed JWT (see hooks.after below)
     socialProviders: {
       google: {
         clientId: runtimeEnv.GOOGLE_CLIENT_ID,
         clientSecret: runtimeEnv.GOOGLE_CLIENT_SECRET,
         enabled: true,
+        // Force callback to production URL (preview → production, localhost → localhost)
+        // This ensures Google always redirects to a registered callback URL
+        redirectURI: `${getProductionDeploymentAppUrl(request)}/api/auth/callback/google`,
       },
     },
 
@@ -147,6 +153,71 @@ function createAuth(request: Request) {
         // Generate ULID for user IDs (time-ordered, better performance)
         generateId: () => generateId(),
       },
+    },
+
+    // Hooks for preview branch OAuth transfer
+    // When OAuth completes on production, redirect to preview with signed JWT
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        // Only handle OAuth callback paths
+        if (!ctx.path.startsWith('/callback/')) {
+          return;
+        }
+
+        // Get OAuth state which includes additionalData from client
+        const oauthState = await getOAuthState();
+
+        // additionalData is spread on the state object
+        const previewUrl = oauthState?.previewUrl as string | undefined;
+
+        // Check if this is a preview transfer request
+        if (!previewUrl || !isPreviewUrl(previewUrl)) {
+          return; // Not a preview transfer, continue normal flow
+        }
+
+        // Extract callbackUrl from additionalData (or use state's callbackURL)
+        const callbackUrl =
+          (oauthState?.callbackUrl as string | undefined) ||
+          oauthState?.callbackURL ||
+          '/sequences';
+
+        const newSession = ctx.context.newSession;
+        if (!newSession?.user) {
+          console.warn('[Preview Transfer] No new session found in callback');
+          return;
+        }
+
+        console.log('[Preview Transfer] Intercepting OAuth callback', {
+          userId: newSession.user.id,
+          previewUrl,
+        });
+
+        // Generate transfer token with user info
+        const token = await generatePreviewTransferToken({
+          userId: newSession.user.id,
+          email: newSession.user.email,
+          name: newSession.user.name,
+          image: newSession.user.image ?? undefined,
+          previewUrl,
+          callbackUrl,
+        });
+
+        // Build redirect URL to preview's callback endpoint
+        const redirectUrl = new URL('/api/auth/preview-callback', previewUrl);
+        redirectUrl.searchParams.set('token', token);
+
+        console.log('[Preview Transfer] Redirecting to preview', {
+          url: redirectUrl.toString(),
+        });
+
+        // Override response with redirect to preview
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: redirectUrl.toString(),
+          },
+        });
+      }),
     },
   });
 }
