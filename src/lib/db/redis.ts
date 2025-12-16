@@ -4,6 +4,10 @@ import { getEnv } from '#env';
 let redis: Redis | null = null;
 
 export function getRedis(): Redis {
+  if (process.env.BUILD_CLOUDFLARE) {
+    throw new Error('now including the correct redis implementation');
+  }
+
   if (redis) return redis;
 
   const env = getEnv();
