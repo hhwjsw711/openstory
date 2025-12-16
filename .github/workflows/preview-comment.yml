@@ -16,7 +16,7 @@ jobs:
         id: cf-pages
         uses: WalshyDev/cf-pages-await@v1
         with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           project: velro
           githubToken: ${{ secrets.GITHUB_TOKEN }}
