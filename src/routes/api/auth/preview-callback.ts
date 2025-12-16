@@ -33,19 +33,23 @@ export const Route = createFileRoute('/api/auth/preview-callback')({
           });
 
           // Create user (if needed) and session on preview DB
-          const { sessionToken, callbackUrl } =
+          const { sessionToken, callbackUrl, userId } =
             await createPreviewSession(payload);
 
           // Build redirect URL
           const redirectUrl = new URL(callbackUrl, request.url);
 
+          // Build cookie
+          const cookie = buildSessionCookie(sessionToken, request);
+
           console.log('[Preview Callback] Session created, redirecting', {
-            userId: payload.sub,
+            userId,
+            sessionToken: sessionToken.substring(0, 10) + '...',
+            cookie: cookie.substring(0, 50) + '...',
             callbackUrl: redirectUrl.toString(),
           });
 
           // Set session cookie and redirect
-          // Cookie name matches Better Auth's default: better-auth.session_token
           return new Response(null, {
             status: 302,
             headers: {
@@ -67,13 +71,19 @@ export const Route = createFileRoute('/api/auth/preview-callback')({
 
 /**
  * Build session cookie string for Better Auth
+ * Uses __Secure- prefix on HTTPS (required by Better Auth)
  */
 function buildSessionCookie(sessionToken: string, request: Request): string {
   const isSecure = request.url.startsWith('https://');
   const maxAge = 90 * 24 * 60 * 60; // 90 days in seconds
 
+  // Better Auth uses __Secure- prefix on HTTPS contexts
+  const cookieName = isSecure
+    ? '__Secure-better-auth.session_token'
+    : 'better-auth.session_token';
+
   const parts = [
-    `better-auth.session_token=${sessionToken}`,
+    `${cookieName}=${sessionToken}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
