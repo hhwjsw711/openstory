@@ -184,6 +184,11 @@ function createAuth(request: Request) {
         // Get OAuth state which includes additionalData from client
         const oauthState = await getOAuthState();
 
+        console.log(
+          '[Preview Transfer] OAuth state:',
+          JSON.stringify(oauthState, null, 2)
+        );
+
         // additionalData is spread on the state object
         const previewUrl = oauthState?.previewUrl as string | undefined;
 
