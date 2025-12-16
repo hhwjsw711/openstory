@@ -61,9 +61,37 @@ export const Route = createFileRoute('/api/auth/preview-oauth')({
           }
         );
 
-        // Get the response which should be a redirect to Google
+        // Get the response from Better Auth
         const response = await auth.handler(signInRequest);
 
+        // Better Auth returns JSON with { url, redirect: true } for OAuth
+        // We need to actually redirect the browser to that URL
+        if (
+          response.headers.get('Content-Type')?.includes('application/json')
+        ) {
+          const body: unknown = await response.json();
+
+          // Type guard for Better Auth redirect response
+          if (
+            body !== null &&
+            typeof body === 'object' &&
+            'url' in body &&
+            'redirect' in body &&
+            typeof body.url === 'string' &&
+            body.redirect === true
+          ) {
+            return new Response(null, {
+              status: 302,
+              headers: {
+                Location: body.url,
+                // Forward any cookies from the response (contains OAuth state)
+                'Set-Cookie': response.headers.get('Set-Cookie') || '',
+              },
+            });
+          }
+        }
+
+        // If not a redirect response, pass through as-is
         return response;
       },
     },
