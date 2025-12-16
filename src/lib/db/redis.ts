@@ -17,6 +17,5 @@ export function getRedis(): Redis {
   }
 
   redis = new Redis({ url, token });
-
-  throw new Error('not including the correct redis implementation');
+  return redis;
 }
