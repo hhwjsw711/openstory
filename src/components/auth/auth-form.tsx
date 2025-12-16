@@ -1,6 +1,6 @@
 /**
  * Authentication Form Component
- * Supports email/password and OAuth sign-in/sign-up
+ * Two-step email OTP flow with Google OAuth option
  */
 
 'use client';
@@ -15,100 +15,133 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
-import { Route as forgotPasswordRoute } from '@/routes/_auth/forgot-password';
 import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
-import { Route as loginRoute } from '@/routes/_auth/login';
-import { Route as signupRoute } from '@/routes/_auth/signup';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
-interface AuthFormProps {
-  mode: 'signin' | 'signup';
+type AuthFormProps = {
   emailEntered?: string;
   redirectTo?: string;
-}
+};
+
+type Step = 'email' | 'otp';
 
 export function AuthForm({
-  mode,
   emailEntered,
   redirectTo = '/sequences',
 }: AuthFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState(emailEntered || '');
-  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const isSignup = mode === 'signup';
-  const title = isSignup ? 'Create Account' : 'Sign In';
-  const description = isSignup
-    ? 'Create a new account to get started'
-    : 'Sign in to your account';
-
-  // Enable Google Auth on all environments (handled by oAuthProxy on previews)
-  const showGoogleAuth = true;
-
-  const handleEmailPasswordAuth = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setIsLoading(true);
 
     try {
-      if (isSignup) {
-        // Sign up flow
-        const signUpResult = await authClient.signUp.email({
-          email,
-          password,
-          name: email.split('@')[0], // Use email prefix as default name
-          callbackURL: redirectTo,
-        });
+      const result = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: 'sign-in',
+      });
 
-        if (signUpResult.error) {
-          setError(signUpResult.error.message || 'Failed to create account');
-          setIsLoading(false);
-          return;
-        }
+      if (result.error) {
+        setError(result.error.message || 'Failed to send code');
+        setIsLoading(false);
+        return;
+      }
 
-        // Invalidate auth-related queries to fetch fresh user data
-        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-        await queryClient.invalidateQueries({ queryKey: ['session'] });
+      setSuccess('Code sent! Check your email.');
+      setStep('otp');
+      setIsLoading(false);
+    } catch (err) {
+      console.error('[AuthForm] Send OTP error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send code');
+      setIsLoading(false);
+    }
+  };
 
-        // New users have status: 'pending' by default - redirect to invite code
-        setSuccess('Account created! Please enter your invite code...');
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setIsLoading(true);
+
+    try {
+      const result = await authClient.signIn.emailOtp({
+        email,
+        otp,
+      });
+
+      if (result.error) {
+        setError(result.error.message || 'Invalid code');
+        setIsLoading(false);
+        return;
+      }
+
+      // Invalidate auth-related queries to fetch fresh user data
+      await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      await queryClient.invalidateQueries({ queryKey: ['session'] });
+
+      // Check if new user (needs invite code)
+      // Type assertion needed because plugin types aren't fully inferred
+      const user = result.data?.user as
+        | ((typeof result.data)['user'] & { status?: string })
+        | undefined;
+      if (user && user.status === 'pending') {
+        setSuccess('Signed in! Please enter your invite code…');
         void navigate({
           to: inviteCodeRoute.fullPath,
           search: { redirectTo },
         });
       } else {
-        // Sign in flow
-        const signInResult = await authClient.signIn.email({
-          email,
-          password,
-          callbackURL: redirectTo,
-        });
-
-        if (signInResult.error) {
-          setError(signInResult.error.message || 'Authentication failed');
-          setIsLoading(false);
-          return;
-        }
-
-        // Invalidate auth-related queries to fetch fresh user data
-        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-        await queryClient.invalidateQueries({ queryKey: ['session'] });
-
-        setSuccess('Signed in! Redirecting...');
+        setSuccess('Signed in! Redirecting…');
         void navigate({ to: redirectTo });
       }
     } catch (err) {
-      console.error('[AuthForm] Error:', err);
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      console.error('[AuthForm] Verify OTP error:', err);
+      setError(err instanceof Error ? err.message : 'Verification failed');
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError(null);
+    setSuccess(null);
+    setIsLoading(true);
+
+    try {
+      const result = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: 'sign-in',
+      });
+
+      if (result.error) {
+        setError(result.error.message || 'Failed to resend code');
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccess('New code sent!');
+      setOtp('');
+      setIsLoading(false);
+    } catch (err) {
+      console.error('[AuthForm] Resend OTP error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to resend code');
       setIsLoading(false);
     }
   };
@@ -136,11 +169,22 @@ export function AuthForm({
     }
   };
 
+  const handleBack = () => {
+    setStep('email');
+    setOtp('');
+    setError(null);
+    setSuccess(null);
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle>Sign In</CardTitle>
+        <CardDescription>
+          {step === 'email'
+            ? 'Enter your email to receive a sign-in code'
+            : `Enter the code sent to ${email}`}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Error/Success Messages */}
@@ -156,9 +200,9 @@ export function AuthForm({
           </Alert>
         )}
 
-        {/* OAuth Providers */}
-        {showGoogleAuth && (
+        {step === 'email' ? (
           <>
+            {/* Google OAuth */}
             <div className="space-y-2">
               <Button
                 type="button"
@@ -204,86 +248,81 @@ export function AuthForm({
                 </span>
               </div>
             </div>
+
+            {/* Email Form */}
+            <form onSubmit={handleSendOtp}>
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Sending…' : 'Send code'}
+              </Button>
+            </form>
+          </>
+        ) : (
+          <>
+            {/* OTP Verification Form */}
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="flex flex-col items-center gap-4">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={setOtp}
+                  disabled={isLoading}
+                  autoFocus
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? 'Verifying…' : 'Verify'}
+              </Button>
+            </form>
+
+            <div className="flex justify-between text-sm">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="text-muted-foreground hover:underline"
+                disabled={isLoading}
+              >
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                className="text-primary hover:underline"
+                disabled={isLoading}
+              >
+                Resend code
+              </button>
+            </div>
           </>
         )}
-
-        {/* Email/Password Form */}
-        <form onSubmit={handleEmailPasswordAuth}>
-          <div className="space-y-2 mb-4">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              required
-            />
-          </div>
-
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              {!isSignup && (
-                <Link
-                  to={forgotPasswordRoute.fullPath}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              )}
-            </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={isSignup ? 'new-password' : 'current-password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              required
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading
-              ? 'Please wait...'
-              : isSignup
-                ? 'Create Account'
-                : 'Sign In'}
-          </Button>
-        </form>
-
-        {/* Navigation links */}
-        <div className="text-center text-sm pt-4 border-t">
-          {isSignup ? (
-            <p className="text-muted-foreground">
-              Already have an account?{' '}
-              <Link
-                to={loginRoute.fullPath}
-                search={{ redirectTo, email: email || undefined }}
-                className="text-primary hover:underline font-medium"
-              >
-                Sign in
-              </Link>
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              Don't have an account?{' '}
-              <Link
-                to={signupRoute.fullPath}
-                search={{ redirectTo, email: email || undefined }}
-                className="text-primary hover:underline font-medium"
-              >
-                Create one
-              </Link>
-            </p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

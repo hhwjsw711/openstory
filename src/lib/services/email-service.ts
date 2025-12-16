@@ -249,3 +249,140 @@ If you didn't request a password reset, you can safely ignore this email.
     text,
   });
 }
+
+/**
+ * Send OTP email for passwordless sign-in
+ */
+export async function sendOtpEmail(
+  email: string,
+  otp: string
+): Promise<{ success: boolean; error?: string }> {
+  const subject = 'Your Velro sign-in code';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+          }
+          .container {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 32px;
+            border: 1px solid #e5e7eb;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 32px;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #111827;
+            letter-spacing: -0.5px;
+          }
+          .content {
+            margin-bottom: 32px;
+          }
+          .content h2 {
+            color: #111827;
+            font-size: 24px;
+            margin-bottom: 16px;
+          }
+          .content p {
+            color: #4b5563;
+            margin-bottom: 12px;
+          }
+          .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #111827;
+            text-align: center;
+            padding: 24px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin: 24px 0;
+            font-family: monospace;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 4px;
+          }
+          .warning strong {
+            color: #92400e;
+            display: block;
+            margin-bottom: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">Velro</div>
+          </div>
+
+          <div class="content">
+            <h2>Your Sign-In Code</h2>
+            <p>Enter this code to sign in to your Velro account:</p>
+
+            <div class="otp-code">${otp}</div>
+
+            <div class="warning">
+              <strong>This code expires in 5 minutes</strong>
+              If you didn't request this code, you can safely ignore this email.
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Velro. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Your Velro Sign-In Code
+
+Enter this code to sign in to your Velro account:
+
+${otp}
+
+This code expires in 5 minutes.
+
+If you didn't request this code, you can safely ignore this email.
+
+---
+© ${new Date().getFullYear()} Velro
+  `;
+
+  return sendEmail({
+    to: email,
+    subject,
+    html,
+    text,
+  });
+}

@@ -12,11 +12,12 @@ import {
 } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { emailOTP } from 'better-auth/plugins';
 import { tanstackStartCookies } from 'better-auth/tanstack-start';
 
 import { getDb } from '#db-client';
 import { getEnv } from '#env';
-import { sendPasswordResetEmail } from '@/lib/services/email-service';
+import { sendOtpEmail } from '@/lib/services/email-service';
 
 // Singleton auth instance cache
 let _authInstance: ReturnType<typeof createAuth> | undefined;
@@ -63,37 +64,13 @@ function createAuth(request: Request) {
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: ['google', 'email-password'],
+        trustedProviders: ['google', 'email-otp'],
         allowDifferentEmails: false, // Only link accounts with matching emails
       },
       // Skip state cookie check for preview environments
       // Required because .vercel.app is on the Public Suffix List
       // and cookies cannot be shared across subdomains
       skipStateCookieCheck: !isProductionDeployment(request),
-    },
-
-    // Email and password authentication
-    emailAndPassword: {
-      enabled: true,
-      sendResetPassword: async ({ user, url }) => {
-        console.log('[BetterAuth] Sending password reset email', {
-          email: user.email,
-          url,
-        });
-
-        const result = await sendPasswordResetEmail(user.email, url);
-
-        if (!result.success) {
-          console.error(
-            '[BetterAuth] Failed to send reset email:',
-            result.error
-          );
-          throw new Error('Failed to send password reset email');
-        }
-
-        console.log('[BetterAuth] Password reset email sent successfully');
-      },
-      resetPasswordTokenExpiresIn: 60 * 60, // 1 hour (in seconds)
     },
 
     // Social providers
@@ -109,8 +86,24 @@ function createAuth(request: Request) {
 
     // Configure plugins
     plugins: [
-      // Next.js cookie integration
+      // TanStack Start cookie integration
       tanstackStartCookies(),
+      // Email OTP authentication (passwordless)
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 300, // 5 minutes
+        async sendVerificationOTP({ email, otp, type }) {
+          if (type === 'sign-in') {
+            console.log('[BetterAuth] Sending sign-in OTP', { email });
+            const result = await sendOtpEmail(email, otp);
+            if (!result.success) {
+              console.error('[BetterAuth] Failed to send OTP:', result.error);
+              throw new Error('Failed to send verification code');
+            }
+            console.log('[BetterAuth] OTP sent successfully');
+          }
+        },
+      }),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.
