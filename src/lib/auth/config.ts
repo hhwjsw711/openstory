@@ -232,13 +232,8 @@ function createAuth(request: Request) {
           url: redirectUrl.toString(),
         });
 
-        // Override response with redirect to preview
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: redirectUrl.toString(),
-          },
-        });
+        // Use ctx.redirect to properly override Better Auth's response
+        throw ctx.redirect(redirectUrl.toString());
       }),
     },
   });
