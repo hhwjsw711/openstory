@@ -69,6 +69,34 @@ function getPreviewOrigin(): string | undefined {
   return undefined;
 }
 
+/**
+ * Get the production origin URL for OAuth redirect
+ * Maps preview patterns to their production equivalents
+ */
+function getProductionOrigin(): string {
+  if (typeof window === 'undefined') return 'https://cf.velro.ai';
+
+  const hostname = window.location.hostname;
+
+  // Cloudflare Workers previews → cf.velro.ai
+  if (/.*\.velro\.workers\.dev$/.test(hostname)) {
+    return 'https://cf.velro.ai';
+  }
+
+  // Velro subdomains → app.velro.ai
+  if (/.*\.velro\.ai$/.test(hostname)) {
+    return 'https://app.velro.ai';
+  }
+
+  // Vercel previews → velro-prd.vercel.app
+  if (/^velro-.*\.vercel\.app$/.test(hostname)) {
+    return 'https://velro-prd.vercel.app';
+  }
+
+  // Default to cf.velro.ai
+  return 'https://cf.velro.ai';
+}
+
 export function AuthForm({
   mode,
   emailEntered,
@@ -162,11 +190,26 @@ export function AuthForm({
       const previewUrl = getPreviewOrigin();
 
       if (previewUrl) {
-        console.log('[AuthForm] Preview deployment detected, passing URL', {
-          previewUrl,
-        });
+        // For preview deployments, redirect to production's preview-oauth endpoint
+        // This ensures OAuth state is created on production where the callback happens
+        console.log(
+          '[AuthForm] Preview deployment detected, redirecting to production OAuth',
+          {
+            previewUrl,
+          }
+        );
+
+        const productionOrigin = getProductionOrigin();
+        const oauthUrl = new URL('/api/auth/preview-oauth', productionOrigin);
+        oauthUrl.searchParams.set('previewUrl', previewUrl);
+        oauthUrl.searchParams.set('callbackUrl', redirectTo);
+
+        // Redirect to production to initiate OAuth
+        window.location.href = oauthUrl.toString();
+        return;
       }
 
+      // Production flow - use normal authClient
       await authClient.signIn.social({
         provider: 'google',
         callbackURL: redirectTo,
@@ -175,13 +218,6 @@ export function AuthForm({
           inviteCodeRoute.fullPath +
           '?redirectTo=' +
           encodeURIComponent(redirectTo),
-        // Pass preview URL through OAuth state if on preview deployment
-        ...(previewUrl && {
-          additionalData: {
-            previewUrl,
-            callbackUrl: redirectTo, // Original callback path
-          },
-        }),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);
