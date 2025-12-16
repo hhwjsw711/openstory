@@ -170,6 +170,12 @@ function createAuth(request: Request) {
         // Generate ULID for user IDs (time-ordered, better performance)
         generateId: () => generateId(),
       },
+      // IMPORTANT: Explicitly set secure cookies for HTTPS deployments
+      // Without this, Better Auth falls back to isProduction (NODE_ENV === "production")
+      // which may not be set on Cloudflare Workers, causing cookie name mismatch
+      // between __Secure-better-auth.session_token (what we set) and
+      // better-auth.session_token (what Better Auth looks for)
+      useSecureCookies: request.url.startsWith('https://'),
     },
 
     // Hooks for preview branch OAuth transfer
