@@ -15,19 +15,25 @@ import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow
 import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
 import { serveMany } from '@upstash/workflow/tanstack';
+import { getQStashClient } from '@/lib/workflow/client';
 
-const handler = serveMany({
-  storyboard: generateStoryboardWorkflow,
-  image: generateImageWorkflow,
-  motion: generateMotionWorkflow,
-  'analyze-script': analyzeScriptWorkflow,
-  'character-sheet': characterSheetWorkflow,
-  'character-sheet-from-bible': characterBibleWorkflow,
-  'library-character-sheet': libraryCharacterSheetWorkflow,
-  'visual-prompts': visualPromptWorkflow,
-  'variant-image': generateVariantWorkflow,
-  'upscale-variant': upscaleVariantWorkflow,
-});
+const handler = serveMany(
+  {
+    storyboard: generateStoryboardWorkflow,
+    image: generateImageWorkflow,
+    motion: generateMotionWorkflow,
+    'analyze-script': analyzeScriptWorkflow,
+    'character-sheet': characterSheetWorkflow,
+    'character-sheet-from-bible': characterBibleWorkflow,
+    'library-character-sheet': libraryCharacterSheetWorkflow,
+    'visual-prompts': visualPromptWorkflow,
+    'variant-image': generateVariantWorkflow,
+    'upscale-variant': upscaleVariantWorkflow,
+  },
+  {
+    qstashClient: getQStashClient(), // This must be the QStash client
+  }
+);
 
 export const Route = createFileRoute('/api/workflows/$')({
   server: {
