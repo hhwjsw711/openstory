@@ -4,10 +4,15 @@ import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
+
+// Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
+const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
+const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
 
 const vidstackPath = path.resolve('node_modules/@vidstack/react');
 export default defineConfig({
@@ -47,7 +52,20 @@ export default defineConfig({
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
       : nitro({
           rollupConfig: {
-            treeshake: false,
+            // Default: treeshake disabled due to Nitro bug (see docs/nitro-treeshake-bug-report.md)
+            // Enable with DEBUG_TREESHAKE=1 for debugging
+            treeshake: debugTreeshake,
+            plugins: debugVisualizer
+              ? [
+                  visualizer({
+                    filename: '.output/stats-nitro.html',
+                    open: false,
+                    gzipSize: true,
+                    brotliSize: true,
+                    template: 'treemap', // 'sunburst', 'treemap', 'network'
+                  }),
+                ]
+              : [],
           },
         }),
     // Enables Vite to resolve imports using path aliases.
