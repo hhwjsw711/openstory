@@ -4,14 +4,16 @@
 
 import { getEnv } from '#env';
 import { ConfigurationError } from '@/lib/errors';
-import { Client } from '@upstash/workflow';
+import { Client as WorkflowClient } from '@upstash/workflow';
+import { Client as QStashClient } from '@upstash/qstash';
+
 import { getServerAppUrl } from '../utils/environment';
 import { getRequest } from '@tanstack/react-start/server';
 /**
- * Gets the QStash client for direct API operations
+ * Gets the QStash Workflow client for direct API operations
  * Most workflow operations should use the serve() function in route files
  */
-function getQStashClient(): Client {
+function getWorkflowClient(): WorkflowClient {
   const env = getEnv();
   const token = env.QSTASH_TOKEN;
 
@@ -21,7 +23,7 @@ function getQStashClient(): Client {
     );
   }
 
-  return new Client({
+  return new WorkflowClient({
     token,
     headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
       ? {
@@ -34,6 +36,32 @@ function getQStashClient(): Client {
   });
 }
 
+/**
+ * Gets the QStash Workflow client for direct API operations
+ * Most workflow operations should use the serve() function in route files
+ */
+export function getQStashClient(): QStashClient {
+  const env = getEnv();
+  const token = env.QSTASH_TOKEN;
+
+  if (!token) {
+    throw new ConfigurationError(
+      'QSTASH_TOKEN environment variable is required'
+    );
+  }
+
+  return new QStashClient({
+    token,
+    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          'Upstash-Forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'x-vercel-protection-bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+        }
+      : undefined,
+  });
+}
 /**
  * Get the URL for QStash webhooks
  * In production, QStash needs a publicly accessible URL
@@ -70,7 +98,7 @@ export async function triggerWorkflow(
     deduplicationId?: string;
   }
 ) {
-  const qstash = getQStashClient();
+  const qstash = getWorkflowClient();
   const request = getRequest();
   const baseUrl = getWorkflowBaseUrl(request);
 
@@ -94,7 +122,7 @@ export async function triggerWorkflow(
 }
 
 async function cancelWorkflow(workflowId: string) {
-  const qstash = getQStashClient();
+  const qstash = getWorkflowClient();
   const response = await qstash.cancel({ ids: [workflowId] });
   return response.cancelled;
 }

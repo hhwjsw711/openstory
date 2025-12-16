@@ -115,6 +115,10 @@
       "workerd": "./src/lib/env/cloudflare.ts",
       "default": "./src/lib/env/default.ts"
     },
+    "#redis": {
+      "workerd": "./src/lib/db/redis-cloudflare.ts",
+      "default": "./src/lib/db/redis.ts"
+    },
     "#db-client": {
       "development": "./src/lib/db/client-local.ts",
       "default": "./src/lib/db/client-web.ts"

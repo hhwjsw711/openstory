@@ -1,4 +1,4 @@
-import { getRedis } from '@/lib/db/redis';
+import { getRedis } from '#redis';
 import { Realtime } from '@upstash/realtime';
 import { z } from 'zod';
 
