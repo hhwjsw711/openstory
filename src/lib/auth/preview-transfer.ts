@@ -151,10 +151,17 @@ export async function createPreviewSession(
 }> {
   const db = getDb();
 
-  // Check if user exists on preview DB
+  // Check if user exists on preview DB (by ID or email)
   let existingUser = await db.query.user.findFirst({
     where: eq(user.id, payload.sub),
   });
+
+  // Also check by email in case user exists with different ID
+  if (!existingUser) {
+    existingUser = await db.query.user.findFirst({
+      where: eq(user.email, payload.email),
+    });
+  }
 
   if (!existingUser) {
     // Create user on preview database
@@ -162,7 +169,7 @@ export async function createPreviewSession(
       .insert(user)
       .values({
         id: payload.sub,
-        name: payload.name,
+        name: payload.name || payload.email.split('@')[0], // Fallback if name is empty
         email: payload.email,
         emailVerified: true, // Already verified via Google on production
         image: payload.image ?? null,
@@ -177,7 +184,7 @@ export async function createPreviewSession(
     // Create Google account link
     await db.insert(account).values({
       id: generateId(),
-      userId: payload.sub,
+      userId: newUser.id,
       providerId: 'google',
       accountId: payload.email, // Use email as account identifier
       createdAt: new Date(),
@@ -185,19 +192,24 @@ export async function createPreviewSession(
     });
 
     console.log('[Preview Transfer] Created user on preview DB:', {
-      userId: payload.sub,
+      userId: newUser.id,
       email: payload.email,
+    });
+  } else {
+    console.log('[Preview Transfer] User already exists on preview DB:', {
+      userId: existingUser.id,
+      email: existingUser.email,
     });
   }
 
-  // Create session
+  // Create session using the actual user ID (may differ from payload.sub if found by email)
   const sessionId = generateId();
   const sessionToken = generateId(); // Secure random token
   const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
 
   await db.insert(session).values({
     id: sessionId,
-    userId: payload.sub,
+    userId: existingUser.id,
     token: sessionToken,
     expiresAt,
     createdAt: new Date(),
@@ -205,13 +217,13 @@ export async function createPreviewSession(
   });
 
   console.log('[Preview Transfer] Created session on preview DB:', {
-    userId: payload.sub,
+    userId: existingUser.id,
     sessionId,
   });
 
   return {
     sessionToken,
-    userId: payload.sub,
+    userId: existingUser.id,
     callbackUrl: payload.callbackUrl,
   };
 }
