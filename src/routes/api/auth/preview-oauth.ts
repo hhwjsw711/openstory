@@ -45,6 +45,8 @@ export const Route = createFileRoute('/api/auth/preview-oauth')({
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              // Set Origin header to satisfy Better Auth's CSRF check
+              Origin: url.origin,
               // Forward cookies from original request
               Cookie: request.headers.get('Cookie') || '',
             },

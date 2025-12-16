@@ -48,7 +48,24 @@ function createAuth(request: Request) {
       },
     }),
     secret: runtimeEnv.BETTER_AUTH_SECRET,
-    // Trusted origins for CSRF protection and OAuth proxy
+
+    // Trusted origins for CSRF protection
+    // Allow preview deployments to initiate OAuth via /api/auth/preview-oauth
+    trustedOrigins: [
+      // Production origins
+      'https://app.velro.ai',
+      'https://cf.velro.ai',
+      'https://r.velro.ai',
+      'https://v.velro.ai',
+      'https://velro.up.railway.app',
+      'https://velro-prd.vercel.app',
+      // Preview patterns - Better Auth supports wildcards
+      'https://*.velro.workers.dev',
+      'https://*.velro.ai',
+      'https://velro-*.vercel.app',
+      // Local development
+      'http://localhost:3000',
+    ],
 
     // Session configuration
     // SECURITY: 90-day expiration mitigates:
