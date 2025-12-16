@@ -3,16 +3,16 @@
  * Provides client-side authentication methods and hooks
  */
 
+import { createAuthClient } from 'better-auth/react';
 import {
   emailOTPClient,
   inferAdditionalFields,
 } from 'better-auth/client/plugins';
-import { createAuthClient } from 'better-auth/react';
 import type { Auth } from './config';
 
 // Create the auth client
 export const authClient = createAuthClient({
-  plugins: [inferAdditionalFields<Auth>(), emailOTPClient()],
+  plugins: [emailOTPClient(), inferAdditionalFields<Auth>()],
 });
 
 // Export hooks and methods for easy use

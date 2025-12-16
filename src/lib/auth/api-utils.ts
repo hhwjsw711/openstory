@@ -17,7 +17,7 @@ interface AuthResult {
  */
 async function authenticateApiRequest(request: Request) {
   try {
-    const auth = getAuth(request);
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });
@@ -107,7 +107,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
  */
 async function getOptionalUser(request: Request): Promise<AuthResult | null> {
   try {
-    const auth = getAuth(request);
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });

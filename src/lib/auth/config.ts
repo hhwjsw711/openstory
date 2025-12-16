@@ -26,15 +26,8 @@ let _authInstance: ReturnType<typeof createAuth> | undefined;
  * Create Better Auth instance
  * Separated for type inference - the return type is used for the singleton cache
  */
-function createAuth(request: Request) {
+function createAuth() {
   const runtimeEnv = getEnv();
-  const skipStateCookie = !isProductionDeployment(request);
-  console.log('[Auth Config] Creating auth instance', {
-    getServerAppUrl: getServerAppUrl(request),
-    getProductionDeploymentAppUrl: getProductionDeploymentAppUrl(request),
-    isProduction: isProductionDeployment(request),
-    skipStateCookieCheck: skipStateCookie,
-  });
 
   return betterAuth({
     database: drizzleAdapter(getDb(), {
@@ -67,10 +60,6 @@ function createAuth(request: Request) {
         trustedProviders: ['google', 'email-otp'],
         allowDifferentEmails: false, // Only link accounts with matching emails
       },
-      // Skip state cookie check for preview environments
-      // Required because .vercel.app is on the Public Suffix List
-      // and cookies cannot be shared across subdomains
-      skipStateCookieCheck: !isProductionDeployment(request),
     },
 
     // Social providers
@@ -148,8 +137,8 @@ function createAuth(request: Request) {
  * Get or create Better Auth instance (singleton)
  * Compatible with Cloudflare Workers where env is request-scoped
  */
-export function getAuth(request: Request) {
-  return (_authInstance ??= createAuth(request));
+export function getAuth() {
+  return (_authInstance ??= createAuth());
 }
 // Type inference for the auth instance with custom fields
 export type Auth = ReturnType<typeof getAuth>;

@@ -48,16 +48,19 @@ export function AuthForm({
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleSendOtp = async (e: React.FormEvent) => {
+    console.log('handleSendOtp', email);
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setIsLoading(true);
 
     try {
+      console.log('sending otp', email);
       const result = await authClient.emailOtp.sendVerificationOtp({
         email,
         type: 'sign-in',
       });
+      console.log('result', result);
 
       if (result.error) {
         setError(result.error.message || 'Failed to send code');
@@ -98,11 +101,8 @@ export function AuthForm({
       await queryClient.invalidateQueries({ queryKey: ['session'] });
 
       // Check if new user (needs invite code)
-      // Type assertion needed because plugin types aren't fully inferred
-      const user = result.data?.user as
-        | ((typeof result.data)['user'] & { status?: string })
-        | undefined;
-      if (user && user.status === 'pending') {
+      const user = result.data?.user;
+      if (user && 'status' in user && user.status === 'pending') {
         setSuccess('Signed in! Please enter your invite code…');
         void navigate({
           to: inviteCodeRoute.fullPath,

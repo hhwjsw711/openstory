@@ -60,7 +60,7 @@ export const Route = createFileRoute('/api/health')({
               process.env.PRODUCTION_DEPLOYMENT_APP_URL || 'not set',
           },
           auth: {
-            auth: getAuth(request), // This is what Better Auth uses
+            auth: getAuth(), // This is what Better Auth uses
           },
           database: {
             tursoUrl: process.env.TURSO_DATABASE_URL || 'not set',
