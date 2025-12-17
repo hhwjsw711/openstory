@@ -16,6 +16,7 @@ import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
+import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
@@ -68,6 +69,11 @@ const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
   id: '/eval',
   path: '/eval',
   getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
+  '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
+  '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/_auth/invite-code': typeof AuthInviteCodeRoute
   '/_auth/login': typeof AuthLoginRoute
+  '/_auth/verify': typeof AuthVerifyRoute
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/'
     | '/invite-code'
     | '/login'
+    | '/verify'
     | '/eval'
     | '/api/health'
     | '/api/mcp'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/'
     | '/invite-code'
     | '/login'
+    | '/verify'
     | '/eval'
     | '/api/health'
     | '/api/mcp'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/_protected'
     | '/_auth/invite-code'
     | '/_auth/login'
+    | '/_auth/verify'
     | '/_protected/eval'
     | '/api/health'
     | '/api/mcp'
@@ -402,6 +414,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/eval'
       preLoaderRoute: typeof ProtectedEvalRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_auth/verify': {
+      id: '/_auth/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/_auth/login': {
       id: '/_auth/login'
@@ -542,11 +561,13 @@ declare module '@tanstack/react-router' {
 interface AuthRouteRouteChildren {
   AuthInviteCodeRoute: typeof AuthInviteCodeRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthVerifyRoute: typeof AuthVerifyRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthInviteCodeRoute: AuthInviteCodeRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthVerifyRoute: AuthVerifyRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
