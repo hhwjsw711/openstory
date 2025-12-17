@@ -1,5 +1,3 @@
-'use client';
-
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';

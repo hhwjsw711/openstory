@@ -3,8 +3,6 @@
  * Auto-verifies when 6 digits entered or pasted
  */
 
-'use client';
-
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {

@@ -1,5 +1,3 @@
-'use client';
-
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';

@@ -3,8 +3,6 @@
  * Shows after OTP login to suggest adding a passkey for faster future logins
  */
 
-'use client';
-
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {

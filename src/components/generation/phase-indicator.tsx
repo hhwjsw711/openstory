@@ -1,5 +1,3 @@
-'use client';
-
 import { cn } from '@/lib/utils';
 import { Check, Circle, Loader2 } from 'lucide-react';
 import type { GenerationPhase } from '@/lib/realtime/generation-stream.reducer';

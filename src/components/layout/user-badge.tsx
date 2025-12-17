@@ -3,8 +3,6 @@
  * Displays user authentication state with login/logout actions
  */
 
-'use client';
-
 import { LogOut, Settings, User } from 'lucide-react';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Link } from '@tanstack/react-router';
@@ -42,6 +40,7 @@ export function UserBadge() {
   const initials = getInitials(displayName);
 
   const handleSignOut = async () => {
+    setIsSigningOut(true);
     // Sign out - this should clear the session cookie
     // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
     // where useSession doesn't update after server-side signOut until page refresh

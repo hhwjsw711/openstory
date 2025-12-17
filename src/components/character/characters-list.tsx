@@ -1,5 +1,3 @@
-'use client';
-
 import { CharacterCard } from '@/components/character/character-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

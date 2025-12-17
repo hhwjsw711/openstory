@@ -1,5 +1,3 @@
-'use client';
-
 import { VideoIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout';
 import { SequencesList } from '@/components/sequence/sequences-list';

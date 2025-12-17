@@ -4,8 +4,6 @@
  * Velro is in closed preview mode
  */
 
-'use client';
-
 import { InviteCodeForm } from '@/components/auth/invite-code-form';
 import { PageContainer } from '@/components/layout';
 import { getRedirectFromParams } from '@/lib/auth/navigation';

@@ -3,8 +3,6 @@
  * Email entry with Google OAuth option - navigates to /verify for OTP
  */
 
-'use client';
-
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {

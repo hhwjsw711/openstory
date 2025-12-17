@@ -1,5 +1,3 @@
-'use client';
-
 import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { ModelSelector } from '@/components/model/model-selector';
 import { MotionModelSelector } from '@/components/model/motion-model-selector';

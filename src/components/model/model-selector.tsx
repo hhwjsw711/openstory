@@ -1,5 +1,3 @@
-'use client';
-
 import { BaseModelSelector } from './base-model-selector';
 import {
   SCRIPT_ANALYSIS_MODELS,
