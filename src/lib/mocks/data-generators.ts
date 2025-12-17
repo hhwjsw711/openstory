@@ -381,18 +381,14 @@ const generateMockTeam = (overrides?: Partial<Team>): Team => {
 };
 
 const generateMockUser = (overrides?: Partial<UserProfile>): UserProfile => {
-  const fullName = faker.person.fullName();
   return {
     id: faker.string.uuid(),
-    name: fullName,
+    name: faker.person.fullName(),
     email: faker.internet.email(),
     emailVerified: faker.datatype.boolean(),
-    image: null,
+    image: faker.image.avatar(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    fullName,
-    avatarUrl: faker.image.avatar(),
-    onboardingCompleted: null,
     accessCode: null,
     status: 'active' as const,
     ...overrides,

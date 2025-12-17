@@ -98,19 +98,6 @@ function createAuth() {
     // Custom user fields to match existing schema, This is BetterAuth user table.
     user: {
       additionalFields: {
-        fullName: {
-          type: 'string',
-          required: false,
-        },
-        avatarUrl: {
-          type: 'string',
-          required: false,
-        },
-        onboardingCompleted: {
-          type: 'boolean',
-          required: false,
-          defaultValue: false,
-        },
         accessCode: {
           type: 'string',
           required: false,

@@ -36,7 +36,7 @@ export function UserBadge() {
 
   // Authenticated user - show user menu
   const userEmail = user.email;
-  const displayName = user.fullName || userEmail || 'User';
+  const displayName = user.name || userEmail || 'User';
   const initials = getInitials(displayName);
 
   const handleSignOut = async () => {
@@ -58,7 +58,7 @@ export function UserBadge() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatarUrl || undefined} alt={displayName} />
+            <AvatarImage src={user.image || undefined} alt={displayName} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>

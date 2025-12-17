@@ -21,11 +21,6 @@ export const user = sqliteTable('user', {
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  fullName: text('full_name'),
-  avatarUrl: text('avatar_url'),
-  onboardingCompleted: integer('onboarding_completed', {
-    mode: 'boolean',
-  }).default(false),
   accessCode: text('access_code'),
   status: text('status').default('pending'),
 });

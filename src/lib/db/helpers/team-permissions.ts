@@ -25,7 +25,7 @@ type TeamMemberWithDetails = {
   userId: string;
   role: TeamMemberRole;
   joinedAt: Date;
-  fullName: string | null;
+  name: string;
 };
 
 /**
@@ -172,7 +172,7 @@ async function getTeamMembers(
       userId: teamMembers.userId,
       role: teamMembers.role,
       joinedAt: teamMembers.joinedAt,
-      fullName: user.fullName,
+      name: user.name,
     })
     .from(teamMembers)
     .innerJoin(user, eq(teamMembers.userId, user.id))
