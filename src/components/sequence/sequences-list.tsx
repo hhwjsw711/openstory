@@ -1,5 +1,3 @@
-'use client';
-
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { ModelBadge } from '@/components/model/model-badge';
 import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';

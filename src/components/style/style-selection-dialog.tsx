@@ -1,5 +1,3 @@
-'use client';
-
 import { GalleryIcon } from '@/components/icons/gallery-icon';
 import { StyleGrid } from '@/components/style/style-grid';
 import { StyleSelectorButton } from '@/components/style/style-selector-button';

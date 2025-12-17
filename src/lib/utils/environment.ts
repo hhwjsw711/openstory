@@ -83,8 +83,37 @@ export function isProductionDeployment(request: Request): boolean {
   );
 }
 
-function isPreviewDeployment(request: Request): boolean {
+export function isPreviewDeployment(request: Request): boolean {
   return !isLocalDevelopment() && !isProductionDeployment(request);
+}
+
+/**
+ * Check if a hostname is a preview deployment
+ * Pure function that can be used on server or client
+ */
+export function isPreviewHost(host: string): boolean {
+  // Production domains - not preview
+  const productionHosts = [
+    'app.velro.ai',
+    'r.velro.ai',
+    'v.velro.ai',
+    'cf.velro.ai',
+    'velro.up.railway.app',
+  ];
+
+  if (productionHosts.includes(host) || host.startsWith('localhost')) {
+    return false;
+  }
+
+  // Preview patterns
+  const previewPatterns = [
+    /.*\.velro\.ai$/, // Cloudflare preview
+    /.*\.velro\.workers\.dev$/, // Cloudflare Workers preview
+    /velro.*\.vercel\.app$/, // Vercel preview
+    /.*\.railway\.app$/, // Railway preview
+  ];
+
+  return previewPatterns.some((pattern) => pattern.test(host));
 }
 
 /**

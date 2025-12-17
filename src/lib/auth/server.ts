@@ -19,7 +19,7 @@ import { getDb } from '#db-client';
 export const getSessionFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const request = getRequest();
-    return getAuth(request).api.getSession({ headers: request.headers });
+    return getAuth().api.getSession({ headers: request.headers });
   }
 );
 
@@ -30,7 +30,7 @@ export const getSessionFn = createServerFn({ method: 'GET' }).handler(
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const request = getRequest();
-    const session = await getAuth(request).api.getSession({
+    const session = await getAuth().api.getSession({
       headers: request.headers,
     });
     return session?.user;
@@ -173,7 +173,9 @@ async function isUserActive(): Promise<boolean> {
 /**
  * Sign out the current user
  */
-const signOutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const request = getRequest();
-  return getAuth(request).api.signOut({ headers: request.headers });
-});
+export const signOutFn = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const request = getRequest();
+    return getAuth().api.signOut({ headers: request.headers });
+  }
+);

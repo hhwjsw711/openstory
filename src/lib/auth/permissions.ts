@@ -62,7 +62,7 @@ function hasMinimumRole(userRole: TeamRole, requiredRole: TeamRole): boolean {
  */
 async function getAuthenticatedUser(request: Request): Promise<User | null> {
   try {
-    const auth = getAuth(request);
+    const auth = getAuth();
     const session = await auth.api.getSession({
       headers: request.headers,
     });

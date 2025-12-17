@@ -52,7 +52,7 @@ export type FrameContext = SequenceContext & {
 export const authMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     const request = getRequest();
-    const auth = getAuth(request);
+    const auth = getAuth();
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

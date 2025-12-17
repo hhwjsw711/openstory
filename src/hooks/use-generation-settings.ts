@@ -1,5 +1,3 @@
-'use client';
-
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,

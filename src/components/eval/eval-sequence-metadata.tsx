@@ -1,5 +1,3 @@
-'use client';
-
 import type React from 'react';
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { ModelBadge } from '@/components/model/model-badge';

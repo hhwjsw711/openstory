@@ -1,5 +1,3 @@
-'use client';
-
 import { createRealtime } from '@upstash/realtime/client';
 import type { realtimeSchema } from './index';
 

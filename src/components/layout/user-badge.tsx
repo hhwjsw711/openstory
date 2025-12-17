@@ -3,9 +3,7 @@
  * Displays user authentication state with login/logout actions
  */
 
-'use client';
-
-import { LogOut, User } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -21,11 +19,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/use-user';
 import { authClient } from '@/lib/auth/client';
+import { useNavigate } from '@tanstack/react-router';
 
 export function UserBadge() {
   const { data: user, isLoading } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
-
+  const navigate = useNavigate();
   // Show loading state or no user data
   if (isLoading || !user) {
     return (
@@ -37,24 +36,21 @@ export function UserBadge() {
 
   // Authenticated user - show user menu
   const userEmail = user.email;
-  const displayName = user.fullName || userEmail || 'User';
+  const displayName = user.name || userEmail || 'User';
   const initials = getInitials(displayName);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    try {
-      // Sign out - this should clear the session cookie
-      // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
-      // where useSession doesn't update after server-side signOut until page refresh
-      await authClient.signOut();
-
-      // Force a full page reload to clear all client state
-      // Use replace to prevent back button from returning to authenticated state
-      window.location.replace('/');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setIsSigningOut(false);
-    }
+    // Sign out - this should clear the session cookie
+    // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
+    // where useSession doesn't update after server-side signOut until page refresh
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          void navigate({ to: '/' });
+        },
+      },
+    });
   };
 
   return (
@@ -62,7 +58,7 @@ export function UserBadge() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatarUrl || undefined} alt={displayName} />
+            <AvatarImage src={user.image || undefined} alt={displayName} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -83,6 +79,12 @@ export function UserBadge() {
           <Link to={sequencesRoute.fullPath}>
             <User className="mr-2 h-4 w-4" />
             My Sequences
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings/passkeys">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

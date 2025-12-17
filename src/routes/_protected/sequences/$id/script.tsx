@@ -1,4 +1,3 @@
-'use client';
 import { PageContainer } from '@/components/layout';
 import { ScriptView } from '@/components/script/script-view';
 import {

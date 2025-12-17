@@ -1,5 +1,3 @@
-'use client';
-
 import { BaseModelSelector } from './base-model-selector';
 import {
   IMAGE_TO_VIDEO_MODELS,

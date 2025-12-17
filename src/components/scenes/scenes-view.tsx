@@ -1,5 +1,3 @@
-'use client';
-
 import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
 import { PageContainer } from '@/components/layout/page-container';
 import {

@@ -120,6 +120,27 @@
       "when": 1765708693515,
       "tag": "0016_careless_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1765935901997,
+      "tag": "0017_magenta_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1765941829868,
+      "tag": "0018_lying_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1765942147088,
+      "tag": "0019_flat_jocasta",
+      "breakpoints": true
     }
   ]
 }

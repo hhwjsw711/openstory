@@ -1,6 +1,6 @@
 /**
  * Login Page
- * Handles email/password and OAuth authentication
+ * Email OTP and Google OAuth authentication
  */
 
 import { AuthForm } from '@/components/auth/auth-form';
@@ -34,11 +34,7 @@ function LoginPage() {
               Sign in to continue creating cinematic content
             </p>
           </div>
-          <AuthForm
-            mode="signin"
-            emailEntered={email}
-            redirectTo={redirectTo}
-          />
+          <AuthForm emailEntered={email} redirectTo={redirectTo} />
         </div>
       </div>
     </PageContainer>

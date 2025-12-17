@@ -66,7 +66,6 @@ export async function ensureUserAndTeam(authUser: {
           id: authUser.id,
           name: authUser.name || 'Anonymous',
           email: authUser.email || `${authUser.id}@anonymous.local`,
-          fullName: authUser.name || null,
         })
         .onConflictDoNothing();
 

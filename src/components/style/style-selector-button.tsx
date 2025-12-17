@@ -1,5 +1,3 @@
-'use client';
-
 import { Button } from '@/components/ui/button';
 import type { Style } from '@/types/database';
 import { ChevronDown } from 'lucide-react';

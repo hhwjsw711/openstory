@@ -20,8 +20,8 @@ import crypto from 'node:crypto';
 interface TeamMember {
   userId: string;
   email: string;
-  fullName: string | null;
-  avatarUrl: string | null;
+  name: string;
+  image: string | null;
   role: string;
   joinedAt: Date;
 }
@@ -325,8 +325,8 @@ class TeamService {
       .select({
         userId: teamMembers.userId,
         email: user.email,
-        fullName: user.fullName,
-        avatarUrl: user.avatarUrl,
+        name: user.name,
+        image: user.image,
         role: teamMembers.role,
         joinedAt: teamMembers.joinedAt,
       })
@@ -338,8 +338,8 @@ class TeamService {
     return members.map((m) => ({
       userId: m.userId,
       email: m.email,
-      fullName: m.fullName,
-      avatarUrl: m.avatarUrl,
+      name: m.name,
+      image: m.image,
       role: m.role,
       joinedAt: m.joinedAt,
     }));

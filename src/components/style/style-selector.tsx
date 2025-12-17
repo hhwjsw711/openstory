@@ -1,5 +1,3 @@
-'use client';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';

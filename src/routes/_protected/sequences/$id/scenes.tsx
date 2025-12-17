@@ -1,4 +1,3 @@
-'use client';
 import { ScenesView } from '@/components/scenes/scenes-view';
 import { useUser } from '@/hooks/use-user';
 import { createFileRoute } from '@tanstack/react-router';

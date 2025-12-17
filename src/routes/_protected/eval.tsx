@@ -1,5 +1,3 @@
-'use client';
-
 import { EvalView } from '@/components/eval/eval-view';
 import { PageContainer } from '@/components/layout';
 import { createFileRoute } from '@tanstack/react-router';

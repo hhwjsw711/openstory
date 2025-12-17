@@ -1,5 +1,3 @@
-'use client';
-
 import { CharacterDialog } from '@/components/character';
 import { PageContainer } from '@/components/layout';
 import {

@@ -16,15 +16,15 @@ import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
-import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
-import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
+import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
-import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
+import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ProtectedCharactersIndexRouteImport } from './routes/_protected/characters/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedCharactersIdRouteImport } from './routes/_protected/characters/$id'
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
@@ -72,14 +72,9 @@ const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
   path: '/eval',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
-const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -92,10 +87,10 @@ const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
   path: '/invite-code',
   getParentRoute: () => AuthRouteRoute,
 } as any)
-const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => AuthRouteRoute,
+const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   id: '/sequences/',
@@ -118,6 +113,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedSettingsPasskeysRoute =
+  ProtectedSettingsPasskeysRouteImport.update({
+    id: '/settings/passkeys',
+    path: '/settings/passkeys',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   id: '/sequences/new',
   path: '/sequences/new',
@@ -194,21 +195,21 @@ const ApiSequencesSequenceIdChaptersVttRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/forgot-password': typeof AuthForgotPasswordRoute
   '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
-  '/reset-password': typeof AuthResetPasswordRoute
-  '/signup': typeof AuthSignupRoute
+  '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
+  '/settings': typeof ProtectedSettingsIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -223,21 +224,21 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/forgot-password': typeof AuthForgotPasswordRoute
   '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
-  '/reset-password': typeof AuthResetPasswordRoute
-  '/signup': typeof AuthSignupRoute
+  '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
+  '/settings': typeof ProtectedSettingsIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -255,21 +256,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
-  '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/invite-code': typeof AuthInviteCodeRoute
   '/_auth/login': typeof AuthLoginRoute
-  '/_auth/reset-password': typeof AuthResetPasswordRoute
-  '/_auth/signup': typeof AuthSignupRoute
+  '/_auth/verify': typeof AuthVerifyRoute
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/_protected/characters/$id': typeof ProtectedCharactersIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
+  '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/characters/': typeof ProtectedCharactersIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
+  '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -286,21 +287,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/forgot-password'
     | '/invite-code'
     | '/login'
-    | '/reset-password'
-    | '/signup'
+    | '/verify'
     | '/eval'
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
     | '/characters/$id'
     | '/sequences/new'
+    | '/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/characters'
     | '/sequences'
+    | '/settings'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -315,21 +316,21 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/forgot-password'
     | '/invite-code'
     | '/login'
-    | '/reset-password'
-    | '/signup'
+    | '/verify'
     | '/eval'
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
     | '/characters/$id'
     | '/sequences/new'
+    | '/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/characters'
     | '/sequences'
+    | '/settings'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -346,21 +347,21 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/_protected'
-    | '/_auth/forgot-password'
     | '/_auth/invite-code'
     | '/_auth/login'
-    | '/_auth/reset-password'
-    | '/_auth/signup'
+    | '/_auth/verify'
     | '/_protected/eval'
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
     | '/_protected/characters/$id'
     | '/_protected/sequences/new'
+    | '/_protected/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/_protected/characters/'
     | '/_protected/sequences/'
+    | '/_protected/settings/'
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -439,18 +440,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedEvalRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_auth/signup': {
-      id: '/_auth/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
-    '/_auth/reset-password': {
-      id: '/_auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
+    '/_auth/verify': {
+      id: '/_auth/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/_auth/login': {
@@ -467,12 +461,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthInviteCodeRouteImport
       parentRoute: typeof AuthRouteRoute
     }
-    '/_auth/forgot-password': {
-      id: '/_auth/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof AuthForgotPasswordRouteImport
-      parentRoute: typeof AuthRouteRoute
+    '/_protected/settings/': {
+      id: '/_protected/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/sequences/': {
       id: '/_protected/sequences/'
@@ -501,6 +495,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/settings/passkeys': {
+      id: '/_protected/settings/passkeys'
+      path: '/settings/passkeys'
+      fullPath: '/settings/passkeys'
+      preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/sequences/new': {
       id: '/_protected/sequences/new'
@@ -597,19 +598,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteRouteChildren {
-  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthInviteCodeRoute: typeof AuthInviteCodeRoute
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  AuthSignupRoute: typeof AuthSignupRoute
+  AuthVerifyRoute: typeof AuthVerifyRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
-  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthInviteCodeRoute: AuthInviteCodeRoute,
   AuthLoginRoute: AuthLoginRoute,
-  AuthResetPasswordRoute: AuthResetPasswordRoute,
-  AuthSignupRoute: AuthSignupRoute,
+  AuthVerifyRoute: AuthVerifyRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
@@ -620,8 +617,10 @@ interface ProtectedRouteRouteChildren {
   ProtectedEvalRoute: typeof ProtectedEvalRoute
   ProtectedCharactersIdRoute: typeof ProtectedCharactersIdRoute
   ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
+  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedCharactersIndexRoute: typeof ProtectedCharactersIndexRoute
   ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
+  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
   ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
 }
@@ -630,8 +629,10 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedEvalRoute: ProtectedEvalRoute,
   ProtectedCharactersIdRoute: ProtectedCharactersIdRoute,
   ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
+  ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
   ProtectedCharactersIndexRoute: ProtectedCharactersIndexRoute,
   ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
+  ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
   ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
 }

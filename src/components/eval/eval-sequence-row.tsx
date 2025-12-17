@@ -1,5 +1,3 @@
-'use client';
-
 import type React from 'react';
 import { EvalSequenceMetadata } from './eval-sequence-metadata';
 import { EvalSceneCell } from './eval-scene-cell';
