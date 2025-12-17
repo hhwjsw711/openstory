@@ -9,12 +9,14 @@ import {
   inferAdditionalFields,
   lastLoginMethodClient,
 } from 'better-auth/client/plugins';
+import { passkeyClient } from '@better-auth/passkey/client';
 import type { Auth } from './config';
 
 // Create the auth client
 export const authClient = createAuthClient({
   plugins: [
     emailOTPClient(),
+    passkeyClient(),
     inferAdditionalFields<Auth>(),
     lastLoginMethodClient(),
   ],

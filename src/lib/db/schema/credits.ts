@@ -4,7 +4,6 @@
  */
 
 import {
-  desc,
   type InferInsertModel,
   type InferSelectModel,
   relations,
@@ -77,7 +76,7 @@ export const transactions = sqliteTable(
       .notNull(),
   },
   (table) => [
-    index('idx_transactions_created_at').on(desc(table.createdAt)),
+    index('idx_transactions_created_at').on(table.createdAt),
     index('idx_transactions_type').on(table.type),
     index('idx_transactions_user_id').on(table.userId),
   ]

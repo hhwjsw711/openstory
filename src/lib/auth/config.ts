@@ -5,11 +5,7 @@
 
 import { generateId } from '@/lib/db/id';
 import { account, session, user, verification } from '@/lib/db/schema';
-import {
-  getProductionDeploymentAppUrl,
-  getServerAppUrl,
-  isProductionDeployment,
-} from '@/lib/utils/environment';
+
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { emailOTP, lastLoginMethod } from 'better-auth/plugins';
@@ -18,6 +14,7 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start';
 import { getDb } from '#db-client';
 import { getEnv } from '#env';
 import { sendOtpEmail } from '@/lib/services/email-service';
+import { passkey } from '@better-auth/passkey';
 
 // Singleton auth instance cache
 let _authInstance: ReturnType<typeof createAuth> | undefined;
@@ -94,6 +91,7 @@ function createAuth() {
         },
       }),
       lastLoginMethod(),
+      passkey(),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.

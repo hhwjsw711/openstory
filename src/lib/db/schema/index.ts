@@ -6,7 +6,14 @@
 import { relations } from 'drizzle-orm';
 
 // Import all schema components first (required for schema object)
-import { account, session, user, verification } from './auth';
+import {
+  account,
+  passkey,
+  passkeyRelations,
+  session,
+  user,
+  verification,
+} from './auth';
 
 import {
   teamInvitations,
@@ -96,9 +103,9 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
 }));
 
 // Better Auth tables
-export { account, session, user, verification };
+export { account, passkey, session, user, verification };
 
-export type { Account, Session, User, Verification } from './auth';
+export type { Account, Passkey, Session, User, Verification } from './auth';
 
 // Teams
 export { teamInvitations, teamMembers, teams };
@@ -194,6 +201,8 @@ export const schema = {
   session,
   account,
   verification,
+  passkey,
+  passkeyRelations,
 
   // Teams
   teams,

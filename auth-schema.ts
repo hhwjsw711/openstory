@@ -1,10 +1,5 @@
-import {
-  type InferInsertModel,
-  type InferSelectModel,
-  relations,
-  sql,
-} from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { relations, sql } from 'drizzle-orm';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
@@ -148,19 +143,3 @@ export const passkeyRelations = relations(passkey, ({ one }) => ({
     references: [user.id],
   }),
 }));
-
-// Type exports
-export type User = InferSelectModel<typeof user>;
-export type NewUser = InferInsertModel<typeof user>;
-
-export type Session = InferSelectModel<typeof session>;
-export type NewSession = InferInsertModel<typeof session>;
-
-export type Account = InferSelectModel<typeof account>;
-export type NewAccount = InferInsertModel<typeof account>;
-
-export type Verification = InferSelectModel<typeof verification>;
-export type NewVerification = InferInsertModel<typeof verification>;
-
-export type Passkey = InferSelectModel<typeof passkey>;
-export type NewPasskey = InferInsertModel<typeof passkey>;

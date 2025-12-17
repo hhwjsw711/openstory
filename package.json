@@ -23,7 +23,9 @@
     "test:ui": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "test:watch": "bun test --watch",
+    "auth:generate": "doppler run -c dev -- bunx @better-auth/cli generate --config src/lib/auth/cli-config.ts",
     "db:generate:dev": "doppler run -c dev -- bun --bun drizzle-kit generate",
+    "db:generate:stg": "doppler run -c stg -- bun --bun drizzle-kit generate",
     "db:generate:local": "bun --bun drizzle-kit generate --config=drizzle.config.local.ts",
     "db:migrate:dev": "doppler run -c dev -- bun --bun drizzle-kit migrate",
     "db:migrate:local": "bun --bun drizzle-kit migrate --config=drizzle.config.local.ts",
@@ -68,6 +70,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.952.0",
     "@aws-sdk/s3-request-presigner": "^3.952.0",
+    "@better-auth/passkey": "^1.4.7",
     "@cf-wasm/photon": "^0.3.4",
     "@fal-ai/client": "^1.7.2",
     "@libsql/client": "^0.15.15",

@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
 import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type AuthFormProps = {
   emailEntered?: string;
@@ -34,6 +34,27 @@ export function AuthForm({
   const [email, setEmail] = useState(emailEntered || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Preload passkeys for conditional UI (browser autofill)
+  useEffect(() => {
+    const preloadPasskeys = async () => {
+      if (
+        !window.PublicKeyCredential?.isConditionalMediationAvailable ||
+        !(await window.PublicKeyCredential.isConditionalMediationAvailable())
+      ) {
+        return;
+      }
+      void authClient.signIn.passkey({
+        autoFill: true,
+        fetchOptions: {
+          onSuccess: () => {
+            void navigate({ to: redirectTo });
+          },
+        },
+      });
+    };
+    void preloadPasskeys();
+  }, [navigate, redirectTo]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +173,7 @@ export function AuthForm({
               id="email"
               name="email"
               type="email"
-              autoComplete="email"
+              autoComplete="email webauthn"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

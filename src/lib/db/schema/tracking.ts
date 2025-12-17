@@ -4,7 +4,6 @@
  */
 
 import {
-  desc,
   type InferInsertModel,
   type InferSelectModel,
   relations,
@@ -64,7 +63,7 @@ export const falRequests = sqliteTable(
       .notNull(),
   },
   (table) => [
-    index('idx_fal_requests_created_at').on(desc(table.createdAt)),
+    index('idx_fal_requests_created_at').on(table.createdAt),
     index('idx_fal_requests_job_id').on(table.jobId),
     index('idx_fal_requests_model').on(table.model),
     index('idx_fal_requests_status').on(table.status),
