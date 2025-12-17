@@ -23,10 +23,11 @@ import { authClient } from '@/lib/auth/client';
 import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  hasSkippedPasskeyPrompt,
-  PasskeyPromptModal,
-} from './passkey-prompt-modal';
+
+function hasSkippedPasskeyPrompt(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('velro-passkey-skip') === 'true';
+}
 
 type VerifyFormProps = {
   email: string;
@@ -42,8 +43,6 @@ export function VerifyForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showPasskeyModal, setShowPasskeyModal] = useState(false);
-  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const isVerifyingRef = useRef(false);
 
   const verifyOtp = useCallback(
@@ -78,10 +77,12 @@ export function VerifyForm({
           });
         } else {
           setSuccess('Signed in!');
-          // Show passkey prompt if user hasn't skipped it
+          // Redirect to passkey setup if user hasn't skipped it
           if (!hasSkippedPasskeyPrompt()) {
-            setPendingRedirect(redirectTo);
-            setShowPasskeyModal(true);
+            await navigate({
+              to: '/settings/passkeys',
+              search: { setup: true },
+            });
           } else {
             await navigate({ to: redirectTo });
           }
@@ -133,13 +134,6 @@ export function VerifyForm({
       console.error('[VerifyForm] Resend OTP error:', err);
       setError(err instanceof Error ? err.message : 'Failed to resend code');
       setIsLoading(false);
-    }
-  };
-
-  const handlePasskeyComplete = () => {
-    setShowPasskeyModal(false);
-    if (pendingRedirect) {
-      void navigate({ to: pendingRedirect });
     }
   };
 
@@ -209,11 +203,6 @@ export function VerifyForm({
           </button>
         </div>
       </CardContent>
-
-      <PasskeyPromptModal
-        open={showPasskeyModal}
-        onComplete={handlePasskeyComplete}
-      />
     </Card>
   );
 }

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { LogOut, User } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -80,6 +80,12 @@ export function UserBadge() {
           <Link to={sequencesRoute.fullPath}>
             <User className="mr-2 h-4 w-4" />
             My Sequences
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings/passkeys">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

@@ -19,10 +19,12 @@ import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
+import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ProtectedCharactersIndexRouteImport } from './routes/_protected/characters/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedCharactersIdRouteImport } from './routes/_protected/characters/$id'
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
@@ -85,6 +87,11 @@ const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
   path: '/invite-code',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   id: '/sequences/',
   path: '/sequences/',
@@ -106,6 +113,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedSettingsPasskeysRoute =
+  ProtectedSettingsPasskeysRouteImport.update({
+    id: '/settings/passkeys',
+    path: '/settings/passkeys',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   id: '/sequences/new',
   path: '/sequences/new',
@@ -191,10 +204,12 @@ export interface FileRoutesByFullPath {
   '/api/realtime': typeof ApiRealtimeRoute
   '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
+  '/settings': typeof ProtectedSettingsIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -218,10 +233,12 @@ export interface FileRoutesByTo {
   '/api/realtime': typeof ApiRealtimeRoute
   '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
+  '/settings': typeof ProtectedSettingsIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -248,10 +265,12 @@ export interface FileRoutesById {
   '/api/realtime': typeof ApiRealtimeRoute
   '/_protected/characters/$id': typeof ProtectedCharactersIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
+  '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/characters/': typeof ProtectedCharactersIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
+  '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -277,10 +296,12 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/characters/$id'
     | '/sequences/new'
+    | '/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/characters'
     | '/sequences'
+    | '/settings'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -304,10 +325,12 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/characters/$id'
     | '/sequences/new'
+    | '/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/characters'
     | '/sequences'
+    | '/settings'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -333,10 +356,12 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/_protected/characters/$id'
     | '/_protected/sequences/new'
+    | '/_protected/settings/passkeys'
     | '/api/auth/$'
     | '/api/workflows/$'
     | '/_protected/characters/'
     | '/_protected/sequences/'
+    | '/_protected/settings/'
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -436,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthInviteCodeRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_protected/settings/': {
+      id: '/_protected/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/sequences/': {
       id: '/_protected/sequences/'
       path: '/sequences'
@@ -463,6 +495,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/settings/passkeys': {
+      id: '/_protected/settings/passkeys'
+      path: '/settings/passkeys'
+      fullPath: '/settings/passkeys'
+      preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/sequences/new': {
       id: '/_protected/sequences/new'
@@ -578,8 +617,10 @@ interface ProtectedRouteRouteChildren {
   ProtectedEvalRoute: typeof ProtectedEvalRoute
   ProtectedCharactersIdRoute: typeof ProtectedCharactersIdRoute
   ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
+  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedCharactersIndexRoute: typeof ProtectedCharactersIndexRoute
   ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
+  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
   ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
 }
@@ -588,8 +629,10 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedEvalRoute: ProtectedEvalRoute,
   ProtectedCharactersIdRoute: ProtectedCharactersIdRoute,
   ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
+  ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
   ProtectedCharactersIndexRoute: ProtectedCharactersIndexRoute,
   ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
+  ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
   ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
 }
