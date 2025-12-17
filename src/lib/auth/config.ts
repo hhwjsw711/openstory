@@ -12,7 +12,7 @@ import {
 } from '@/lib/utils/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { emailOTP } from 'better-auth/plugins';
+import { emailOTP, lastLoginMethod } from 'better-auth/plugins';
 import { tanstackStartCookies } from 'better-auth/tanstack-start';
 
 import { getDb } from '#db-client';
@@ -93,6 +93,7 @@ function createAuth() {
           }
         },
       }),
+      lastLoginMethod(),
     ],
 
     // Custom user fields to match existing schema, This is BetterAuth user table.

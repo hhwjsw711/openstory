@@ -7,12 +7,17 @@ import { createAuthClient } from 'better-auth/react';
 import {
   emailOTPClient,
   inferAdditionalFields,
+  lastLoginMethodClient,
 } from 'better-auth/client/plugins';
 import type { Auth } from './config';
 
 // Create the auth client
 export const authClient = createAuthClient({
-  plugins: [emailOTPClient(), inferAdditionalFields<Auth>()],
+  plugins: [
+    emailOTPClient(),
+    inferAdditionalFields<Auth>(),
+    lastLoginMethodClient(),
+  ],
 });
 
 // Export hooks and methods for easy use

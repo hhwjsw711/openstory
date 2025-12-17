@@ -21,12 +21,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/use-user';
 import { authClient } from '@/lib/auth/client';
-import { signOutFn } from '@/lib/auth/server';
+import { useNavigate } from '@tanstack/react-router';
 
 export function UserBadge() {
   const { data: user, isLoading } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
-
+  const navigate = useNavigate();
   // Show loading state or no user data
   if (isLoading || !user) {
     return (
@@ -42,16 +42,16 @@ export function UserBadge() {
   const initials = getInitials(displayName);
 
   const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      // Sign out - this should clear the session cookie
-      // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
-      // where useSession doesn't update after server-side signOut until page refresh
-      await signOutFn();
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setIsSigningOut(false);
-    }
+    // Sign out - this should clear the session cookie
+    // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
+    // where useSession doesn't update after server-side signOut until page refresh
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          void navigate({ to: '/' });
+        },
+      },
+    });
   };
 
   return (

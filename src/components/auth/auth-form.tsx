@@ -25,7 +25,7 @@ import { authClient } from '@/lib/auth/client';
 import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type AuthFormProps = {
   emailEntered?: string;
@@ -46,6 +46,7 @@ export function AuthForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const isVerifyingRef = useRef(false);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     console.log('handleSendOtp', email);
@@ -78,8 +79,10 @@ export function AuthForm({
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const verifyOtp = async (otpValue: string) => {
+    if (isVerifyingRef.current || isLoading) return;
+    isVerifyingRef.current = true;
+
     setError(null);
     setSuccess(null);
     setIsLoading(true);
@@ -87,12 +90,13 @@ export function AuthForm({
     try {
       const result = await authClient.signIn.emailOtp({
         email,
-        otp,
+        otp: otpValue,
       });
 
       if (result.error) {
         setError(result.error.message || 'Invalid code');
         setIsLoading(false);
+        isVerifyingRef.current = false;
         return;
       }
 
@@ -116,8 +120,21 @@ export function AuthForm({
       console.error('[AuthForm] Verify OTP error:', err);
       setError(err instanceof Error ? err.message : 'Verification failed');
       setIsLoading(false);
+      isVerifyingRef.current = false;
     }
   };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    void verifyOtp(otp);
+  };
+
+  // Auto-verify when OTP is complete (6 digits)
+  useEffect(() => {
+    if (step === 'otp' && otp.length === 6) {
+      void verifyOtp(otp);
+    }
+  }, [otp, step]);
 
   const handleResendOtp = async () => {
     setError(null);
@@ -139,6 +156,7 @@ export function AuthForm({
       setSuccess('New code sent!');
       setOtp('');
       setIsLoading(false);
+      isVerifyingRef.current = false;
     } catch (err) {
       console.error('[AuthForm] Resend OTP error:', err);
       setError(err instanceof Error ? err.message : 'Failed to resend code');
@@ -174,6 +192,7 @@ export function AuthForm({
     setOtp('');
     setError(null);
     setSuccess(null);
+    isVerifyingRef.current = false;
   };
 
   return (
