@@ -34,11 +34,12 @@ import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/
 import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters'
 import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design'
 import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
-import { Route as ProtectedSequencesIdTalentRouteImport } from './routes/_protected/sequences/$id/talent'
 import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
 import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
+import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
 import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
 import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
+import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
@@ -168,12 +169,6 @@ const ApiMcpStreamAnalyzeScriptRoute =
     path: '/stream/analyze-script',
     getParentRoute: () => ApiMcpRoute,
   } as any)
-const ProtectedSequencesIdTalentRoute =
-  ProtectedSequencesIdTalentRouteImport.update({
-    id: '/sequences/$id/talent',
-    path: '/sequences/$id/talent',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedSequencesIdScriptRoute =
   ProtectedSequencesIdScriptRouteImport.update({
     id: '/sequences/$id/script',
@@ -184,6 +179,12 @@ const ProtectedSequencesIdScenesRoute =
   ProtectedSequencesIdScenesRouteImport.update({
     id: '/sequences/$id/scenes',
     path: '/sequences/$id/scenes',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedSequencesIdCastIndexRoute =
+  ProtectedSequencesIdCastIndexRouteImport.update({
+    id: '/sequences/$id/cast/',
+    path: '/sequences/$id/cast/',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ApiTeamsInvitationsInvitationIdAcceptRoute =
@@ -197,6 +198,12 @@ const ApiSequencesSequenceIdChaptersVttRoute =
     id: '/api/sequences/$sequenceId/chapters/vtt',
     path: '/api/sequences/$sequenceId/chapters/vtt',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ProtectedSequencesIdCastCharacterIdRoute =
+  ProtectedSequencesIdCastCharacterIdRouteImport.update({
+    id: '/sequences/$id/cast/$characterId',
+    path: '/sequences/$id/cast/$characterId',
+    getParentRoute: () => ProtectedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -218,7 +225,6 @@ export interface FileRoutesByFullPath {
   '/talent': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/sequences/$id/talent': typeof ProtectedSequencesIdTalentRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
@@ -226,8 +232,10 @@ export interface FileRoutesByFullPath {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -248,7 +256,6 @@ export interface FileRoutesByTo {
   '/talent': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/sequences/$id/talent': typeof ProtectedSequencesIdTalentRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
@@ -256,8 +263,10 @@ export interface FileRoutesByTo {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -281,7 +290,6 @@ export interface FileRoutesById {
   '/_protected/talent/': typeof ProtectedTalentIndexRoute
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/_protected/sequences/$id/talent': typeof ProtectedSequencesIdTalentRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
   '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
   '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
@@ -289,8 +297,10 @@ export interface FileRoutesById {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -313,7 +323,6 @@ export interface FileRouteTypes {
     | '/talent'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
-    | '/sequences/$id/talent'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
@@ -321,8 +330,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/sequences/$id/cast'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -343,7 +354,6 @@ export interface FileRouteTypes {
     | '/talent'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
-    | '/sequences/$id/talent'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
@@ -351,8 +361,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/sequences/$id/cast'
   id:
     | '__root__'
     | '/'
@@ -375,7 +387,6 @@ export interface FileRouteTypes {
     | '/_protected/talent/'
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
-    | '/_protected/sequences/$id/talent'
     | '/api/mcp/stream/analyze-script'
     | '/api/mcp/stream/audio-design'
     | '/api/mcp/stream/extract-characters'
@@ -383,8 +394,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/_protected/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/_protected/sequences/$id/cast/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -578,13 +591,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport
       parentRoute: typeof ApiMcpRoute
     }
-    '/_protected/sequences/$id/talent': {
-      id: '/_protected/sequences/$id/talent'
-      path: '/sequences/$id/talent'
-      fullPath: '/sequences/$id/talent'
-      preLoaderRoute: typeof ProtectedSequencesIdTalentRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/sequences/$id/script': {
       id: '/_protected/sequences/$id/script'
       path: '/sequences/$id/script'
@@ -597,6 +603,13 @@ declare module '@tanstack/react-router' {
       path: '/sequences/$id/scenes'
       fullPath: '/sequences/$id/scenes'
       preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/sequences/$id/cast/': {
+      id: '/_protected/sequences/$id/cast/'
+      path: '/sequences/$id/cast'
+      fullPath: '/sequences/$id/cast'
+      preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/api/teams/invitations/$invitationId/accept': {
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/sequences/$sequenceId/chapters/vtt'
       preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/sequences/$id/cast/$characterId': {
+      id: '/_protected/sequences/$id/cast/$characterId'
+      path: '/sequences/$id/cast/$characterId'
+      fullPath: '/sequences/$id/cast/$characterId'
+      preLoaderRoute: typeof ProtectedSequencesIdCastCharacterIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
   }
 }
@@ -642,7 +662,8 @@ interface ProtectedRouteRouteChildren {
   ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute
   ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
-  ProtectedSequencesIdTalentRoute: typeof ProtectedSequencesIdTalentRoute
+  ProtectedSequencesIdCastCharacterIdRoute: typeof ProtectedSequencesIdCastCharacterIdRoute
+  ProtectedSequencesIdCastIndexRoute: typeof ProtectedSequencesIdCastIndexRoute
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
@@ -655,7 +676,9 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedTalentIndexRoute: ProtectedTalentIndexRoute,
   ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
   ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
-  ProtectedSequencesIdTalentRoute: ProtectedSequencesIdTalentRoute,
+  ProtectedSequencesIdCastCharacterIdRoute:
+    ProtectedSequencesIdCastCharacterIdRoute,
+  ProtectedSequencesIdCastIndexRoute: ProtectedSequencesIdCastIndexRoute,
 }
 
 const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(

@@ -22,8 +22,8 @@ export const SequenceTabs: React.FC<SequenceTabsProps> = ({ sequenceId }) => {
       icon: <Grid3X3 className="h-4 w-4" />,
     },
     {
-      label: 'Talent',
-      href: `/sequences/${sequenceId}/talent`,
+      label: 'Cast',
+      href: `/sequences/${sequenceId}/cast`,
       icon: <Users className="h-4 w-4" />,
     },
   ];

@@ -413,3 +413,85 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
 
     return { runId };
   });
+
+// ============================================================================
+// Add Character to Library
+// ============================================================================
+
+const addCharacterToLibraryInputSchema = z.object({
+  characterId: ulidSchema,
+});
+
+/**
+ * Add a sequence character to the team's talent library
+ * Copies character data to create a new talent entry with optional sheet
+ */
+export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(addCharacterToLibraryInputSchema))
+  .handler(async ({ context, data }) => {
+    const { getDb } = await import('#db-client');
+    const { characters, sequences } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+
+    // Get the character with its sequence
+    const character = await getDb().query.characters.findFirst({
+      where: eq(characters.id, data.characterId),
+    });
+
+    if (!character) {
+      throw new Error('Character not found');
+    }
+
+    // Verify team access via sequence
+    const sequence = await getDb().query.sequences.findFirst({
+      where: eq(sequences.id, character.sequenceId),
+    });
+
+    if (!sequence || sequence.teamId !== context.teamId) {
+      throw new Error('Character not found');
+    }
+
+    // Create talent entry
+    const newTalent = await createTalent({
+      teamId: context.teamId,
+      name: character.name,
+      description: character.physicalDescription ?? undefined,
+      imageUrl: character.sheetImageUrl ?? undefined,
+      imagePath: character.sheetImagePath ?? undefined,
+      isFavorite: false,
+      isHuman: false,
+      isInTeamLibrary: true,
+      createdBy: context.user.id,
+    });
+
+    // If character has a sheet image, create a talent sheet
+    if (character.sheetImageUrl) {
+      await createTalentSheet({
+        talentId: newTalent.id,
+        name: 'Default',
+        imageUrl: character.sheetImageUrl,
+        imagePath: character.sheetImagePath ?? undefined,
+        metadata: {
+          characterId: character.characterId,
+          name: character.name,
+          age: character.age ?? undefined,
+          gender: character.gender ?? undefined,
+          ethnicity: character.ethnicity ?? undefined,
+          physicalDescription: character.physicalDescription ?? '',
+          standardClothing: character.standardClothing ?? '',
+          distinguishingFeatures: character.distinguishingFeatures ?? undefined,
+          consistencyTag: character.consistencyTag ?? '',
+          firstMention: {
+            sceneId: character.firstMentionSceneId ?? '',
+            originalText: character.firstMentionText ?? '',
+            lineNumber: character.firstMentionLine ?? 0,
+          },
+        },
+        isDefault: true,
+        source: 'script_analysis',
+      });
+    }
+
+    return newTalent;
+  });

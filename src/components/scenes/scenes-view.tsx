@@ -263,6 +263,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           </div>
           <SceneScriptPrompts
             frame={selectedFrame}
+            sequenceId={sequenceId ?? ''}
             selectedTab={selectedTab}
             onTabChange={setSelectedTab}
             regeneratingImages={regeneratingImages}

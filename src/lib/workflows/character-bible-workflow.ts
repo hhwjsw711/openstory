@@ -13,7 +13,7 @@ import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
 import type { CharacterBibleWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { generateId } from 'better-auth';
+import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 

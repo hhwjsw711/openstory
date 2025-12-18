@@ -3,11 +3,11 @@ import { TalentView } from '@/components/talent/talent-view';
 import { useUser } from '@/hooks/use-user';
 import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_protected/sequences/$id/talent')({
-  component: TalentPage,
+export const Route = createFileRoute('/_protected/sequences/$id/cast/')({
+  component: CastPage,
 });
 
-function TalentPage() {
+function CastPage() {
   const { id: sequenceId } = Route.useParams();
 
   // Verify session

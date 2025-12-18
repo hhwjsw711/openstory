@@ -7,8 +7,13 @@
  */
 
 import { getDb } from '#db-client';
-import type { Character, NewCharacter, SheetStatus } from '@/lib/db/schema';
-import { characters } from '@/lib/db/schema';
+import type {
+  Character,
+  Frame,
+  NewCharacter,
+  SheetStatus,
+} from '@/lib/db/schema';
+import { characters, frames } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 // Re-export types with legacy names for backward compatibility
@@ -200,4 +205,94 @@ async function getCharactersNeedingSheets(
         inArray(characters.sheetStatus, ['pending', 'failed'])
       )
     );
+}
+
+// ============================================================================
+// Casting Operations
+// ============================================================================
+
+/**
+ * Update a character's talent assignment (for recasting)
+ */
+export async function updateCharacterTalent(
+  characterId: string,
+  talentId: string | null
+): Promise<Character> {
+  const [character] = await getDb()
+    .update(characters)
+    .set({ talentId, updatedAt: new Date() })
+    .where(eq(characters.id, characterId))
+    .returning();
+
+  if (!character) {
+    throw new Error(`Character ${characterId} not found`);
+  }
+
+  return character;
+}
+
+// ============================================================================
+// Frame-Character Relationship Operations
+// ============================================================================
+
+/**
+ * Match a character to a scene's characterTags
+ */
+function characterMatchesTags(
+  character: Character,
+  characterTags: string[]
+): boolean {
+  const consistencyTag = (character.consistencyTag ?? '').toLowerCase();
+  const charName = character.name.toLowerCase();
+  const charId = character.characterId.toLowerCase();
+
+  return characterTags.some((tag) => {
+    const tagLower = tag.toLowerCase();
+    if (consistencyTag && tagLower.includes(consistencyTag)) return true;
+    if (tagLower.includes(charName)) return true;
+    if (tagLower.includes(charId)) return true;
+    return false;
+  });
+}
+
+/**
+ * Get all frames in a sequence that contain a specific character
+ * Matches by checking metadata.continuity.characterTags
+ *
+ * @param sequenceId - The sequence ID
+ * @param characterId - The character's database ID (not characterId from script)
+ * @returns Array of frames containing this character
+ */
+export async function getFramesForCharacter(
+  sequenceId: string,
+  characterId: string
+): Promise<Frame[]> {
+  // Get the character to extract matching patterns
+  const character = await getSequenceCharacterById(characterId);
+  if (!character || character.sequenceId !== sequenceId) {
+    return [];
+  }
+
+  // Get all frames for the sequence
+  const allFrames = await getDb()
+    .select()
+    .from(frames)
+    .where(eq(frames.sequenceId, sequenceId));
+
+  // Filter frames that contain this character
+  return (allFrames as Frame[]).filter((frame) => {
+    const characterTags = frame.metadata?.continuity?.characterTags ?? [];
+    return characterMatchesTags(character, characterTags);
+  });
+}
+
+/**
+ * Get frame IDs for frames containing a character (for recast operations)
+ */
+export async function getFrameIdsForCharacter(
+  sequenceId: string,
+  characterId: string
+): Promise<string[]> {
+  const matchingFrames = await getFramesForCharacter(sequenceId, characterId);
+  return matchingFrames.map((f) => f.id);
 }
