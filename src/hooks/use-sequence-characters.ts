@@ -1,10 +1,13 @@
 /**
- * Hook for fetching sequence characters (talent)
+ * Hook for fetching sequence characters
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { getSequenceCharactersFn } from '@/functions/sequence-characters';
-import type { SequenceCharacter } from '@/lib/db/schema';
+import type { Character } from '@/lib/db/schema';
+
+// Re-export Character as SequenceCharacter for backward compatibility
+export type SequenceCharacter = Character;
 
 export const sequenceCharacterKeys = {
   all: ['sequence-characters'] as const,
@@ -13,7 +16,7 @@ export const sequenceCharacterKeys = {
 };
 
 export function useSequenceCharacters(sequenceId: string) {
-  return useQuery<SequenceCharacter[]>({
+  return useQuery<Character[]>({
     queryKey: sequenceCharacterKeys.list(sequenceId),
     queryFn: async () => {
       return getSequenceCharactersFn({ data: { sequenceId } });

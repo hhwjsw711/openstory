@@ -1,16 +1,19 @@
 /**
  * Sequence Character Operations Helpers
  * CRUD operations for sequence-specific character data and reference sheets
+ *
+ * NOTE: This file operates on the `characters` table (renamed from `sequence_characters`)
+ * The "sequence characters" terminology is kept for backward compatibility in the API
  */
 
 import { getDb } from '#db-client';
-import type {
-  NewSequenceCharacter,
-  SequenceCharacter,
-  SheetStatus,
-} from '@/lib/db/schema';
-import { sequenceCharacters } from '@/lib/db/schema';
+import type { Character, NewCharacter, SheetStatus } from '@/lib/db/schema';
+import { characters } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
+
+// Re-export types with legacy names for backward compatibility
+export type { Character as SequenceCharacter } from '@/lib/db/schema';
+export type { NewCharacter as NewSequenceCharacter } from '@/lib/db/schema';
 
 // ============================================================================
 // Core CRUD Operations
@@ -19,13 +22,11 @@ import { and, eq, inArray } from 'drizzle-orm';
 /**
  * Get a single sequence character by ID
  */
-async function getSequenceCharacterById(
-  id: string
-): Promise<SequenceCharacter | null> {
+async function getSequenceCharacterById(id: string): Promise<Character | null> {
   const result = await getDb()
     .select()
-    .from(sequenceCharacters)
-    .where(eq(sequenceCharacters.id, id));
+    .from(characters)
+    .where(eq(characters.id, id));
   return result[0] ?? null;
 }
 
@@ -35,14 +36,14 @@ async function getSequenceCharacterById(
 async function getSequenceCharacterByCharacterId(
   sequenceId: string,
   characterId: string
-): Promise<SequenceCharacter | null> {
+): Promise<Character | null> {
   const result = await getDb()
     .select()
-    .from(sequenceCharacters)
+    .from(characters)
     .where(
       and(
-        eq(sequenceCharacters.sequenceId, sequenceId),
-        eq(sequenceCharacters.characterId, characterId)
+        eq(characters.sequenceId, sequenceId),
+        eq(characters.characterId, characterId)
       )
     );
   return result[0] ?? null;
@@ -53,24 +54,22 @@ async function getSequenceCharacterByCharacterId(
  */
 export async function getSequenceCharacters(
   sequenceId: string
-): Promise<SequenceCharacter[]> {
+): Promise<Character[]> {
   return await getDb()
     .select()
-    .from(sequenceCharacters)
-    .where(eq(sequenceCharacters.sequenceId, sequenceId));
+    .from(characters)
+    .where(eq(characters.sequenceId, sequenceId));
 }
 
 /**
  * Get sequence characters by their IDs
  */
-async function getSequenceCharactersByIds(
-  ids: string[]
-): Promise<SequenceCharacter[]> {
+async function getSequenceCharactersByIds(ids: string[]): Promise<Character[]> {
   if (ids.length === 0) return [];
   return await getDb()
     .select()
-    .from(sequenceCharacters)
-    .where(inArray(sequenceCharacters.id, ids));
+    .from(characters)
+    .where(inArray(characters.id, ids));
 }
 
 /**
@@ -78,14 +77,14 @@ async function getSequenceCharactersByIds(
  */
 export async function getSequenceCharactersWithSheets(
   sequenceId: string
-): Promise<SequenceCharacter[]> {
+): Promise<Character[]> {
   return await getDb()
     .select()
-    .from(sequenceCharacters)
+    .from(characters)
     .where(
       and(
-        eq(sequenceCharacters.sequenceId, sequenceId),
-        eq(sequenceCharacters.sheetStatus, 'completed')
+        eq(characters.sequenceId, sequenceId),
+        eq(characters.sheetStatus, 'completed')
       )
     );
 }
@@ -94,12 +93,9 @@ export async function getSequenceCharactersWithSheets(
  * Create a new sequence character
  */
 export async function createSequenceCharacter(
-  data: NewSequenceCharacter
-): Promise<SequenceCharacter> {
-  const [character] = await getDb()
-    .insert(sequenceCharacters)
-    .values(data)
-    .returning();
+  data: NewCharacter
+): Promise<Character> {
+  const [character] = await getDb().insert(characters).values(data).returning();
   return character;
 }
 
@@ -107,11 +103,11 @@ export async function createSequenceCharacter(
  * Create multiple sequence characters in a transaction
  */
 async function createSequenceCharactersBulk(
-  data: NewSequenceCharacter[]
-): Promise<SequenceCharacter[]> {
+  data: NewCharacter[]
+): Promise<Character[]> {
   if (data.length === 0) return [];
   return await getDb().transaction(async (tx) => {
-    return await tx.insert(sequenceCharacters).values(data).returning();
+    return await tx.insert(characters).values(data).returning();
   });
 }
 
@@ -120,12 +116,12 @@ async function createSequenceCharactersBulk(
  */
 async function updateSequenceCharacter(
   id: string,
-  data: Partial<NewSequenceCharacter>
-): Promise<SequenceCharacter> {
+  data: Partial<NewCharacter>
+): Promise<Character> {
   const [character] = await getDb()
-    .update(sequenceCharacters)
+    .update(characters)
     .set({ ...data, updatedAt: new Date() })
-    .where(eq(sequenceCharacters.id, id))
+    .where(eq(characters.id, id))
     .returning();
 
   if (!character) {
@@ -139,9 +135,7 @@ async function updateSequenceCharacter(
  * Delete a sequence character
  */
 async function deleteSequenceCharacter(id: string): Promise<boolean> {
-  const result = await getDb()
-    .delete(sequenceCharacters)
-    .where(eq(sequenceCharacters.id, id));
+  const result = await getDb().delete(characters).where(eq(characters.id, id));
   return (result.rowsAffected ?? 0) > 0;
 }
 
@@ -150,8 +144,8 @@ async function deleteSequenceCharacter(id: string): Promise<boolean> {
  */
 async function deleteSequenceCharacters(sequenceId: string): Promise<number> {
   const result = await getDb()
-    .delete(sequenceCharacters)
-    .where(eq(sequenceCharacters.sequenceId, sequenceId));
+    .delete(characters)
+    .where(eq(characters.sequenceId, sequenceId));
   return result.rowsAffected ?? 0;
 }
 
@@ -166,7 +160,7 @@ export async function updateSheetStatus(
   id: string,
   status: SheetStatus,
   error?: string
-): Promise<SequenceCharacter> {
+): Promise<Character> {
   return await updateSequenceCharacter(id, {
     sheetStatus: status,
     sheetError: error ?? null,
@@ -181,7 +175,7 @@ export async function updateCharacterSheet(
   id: string,
   sheetImageUrl: string,
   sheetImagePath: string
-): Promise<SequenceCharacter> {
+): Promise<Character> {
   return await updateSequenceCharacter(id, {
     sheetImageUrl,
     sheetImagePath,
@@ -196,14 +190,14 @@ export async function updateCharacterSheet(
  */
 async function getCharactersNeedingSheets(
   sequenceId: string
-): Promise<SequenceCharacter[]> {
+): Promise<Character[]> {
   return await getDb()
     .select()
-    .from(sequenceCharacters)
+    .from(characters)
     .where(
       and(
-        eq(sequenceCharacters.sequenceId, sequenceId),
-        inArray(sequenceCharacters.sheetStatus, ['pending', 'failed'])
+        eq(characters.sequenceId, sequenceId),
+        inArray(characters.sheetStatus, ['pending', 'failed'])
       )
     );
 }

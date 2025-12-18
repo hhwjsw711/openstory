@@ -4,22 +4,8 @@
  */
 
 import { getDb } from '#db-client';
-import type {
-  Audio,
-  Frame,
-  Character,
-  Sequence,
-  Style,
-  Vfx,
-} from '@/lib/db/schema';
-import {
-  audio,
-  characters,
-  sequences,
-  styles,
-  teams,
-  vfx,
-} from '@/lib/db/schema';
+import type { Audio, Frame, Sequence, Style, Vfx } from '@/lib/db/schema';
+import { audio, sequences, styles, teams, vfx } from '@/lib/db/schema';
 import { and, asc, desc, eq, isNull, or } from 'drizzle-orm';
 
 /**
@@ -193,25 +179,6 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
 }
 
 /**
- * Get all characters for a team
- *
- * @param teamId - The team ID
- * @returns Array of characters
- *
- * @example
- * ```ts
- * const characters = await getTeamCharacters(teamId);
- * ```
- */
-async function getTeamCharacters(teamId: string): Promise<Character[]> {
-  return await getDb()
-    .select()
-    .from(characters)
-    .where(eq(characters.teamId, teamId))
-    .orderBy(desc(characters.createdAt));
-}
-
-/**
  * Get all VFX presets for a team
  *
  * @param teamId - The team ID
@@ -317,7 +284,8 @@ async function getTeamById(teamId: string) {
 
 /**
  * Get all library resources for a team
- * Returns all styles, characters, vfx, and audio in a single call
+ * Returns all styles, vfx, and audio in a single call
+ * Note: Talent is fetched separately via getTeamTalent
  *
  * @param teamId - The team ID
  * @returns Object with all library resources
@@ -330,20 +298,17 @@ async function getTeamById(teamId: string) {
  */
 async function getTeamLibrary(teamId: string): Promise<{
   styles: Style[];
-  characters: Character[];
   vfx: Vfx[];
   audio: Audio[];
 }> {
-  const [stylesList, charactersList, vfxList, audioList] = await Promise.all([
+  const [stylesList, vfxList, audioList] = await Promise.all([
     getTeamStyles(teamId),
-    getTeamCharacters(teamId),
     getTeamVfx(teamId),
     getTeamAudio(teamId),
   ]);
 
   return {
     styles: stylesList,
-    characters: charactersList,
     vfx: vfxList,
     audio: audioList,
   };

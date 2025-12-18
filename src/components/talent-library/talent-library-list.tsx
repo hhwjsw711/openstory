@@ -1,18 +1,18 @@
-import { CharacterCard } from '@/components/character/character-card';
+import { TalentLibraryCard } from '@/components/talent-library/talent-library-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import type { CharacterWithSheets } from '@/lib/db/schema';
+import type { TalentWithSheets } from '@/lib/db/schema';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 
-type CharactersListProps = {
-  characters?: CharacterWithSheets[];
+type TalentLibraryListProps = {
+  talent?: TalentWithSheets[];
   isLoading?: boolean;
   error?: Error | null;
 };
 
-export const CharactersList: React.FC<CharactersListProps> = ({
-  characters,
+export const TalentLibraryList: React.FC<TalentLibraryListProps> = ({
+  talent,
   isLoading,
   error,
 }) => {
@@ -37,7 +37,7 @@ export const CharactersList: React.FC<CharactersListProps> = ({
   if (error) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-destructive mb-4">Failed to load characters</p>
+        <p className="text-destructive mb-4">Failed to load talent</p>
         <Button variant="outline" onClick={() => window.location.reload()}>
           Try Again
         </Button>
@@ -45,17 +45,17 @@ export const CharactersList: React.FC<CharactersListProps> = ({
     );
   }
 
-  if (!characters || characters.length === 0) {
+  if (!talent || talent.length === 0) {
     return null;
   }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      {characters.map((character) => (
-        <CharacterCard
-          key={character.id}
-          character={character}
-          onClick={() => navigate({ to: `/characters/${character.id}` })}
+      {talent.map((t) => (
+        <TalentLibraryCard
+          key={t.id}
+          talent={t}
+          onClick={() => navigate({ to: `/talent/${t.id}` })}
         />
       ))}
     </div>

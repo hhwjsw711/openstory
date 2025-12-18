@@ -14,7 +14,7 @@ import type { CharacterBibleWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from 'better-auth';
-import type { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
+import type { CharacterMinimal } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 
 const maxDuration = 800;
@@ -22,7 +22,7 @@ const maxDuration = 800;
 export const characterBibleWorkflow = createWorkflow(
   async (
     context: WorkflowContext<CharacterBibleWorkflowInput>
-  ): Promise<SequenceCharacterMinimal[]> => {
+  ): Promise<CharacterMinimal[]> => {
     const input = context.requestPayload;
 
     // Emit Phase 3 start
@@ -36,7 +36,7 @@ export const characterBibleWorkflow = createWorkflow(
       );
     });
 
-    const seqCharacters: SequenceCharacterMinimal[] = await Promise.all(
+    const seqCharacters: CharacterMinimal[] = await Promise.all(
       input.characterBible.map(async (character) => {
         return await context.run('character-sheet', async () => {
           // Build character sheet prompt
@@ -58,11 +58,11 @@ export const characterBibleWorkflow = createWorkflow(
             throw new Error('No image URL returned from generation');
           }
           // Generate ULID-based filename
-          const characterId = generateId();
+          const id = generateId();
           // Save to R2 and DB if sequenceId, userId, and teamId are provided
           if (input.sequenceId && input.userId && input.teamId) {
             // Storage path
-            const storagePath = `${input.teamId}/${input.sequenceId}/${characterId}.png`;
+            const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
 
             // Fetch the image
             const response = await fetch(imageUrl);
@@ -81,25 +81,52 @@ export const characterBibleWorkflow = createWorkflow(
               { contentType: 'image/png' }
             );
 
-            // Create the sequence_characters record
-            return await createSequenceCharacter({
-              id: characterId,
+            // Create the characters record with flattened fields
+            const created = await createSequenceCharacter({
+              id,
               sequenceId: input.sequenceId,
               characterId: character.characterId,
               name: character.name,
-              metadata: character,
+              // Flattened character bible fields
+              age:
+                character.age != null
+                  ? typeof character.age === 'number'
+                    ? String(character.age)
+                    : character.age
+                  : null,
+              gender: character.gender ?? null,
+              ethnicity: character.ethnicity ?? null,
+              physicalDescription: character.physicalDescription,
+              standardClothing: character.standardClothing,
+              distinguishingFeatures: character.distinguishingFeatures ?? null,
+              consistencyTag: character.consistencyTag,
+              // First mention
+              firstMentionSceneId: character.firstMention.sceneId,
+              firstMentionText: character.firstMention.originalText,
+              firstMentionLine: character.firstMention.lineNumber,
+              // Sheet image
               sheetImageUrl: storageResult.publicUrl,
               sheetImagePath: storageResult.path,
               sheetStatus: 'completed' as const,
             });
+            return {
+              id: created.id,
+              characterId: created.characterId,
+              name: created.name,
+              sheetImageUrl: created.sheetImageUrl,
+              sheetStatus: created.sheetStatus,
+              physicalDescription: created.physicalDescription,
+              consistencyTag: created.consistencyTag,
+            };
           }
           return {
-            id: characterId,
+            id,
             characterId: character.characterId,
             name: character.name,
-            metadata: character,
             sheetImageUrl: imageUrl,
             sheetStatus: 'completed' as const,
+            physicalDescription: character.physicalDescription,
+            consistencyTag: character.consistencyTag,
           };
         });
       })

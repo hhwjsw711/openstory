@@ -13,21 +13,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  useCreateCharacter,
-  useUpdateCharacter,
-  useUploadCharacterMedia,
-  useDeleteCharacterMedia,
-} from '@/hooks/use-characters';
-import type {
-  Character,
-  CharacterMediaRecord,
-  CharacterSheet,
-} from '@/lib/db/schema';
+  useCreateTalent,
+  useUpdateTalent,
+  useUploadTalentMedia,
+  useDeleteTalentMedia,
+} from '@/hooks/use-talent';
+import type { Talent, TalentMediaRecord, TalentSheet } from '@/lib/db/schema';
 import { Pencil, Plus, Upload, X } from 'lucide-react';
 
-type CharacterWithRelations = Character & {
-  sheets: CharacterSheet[];
-  media: CharacterMediaRecord[];
+type TalentWithRelations = Talent & {
+  sheets: TalentSheet[];
+  media: TalentMediaRecord[];
 };
 
 type PendingFile = {
@@ -37,30 +33,32 @@ type PendingFile = {
   type: 'image' | 'video';
 };
 
-type CharacterDialogProps =
+type TalentLibraryDialogProps =
   | {
       mode: 'create';
       trigger?: React.ReactNode;
     }
   | {
       mode: 'edit';
-      character: CharacterWithRelations;
+      talent: TalentWithRelations;
       trigger?: React.ReactNode;
     };
 
-export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
+export const TalentLibraryDialog: React.FC<TalentLibraryDialogProps> = (
+  props
+) => {
   const { mode, trigger } = props;
-  const character = mode === 'edit' ? props.character : null;
+  const talent = mode === 'edit' ? props.talent : null;
 
   const [open, setOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const createCharacter = useCreateCharacter();
-  const updateCharacter = useUpdateCharacter();
-  const uploadMedia = useUploadCharacterMedia();
-  const deleteMedia = useDeleteCharacterMedia();
+  const createTalent = useCreateTalent();
+  const updateTalent = useUpdateTalent();
+  const uploadMedia = useUploadTalentMedia();
+  const deleteMedia = useDeleteTalentMedia();
 
   const handleClose = () => {
     for (const file of pendingFiles) {
@@ -83,20 +81,20 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
     if (!name.trim()) return;
 
     if (mode === 'create') {
-      createCharacter.mutate(
+      createTalent.mutate(
         {
           name: name.trim(),
           description: description.trim() || undefined,
-          isHumanGenerated: true,
+          isHuman: true,
         },
         {
-          onSuccess: async (newCharacter) => {
+          onSuccess: async (newTalent) => {
             if (pendingFiles.length > 0) {
               setIsUploading(true);
               for (const pendingFile of pendingFiles) {
                 const base64 = await fileToBase64(pendingFile.file);
                 await uploadMedia.mutateAsync({
-                  characterId: newCharacter.id,
+                  talentId: newTalent.id,
                   type: pendingFile.type,
                   base64Data: base64,
                   filename: pendingFile.file.name,
@@ -108,14 +106,12 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
           },
         }
       );
-    } else if (character) {
-      updateCharacter.mutate(
+    } else if (talent) {
+      updateTalent.mutate(
         {
-          id: character.id,
-          input: {
-            name: name.trim(),
-            description: description.trim() || undefined,
-          },
+          talentId: talent.id,
+          name: name.trim(),
+          description: description.trim() || undefined,
         },
         {
           onSuccess: () => setOpen(false),
@@ -136,12 +132,12 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
         type: file.type.startsWith('video/') ? 'video' : 'image',
       }));
       setPendingFiles((prev) => [...prev, ...newPendingFiles]);
-    } else if (character) {
+    } else if (talent) {
       for (const file of Array.from(files)) {
         const base64 = await fileToBase64(file);
         const type = file.type.startsWith('video/') ? 'video' : 'image';
         await uploadMedia.mutateAsync({
-          characterId: character.id,
+          talentId: talent.id,
           type,
           base64Data: base64,
           filename: file.name,
@@ -165,17 +161,17 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
   };
 
   const handleDeleteMedia = async (mediaId: string) => {
-    if (!character) return;
+    if (!talent) return;
 
     await deleteMedia.mutateAsync({
       mediaId,
-      characterId: character.id,
+      talentId: talent.id,
     });
   };
 
   const isPending =
-    createCharacter.isPending ||
-    updateCharacter.isPending ||
+    createTalent.isPending ||
+    updateTalent.isPending ||
     isUploading ||
     uploadMedia.isPending;
 
@@ -183,7 +179,7 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
     mode === 'create' ? (
       <Button>
         <Plus className="mr-2 h-4 w-4" />
-        Add Character
+        Add Talent
       </Button>
     ) : (
       <Button variant="outline" size="icon">
@@ -191,8 +187,7 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
       </Button>
     );
 
-  const mediaItems =
-    mode === 'create' ? pendingFiles : (character?.media ?? []);
+  const mediaItems = mode === 'create' ? pendingFiles : (talent?.media ?? []);
   const hasMedia = mediaItems.length > 0;
 
   return (
@@ -205,12 +200,12 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Create Character' : 'Edit Character'}
+              {mode === 'create' ? 'Add Talent' : 'Edit Talent'}
             </DialogTitle>
             <DialogDescription>
               {mode === 'create'
-                ? 'Add a new character to your library.'
-                : 'Update character details and reference media.'}
+                ? 'Add a new talent to your library.'
+                : 'Update talent details and reference media.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -221,8 +216,8 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={character?.name ?? ''}
-                  placeholder="Character name…"
+                  defaultValue={talent?.name ?? ''}
+                  placeholder="Talent name…"
                   autoComplete="off"
                   autoFocus
                   required
@@ -234,8 +229,8 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
                 <Textarea
                   id="description"
                   name="description"
-                  defaultValue={character?.description ?? ''}
-                  placeholder="Describe the character's appearance, personality, role…"
+                  defaultValue={talent?.description ?? ''}
+                  placeholder="Describe the talent's appearance, style…"
                   rows={3}
                 />
               </div>
@@ -266,7 +261,7 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
 
               <p className="text-sm text-muted-foreground">
                 Upload reference images or videos to help the AI understand how
-                this character should look.
+                this talent should look.
               </p>
 
               {hasMedia ? (
@@ -301,7 +296,7 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
                           </Button>
                         </div>
                       ))
-                    : character?.media.map((media) => (
+                    : talent?.media.map((media) => (
                         <div
                           key={media.id}
                           className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
@@ -355,7 +350,7 @@ export const CharacterDialog: React.FC<CharacterDialogProps> = (props) => {
                     ? 'Creating…'
                     : 'Saving…'
                 : mode === 'create'
-                  ? 'Create Character'
+                  ? 'Add Talent'
                   : 'Save Changes'}
             </Button>
           </DialogFooter>

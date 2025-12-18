@@ -13,8 +13,7 @@ import {
   getSequenceCharactersWithSheets as getSequenceCharactersWithSheetsHelper,
   updateCharacterSheet as updateCharacterSheetHelper,
 } from '@/lib/db/helpers/sequence-characters';
-import type { SequenceCharacter } from '@/lib/db/schema';
-import type { SequenceCharacterMinimal } from '../db/schema/sequence-characters';
+import type { Character, CharacterMinimal } from '@/lib/db/schema';
 
 /**
  * Result of building a prompt with character references
@@ -32,9 +31,7 @@ type PromptWithReferences = {
  * @param sequenceId - The sequence ID
  * @returns Array of sequence characters
  */
-async function getSequenceCharacters(
-  sequenceId: string
-): Promise<SequenceCharacter[]> {
+async function getSequenceCharacters(sequenceId: string): Promise<Character[]> {
   return await getSequenceCharactersHelper(sequenceId);
 }
 
@@ -46,7 +43,7 @@ async function getSequenceCharacters(
  */
 async function getSequenceCharactersWithSheets(
   sequenceId: string
-): Promise<SequenceCharacter[]> {
+): Promise<Character[]> {
   return await getSequenceCharactersWithSheetsHelper(sequenceId);
 }
 
@@ -65,7 +62,7 @@ async function getSequenceCharactersWithSheets(
 async function getCharactersForScene(
   sequenceId: string,
   characterTags: string[]
-): Promise<SequenceCharacter[]> {
+): Promise<Character[]> {
   if (characterTags.length === 0) {
     return [];
   }
@@ -73,8 +70,7 @@ async function getCharactersForScene(
   const allCharacters = await getSequenceCharactersHelper(sequenceId);
 
   return allCharacters.filter((char) => {
-    const metadata = char.metadata;
-    const consistencyTag = metadata.consistencyTag.toLowerCase();
+    const consistencyTag = (char.consistencyTag ?? '').toLowerCase();
     const charName = char.name.toLowerCase();
 
     // Check each tag for a match
@@ -82,7 +78,7 @@ async function getCharactersForScene(
       const tagLower = tag.toLowerCase();
 
       // Match by consistency tag (e.g., "char_001: Jack-denim-jacket-weathered")
-      if (tagLower.includes(consistencyTag)) {
+      if (consistencyTag && tagLower.includes(consistencyTag)) {
         return true;
       }
 
@@ -92,7 +88,7 @@ async function getCharactersForScene(
       }
 
       // Match by characterId (e.g., "char_001")
-      if (tagLower.includes(metadata.characterId.toLowerCase())) {
+      if (tagLower.includes(char.characterId.toLowerCase())) {
         return true;
       }
 
@@ -113,46 +109,25 @@ async function updateSheet(
   id: string,
   sheetImageUrl: string,
   sheetImagePath: string
-): Promise<SequenceCharacter> {
+): Promise<Character> {
   return await updateCharacterSheetHelper(id, sheetImageUrl, sheetImagePath);
 }
 
 /**
- * Build a concise character description from metadata
+ * Build a concise character description from character data
  *
- * @param metadata - Character bible entry
+ * @param character - Character with flattened fields
  * @returns Concise description string
  */
-function buildCharacterDescription(metadata: CharacterBibleEntry): string {
+function buildCharacterDescription(character: CharacterMinimal): string {
   const parts: string[] = [];
 
-  if (metadata.age) {
-    parts.push(
-      typeof metadata.age === 'number'
-        ? `${metadata.age} years old`
-        : metadata.age
-    );
-  }
-
-  if (metadata.gender) {
-    parts.push(metadata.gender);
-  }
-
-  // Add key physical features (first part of description)
-  if (metadata.physicalDescription) {
-    const physicalSummary = metadata.physicalDescription
+  if (character.physicalDescription) {
+    const physicalSummary = character.physicalDescription
       .split(/[.,]/)[0]
       .trim();
-    if (physicalSummary.length < 60) {
+    if (physicalSummary.length < 80) {
       parts.push(physicalSummary);
-    }
-  }
-
-  // Add key clothing (first part)
-  if (metadata.standardClothing) {
-    const clothingSummary = metadata.standardClothing.split(/[.,]/)[0].trim();
-    if (clothingSummary.length < 60) {
-      parts.push(clothingSummary);
     }
   }
 
@@ -181,7 +156,7 @@ function buildCharacterDescription(metadata: CharacterBibleEntry): string {
  */
 export function buildPromptWithReferences(
   basePrompt: string,
-  characters: SequenceCharacterMinimal[]
+  characters: CharacterMinimal[]
 ): PromptWithReferences {
   // Filter to only characters with completed sheets
   const charactersWithSheets = characters.filter(
@@ -197,9 +172,8 @@ export function buildPromptWithReferences(
 
   // Build reference mapping
   const referenceLines = charactersWithSheets.map((char, index) => {
-    const metadata = char.metadata;
-    const description = buildCharacterDescription(metadata);
-    return `- Image ${index + 1}: ${char.name} - ${description}`;
+    const description = buildCharacterDescription(char);
+    return `- Image ${index + 1}: ${char.name}${description ? ` - ${description}` : ''}`;
   });
 
   // Append reference section to prompt

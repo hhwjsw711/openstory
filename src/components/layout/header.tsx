@@ -5,10 +5,10 @@
 
 import { cn } from '@/lib/utils';
 import { VelroLogo } from '@/components/icons';
-import { Route as charactersRoute } from '@/routes/_protected/characters/index';
 import { Route as evalRoute } from '@/routes/_protected/eval';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
+import { Route as talentRoute } from '@/routes/_protected/talent/index';
 import { UserBadge } from './user-badge';
 import { Link } from '@tanstack/react-router';
 
@@ -46,10 +46,10 @@ export function Header({ className }: HeaderProps) {
               Create New
             </Link>
             <Link
-              to={charactersRoute.to}
+              to={talentRoute.to}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Characters
+              Talent
             </Link>
             <Link
               to={evalRoute.to}

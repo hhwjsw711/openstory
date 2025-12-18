@@ -1,10 +1,10 @@
 import { Card } from '@/components/ui/card';
-import type { SequenceCharacter } from '@/lib/db/schema';
+import type { Character } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 
 type TalentCardProps = {
-  character: SequenceCharacter;
+  character: Character;
   isSelected?: boolean;
   onClick?: () => void;
 };
@@ -60,10 +60,10 @@ export const TalentCard: React.FC<TalentCardProps> = ({
       {/* Character name */}
       <div className="p-3">
         <h3 className="truncate text-sm font-medium">{character.name}</h3>
-        {character.metadata.gender && (
+        {character.gender && (
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {character.metadata.age && `${character.metadata.age}, `}
-            {character.metadata.gender}
+            {character.age && `${character.age}, `}
+            {character.gender}
           </p>
         )}
       </div>

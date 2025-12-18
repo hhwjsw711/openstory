@@ -1,16 +1,15 @@
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { Star, Users } from 'lucide-react';
 import type React from 'react';
 
 type FilterValue = 'all' | 'favorites';
 
-type CharacterFiltersProps = {
+type TalentLibraryFiltersProps = {
   currentFilter: FilterValue;
 };
 
-export const CharacterFilters: React.FC<CharacterFiltersProps> = ({
+export const TalentLibraryFilters: React.FC<TalentLibraryFiltersProps> = ({
   currentFilter,
 }) => {
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ export const CharacterFilters: React.FC<CharacterFiltersProps> = ({
   }[] = [
     {
       value: 'all',
-      label: 'All Characters',
+      label: 'All Talent',
       icon: <Users className="h-4 w-4" />,
     },
     {
@@ -42,7 +41,7 @@ export const CharacterFilters: React.FC<CharacterFiltersProps> = ({
           className="gap-2"
           onClick={() =>
             navigate({
-              to: '/characters',
+              to: '/talent',
               search: { filter: filter.value },
             })
           }

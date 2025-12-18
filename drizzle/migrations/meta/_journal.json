@@ -141,6 +141,20 @@
       "when": 1765942147088,
       "tag": "0019_flat_jocasta",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1766033074102,
+      "tag": "0020_fast_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1766037304950,
+      "tag": "0021_tiresome_timeslip",
+      "breakpoints": true
     }
   ]
 }

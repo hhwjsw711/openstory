@@ -238,16 +238,16 @@ export interface UpscaleVariantWorkflowResult {
 }
 
 /**
- * Library character sheet generation workflow input
- * Generates a character sheet from reference media uploaded by the user
+ * Library talent sheet generation workflow input
+ * Generates a talent sheet from reference media uploaded by the user
  */
-export interface LibraryCharacterSheetWorkflowInput extends UserWorkflowContext {
-  /** Character ID from the library */
-  characterId: string;
-  /** Character name for the prompt */
-  characterName: string;
-  /** Character description for the prompt */
-  characterDescription?: string;
+export interface LibraryTalentSheetWorkflowInput extends UserWorkflowContext {
+  /** Talent ID from the library */
+  talentId: string;
+  /** Talent name for the prompt */
+  talentName: string;
+  /** Talent description for the prompt */
+  talentDescription?: string;
   /** Reference media URLs to use as input */
   referenceImageUrls: string[];
   /** Image model to use */
@@ -256,7 +256,7 @@ export interface LibraryCharacterSheetWorkflowInput extends UserWorkflowContext 
   sheetName?: string;
 }
 
-export interface LibraryCharacterSheetWorkflowResult {
+export interface LibraryTalentSheetWorkflowResult {
   sheetId: string;
   sheetImageUrl: string;
   sheetImagePath?: string;

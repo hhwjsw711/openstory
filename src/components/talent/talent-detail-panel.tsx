@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { SequenceCharacter } from '@/lib/db/schema';
+import type { Character } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { User, X } from 'lucide-react';
 
 type TalentDetailPanelProps = {
-  character: SequenceCharacter | null;
+  character: Character | null;
   onClose: () => void;
 };
 
@@ -47,8 +47,6 @@ export const TalentDetailPanel: React.FC<TalentDetailPanelProps> = ({
       </div>
     );
   }
-
-  const { metadata } = character;
 
   return (
     <div className="flex h-full flex-col border-l bg-card">
@@ -93,51 +91,57 @@ export const TalentDetailPanel: React.FC<TalentDetailPanelProps> = ({
           <dl className="space-y-4">
             {/* Basic info */}
             <div className="grid grid-cols-2 gap-4">
-              <DetailRow label="Age" value={metadata.age} />
-              <DetailRow label="Gender" value={metadata.gender} />
+              <DetailRow label="Age" value={character.age ?? undefined} />
+              <DetailRow label="Gender" value={character.gender ?? undefined} />
             </div>
 
-            <DetailRow label="Ethnicity" value={metadata.ethnicity} />
+            <DetailRow
+              label="Ethnicity"
+              value={character.ethnicity ?? undefined}
+            />
 
             <DetailRow
               label="Physical Description"
-              value={metadata.physicalDescription}
+              value={character.physicalDescription ?? undefined}
             />
 
             <DetailRow
               label="Standard Clothing"
-              value={metadata.standardClothing}
+              value={character.standardClothing ?? undefined}
             />
 
             <DetailRow
               label="Distinguishing Features"
-              value={metadata.distinguishingFeatures}
+              value={character.distinguishingFeatures ?? undefined}
             />
 
             {/* First mention */}
-            {metadata.firstMention && (
+            {character.firstMentionSceneId && (
               <div className="space-y-1 rounded-lg bg-muted/50 p-3">
                 <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   First Appears
                 </dt>
                 <dd className="text-sm">
-                  Scene {metadata.firstMention.sceneId}, Line{' '}
-                  {metadata.firstMention.lineNumber}
+                  Scene {character.firstMentionSceneId}
+                  {character.firstMentionLine &&
+                    `, Line ${character.firstMentionLine}`}
                 </dd>
-                {metadata.firstMention.originalText && (
+                {character.firstMentionText && (
                   <dd className="mt-2 border-l-2 border-muted-foreground/30 pl-3 text-xs italic text-muted-foreground">
-                    "{metadata.firstMention.originalText}"
+                    "{character.firstMentionText}"
                   </dd>
                 )}
               </div>
             )}
 
             {/* Consistency tag (for developers/debugging) */}
-            <div className="pt-2">
-              <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
-                {metadata.consistencyTag}
-              </span>
-            </div>
+            {character.consistencyTag && (
+              <div className="pt-2">
+                <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+                  {character.consistencyTag}
+                </span>
+              </div>
+            )}
           </dl>
         </div>
       </ScrollArea>

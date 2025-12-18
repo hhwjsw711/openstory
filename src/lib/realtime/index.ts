@@ -9,11 +9,11 @@ import { z } from 'zod';
  * - generation.* - Events for the overall generation process
  */
 export const realtimeSchema = {
-  // Character library events
-  character: {
+  // Talent library events
+  talent: {
     // Sheet generation progress
     'sheet:progress': z.object({
-      characterId: z.string(),
+      talentId: z.string(),
       status: z.enum(['generating', 'completed', 'failed']),
       sheetId: z.string().optional(),
       sheetImageUrl: z.string().optional(),
@@ -124,12 +124,12 @@ export function getGenerationChannel(sequenceId?: string) {
 }
 
 /**
- * Get a channel for character library events.
- * @param characterId - The character ID to use as the channel identifier
+ * Get a channel for talent library events.
+ * @param talentId - The talent ID to use as the channel identifier
  */
-export function getCharacterChannel(characterId?: string) {
-  return characterId
-    ? getRealtime().channel(`character:${characterId}`)
+export function getTalentChannel(talentId?: string) {
+  return talentId
+    ? getRealtime().channel(`talent:${talentId}`)
     : {
         emit: () => null,
       };
