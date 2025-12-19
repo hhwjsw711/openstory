@@ -24,6 +24,41 @@ import { triggerWorkflow } from '@/lib/workflow';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';
+import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
+import type { Character } from '@/lib/db/schema';
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Get reference image URLs for characters in a frame
+ * Matches characters by continuity tags and returns their sheet URLs
+ */
+function getCharacterReferenceUrls(
+  allCharacters: Character[],
+  characterTags: string[]
+): string[] {
+  if (characterTags.length === 0) return [];
+
+  const matchedCharacters = allCharacters.filter((char) => {
+    const consistencyTag = (char.consistencyTag ?? '').toLowerCase();
+    const charName = char.name.toLowerCase();
+
+    return characterTags.some((tag) => {
+      const tagLower = tag.toLowerCase();
+      return (
+        (consistencyTag && tagLower.includes(consistencyTag)) ||
+        tagLower.includes(charName) ||
+        tagLower.includes(char.characterId.toLowerCase())
+      );
+    });
+  });
+
+  return matchedCharacters
+    .filter((c) => c.sheetImageUrl && c.sheetStatus === 'completed')
+    .map((c) => c.sheetImageUrl as string);
+}
 
 // ============================================================================
 // Generate Frames (Storyboard Workflow)
@@ -70,7 +105,7 @@ const generateImageInputSchema = regenerateFrameSchema.extend({
 
 /**
  * Generate/regenerate an image for a single frame
- * Triggers the image workflow
+ * Triggers the image workflow with character reference images if available
  */
 export const generateFrameImageFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
@@ -89,6 +124,14 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no prompt or description to regenerate from');
     }
 
+    // Get character reference URLs for this frame (without modifying the prompt)
+    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const characterTags = frame.metadata?.continuity?.characterTags ?? [];
+    const referenceUrls = getCharacterReferenceUrls(
+      allCharacters,
+      characterTags
+    );
+
     // Determine which model to use (with runtime validation)
     const modelToUse =
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
@@ -102,6 +145,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       numImages: 1,
       frameId: frame.id,
       sequenceId: sequence.id,
+      referenceImageUrls: referenceUrls.length > 0 ? referenceUrls : undefined,
     };
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {

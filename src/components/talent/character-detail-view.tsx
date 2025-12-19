@@ -221,15 +221,17 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
 
           {/* Action buttons */}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => addToLibrary.mutate(character.id)}
-              disabled={addToLibrary.isPending}
-            >
-              <Library className="mr-2 h-4 w-4" />
-              {addToLibrary.isPending ? 'Adding…' : 'Add to Library'}
-            </Button>
+            {!character.talent && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => addToLibrary.mutate(character.id)}
+                disabled={addToLibrary.isPending}
+              >
+                <Library className="mr-2 h-4 w-4" />
+                {addToLibrary.isPending ? 'Adding…' : 'Add to Library'}
+              </Button>
+            )}
             <Button
               variant="outline"
               className="flex-1"

@@ -422,10 +422,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     >
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
+        <TabsTrigger value="cast">Cast</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
         <TabsTrigger value="scene-variants">Variants</TabsTrigger>
-        <TabsTrigger value="cast">Cast</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">
