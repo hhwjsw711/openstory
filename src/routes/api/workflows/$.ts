@@ -11,6 +11,8 @@ import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
+import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
+import { regenerateFramesWorkflow } from '@/lib/workflows/regenerate-frames-workflow';
 import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow';
 import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
@@ -29,6 +31,8 @@ const handler = serveMany(
     'visual-prompts': visualPromptWorkflow,
     'variant-image': generateVariantWorkflow,
     'upscale-variant': upscaleVariantWorkflow,
+    'recast-character': recastCharacterWorkflow,
+    'regenerate-frames': regenerateFramesWorkflow,
   },
   {
     qstashClient: getQStashClient(), // This must be the QStash client

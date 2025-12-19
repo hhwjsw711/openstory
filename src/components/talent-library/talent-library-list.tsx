@@ -1,6 +1,7 @@
 import { TalentLibraryCard } from '@/components/talent-library/talent-library-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useTalentSheetsRealtime } from '@/hooks/use-talent-sheets-realtime';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -17,6 +18,10 @@ export const TalentLibraryList: React.FC<TalentLibraryListProps> = ({
   error,
 }) => {
   const navigate = useNavigate();
+
+  // Subscribe to realtime events for all talent
+  const talentIds = talent?.map((t) => t.id) ?? [];
+  const { isGenerating } = useTalentSheetsRealtime(talentIds);
 
   if (isLoading) {
     return (
@@ -55,6 +60,7 @@ export const TalentLibraryList: React.FC<TalentLibraryListProps> = ({
         <TalentLibraryCard
           key={t.id}
           talent={t}
+          isGenerating={isGenerating(t.id)}
           onClick={() => navigate({ to: `/talent/${t.id}` })}
         />
       ))}

@@ -149,6 +149,42 @@ export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowCon
 }
 
 /**
+ * Regenerate frames workflow input
+ * Bulk regenerates images for frames containing specific characters after recast
+ */
+export interface RegenerateFramesWorkflowInput extends SequenceWorkflowContext {
+  /** Frame IDs to regenerate */
+  frameIds: string[];
+  /** Character ID that triggered regeneration (for logging/tracking) */
+  triggeringCharacterId: string;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+}
+
+/**
+ * Recast character workflow input
+ * Orchestrates character sheet generation + frame regeneration for recast
+ */
+export interface RecastCharacterWorkflowInput extends SequenceWorkflowContext {
+  /** Character database ID */
+  characterDbId: string;
+  /** Character name for logging */
+  characterName: string;
+  /** Character metadata from script analysis */
+  characterMetadata: CharacterBibleEntry;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+  /** Reference image URL from talent sheet */
+  referenceImageUrl?: string;
+  /** Talent metadata for appearance overrides */
+  talentMetadata?: CharacterBibleEntry;
+  /** Talent description */
+  talentDescription?: string;
+  /** Frame IDs to regenerate after sheet generation */
+  affectedFrameIds: string[];
+}
+
+/**
  * Character sheet generation workflow input
  */
 export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
@@ -254,8 +290,8 @@ export interface LibraryTalentSheetWorkflowInput extends UserWorkflowContext {
   talentName: string;
   /** Talent description for the prompt */
   talentDescription?: string;
-  /** Reference media URLs to use as input */
-  referenceImageUrls: string[];
+  /** Reference media URLs to use as input (optional - if not provided, generates from name/description) */
+  referenceImageUrls?: string[];
   /** Image model to use */
   imageModel?: TextToImageModel;
   /** Name for the generated sheet */

@@ -17,6 +17,7 @@ import {
   useUpdateTalent,
   useUploadTalentMedia,
   useDeleteTalentMedia,
+  useGenerateTalentSheet,
 } from '@/hooks/use-talent';
 import type { Talent, TalentMediaRecord, TalentSheet } from '@/lib/db/schema';
 import { Pencil, Plus, Upload, X } from 'lucide-react';
@@ -59,6 +60,7 @@ export const TalentLibraryDialog: React.FC<TalentLibraryDialogProps> = (
   const updateTalent = useUpdateTalent();
   const uploadMedia = useUploadTalentMedia();
   const deleteMedia = useDeleteTalentMedia();
+  const generateSheet = useGenerateTalentSheet();
 
   const handleClose = () => {
     for (const file of pendingFiles) {
@@ -91,6 +93,8 @@ export const TalentLibraryDialog: React.FC<TalentLibraryDialogProps> = (
           onSuccess: async (newTalent) => {
             if (pendingFiles.length > 0) {
               setIsUploading(true);
+
+              // Upload all files
               for (const pendingFile of pendingFiles) {
                 const base64 = await fileToBase64(pendingFile.file);
                 await uploadMedia.mutateAsync({

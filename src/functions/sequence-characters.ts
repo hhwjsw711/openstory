@@ -14,7 +14,7 @@ import { characters as charactersTable } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { CharacterSheetWorkflowInput } from '@/lib/workflow/types';
+import type { RecastCharacterWorkflowInput } from '@/lib/workflow/types';
 import { getDb } from '#db-client';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
@@ -114,6 +114,12 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
       }
     );
 
+    // Get affected frame IDs BEFORE triggering workflow (needed for chained regeneration)
+    const affectedFrameIds = await getFrameIdsForCharacter(
+      character.sequenceId,
+      data.characterId
+    );
+
     // Build character metadata from the existing character
     const characterMetadata = {
       characterId: character.characterId,
@@ -132,30 +138,23 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
       },
     };
 
-    // Trigger character sheet workflow with talent data for appearance combination
-    const workflowInput: CharacterSheetWorkflowInput = {
+    // Trigger recast workflow which orchestrates sheet generation + frame regeneration
+    const workflowInput: RecastCharacterWorkflowInput = {
       characterDbId: data.characterId,
       characterName: character.name,
       characterMetadata,
       sequenceId: character.sequenceId,
       teamId: context.teamId,
       userId: context.user.id,
-      // Add reference image URL if talent has a sheet
       referenceImageUrl: defaultSheet?.imageUrl ?? undefined,
-      // Add talent metadata for appearance overrides (combines talent appearance with character traits)
       talentMetadata: defaultSheet?.metadata ?? undefined,
       talentDescription: talentWithSheets.description ?? undefined,
+      affectedFrameIds,
     };
 
     const workflowRunId = await triggerWorkflow(
-      '/character-sheet',
+      '/recast-character',
       workflowInput
-    );
-
-    // Get affected frame IDs for the response
-    const affectedFrameIds = await getFrameIdsForCharacter(
-      character.sequenceId,
-      data.characterId
     );
 
     return {

@@ -29,14 +29,27 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
  */
 function buildLibraryTalentSheetPrompt(
   name: string,
-  description?: string
+  description?: string,
+  hasReferenceImages?: boolean
 ): string {
   const descSection = description ? `\nUser Description:\n${description}` : '';
+  const referenceSection = hasReferenceImages
+    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
+Match all physical details exactly: age, build, skin tone, hair color/style, facial features, and clothing.`
+    : `IMPORTANT: Generate a consistent character based on the name and description provided.
+Create a realistic, detailed appearance that matches the description.`;
+
+  const appearanceSection = hasReferenceImages
+    ? `DERIVE ALL DETAILS FROM THE REFERENCE IMAGES PROVIDED. Match the person's exact appearance.`
+    : `Use the name and description to create a detailed, consistent appearance. Ensure all panels show the same person with matching physical features, clothing, and distinguishing characteristics.`;
+
+  const consistencyNote = hasReferenceImages
+    ? `Maintain absolute consistency with reference images across all panels.`
+    : `Maintain absolute consistency across all panels - the same person must appear in every view with matching features.`;
 
   return `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
 
-IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
-Match all physical details exactly: age, build, skin tone, hair color/style, facial features, and clothing.
+${referenceSection}
 
 Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
 
@@ -53,7 +66,7 @@ Name: ${name}
 ${descSection}
 
 Physical Appearance, Attire, and Distinguishing Features:
-DERIVE ALL DETAILS FROM THE REFERENCE IMAGES PROVIDED. Match the person's exact appearance.
+${appearanceSection}
 
 Stylistic & Technical Parameters:
 
@@ -67,20 +80,32 @@ Mood: Objective, detailed, and clear, characteristic of a high-end visual refere
 
 Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.
 
-Maintain absolute consistency with reference images across all panels.`;
+${consistencyNote}`;
 }
 
 /**
  * Build a prompt for generating a talent headshot/avatar.
  * Used as the talent's profile image.
  */
-function buildTalentHeadshotPrompt(name: string, description?: string): string {
+function buildTalentHeadshotPrompt(
+  name: string,
+  description?: string,
+  hasReferenceImages?: boolean
+): string {
   const descSection = description ? `\nPerson notes: ${description}` : '';
+  const referenceSection = hasReferenceImages
+    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
+Match all physical details exactly: face shape, skin tone, hair color/style, eye color, and any distinguishing features.`
+    : `IMPORTANT: Generate a realistic portrait based on the name and description provided.
+Create a detailed, consistent appearance that matches the description.`;
+
+  const consistencyNote = hasReferenceImages
+    ? `Maintain absolute consistency with reference images.`
+    : `Ensure the portrait matches the description and is consistent with the character reference sheet.`;
 
   return `Professional headshot portrait of ${name}, photorealistic, studio lighting.
 
-IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
-Match all physical details exactly: face shape, skin tone, hair color/style, eye color, and any distinguishing features.
+${referenceSection}
 
 Requirements:
 - Head and shoulders portrait, centered composition
@@ -94,7 +119,7 @@ ${descSection}
 
 Style: Professional portrait photography, headshot for actor/model portfolio.
 Aspect ratio: Square 1:1 format.
-Maintain absolute consistency with reference images.`;
+${consistencyNote}`;
 }
 
 export const libraryTalentSheetWorkflow = createWorkflow(
@@ -108,11 +133,6 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       if (!input.talentId) {
         throw new WorkflowValidationError('talentId is required');
       }
-      if (!input.referenceImageUrls || input.referenceImageUrls.length === 0) {
-        throw new WorkflowValidationError(
-          'At least one reference image is required'
-        );
-      }
 
       // Verify talent exists and belongs to team
       const talentRecord = await getTalentById(input.talentId);
@@ -123,9 +143,13 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         throw new WorkflowValidationError('Talent does not belong to team');
       }
 
+      const hasReferenceImages =
+        input.referenceImageUrls && input.referenceImageUrls.length > 0;
+      const imageCount = input.referenceImageUrls?.length ?? 0;
+
       console.log(
         '[LibraryTalentSheetWorkflow]',
-        `Starting sheet generation for talent ${input.talentName} with ${input.referenceImageUrls.length} reference images`
+        `Starting sheet generation for talent ${input.talentName}${hasReferenceImages ? ` with ${imageCount} reference images` : ' (no reference images - generating from name/description)'}`
       );
 
       // Emit generating status
@@ -138,24 +162,34 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     // Step 2: Generate the talent sheet image with references
     const imageResult = await context.run('generate-sheet-image', async () => {
       const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
+      const hasReferenceImages =
+        input.referenceImageUrls && input.referenceImageUrls.length > 0;
       const prompt = buildLibraryTalentSheetPrompt(
         input.talentName,
-        input.talentDescription
+        input.talentDescription,
+        hasReferenceImages
       );
 
       console.log(
         '[LibraryTalentSheetWorkflow]',
-        `Generating sheet with model ${model}`
+        `Generating sheet with model ${model}${hasReferenceImages ? ' (with reference images)' : ' (text-to-image only)'}`
       );
 
-      return await generateImageWithProvider({
-        model,
-        prompt,
-        referenceImageUrls: input.referenceImageUrls,
-        imageSize: 'landscape_16_9',
-        numImages: 1,
-        resolution: '2K',
-      });
+      const generationParams: Parameters<typeof generateImageWithProvider>[0] =
+        {
+          model,
+          prompt,
+          imageSize: 'landscape_16_9',
+          numImages: 1,
+          resolution: '2K',
+        };
+
+      // Only include referenceImageUrls if provided
+      if (hasReferenceImages) {
+        generationParams.referenceImageUrls = input.referenceImageUrls;
+      }
+
+      return await generateImageWithProvider(generationParams);
     });
 
     const imageUrl = imageResult.imageUrls[0];
@@ -215,23 +249,34 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       'generate-headshot-image',
       async () => {
         const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
+        const hasReferenceImages =
+          input.referenceImageUrls && input.referenceImageUrls.length > 0;
         const prompt = buildTalentHeadshotPrompt(
           input.talentName,
-          input.talentDescription
+          input.talentDescription,
+          hasReferenceImages
         );
 
         console.log(
           '[LibraryTalentSheetWorkflow]',
-          `Generating headshot with model ${model}`
+          `Generating headshot with model ${model}${hasReferenceImages ? ' (with reference images)' : ' (text-to-image only)'}`
         );
 
-        return await generateImageWithProvider({
+        const generationParams: Parameters<
+          typeof generateImageWithProvider
+        >[0] = {
           model,
           prompt,
-          referenceImageUrls: input.referenceImageUrls,
           imageSize: 'square_hd',
           numImages: 1,
-        });
+        };
+
+        // Only include referenceImageUrls if provided
+        if (hasReferenceImages) {
+          generationParams.referenceImageUrls = input.referenceImageUrls;
+        }
+
+        return await generateImageWithProvider(generationParams);
       }
     );
 

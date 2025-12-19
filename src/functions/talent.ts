@@ -93,12 +93,13 @@ export const getTalentByIdFn = createServerFn({ method: 'GET' })
 
 /**
  * Create a new talent in the team library
+ * Automatically triggers talent sheet generation workflow
  */
 export const createTalentFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createTalentSchema))
   .handler(async ({ context, data }) => {
-    return createTalent({
+    const newTalent = await createTalent({
       teamId: context.teamId,
       name: data.name,
       description: data.description,
@@ -106,6 +107,31 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       isHuman: data.isHuman ?? false,
       createdBy: context.user.id,
     });
+
+    // Automatically trigger talent sheet generation workflow
+    // No reference images at creation time - will generate from name/description
+    const workflowInput: LibraryTalentSheetWorkflowInput = {
+      userId: context.user.id,
+      teamId: context.teamId,
+      talentId: newTalent.id,
+      talentName: newTalent.name,
+      talentDescription: newTalent.description ?? undefined,
+      referenceImageUrls: [], // Empty - will generate from name/description
+      sheetName: 'Default Sheet',
+    };
+
+    // Trigger workflow asynchronously (don't wait for completion)
+    void triggerWorkflow('/library-talent-sheet', workflowInput).catch(
+      (error) => {
+        console.error(
+          '[createTalentFn]',
+          'Failed to trigger talent sheet workflow:',
+          error
+        );
+      }
+    );
+
+    return newTalent;
   });
 
 // ============================================================================

@@ -84,6 +84,21 @@ export const realtimeSchema = {
       error: z.string().optional(),
     }),
 
+    // Recast-triggered frame regeneration events
+    'recast:start': z.object({
+      characterId: z.string(),
+      frameCount: z.number(),
+    }),
+    'recast:complete': z.object({
+      characterId: z.string(),
+      successCount: z.number(),
+      failedCount: z.number(),
+    }),
+    'recast:failed': z.object({
+      characterId: z.string(),
+      error: z.string(),
+    }),
+
     // Sequence events
     updated: z.object({
       title: z.string().optional(),

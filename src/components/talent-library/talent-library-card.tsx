@@ -3,16 +3,18 @@ import { Card } from '@/components/ui/card';
 import { useToggleTalentFavorite } from '@/hooks/use-talent';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
-import { ImageIcon, Star, User } from 'lucide-react';
+import { ImageIcon, Loader2, Star, User } from 'lucide-react';
 import type React from 'react';
 
 type TalentLibraryCardProps = {
   talent: TalentWithSheets;
+  isGenerating?: boolean;
   onClick?: () => void;
 };
 
 export const TalentLibraryCard: React.FC<TalentLibraryCardProps> = ({
   talent,
+  isGenerating = false,
   onClick,
 }) => {
   const toggleFavorite = useToggleTalentFavorite();
@@ -36,11 +38,24 @@ export const TalentLibraryCard: React.FC<TalentLibraryCardProps> = ({
           <img
             src={previewUrl}
             alt={talent.name}
-            className="w-full h-full object-cover"
+            className={cn(
+              'w-full h-full object-cover',
+              isGenerating && 'opacity-50'
+            )}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <User className="h-16 w-16 text-muted-foreground/30" />
+          </div>
+        )}
+
+        {/* Generating overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-xs font-medium">Generating sheet…</span>
+            </div>
           </div>
         )}
 
