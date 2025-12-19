@@ -1,9 +1,8 @@
 /**
- * Character Library Schema
- * Team-level character library with multiple sheets and reference media
+ * Characters Schema
+ * Scripted characters (roles) extracted from scripts, linked to talent for casting
  */
 
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import {
   type InferInsertModel,
   type InferSelectModel,
@@ -17,30 +16,22 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
-import { user } from './auth';
-import { frames } from './frames';
 import { sequences } from './sequences';
-import { teams } from './teams';
+import { talent } from './talent';
 
-// ============================================================================
-// Enums / Constants
-// ============================================================================
-
-const CHARACTER_SHEET_SOURCES = [
-  'script_analysis',
-  'manual_upload',
-  'ai_generated',
+const SHEET_STATUSES = [
+  'pending',
+  'generating',
+  'completed',
+  'failed',
 ] as const;
-export type CharacterSheetSource = (typeof CHARACTER_SHEET_SOURCES)[number];
+export type SheetStatus = (typeof SHEET_STATUSES)[number];
 
-const CHARACTER_MEDIA_TYPES = ['image', 'video', 'recording'] as const;
-export type CharacterMediaType = (typeof CHARACTER_MEDIA_TYPES)[number];
-
-// ============================================================================
-// Characters Table (Core Identity)
-// ============================================================================
-
-// Note: Keep as 'library_characters' until old characters table from libraries.ts is dropped
+/**
+ * Characters table
+ * Stores characters extracted from a sequence's script with their generated reference sheets
+ * and optional casting assignment to talent
+ */
 export const characters = sqliteTable(
   'characters',
   {
@@ -48,128 +39,39 @@ export const characters = sqliteTable(
       .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
-    teamId: text('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    name: text({ length: 255 }).notNull(),
-    description: text(),
-    imageUrl: text('image_url'), // Character avatar/headshot
-    imagePath: text('image_path'), // R2 storage path for avatar
-    isFavorite: integer('is_favorite', { mode: 'boolean' }).default(false),
-    isHumanGenerated: integer('is_human_generated', {
-      mode: 'boolean',
-    }).default(false),
-    createdBy: text('created_by').references(() => user.id, {
-      onDelete: 'set null',
-    }),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_library_characters_team_id').on(table.teamId),
-    index('idx_library_characters_name').on(table.name),
-    index('idx_library_characters_is_favorite').on(table.isFavorite),
-  ]
-);
-
-// ============================================================================
-// Character Sheets Table (Different Looks/Appearances)
-// ============================================================================
-
-export const characterSheets = sqliteTable(
-  'character_sheets',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    characterId: text('character_id')
-      .notNull()
-      .references(() => characters.id, { onDelete: 'cascade' }),
-    name: text({ length: 255 }).notNull(), // e.g., "casual outfit", "formal wear"
-    imageUrl: text('image_url'),
-    imagePath: text('image_path'), // R2 storage path
-    metadata: text({ mode: 'json' }).$type<CharacterBibleEntry>(), // Full character details
-    isDefault: integer('is_default', { mode: 'boolean' }).default(false),
-    source: text()
-      .$type<CharacterSheetSource>()
-      .default('manual_upload')
-      .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_character_sheets_character_id').on(table.characterId),
-    index('idx_character_sheets_is_default').on(table.isDefault),
-  ]
-);
-
-// ============================================================================
-// Character Media Table (User Uploaded References)
-// ============================================================================
-
-export const characterMedia = sqliteTable(
-  'character_media',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    characterId: text('character_id')
-      .notNull()
-      .references(() => characters.id, { onDelete: 'cascade' }),
-    type: text().$type<CharacterMediaType>().notNull(),
-    url: text().notNull(),
-    path: text(), // R2 storage path
-    metadata: text({ mode: 'json' })
-      .$type<Record<string, object>>()
-      .default({}),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_character_media_character_id').on(table.characterId),
-    index('idx_character_media_type').on(table.type),
-  ]
-);
-
-// ============================================================================
-// Sequence Character Usages Table (Links Characters to Sequences)
-// ============================================================================
-
-export const sequenceCharacterUsages = sqliteTable(
-  'sequence_character_usages',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    characterId: text('character_id')
-      .notNull()
-      .references(() => characters.id, { onDelete: 'cascade' }),
-    characterSheetId: text('character_sheet_id').references(
-      () => characterSheets.id,
-      { onDelete: 'set null' }
-    ),
     sequenceId: text('sequence_id')
       .notNull()
       .references(() => sequences.id, { onDelete: 'cascade' }),
-    sceneId: text('scene_id'), // Optional: specific scene
-    frameId: text('frame_id').references(() => frames.id, {
+    // Casting assignment (which talent plays this character)
+    talentId: text('talent_id').references(() => talent.id, {
       onDelete: 'set null',
     }),
+    // From script analysis
+    characterId: text('character_id').notNull(), // e.g. "char_001" from script analysis
+    name: text({ length: 255 }).notNull(),
+    // Flattened character bible fields (previously in metadata JSON)
+    age: text(), // Can be "30s" or "35"
+    gender: text(),
+    ethnicity: text(),
+    physicalDescription: text('physical_description'),
+    standardClothing: text('standard_clothing'),
+    distinguishingFeatures: text('distinguishing_features'),
+    consistencyTag: text('consistency_tag'), // e.g. "char_001: Jack-denim-jacket"
+    // First appearance in script
+    firstMentionSceneId: text('first_mention_scene_id'),
+    firstMentionText: text('first_mention_text'),
+    firstMentionLine: integer('first_mention_line'),
+    // Character sheet image (full body turnaround)
+    sheetImageUrl: text('sheet_image_url'),
+    sheetImagePath: text('sheet_image_path'), // R2 storage path
+    // Generation status tracking
+    sheetStatus: text('sheet_status')
+      .$type<SheetStatus>()
+      .default('pending')
+      .notNull(),
+    sheetGeneratedAt: integer('sheet_generated_at', { mode: 'timestamp' }),
+    sheetError: text('sheet_error'),
+    // Timestamps
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -178,104 +80,48 @@ export const sequenceCharacterUsages = sqliteTable(
       .notNull(),
   },
   (table) => [
-    index('idx_sequence_character_usages_character_id').on(table.characterId),
-    index('idx_sequence_character_usages_sequence_id').on(table.sequenceId),
-    index('idx_sequence_character_usages_frame_id').on(table.frameId),
-    // Unique: one character usage per sequence/scene combination
-    uniqueIndex('sequence_character_usages_seq_scene_char_key').on(
+    index('idx_characters_sequence_id').on(table.sequenceId),
+    index('idx_characters_talent_id').on(table.talentId),
+    // Unique constraint: one character per sequence/characterId combination
+    uniqueIndex('characters_sequence_character_key').on(
       table.sequenceId,
-      table.sceneId,
       table.characterId
     ),
   ]
 );
 
-// ============================================================================
-// Relations
-// ============================================================================
-
-export const charactersRelations = relations(characters, ({ one, many }) => ({
-  team: one(teams, {
-    fields: [characters.teamId],
-    references: [teams.id],
+// Relations defined in index.ts to avoid circular dependencies
+export const charactersRelations = relations(characters, ({ one }) => ({
+  sequence: one(sequences, {
+    fields: [characters.sequenceId],
+    references: [sequences.id],
   }),
-  createdByUser: one(user, {
-    fields: [characters.createdBy],
-    references: [user.id],
-  }),
-  sheets: many(characterSheets),
-  media: many(characterMedia),
-  usages: many(sequenceCharacterUsages),
-}));
-
-export const characterSheetsRelations = relations(
-  characterSheets,
-  ({ one }) => ({
-    character: one(characters, {
-      fields: [characterSheets.characterId],
-      references: [characters.id],
-    }),
-  })
-);
-
-export const characterMediaRelations = relations(characterMedia, ({ one }) => ({
-  character: one(characters, {
-    fields: [characterMedia.characterId],
-    references: [characters.id],
+  talent: one(talent, {
+    fields: [characters.talentId],
+    references: [talent.id],
   }),
 }));
 
-export const sequenceCharacterUsagesRelations = relations(
-  sequenceCharacterUsages,
-  ({ one }) => ({
-    character: one(characters, {
-      fields: [sequenceCharacterUsages.characterId],
-      references: [characters.id],
-    }),
-    sheet: one(characterSheets, {
-      fields: [sequenceCharacterUsages.characterSheetId],
-      references: [characterSheets.id],
-    }),
-    sequence: one(sequences, {
-      fields: [sequenceCharacterUsages.sequenceId],
-      references: [sequences.id],
-    }),
-    frame: one(frames, {
-      fields: [sequenceCharacterUsages.frameId],
-      references: [frames.id],
-    }),
-  })
-);
-
-// ============================================================================
-// Type Exports
-// ============================================================================
-
+// Type exports
 export type Character = InferSelectModel<typeof characters>;
 export type NewCharacter = InferInsertModel<typeof characters>;
 
-export type CharacterSheet = InferSelectModel<typeof characterSheets>;
-export type NewCharacterSheet = InferInsertModel<typeof characterSheets>;
-
-export type CharacterMediaRecord = InferSelectModel<typeof characterMedia>;
-export type NewCharacterMedia = InferInsertModel<typeof characterMedia>;
-
-export type SequenceCharacterUsage = InferSelectModel<
-  typeof sequenceCharacterUsages
->;
-export type NewSequenceCharacterUsage = InferInsertModel<
-  typeof sequenceCharacterUsages
+export type CharacterMinimal = Pick<
+  Character,
+  | 'id'
+  | 'characterId'
+  | 'name'
+  | 'sheetImageUrl'
+  | 'sheetStatus'
+  | 'physicalDescription'
+  | 'consistencyTag'
 >;
 
 // Composite types for API responses
-export type CharacterWithSheets = Character & {
-  sheets: CharacterSheet[];
-  sheetCount: number;
-  defaultSheet: CharacterSheet | null;
-};
-
-export type CharacterWithRelations = Character & {
-  sheets: CharacterSheet[];
-  media: CharacterMediaRecord[];
-  usages: SequenceCharacterUsage[];
+export type CharacterWithTalent = Character & {
+  talent: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  } | null;
 };

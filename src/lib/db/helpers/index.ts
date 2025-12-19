@@ -32,20 +32,19 @@ export {
 
 // Sequence Character Operations
 
-// Character Library Operations
+// Talent Library Operations
 export {
-  createCharacter,
-  createCharacterMediaRecord,
-  createCharacterSheet,
-  deleteCharacter,
-  deleteCharacterMediaRecord,
-  deleteCharacterSheet,
-  getCharacterById,
-  getCharactersForSequence,
-  getCharacterSheetById,
-  getCharacterWithRelations,
-  getTeamCharacters,
-  toggleCharacterFavorite,
-  updateCharacter,
-  updateCharacterSheet,
-} from './characters';
+  createTalent,
+  createTalentMediaRecord,
+  createTalentSheet,
+  deleteTalent,
+  deleteTalentMediaRecord,
+  deleteTalentSheet,
+  getTeamTalent,
+  getTalentById,
+  getTalentSheetById,
+  getTalentWithRelations,
+  toggleTalentFavorite,
+  updateTalent,
+  updateTalentSheet,
+} from './talent';

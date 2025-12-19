@@ -25,12 +25,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useGenerateVariants, useSelectVariant } from '@/hooks/use-frames';
+import { SceneCastTab } from './scene-cast-tab';
 import { VariantSelector } from './variant-selector';
 
-export type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
+export type TabValue =
+  | 'script'
+  | 'image-prompt'
+  | 'motion-prompt'
+  | 'scene-variants'
+  | 'cast';
 
 type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
+  sequenceId: string;
   selectedTab: TabValue;
   onTabChange: (tab: TabValue) => void;
   regeneratingImages: Set<string>;
@@ -105,6 +112,7 @@ const PromptTabContent: React.FC<PromptTabContentProps> = ({
 
 export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   frame,
+  sequenceId,
   selectedTab,
   onTabChange,
   regeneratingImages,
@@ -414,9 +422,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     >
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
+        <TabsTrigger value="cast">Cast</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
-        <TabsTrigger value="scene-variants">Scene Variants</TabsTrigger>
+        <TabsTrigger value="scene-variants">Variants</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">
@@ -649,6 +658,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
                 : 'Generate Scene Variants'}
           </Button>
         </div>
+      </TabsContent>
+
+      <TabsContent value="cast">
+        <SceneCastTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
     </Tabs>
   );

@@ -1,28 +1,30 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useToggleCharacterFavorite } from '@/hooks/use-characters';
-import type { CharacterWithSheets } from '@/lib/db/schema';
+import { useToggleTalentFavorite } from '@/hooks/use-talent';
+import type { TalentWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
-import { ImageIcon, Star, User } from 'lucide-react';
+import { ImageIcon, Loader2, Star, User } from 'lucide-react';
 import type React from 'react';
 
-type CharacterCardProps = {
-  character: CharacterWithSheets;
+type TalentLibraryCardProps = {
+  talent: TalentWithSheets;
+  isGenerating?: boolean;
   onClick?: () => void;
 };
 
-export const CharacterCard: React.FC<CharacterCardProps> = ({
-  character,
+export const TalentLibraryCard: React.FC<TalentLibraryCardProps> = ({
+  talent,
+  isGenerating = false,
   onClick,
 }) => {
-  const toggleFavorite = useToggleCharacterFavorite();
-  // Prefer character headshot (square), fall back to default sheet
-  const previewUrl = character.imageUrl ?? character.defaultSheet?.imageUrl;
+  const toggleFavorite = useToggleTalentFavorite();
+  // Prefer talent headshot (square), fall back to default sheet
+  const previewUrl = talent.imageUrl ?? talent.defaultSheet?.imageUrl;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleFavorite.mutate(character.id);
+    toggleFavorite.mutate(talent.id);
   };
 
   return (
@@ -35,12 +37,25 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
         {previewUrl ? (
           <img
             src={previewUrl}
-            alt={character.name}
-            className="w-full h-full object-cover"
+            alt={talent.name}
+            className={cn(
+              'w-full h-full object-cover',
+              isGenerating && 'opacity-50'
+            )}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <User className="h-16 w-16 text-muted-foreground/30" />
+          </div>
+        )}
+
+        {/* Generating overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-xs font-medium">Generating sheet…</span>
+            </div>
           </div>
         )}
 
@@ -51,7 +66,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
           className={cn(
             'absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur-sm',
             'opacity-0 group-hover:opacity-100 transition-opacity',
-            character.isFavorite && 'opacity-100'
+            talent.isFavorite && 'opacity-100'
           )}
           onClick={handleFavoriteClick}
           disabled={toggleFavorite.isPending}
@@ -59,15 +74,15 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
           <Star
             className={cn(
               'h-4 w-4',
-              character.isFavorite
+              talent.isFavorite
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-muted-foreground'
             )}
           />
         </Button>
 
-        {/* Human/AI badge */}
-        {character.isHumanGenerated && (
+        {/* Human badge */}
+        {talent.isHuman && (
           <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs font-medium">
             Human
           </div>
@@ -77,21 +92,21 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
       {/* Info section */}
       <div className="p-4">
         <h3 className="font-semibold text-base line-clamp-1 mb-1">
-          {character.name}
+          {talent.name}
         </h3>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <ImageIcon className="h-3 w-3" />
             <span>
-              {character.sheetCount} sheet{character.sheetCount !== 1 && 's'}
+              {talent.sheetCount} sheet{talent.sheetCount !== 1 && 's'}
             </span>
           </div>
         </div>
 
-        {character.description && (
+        {talent.description && (
           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-            {character.description}
+            {talent.description}
           </p>
         )}
       </div>

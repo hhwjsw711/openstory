@@ -19,14 +19,14 @@ import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
+import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
-import { Route as ProtectedCharactersIndexRouteImport } from './routes/_protected/characters/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
-import { Route as ProtectedCharactersIdRouteImport } from './routes/_protected/characters/$id'
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
 import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
@@ -36,8 +36,10 @@ import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/st
 import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
 import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
 import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
+import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
 import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
 import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
+import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
@@ -87,6 +89,11 @@ const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
   path: '/invite-code',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const ProtectedTalentIndexRoute = ProtectedTalentIndexRouteImport.update({
+  id: '/talent/',
+  path: '/talent/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
@@ -97,12 +104,6 @@ const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   path: '/sequences/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedCharactersIndexRoute =
-  ProtectedCharactersIndexRouteImport.update({
-    id: '/characters/',
-    path: '/characters/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   id: '/api/workflows/$',
   path: '/api/workflows/$',
@@ -113,6 +114,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedTalentIdRoute = ProtectedTalentIdRouteImport.update({
+  id: '/talent/$id',
+  path: '/talent/$id',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedSettingsPasskeysRoute =
   ProtectedSettingsPasskeysRouteImport.update({
     id: '/settings/passkeys',
@@ -122,11 +128,6 @@ const ProtectedSettingsPasskeysRoute =
 const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   id: '/sequences/new',
   path: '/sequences/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedCharactersIdRoute = ProtectedCharactersIdRouteImport.update({
-  id: '/characters/$id',
-  path: '/characters/$id',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ApiWorkflowsStatusRunIdRoute = ApiWorkflowsStatusRunIdRouteImport.update({
@@ -180,6 +181,12 @@ const ProtectedSequencesIdScenesRoute =
     path: '/sequences/$id/scenes',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedSequencesIdCastIndexRoute =
+  ProtectedSequencesIdCastIndexRouteImport.update({
+    id: '/sequences/$id/cast/',
+    path: '/sequences/$id/cast/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ApiTeamsInvitationsInvitationIdAcceptRoute =
   ApiTeamsInvitationsInvitationIdAcceptRouteImport.update({
     id: '/api/teams/invitations/$invitationId/accept',
@@ -192,6 +199,12 @@ const ApiSequencesSequenceIdChaptersVttRoute =
     path: '/api/sequences/$sequenceId/chapters/vtt',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ProtectedSequencesIdCastCharacterIdRoute =
+  ProtectedSequencesIdCastCharacterIdRouteImport.update({
+    id: '/sequences/$id/cast/$characterId',
+    path: '/sequences/$id/cast/$characterId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -202,14 +215,14 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
-  '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
+  '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
+  '/talent': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -219,8 +232,10 @@ export interface FileRoutesByFullPath {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -231,14 +246,14 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
-  '/characters/$id': typeof ProtectedCharactersIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
+  '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/characters': typeof ProtectedCharactersIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
+  '/talent': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -248,8 +263,10 @@ export interface FileRoutesByTo {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -263,14 +280,14 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
-  '/_protected/characters/$id': typeof ProtectedCharactersIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
+  '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/_protected/characters/': typeof ProtectedCharactersIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
+  '/_protected/talent/': typeof ProtectedTalentIndexRoute
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
@@ -280,8 +297,10 @@ export interface FileRoutesById {
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
+  '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -294,14 +313,14 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
-    | '/characters/$id'
     | '/sequences/new'
     | '/settings/passkeys'
+    | '/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
-    | '/characters'
     | '/sequences'
     | '/settings'
+    | '/talent'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -311,8 +330,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/sequences/$id/cast'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -323,14 +344,14 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
-    | '/characters/$id'
     | '/sequences/new'
     | '/settings/passkeys'
+    | '/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
-    | '/characters'
     | '/sequences'
     | '/settings'
+    | '/talent'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -340,8 +361,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/sequences/$id/cast'
   id:
     | '__root__'
     | '/'
@@ -354,14 +377,14 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
-    | '/_protected/characters/$id'
     | '/_protected/sequences/new'
     | '/_protected/settings/passkeys'
+    | '/_protected/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
-    | '/_protected/characters/'
     | '/_protected/sequences/'
     | '/_protected/settings/'
+    | '/_protected/talent/'
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
     | '/api/mcp/stream/analyze-script'
@@ -371,8 +394,10 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
+    | '/_protected/sequences/$id/cast/$characterId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
+    | '/_protected/sequences/$id/cast/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -461,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthInviteCodeRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_protected/talent/': {
+      id: '/_protected/talent/'
+      path: '/talent'
+      fullPath: '/talent'
+      preLoaderRoute: typeof ProtectedTalentIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/settings/': {
       id: '/_protected/settings/'
       path: '/settings'
@@ -473,13 +505,6 @@ declare module '@tanstack/react-router' {
       path: '/sequences'
       fullPath: '/sequences'
       preLoaderRoute: typeof ProtectedSequencesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/characters/': {
-      id: '/_protected/characters/'
-      path: '/characters'
-      fullPath: '/characters'
-      preLoaderRoute: typeof ProtectedCharactersIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/api/workflows/$': {
@@ -496,6 +521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/talent/$id': {
+      id: '/_protected/talent/$id'
+      path: '/talent/$id'
+      fullPath: '/talent/$id'
+      preLoaderRoute: typeof ProtectedTalentIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/settings/passkeys': {
       id: '/_protected/settings/passkeys'
       path: '/settings/passkeys'
@@ -508,13 +540,6 @@ declare module '@tanstack/react-router' {
       path: '/sequences/new'
       fullPath: '/sequences/new'
       preLoaderRoute: typeof ProtectedSequencesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/characters/$id': {
-      id: '/_protected/characters/$id'
-      path: '/characters/$id'
-      fullPath: '/characters/$id'
-      preLoaderRoute: typeof ProtectedCharactersIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/api/workflows/status/$runId': {
@@ -580,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/sequences/$id/cast/': {
+      id: '/_protected/sequences/$id/cast/'
+      path: '/sequences/$id/cast'
+      fullPath: '/sequences/$id/cast'
+      preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/api/teams/invitations/$invitationId/accept': {
       id: '/api/teams/invitations/$invitationId/accept'
       path: '/api/teams/invitations/$invitationId/accept'
@@ -593,6 +625,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/sequences/$sequenceId/chapters/vtt'
       preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/sequences/$id/cast/$characterId': {
+      id: '/_protected/sequences/$id/cast/$characterId'
+      path: '/sequences/$id/cast/$characterId'
+      fullPath: '/sequences/$id/cast/$characterId'
+      preLoaderRoute: typeof ProtectedSequencesIdCastCharacterIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
   }
 }
@@ -615,26 +654,31 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface ProtectedRouteRouteChildren {
   ProtectedEvalRoute: typeof ProtectedEvalRoute
-  ProtectedCharactersIdRoute: typeof ProtectedCharactersIdRoute
   ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
   ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
-  ProtectedCharactersIndexRoute: typeof ProtectedCharactersIndexRoute
+  ProtectedTalentIdRoute: typeof ProtectedTalentIdRoute
   ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
   ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
+  ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute
   ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
+  ProtectedSequencesIdCastCharacterIdRoute: typeof ProtectedSequencesIdCastCharacterIdRoute
+  ProtectedSequencesIdCastIndexRoute: typeof ProtectedSequencesIdCastIndexRoute
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedEvalRoute: ProtectedEvalRoute,
-  ProtectedCharactersIdRoute: ProtectedCharactersIdRoute,
   ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
   ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
-  ProtectedCharactersIndexRoute: ProtectedCharactersIndexRoute,
+  ProtectedTalentIdRoute: ProtectedTalentIdRoute,
   ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
   ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
+  ProtectedTalentIndexRoute: ProtectedTalentIndexRoute,
   ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
   ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
+  ProtectedSequencesIdCastCharacterIdRoute:
+    ProtectedSequencesIdCastCharacterIdRoute,
+  ProtectedSequencesIdCastIndexRoute: ProtectedSequencesIdCastIndexRoute,
 }
 
 const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(

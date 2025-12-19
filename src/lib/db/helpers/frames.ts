@@ -614,6 +614,25 @@ async function getFramesWithoutVideo(sequenceId: string): Promise<Frame[]> {
 // ============================================================================
 
 /**
+ * Get frames by their IDs
+ *
+ * @param frameIds - Array of frame IDs
+ * @returns Array of frames (may be fewer if some IDs not found)
+ *
+ * @example
+ * ```ts
+ * const frames = await getFramesByIds([frame1Id, frame2Id, frame3Id]);
+ * ```
+ */
+export async function getFramesByIds(frameIds: string[]): Promise<Frame[]> {
+  if (frameIds.length === 0) return [];
+  return await getDb()
+    .select()
+    .from(frames)
+    .where(inArray(frames.id, frameIds));
+}
+
+/**
  * Get frame with its parent sequence
  *
  * @param frameId - The frame ID

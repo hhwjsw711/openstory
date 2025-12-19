@@ -35,7 +35,7 @@ import type { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import type { SequenceCharacterMinimal } from '@/lib/db/schema/sequence-characters';
+import type { CharacterMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 const maxDuration = 800; // This function can run for a maximum of 800 seconds
@@ -49,22 +49,21 @@ const BATCH_SIZE = 1; // Process this many scenes at a time
  * Pure function that works in-memory without DB queries
  */
 function matchCharactersToScene(
-  allCharacters: SequenceCharacterMinimal[],
+  allCharacters: CharacterMinimal[],
   characterTags: string[]
-): SequenceCharacterMinimal[] {
+): CharacterMinimal[] {
   if (characterTags.length === 0) return [];
 
   return allCharacters.filter((char) => {
-    const metadata = char.metadata;
-    const consistencyTag = metadata.consistencyTag.toLowerCase();
+    const consistencyTag = (char.consistencyTag ?? '').toLowerCase();
     const charName = char.name.toLowerCase();
 
     return characterTags.some((tag) => {
       const tagLower = tag.toLowerCase();
       return (
-        tagLower.includes(consistencyTag) ||
+        (consistencyTag && tagLower.includes(consistencyTag)) ||
         tagLower.includes(charName) ||
-        tagLower.includes(metadata.characterId.toLowerCase())
+        tagLower.includes(char.characterId.toLowerCase())
       );
     });
   });
@@ -284,7 +283,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       const imageSize = aspectRatioToImageSize(aspectRatio);
 
       // Build scene character map in-memory using characters from Phase 3
-      const sceneCharacterMap: Record<string, SequenceCharacterMinimal[]> = {};
+      const sceneCharacterMap: Record<string, CharacterMinimal[]> = {};
       for (const scene of scenesWithVisualPrompts) {
         const sceneCharTags = scene.continuity?.characterTags || [];
         sceneCharacterMap[scene.sceneId] = matchCharactersToScene(

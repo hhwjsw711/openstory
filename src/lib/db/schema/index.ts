@@ -29,21 +29,20 @@ import { sequences } from './sequences';
 
 import { frames, framesRelations } from './frames';
 
-import {
-  sequenceCharacters,
-  sequenceCharactersRelations,
-} from './sequence-characters';
+import { characters, charactersRelations } from './characters';
+
+import { characterSheets, characterSheetsRelations } from './character-sheets';
+
+import { frameCharacters, frameCharactersRelations } from './frame-characters';
 
 import {
-  characterMedia,
-  characterMediaRelations,
-  characterSheets,
-  characterSheetsRelations,
-  characters,
-  charactersRelations,
-  sequenceCharacterUsages,
-  sequenceCharacterUsagesRelations,
-} from './characters';
+  talent,
+  talentMedia,
+  talentMediaRelations,
+  talentSheets,
+  talentSheetsRelations,
+  talentRelations,
+} from './talent';
 
 import {
   audio,
@@ -100,6 +99,7 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
     references: [styles.id],
   }),
   frames: many(frames),
+  characters: many(characters),
 }));
 
 // Better Auth tables
@@ -131,32 +131,50 @@ export { frames };
 
 export type { Frame, NewFrame } from './frames';
 
-// Sequence Characters (legacy - to be deprecated)
-export { sequenceCharacters };
+// Characters (scripted roles)
+export { characters };
 
 export type {
-  NewSequenceCharacter,
-  SequenceCharacter,
+  Character,
+  CharacterMinimal,
+  CharacterWithTalent,
+  NewCharacter,
   SheetStatus,
-} from './sequence-characters';
+} from './characters';
 
-// Character Library (new)
-export { characterMedia, characterSheets, characters, sequenceCharacterUsages };
+// Character Sheets (role-specific looks/costumes)
+export { characterSheets };
 
 export type {
-  CharacterMediaRecord,
-  CharacterMediaType,
   CharacterSheet,
   CharacterSheetSource,
-  Character,
-  CharacterWithRelations,
-  CharacterWithSheets,
-  NewCharacterMedia,
   NewCharacterSheet,
-  NewCharacter,
-  NewSequenceCharacterUsage,
-  SequenceCharacterUsage,
-} from './characters';
+} from './character-sheets';
+
+// Frame Characters (which characters appear in which frames)
+export { frameCharacters };
+
+export type {
+  FrameCharacter,
+  FrameCharacterWithDetails,
+  NewFrameCharacter,
+} from './frame-characters';
+
+// Talent Library
+export { talent, talentMedia, talentSheets };
+
+export type {
+  NewTalent,
+  NewTalentMedia,
+  NewTalentSheet,
+  Talent,
+  TalentMediaRecord,
+  TalentMediaType,
+  TalentSheet,
+  TalentSheetSource,
+  TalentWithRelations,
+  TalentWithSheets,
+} from './talent';
 
 // Library Resources
 export { audio, styles, vfx };
@@ -218,19 +236,25 @@ export const schema = {
   sequencesRelations,
   framesRelations,
 
-  // Sequence Characters (legacy)
-  sequenceCharacters,
-  sequenceCharactersRelations,
-
-  // Character Library (new)
+  // Characters (scripted roles extracted from script)
   characters,
   charactersRelations,
+
+  // Character Sheets (role-specific looks/costumes)
   characterSheets,
   characterSheetsRelations,
-  characterMedia,
-  characterMediaRelations,
-  sequenceCharacterUsages,
-  sequenceCharacterUsagesRelations,
+
+  // Frame Characters (which characters in each frame)
+  frameCharacters,
+  frameCharactersRelations,
+
+  // Talent Library
+  talent,
+  talentRelations,
+  talentSheets,
+  talentSheetsRelations,
+  talentMedia,
+  talentMediaRelations,
 
   // Libraries
   styles,

@@ -1,3 +1,4 @@
+import { type TabValue } from '@/components/scenes/scene-script-prompts';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
@@ -14,8 +15,6 @@ import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
-
-type TabValue = 'script' | 'image-prompt' | 'motion-prompt';
 
 type ScenePlayerProps = {
   frames?: Frame[];

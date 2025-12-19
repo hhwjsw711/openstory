@@ -1,4 +1,4 @@
-import { CharacterDialog } from '@/components/character';
+import { TalentLibraryDialog } from '@/components/talent-library';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
@@ -8,13 +8,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCharacterSheetRealtime } from '@/hooks/use-character-realtime';
+import { useTalentSheetRealtime } from '@/hooks/use-talent-realtime';
 import {
-  useCharacter,
-  useDeleteCharacter,
-  useGenerateCharacterSheet,
-  useToggleCharacterFavorite,
-} from '@/hooks/use-characters';
+  useTalentById,
+  useDeleteTalent,
+  useGenerateTalentSheet,
+  useToggleTalentFavorite,
+} from '@/hooks/use-talent';
 import { cn } from '@/lib/utils';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -28,35 +28,35 @@ import {
   User,
 } from 'lucide-react';
 
-export const Route = createFileRoute('/_protected/characters/$id')({
-  component: CharacterDetailPage,
+export const Route = createFileRoute('/_protected/talent/$id')({
+  component: TalentDetailPage,
 });
 
-function CharacterDetailPage() {
+function TalentDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { data: character, isLoading, error } = useCharacter(id);
-  const toggleFavorite = useToggleCharacterFavorite();
-  const deleteCharacter = useDeleteCharacter();
-  const generateSheet = useGenerateCharacterSheet();
+  const { data: talent, isLoading, error } = useTalentById(id);
+  const toggleFavorite = useToggleTalentFavorite();
+  const deleteTalent = useDeleteTalent();
+  const generateSheet = useGenerateTalentSheet();
   const {
     isGenerating: isGeneratingSheet,
     error: sheetError,
     startGenerating,
-  } = useCharacterSheetRealtime(id);
+  } = useTalentSheetRealtime(id);
 
   const handleGenerateSheet = () => {
-    if (!character) return;
+    if (!talent) return;
     startGenerating(); // Show generating state immediately
-    generateSheet.mutate({ characterId: character.id });
+    generateSheet.mutate({ talentId: talent.id });
   };
 
   const handleDelete = async () => {
-    if (!character) return;
-    if (!confirm(`Delete "${character.name}"? This cannot be undone.`)) return;
+    if (!talent) return;
+    if (!confirm(`Delete "${talent.name}"? This cannot be undone.`)) return;
 
-    await deleteCharacter.mutateAsync(character.id);
-    navigate({ to: '/characters' });
+    await deleteTalent.mutateAsync(talent.id);
+    navigate({ to: '/talent' });
   };
 
   if (isLoading) {
@@ -77,16 +77,16 @@ function CharacterDetailPage() {
     );
   }
 
-  if (error || !character) {
+  if (error || !talent) {
     return (
       <div className="h-full overflow-auto">
         <PageContainer>
           <Card className="p-8 text-center">
             <p className="text-destructive mb-4">
-              {error?.message || 'Character not found'}
+              {error?.message || 'Talent not found'}
             </p>
             <Button variant="outline" asChild>
-              <Link to="/characters">Back to Characters</Link>
+              <Link to="/talent">Back to Talent</Link>
             </Button>
           </Card>
         </PageContainer>
@@ -99,18 +99,18 @@ function CharacterDetailPage() {
       <PageContainer>
         {/* Back link */}
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-          <Link to="/characters">
+          <Link to="/talent">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Characters
+            Back to Talent
           </Link>
         </Button>
 
         <PageHeader
           actions={
             <div className="flex items-center gap-2">
-              <CharacterDialog
+              <TalentLibraryDialog
                 mode="edit"
-                character={character}
+                talent={talent}
                 trigger={
                   <Button variant="outline" size="icon">
                     <Pencil className="h-4 w-4" />
@@ -120,13 +120,13 @@ function CharacterDetailPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => toggleFavorite.mutate(character.id)}
+                onClick={() => toggleFavorite.mutate(talent.id)}
                 disabled={toggleFavorite.isPending}
               >
                 <Star
                   className={cn(
                     'h-4 w-4',
-                    character.isFavorite
+                    talent.isFavorite
                       ? 'fill-yellow-400 text-yellow-400'
                       : 'text-muted-foreground'
                   )}
@@ -136,7 +136,7 @@ function CharacterDetailPage() {
                 variant="outline"
                 size="icon"
                 onClick={handleDelete}
-                disabled={deleteCharacter.isPending}
+                disabled={deleteTalent.isPending}
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -144,27 +144,27 @@ function CharacterDetailPage() {
           }
         >
           <div className="flex items-center gap-3">
-            <PageHeading>{character.name}</PageHeading>
-            {character.isHumanGenerated && (
+            <PageHeading>{talent.name}</PageHeading>
+            {talent.isHuman && (
               <span className="px-2 py-1 bg-muted rounded text-xs font-medium">
                 Human
               </span>
             )}
           </div>
-          {character.description && (
-            <PageDescription>{character.description}</PageDescription>
+          {talent.description && (
+            <PageDescription>{talent.description}</PageDescription>
           )}
         </PageHeader>
 
-        {/* Character Sheets Section */}
+        {/* Talent Sheets Section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Character Sheets ({character.sheets.length})
+              Talent Sheets ({talent.sheets?.length ?? 0})
             </h2>
-            {character.media &&
-              character.media.filter((m) => m.type === 'image').length > 0 && (
+            {talent.media &&
+              talent.media.filter((m) => m.type === 'image').length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -177,16 +177,16 @@ function CharacterDetailPage() {
               )}
           </div>
 
-          {character.sheets.length === 0 ? (
+          {!talent.sheets || talent.sheets.length === 0 ? (
             <Card className="p-8 text-center">
               <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              {character.media &&
-              character.media.filter((m) => m.type === 'image').length > 0 ? (
+              {talent.media &&
+              talent.media.filter((m) => m.type === 'image').length > 0 ? (
                 <div>
                   <p className="text-muted-foreground mb-3">
                     {isGeneratingSheet
-                      ? 'Generating character sheet from your reference images…'
-                      : 'No character sheets yet. Generate one from your reference images.'}
+                      ? 'Generating talent sheet from your reference images…'
+                      : 'No talent sheets yet. Generate one from your reference images.'}
                   </p>
                   {sheetError && (
                     <p className="text-destructive text-sm mb-3">
@@ -203,15 +203,14 @@ function CharacterDetailPage() {
                 </div>
               ) : (
                 <p className="text-muted-foreground">
-                  Upload reference images to generate a character sheet, or
-                  sheets will be created when this character is used in a
-                  sequence.
+                  Upload reference images to generate a talent sheet, or sheets
+                  will be created when this talent is used in a sequence.
                 </p>
               )}
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {character.sheets.map((sheet) => (
+              {talent.sheets.map((sheet) => (
                 <Card
                   key={sheet.id}
                   className={cn(
@@ -234,12 +233,6 @@ function CharacterDetailPage() {
 
                     {/* Source badge */}
                     <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs">
-                      {sheet.source === 'script_analysis' && (
-                        <span className="flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          Script
-                        </span>
-                      )}
                       {sheet.source === 'ai_generated' && (
                         <span className="flex items-center gap-1">
                           <Sparkles className="h-3 w-3" />
@@ -274,13 +267,13 @@ function CharacterDetailPage() {
         </section>
 
         {/* Media Section */}
-        {character.media && character.media.length > 0 && (
+        {talent.media && talent.media.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold mb-4">
-              Reference Media ({character.media.length})
+              Reference Media ({talent.media.length})
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {character.media.map((media) => (
+              {talent.media.map((media) => (
                 <Card key={media.id} className="overflow-hidden">
                   <div className="aspect-square bg-muted">
                     {media.type === 'image' && (

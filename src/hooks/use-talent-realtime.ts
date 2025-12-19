@@ -1,12 +1,12 @@
 import { useRealtime } from '@/lib/realtime/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
-import { characterKeys } from './use-characters';
+import { talentKeys } from './use-talent';
 
 type SheetProgressEvent = {
   event: string;
   data: {
-    characterId: string;
+    talentId: string;
     status: 'generating' | 'completed' | 'failed';
     sheetId?: string;
     sheetImageUrl?: string;
@@ -16,12 +16,12 @@ type SheetProgressEvent = {
 };
 
 /**
- * Hook for subscribing to real-time character sheet generation events.
+ * Hook for subscribing to real-time talent sheet generation events.
  *
- * @param characterId - The character ID to subscribe to
+ * @param talentId - The talent ID to subscribe to
  * @returns Generation status and any error message
  */
-export function useCharacterSheetRealtime(characterId?: string) {
+export function useTalentSheetRealtime(talentId?: string) {
   const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export function useCharacterSheetRealtime(characterId?: string) {
     (event: SheetProgressEvent) => {
       const { event: eventName, data } = event;
 
-      if (eventName !== 'character.sheet:progress') return;
-      if (data.characterId !== characterId) return;
+      if (eventName !== 'talent.sheet:progress') return;
+      if (data.talentId !== talentId) return;
 
       switch (data.status) {
         case 'generating':
@@ -42,13 +42,13 @@ export function useCharacterSheetRealtime(characterId?: string) {
         case 'completed':
           setIsGenerating(false);
           setError(null);
-          // Invalidate character queries to refresh sheets and headshot
+          // Invalidate talent queries to refresh sheets and headshot
           void queryClient.invalidateQueries({
-            queryKey: characterKeys.detail(data.characterId),
+            queryKey: talentKeys.detail(data.talentId),
           });
-          // Also invalidate list to show new headshot in character grid
+          // Also invalidate list to show new headshot in talent grid
           void queryClient.invalidateQueries({
-            queryKey: characterKeys.lists(),
+            queryKey: talentKeys.lists(),
           });
           break;
 
@@ -58,14 +58,14 @@ export function useCharacterSheetRealtime(characterId?: string) {
           break;
       }
     },
-    [characterId, queryClient]
+    [talentId, queryClient]
   );
 
   const { status } = useRealtime({
-    channels: characterId ? [`character:${characterId}`] : [],
-    events: ['character.sheet:progress'] as const,
+    channels: talentId ? [`talent:${talentId}`] : [],
+    events: ['talent.sheet:progress'] as const,
     onData: handleEvent,
-    enabled: !!characterId,
+    enabled: !!talentId,
   });
 
   // Allow starting generation optimistically (before realtime event arrives)

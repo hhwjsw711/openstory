@@ -1,0 +1,67 @@
+import {
+  TalentLibraryDialog,
+  TalentLibraryFilters,
+  TalentLibraryList,
+} from '@/components/talent-library';
+import { PageContainer } from '@/components/layout';
+import {
+  PageDescription,
+  PageHeader,
+  PageHeading,
+} from '@/components/typography';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useTalent } from '@/hooks/use-talent';
+import { createFileRoute } from '@tanstack/react-router';
+import { User } from 'lucide-react';
+import { z } from 'zod';
+
+const searchParamsSchema = z.object({
+  filter: z.enum(['all', 'favorites']).optional().default('all'),
+});
+
+export const Route = createFileRoute('/_protected/talent/')({
+  validateSearch: searchParamsSchema,
+  component: TalentPage,
+});
+
+function TalentPage() {
+  const { filter } = Route.useSearch();
+  const {
+    data: talent,
+    isLoading,
+    error,
+  } = useTalent({
+    favoritesOnly: filter === 'favorites',
+  });
+
+  return (
+    <div className="h-full overflow-auto">
+      <PageContainer>
+        <PageHeader actions={<TalentLibraryDialog mode="create" />}>
+          <PageHeading>Talent Library</PageHeading>
+          <PageDescription>
+            Manage your team's talent library for consistent AI-generated
+            content.
+          </PageDescription>
+        </PageHeader>
+
+        <TalentLibraryFilters currentFilter={filter} />
+
+        {!isLoading && talent && talent.length === 0 ? (
+          <EmptyState
+            icon={<User className="h-12 w-12" />}
+            title="No talent yet"
+            description="Add talent to your library to maintain visual consistency across your sequences."
+            action={<TalentLibraryDialog mode="create" />}
+          />
+        ) : (
+          <TalentLibraryList
+            talent={talent}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
+      </PageContainer>
+    </div>
+  );
+}
