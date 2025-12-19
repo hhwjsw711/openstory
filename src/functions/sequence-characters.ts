@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/helpers/sequence-characters';
 import { getTalentWithRelations } from '@/lib/db/helpers/talent';
 import { characters as charactersTable } from '@/lib/db/schema';
+import { getGenerationChannel } from '@/lib/realtime';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { CharacterSheetWorkflowInput } from '@/lib/workflow/types';
@@ -104,6 +105,15 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     // Set sheet status to generating
     await updateSheetStatus(data.characterId, 'generating');
 
+    // Emit immediate realtime event so UI shows generating state instantly
+    await getGenerationChannel(character.sequenceId).emit(
+      'generation.character-sheet:progress',
+      {
+        characterId: data.characterId,
+        status: 'generating',
+      }
+    );
+
     // Build character metadata from the existing character
     const characterMetadata = {
       characterId: character.characterId,
@@ -122,7 +132,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
       },
     };
 
-    // Trigger character sheet workflow with reference image
+    // Trigger character sheet workflow with talent data for appearance combination
     const workflowInput: CharacterSheetWorkflowInput = {
       characterDbId: data.characterId,
       characterName: character.name,
@@ -132,6 +142,9 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
       userId: context.user.id,
       // Add reference image URL if talent has a sheet
       referenceImageUrl: defaultSheet?.imageUrl ?? undefined,
+      // Add talent metadata for appearance overrides (combines talent appearance with character traits)
+      talentMetadata: defaultSheet?.metadata ?? undefined,
+      talentDescription: talentWithSheets.description ?? undefined,
     };
 
     const workflowRunId = await triggerWorkflow(

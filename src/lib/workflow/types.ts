@@ -142,6 +142,10 @@ export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowCon
   imageModel?: TextToImageModel;
   /** Reference image URL (e.g., from talent sheet) for recasting */
   referenceImageUrl?: string;
+  /** Talent metadata from talent sheet (for appearance overrides when recasting) */
+  talentMetadata?: CharacterBibleEntry;
+  /** Talent description to include in prompt */
+  talentDescription?: string;
 }
 
 /**
