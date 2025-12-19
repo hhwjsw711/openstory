@@ -9,10 +9,10 @@ import {
   recastCharacterFn,
 } from '@/functions/sequence-characters';
 import { addCharacterToLibraryFn } from '@/functions/talent';
-import type { Character } from '@/lib/db/schema';
+import type { CharacterWithTalent } from '@/lib/db/schema';
 
-// Re-export Character as SequenceCharacter for backward compatibility
-export type SequenceCharacter = Character;
+// Re-export CharacterWithTalent as SequenceCharacter for backward compatibility
+export type SequenceCharacter = CharacterWithTalent;
 
 export const sequenceCharacterKeys = {
   all: ['sequence-characters'] as const,
@@ -23,7 +23,7 @@ export const sequenceCharacterKeys = {
 };
 
 export function useSequenceCharacters(sequenceId: string) {
-  return useQuery<Character[]>({
+  return useQuery<CharacterWithTalent[]>({
     queryKey: sequenceCharacterKeys.list(sequenceId),
     queryFn: async () => {
       return getSequenceCharactersFn({ data: { sequenceId } });

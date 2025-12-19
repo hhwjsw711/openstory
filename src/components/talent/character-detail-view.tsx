@@ -2,16 +2,26 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  sequenceCharacterKeys,
   useAddCharacterToLibrary,
   useFrameIdsForCharacter,
   useRecastCharacter,
   useSequenceCharacters,
 } from '@/hooks/use-sequence-characters';
-import type { TalentWithSheets } from '@/lib/db/schema';
+import type { CharacterWithTalent, TalentWithSheets } from '@/lib/db/schema';
+import { useRealtime } from '@/lib/realtime/client';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Library, RefreshCw, User } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ArrowLeft,
+  Library,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  User,
+} from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { RecastConfirmDialog } from './recast-confirm-dialog';
 import { TalentPickerDialog } from './talent-picker-dialog';
 
@@ -43,6 +53,7 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
   sequenceId,
   characterId,
 }) => {
+  const queryClient = useQueryClient();
   const {
     data: characters,
     isLoading,
@@ -59,7 +70,50 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
     null
   );
 
+  // Track regenerating state from realtime events
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Handle realtime events for character sheet progress
+  const handleRealtimeEvent = useCallback(
+    (event: { event: string; data: unknown }) => {
+      if (event.event === 'generation.character-sheet:progress') {
+        const payload = event.data as {
+          characterId: string;
+          status: 'generating' | 'completed' | 'failed';
+        };
+
+        // Only handle events for this character
+        if (payload.characterId !== characterId) return;
+
+        if (payload.status === 'generating') {
+          setIsRegenerating(true);
+        } else {
+          setIsRegenerating(false);
+          // Invalidate query to refetch updated character data
+          void queryClient.invalidateQueries({
+            queryKey: sequenceCharacterKeys.list(sequenceId),
+          });
+        }
+      }
+    },
+    [characterId, queryClient, sequenceId]
+  );
+
+  // Subscribe to realtime events
+  useRealtime({
+    channels: sequenceId ? [sequenceId] : [],
+    events: ['generation.character-sheet:progress'] as const,
+    onData: handleRealtimeEvent,
+    enabled: !!sequenceId,
+  });
+
   const character = characters?.find((c) => c.id === characterId);
+
+  // Determine if currently regenerating (from realtime or mutation pending)
+  const isSheetGenerating =
+    isRegenerating ||
+    recastCharacter.isPending ||
+    character?.sheetStatus === 'generating';
 
   const handleTalentSelect = (talent: TalentWithSheets) => {
     setSelectedTalent(talent);
@@ -144,18 +198,18 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
       <ScrollArea className="flex-1">
         <div className="space-y-6 p-4">
           {/* Character sheet image - 16:9 aspect ratio */}
-          <div className="aspect-video overflow-hidden rounded-lg bg-muted">
-            {character.sheetImageUrl ? (
+          <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+            {character.sheetImageUrl && !isSheetGenerating ? (
               <img
                 src={character.sheetImageUrl}
                 alt={character.name}
                 className="h-full w-full object-cover"
               />
-            ) : character.sheetStatus === 'generating' ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-                <Skeleton className="h-16 w-16 rounded-full" />
+            ) : isSheetGenerating ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+                <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Generating sheet…
+                  Regenerating character sheet…
                 </p>
               </div>
             ) : (
@@ -180,10 +234,14 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
               variant="outline"
               className="flex-1"
               onClick={() => setIsPickerOpen(true)}
-              disabled={recastCharacter.isPending}
+              disabled={isSheetGenerating}
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {recastCharacter.isPending ? 'Recasting…' : 'Recast'}
+              {isSheetGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {isSheetGenerating ? 'Regenerating…' : 'Recast'}
             </Button>
           </div>
 
@@ -206,6 +264,35 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
               isLoading={recastCharacter.isPending}
             />
           )}
+
+          {/* Casting status */}
+          <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+            {character.talent ? (
+              <>
+                <User className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Cast
+                  </p>
+                  <p className="truncate text-sm font-medium">
+                    {character.talent.name}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Character Sheet
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Auto-generated from script
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Character details */}
           <dl className="space-y-4">

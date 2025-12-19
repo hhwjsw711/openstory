@@ -9,11 +9,12 @@
 import { getDb } from '#db-client';
 import type {
   Character,
+  CharacterWithTalent,
   Frame,
   NewCharacter,
   SheetStatus,
 } from '@/lib/db/schema';
-import { characters, frames } from '@/lib/db/schema';
+import { characters, frames, talent } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 // Re-export types with legacy names for backward compatibility
@@ -64,6 +65,31 @@ export async function getSequenceCharacters(
     .select()
     .from(characters)
     .where(eq(characters.sequenceId, sequenceId));
+}
+
+/**
+ * Get all characters for a sequence with their assigned talent (if any)
+ */
+export async function getSequenceCharactersWithTalent(
+  sequenceId: string
+): Promise<CharacterWithTalent[]> {
+  const results = await getDb()
+    .select({
+      character: characters,
+      talent: {
+        id: talent.id,
+        name: talent.name,
+        imageUrl: talent.imageUrl,
+      },
+    })
+    .from(characters)
+    .leftJoin(talent, eq(characters.talentId, talent.id))
+    .where(eq(characters.sequenceId, sequenceId));
+
+  return results.map((row) => ({
+    ...row.character,
+    talent: row.talent?.id ? row.talent : null,
+  }));
 }
 
 /**

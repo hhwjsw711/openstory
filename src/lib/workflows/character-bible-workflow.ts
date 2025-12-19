@@ -17,8 +17,6 @@ import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 
-const maxDuration = 800;
-
 export const characterBibleWorkflow = createWorkflow(
   async (
     context: WorkflowContext<CharacterBibleWorkflowInput>

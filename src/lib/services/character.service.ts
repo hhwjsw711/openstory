@@ -195,6 +195,16 @@ Generate the scene with characters matching their reference images exactly.`;
 }
 
 /**
+ * Talent appearance overrides for character sheet generation
+ */
+type TalentOverrides = {
+  /** Talent sheet metadata containing physical appearance data */
+  sheetMetadata?: CharacterBibleEntry;
+  /** Talent description to append to physical appearance */
+  description?: string;
+};
+
+/**
  * Build a detailed character sheet prompt from character bible entry
  *
  * Creates a comprehensive multi-panel reference sheet prompt with:
@@ -203,21 +213,49 @@ Generate the scene with characters matching their reference images exactly.`;
  * - Lower-central: Posed full-body
  * - Right: Large close-up headshot
  *
- * @param entry - The character bible entry
+ * When talentOverrides is provided (during recasting), the script's character
+ * identity (name, role) is preserved, but physical appearance is taken from
+ * the talent's sheet metadata.
+ *
+ * @param entry - The character bible entry from script analysis
+ * @param talentOverrides - Optional talent data for recasting
  * @returns Full character sheet generation prompt
  */
-export function buildCharacterSheetPrompt(entry: CharacterBibleEntry): string {
-  const ageStr = entry.age
-    ? typeof entry.age === 'number'
-      ? `Age: ${entry.age} years old`
-      : `Age: ${entry.age}`
+export function buildCharacterSheetPrompt(
+  entry: CharacterBibleEntry,
+  talentOverrides?: TalentOverrides
+): string {
+  // When recasting with talent data, use talent's appearance but keep script's character identity
+  const talentMeta = talentOverrides?.sheetMetadata;
+
+  // Physical appearance: prefer talent data when available
+  const age = talentMeta?.age ?? entry.age;
+  const gender = talentMeta?.gender ?? entry.gender;
+  const ethnicity = talentMeta?.ethnicity ?? entry.ethnicity;
+
+  // Build physical description, combining talent appearance with any talent description
+  let physicalDescription =
+    talentMeta?.physicalDescription ?? entry.physicalDescription;
+  if (talentOverrides?.description) {
+    physicalDescription = `${physicalDescription}\n\nTalent Reference: ${talentOverrides.description}`;
+  }
+
+  const standardClothing =
+    talentMeta?.standardClothing ?? entry.standardClothing;
+  const distinguishingFeatures =
+    talentMeta?.distinguishingFeatures ?? entry.distinguishingFeatures;
+
+  const ageStr = age
+    ? typeof age === 'number'
+      ? `Age: ${age} years old`
+      : `Age: ${age}`
     : '';
 
-  const genderLine = entry.gender ? `Gender: ${entry.gender}` : '';
-  const ethnicityLine = entry.ethnicity ? `Ethnicity: ${entry.ethnicity}` : '';
+  const genderLine = gender ? `Gender: ${gender}` : '';
+  const ethnicityLine = ethnicity ? `Ethnicity: ${ethnicity}` : '';
 
-  const distinguishingSection = entry.distinguishingFeatures
-    ? `Distinguishing Features:\n${entry.distinguishingFeatures}`
+  const distinguishingSection = distinguishingFeatures
+    ? `Distinguishing Features:\n${distinguishingFeatures}`
     : '';
 
   return `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
@@ -239,10 +277,10 @@ Name: ${entry.name}
 ${[ageStr, genderLine, ethnicityLine].filter(Boolean).join('\n')}
 
 Physical Appearance:
-${entry.physicalDescription}
+${physicalDescription}
 
 Attire:
-${entry.standardClothing}
+${standardClothing}
 
 ${distinguishingSection}
 

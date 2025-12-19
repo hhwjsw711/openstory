@@ -34,7 +34,7 @@ export const RecastConfirmDialog: React.FC<RecastConfirmDialogProps> = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Recast {characterName} as {talentName}?
+            Recast {talentName} as {characterName}?
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will generate a new character sheet using {talentName} as the

@@ -76,6 +76,14 @@ export const realtimeSchema = {
       videoUrl: z.string().optional(),
     }),
 
+    // Character sheet generation progress (during recasting)
+    'character-sheet:progress': z.object({
+      characterId: z.string(),
+      status: z.enum(['generating', 'completed', 'failed']),
+      sheetImageUrl: z.string().optional(),
+      error: z.string().optional(),
+    }),
+
     // Sequence events
     updated: z.object({
       title: z.string().optional(),

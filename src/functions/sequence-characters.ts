@@ -5,7 +5,7 @@
 
 import {
   getFrameIdsForCharacter,
-  getSequenceCharacters,
+  getSequenceCharactersWithTalent,
   updateCharacterTalent,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
@@ -23,12 +23,12 @@ import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
 
 /**
  * Get all characters for a sequence
- * Returns characters extracted from the script with their reference sheets
+ * Returns characters extracted from the script with their reference sheets and assigned talent
  */
 export const getSequenceCharactersFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    return getSequenceCharacters(context.sequence.id);
+    return getSequenceCharactersWithTalent(context.sequence.id);
   });
 
 // =============================================================================

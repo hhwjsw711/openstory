@@ -1,9 +1,9 @@
 import { Card } from '@/components/ui/card';
-import type { Character } from '@/lib/db/schema';
-import { User } from 'lucide-react';
+import type { CharacterWithTalent } from '@/lib/db/schema';
+import { Sparkles, User } from 'lucide-react';
 
 type TalentCardProps = {
-  character: Character;
+  character: CharacterWithTalent;
 };
 
 export const TalentCard: React.FC<TalentCardProps> = ({ character }) => {
@@ -41,13 +41,18 @@ export const TalentCard: React.FC<TalentCardProps> = ({ character }) => {
         )}
       </div>
 
-      {/* Character name */}
+      {/* Character name and talent info */}
       <div className="p-3">
         <h3 className="truncate text-sm font-medium">{character.name}</h3>
-        {character.gender && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {character.age && `${character.age}, `}
-            {character.gender}
+        {character.talent ? (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <User className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{character.talent.name}</span>
+          </p>
+        ) : (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <Sparkles className="h-3 w-3 flex-shrink-0" />
+            <span>Auto-generated</span>
           </p>
         )}
       </div>
