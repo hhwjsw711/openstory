@@ -35,6 +35,14 @@ export const generateStoryboardWorkflow = createWorkflow(
   async (context: WorkflowContext<StoryboardWorkflowInput>) => {
     const input = context.requestPayload;
 
+    console.log('[StoryboardWorkflow] Input received:', {
+      sequenceId: input.sequenceId,
+      teamId: input.teamId,
+      userId: input.userId,
+      suggestedTalentIds: input.suggestedTalentIds,
+      autoGenerateMotion: input.autoGenerateMotion,
+    });
+
     // Helper to safely emit events (no-op if realtime unavailable)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emit = async (event: string, data: any) => {
@@ -148,6 +156,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         imageModel,
         videoModel,
         autoGenerateMotion: input.autoGenerateMotion ?? false,
+        suggestedTalentIds: input.suggestedTalentIds,
       },
       retries: 3,
       retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s

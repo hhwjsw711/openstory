@@ -107,6 +107,71 @@ export async function getTeamTalent(
   }));
 }
 
+/**
+ * Get multiple talent by IDs with their default sheets
+ * Used for talent matching during sequence generation
+ */
+export async function getTalentByIds(
+  talentIds: string[],
+  teamId: string
+): Promise<TalentWithSheets[]> {
+  if (talentIds.length === 0) {
+    return [];
+  }
+
+  const db = getDb();
+
+  // Get talent that belong to the team
+  const results = await db
+    .select({
+      talent: talent,
+      sheetCount: sql<number>`(
+        SELECT COUNT(*) FROM talent_sheets
+        WHERE talent_sheets.talent_id = ${talent.id}
+      )`.as('sheet_count'),
+    })
+    .from(talent)
+    .where(
+      and(
+        eq(talent.teamId, teamId),
+        sql`${talent.id} IN (${sql.join(
+          talentIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      )
+    );
+
+  if (results.length === 0) {
+    return [];
+  }
+
+  // Get default sheets for all fetched talent
+  const fetchedIds = results.map((r) => r.talent.id);
+  const defaultSheets = await db
+    .select()
+    .from(talentSheets)
+    .where(
+      and(
+        sql`${talentSheets.talentId} IN (${sql.join(
+          fetchedIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`,
+        eq(talentSheets.isDefault, true)
+      )
+    );
+
+  const sheetMap = new Map<string, TalentSheet>(
+    defaultSheets.map((s) => [s.talentId, s])
+  );
+
+  return results.map((r) => ({
+    ...r.talent,
+    sheetCount: r.sheetCount,
+    sheets: [],
+    defaultSheet: sheetMap.get(r.talent.id) ?? null,
+  }));
+}
+
 // ============================================================================
 // Talent CRUD
 // ============================================================================

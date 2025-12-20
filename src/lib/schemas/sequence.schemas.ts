@@ -70,6 +70,8 @@ export const createSequenceSchema = createInsertSchema(sequences, {
       .default(DEFAULT_VIDEO_MODEL),
     // Auto-generate motion flag (UI-only, not stored in DB)
     autoGenerateMotion: z.boolean().default(false).optional(),
+    // Suggested talent IDs for AI-assisted casting during generation
+    suggestedTalentIds: z.array(z.string()).optional(),
   });
 
 export const updateSequenceSchema = createUpdateSchema(sequences, {

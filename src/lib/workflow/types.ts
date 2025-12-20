@@ -88,6 +88,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
     regenerateAll?: boolean;
   };
   autoGenerateMotion?: boolean;
+  /** Talent IDs suggested by user for AI-assisted casting */
+  suggestedTalentIds?: string[];
 }
 
 /**
@@ -102,6 +104,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
   autoGenerateMotion?: boolean;
+  /** Talent IDs suggested by user for AI-assisted casting */
+  suggestedTalentIds?: string[];
 }
 
 /**
@@ -186,6 +190,34 @@ export interface RecastCharacterWorkflowInput extends SequenceWorkflowContext {
 }
 
 /**
+ * Talent-to-character match result from AI casting
+ */
+export type TalentCharacterMatch = {
+  /** Character ID from CharacterBibleEntry.characterId */
+  characterId: string;
+  /** Talent database ID */
+  talentId: string;
+  /** Talent name for logging/display */
+  talentName: string;
+  /** Talent's default sheet image URL for reference */
+  sheetImageUrl: string;
+  /** Talent sheet metadata for appearance blending */
+  sheetMetadata?: CharacterBibleEntry;
+};
+
+/**
+ * Result from talent matching service
+ */
+export type TalentMatchResult = {
+  /** Successfully matched talent to characters */
+  matches: TalentCharacterMatch[];
+  /** Talent IDs that couldn't be matched to any character */
+  unusedTalentIds: string[];
+  /** Talent names that couldn't be matched (for display) */
+  unusedTalentNames: string[];
+};
+
+/**
  * Character sheet generation workflow input
  */
 export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
@@ -194,6 +226,9 @@ export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowCon
 
   /** Image model to use (defaults to nano_banana_pro) */
   imageModel?: TextToImageModel;
+
+  /** Matched talent data for characters that should use talent references */
+  talentMatches?: TalentCharacterMatch[];
 }
 
 export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowContext> {

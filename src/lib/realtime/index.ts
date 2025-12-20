@@ -99,6 +99,22 @@ export const realtimeSchema = {
       error: z.string(),
     }),
 
+    // Talent matching events (during sequence generation)
+    'talent:matched': z.object({
+      matches: z.array(
+        z.object({
+          characterId: z.string(),
+          characterName: z.string(),
+          talentId: z.string(),
+          talentName: z.string(),
+        })
+      ),
+    }),
+    'talent:unmatched': z.object({
+      unusedTalentIds: z.array(z.string()),
+      unusedTalentNames: z.array(z.string()),
+    }),
+
     // Sequence events
     updated: z.object({
       title: z.string().optional(),
