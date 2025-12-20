@@ -51,6 +51,7 @@ export default defineConfig({
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
       : nitro({
+          preset: 'bun',
           rollupConfig: {
             // Default: treeshake disabled due to Nitro bug (see docs/nitro-treeshake-bug-report.md)
             // Enable with DEBUG_TREESHAKE=1 for debugging
