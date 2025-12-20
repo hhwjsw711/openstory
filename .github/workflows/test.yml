@@ -38,7 +38,12 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    needs: test
+
+    services:
+      qstash:
+        image: public.ecr.aws/upstash/qstash:latest
+        ports:
+          - 8080:8080
 
     steps:
       - uses: actions/checkout@v5
@@ -63,22 +68,22 @@ jobs:
       - name: Run E2E tests
         run: bun test:e2e
         env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
-          QSTASH_URL: ${{ secrets.QSTASH_URL }}
-          QSTASH_CURRENT_SIGNING_KEY: ${{ secrets.QSTASH_CURRENT_SIGNING_KEY }}
-          QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          R2_PUBLIC_STORAGE_DOMAIN: ${{ secrets.R2_PUBLIC_STORAGE_DOMAIN }}
-          FAL_KEY: ${{ secrets.FAL_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          # QStash local dev server credentials (from upstash docs)
+          QSTASH_TOKEN: eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=
+          QSTASH_URL: http://localhost:8080
+          QSTASH_CURRENT_SIGNING_KEY: sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r
+          QSTASH_NEXT_SIGNING_KEY: sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs
+          # Mock values for services we don't actually call (mocked via Playwright)
+          GOOGLE_CLIENT_ID: mock-google-client-id
+          GOOGLE_CLIENT_SECRET: mock-google-client-secret
+          FAL_KEY: mock-fal-key
+          R2_ACCOUNT_ID: mock-r2-account
+          R2_ACCESS_KEY_ID: mock-r2-access-key
+          R2_SECRET_ACCESS_KEY: mock-r2-secret
+          R2_BUCKET_NAME: mock-bucket
+          R2_PUBLIC_STORAGE_DOMAIN: mock.r2.dev
+          RESEND_API_KEY: mock-resend-key
+          EMAIL_FROM: test@example.com
 
       - name: Upload test results
         if: failure()
