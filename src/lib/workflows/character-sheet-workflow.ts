@@ -17,7 +17,7 @@ import {
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { getGenerationChannel } from '@/lib/realtime';
-import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
+import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,

@@ -23,7 +23,7 @@ import {
   splitScriptIntoScenes,
 } from '@/lib/script';
 import type { Scene } from '@/lib/script/types';
-import { buildPromptWithReferences } from '@/lib/services/character.service';
+import { buildPromptWithReferences } from '@/lib/prompts/character-prompt';
 import { frameService } from '@/lib/services/frame.service';
 import type {
   AnalyzeScriptWorkflowInput,

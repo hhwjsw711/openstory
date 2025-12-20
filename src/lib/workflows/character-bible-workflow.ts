@@ -9,7 +9,7 @@ import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
+import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type { CharacterBibleWorkflowInput } from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

@@ -12,7 +12,7 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
 import type { CharacterMinimal, Frame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { buildPromptWithReferences } from '@/lib/services/character.service';
+import { buildPromptWithReferences } from '@/lib/prompts/character-prompt';
 import type {
   ImageWorkflowInput,
   RegenerateFramesWorkflowInput,
