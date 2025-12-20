@@ -58,6 +58,7 @@ export const characterSheetWorkflow = createWorkflow(
         );
 
         // Build talent overrides if talent data is provided (for recasting)
+        // TODO: Tom Dec 2025 - not sure about this override. I think we need to combine the character metadata with the talent metadata.
         const talentOverrides = hasTalent
           ? {
               sheetMetadata: input.talentMetadata,

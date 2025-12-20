@@ -53,8 +53,9 @@ function matchCharactersToFrame(
  */
 function getVisualPrompt(frame: Frame): string | null {
   return (
-    frame.metadata?.prompts?.visual?.fullPrompt ||
+    // Image prompt overrides metadata prompt as it has the visual reference images
     frame.imagePrompt ||
+    frame.metadata?.prompts?.visual?.fullPrompt ||
     frame.description ||
     null
   );

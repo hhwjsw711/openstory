@@ -12,8 +12,6 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
-
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
     const input = context.requestPayload;
