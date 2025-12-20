@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/e2e/results
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -53,6 +56,9 @@ cerebras-validation-error.json
 local.db
 local.db-shm
 local.db-wal
+test.db
+test.db-shm
+test.db-wal
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

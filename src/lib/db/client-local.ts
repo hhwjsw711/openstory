@@ -11,10 +11,8 @@ console.log('[db-local] Loading client');
 
 type Database = LibSQLDatabase<typeof schema>;
 
-const filePath = 'local.db';
-const client = createClient({
-  url: `file:${filePath}`,
-});
+const dbUrl = process.env.DATABASE_URL || 'file:local.db';
+const client = createClient({ url: dbUrl });
 
 /**
  * Drizzle database instance
