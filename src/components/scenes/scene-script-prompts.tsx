@@ -202,10 +202,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   }, [editedImagePrompt, imagePrompt]);
 
   const handleRegenerate = useCallback(async () => {
-    console.log('handleRegenerate', frame);
     if (!frame?.id || !frame?.sequenceId) return;
-
-    console.log('onRegenerateStart', frame);
 
     onRegenerateStart(frame.id, 'image');
 
