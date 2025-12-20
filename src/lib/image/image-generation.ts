@@ -9,7 +9,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 
-import { fal } from '@fal-ai/client';
+import { type QueueStatus, fal, isQueueStatus } from '@fal-ai/client';
 
 /**
  * Extended parameters for image generation
@@ -100,20 +100,9 @@ function imageSizeToAspectRatio(imageSize: ImageSize): string {
  * Extract progress percentage from Fal.ai queue update
  * Checks for progress in update object or logs
  */
-function extractProgress(
-  update: { status: string; logs?: Array<{ message: string }> } & Record<
-    string,
-    unknown
-  >
-): number | undefined {
-  // Check if progress is directly in the update object (using type assertion for dynamic access)
-  const updateAny = update as Record<string, unknown>;
-  if (typeof updateAny.progress === 'number') {
-    return updateAny.progress;
-  }
-
+function extractProgress(update: QueueStatus): number | undefined {
   // Try to extract progress from logs (e.g., "Progress: 45%")
-  if (update.logs) {
+  if (isQueueStatus(update) && update.status === 'IN_PROGRESS') {
     for (const log of update.logs) {
       const message = log.message || '';
       // Look for patterns like "45%", "Progress: 45%", "45% complete"
@@ -194,12 +183,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -239,12 +223,7 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -298,15 +277,10 @@ export async function generateImageWithProvider(
           sync_mode: false,
         },
         logs: true,
-        onQueueUpdate: (update) => {
+        onQueueUpdate: (update: QueueStatus) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -341,12 +315,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -380,12 +349,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -428,12 +392,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -464,12 +423,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -509,12 +463,7 @@ export async function generateImageWithProvider(
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
             // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,
@@ -546,12 +495,7 @@ export async function generateImageWithProvider(
         logs: true,
         onQueueUpdate: (update) => {
           if (params.onQueueUpdate) {
-            const progress = extractProgress(
-              update as unknown as {
-                status: string;
-                logs?: Array<{ message: string }>;
-              } & Record<string, unknown>
-            );
+            const progress = extractProgress(update);
 
             params.onQueueUpdate({
               status: update.status,

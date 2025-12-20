@@ -7,7 +7,7 @@
     "dev": "doppler run -c dev --watch -- vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",
-    "start": "doppler run -c dev --vite start",
+    "start": "bun --bun run .output/server/index.mjs",
     "preview": "doppler run -c dev --watch --vite preview",
     "build:bun": "bun run --bun vite build",
     "start:bun": "doppler run -c dev -- bun --bun .output/server/index.mjs",

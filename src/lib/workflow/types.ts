@@ -16,6 +16,7 @@ import type {
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
 /**
  * Base workflow context that includes authentication
@@ -43,7 +44,7 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
   seed?: number;
   frameId?: string; // Optional: update frame thumbnail
   /** Reference images for character consistency (auto-switches to edit endpoint) */
-  referenceImageUrls?: string[];
+  referenceImages?: ReferenceImageDescription[];
 }
 
 /**

@@ -17,7 +17,7 @@ import {
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { getGenerationChannel } from '@/lib/realtime';
-import { buildCharacterSheetPrompt } from '@/lib/services/character.service';
+import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
@@ -57,16 +57,17 @@ export const characterSheetWorkflow = createWorkflow(
           `Starting sheet generation for character ${input.characterName}${hasTalent ? ' with talent appearance' : ''}`
         );
 
-        // Build talent overrides if talent data is provided (for recasting)
+        // Build talent overrides if talent data is provided (for casting)
         const talentOverrides = hasTalent
           ? {
               sheetMetadata: input.talentMetadata,
               description: input.talentDescription,
+              sheetImageUrl: input.referenceImageUrl,
             }
           : undefined;
 
-        // Build prompt combining character traits with talent appearance
-        const sheetPrompt = buildCharacterSheetPrompt(
+        // Build prompt with character identity + talent appearance
+        const { prompt, referenceUrls } = buildCharacterSheetPrompt(
           input.characterMetadata,
           talentOverrides
         );
@@ -74,14 +75,13 @@ export const characterSheetWorkflow = createWorkflow(
 
         return {
           model,
-          prompt: sheetPrompt,
+          prompt,
           // Character sheets use landscape aspect ratio for multi-panel layout
           imageSize: 'landscape_16_9' as const,
           numImages: 1,
-          // Use talent reference image for consistency when recasting
-          referenceImageUrls: input.referenceImageUrl
-            ? [input.referenceImageUrl]
-            : undefined,
+          // Use talent reference image(s) for visual consistency
+          referenceImageUrls:
+            referenceUrls.length > 0 ? referenceUrls : undefined,
         };
       }
     );
