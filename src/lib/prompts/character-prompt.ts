@@ -33,7 +33,7 @@ function buildCharacterDescription(character: CharacterMinimal): string {
     }
   }
 
-  return `Character: ${character.name}${parts.length > 0 ? ` - ${parts.join(', ')}` : ''}`;
+  return `${character.name}${parts.length > 0 ? ` - ${parts.join(', ')}` : ''}`;
 }
 /**
  * Build reference images for characters

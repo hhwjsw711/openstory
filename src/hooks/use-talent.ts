@@ -5,6 +5,7 @@ import {
   generateTalentSheetFn,
   getTalentByIdFn,
   getTalentFn,
+  setDefaultSheetFn,
   toggleTalentFavoriteFn,
   updateTalentFn,
   uploadTalentMediaFn,
@@ -164,6 +165,24 @@ export function useGenerateTalentSheet() {
       void queryClient.invalidateQueries({
         queryKey: talentKeys.detail(variables.talentId),
       });
+    },
+  });
+}
+
+/**
+ * Hook to set a talent sheet as the default
+ */
+export function useSetDefaultSheet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { sheetId: string; talentId: string }) =>
+      setDefaultSheetFn({ data: { sheetId: data.sheetId } }),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: talentKeys.detail(variables.talentId),
+      });
+      void queryClient.invalidateQueries({ queryKey: talentKeys.lists() });
     },
   });
 }

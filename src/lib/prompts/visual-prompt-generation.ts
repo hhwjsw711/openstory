@@ -14,7 +14,8 @@ export const getVisualPromptGenerationPrompt =
 2. **NEVER** write "same as before", "the man from earlier", or any reference to previous frames.
 3. **USE CHARACTER BIBLE**: Copy exact descriptions from Character Bible into every prompt where that character appears.
 4. **APPLY DIRECTOR STYLE**: Apply specified style to lighting, color, composition, camera in every prompt.
-5. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
+5. **NO TEXT OR DIALOGUE**: NEVER include dialogue, subtitles, captions, or any text content in visual prompts. The image should contain NO written words. Dialogue is for audio only.
+6. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
 
 ## Prompt Structure
 
@@ -46,7 +47,7 @@ Track per scene:
     "prompts": {
       "visual": {
         "fullPrompt": "200-400 word COMPLETE self-contained description. Include: shot type, all subjects with COMPLETE descriptions from Character Bible, complete environment, lighting details, camera specs, composition approach, director style elements, technical specifications, and atmospheric details. NEVER reference 'the same' or 'as before' - include EVERYTHING.",
-        "negativePrompt": "blurry, low quality, distorted, amateur, watermark, text",
+        "negativePrompt": "blurry, low quality, distorted, amateur, watermark, text, subtitles, captions, dialogue text, words, letters, typography",
         "components": {
           "sceneDescription": "What is visible in this frame",
           "subject": "COMPLETE from Character Bible",

@@ -434,14 +434,12 @@ export const analyzeScriptWorkflow = createWorkflow(
           // Get characters for this scene and build enhanced prompt with references
           // sceneCharacterMap already contains only characters with completed sheets
           const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
-          const { prompt: enhancedPrompt, referenceUrls } =
-            buildPromptWithCharacterReferences(visualPrompt, charsWithSheets);
 
           // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
-            prompt: enhancedPrompt,
+            prompt: visualPrompt,
             model: imageModel,
             imageSize,
             numImages: 1,

@@ -28,6 +28,7 @@ import {
   requireTeamManagement,
   toggleTalentFavorite,
   updateTalent,
+  updateTalentSheet,
 } from '@/lib/db/helpers';
 import {
   STORAGE_BUCKETS,
@@ -277,6 +278,43 @@ export const deleteTalentSheetFn = createServerFn({ method: 'POST' })
     }
 
     return { success: true };
+  });
+
+// ============================================================================
+// Set Default Sheet
+// ============================================================================
+
+const setDefaultSheetInputSchema = z.object({
+  sheetId: ulidSchema,
+});
+
+/**
+ * Set a talent sheet as the default
+ */
+export const setDefaultSheetFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(setDefaultSheetInputSchema))
+  .handler(async ({ context, data }) => {
+    // Get sheet with talent to verify team ownership
+    const sheet = await getTalentSheetById(data.sheetId);
+
+    if (!sheet) {
+      throw new Error('Sheet not found');
+    }
+
+    const talentRecord = await getTalentById(sheet.talentId);
+
+    if (!talentRecord || talentRecord.teamId !== context.teamId) {
+      throw new Error('Sheet not found');
+    }
+
+    const updated = await updateTalentSheet(data.sheetId, { isDefault: true });
+
+    if (!updated) {
+      throw new Error('Failed to update sheet');
+    }
+
+    return updated;
   });
 
 // ============================================================================

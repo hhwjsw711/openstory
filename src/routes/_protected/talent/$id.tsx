@@ -13,6 +13,7 @@ import {
   useTalentById,
   useDeleteTalent,
   useGenerateTalentSheet,
+  useSetDefaultSheet,
   useToggleTalentFavorite,
 } from '@/hooks/use-talent';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ function TalentDetailPage() {
   const toggleFavorite = useToggleTalentFavorite();
   const deleteTalent = useDeleteTalent();
   const generateSheet = useGenerateTalentSheet();
+  const setDefaultSheet = useSetDefaultSheet();
   const {
     isGenerating: isGeneratingSheet,
     error: sheetError,
@@ -255,10 +257,25 @@ function TalentDetailPage() {
                     )}
                   </div>
 
-                  <div className="p-3">
+                  <div className="p-3 flex items-center justify-between gap-2">
                     <p className="font-medium text-sm line-clamp-1">
                       {sheet.name}
                     </p>
+                    {talent.sheets.length > 1 && !sheet.isDefault && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setDefaultSheet.mutate({
+                            sheetId: sheet.id,
+                            talentId: talent.id,
+                          })
+                        }
+                        disabled={setDefaultSheet.isPending}
+                      >
+                        Set as Default
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}
