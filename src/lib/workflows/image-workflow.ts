@@ -11,6 +11,7 @@ import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
 
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
@@ -54,14 +55,20 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         // Return the generation params so it shows in the workflow context for debugging
+        // Build the prompt with reference images
         return {
           model,
-          prompt: input.prompt,
+          prompt: buildReferenceImagePrompt(
+            input.prompt,
+            input.referenceImages ?? []
+          ).prompt,
           imageSize: input.imageSize ?? DEFAULT_IMAGE_SIZE,
           numImages: input.numImages ?? 1,
           seed: input.seed,
-          referenceImageUrls: input.referenceImageUrls,
-        };
+          referenceImageUrls:
+            input.referenceImages?.map((image) => image.referenceImageUrl) ??
+            [],
+        } satisfies ImageGenerationParams;
       }
     );
 
@@ -77,21 +84,17 @@ export const generateImageWorkflow = createWorkflow(
 
     let imageUrl: string = imageResult.imageUrls[0];
 
-    if (input.frameId && input.sequenceId && input.teamId) {
+    if (imageUrl && input.frameId && input.sequenceId && input.teamId) {
       await context.run('upload-to-storage', async () => {
-        if (
-          !input.frameId ||
-          !input.sequenceId ||
-          !input.teamId ||
-          !imageResult.imageUrls[0]
-        ) {
+        // We need to check these again as this is an async step and the values may have changed
+        if (!input.frameId || !input.sequenceId || !input.teamId || !imageUrl) {
           throw new Error('Missing required IDs for storage upload', {
             cause: JSON.stringify(imageResult),
           });
         }
 
         const result = await uploadImageToStorage({
-          imageUrl: imageResult.imageUrls[0],
+          imageUrl: imageUrl,
           teamId: input.teamId,
           sequenceId: input.sequenceId,
           frameId: input.frameId,

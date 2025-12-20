@@ -23,7 +23,10 @@ import {
   splitScriptIntoScenes,
 } from '@/lib/script';
 import type { Scene } from '@/lib/script/types';
-import { buildPromptWithReferences } from '@/lib/prompts/character-prompt';
+import {
+  buildCharacterReferenceImages,
+  buildPromptWithCharacterReferences,
+} from '@/lib/prompts/character-prompt';
 import { frameService } from '@/lib/services/frame.service';
 import type {
   AnalyzeScriptWorkflowInput,
@@ -324,7 +327,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           // sceneCharacterMap already contains only characters with completed sheets
           const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
           const { prompt: enhancedPrompt, referenceUrls } =
-            buildPromptWithReferences(visualPrompt, charsWithSheets);
+            buildPromptWithCharacterReferences(visualPrompt, charsWithSheets);
 
           // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
@@ -338,7 +341,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             frameId: frame?.frameId,
             sequenceId,
             // Pass character reference images for consistency
-            referenceImageUrls: referenceUrls,
+            referenceImages: buildCharacterReferenceImages(charsWithSheets),
           };
 
           const {

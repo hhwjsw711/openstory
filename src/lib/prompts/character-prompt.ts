@@ -10,26 +10,18 @@
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 
 import type { CharacterMinimal } from '@/lib/db/schema';
-
-/**
- * Result of building a prompt with character references
- */
-type PromptWithReferences = {
-  /** Enhanced prompt with character reference mapping appended */
-  prompt: string;
-  /** Array of character sheet URLs in order (for image_urls parameter) */
-  referenceUrls: string[];
-};
-
+import {
+  type PromptWithReferenceImages,
+  type ReferenceImageDescription,
+  buildReferenceImagePrompt,
+} from './reference-image-prompt';
 /**
  * Build a concise character description from character data
  *
  * @param character - Character with flattened fields
  * @returns Concise description string
  */
-function buildCharacterDescription(
-  character: Pick<CharacterMinimal, 'physicalDescription'>
-): string {
+function buildCharacterDescription(character: CharacterMinimal): string {
   const parts: string[] = [];
 
   if (character.physicalDescription) {
@@ -41,7 +33,27 @@ function buildCharacterDescription(
     }
   }
 
-  return parts.join(', ');
+  return `Character: ${character.name}${parts.length > 0 ? ` - ${parts.join(', ')}` : ''}`;
+}
+/**
+ * Build reference images for characters
+ * @param characters - Array of characters
+ * @returns Array of reference images
+ * @example
+ * ```ts
+ * const referenceImages = buildCharacterReferenceImages([jackCharacter, sarahCharacter]);
+ * // referenceImages = [jackReferenceImage, sarahReferenceImage]
+ * ```
+ */
+export function buildCharacterReferenceImages(
+  characters: CharacterMinimal[]
+): ReferenceImageDescription[] {
+  return characters
+    .filter((c) => c.sheetImageUrl)
+    .map((c) => ({
+      referenceImageUrl: c.sheetImageUrl ?? '',
+      description: buildCharacterDescription(c),
+    }));
 }
 
 /**
@@ -64,44 +76,14 @@ function buildCharacterDescription(
  * // referenceUrls = [jackSheetUrl, sarahSheetUrl]
  * ```
  */
-export function buildPromptWithReferences(
+export function buildPromptWithCharacterReferences(
   basePrompt: string,
   characters: CharacterMinimal[]
-): PromptWithReferences {
-  // Filter to only characters with completed sheets
-  const charactersWithSheets = characters.filter(
-    (c) => c.sheetImageUrl && c.sheetStatus === 'completed'
+): PromptWithReferenceImages {
+  return buildReferenceImagePrompt(
+    basePrompt,
+    buildCharacterReferenceImages(characters)
   );
-
-  if (charactersWithSheets.length === 0) {
-    return {
-      prompt: basePrompt,
-      referenceUrls: [],
-    };
-  }
-
-  // Build reference mapping
-  const referenceLines = charactersWithSheets.map((char, index) => {
-    const description = buildCharacterDescription(char);
-    return `- Image ${index + 1}: ${char.name}${description ? ` - ${description}` : ''}`;
-  });
-
-  // Append reference section to prompt
-  const enhancedPrompt = `${basePrompt}
-
-CHARACTER REFERENCES (match to image_urls array):
-${referenceLines.join('\n')}
-
-Generate the scene with characters matching their reference images exactly.`;
-
-  const referenceUrls = charactersWithSheets
-    .map((c) => c.sheetImageUrl)
-    .filter((url): url is string => url !== null);
-
-  return {
-    prompt: enhancedPrompt,
-    referenceUrls,
-  };
 }
 
 /**

@@ -26,6 +26,8 @@ import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
 import type { Character } from '@/lib/db/schema';
+import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
 // ============================================================================
 // Helpers
@@ -35,10 +37,10 @@ import type { Character } from '@/lib/db/schema';
  * Get reference image URLs for characters in a frame
  * Matches characters by continuity tags and returns their sheet URLs
  */
-function getCharacterReferenceUrls(
+function getSceneCharacterReferenceImages(
   allCharacters: Character[],
   characterTags: string[]
-): string[] {
+): ReferenceImageDescription[] {
   if (characterTags.length === 0) return [];
 
   const matchedCharacters = allCharacters.filter((char) => {
@@ -55,9 +57,7 @@ function getCharacterReferenceUrls(
     });
   });
 
-  return matchedCharacters
-    .filter((c) => c.sheetImageUrl && c.sheetStatus === 'completed')
-    .map((c) => c.sheetImageUrl as string);
+  return buildCharacterReferenceImages(matchedCharacters);
 }
 
 // ============================================================================
@@ -127,7 +127,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
     // Get character reference URLs for this frame (without modifying the prompt)
     const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
-    const referenceUrls = getCharacterReferenceUrls(
+    const referenceImages = getSceneCharacterReferenceImages(
       allCharacters,
       characterTags
     );
@@ -145,7 +145,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       numImages: 1,
       frameId: frame.id,
       sequenceId: sequence.id,
-      referenceImageUrls: referenceUrls.length > 0 ? referenceUrls : undefined,
+      referenceImages,
     };
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {

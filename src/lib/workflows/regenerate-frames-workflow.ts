@@ -12,7 +12,10 @@ import { getSequenceById } from '@/lib/db/helpers/queries';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
 import type { CharacterMinimal, Frame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { buildPromptWithReferences } from '@/lib/prompts/character-prompt';
+import {
+  buildCharacterReferenceImages,
+  buildPromptWithCharacterReferences,
+} from '@/lib/prompts/character-prompt';
 import type {
   ImageWorkflowInput,
   RegenerateFramesWorkflowInput,
@@ -135,13 +138,10 @@ export const regenerateFramesWorkflow = createWorkflow(
     const imageResults: FrameResult[] = await Promise.all(
       framesToRegenerate.map(async (frame) => {
         // Get visual prompt from frame metadata
-        const visualPrompt = getVisualPrompt(frame);
-        if (!visualPrompt) {
-          return {
-            frameId: frame.id,
-            success: false,
-            error: 'No prompt available',
-          };
+        if (!frame.imagePrompt) {
+          throw new WorkflowValidationError(
+            `Frame ${frame.id} has no image prompt`
+          );
         }
 
         // Match characters to this frame's continuity tags
@@ -151,21 +151,17 @@ export const regenerateFramesWorkflow = createWorkflow(
           characterTags
         );
 
-        // Build enhanced prompt with character references
-        const { prompt: enhancedPrompt, referenceUrls } =
-          buildPromptWithReferences(visualPrompt, frameCharacters);
-
         // Invoke image workflow
         const imageInput: ImageWorkflowInput = {
           userId,
           teamId,
           sequenceId,
           frameId: frame.id,
-          prompt: enhancedPrompt,
+          prompt: frame.imagePrompt,
           model: imageModel,
           imageSize,
           numImages: 1,
-          referenceImageUrls: referenceUrls,
+          referenceImages: buildCharacterReferenceImages(frameCharacters),
         };
 
         const { body, isFailed, isCanceled } = await context.invoke('image', {
