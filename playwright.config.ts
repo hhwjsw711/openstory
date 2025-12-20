@@ -37,10 +37,13 @@ export default defineConfig({
     },
   ],
 
-  // Run dev server before tests (use doppler for secrets, override DB)
+  // Run dev server before tests
+  // CI: secrets synced via Doppler integration, just run directly
+  // Local: use doppler run to inject secrets
   webServer: {
-    command:
-      'doppler run --command "DATABASE_URL=file:test.db BETTER_AUTH_SECRET=e2e-test-secret-min-32-chars-long bun dev:e2e"',
+    command: process.env.CI
+      ? 'DATABASE_URL=file:test.db BETTER_AUTH_SECRET=e2e-test-secret-min-32-chars-long bun dev:e2e'
+      : 'doppler run --command "DATABASE_URL=file:test.db BETTER_AUTH_SECRET=e2e-test-secret-min-32-chars-long bun dev:e2e"',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
