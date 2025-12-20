@@ -23,6 +23,18 @@ type StreamingFrame = {
   videoUrl?: string;
 };
 
+type TalentMatch = {
+  characterId: string;
+  characterName: string;
+  talentId: string;
+  talentName: string;
+};
+
+type UnusedTalent = {
+  ids: string[];
+  names: string[];
+};
+
 export type GenerationPhase = {
   phase: number;
   phaseName: string;
@@ -44,6 +56,10 @@ export type GenerationStreamState = {
   isFailed: boolean;
   /** Error message if generation failed */
   error?: string;
+  /** Talent matched to characters during generation */
+  talentMatches: TalentMatch[];
+  /** Talent that weren't matched to any character */
+  unusedTalent: UnusedTalent | null;
 };
 
 type GenerationStreamAction =
@@ -68,6 +84,11 @@ type GenerationStreamAction =
   | { type: 'COMPLETE'; payload: { sequenceId: string } }
   | { type: 'FAILED'; payload: { message: string } }
   | { type: 'ERROR'; payload: { message: string; phase?: number } }
+  | { type: 'TALENT_MATCHED'; payload: { matches: TalentMatch[] } }
+  | {
+      type: 'TALENT_UNMATCHED';
+      payload: { unusedTalentIds: string[]; unusedTalentNames: string[] };
+    }
   | { type: 'RESET' };
 
 const PHASE_NAMES = [
@@ -91,6 +112,8 @@ export const initialGenerationStreamState: GenerationStreamState = {
   frames: new Map(),
   isComplete: false,
   isFailed: false,
+  talentMatches: [],
+  unusedTalent: null,
 };
 
 export function generationStreamReducer(
@@ -211,6 +234,21 @@ export function generationStreamReducer(
       return {
         ...state,
         error: action.payload.message,
+      };
+
+    case 'TALENT_MATCHED':
+      return {
+        ...state,
+        talentMatches: action.payload.matches,
+      };
+
+    case 'TALENT_UNMATCHED':
+      return {
+        ...state,
+        unusedTalent: {
+          ids: action.payload.unusedTalentIds,
+          names: action.payload.unusedTalentNames,
+        },
       };
 
     case 'RESET':

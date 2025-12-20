@@ -96,6 +96,7 @@ export function useCreateSequence() {
           imageModel: input.imageModel,
           videoModel: input.videoModel,
           autoGenerateMotion: input.autoGenerateMotion,
+          suggestedTalentIds: input.suggestedTalentIds,
         },
       });
 

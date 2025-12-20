@@ -24,7 +24,11 @@ import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { useGenerateVariants, useSelectVariant } from '@/hooks/use-frames';
+import {
+  useGenerateVariants,
+  useSelectVariant,
+  frameKeys,
+} from '@/hooks/use-frames';
 import { SceneCastTab } from './scene-cast-tab';
 import { VariantSelector } from './variant-selector';
 
@@ -204,7 +208,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     // Optimistic update for frame list query
     queryClient.setQueryData<Frame[]>(
-      ['frames', frame.sequenceId],
+      frameKeys.list(frame.sequenceId),
       (oldFrames) => {
         if (!oldFrames) return oldFrames;
         return oldFrames.map((f) =>
@@ -221,7 +225,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     );
 
     // Optimistic update for individual frame query
-    queryClient.setQueryData<Frame>(['frame', frame.id], (oldFrame) => {
+    queryClient.setQueryData<Frame>(frameKeys.detail(frame.id), (oldFrame) => {
       if (!oldFrame) return oldFrame;
       return {
         ...oldFrame,
@@ -249,9 +253,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       // Rollback on error - set status to failed
       await queryClient.invalidateQueries({
-        queryKey: ['frames', frame.sequenceId],
+        queryKey: frameKeys.list(frame.sequenceId),
       });
-      await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frame.id),
+      });
     }
   }, [
     frame,
@@ -268,7 +274,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     // Optimistic update for frame list query
     queryClient.setQueryData<Frame[]>(
-      ['frames', frame.sequenceId],
+      frameKeys.list(frame.sequenceId),
       (oldFrames) => {
         if (!oldFrames) return oldFrames;
         return oldFrames.map((f) =>
@@ -285,7 +291,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     );
 
     // Optimistic update for individual frame query
-    queryClient.setQueryData<Frame>(['frame', frame.id], (oldFrame) => {
+    queryClient.setQueryData<Frame>(frameKeys.detail(frame.id), (oldFrame) => {
       if (!oldFrame) return oldFrame;
       return {
         ...oldFrame,
@@ -311,9 +317,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       // Rollback on error
       await queryClient.invalidateQueries({
-        queryKey: ['frames', frame.sequenceId],
+        queryKey: frameKeys.list(frame.sequenceId),
       });
-      await queryClient.invalidateQueries({ queryKey: ['frame', frame.id] });
+      await queryClient.invalidateQueries({
+        queryKey: frameKeys.detail(frame.id),
+      });
     }
   }, [
     frame,

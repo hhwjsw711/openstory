@@ -21,7 +21,7 @@ import { sequences } from '../schema';
 
 type CreateSequenceParams = Omit<
   Required<CreateSequenceInput>,
-  'analysisModels' | 'analysisDurationMs' | 'metadata'
+  'analysisModels' | 'analysisDurationMs' | 'metadata' | 'suggestedTalentIds'
 > & {
   analysisModel: AnalysisModelId;
   userId: string;

@@ -99,6 +99,115 @@ export async function getTeamTalent(
     defaultSheets.map((s) => [s.talentId, s])
   );
 
+  // For talent without a default sheet, get their most recent sheet as fallback
+  const talentWithoutDefault = talentIds.filter((id) => !sheetMap.has(id));
+  if (talentWithoutDefault.length > 0) {
+    const fallbackSheets = await db
+      .select()
+      .from(talentSheets)
+      .where(
+        sql`${talentSheets.talentId} IN (${sql.join(
+          talentWithoutDefault.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      )
+      .orderBy(desc(talentSheets.createdAt));
+
+    // Take the first (most recent) sheet for each talent
+    for (const sheet of fallbackSheets) {
+      if (!sheetMap.has(sheet.talentId)) {
+        sheetMap.set(sheet.talentId, sheet);
+      }
+    }
+  }
+
+  return results.map((r) => ({
+    ...r.talent,
+    sheetCount: r.sheetCount,
+    sheets: [],
+    defaultSheet: sheetMap.get(r.talent.id) ?? null,
+  }));
+}
+
+/**
+ * Get multiple talent by IDs with their default sheets
+ * Used for talent matching during sequence generation
+ */
+export async function getTalentByIds(
+  talentIds: string[],
+  teamId: string
+): Promise<TalentWithSheets[]> {
+  if (talentIds.length === 0) {
+    return [];
+  }
+
+  const db = getDb();
+
+  // Get talent that belong to the team
+  const results = await db
+    .select({
+      talent: talent,
+      sheetCount: sql<number>`(
+        SELECT COUNT(*) FROM talent_sheets
+        WHERE talent_sheets.talent_id = ${talent.id}
+      )`.as('sheet_count'),
+    })
+    .from(talent)
+    .where(
+      and(
+        eq(talent.teamId, teamId),
+        sql`${talent.id} IN (${sql.join(
+          talentIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      )
+    );
+
+  if (results.length === 0) {
+    return [];
+  }
+
+  // Get default sheets for all fetched talent
+  const fetchedIds = results.map((r) => r.talent.id);
+  const defaultSheets = await db
+    .select()
+    .from(talentSheets)
+    .where(
+      and(
+        sql`${talentSheets.talentId} IN (${sql.join(
+          fetchedIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`,
+        eq(talentSheets.isDefault, true)
+      )
+    );
+
+  const sheetMap = new Map<string, TalentSheet>(
+    defaultSheets.map((s) => [s.talentId, s])
+  );
+
+  // For talent without a default sheet, get their most recent sheet as fallback
+  const talentWithoutDefault = fetchedIds.filter((id) => !sheetMap.has(id));
+  if (talentWithoutDefault.length > 0) {
+    const fallbackSheets = await db
+      .select()
+      .from(talentSheets)
+      .where(
+        sql`${talentSheets.talentId} IN (${sql.join(
+          talentWithoutDefault.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      )
+      .orderBy(desc(talentSheets.createdAt));
+
+    // Take the first (most recent) sheet for each talent
+    for (const sheet of fallbackSheets) {
+      if (!sheetMap.has(sheet.talentId)) {
+        sheetMap.set(sheet.talentId, sheet);
+      }
+    }
+  }
+
   return results.map((r) => ({
     ...r.talent,
     sheetCount: r.sheetCount,
@@ -182,21 +291,36 @@ export async function getTalentSheetById(
 
 /**
  * Create a talent sheet
+ * Auto-defaults if this is the first sheet for the talent
  */
 export async function createTalentSheet(
   data: NewTalentSheet
 ): Promise<TalentSheet> {
   const db = getDb();
 
-  // If this is the default sheet, unset other defaults first
-  if (data.isDefault) {
+  // Count existing sheets for this talent
+  const existingSheets = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(talentSheets)
+    .where(eq(talentSheets.talentId, data.talentId));
+
+  const sheetCount = existingSheets[0]?.count ?? 0;
+
+  // Auto-default if first sheet, or use explicit isDefault value
+  const shouldBeDefault = sheetCount === 0 || data.isDefault === true;
+
+  // If setting as default and other sheets exist, unset them first
+  if (shouldBeDefault && sheetCount > 0) {
     await db
       .update(talentSheets)
       .set({ isDefault: false })
       .where(eq(talentSheets.talentId, data.talentId));
   }
 
-  const [sheet] = await db.insert(talentSheets).values(data).returning();
+  const [sheet] = await db
+    .insert(talentSheets)
+    .values({ ...data, isDefault: shouldBeDefault })
+    .returning();
   return sheet;
 }
 
@@ -231,12 +355,38 @@ export async function updateTalentSheet(
 
 /**
  * Delete a talent sheet
+ * Auto-promotes remaining sheet to default if deleting the current default
  */
 export async function deleteTalentSheet(sheetId: string): Promise<boolean> {
-  const result = await getDb()
+  const db = getDb();
+
+  // Get the sheet to be deleted
+  const sheet = await getTalentSheetById(sheetId);
+  if (!sheet) return false;
+
+  // Delete the sheet
+  const result = await db
     .delete(talentSheets)
     .where(eq(talentSheets.id, sheetId));
-  return (result.rowsAffected ?? 0) > 0;
+
+  if ((result.rowsAffected ?? 0) === 0) return false;
+
+  // If deleted sheet was default, promote remaining sheet (if only one left)
+  if (sheet.isDefault) {
+    const remaining = await db
+      .select()
+      .from(talentSheets)
+      .where(eq(talentSheets.talentId, sheet.talentId));
+
+    if (remaining.length === 1) {
+      await db
+        .update(talentSheets)
+        .set({ isDefault: true, updatedAt: new Date() })
+        .where(eq(talentSheets.id, remaining[0].id));
+    }
+  }
+
+  return true;
 }
 
 // ============================================================================

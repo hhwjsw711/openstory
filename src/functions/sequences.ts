@@ -92,7 +92,13 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       throw new Error('Style ID and aspect ratio are required');
     }
 
-    const { analysisModels, imageModel, videoModel, autoGenerateMotion } = data;
+    const {
+      analysisModels,
+      imageModel,
+      videoModel,
+      autoGenerateMotion,
+      suggestedTalentIds,
+    } = data;
 
     // Create sequences in parallel for each selected model
     const sequences = await Promise.all(
@@ -124,6 +130,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             regenerateAll: true,
           },
           autoGenerateMotion: autoGenerateMotion ?? false,
+          suggestedTalentIds,
         };
 
         await triggerWorkflow('/storyboard', workflowInput, {

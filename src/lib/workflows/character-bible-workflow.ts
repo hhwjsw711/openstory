@@ -3,6 +3,9 @@
  *
  * Generates character reference sheets (full body turnaround) for visual consistency.
  * These sheets are later used as reference images when generating scene images.
+ *
+ * When talent matches are provided, uses the talent's appearance and reference image
+ * to maintain consistency with the cast.
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
@@ -10,7 +13,10 @@ import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
-import type { CharacterBibleWorkflowInput } from '@/lib/workflow';
+import type {
+  CharacterBibleWorkflowInput,
+  TalentCharacterMatch,
+} from '@/lib/workflow';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from '@/lib/db/id';
@@ -22,6 +28,12 @@ export const characterBibleWorkflow = createWorkflow(
     context: WorkflowContext<CharacterBibleWorkflowInput>
   ): Promise<CharacterMinimal[]> => {
     const input = context.requestPayload;
+    const { talentMatches = [] } = input;
+
+    // Create lookup map for talent matches
+    const matchMap = new Map<string, TalentCharacterMatch>(
+      talentMatches.map((m) => [m.characterId, m])
+    );
 
     // Emit Phase 3 start
     await context.run('character-bible-start', async () => {
@@ -37,8 +49,18 @@ export const characterBibleWorkflow = createWorkflow(
     const seqCharacters: CharacterMinimal[] = await Promise.all(
       input.characterBible.map(async (character) => {
         return await context.run('character-sheet', async () => {
-          // Build character sheet prompt (no talent overrides for initial generation)
-          const { prompt } = buildCharacterSheetPrompt(character);
+          // Check if character has a talent match
+          const talentMatch = matchMap.get(character.characterId);
+
+          // Build character sheet prompt (with talent overrides if matched)
+          // Include talent name as description so AI can leverage its knowledge of famous people
+          const { prompt, referenceUrls } = talentMatch
+            ? buildCharacterSheetPrompt(character, {
+                sheetMetadata: talentMatch.sheetMetadata,
+                description: `This character should look like ${talentMatch.talentName}`,
+                sheetImageUrl: talentMatch.sheetImageUrl,
+              })
+            : buildCharacterSheetPrompt(character);
 
           // Generate character sheet image
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
@@ -49,6 +71,8 @@ export const characterBibleWorkflow = createWorkflow(
             imageSize: 'landscape_16_9' as const,
             numImages: 1,
             resolution: '2K' as const,
+            referenceImageUrls:
+              referenceUrls.length > 0 ? referenceUrls : undefined,
           });
 
           const imageUrl = imageResult.imageUrls[0];
@@ -106,6 +130,8 @@ export const characterBibleWorkflow = createWorkflow(
               sheetImageUrl: storageResult.publicUrl,
               sheetImagePath: storageResult.path,
               sheetStatus: 'completed' as const,
+              // Talent link (if matched)
+              talentId: talentMatch?.talentId ?? null,
             });
             return {
               id: created.id,

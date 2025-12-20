@@ -1,6 +1,7 @@
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
+import { TalentSuggestionSelector } from '@/components/talent/talent-suggestion-selector';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,7 +10,6 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { Textarea } from '@/components/ui/textarea';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useStyles } from '@/hooks/use-styles';
@@ -97,6 +97,7 @@ export const ScriptView: FC<{
   const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(
     isEditing ? false : savedSettings.autoGenerateMotion
   );
+  const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -195,6 +196,8 @@ export const ScriptView: FC<{
           imageModel,
           videoModel: motionModel,
           autoGenerateMotion,
+          suggestedTalentIds:
+            selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
         },
         {
           onSuccess: (result) => {
@@ -228,7 +231,7 @@ export const ScriptView: FC<{
         className="flex flex-col min-h-0 max-h-full"
       >
         {/* Control bar */}
-        <CardHeader className="shrink-0 flex items-start gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
+        <CardHeader className="shrink-0 flex items-start justify-between gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
           <GenerationSettings
             aspectRatio={aspectRatio}
             analysisModels={analysisModels}
@@ -243,6 +246,14 @@ export const ScriptView: FC<{
             disabled={loading}
             singleSelectAnalysis={!!sequence?.id}
           />
+          {/* Talent suggestion selector - only shown when creating new sequence */}
+          {!isEditing && (
+            <TalentSuggestionSelector
+              selectedTalentIds={selectedTalentIds}
+              onSelectionChange={setSelectedTalentIds}
+              disabled={loading}
+            />
+          )}
         </CardHeader>
 
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">

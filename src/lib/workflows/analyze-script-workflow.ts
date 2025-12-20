@@ -28,10 +28,13 @@ import {
   buildPromptWithCharacterReferences,
 } from '@/lib/prompts/character-prompt';
 import { frameService } from '@/lib/services/frame.service';
+import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
+import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
   MotionWorkflowInput,
+  TalentCharacterMatch,
 } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { FlowControl } from '@upstash/qstash';
@@ -85,6 +88,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       imageModel,
       videoModel,
       autoGenerateMotion = false,
+      suggestedTalentIds,
     } = input;
 
     // Flow control for image and motion generation
@@ -253,6 +257,109 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
+    // ------------------------------------------------------------
+    // Match suggested talent to extracted characters (if provided)
+    const talentMatches: TalentCharacterMatch[] = await context.run(
+      'match-talent-to-characters',
+      async () => {
+        console.log('[TalentMatching] Starting talent matching step');
+        console.log('[TalentMatching] suggestedTalentIds:', suggestedTalentIds);
+        console.log('[TalentMatching] teamId:', input.teamId);
+        console.log(
+          '[TalentMatching] characterBible count:',
+          characterBible.length
+        );
+
+        // Skip if no suggested talent
+        if (
+          !suggestedTalentIds ||
+          suggestedTalentIds.length === 0 ||
+          !input.teamId
+        ) {
+          console.log(
+            '[TalentMatching] Skipping - no suggested talent or teamId'
+          );
+          return [];
+        }
+
+        // Fetch suggested talent with their default sheets
+        const talentList = await getTalentByIds(
+          suggestedTalentIds,
+          input.teamId
+        );
+
+        console.log(
+          '[TalentMatching] Fetched talent count:',
+          talentList.length
+        );
+        console.log(
+          '[TalentMatching] Talent details:',
+          talentList.map((t) => ({
+            id: t.id,
+            name: t.name,
+            hasDefaultSheet: !!t.defaultSheet,
+            defaultSheetImageUrl: t.defaultSheet?.imageUrl,
+            defaultSheetHasMetadata: !!t.defaultSheet?.metadata,
+          }))
+        );
+
+        if (talentList.length === 0) {
+          console.log('[TalentMatching] No talent fetched from DB');
+          return [];
+        }
+
+        // Match talent to characters using AI
+        const matchResult = await matchTalentToCharacters(
+          characterBible,
+          talentList,
+          { model: analysisModelId }
+        );
+
+        console.log('[TalentMatching] Match result:', {
+          matchCount: matchResult.matches.length,
+          matches: matchResult.matches.map((m) => ({
+            charId: m.characterId,
+            talentName: m.talentName,
+          })),
+          unusedCount: matchResult.unusedTalentIds.length,
+          unusedNames: matchResult.unusedTalentNames,
+        });
+
+        // Emit matched talent event
+        if (matchResult.matches.length > 0) {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.talent:matched',
+            {
+              matches: matchResult.matches.map((m) => {
+                const char = characterBible.find(
+                  (c) => c.characterId === m.characterId
+                );
+                return {
+                  characterId: m.characterId,
+                  characterName: char?.name ?? m.characterId,
+                  talentId: m.talentId,
+                  talentName: m.talentName,
+                };
+              }),
+            }
+          );
+        }
+
+        // Emit unused talent event
+        if (matchResult.unusedTalentIds.length > 0) {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.talent:unmatched',
+            {
+              unusedTalentIds: matchResult.unusedTalentIds,
+              unusedTalentNames: matchResult.unusedTalentNames,
+            }
+          );
+        }
+
+        return matchResult.matches;
+      }
+    );
+
     // Characters with completed sheets - populated after character sheet generation
     const [{ body: charactersWithSheets }, { body: scenesWithVisualPrompts }] =
       await Promise.all([
@@ -263,6 +370,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             userId: input.userId,
             teamId: input.teamId,
             characterBible,
+            talentMatches,
           },
         }),
         context.invoke('visual-prompts', {
@@ -326,14 +434,12 @@ export const analyzeScriptWorkflow = createWorkflow(
           // Get characters for this scene and build enhanced prompt with references
           // sceneCharacterMap already contains only characters with completed sheets
           const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
-          const { prompt: enhancedPrompt, referenceUrls } =
-            buildPromptWithCharacterReferences(visualPrompt, charsWithSheets);
 
           // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
             userId: input.userId,
             teamId: input.teamId,
-            prompt: enhancedPrompt,
+            prompt: visualPrompt,
             model: imageModel,
             imageSize,
             numImages: 1,

@@ -141,6 +141,30 @@ export function useGenerationStream(sequenceId?: string) {
             payload: data as { message: string; phase?: number },
           });
           break;
+
+        case 'generation.talent:matched':
+          dispatch({
+            type: 'TALENT_MATCHED',
+            payload: data as {
+              matches: Array<{
+                characterId: string;
+                characterName: string;
+                talentId: string;
+                talentName: string;
+              }>;
+            },
+          });
+          break;
+
+        case 'generation.talent:unmatched':
+          dispatch({
+            type: 'TALENT_UNMATCHED',
+            payload: data as {
+              unusedTalentIds: string[];
+              unusedTalentNames: string[];
+            },
+          });
+          break;
       }
     },
     [queryClient, sequenceId]
@@ -159,6 +183,8 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.image:progress',
       'generation.video:progress',
       'generation.variant-image:progress',
+      'generation.talent:matched',
+      'generation.talent:unmatched',
       'generation.complete',
       'generation.failed',
       'generation.updated',
