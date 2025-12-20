@@ -8,12 +8,8 @@
  */
 
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
-import {
-  getSequenceCharacters as getSequenceCharactersHelper,
-  getSequenceCharactersWithSheets as getSequenceCharactersWithSheetsHelper,
-  updateCharacterSheet as updateCharacterSheetHelper,
-} from '@/lib/db/helpers/sequence-characters';
-import type { Character, CharacterMinimal } from '@/lib/db/schema';
+
+import type { CharacterMinimal } from '@/lib/db/schema';
 
 /**
  * Result of building a prompt with character references
@@ -26,100 +22,14 @@ type PromptWithReferences = {
 };
 
 /**
- * Get all characters for a sequence
- *
- * @param sequenceId - The sequence ID
- * @returns Array of sequence characters
- */
-async function getSequenceCharacters(sequenceId: string): Promise<Character[]> {
-  return await getSequenceCharactersHelper(sequenceId);
-}
-
-/**
- * Get characters with completed reference sheets for a sequence
- *
- * @param sequenceId - The sequence ID
- * @returns Array of sequence characters with completed sheets
- */
-async function getSequenceCharactersWithSheets(
-  sequenceId: string
-): Promise<Character[]> {
-  return await getSequenceCharactersWithSheetsHelper(sequenceId);
-}
-
-/**
- * Match scene characters by continuity tags
- *
- * Matches characters from `scene.continuity.characterTags` to sequence characters.
- * Tags can be in formats like:
- * - "char_001: Jack-denim-jacket-weathered"
- * - "Jack - 35 year old detective"
- *
- * @param sequenceId - The sequence ID
- * @param characterTags - Array of character tag strings from scene continuity
- * @returns Array of matched sequence characters
- */
-async function getCharactersForScene(
-  sequenceId: string,
-  characterTags: string[]
-): Promise<Character[]> {
-  if (characterTags.length === 0) {
-    return [];
-  }
-
-  const allCharacters = await getSequenceCharactersHelper(sequenceId);
-
-  return allCharacters.filter((char) => {
-    const consistencyTag = (char.consistencyTag ?? '').toLowerCase();
-    const charName = char.name.toLowerCase();
-
-    // Check each tag for a match
-    return characterTags.some((tag) => {
-      const tagLower = tag.toLowerCase();
-
-      // Match by consistency tag (e.g., "char_001: Jack-denim-jacket-weathered")
-      if (consistencyTag && tagLower.includes(consistencyTag)) {
-        return true;
-      }
-
-      // Match by character name appearing in the tag
-      if (tagLower.includes(charName)) {
-        return true;
-      }
-
-      // Match by characterId (e.g., "char_001")
-      if (tagLower.includes(char.characterId.toLowerCase())) {
-        return true;
-      }
-
-      return false;
-    });
-  });
-}
-
-/**
- * Update character sheet image
- *
- * @param id - The sequence character ID
- * @param sheetImageUrl - The public URL of the character sheet image
- * @param sheetImagePath - The R2 storage path
- * @returns Updated sequence character
- */
-async function updateSheet(
-  id: string,
-  sheetImageUrl: string,
-  sheetImagePath: string
-): Promise<Character> {
-  return await updateCharacterSheetHelper(id, sheetImageUrl, sheetImagePath);
-}
-
-/**
  * Build a concise character description from character data
  *
  * @param character - Character with flattened fields
  * @returns Concise description string
  */
-function buildCharacterDescription(character: CharacterMinimal): string {
+function buildCharacterDescription(
+  character: Pick<CharacterMinimal, 'physicalDescription'>
+): string {
   const parts: string[] = [];
 
   if (character.physicalDescription) {
@@ -195,13 +105,25 @@ Generate the scene with characters matching their reference images exactly.`;
 }
 
 /**
- * Talent appearance overrides for character sheet generation
+ * Talent appearance data for character sheet generation
  */
 type TalentOverrides = {
   /** Talent sheet metadata containing physical appearance data */
   sheetMetadata?: CharacterBibleEntry;
-  /** Talent description to append to physical appearance */
+  /** Talent description/notes to include in prompt */
   description?: string;
+  /** Talent sheet image URL to use as reference */
+  sheetImageUrl?: string;
+};
+
+/**
+ * Result of building a character sheet prompt
+ */
+type CharacterSheetPromptResult = {
+  /** The generated prompt text */
+  prompt: string;
+  /** Array of reference image URLs (e.g., talent sheet) */
+  referenceUrls: string[];
 };
 
 /**
@@ -213,37 +135,45 @@ type TalentOverrides = {
  * - Lower-central: Posed full-body
  * - Right: Large close-up headshot
  *
- * When talentOverrides is provided (during recasting), the script's character
- * identity (name, role) is preserved, but physical appearance is taken from
- * the talent's sheet metadata.
+ * When talentOverrides is provided (during casting), the character's script-derived
+ * identity is preserved, and the talent's appearance is added as supplementary
+ * information for visual consistency.
  *
  * @param entry - The character bible entry from script analysis
- * @param talentOverrides - Optional talent data for recasting
- * @returns Full character sheet generation prompt
+ * @param talentOverrides - Optional talent data for casting
+ * @returns Prompt and reference URLs for image generation
  */
 export function buildCharacterSheetPrompt(
   entry: CharacterBibleEntry,
   talentOverrides?: TalentOverrides
-): string {
-  // When recasting with talent data, use talent's appearance but keep script's character identity
+): CharacterSheetPromptResult {
   const talentMeta = talentOverrides?.sheetMetadata;
+  const hasTalent = !!(talentMeta || talentOverrides?.description);
 
-  // Physical appearance: prefer talent data when available
+  // Collect reference URLs
+  const referenceUrls: string[] = [];
+  if (talentOverrides?.sheetImageUrl) {
+    referenceUrls.push(talentOverrides.sheetImageUrl);
+  }
+
+  // When a talent is cast, think of it like dressing an actor for a role:
+  // - Physical appearance comes from the TALENT (that's who they are)
+  // - Costume/wardrobe comes from the CHARACTER (that's the role)
+  // - Makeup can achieve some character traits (scars, aging) but not change fundamentals
+
+  // Physical attributes: use talent's if cast, otherwise character's
   const age = talentMeta?.age ?? entry.age;
   const gender = talentMeta?.gender ?? entry.gender;
   const ethnicity = talentMeta?.ethnicity ?? entry.ethnicity;
-
-  // Build physical description, combining talent appearance with any talent description
-  let physicalDescription =
+  const physicalDescription =
     talentMeta?.physicalDescription ?? entry.physicalDescription;
-  if (talentOverrides?.description) {
-    physicalDescription = `${physicalDescription}\n\nTalent Reference: ${talentOverrides.description}`;
-  }
 
-  const standardClothing =
-    talentMeta?.standardClothing ?? entry.standardClothing;
-  const distinguishingFeatures =
-    talentMeta?.distinguishingFeatures ?? entry.distinguishingFeatures;
+  // Costume/wardrobe: always from the character (the role they're playing)
+  const standardClothing = entry.standardClothing;
+
+  // Distinguishing features: character's features as makeup/styling notes
+  // These get applied on top of the talent's natural appearance
+  const characterFeatures = entry.distinguishingFeatures;
 
   const ageStr = age
     ? typeof age === 'number'
@@ -254,11 +184,30 @@ export function buildCharacterSheetPrompt(
   const genderLine = gender ? `Gender: ${gender}` : '';
   const ethnicityLine = ethnicity ? `Ethnicity: ${ethnicity}` : '';
 
-  const distinguishingSection = distinguishingFeatures
-    ? `Distinguishing Features:\n${distinguishingFeatures}`
-    : '';
+  // Build the makeup/styling section for character-specific features
+  let makeupStylingSection = '';
+  if (hasTalent && characterFeatures) {
+    makeupStylingSection = `
+Makeup & Styling (apply to achieve the character look):
+${characterFeatures}`;
+  } else if (characterFeatures) {
+    makeupStylingSection = `Distinguishing Features:\n${characterFeatures}`;
+  }
 
-  return `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
+  // Build reference image instruction
+  let referenceInstruction = '';
+  if (hasTalent && referenceUrls.length > 0) {
+    const talentNotes = talentOverrides?.description
+      ? `\nTalent notes: ${talentOverrides.description}`
+      : '';
+    referenceInstruction = `
+
+IMPORTANT - Actor Reference:
+Match the provided reference image exactly for the actor's face, build, and physical features. The reference shows the talent being dressed and styled for this role. Apply the costume and any makeup/styling described above to transform them into the character.${talentNotes}`;
+  }
+
+  const prompt =
+    `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
 
 Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
 
@@ -279,10 +228,10 @@ ${[ageStr, genderLine, ethnicityLine].filter(Boolean).join('\n')}
 Physical Appearance:
 ${physicalDescription}
 
-Attire:
+Costume:
 ${standardClothing}
 
-${distinguishingSection}
+${makeupStylingSection}${referenceInstruction}
 
 Stylistic & Technical Parameters:
 
@@ -295,4 +244,6 @@ Focus: Ultra-sharp, deep focus on the character in every panel, ensuring clarity
 Mood: Objective, detailed, and clear, characteristic of a high-end visual reference or concept art.
 
 Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.`.trim();
+
+  return { prompt, referenceUrls };
 }

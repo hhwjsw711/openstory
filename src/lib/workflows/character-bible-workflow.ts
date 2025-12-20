@@ -37,15 +37,15 @@ export const characterBibleWorkflow = createWorkflow(
     const seqCharacters: CharacterMinimal[] = await Promise.all(
       input.characterBible.map(async (character) => {
         return await context.run('character-sheet', async () => {
-          // Build character sheet prompt
-          const sheetPrompt = buildCharacterSheetPrompt(character);
+          // Build character sheet prompt (no talent overrides for initial generation)
+          const { prompt } = buildCharacterSheetPrompt(character);
 
           // Generate character sheet image
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
           const imageResult = await generateImageWithProvider({
             model,
-            prompt: sheetPrompt,
+            prompt,
             imageSize: 'landscape_16_9' as const,
             numImages: 1,
             resolution: '2K' as const,
