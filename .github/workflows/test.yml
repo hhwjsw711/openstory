@@ -63,7 +63,10 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Setup test database
-        run: bun test:e2e:setup
+        run: |
+          bun test:e2e:setup
+          # Enable WAL mode for concurrent access from fixtures and dev server
+          sqlite3 test.db "PRAGMA journal_mode=WAL;"
 
       - name: Run E2E tests
         run: bun test:e2e
@@ -74,6 +77,8 @@ jobs:
           QSTASH_CURRENT_SIGNING_KEY: sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r
           QSTASH_NEXT_SIGNING_KEY: sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs
           # Mock values for services we don't actually call (mocked via Playwright)
+          UPSTASH_REDIS_REST_URL: http://localhost:9999
+          UPSTASH_REDIS_REST_TOKEN: mock-redis-token
           GOOGLE_CLIENT_ID: mock-google-client-id
           GOOGLE_CLIENT_SECRET: mock-google-client-secret
           FAL_KEY: mock-fal-key
