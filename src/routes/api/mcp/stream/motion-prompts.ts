@@ -3,8 +3,8 @@
  * Streams LLM response back to clients in real-time
  */
 
-import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import {
+  generateMotionPromptsInputSchema,
   generateMotionPromptsTool,
   type GenerateMotionPromptsInput,
 } from '@/lib/mcp/tools/generate-motion-prompts';
@@ -12,17 +12,13 @@ import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-const requestSchema = z.object({
-  scenes: z.array(sceneSchema),
-});
-
 export const Route = createFileRoute('/api/mcp/stream/motion-prompts')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = requestSchema.parse(body) as GenerateMotionPromptsInput;
+          const input = generateMotionPromptsInputSchema.parse(body) satisfies GenerateMotionPromptsInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting motion prompt generation...');

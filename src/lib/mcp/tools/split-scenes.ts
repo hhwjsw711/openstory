@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 export const splitScenesInputSchema = z.object({
   script: z.string(),
-  aspectRatio: aspectRatioSchema,
+  aspectRatio: aspectRatioSchema.optional().default('16:9'),
 });
 
 export type SplitScenesInput = z.infer<typeof splitScenesInputSchema>;

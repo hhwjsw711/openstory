@@ -4,31 +4,13 @@
  */
 
 import {
-  characterBibleEntrySchema,
-  sceneSchema,
-} from '@/lib/ai/scene-analysis.schema';
-import {
+  generateVisualPromptsInputSchema,
   generateVisualPromptsTool,
   type GenerateVisualPromptsInput,
 } from '@/lib/mcp/tools/generate-visual-prompts';
 import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
-import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-
-function getAllStyleNamesTuple(): [string, ...string[]] {
-  const names = DEFAULT_STYLE_TEMPLATES.map((style) => style.name);
-  if (names.length === 0) {
-    throw new Error('No style templates available');
-  }
-  return names as [string, ...string[]];
-}
-
-const requestSchema = z.object({
-  scenes: z.array(sceneSchema),
-  characterBible: z.array(characterBibleEntrySchema),
-  style: z.enum(getAllStyleNamesTuple()),
-});
 
 export const Route = createFileRoute('/api/mcp/stream/visual-prompts')({
   server: {
@@ -36,7 +18,7 @@ export const Route = createFileRoute('/api/mcp/stream/visual-prompts')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = requestSchema.parse(body) as GenerateVisualPromptsInput;
+          const input = generateVisualPromptsInputSchema.parse(body) satisfies GenerateVisualPromptsInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting visual prompt generation...');

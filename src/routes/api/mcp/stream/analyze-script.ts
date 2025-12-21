@@ -3,29 +3,14 @@
  * Streams phase progress back to clients in real-time
  */
 
-import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import {
+  analyzeScriptInputSchema,
   analyzeScriptTool,
   type AnalyzeScriptInput,
 } from '@/lib/mcp/tools/analyze-script';
 import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
-import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-
-function getAllStyleNamesTuple(): [string, ...string[]] {
-  const names = DEFAULT_STYLE_TEMPLATES.map((style) => style.name);
-  if (names.length === 0) {
-    throw new Error('No style templates available');
-  }
-  return names as [string, ...string[]];
-}
-
-const requestSchema = z.object({
-  script: z.string().min(1, 'Script is required'),
-  style: z.enum(getAllStyleNamesTuple()),
-  aspectRatio: aspectRatioSchema.optional().default('16:9'),
-});
 
 export const Route = createFileRoute('/api/mcp/stream/analyze-script')({
   server: {
@@ -33,7 +18,7 @@ export const Route = createFileRoute('/api/mcp/stream/analyze-script')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = requestSchema.parse(body) as AnalyzeScriptInput;
+          const input = analyzeScriptInputSchema.parse(body) satisfies AnalyzeScriptInput;
 
           const stream = createSSEStream(async (emit) => {
             // Emit initial progress

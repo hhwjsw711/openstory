@@ -3,8 +3,8 @@
  * Streams LLM response back to clients in real-time
  */
 
-import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import {
+  splitScenesInputSchema,
   splitScenesTool,
   type SplitScenesInput,
 } from '@/lib/mcp/tools/split-scenes';
@@ -12,18 +12,13 @@ import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-const requestSchema = z.object({
-  script: z.string().min(1, 'Script is required'),
-  aspectRatio: aspectRatioSchema.optional().default('16:9'),
-});
-
 export const Route = createFileRoute('/api/mcp/stream/split-scenes')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = requestSchema.parse(body) as SplitScenesInput;
+          const input = splitScenesInputSchema.parse(body) satisfies SplitScenesInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting scene splitting...');

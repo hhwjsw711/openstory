@@ -77,9 +77,22 @@ export const CharacterDetailView: React.FC<CharacterDetailViewProps> = ({
   const handleRealtimeEvent = useCallback(
     (event: { event: string; data: unknown }) => {
       if (event.event === 'generation.character-sheet:progress') {
-        const payload = event.data as {
-          characterId: string;
-          status: 'generating' | 'completed' | 'failed';
+        const data = event.data;
+        if (
+          !data ||
+          typeof data !== 'object' ||
+          !('characterId' in data) ||
+          !('status' in data) ||
+          typeof data.characterId !== 'string' ||
+          (data.status !== 'generating' &&
+            data.status !== 'completed' &&
+            data.status !== 'failed')
+        ) {
+          return;
+        }
+        const payload = {
+          characterId: data.characterId,
+          status: data.status,
         };
 
         // Only handle events for this character

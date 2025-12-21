@@ -243,7 +243,7 @@ export const createTalentSheetFn = createServerFn({ method: 'POST' })
       imagePath: data.imagePath,
       metadata: data.metadata,
       isDefault: data.isDefault ?? false,
-      source: (data.source ?? 'manual_upload') as TalentSheetSource,
+      source: (data.source ?? 'manual_upload') satisfies TalentSheetSource,
     });
   });
 

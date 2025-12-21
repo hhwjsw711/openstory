@@ -15,7 +15,13 @@ import {
   ArrowUpDown,
   Plus,
 } from 'lucide-react';
-import type { ViewMode, FilterState, SortCriteria } from './eval-view';
+import {
+  isValidSortField,
+  isValidViewMode,
+  type FilterState,
+  type SortCriteria,
+  type ViewMode,
+} from './eval-view';
 
 type EvalToolbarProps = {
   viewMode: ViewMode;
@@ -216,9 +222,11 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
                 <Select
                   options={sortFieldOptions}
                   value={criteria.field}
-                  onChange={(value) =>
-                    updateSortField(index, value as SortCriteria['field'])
-                  }
+                  onChange={(value) => {
+                    if (isValidSortField(value)) {
+                      updateSortField(index, value);
+                    }
+                  }}
                   className="h-auto p-0 border-0 bg-transparent w-auto min-w-16"
                   size="sm"
                 />
@@ -259,9 +267,11 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
         <ToggleGroup
           type="single"
           value={viewMode}
-          onValueChange={(value) =>
-            value && onViewModeChange(value as ViewMode)
-          }
+          onValueChange={(value) => {
+            if (value && isValidViewMode(value)) {
+              onViewModeChange(value);
+            }
+          }}
           variant="outline"
         >
           <ToggleGroupItem value="script" aria-label="Show script">

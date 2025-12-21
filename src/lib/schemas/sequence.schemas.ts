@@ -4,7 +4,11 @@ import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
 } from '@/lib/ai/models';
-import { DEFAULT_ANALYSIS_MODEL, getAllModelIds } from '@/lib/ai/models.config';
+import {
+  DEFAULT_ANALYSIS_MODEL,
+  getAllModelIds,
+  type AnalysisModelId,
+} from '@/lib/ai/models.config';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { sequences } from '@/lib/db/schema/sequences';
 import { ulidSchemaOptional } from '@/lib/schemas/id.schemas';
@@ -18,10 +22,10 @@ import { z } from 'zod';
 
 // Get valid model IDs for validation
 const validModelIds = getAllModelIds();
-const validImageModelKeys = Object.keys(IMAGE_MODELS) as readonly string[];
+const validImageModelKeys = Object.keys(IMAGE_MODELS) satisfies readonly string[];
 const validVideoModelKeys = Object.keys(
   IMAGE_TO_VIDEO_MODELS
-) as readonly string[];
+) satisfies readonly string[];
 
 export const createSequenceSchema = createInsertSchema(sequences, {
   title: (schema) => schema.min(1).optional(), // Optional - defaults to 'Untitled Sequence' in hook
@@ -48,7 +52,7 @@ export const createSequenceSchema = createInsertSchema(sequences, {
       .array(
         z
           .string()
-          .refine((val) => (validModelIds as readonly string[]).includes(val), {
+          .refine((val) => validModelIds.includes(val as AnalysisModelId), {
             message: 'Invalid analysis model',
           })
       )
@@ -78,7 +82,7 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
   script: (schema) => schema.min(10).max(10000), // Business rule: meaningful scripts
   analysisModel: (schema) =>
-    schema.refine((val) => (validModelIds as readonly string[]).includes(val), {
+    schema.refine((val) => validModelIds.includes(val as AnalysisModelId), {
       message: 'Invalid analysis model',
     }),
   imageModel: (schema) =>

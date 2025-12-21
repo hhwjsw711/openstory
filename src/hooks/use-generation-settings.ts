@@ -73,7 +73,7 @@ function loadSettings(): GenerationSettings {
       return DEFAULT_SETTINGS;
     }
 
-    const parsed = JSON.parse(stored) as unknown;
+    const parsed: unknown = JSON.parse(stored);
 
     // Validate structure
     if (

@@ -73,7 +73,7 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
                 }
                 return acc;
               },
-              {} as Record<string, string>
+              {} satisfies Record<string, string>
             )
           ),
         ];

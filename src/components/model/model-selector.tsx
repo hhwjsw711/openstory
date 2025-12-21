@@ -1,5 +1,6 @@
 import { BaseModelSelector } from './base-model-selector';
 import {
+  isValidAnalysisModelId,
   SCRIPT_ANALYSIS_MODELS,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
@@ -36,7 +37,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       models={models}
       groupOrder={TIER_ORDER}
       selectedIds={selectedModels}
-      onSelectionChange={(ids) => onModelsChange(ids as AnalysisModelId[])}
+      onSelectionChange={(ids) => {
+        const validIds = ids.filter((id): id is AnalysisModelId =>
+          isValidAnalysisModelId(id)
+        );
+        if (validIds.length > 0) {
+          onModelsChange(validIds);
+        }
+      }}
       disabled={disabled}
       multiSelect={!singleSelect}
     />

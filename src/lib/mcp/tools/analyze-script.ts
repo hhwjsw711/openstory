@@ -36,7 +36,7 @@ function getAllStyleNamesTuple(): [string, ...string[]] {
 export const analyzeScriptInputSchema = z.object({
   script: z.string(),
   style: z.enum(getAllStyleNamesTuple()),
-  aspectRatio: aspectRatioSchema,
+  aspectRatio: aspectRatioSchema.optional().default('16:9'),
 });
 
 export type AnalyzeScriptInput = z.infer<typeof analyzeScriptInputSchema>;

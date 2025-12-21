@@ -71,7 +71,7 @@ describe('Model Validation', () => {
 
     it('validates all IMAGE_MODELS keys', () => {
       for (const key of Object.keys(IMAGE_MODELS)) {
-        expect(safeTextToImageModel(key) as string).toBe(key);
+        expect(safeTextToImageModel(key)).toBe(key);
       }
     });
   });
@@ -100,7 +100,7 @@ describe('Model Validation', () => {
 
     it('validates all IMAGE_TO_VIDEO_MODELS keys', () => {
       for (const key of Object.keys(IMAGE_TO_VIDEO_MODELS)) {
-        expect(safeImageToVideoModel(key) as string).toBe(key);
+        expect(safeImageToVideoModel(key)).toBe(key);
       }
     });
   });

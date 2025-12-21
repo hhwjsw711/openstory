@@ -117,8 +117,9 @@ export function StyleSelector({
       if (nextIndex !== currentIndex) {
         setFocusableIndex(nextIndex);
         const buttons = gridRef.current?.querySelectorAll('button');
-        if (buttons && buttons[nextIndex]) {
-          (buttons[nextIndex] as HTMLElement).focus();
+        const nextButton = buttons?.[nextIndex];
+        if (nextButton instanceof HTMLElement) {
+          nextButton.focus();
         }
       }
     },
