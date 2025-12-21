@@ -94,9 +94,11 @@ export const analyzeScriptWorkflow = createWorkflow(
     // Flow control for image and motion generation
 
     const runtimeEnv = getEnv();
-    const falConcurrencyLimit = (
-      runtimeEnv as unknown as Record<string, string>
-    ).FAL_CONCURRENCY_LIMIT;
+    const falConcurrencyLimit =
+      'FAL_CONCURRENCY_LIMIT' in runtimeEnv &&
+      typeof runtimeEnv.FAL_CONCURRENCY_LIMIT === 'string'
+        ? runtimeEnv.FAL_CONCURRENCY_LIMIT
+        : undefined;
     const flowControl: FlowControl = {
       key: 'fal-requests', // Shared key for both image & motion
       rate: 10,

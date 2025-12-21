@@ -22,8 +22,8 @@ import {
   type TextToImageModel,
 } from '@/lib/ai/models';
 import {
-  ANALYSIS_MODEL_IDS,
   DEFAULT_ANALYSIS_MODEL,
+  isValidAnalysisModelId,
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -67,10 +67,8 @@ export const ScriptView: FC<{
   // Initialize with sequence values (if editing) or localStorage defaults (if creating)
   const sequenceAnalysisModels: AnalysisModelId[] = useMemo(() => {
     if (isEditing && sequence?.analysisModel) {
-      return ANALYSIS_MODEL_IDS.includes(
-        sequence.analysisModel as AnalysisModelId
-      )
-        ? [sequence.analysisModel as AnalysisModelId]
+      return isValidAnalysisModelId(sequence.analysisModel)
+        ? [sequence.analysisModel]
         : [DEFAULT_ANALYSIS_MODEL];
     }
     return savedSettings.analysisModels;

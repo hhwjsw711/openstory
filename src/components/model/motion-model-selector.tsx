@@ -2,6 +2,7 @@ import { BaseModelSelector } from './base-model-selector';
 import {
   IMAGE_TO_VIDEO_MODELS,
   isModelCompatibleWithAspectRatio,
+  isValidImageToVideoModel,
   type ImageToVideoModel,
 } from '@/lib/ai/models';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -47,7 +48,12 @@ export const MotionModelSelector: React.FC<MotionModelSelectorProps> = ({
       models={models}
       groupOrder={QUALITY_ORDER}
       selectedIds={[selectedModel]}
-      onSelectionChange={(ids) => onModelChange(ids[0] as ImageToVideoModel)}
+      onSelectionChange={(ids) => {
+        const firstId = ids[0];
+        if (firstId && isValidImageToVideoModel(firstId)) {
+          onModelChange(firstId);
+        }
+      }}
       disabled={disabled}
       multiSelect={false}
     />

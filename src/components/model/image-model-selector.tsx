@@ -1,5 +1,9 @@
 import { BaseModelSelector } from './base-model-selector';
-import { IMAGE_MODELS, type TextToImageModel } from '@/lib/ai/models';
+import {
+  IMAGE_MODELS,
+  isValidTextToImageModel,
+  type TextToImageModel,
+} from '@/lib/ai/models';
 import { useMemo } from 'react';
 
 const TIER_ORDER = [
@@ -37,7 +41,12 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
       models={models}
       groupOrder={TIER_ORDER}
       selectedIds={[selectedModel]}
-      onSelectionChange={(ids) => onModelChange(ids[0] as TextToImageModel)}
+      onSelectionChange={(ids) => {
+        const firstId = ids[0];
+        if (firstId && isValidTextToImageModel(firstId)) {
+          onModelChange(firstId);
+        }
+      }}
       disabled={disabled}
       multiSelect={false}
     />

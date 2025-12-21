@@ -48,7 +48,8 @@ export const EvalCellDialog: React.FC<EvalCellDialogProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't navigate if user is typing in an input/textarea
-      const target = e.target as HTMLElement;
+      if (!(e.target instanceof HTMLElement)) return;
+      const target = e.target;
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||

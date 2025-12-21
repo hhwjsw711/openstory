@@ -131,6 +131,20 @@ function getModelDisplayName(modelId: string): string {
 }
 
 /**
+ * Runtime validation: Check if a string is a valid AnalysisModelId
+ * @param value - String value to validate
+ * @returns true if value is a valid model ID, false otherwise
+ */
+export function isValidAnalysisModelId(
+  value: unknown
+): value is AnalysisModelId {
+  return (
+    typeof value === 'string' &&
+    SCRIPT_ANALYSIS_MODELS.some((model) => model.id === value)
+  );
+}
+
+/**
  * Get all model IDs
  */
 export function getAllModelIds(): AnalysisModelId[] {

@@ -13,6 +13,22 @@ import { VideoIcon } from 'lucide-react';
 
 export type ViewMode = 'script' | 'prompts' | 'images';
 
+export function isValidViewMode(value: string): value is ViewMode {
+  return value === 'script' || value === 'prompts' || value === 'images';
+}
+
+export function isValidSortField(
+  value: string
+): value is SortCriteria['field'] {
+  return (
+    value === 'title' ||
+    value === 'createdAt' ||
+    value === 'analysisModel' ||
+    value === 'imageModel' ||
+    value === 'workflow'
+  );
+}
+
 export type FilterState = {
   search: string;
   dateFrom: Date | null;

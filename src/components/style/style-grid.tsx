@@ -158,8 +158,14 @@ export const StyleGrid: FC<StyleGridProps> = ({
     );
     if (cards.length < 2) return 1;
 
-    const firstCard = cards[0] as HTMLElement;
-    const secondCard = cards[1] as HTMLElement;
+    const firstCard = cards[0];
+    const secondCard = cards[1];
+    if (
+      !(firstCard instanceof HTMLElement) ||
+      !(secondCard instanceof HTMLElement)
+    ) {
+      return 1;
+    }
 
     // Get the actual positions
     const firstRect = firstCard.getBoundingClientRect();
@@ -228,8 +234,10 @@ export const StyleGrid: FC<StyleGridProps> = ({
         // Focus the next card
         const nextCard = gridRef.current?.querySelector(
           `[data-testid="style-card-${styles[nextIndex]?.id}"]`
-        ) as HTMLElement;
-        nextCard?.focus();
+        );
+        if (nextCard instanceof HTMLElement) {
+          nextCard.focus();
+        }
       }
     },
     [styles, getColumnsCount]

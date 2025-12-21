@@ -7,9 +7,17 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ASPECT_RATIOS, type AspectRatio } from '@/lib/constants/aspect-ratios';
+import {
+  ASPECT_RATIOS,
+  aspectRatioSchema,
+  type AspectRatio,
+} from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
+
+function isValidAspectRatio(value: string): value is AspectRatio {
+  return aspectRatioSchema.safeParse(value).success;
+}
 
 type AspectRatioSelectProps = {
   value?: AspectRatio;
@@ -60,7 +68,11 @@ export const AspectRatioSelect = ({
         <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup
             value={value}
-            onValueChange={(val) => onChange?.(val as AspectRatio)}
+            onValueChange={(val) => {
+              if (val && isValidAspectRatio(val)) {
+                onChange?.(val);
+              }
+            }}
           >
             {ASPECT_RATIOS.map((ratio) => (
               <DropdownMenuRadioItem key={ratio.value} value={ratio.value}>
@@ -106,7 +118,11 @@ export const AspectRatioSelect = ({
       <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup
           value={value}
-          onValueChange={(val) => onChange?.(val as AspectRatio)}
+          onValueChange={(val) => {
+            if (val && isValidAspectRatio(val)) {
+              onChange?.(val);
+            }
+          }}
         >
           {ASPECT_RATIOS.map((ratio) => (
             <DropdownMenuRadioItem key={ratio.value} value={ratio.value}>

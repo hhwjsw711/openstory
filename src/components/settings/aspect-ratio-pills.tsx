@@ -1,7 +1,15 @@
 import { AspectRatioIcon } from '@/components/icons/aspect-ratio-icon';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ASPECT_RATIOS, type AspectRatio } from '@/lib/constants/aspect-ratios';
+import {
+  ASPECT_RATIOS,
+  aspectRatioSchema,
+  type AspectRatio,
+} from '@/lib/constants/aspect-ratios';
 import type { FC } from 'react';
+
+function isValidAspectRatio(value: string): value is AspectRatio {
+  return aspectRatioSchema.safeParse(value).success;
+}
 
 type AspectRatioPillsProps = {
   value: AspectRatio;
@@ -16,7 +24,11 @@ export const AspectRatioPills: FC<AspectRatioPillsProps> = ({
     <ToggleGroup
       type="single"
       value={value}
-      onValueChange={(val) => val && onChange(val as AspectRatio)}
+      onValueChange={(val) => {
+        if (val && isValidAspectRatio(val)) {
+          onChange(val);
+        }
+      }}
       variant="outline"
       className="justify-start"
     >

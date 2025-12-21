@@ -465,9 +465,11 @@ export function isModelCompatibleWithAspectRatio(
 function getModelsForAspectRatio(
   aspectRatio: AspectRatio
 ): ImageToVideoModel[] {
-  return Object.keys(IMAGE_TO_VIDEO_MODELS).filter((key) =>
-    isModelCompatibleWithAspectRatio(key as ImageToVideoModel, aspectRatio)
-  ) as ImageToVideoModel[];
+  return Object.keys(IMAGE_TO_VIDEO_MODELS).filter(
+    (key): key is ImageToVideoModel =>
+      isValidImageToVideoModel(key) &&
+      isModelCompatibleWithAspectRatio(key, aspectRatio)
+  );
 }
 
 /**

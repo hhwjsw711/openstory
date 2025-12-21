@@ -3,8 +3,8 @@
  * Streams LLM response back to clients in real-time
  */
 
-import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import {
+  extractCharactersInputSchema,
   extractCharactersTool,
   type ExtractCharactersInput,
 } from '@/lib/mcp/tools/extract-characters';
@@ -12,17 +12,15 @@ import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-const requestSchema = z.object({
-  scenes: z.array(sceneSchema),
-});
-
 export const Route = createFileRoute('/api/mcp/stream/extract-characters')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = requestSchema.parse(body) as ExtractCharactersInput;
+          const input = extractCharactersInputSchema.parse(
+            body
+          ) satisfies ExtractCharactersInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting character extraction...');

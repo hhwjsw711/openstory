@@ -12,6 +12,7 @@ import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
   getCompatibleModel,
+  safeImageToVideoModel,
   safeTextToImageModel,
   type ImageToVideoModel,
   type TextToImageModel,
@@ -38,6 +39,16 @@ export type TabValue =
   | 'motion-prompt'
   | 'scene-variants'
   | 'cast';
+
+function isValidTabValue(value: string): value is TabValue {
+  return (
+    value === 'script' ||
+    value === 'image-prompt' ||
+    value === 'motion-prompt' ||
+    value === 'scene-variants' ||
+    value === 'cast'
+  );
+}
 
 type SceneScriptPromptsProps = {
   frame?: Frame | undefined;
@@ -400,8 +411,9 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   // Update local motion model state when frame or aspect ratio changes
   // Ensure the model is compatible with the aspect ratio
   useEffect(() => {
-    const currentModel =
-      (frame?.motionModel as ImageToVideoModel) || DEFAULT_VIDEO_MODEL;
+    const currentModel = frame?.motionModel
+      ? safeImageToVideoModel(frame.motionModel)
+      : DEFAULT_VIDEO_MODEL;
     const compatibleModel = aspectRatio
       ? getCompatibleModel(currentModel, aspectRatio)
       : currentModel;
@@ -425,7 +437,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   return (
     <Tabs
       value={selectedTab}
-      onValueChange={(value) => onTabChange(value as TabValue)}
+      onValueChange={(value) => {
+        if (isValidTabValue(value)) {
+          onTabChange(value);
+        }
+      }}
       className="w-full"
     >
       <TabsList>

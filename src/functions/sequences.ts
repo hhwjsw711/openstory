@@ -141,7 +141,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       })
     );
 
-    return JSON.parse(JSON.stringify(sequences)) as Sequence[];
+    return JSON.parse(JSON.stringify(sequences)) satisfies Sequence[];
   });
 
 // ============================================================================
@@ -197,7 +197,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
       await triggerWorkflow('/storyboard', workflowInput);
     }
 
-    return JSON.parse(JSON.stringify(sequence)) as Sequence;
+    return JSON.parse(JSON.stringify(sequence)) satisfies Sequence;
   });
 
 // ============================================================================

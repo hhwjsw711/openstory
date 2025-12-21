@@ -221,7 +221,9 @@ export const toggleTalentFavoriteFn = createServerFn({ method: 'POST' })
 // ============================================================================
 // Talent Sheet Operations
 // ============================================================================
-
+const safeTalentSheetSource = z
+  .enum(['manual_upload', 'ai_generated'])
+  .default('manual_upload');
 /**
  * Create a talent sheet
  */
@@ -243,7 +245,7 @@ export const createTalentSheetFn = createServerFn({ method: 'POST' })
       imagePath: data.imagePath,
       metadata: data.metadata,
       isDefault: data.isDefault ?? false,
-      source: (data.source ?? 'manual_upload') as TalentSheetSource,
+      source: safeTalentSheetSource.parse(data.source),
     });
   });
 
