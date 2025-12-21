@@ -15,11 +15,11 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
+import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getSequenceForUser } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
-import { frameService } from '@/lib/services/frame.service';
 import {
   validateSequenceAuth,
   type StoryboardWorkflowInput,
@@ -99,14 +99,10 @@ export const generateStoryboardWorkflow = createWorkflow(
       }
 
       // Delete existing frames
-      const existingFrames = await frameService.getFramesBySequence(
-        input.sequenceId
-      );
+      const existingFrames = await getSequenceFrames(input.sequenceId);
 
       if (existingFrames.length > 0) {
-        await Promise.all(
-          existingFrames.map((frame) => frameService.deleteFrame(frame.id))
-        );
+        await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
       }
 
       // Set sequence status to processing

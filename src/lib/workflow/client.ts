@@ -98,6 +98,13 @@ export async function triggerWorkflow(
     deduplicationId?: string;
   }
 ) {
+  // Skip workflow triggers in E2E tests - return mock ID
+  if (process.env.E2E_TEST === 'true') {
+    const mockId = options?.deduplicationId ?? `mock-${Date.now()}`;
+    console.log(`[E2E] Skipping workflow trigger: ${url} (mock ID: ${mockId})`);
+    return mockId;
+  }
+
   const qstash = getWorkflowClient();
   const request = getRequest();
   const baseUrl = getWorkflowBaseUrl(request);

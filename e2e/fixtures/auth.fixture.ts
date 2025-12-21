@@ -4,16 +4,16 @@
  */
 
 import { test as base, type Page } from 'playwright/test';
-import { createClient } from '@libsql/client';
+import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
-
-/**
- * Get a database client for test operations
- * Creates a new client each time to avoid connection conflicts with the dev server
- */
-function getClient() {
-  return createClient({ url: 'file:test.db' });
-}
+import { testDb } from './db-client';
+import {
+  user,
+  session,
+  teams,
+  teamMembers,
+  verification,
+} from '@/lib/db/schema';
 
 type TestUser = {
   id: string;
@@ -28,43 +28,39 @@ type TestUser = {
 async function createTestUser(): Promise<TestUser> {
   const userId = ulid();
   const teamId = ulid();
-  const now = Date.now();
+  const now = new Date();
 
   const email = `test-${userId.slice(-8).toLowerCase()}@e2e.test`;
   const name = 'E2E Test User';
   const teamSlug = `test-team-${teamId.slice(-8).toLowerCase()}`;
 
-  const client = getClient();
-  try {
-    // Insert user with active status
-    await client.execute({
-      sql: `INSERT INTO user (id, name, email, email_verified, status, created_at, updated_at)
-            VALUES (?, ?, ?, 1, 'active', ?, ?)`,
-      args: [userId, name, email, now, now],
-    });
+  // Insert user with active status
+  await testDb.insert(user).values({
+    id: userId,
+    name,
+    email,
+    emailVerified: true,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  });
 
-    // Insert team
-    await client.execute({
-      sql: `INSERT INTO teams (id, name, slug, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [
-        teamId,
-        'E2E Test Team',
-        teamSlug,
-        Math.floor(now / 1000),
-        Math.floor(now / 1000),
-      ],
-    });
+  // Insert team
+  await testDb.insert(teams).values({
+    id: teamId,
+    name: 'E2E Test Team',
+    slug: teamSlug,
+    createdAt: now,
+    updatedAt: now,
+  });
 
-    // Insert team membership
-    await client.execute({
-      sql: `INSERT INTO team_members (team_id, user_id, role, joined_at)
-            VALUES (?, ?, 'owner', ?)`,
-      args: [teamId, userId, Math.floor(now / 1000)],
-    });
-  } finally {
-    client.close();
-  }
+  // Insert team membership
+  await testDb.insert(teamMembers).values({
+    teamId,
+    userId,
+    role: 'owner',
+    joinedAt: now,
+  });
 
   return { id: userId, email, name, teamId };
 }
@@ -73,27 +69,10 @@ async function createTestUser(): Promise<TestUser> {
  * Clean up test user and related data
  */
 async function cleanupTestUser(userId: string, teamId: string): Promise<void> {
-  const client = getClient();
-  try {
-    await client.execute({
-      sql: 'DELETE FROM session WHERE user_id = ?',
-      args: [userId],
-    });
-    await client.execute({
-      sql: 'DELETE FROM team_members WHERE user_id = ?',
-      args: [userId],
-    });
-    await client.execute({
-      sql: 'DELETE FROM teams WHERE id = ?',
-      args: [teamId],
-    });
-    await client.execute({
-      sql: 'DELETE FROM user WHERE id = ?',
-      args: [userId],
-    });
-  } finally {
-    client.close();
-  }
+  await testDb.delete(session).where(eq(session.userId, userId));
+  await testDb.delete(teamMembers).where(eq(teamMembers.userId, userId));
+  await testDb.delete(teams).where(eq(teams.id, teamId));
+  await testDb.delete(user).where(eq(user.id, userId));
 }
 
 /**
@@ -104,31 +83,28 @@ async function createOtpVerification(
   otp: string
 ): Promise<void> {
   const id = ulid();
-  const now = Date.now();
-  const expiresAt = now + 5 * 60 * 1000; // 5 minutes
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
 
   // Better Auth uses sign-in-otp-{email} as identifier for sign-in OTP
   const identifier = `sign-in-otp-${email}`;
   // Value format is {otp}:{attempt_count}
   const value = `${otp}:0`;
 
-  const client = getClient();
-  try {
-    // Delete any existing verification for this email
-    await client.execute({
-      sql: 'DELETE FROM verification WHERE identifier = ?',
-      args: [identifier],
-    });
+  // Delete any existing verification for this email
+  await testDb
+    .delete(verification)
+    .where(eq(verification.identifier, identifier));
 
-    // Insert new verification record
-    await client.execute({
-      sql: `INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [id, identifier, value, expiresAt, now, now],
-    });
-  } finally {
-    client.close();
-  }
+  // Insert new verification record
+  await testDb.insert(verification).values({
+    id,
+    identifier,
+    value,
+    expiresAt,
+    createdAt: now,
+    updatedAt: now,
+  });
 }
 
 /**

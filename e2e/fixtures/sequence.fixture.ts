@@ -3,8 +3,10 @@
  * Creates pre-seeded sequences with frames and characters for testing
  */
 
-import { createClient } from '@libsql/client';
+import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
+import { testDb } from './db-client';
+import { styles, sequences, frames, characters } from '@/lib/db/schema';
 
 export type TestSequence = {
   id: string;
@@ -26,21 +28,26 @@ export type TestCharacter = {
   name: string;
 };
 
-/**
- * Get a database client for test operations
- */
-function getClient() {
-  return createClient({ url: 'file:test.db' });
-}
+// Real test images that are always available
+const TEST_IMAGES = {
+  // Fal's official test image from documentation
+  falTest: 'https://fal.media/files/elephant/8kkhB12hEZI2kkbU8pZPA_test.jpeg',
+  // Picsum placeholder images (deterministic by seed)
+  thumbnail: (seed: string) => `https://picsum.photos/seed/${seed}/1024/576`, // 16:9
+  variantGrid: (seed: string) =>
+    `https://picsum.photos/seed/${seed}-grid/3072/3072`, // 3x3 grid
+  characterSheet: (seed: string) =>
+    `https://picsum.photos/seed/${seed}-sheet/1920/1080`,
+};
 
 /**
  * Create a test style for the team (required by sequence)
  */
 async function createTestStyle(teamId: string): Promise<string> {
   const styleId = ulid();
-  const now = Date.now();
+  const now = new Date();
 
-  const styleConfig = JSON.stringify({
+  const styleConfig = {
     artStyle: 'Cinematic',
     colorPalette: ['#000000', '#FFFFFF'],
     lighting: 'Natural',
@@ -48,18 +55,16 @@ async function createTestStyle(teamId: string): Promise<string> {
     mood: 'Dramatic',
     referenceFilms: ['Test Film'],
     colorGrading: 'Natural',
-  });
+  };
 
-  const client = getClient();
-  try {
-    await client.execute({
-      sql: `INSERT INTO styles (id, team_id, name, config, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [styleId, teamId, 'E2E Test Style', styleConfig, now, now],
-    });
-  } finally {
-    client.close();
-  }
+  await testDb.insert(styles).values({
+    id: styleId,
+    teamId,
+    name: 'E2E Test Style',
+    config: styleConfig,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return styleId;
 }
@@ -74,18 +79,18 @@ export async function createTestSequence(
 ): Promise<TestSequence> {
   const sequenceId = ulid();
   const styleId = await createTestStyle(teamId);
-  const now = Date.now();
+  const now = new Date();
 
-  const client = getClient();
-  try {
-    await client.execute({
-      sql: `INSERT INTO sequences (id, team_id, title, status, style_id, created_by, created_at, updated_at)
-            VALUES (?, ?, ?, 'completed', ?, ?, ?, ?)`,
-      args: [sequenceId, teamId, title, styleId, userId, now, now],
-    });
-  } finally {
-    client.close();
-  }
+  await testDb.insert(sequences).values({
+    id: sequenceId,
+    teamId,
+    title,
+    status: 'completed',
+    styleId,
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return { id: sequenceId, teamId, styleId, title };
 }
@@ -93,18 +98,6 @@ export async function createTestSequence(
 /**
  * Create a test frame with a thumbnail (for variant testing)
  */
-// Real test images that are always available
-const TEST_IMAGES = {
-  // Fal's official test image from documentation
-  falTest: 'https://fal.media/files/elephant/8kkhB12hEZI2kkbU8pZPA_test.jpeg',
-  // Picsum placeholder images (deterministic by seed)
-  thumbnail: (seed: string) => `https://picsum.photos/seed/${seed}/1024/576`, // 16:9
-  variantGrid: (seed: string) =>
-    `https://picsum.photos/seed/${seed}-grid/3072/3072`, // 3x3 grid
-  characterSheet: (seed: string) =>
-    `https://picsum.photos/seed/${seed}-sheet/1920/1080`,
-};
-
 export async function createTestFrame(
   sequenceId: string,
   orderIndex: number,
@@ -115,7 +108,7 @@ export async function createTestFrame(
   } = {}
 ): Promise<TestFrame> {
   const frameId = ulid();
-  const now = Date.now();
+  const now = new Date();
 
   const {
     thumbnailUrl = TEST_IMAGES.thumbnail(frameId),
@@ -123,25 +116,17 @@ export async function createTestFrame(
     variantImageStatus = 'pending',
   } = options;
 
-  const client = getClient();
-  try {
-    await client.execute({
-      sql: `INSERT INTO frames (id, sequence_id, order_index, thumbnail_url, thumbnail_status, variant_image_url, variant_image_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
-      args: [
-        frameId,
-        sequenceId,
-        orderIndex,
-        thumbnailUrl,
-        variantImageUrl,
-        variantImageStatus,
-        now,
-        now,
-      ],
-    });
-  } finally {
-    client.close();
-  }
+  await testDb.insert(frames).values({
+    id: frameId,
+    sequenceId,
+    orderIndex,
+    thumbnailUrl,
+    thumbnailStatus: 'completed',
+    variantImageUrl,
+    variantImageStatus,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return { id: frameId, sequenceId, orderIndex };
 }
@@ -160,33 +145,24 @@ export async function createTestCharacter(
   } = {}
 ): Promise<TestCharacter> {
   const id = ulid();
-  const now = Date.now();
+  const now = new Date();
 
   const {
     sheetImageUrl = TEST_IMAGES.characterSheet(id),
     sheetStatus = 'completed',
   } = options;
 
-  const client = getClient();
-  try {
-    await client.execute({
-      sql: `INSERT INTO characters (id, sequence_id, character_id, name, talent_id, sheet_image_url, sheet_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id,
-        sequenceId,
-        characterId,
-        name,
-        talentId,
-        sheetImageUrl,
-        sheetStatus,
-        now,
-        now,
-      ],
-    });
-  } finally {
-    client.close();
-  }
+  await testDb.insert(characters).values({
+    id,
+    sequenceId,
+    characterId,
+    name,
+    talentId,
+    sheetImageUrl,
+    sheetStatus,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return { id, sequenceId, characterId, name };
 }
@@ -199,22 +175,22 @@ export async function getTestFrame(frameId: string): Promise<{
   thumbnailUrl: string | null;
   variantImageStatus: string | null;
 } | null> {
-  const client = getClient();
-  try {
-    const result = await client.execute({
-      sql: 'SELECT id, thumbnail_url, variant_image_status FROM frames WHERE id = ?',
-      args: [frameId],
-    });
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id as string,
-      thumbnailUrl: row.thumbnail_url as string | null,
-      variantImageStatus: row.variant_image_status as string | null,
-    };
-  } finally {
-    client.close();
-  }
+  const result = await testDb.query.frames.findFirst({
+    where: eq(frames.id, frameId),
+    columns: {
+      id: true,
+      thumbnailUrl: true,
+      variantImageStatus: true,
+    },
+  });
+
+  if (!result) return null;
+
+  return {
+    id: result.id,
+    thumbnailUrl: result.thumbnailUrl,
+    variantImageStatus: result.variantImageStatus,
+  };
 }
 
 /**
@@ -226,42 +202,32 @@ export async function getTestCharacter(characterId: string): Promise<{
   talentId: string | null;
   sheetStatus: string | null;
 } | null> {
-  const client = getClient();
-  try {
-    const result = await client.execute({
-      sql: 'SELECT id, name, talent_id, sheet_status FROM characters WHERE id = ?',
-      args: [characterId],
-    });
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      talentId: row.talent_id as string | null,
-      sheetStatus: row.sheet_status as string | null,
-    };
-  } finally {
-    client.close();
-  }
+  const result = await testDb.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: {
+      id: true,
+      name: true,
+      talentId: true,
+      sheetStatus: true,
+    },
+  });
+
+  if (!result) return null;
+
+  return {
+    id: result.id,
+    name: result.name,
+    talentId: result.talentId,
+    sheetStatus: result.sheetStatus,
+  };
 }
 
 /**
  * Clean up all test sequences and related data for a team
  */
 export async function cleanupTestSequences(teamId: string): Promise<void> {
-  const client = getClient();
-  try {
-    // characters and frames cascade delete from sequences
-    await client.execute({
-      sql: 'DELETE FROM sequences WHERE team_id = ?',
-      args: [teamId],
-    });
-    // Also clean up styles
-    await client.execute({
-      sql: 'DELETE FROM styles WHERE team_id = ?',
-      args: [teamId],
-    });
-  } finally {
-    client.close();
-  }
+  // characters and frames cascade delete from sequences
+  await testDb.delete(sequences).where(eq(sequences.teamId, teamId));
+  // Also clean up styles
+  await testDb.delete(styles).where(eq(styles.teamId, teamId));
 }
