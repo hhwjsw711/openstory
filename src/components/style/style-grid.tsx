@@ -160,7 +160,10 @@ export const StyleGrid: FC<StyleGridProps> = ({
 
     const firstCard = cards[0];
     const secondCard = cards[1];
-    if (!(firstCard instanceof HTMLElement) || !(secondCard instanceof HTMLElement)) {
+    if (
+      !(firstCard instanceof HTMLElement) ||
+      !(secondCard instanceof HTMLElement)
+    ) {
       return 1;
     }
 

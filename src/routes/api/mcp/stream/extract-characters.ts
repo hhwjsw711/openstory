@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/mcp/stream/extract-characters')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = extractCharactersInputSchema.parse(body) satisfies ExtractCharactersInput;
+          const input = extractCharactersInputSchema.parse(
+            body
+          ) satisfies ExtractCharactersInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting character extraction...');

@@ -22,7 +22,9 @@ import { z } from 'zod';
 
 // Get valid model IDs for validation
 const validModelIds = getAllModelIds();
-const validImageModelKeys = Object.keys(IMAGE_MODELS) satisfies readonly string[];
+const validImageModelKeys = Object.keys(
+  IMAGE_MODELS
+) satisfies readonly string[];
 const validVideoModelKeys = Object.keys(
   IMAGE_TO_VIDEO_MODELS
 ) satisfies readonly string[];

@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/mcp/stream/visual-prompts')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = generateVisualPromptsInputSchema.parse(body) satisfies GenerateVisualPromptsInput;
+          const input = generateVisualPromptsInputSchema.parse(
+            body
+          ) satisfies GenerateVisualPromptsInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting visual prompt generation...');

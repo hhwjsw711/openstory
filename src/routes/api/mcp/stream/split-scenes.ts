@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/mcp/stream/split-scenes')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = splitScenesInputSchema.parse(body) satisfies SplitScenesInput;
+          const input = splitScenesInputSchema.parse(
+            body
+          ) satisfies SplitScenesInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting scene splitting...');

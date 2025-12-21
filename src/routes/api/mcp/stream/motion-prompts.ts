@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/mcp/stream/motion-prompts')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = generateMotionPromptsInputSchema.parse(body) satisfies GenerateMotionPromptsInput;
+          const input = generateMotionPromptsInputSchema.parse(
+            body
+          ) satisfies GenerateMotionPromptsInput;
 
           const stream = createSSEStream(async (emit) => {
             emit.progress(0, 100, 'Starting motion prompt generation...');

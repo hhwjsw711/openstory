@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/mcp/stream/analyze-script')({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const input = analyzeScriptInputSchema.parse(body) satisfies AnalyzeScriptInput;
+          const input = analyzeScriptInputSchema.parse(
+            body
+          ) satisfies AnalyzeScriptInput;
 
           const stream = createSSEStream(async (emit) => {
             // Emit initial progress
