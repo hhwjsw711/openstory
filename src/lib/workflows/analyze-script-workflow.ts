@@ -27,7 +27,7 @@ import {
   buildCharacterReferenceImages,
   buildPromptWithCharacterReferences,
 } from '@/lib/prompts/character-prompt';
-import { frameService } from '@/lib/services/frame.service';
+import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
 import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
@@ -197,7 +197,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         );
 
         // Bulk insert all frames at once
-        const createdFrames = await frameService.bulkInsertFrames(frameInserts);
+        const createdFrames = await bulkInsertFrames(frameInserts);
 
         // Create a map of scene ID to frame ID for later updates
         const frameMapping = createdFrames.map((frame) => ({
@@ -512,10 +512,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (frame) => frame.sceneId === scene.sceneId
             );
             if (!frame) return;
-            await frameService.updateFrame({
-              id: frame.frameId,
-              metadata: scene,
-            });
+            await updateFrame(frame.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
@@ -565,10 +562,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (frame) => frame.sceneId === scene.sceneId
             );
             if (!frame) return;
-            await frameService.updateFrame({
-              id: frame.frameId,
-              metadata: scene,
-            });
+            await updateFrame(frame.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
