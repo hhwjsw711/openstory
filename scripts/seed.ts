@@ -5,6 +5,7 @@
  * Usage:
  *   bun db:seed           # Seed Turso database (requires TURSO_DATABASE_URL)
  *   bun db:seed:local     # Seed local SQLite database (file:local.db)
+ *   bun db:seed:test      # Seed e2e test database (file:test.db)
  */
 
 import { styles, teams } from '@/lib/db/schema';
@@ -19,15 +20,21 @@ function parseArgs() {
   const args = process.argv.slice(2);
   return {
     local: args.includes('--local'),
+    test: args.includes('--test'),
   };
 }
 
 async function seed() {
-  const { local } = parseArgs();
+  const { local, test } = parseArgs();
 
   let client;
 
-  if (local) {
+  if (test) {
+    console.log('🗄️  Using e2e test database (file:test.db)\n');
+    client = createClient({
+      url: 'file:test.db',
+    });
+  } else if (local) {
     console.log('🗄️  Using local SQLite database (file:local.db)\n');
     client = createClient({
       url: 'file:local.db',
