@@ -42,8 +42,8 @@ export default defineConfig({
   // CI: env vars set on the job step
   webServer: {
     command: process.env.CI
-      ? 'PORT=3001 DATABASE_URL=file:test.db bun dev:e2e'
-      : 'doppler run -- env PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e'
+      : 'doppler run -- env E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
