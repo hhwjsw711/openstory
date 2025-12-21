@@ -24,7 +24,7 @@ export default defineConfig({
 
   // Shared settings for all projects
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -37,14 +37,14 @@ export default defineConfig({
     },
   ],
 
-  // Run dev server before tests
-  // CI: secrets synced via Doppler integration, just run directly
-  // Local: use doppler run to inject secrets
+  // Run dev server on port 3001 with test.db
+  // Local: doppler provides secrets, we override DATABASE_URL and PORT
+  // CI: env vars set on the job step
   webServer: {
     command: process.env.CI
-      ? 'DATABASE_URL=file:test.db BETTER_AUTH_SECRET=e2e-test-secret-min-32-chars-long bun dev:e2e'
-      : 'doppler run --command "DATABASE_URL=file:test.db BETTER_AUTH_SECRET=e2e-test-secret-min-32-chars-long bun dev:e2e"',
-    url: 'http://localhost:3000',
+      ? 'PORT=3001 DATABASE_URL=file:test.db bun dev:e2e'
+      : 'doppler run -- env PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
