@@ -13,7 +13,15 @@ import {
   updateFrameSchema,
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { frameService } from '@/lib/services/frame.service';
+import {
+  getSequenceFrames,
+  createFrame,
+  bulkInsertFrames,
+  updateFrame,
+  deleteFrame,
+  deleteSequenceFrames,
+  reorderFrames,
+} from '@/lib/db/helpers/frames';
 import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import type { NewFrame } from '@/lib/db/schema';
 
@@ -23,13 +31,11 @@ import type { NewFrame } from '@/lib/db/schema';
 
 /**
  * Get all frames for a sequence
- * @returns Array of frames with fresh signed URLs
  */
 export const getFramesFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    const frames = await frameService.getFramesBySequence(context.sequence.id);
-    return frameService.enrichFramesWithSignedUrls(frames);
+    return getSequenceFrames(context.sequence.id);
   });
 
 // ============================================================================
@@ -38,12 +44,11 @@ export const getFramesFn = createServerFn({ method: 'GET' })
 
 /**
  * Get a single frame by ID
- * @returns The frame with fresh signed URLs
  */
 export const getFrameFn = createServerFn({ method: 'GET' })
   .middleware([frameAccessMiddleware])
   .handler(async ({ context }) => {
-    return frameService.enrichFrameWithSignedUrls(context.frame);
+    return context.frame;
   });
 
 // ============================================================================
@@ -56,13 +61,12 @@ const createFrameInputSchema = singleFrameSchema.extend({
 
 /**
  * Create a single frame
- * @returns The created frame
  */
 export const createFrameFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(createFrameInputSchema))
   .handler(async ({ data }) => {
-    return frameService.createFrame(data);
+    return createFrame(data);
   });
 
 // ============================================================================
@@ -76,7 +80,6 @@ const bulkCreateFramesInputSchema = z.object({
 
 /**
  * Create multiple frames at once
- * @returns Array of created frames
  */
 export const createFramesBulkFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
@@ -86,7 +89,7 @@ export const createFramesBulkFn = createServerFn({ method: 'POST' })
       sequenceId: data.sequenceId,
       ...frame,
     }));
-    return frameService.bulkInsertFrames(frameInserts);
+    return bulkInsertFrames(frameInserts);
   });
 
 // ============================================================================
@@ -100,14 +103,13 @@ const updateFrameInputSchema = updateFrameSchema.extend({
 
 /**
  * Update a frame
- * @returns The updated frame
  */
 export const updateFrameFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(updateFrameInputSchema))
   .handler(async ({ data }) => {
     const { sequenceId: _, frameId, ...updateData } = data;
-    return frameService.updateFrame({ id: frameId, ...updateData });
+    return updateFrame(frameId, updateData);
   });
 
 // ============================================================================
@@ -121,13 +123,12 @@ const deleteFrameInputSchema = z.object({
 
 /**
  * Delete a frame
- * @returns The deleted frame's sequence ID
  */
 export const deleteFrameFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(deleteFrameInputSchema))
   .handler(async ({ data }) => {
-    await frameService.deleteFrame(data.frameId);
+    await deleteFrame(data.frameId);
     return { success: true, sequenceId: data.sequenceId };
   });
 
@@ -141,7 +142,7 @@ export const deleteFrameFn = createServerFn({ method: 'POST' })
 export const deleteFramesBySequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    await frameService.deleteFramesBySequence(context.sequence.id);
+    await deleteSequenceFrames(context.sequence.id);
     return { success: true };
   });
 
@@ -168,12 +169,12 @@ export const reorderFramesFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(reorderFramesInputSchema))
   .handler(async ({ data }) => {
-    // Map to service format (order_index vs orderIndex)
+    // Map to db helper format (order_index vs orderIndex)
     const frameOrders = data.frameOrders.map((f) => ({
       id: f.id,
       order_index: f.orderIndex,
     }));
-    await frameService.reorderFrames(data.sequenceId, frameOrders);
+    await reorderFrames(data.sequenceId, frameOrders);
     return { success: true };
   });
 

@@ -47,10 +47,22 @@ export const upscaleVariantWorkflow = createWorkflow(
         }
       );
 
-      await updateFrame(input.frameId, {
-        thumbnailStatus: 'generating',
-        thumbnailWorkflowRunId: context.workflowRunId,
-      });
+      const frame = await updateFrame(
+        input.frameId,
+        {
+          thumbnailStatus: 'generating',
+          thumbnailWorkflowRunId: context.workflowRunId,
+        },
+        { throwOnMissing: false }
+      );
+
+      if (!frame) {
+        console.log(
+          '[UpscaleVariantWorkflow]',
+          `Frame ${input.frameId} was deleted, skipping workflow`
+        );
+        return null; // Signal to skip
+      }
 
       const result = await upscaleWithNanoBanana(input.croppedTileUrl, '2K');
 
@@ -59,6 +71,11 @@ export const upscaleVariantWorkflow = createWorkflow(
         requestId: result.requestId,
       };
     });
+
+    // Early exit if frame was deleted
+    if (!upscaleResult) {
+      return { upscaledUrl: '', upscaledPath: '' };
+    }
 
     // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {
@@ -78,12 +95,24 @@ export const upscaleVariantWorkflow = createWorkflow(
 
     // Step 3: Update frame with upscaled thumbnail
     await context.run('update-frame', async () => {
-      await updateFrame(input.frameId, {
-        thumbnailUrl: storageResult.url,
-        thumbnailPath: storageResult.path || null,
-        thumbnailStatus: 'completed',
-        thumbnailGeneratedAt: new Date(),
-      });
+      const updatedFrame = await updateFrame(
+        input.frameId,
+        {
+          thumbnailUrl: storageResult.url,
+          thumbnailPath: storageResult.path || null,
+          thumbnailStatus: 'completed',
+          thumbnailGeneratedAt: new Date(),
+        },
+        { throwOnMissing: false }
+      );
+
+      if (!updatedFrame) {
+        console.log(
+          '[UpscaleVariantWorkflow]',
+          `Frame ${input.frameId} was deleted, skipping final update`
+        );
+        return;
+      }
 
       // Emit completion event
       const channel = getGenerationChannel(input.sequenceId);
@@ -123,10 +152,14 @@ export const upscaleVariantWorkflow = createWorkflow(
       );
 
       // Set status to completed - the cropped tile is still usable
-      await updateFrame(input.frameId, {
-        thumbnailStatus: 'completed',
-        thumbnailGeneratedAt: new Date(),
-      });
+      await updateFrame(
+        input.frameId,
+        {
+          thumbnailStatus: 'completed',
+          thumbnailGeneratedAt: new Date(),
+        },
+        { throwOnMissing: false }
+      );
 
       // Emit completion event for UI feedback
       if (input.sequenceId) {

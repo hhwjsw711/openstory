@@ -8,7 +8,7 @@ import { requireAuth } from '@/lib/auth/api-utils';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { frameService } from '@/lib/services/frame.service';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 import { createFileRoute } from '@tanstack/react-router';
 
@@ -41,7 +41,7 @@ export const Route = createFileRoute('/api/sequences/$sequenceId/chapters/vtt')(
             await requireTeamMemberAccess(user.id, sequence.teamId);
 
             // Get frames ordered by orderIndex
-            const frames = await frameService.getFramesBySequence(sequenceId);
+            const frames = await getSequenceFrames(sequenceId);
 
             if (frames.length === 0) {
               return new Response('No frames found for sequence', {

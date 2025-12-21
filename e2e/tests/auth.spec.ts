@@ -1,0 +1,114 @@
+/**
+ * Auth E2E Tests
+ * Tests authentication flows and route protection
+ */
+
+import { test, expect } from '../fixtures/auth.fixture';
+import { test as baseTest } from 'playwright/test';
+
+// Route Protection Tests (no auth fixture needed)
+baseTest.describe('Route Protection', () => {
+  baseTest('unauthenticated user is redirected to login', async ({ page }) => {
+    // Try to access protected route directly
+    await page.goto('/sequences');
+
+    // Should be redirected to login
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText('Sign In', { exact: true })).toBeVisible();
+  });
+
+  baseTest('login page is accessible', async ({ page }) => {
+    await page.goto('/login');
+
+    await expect(page).toHaveURL('/login');
+    await expect(
+      page.getByRole('heading', { name: 'Welcome to Velro' })
+    ).toBeVisible();
+    await expect(page.getByText('Sign In', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Send code' })).toBeVisible();
+  });
+
+  baseTest(
+    'login page shows email input and submit button',
+    async ({ page }) => {
+      await page.goto('/login');
+
+      const emailInput = page.getByLabel('Email');
+      const submitButton = page.getByRole('button', { name: 'Send code' });
+
+      await expect(emailInput).toBeVisible();
+      await expect(emailInput).toBeEnabled();
+      await expect(submitButton).toBeVisible();
+      await expect(submitButton).toBeEnabled();
+
+      // Verify email input accepts input
+      await emailInput.fill('test@example.com');
+      await expect(emailInput).toHaveValue('test@example.com');
+    }
+  );
+});
+
+// Authenticated User Tests
+test.describe('Authenticated User', () => {
+  test('can access sequences page', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto('/sequences');
+
+    // Should not be redirected to login
+    await expect(authenticatedPage).toHaveURL(/\/sequences/);
+
+    // Should see the sequences page content
+    await expect(
+      authenticatedPage.getByRole('heading', { level: 1 })
+    ).toBeVisible();
+  });
+
+  test('can access create new sequence page', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto('/sequences/new');
+
+    await expect(authenticatedPage).toHaveURL('/sequences/new');
+  });
+
+  test('can access talent page', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto('/talent');
+
+    await expect(authenticatedPage).toHaveURL(/\/talent/);
+  });
+
+  test('session persists across navigation', async ({ authenticatedPage }) => {
+    // Navigate to sequences
+    await authenticatedPage.goto('/sequences');
+    await expect(authenticatedPage).toHaveURL(/\/sequences/);
+
+    // Navigate to talent
+    await authenticatedPage.goto('/talent');
+    await expect(authenticatedPage).toHaveURL(/\/talent/);
+
+    // Navigate back to sequences
+    await authenticatedPage.goto('/sequences');
+    await expect(authenticatedPage).toHaveURL(/\/sequences/);
+
+    // Should still be authenticated (not redirected to login)
+    await expect(authenticatedPage).not.toHaveURL(/\/login/);
+  });
+});
+
+// Email OTP Flow Test (partial - just tests UI, not actual OTP)
+baseTest.describe('Email OTP Flow', () => {
+  baseTest('email input validates email format', async ({ page }) => {
+    await page.goto('/login');
+
+    const emailInput = page.getByLabel('Email');
+    const submitButton = page.getByRole('button', { name: 'Send code' });
+
+    // Enter invalid email
+    await emailInput.fill('invalid-email');
+    await submitButton.click();
+
+    // Browser should show validation error (HTML5 validation)
+    // The form should not submit
+    await expect(page).toHaveURL('/login');
+  });
+
+  // Note: Loading state test removed - timing-dependent and flaky
+});

@@ -23,7 +23,7 @@ export const generateVariantWorkflow = createWorkflow(
     const input = context.requestPayload;
 
     // Step 1: Set status to generating if frameId is provided
-    const generationParams: ImageGenerationParams = await context.run(
+    const generationParams: ImageGenerationParams | null = await context.run(
       'set-generating-status',
       async () => {
         // Validate required fields
@@ -43,9 +43,21 @@ export const generateVariantWorkflow = createWorkflow(
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
-          await updateFrame(input.frameId, {
-            variantImageStatus: 'generating',
-          });
+          const frame = await updateFrame(
+            input.frameId,
+            {
+              variantImageStatus: 'generating',
+            },
+            { throwOnMissing: false }
+          );
+
+          if (!frame) {
+            console.log(
+              '[VariantWorkflow]',
+              `Frame ${input.frameId} was deleted, skipping workflow`
+            );
+            return null; // Signal to skip
+          }
 
           // Emit realtime progress
           await getGenerationChannel(input.sequenceId)?.emit(
@@ -68,6 +80,11 @@ export const generateVariantWorkflow = createWorkflow(
         };
       }
     );
+
+    // Early exit if frame was deleted
+    if (!generationParams) {
+      return { variantImageUrl: '' };
+    }
 
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
@@ -107,10 +124,22 @@ export const generateVariantWorkflow = createWorkflow(
 
         imageUrl = result.url;
 
-        await updateFrame(input.frameId, {
-          variantImageUrl: result.url, // Store public URL (permanent, not signed)
-          variantImageStatus: 'completed',
-        });
+        const updatedFrame = await updateFrame(
+          input.frameId,
+          {
+            variantImageUrl: result.url, // Store public URL (permanent, not signed)
+            variantImageStatus: 'completed',
+          },
+          { throwOnMissing: false }
+        );
+
+        if (!updatedFrame) {
+          console.log(
+            '[VariantWorkflow]',
+            `Frame ${input.frameId} was deleted, skipping final update`
+          );
+          return { url: result.url, path: result.path };
+        }
 
         // Emit completion progress
         await getGenerationChannel(input.sequenceId)?.emit(
@@ -145,10 +174,14 @@ export const generateVariantWorkflow = createWorkflow(
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
       if (input.frameId) {
-        await updateFrame(input.frameId, {
-          thumbnailStatus: 'failed',
-          thumbnailError: failResponse,
-        });
+        await updateFrame(
+          input.frameId,
+          {
+            thumbnailStatus: 'failed',
+            thumbnailError: failResponse,
+          },
+          { throwOnMissing: false }
+        );
 
         // Emit failure progress
         if (input.sequenceId) {

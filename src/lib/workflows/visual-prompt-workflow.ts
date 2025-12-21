@@ -11,7 +11,7 @@ import { getGenerationChannel } from '@/lib/realtime';
 import type { Scene } from '@/lib/script/types';
 import { generateVisualPromptsForScenes } from '@/lib/script';
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
-import { frameService } from '@/lib/services/frame.service';
+import { updateFrame } from '@/lib/db/helpers/frames';
 
 const maxDuration = 800;
 
@@ -66,10 +66,7 @@ export const visualPromptWorkflow = createWorkflow(
               (frame) => frame.sceneId === scene.sceneId
             );
             if (!frame) return;
-            await frameService.updateFrame({
-              id: frame.frameId,
-              metadata: scene,
-            });
+            await updateFrame(frame.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {

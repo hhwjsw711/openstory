@@ -18,7 +18,7 @@ export const generateImageWorkflow = createWorkflow(
     const input = context.requestPayload;
 
     // Step 1: Set status to generating if frameId is provided
-    const generationParams: ImageGenerationParams = await context.run(
+    const generationParams: ImageGenerationParams | null = await context.run(
       'set-generating-status',
       async () => {
         // Validate required fields
@@ -37,12 +37,24 @@ export const generateImageWorkflow = createWorkflow(
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
-          await updateFrame(input.frameId, {
-            thumbnailStatus: 'generating',
-            thumbnailWorkflowRunId: context.workflowRunId,
-            imageModel: model,
-            imagePrompt: input.prompt,
-          });
+          const frame = await updateFrame(
+            input.frameId,
+            {
+              thumbnailStatus: 'generating',
+              thumbnailWorkflowRunId: context.workflowRunId,
+              imageModel: model,
+              imagePrompt: input.prompt,
+            },
+            { throwOnMissing: false }
+          );
+
+          if (!frame) {
+            console.log(
+              '[ImageWorkflow]',
+              `Frame ${input.frameId} was deleted, skipping workflow`
+            );
+            return null; // Signal to skip
+          }
 
           // Emit realtime progress
           await getGenerationChannel(input.sequenceId)?.emit(
@@ -71,6 +83,15 @@ export const generateImageWorkflow = createWorkflow(
         } satisfies ImageGenerationParams;
       }
     );
+
+    // Early exit if frame was deleted
+    if (!generationParams) {
+      return {
+        imageUrl: '',
+        frameId: input.frameId,
+        sequenceId: input.sequenceId,
+      };
+    }
 
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
@@ -106,20 +127,32 @@ export const generateImageWorkflow = createWorkflow(
 
         imageUrl = result.url;
 
-        await updateFrame(input.frameId, {
-          thumbnailPath: result.path || null, // Store R2 path (permanent)
-          thumbnailUrl: result.url, // Store public URL (permanent, not signed)
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-          thumbnailError: null,
-          // Clear motion fields since the thumbnail changed
-          videoUrl: null,
-          videoPath: null,
-          videoStatus: 'pending',
-          videoWorkflowRunId: null,
-          videoGeneratedAt: null,
-          videoError: null,
-        });
+        const updatedFrame = await updateFrame(
+          input.frameId,
+          {
+            thumbnailPath: result.path || null, // Store R2 path (permanent)
+            thumbnailUrl: result.url, // Store public URL (permanent, not signed)
+            thumbnailStatus: 'completed',
+            thumbnailGeneratedAt: new Date(),
+            thumbnailError: null,
+            // Clear motion fields since the thumbnail changed
+            videoUrl: null,
+            videoPath: null,
+            videoStatus: 'pending',
+            videoWorkflowRunId: null,
+            videoGeneratedAt: null,
+            videoError: null,
+          },
+          { throwOnMissing: false }
+        );
+
+        if (!updatedFrame) {
+          console.log(
+            '[ImageWorkflow]',
+            `Frame ${input.frameId} was deleted, skipping final update`
+          );
+          return { url: result.url, path: result.path };
+        }
 
         // Emit completion progress
         await getGenerationChannel(input.sequenceId)?.emit(
@@ -156,10 +189,14 @@ export const generateImageWorkflow = createWorkflow(
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
       if (input.frameId) {
-        await updateFrame(input.frameId, {
-          thumbnailStatus: 'failed',
-          thumbnailError: failResponse,
-        });
+        await updateFrame(
+          input.frameId,
+          {
+            thumbnailStatus: 'failed',
+            thumbnailError: failResponse,
+          },
+          { throwOnMissing: false }
+        );
 
         // Emit failure progress
         if (input.sequenceId) {

@@ -69,16 +69,30 @@ export const generateMotionWorkflow = createWorkflow(
     }
 
     // Step 1: Verify frame and get sequence/style info
+    let frameDeleted = false;
     if (input.frameId) {
       // Step 2: Set status to generating and store model being used
       await context.run('set-generating-status', async () => {
         if (input.frameId) {
-          await updateFrame(input.frameId, {
-            videoStatus: 'generating',
-            videoWorkflowRunId: context.workflowRunId,
-            motionModel: input.model || DEFAULT_VIDEO_MODEL,
-            motionPrompt: input.prompt,
-          });
+          const frame = await updateFrame(
+            input.frameId,
+            {
+              videoStatus: 'generating',
+              videoWorkflowRunId: context.workflowRunId,
+              motionModel: input.model || DEFAULT_VIDEO_MODEL,
+              motionPrompt: input.prompt,
+            },
+            { throwOnMissing: false }
+          );
+
+          if (!frame) {
+            console.log(
+              '[MotionWorkflow]',
+              `Frame ${input.frameId} was deleted, skipping workflow`
+            );
+            frameDeleted = true;
+            return;
+          }
 
           // Emit realtime progress
           await emit('video:progress', {
@@ -87,6 +101,11 @@ export const generateMotionWorkflow = createWorkflow(
           });
         }
       });
+    }
+
+    // Early exit if frame was deleted
+    if (frameDeleted) {
+      return { videoUrl: '', duration: 0 };
     }
 
     // Step 2: Generate motion/video
@@ -165,45 +184,46 @@ export const generateMotionWorkflow = createWorkflow(
       videoUrl = storageResult.url;
       // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
-        try {
-          if (
-            !videoUrl ||
-            !input.teamId ||
-            !input.sequenceId ||
-            !input.frameId
-          ) {
-            throw new Error('Missing required IDs for storage upload', {
-              cause: JSON.stringify(videoResult),
-            });
-          }
+        if (!videoUrl || !input.teamId || !input.sequenceId || !input.frameId) {
+          throw new Error('Missing required IDs for storage upload', {
+            cause: JSON.stringify(videoResult),
+          });
+        }
 
-          // Use actual duration from motion generation metadata
-          const metadataDuration =
-            typeof videoResult.metadata?.duration === 'number'
-              ? videoResult.metadata.duration
-              : null;
-          const actualDuration = metadataDuration ?? input.duration ?? 2;
+        // Use actual duration from motion generation metadata
+        const metadataDuration =
+          typeof videoResult.metadata?.duration === 'number'
+            ? videoResult.metadata.duration
+            : null;
+        const actualDuration = metadataDuration ?? input.duration ?? 2;
 
-          await updateFrame(input.frameId, {
+        const updatedFrame = await updateFrame(
+          input.frameId,
+          {
             videoPath: storageResult.path, // Store R2 path (permanent)
             videoUrl: storageResult.url, // Store public URL (permanent, not signed)
             durationMs: actualDuration * 1000,
             videoStatus: 'completed',
             videoGeneratedAt: new Date(),
             videoError: null,
-          });
+          },
+          { throwOnMissing: false }
+        );
 
-          // Emit completion progress
-          await emit('video:progress', {
-            frameId: input.frameId,
-            status: 'completed',
-            videoUrl: storageResult.url,
-          });
-        } catch (error) {
-          throw new Error(
-            `Failed to update frame: ${error instanceof Error ? error.message : 'Unknown error'}`
+        if (!updatedFrame) {
+          console.log(
+            '[MotionWorkflow]',
+            `Frame ${input.frameId} was deleted, skipping final update`
           );
+          return;
         }
+
+        // Emit completion progress
+        await emit('video:progress', {
+          frameId: input.frameId,
+          status: 'completed',
+          videoUrl: storageResult.url,
+        });
       });
     }
     console.log('[MotionWorkflow]', 'Motion generation workflow completed');
@@ -231,10 +251,14 @@ export const generateMotionWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       if (input.frameId) {
-        await updateFrame(input.frameId, {
-          videoStatus: 'failed',
-          videoError: failResponse,
-        });
+        await updateFrame(
+          input.frameId,
+          {
+            videoStatus: 'failed',
+            videoError: failResponse,
+          },
+          { throwOnMissing: false }
+        );
       }
 
       // Emit failure progress
