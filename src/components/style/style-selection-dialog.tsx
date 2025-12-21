@@ -67,7 +67,7 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
           'all',
           ...Object.keys(
             styles.reduce(
-              (acc, style) => {
+              (acc: Record<string, string>, style: Style) => {
                 if (style.category) {
                   acc[style.category] = style.category;
                 }
