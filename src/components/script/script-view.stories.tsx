@@ -38,7 +38,6 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   mergedVideoStatus: 'pending',
   mergedVideoGeneratedAt: null,
   mergedVideoError: null,
-  mergedVideoDurationMs: null,
 };
 
 // Create a new QueryClient for each story to avoid state leakage

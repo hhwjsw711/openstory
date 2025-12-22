@@ -53,7 +53,6 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     mergedVideoStatus: true,
     mergedVideoGeneratedAt: true,
     mergedVideoError: true,
-    mergedVideoDurationMs: true,
   })
   .extend({
     // Accept array of models for multi-model sequence creation
@@ -118,7 +117,6 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   mergedVideoStatus: true,
   mergedVideoGeneratedAt: true,
   mergedVideoError: true,
-  mergedVideoDurationMs: true,
 });
 
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

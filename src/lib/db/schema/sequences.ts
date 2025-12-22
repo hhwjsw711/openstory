@@ -97,7 +97,6 @@ export const sequences = sqliteTable(
       mode: 'timestamp',
     }),
     mergedVideoError: text('merged_video_error'),
-    mergedVideoDurationMs: integer('merged_video_duration_ms'),
   },
   (table) => [
     index('idx_sequences_created_at').on(table.createdAt),

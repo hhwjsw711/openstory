@@ -341,3 +341,21 @@ export interface LibraryTalentSheetWorkflowResult {
   headshotImageUrl?: string;
   headshotImagePath?: string;
 }
+
+/**
+ * Merge video workflow input
+ * Stitches all frame videos into a single merged video
+ */
+export interface MergeVideoWorkflowInput extends SequenceWorkflowContext {
+  /** Ordered list of video URLs to merge */
+  videoUrls: string[];
+  /** Target FPS for output (1-60, defaults to lowest of inputs) */
+  targetFps?: number;
+  /** Target resolution (512-2048 per dimension) */
+  resolution?: { width: number; height: number };
+}
+
+export interface MergeVideoWorkflowResult {
+  mergedVideoUrl: string;
+  mergedVideoPath: string;
+}

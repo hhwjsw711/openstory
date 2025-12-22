@@ -75,7 +75,6 @@ const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
     mergedVideoStatus: 'pending',
     mergedVideoGeneratedAt: null,
     mergedVideoError: null,
-    mergedVideoDurationMs: null,
     ...overrides,
   };
 };

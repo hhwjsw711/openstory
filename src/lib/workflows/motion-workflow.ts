@@ -3,8 +3,13 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
-import { getFrameWithSequence, updateFrame } from '@/lib/db/helpers/frames';
-import type { Scene } from '@/lib/ai/scene-analysis.schema';
+import {
+  getFrameWithSequence,
+  getSequenceFrames,
+  updateFrame,
+} from '@/lib/db/helpers/frames';
+import { triggerWorkflow } from '@/lib/workflow/client';
+import type { MergeVideoWorkflowInput } from '@/lib/workflow';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -14,8 +19,6 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 /**
  * Motion generation workflow
@@ -43,24 +46,6 @@ export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Get realtime channel for streaming progress (if available)
-
-    // Helper to safely emit events
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const emit = async (event: string, data: any) => {
-      if (!input.sequenceId) return;
-      const channel = getGenerationChannel(input.sequenceId);
-      if (!channel) return;
-      try {
-        await channel.emit(
-          `generation.${event}` as 'generation.complete',
-          data
-        );
-      } catch {
-        // Ignore emit errors - don't fail the workflow
-      }
-    };
-
     // Validate required fields
     if (!input.imageUrl || input.imageUrl.trim().length === 0) {
       throw new WorkflowValidationError(
@@ -68,11 +53,10 @@ export const generateMotionWorkflow = createWorkflow(
       );
     }
 
-    // Step 1: Verify frame and get sequence/style info
-    let frameDeleted = false;
-    if (input.frameId) {
-      // Step 2: Set status to generating and store model being used
-      await context.run('set-generating-status', async () => {
+    // Step 2: Set status to generating and store model being used
+    const { frameDeleted } = await context.run(
+      'set-generating-status',
+      async () => {
         if (input.frameId) {
           const frame = await updateFrame(
             input.frameId,
@@ -90,20 +74,22 @@ export const generateMotionWorkflow = createWorkflow(
               '[MotionWorkflow]',
               `Frame ${input.frameId} was deleted, skipping workflow`
             );
-            frameDeleted = true;
-            return;
+            return { frameDeleted: true };
           }
 
           // Emit realtime progress
-          await emit('video:progress', {
-            frameId: input.frameId,
-            status: 'generating',
-          });
+          await getGenerationChannel(input.sequenceId).emit(
+            'generation.video:progress',
+            {
+              frameId: input.frameId,
+              status: 'generating',
+            }
+          );
         }
-      });
-    }
+        return { frameDeleted: false };
+      }
+    );
 
-    // Early exit if frame was deleted
     if (frameDeleted) {
       return { videoUrl: '', duration: 0 };
     }
@@ -219,11 +205,51 @@ export const generateMotionWorkflow = createWorkflow(
         }
 
         // Emit completion progress
-        await emit('video:progress', {
-          frameId: input.frameId,
-          status: 'completed',
-          videoUrl: storageResult.url,
-        });
+        await getGenerationChannel(input.sequenceId).emit(
+          'generation.video:progress',
+          {
+            frameId: input.frameId,
+            status: 'completed',
+            videoUrl: storageResult.url,
+          }
+        );
+      });
+
+      // Step 6: Check if all frames are complete and trigger merge
+      // TODO: Tom Dec 2025 - I don't love this. It's a bit of a hack.
+      // I looked at multiple options and the only way to reliably do this is to have versioning.
+      // This should be replaced once that is in place
+      await context.run('check-merge-trigger', async () => {
+        if (!input.sequenceId || !input.teamId || !input.userId) return;
+
+        const allFrames = await getSequenceFrames(input.sequenceId);
+        const allComplete = allFrames.every(
+          (f) => f.videoStatus === 'completed'
+        );
+
+        if (allComplete && allFrames.length > 0) {
+          const videoUrls = allFrames
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map((f) => f.videoUrl)
+            .filter((url): url is string => Boolean(url));
+
+          if (videoUrls.length === allFrames.length) {
+            console.log(
+              `[MotionWorkflow] All ${allFrames.length} frames complete, triggering merge workflow`
+            );
+
+            const mergeInput: MergeVideoWorkflowInput = {
+              userId: input.userId,
+              teamId: input.teamId,
+              sequenceId: input.sequenceId,
+              videoUrls,
+            };
+
+            await triggerWorkflow('/merge-video', mergeInput, {
+              deduplicationId: `merge-${input.sequenceId}`,
+            });
+          }
+        }
       });
     }
     console.log('[MotionWorkflow]', 'Motion generation workflow completed');
@@ -262,14 +288,15 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       // Emit failure progress
-      if (input.sequenceId) {
+      if (input.sequenceId && input.frameId) {
         try {
-          const channel = getGenerationChannel(input.sequenceId);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (channel.emit as any)('generation.video:progress', {
-            frameId: input.frameId,
-            status: 'failed',
-          });
+          await getGenerationChannel(input.sequenceId).emit(
+            'generation.video:progress',
+            {
+              frameId: input.frameId,
+              status: 'failed',
+            }
+          );
         } catch {
           // Ignore emit errors
         }
