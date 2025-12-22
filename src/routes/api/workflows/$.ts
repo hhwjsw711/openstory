@@ -8,6 +8,7 @@ import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet-workflow';
+import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
@@ -24,6 +25,7 @@ const handler = serveMany(
     storyboard: generateStoryboardWorkflow,
     image: generateImageWorkflow,
     motion: generateMotionWorkflow,
+    'merge-video': mergeVideoWorkflow,
     'analyze-script': analyzeScriptWorkflow,
     'character-sheet': characterSheetWorkflow,
     'character-sheet-from-bible': characterBibleWorkflow,

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import { SceneScriptPrompts, type TabValue } from './scene-script-prompts';
 
-const mockFrame: Frame = {
+const mockFrame = {
   id: 'frame-1',
   sequenceId: 'seq-1',
   orderIndex: 0,
@@ -114,7 +114,7 @@ const mockFrame: Frame = {
   },
   createdAt: new Date(),
   updatedAt: new Date(),
-};
+} satisfies Frame;
 
 const meta: Meta<typeof SceneScriptPrompts> = {
   title: 'Scenes/SceneScriptPrompts',
@@ -189,7 +189,7 @@ Sarah doesn't respond, too absorbed in her work. The barista shrugs and sets the
             },
           ],
         },
-      } as Frame['metadata'],
+      },
     },
   },
 };
@@ -257,7 +257,7 @@ export const LongPrompts: Story = {
             },
           },
         },
-      } as Frame['metadata'],
+      },
     },
   },
 };
@@ -274,7 +274,7 @@ export const ShortScript: Story = {
           lineNumber: 1,
           dialogue: [],
         },
-      } as Frame['metadata'],
+      },
     },
   },
 };

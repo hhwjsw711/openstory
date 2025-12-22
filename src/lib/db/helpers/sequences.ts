@@ -1,5 +1,4 @@
 import { getDb } from '#db-client';
-import type { AnalysisModelId } from '@/lib/ai/models.config';
 import {
   type AspectRatio,
   DEFAULT_ASPECT_RATIO,
@@ -11,44 +10,8 @@ import {
   type SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { AuthenticationError, ValidationError } from '@/lib/errors';
-import type { CreateSequenceInput } from '@/lib/schemas/sequence.schemas';
 import { and, desc, eq } from 'drizzle-orm';
 import { sequences } from '../schema';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type CreateSequenceParams = Omit<
-  Required<CreateSequenceInput>,
-  'analysisModels' | 'analysisDurationMs' | 'metadata' | 'suggestedTalentIds'
-> & {
-  analysisModel: AnalysisModelId;
-  userId: string;
-};
-
-type UpdateSequenceParams = {
-  id: string;
-  userId: string;
-  title?: string;
-  script?: string | null;
-  styleId?: string;
-  status?: SequenceStatus;
-  analysisModel?: string;
-  aspectRatio?: AspectRatio;
-  imageModel?: string;
-  videoModel?: string;
-};
-
-type SequenceWithDetails = Sequence & {
-  frames?: Array<{
-    id: string;
-    orderIndex: number;
-    description: string | null;
-    thumbnailUrl: string | null;
-    videoUrl: string | null;
-  }>;
-};
 
 // ============================================================================
 // CRUD Operations
@@ -57,9 +20,17 @@ type SequenceWithDetails = Sequence & {
 /**
  * Create a new sequence
  */
-export async function createSequence(
-  params: CreateSequenceParams
-): Promise<Sequence> {
+export async function createSequence(params: {
+  teamId: string;
+  userId: string;
+  title: string;
+  script?: string | null;
+  styleId: string;
+  aspectRatio?: AspectRatio;
+  analysisModel: string;
+  imageModel?: string;
+  videoModel?: string;
+}): Promise<Sequence> {
   const sequenceData: NewSequence = {
     teamId: params.teamId,
     createdBy: params.userId,
@@ -89,9 +60,18 @@ export async function createSequence(
 /**
  * Update an existing sequence
  */
-export async function updateSequence(
-  params: UpdateSequenceParams
-): Promise<Sequence> {
+export async function updateSequence(params: {
+  id: string;
+  userId: string;
+  title?: string;
+  script?: string | null;
+  styleId?: string;
+  status?: SequenceStatus;
+  analysisModel?: string;
+  aspectRatio?: AspectRatio;
+  imageModel?: string;
+  videoModel?: string;
+}): Promise<Sequence> {
   const updateData: Partial<NewSequence> = {
     title: params.title,
     script: params.script,

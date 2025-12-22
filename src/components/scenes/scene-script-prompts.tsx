@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { shortenPromptFn } from '@/functions/ai';
 import { generateFrameImageFn } from '@/functions/frame-image';
-import { generateFrameMotionFn } from '@/functions/frame-motion';
+import { generateFrameMotionFn } from '@/functions/motion-functions';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,

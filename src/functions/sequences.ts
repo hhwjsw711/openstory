@@ -114,7 +114,6 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             getAnalysisModelById(modelId)?.id || DEFAULT_ANALYSIS_MODEL,
           imageModel,
           videoModel,
-          autoGenerateMotion: false,
         });
 
         // Trigger storyboard generation workflow

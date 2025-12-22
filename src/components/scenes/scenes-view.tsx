@@ -22,7 +22,7 @@ import {
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
-import { batchGenerateMotionFn } from '@/functions/frame-motion';
+import { batchGenerateMotionFn } from '@/functions/motion-functions';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
