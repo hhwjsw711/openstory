@@ -25,6 +25,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     tier: 'ultra-fast',
     description: 'Very large model, excellent for complex analysis',
   },
+  // Anthropic models
   {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
@@ -37,7 +38,14 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Claude Sonnet 4.5',
     provider: 'Anthropic',
     tier: 'premium',
-    description: 'Detailed analysis, higher quality',
+    description: 'State-of-the-art coding performance',
+  },
+  {
+    id: 'anthropic/claude-opus-4.5',
+    name: 'Claude Opus 4.5',
+    provider: 'Anthropic',
+    tier: 'premium',
+    description: 'Frontier reasoning for complex tasks',
   },
   {
     id: 'x-ai/grok-4-fast',
@@ -46,33 +54,70 @@ export const SCRIPT_ANALYSIS_MODELS = [
     tier: 'premium',
     description: 'Fast analysis, higher quality',
   },
-  {
-    id: 'google/gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    provider: 'Google',
-    tier: 'premium',
-    description: 'High quality analysis, higher quality',
-  },
-  {
-    id: 'google/gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    provider: 'Google',
-    tier: 'fast',
-    description: 'Fastest analysis, highest quality',
-  },
+  // Google models
   {
     id: 'google/gemini-3-pro-preview',
     name: 'Gemini 3 Pro',
     provider: 'Google',
     tier: 'premium',
-    description: 'Latest Gemini model, best quality analysis',
+    description: 'Latest multimodal reasoning model',
   },
   {
-    id: 'openai/gpt-5-pro',
-    name: 'GPT-5 Pro',
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash',
+    provider: 'Google',
+    tier: 'fast',
+    description: 'High-speed Gemini 3 model',
+  },
+  // OpenAI models
+  {
+    id: 'openai/gpt-5.2-pro',
+    name: 'GPT-5.2 Pro',
     provider: 'OpenAI',
     tier: 'premium',
-    description: 'Fast analysis, highest quality',
+    description: 'Latest flagship model',
+  },
+  {
+    id: 'openai/gpt-5.2',
+    name: 'GPT-5.2',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Latest GPT-5 series model',
+  },
+  {
+    id: 'openai/gpt-5.1-codex',
+    name: 'GPT-5.1 Codex',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Optimized for code generation',
+  },
+  {
+    id: 'openai/gpt-5-mini',
+    name: 'GPT-5 Mini',
+    provider: 'OpenAI',
+    tier: 'fast',
+    description: 'Compact, efficient model',
+  },
+  {
+    id: 'openai/o3-pro',
+    name: 'o3 Pro',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Advanced reasoning model',
+  },
+  {
+    id: 'openai/o3',
+    name: 'o3',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Well-rounded reasoning model',
+  },
+  {
+    id: 'openai/o4-mini-high',
+    name: 'o4 Mini High',
+    provider: 'OpenAI',
+    tier: 'fast',
+    description: 'Cost-efficient reasoning model',
   },
   // Cerebras models - ultra-fast inference (1,400-3,000 tokens/second)
   {
