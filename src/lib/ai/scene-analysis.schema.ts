@@ -14,7 +14,7 @@ export const characterBibleEntrySchema = z.object({
   characterId: z.string(),
   name: z.string(),
   firstMention: firstMentionSchema,
-  age: z.union([z.number(), z.string()]).optional(), // Accept both numbers and age ranges like "30s"
+  age: z.union([z.number(), z.string()]).nullish(), // Accept numbers, age ranges like "30s", null, or undefined
   gender: z.string().optional(),
   ethnicity: z.string().optional(),
   physicalDescription: z.string(),
