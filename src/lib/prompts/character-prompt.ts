@@ -21,7 +21,9 @@ import {
  * @param character - Character with flattened fields
  * @returns Concise description string
  */
-function buildCharacterDescription(character: CharacterMinimal): string {
+export const buildCharacterDescription = (
+  character: CharacterMinimal
+): string => {
   const parts: string[] = [];
 
   if (character.physicalDescription) {
@@ -34,7 +36,7 @@ function buildCharacterDescription(character: CharacterMinimal): string {
   }
 
   return `${character.name}${parts.length > 0 ? ` - ${parts.join(', ')}` : ''}`;
-}
+};
 /**
  * Build reference images for characters
  * @param characters - Array of characters
@@ -45,16 +47,16 @@ function buildCharacterDescription(character: CharacterMinimal): string {
  * // referenceImages = [jackReferenceImage, sarahReferenceImage]
  * ```
  */
-export function buildCharacterReferenceImages(
+export const buildCharacterReferenceImages = (
   characters: CharacterMinimal[]
-): ReferenceImageDescription[] {
+): ReferenceImageDescription[] => {
   return characters
     .filter((c) => c.sheetImageUrl)
     .map((c) => ({
       referenceImageUrl: c.sheetImageUrl ?? '',
       description: buildCharacterDescription(c),
     }));
-}
+};
 
 /**
  * Build prompt with multi-character reference mapping
@@ -76,15 +78,60 @@ export function buildCharacterReferenceImages(
  * // referenceUrls = [jackSheetUrl, sarahSheetUrl]
  * ```
  */
-export function buildPromptWithCharacterReferences(
+export const buildPromptWithCharacterReferences = (
   basePrompt: string,
   characters: CharacterMinimal[]
-): PromptWithReferenceImages {
+): PromptWithReferenceImages => {
   return buildReferenceImagePrompt(
     basePrompt,
     buildCharacterReferenceImages(characters)
   );
-}
+};
+
+/**
+ * Build the base 4-panel reference sheet prompt structure
+ *
+ * Creates a consistent prompt with:
+ * - 4-panel horizontal layout (frontal, portrait, side, rear)
+ * - Studio environment (white cyclorama)
+ * - Commercial photography specs
+ * - High-key lighting
+ * - Hyper-accurate materiality
+ *
+ * @param identitySection - The identity section of the prompt
+ * @param additionalInstructions - Optional additional instructions (e.g., reference image handling)
+ * @returns Complete prompt string
+ */
+export const buildBaseSheetPrompt = (
+  identitySection: string,
+  /** Optional additional instructions (e.g., reference image handling) */
+  additionalInstructions: string = ''
+): string => {
+  return `A professional four-panel photographic character reference grid, maintaining absolute anatomical and stylistic consistency.
+
+[LAYOUT]:
+The grid comprises four distinct, technical views arranged horizontally:
+- Panel 1 (Left): Full body frontal view, standing in a neutral pose
+- Panel 2 (Center-Left): Close-up portrait frontal view (chest up)
+- Panel 3 (Center-Right): Full body side profile view facing left
+- Panel 4 (Right): Full body rear view
+
+All attire, accessories, hair, and features must be perfectly consistent across all four panels.
+
+${identitySection}
+${additionalInstructions}
+[ENVIRONMENT]:
+Seamless, minimalist commercial photo studio cyclorama with flat neutral white background. Clean, sterile, analytical atmosphere designed for clarity.
+
+[OPTICAL & CAMERA SPECS]:
+Commercial reference photography style. High-resolution medium format digital, tack-sharp focus across all panels, deep depth of field. Flat perspective, no lens distortion.
+
+[LIGHTING]:
+Neutral, even, high-key studio lighting. Diffused illumination from large softboxes to eliminate harsh shadows and highlight shape and form evenly. 5500K daylight balance.
+
+[MATERIALITY]:
+Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-details. Consistent texture rendering across all four angles without beautification or alteration.`.trim();
+};
 
 /**
  * Talent appearance data for character sheet generation
@@ -111,11 +158,11 @@ type CharacterSheetPromptResult = {
 /**
  * Build a detailed character sheet prompt from character bible entry
  *
- * Creates a comprehensive multi-panel reference sheet prompt with:
- * - Top row: Full-body turnaround (front, side, 3/4 back, rear)
- * - Middle-left: 15-portrait headshot matrix
- * - Lower-central: Posed full-body
- * - Right: Large close-up headshot
+ * Creates a 4-panel horizontal reference grid:
+ * - Panel 1: Full body frontal view
+ * - Panel 2: Close-up portrait (chest up)
+ * - Panel 3: Full body side profile (left)
+ * - Panel 4: Full body rear view
  *
  * When talentOverrides is provided (during casting), the character's script-derived
  * identity is preserved, and the talent's appearance is added as supplementary
@@ -125,10 +172,10 @@ type CharacterSheetPromptResult = {
  * @param talentOverrides - Optional talent data for casting
  * @returns Prompt and reference URLs for image generation
  */
-export function buildCharacterSheetPrompt(
+export const buildCharacterSheetPrompt = (
   entry: CharacterBibleEntry,
   talentOverrides?: TalentOverrides
-): CharacterSheetPromptResult {
+): CharacterSheetPromptResult => {
   const talentMeta = talentOverrides?.sheetMetadata;
   const hasTalent = !!(talentMeta || talentOverrides?.description);
 
@@ -183,27 +230,13 @@ ${characterFeatures}`;
       ? `\nTalent notes: ${talentOverrides.description}`
       : '';
     referenceInstruction = `
-
 IMPORTANT - Actor Reference:
-Match the provided reference image exactly for the actor's face, build, and physical features. The reference shows the talent being dressed and styled for this role. Apply the costume and any makeup/styling described above to transform them into the character.${talentNotes}`;
+Match the provided reference image exactly for the actor's face, build, and physical features. The reference shows the talent in neutral attire - dress them in the costume described above and apply any makeup/styling to transform them into the character.${talentNotes}
+`;
   }
 
-  const prompt =
-    `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
-
-Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
-
-Top Row (Full-Body Turnaround): Four distinct, full-body views of the character: full frontal, direct side profile (90-degree turn), back three-quarter view, and full rear view (180-degree turn). All in a neutral, standing posture.
-
-Middle-Left Grid (Headshot Matrix): A grid of 15 distinct head-and-shoulders portraits (3 rows of 5 images). Each portrait must capture a unique head angle and subtle expression variation, systematically rotating through: direct frontal, three-quarter left/right, near-profile left/right, slight head tilts. Maintain a generally neutral to contemplative expression range.
-
-Lower-Central Panel (Posed Full-Body): A single full-body image of the character in a three-quarter stance, head slightly turned away from the camera, conveying a dynamic or pensive mood.
-
-Right-Side Feature Panel (Large Headshot): A single, prominent, large close-up headshot, tightly framed for maximum facial detail, focused on the character's eyes and central features.
-
-Character Identity Directive:
-Create a character with the following attributes. Maintain absolute consistency across all panels:
-
+  // Build identity section
+  const identitySection = `[CHARACTER IDENTITY]:
 Name: ${entry.name}
 ${[ageStr, genderLine, ethnicityLine].filter(Boolean).join('\n')}
 
@@ -213,19 +246,86 @@ ${physicalDescription}
 Costume:
 ${standardClothing}
 
-${makeupStylingSection}${referenceInstruction}
+${makeupStylingSection}`.trim();
 
-Stylistic & Technical Parameters:
-
-Lighting: Soft, even, professional studio lighting from multiple sources to minimize harsh shadows and maximize visibility of form and detail, consistent across all panels.
-
-Background: Uniform, seamless, solid neutral light-to-medium gray studio backdrop for all panels, matching the clean simplicity of a professional reference sheet.
-
-Focus: Ultra-sharp, deep focus on the character in every panel, ensuring clarity of all features and clothing details.
-
-Mood: Objective, detailed, and clear, characteristic of a high-end visual reference or concept art.
-
-Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.`.trim();
+  const prompt = buildBaseSheetPrompt(identitySection, referenceInstruction);
 
   return { prompt, referenceUrls };
-}
+};
+
+/**
+ * Build a detailed talent sheet prompt that uses reference images as the source of truth.
+ * Uses the shared 4-panel horizontal layout from buildBaseSheetPrompt.
+ */
+export const buildLibraryTalentSheetPrompt = (
+  name: string,
+  description?: string,
+  hasReferenceImages?: boolean
+): string => {
+  const descSection = description ? `\nUser Description:\n${description}` : '';
+
+  const referenceInstruction = hasReferenceImages
+    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
+Match all physical details exactly: age, build, skin tone, hair color/style, facial features, and clothing.
+`
+    : `IMPORTANT: Generate a consistent character based on the name and description provided.
+Create a realistic, detailed appearance that matches the description.
+`;
+
+  const appearanceSection = hasReferenceImages
+    ? `DERIVE ALL DETAILS FROM THE REFERENCE IMAGES PROVIDED. Match the person's exact appearance.`
+    : `Use the name and description to create a detailed, consistent appearance. Ensure all panels show the same person with matching physical features, clothing, and distinguishing characteristics.`;
+
+  const consistencyNote = hasReferenceImages
+    ? `\nMaintain absolute consistency with reference images across all panels.`
+    : `\nMaintain absolute consistency across all panels - the same person must appear in every view with matching features.`;
+
+  const identitySection = `[PERSON IDENTITY]:
+Name: ${name}
+${descSection}
+
+Physical Appearance, Attire, and Distinguishing Features:
+${appearanceSection}
+${consistencyNote}`.trim();
+
+  return buildBaseSheetPrompt(identitySection, referenceInstruction);
+};
+
+/**
+ * Build a prompt for generating a talent headshot/avatar.
+ * Used as the talent's profile image.
+ */
+export const buildTalentHeadshotPrompt = (
+  name: string,
+  description?: string,
+  hasReferenceImages?: boolean
+): string => {
+  const descSection = description ? `\nPerson notes: ${description}` : '';
+  const referenceSection = hasReferenceImages
+    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
+Match all physical details exactly: face shape, skin tone, hair color/style, eye color, and any distinguishing features.`
+    : `IMPORTANT: Generate a realistic portrait based on the name and description provided.
+Create a detailed, consistent appearance that matches the description.`;
+
+  const consistencyNote = hasReferenceImages
+    ? `Maintain absolute consistency with reference images.`
+    : `Ensure the portrait matches the description and is consistent with the character reference sheet.`;
+
+  return `Professional headshot portrait of ${name}, photorealistic, studio lighting.
+
+${referenceSection}
+
+Requirements:
+- Head and shoulders portrait, centered composition
+- Neutral to friendly expression
+- Direct eye contact with camera
+- Soft, even professional studio lighting
+- Clean, solid neutral background
+- Sharp focus on face and eyes
+- High detail on facial features
+${descSection}
+
+Style: Professional portrait photography, headshot for actor/model portfolio.
+Aspect ratio: Square 1:1 format.
+${consistencyNote}`;
+};

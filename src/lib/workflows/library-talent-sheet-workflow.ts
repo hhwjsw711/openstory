@@ -14,6 +14,10 @@ import {
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
+import {
+  buildLibraryTalentSheetPrompt,
+  buildTalentHeadshotPrompt,
+} from '@/lib/prompts/character-prompt';
 import { getTalentChannel } from '@/lib/realtime';
 import type {
   LibraryTalentSheetWorkflowInput,
@@ -22,105 +26,6 @@ import type {
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-
-/**
- * Build a detailed talent sheet prompt that uses reference images as the source of truth.
- * Uses the same multi-panel layout as sequence character sheets.
- */
-function buildLibraryTalentSheetPrompt(
-  name: string,
-  description?: string,
-  hasReferenceImages?: boolean
-): string {
-  const descSection = description ? `\nUser Description:\n${description}` : '';
-  const referenceSection = hasReferenceImages
-    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
-Match all physical details exactly: age, build, skin tone, hair color/style, facial features, and clothing.`
-    : `IMPORTANT: Generate a consistent character based on the name and description provided.
-Create a realistic, detailed appearance that matches the description.`;
-
-  const appearanceSection = hasReferenceImages
-    ? `DERIVE ALL DETAILS FROM THE REFERENCE IMAGES PROVIDED. Match the person's exact appearance.`
-    : `Use the name and description to create a detailed, consistent appearance. Ensure all panels show the same person with matching physical features, clothing, and distinguishing characteristics.`;
-
-  const consistencyNote = hasReferenceImages
-    ? `Maintain absolute consistency with reference images across all panels.`
-    : `Maintain absolute consistency across all panels - the same person must appear in every view with matching features.`;
-
-  return `Character Reference Sheet, highly detailed, photorealistic, studio lighting, extreme fidelity, clean aesthetic.
-
-${referenceSection}
-
-Layout Directive: Create a composite image with a precise multi-panel grid layout as described:
-
-Top Row (Full-Body Turnaround): Four distinct, full-body views of the person: full frontal, direct side profile (90-degree turn), back three-quarter view, and full rear view (180-degree turn). All in a neutral, standing posture.
-
-Middle-Left Grid (Headshot Matrix): A grid of 15 distinct head-and-shoulders portraits (3 rows of 5 images). Each portrait must capture a unique head angle and subtle expression variation, systematically rotating through: direct frontal, three-quarter left/right, near-profile left/right, slight head tilts. Maintain a generally neutral to contemplative expression range.
-
-Lower-Central Panel (Posed Full-Body): A single full-body image of the person in a three-quarter stance, head slightly turned away from the camera, conveying a dynamic or pensive mood.
-
-Right-Side Feature Panel (Large Headshot): A single, prominent, large close-up headshot, tightly framed for maximum facial detail, focused on the person's eyes and central features.
-
-Person Identity Directive:
-Name: ${name}
-${descSection}
-
-Physical Appearance, Attire, and Distinguishing Features:
-${appearanceSection}
-
-Stylistic & Technical Parameters:
-
-Lighting: Soft, even, professional studio lighting from multiple sources to minimize harsh shadows and maximize visibility of form and detail, consistent across all panels.
-
-Background: Uniform, seamless, solid neutral light-to-medium gray studio backdrop for all panels, matching the clean simplicity of a professional reference sheet.
-
-Focus: Ultra-sharp, deep focus on the person in every panel, ensuring clarity of all features and clothing details.
-
-Mood: Objective, detailed, and clear, characteristic of a high-end visual reference or concept art.
-
-Composition: Ensure proper spacing and alignment between all panels to form a cohesive contact sheet.
-
-${consistencyNote}`;
-}
-
-/**
- * Build a prompt for generating a talent headshot/avatar.
- * Used as the talent's profile image.
- */
-function buildTalentHeadshotPrompt(
-  name: string,
-  description?: string,
-  hasReferenceImages?: boolean
-): string {
-  const descSection = description ? `\nPerson notes: ${description}` : '';
-  const referenceSection = hasReferenceImages
-    ? `IMPORTANT: Use the provided reference images as the definitive source for this person's appearance.
-Match all physical details exactly: face shape, skin tone, hair color/style, eye color, and any distinguishing features.`
-    : `IMPORTANT: Generate a realistic portrait based on the name and description provided.
-Create a detailed, consistent appearance that matches the description.`;
-
-  const consistencyNote = hasReferenceImages
-    ? `Maintain absolute consistency with reference images.`
-    : `Ensure the portrait matches the description and is consistent with the character reference sheet.`;
-
-  return `Professional headshot portrait of ${name}, photorealistic, studio lighting.
-
-${referenceSection}
-
-Requirements:
-- Head and shoulders portrait, centered composition
-- Neutral to friendly expression
-- Direct eye contact with camera
-- Soft, even professional studio lighting
-- Clean, solid neutral background
-- Sharp focus on face and eyes
-- High detail on facial features
-${descSection}
-
-Style: Professional portrait photography, headshot for actor/model portfolio.
-Aspect ratio: Square 1:1 format.
-${consistencyNote}`;
-}
 
 export const libraryTalentSheetWorkflow = createWorkflow(
   async (
