@@ -1,6 +1,6 @@
 /**
- * Frame Motion Server Functions
- * Motion/video generation operations for frames
+ * Motion Server Functions
+ * Motion/video generation operations including frame motion and merged video
  */
 
 import { createServerFn } from '@tanstack/react-start';
@@ -10,7 +10,10 @@ import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
-import type { MotionWorkflowInput } from '@/lib/workflow';
+import type {
+  MergeVideoWorkflowInput,
+  MotionWorkflowInput,
+} from '@/lib/workflow';
 import { triggerWorkflow } from '@/lib/workflow';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
@@ -183,4 +186,62 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       workflows,
       errors: errors.length > 0 ? errors : undefined,
     };
+  });
+
+// ============================================================================
+// Trigger Merge Video (Workflow Trigger)
+// ============================================================================
+
+const mergeVideoInputSchema = z.object({
+  sequenceId: ulidSchema,
+});
+
+/**
+ * Manually trigger the merge video workflow for a sequence
+ * Requires all frames to have completed video generation
+ * @returns The workflow run ID
+ */
+export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
+  .middleware([sequenceAccessMiddleware])
+  .inputValidator(zodValidator(mergeVideoInputSchema))
+  .handler(async ({ context }) => {
+    const { sequence, teamId, user } = context;
+
+    // Get all frames for this sequence
+    const frames = await getSequenceFrames(sequence.id);
+
+    if (frames.length === 0) {
+      throw new Error('No frames found in sequence');
+    }
+
+    // Check all frames have completed video
+    const incompleteFrames = frames.filter(
+      (f) => f.videoStatus !== 'completed' || !f.videoUrl
+    );
+
+    if (incompleteFrames.length > 0) {
+      throw new Error(
+        `${incompleteFrames.length} frame(s) do not have completed videos`
+      );
+    }
+
+    // Get video URLs in order
+    const videoUrls = frames
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((f) => f.videoUrl)
+      .filter((url): url is string => Boolean(url));
+
+    // Trigger merge workflow
+    const workflowInput: MergeVideoWorkflowInput = {
+      userId: user.id,
+      teamId,
+      sequenceId: sequence.id,
+      videoUrls,
+    };
+
+    const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
+      deduplicationId: `merge-${sequence.id}`,
+    });
+
+    return { workflowRunId, sequenceId: sequence.id };
   });

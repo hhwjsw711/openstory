@@ -67,6 +67,11 @@ export function useSequence(
               return 1000; // 1 second
             }
 
+            // Poll while merged video is being generated
+            if (sequence?.mergedVideoStatus === 'merging') {
+              return 2000; // 2 seconds
+            }
+
             // Stop polling for completed/archived sequences
             return false;
           },
