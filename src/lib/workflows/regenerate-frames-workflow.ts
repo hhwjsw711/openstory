@@ -10,18 +10,14 @@ import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { getFramesByIds } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import type { CharacterMinimal, Frame } from '@/lib/db/schema';
+import type { CharacterMinimal } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import {
-  buildCharacterReferenceImages,
-  buildPromptWithCharacterReferences,
-} from '@/lib/prompts/character-prompt';
+import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import type {
   ImageWorkflowInput,
   RegenerateFramesWorkflowInput,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import type { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateImageWorkflow } from './image-workflow';
@@ -51,19 +47,6 @@ function matchCharactersToFrame(
   });
 }
 
-/**
- * Get visual prompt from frame metadata
- */
-function getVisualPrompt(frame: Frame): string | null {
-  return (
-    // Image prompt overrides metadata prompt as it has the visual reference images
-    frame.imagePrompt ||
-    frame.metadata?.prompts?.visual?.fullPrompt ||
-    frame.description ||
-    null
-  );
-}
-
 type FrameResult = {
   frameId: string;
   success: boolean;
@@ -76,14 +59,6 @@ export const regenerateFramesWorkflow = createWorkflow(
     const input = context.requestPayload;
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
-
-    // Flow control for rate limiting (same as analyze-script-workflow)
-    const flowControl: FlowControl = {
-      key: 'fal-requests',
-      rate: 10,
-      period: '5s',
-      parallelism: 10,
-    };
 
     // Step 1: Get sequence for aspect ratio and image model
     const sequence = await context.run('get-sequence', async () => {
@@ -169,7 +144,6 @@ export const regenerateFramesWorkflow = createWorkflow(
           body: imageInput,
           retries: 3,
           retryDelay: 'pow(2, retried) * 1000',
-          flowControl,
         });
 
         if (isFailed || isCanceled || !body?.imageUrl) {

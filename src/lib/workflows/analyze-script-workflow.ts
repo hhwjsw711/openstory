@@ -3,7 +3,6 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
@@ -34,7 +33,6 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import type { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
@@ -85,21 +83,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       autoGenerateMotion = false,
       suggestedTalentIds,
     } = input;
-
-    // Flow control for image and motion generation
-
-    const runtimeEnv = getEnv();
-    const falConcurrencyLimit =
-      'FAL_CONCURRENCY_LIMIT' in runtimeEnv &&
-      typeof runtimeEnv.FAL_CONCURRENCY_LIMIT === 'string'
-        ? runtimeEnv.FAL_CONCURRENCY_LIMIT
-        : undefined;
-    const flowControl: FlowControl = {
-      key: 'fal-requests', // Shared key for both image & motion
-      rate: 10,
-      period: '5s', // 5 seconds
-      parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
-    };
 
     // STEP: Split script into basic scenes and store in sequence metadata
     const { scenes, title, startTime } = await context.run(
@@ -456,7 +439,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: imageInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
@@ -636,7 +618,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: motionInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
           });
         })
       );

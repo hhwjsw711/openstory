@@ -21,6 +21,7 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
+import { getFalFlowControl } from './constants';
 
 /**
  * Merge video workflow
@@ -115,10 +116,7 @@ export const mergeVideoWorkflow = createWorkflow(
   {
     retries: 2,
     retryDelay: 'pow(2, retried) * 2000', // 2s, 4s, 8s
-    flowControl: {
-      key: 'fal-requests',
-      parallelism: parseInt(process.env.FAL_CONCURRENCY_LIMIT || '10'),
-    },
+    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 

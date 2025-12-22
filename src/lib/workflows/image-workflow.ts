@@ -12,6 +12,7 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
+import { getFalFlowControl } from './constants';
 
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
@@ -184,6 +185,7 @@ export const generateImageWorkflow = createWorkflow(
     return result;
   },
   {
+    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
