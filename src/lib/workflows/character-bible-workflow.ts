@@ -123,9 +123,9 @@ export const characterBibleWorkflow = createWorkflow(
               distinguishingFeatures: character.distinguishingFeatures ?? null,
               consistencyTag: character.consistencyTag,
               // First mention
-              firstMentionSceneId: character.firstMention.sceneId,
-              firstMentionText: character.firstMention.originalText,
-              firstMentionLine: character.firstMention.lineNumber,
+              firstMentionSceneId: character.firstMention?.sceneId,
+              firstMentionText: character.firstMention?.originalText,
+              firstMentionLine: character.firstMention?.lineNumber,
               // Sheet image
               sheetImageUrl: storageResult.publicUrl,
               sheetImagePath: storageResult.path,

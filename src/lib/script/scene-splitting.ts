@@ -25,36 +25,36 @@ import { z } from 'zod';
 /**
  * Zod schema for validating scene splitting results
  */
-const sceneSplittingResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
-  projectMetadata: z.object({
-    title: z.string(),
-    aspectRatio: aspectRatioSchema,
+const sceneSplittingResultSchema = z.looseObject({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
+  projectMetadata: z.looseObject({
+    title: z.string().catch('Untitled'),
+    aspectRatio: aspectRatioSchema.catch('16:9'),
     totalDurationSeconds: z.number().optional(),
-    generatedAt: z.string(),
+    generatedAt: z.string().catch(''),
   }),
   scenes: z.array(
-    z.object({
-      sceneId: z.string(),
-      sceneNumber: z.number(),
-      originalScript: z.object({
-        extract: z.string(),
-        lineNumber: z.number(),
+    z.looseObject({
+      sceneId: z.string(), // STRICT - required for identity
+      sceneNumber: z.number(), // STRICT - required for ordering
+      originalScript: z.looseObject({
+        extract: z.string().catch(''),
+        lineNumber: z.number().catch(0),
         dialogue: z
           .array(
-            z.object({
-              character: z.string().nullable(),
-              line: z.string(),
+            z.looseObject({
+              character: z.string().nullable().catch(null),
+              line: z.string().catch(''),
             })
           )
-          .default([]),
+          .catch([]),
       }),
-      metadata: z.object({
-        title: z.string(),
-        durationSeconds: z.number(),
-        location: z.string(),
-        timeOfDay: z.string(),
-        storyBeat: z.string(),
+      metadata: z.looseObject({
+        title: z.string().catch('Untitled Scene'),
+        durationSeconds: z.number().catch(3),
+        location: z.string().catch(''),
+        timeOfDay: z.string().catch(''),
+        storyBeat: z.string().catch(''),
       }),
     })
   ),

@@ -28,23 +28,27 @@ import { z } from 'zod';
  * Note: The motion field uses a transform to handle AI model variations.
  * Some models return motion as an array instead of an object - we take the first element.
  */
-const motionPromptGenerationResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
+const motionPromptGenerationResultSchema = z.looseObject({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.object({
-      sceneId: z.string(),
+    z.looseObject({
+      sceneId: z.string(), // STRICT - required for identity
       variants: z
-        .object({
-          movementStyles: z.array(movementStyleVariantSchema).length(3),
+        .looseObject({
+          movementStyles: z
+            .array(movementStyleVariantSchema)
+            .min(1)
+            .max(5)
+            .catch([]),
         })
         .optional(),
       selectedVariant: z
-        .object({
-          movementStyle: z.enum(['B1', 'B2', 'B3']),
+        .looseObject({
+          movementStyle: z.enum(['B1', 'B2', 'B3']).catch('B1'),
           rationale: z.string().optional(),
         })
         .optional(),
-      prompts: z.object({
+      prompts: z.looseObject({
         // Handle AI returning motion as array (take first element) or object
         motion: z.preprocess((val) => {
           if (Array.isArray(val) && val.length > 0) {
@@ -54,7 +58,7 @@ const motionPromptGenerationResultSchema = z.object({
             return val[0];
           }
           return val;
-        }, motionPromptSchema),
+        }, motionPromptSchema), // Uses canonical schema with STRICT fullPrompt
       }),
     })
   ),

@@ -21,12 +21,12 @@ import { z } from 'zod';
  * Schema for audio design generation validation
  * Uses canonical schemas from scene-analysis.schema.ts
  */
-const audioDesignGenerationResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
+const audioDesignGenerationResultSchema = z.looseObject({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.object({
-      sceneId: z.string(),
-      audioDesign: audioDesignSchema,
+    z.looseObject({
+      sceneId: z.string(), // STRICT - required for identity
+      audioDesign: audioDesignSchema, // Uses canonical schema with defensive defaults
     })
   ),
 });

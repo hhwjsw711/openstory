@@ -23,10 +23,7 @@ import {
   splitScriptIntoScenes,
 } from '@/lib/script';
 import type { Scene } from '@/lib/script/types';
-import {
-  buildCharacterReferenceImages,
-  buildPromptWithCharacterReferences,
-} from '@/lib/prompts/character-prompt';
+import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
 import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
@@ -43,8 +40,6 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
-
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
@@ -143,9 +138,9 @@ export const analyzeScriptWorkflow = createWorkflow(
           await getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
-            title: scene.metadata.title,
-            scriptExtract: scene.originalScript.extract,
-            durationSeconds: scene.metadata.durationSeconds,
+            title: scene.metadata?.title || 'Untitled Scene',
+            scriptExtract: scene.originalScript?.extract || '',
+            durationSeconds: scene.metadata?.durationSeconds || 3,
           });
         }
 
@@ -187,11 +182,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           (scene, index) =>
             ({
               sequenceId,
-              description: scene.originalScript.extract,
+              description: scene.originalScript?.extract || '',
               orderIndex: index,
               metadata: scene, // Store BasicScene object - will be enriched later
               durationMs: Math.round(
-                (scene.metadata.durationSeconds || 3) * 1000
+                (scene.metadata?.durationSeconds || 3) * 1000
               ),
               thumbnailStatus: 'generating', // we're going to generate the thumbnail
               videoStatus: autoGenerateMotion ? 'generating' : 'pending',
@@ -633,7 +628,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             prompt: motionPrompt,
             model: videoModel,
             aspectRatio,
-            duration: scene.metadata.durationSeconds,
+            duration: scene.metadata?.durationSeconds || 3,
           };
 
           await context.invoke('motion', {
