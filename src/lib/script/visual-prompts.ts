@@ -140,13 +140,17 @@ ${aspectRatio}
   const validated = visualPromptGenerationResultSchema.parse(parsed);
 
   // Merge enrichment data back into input scenes
+  const expectedSceneIds = scenes.map((s) => s.sceneId);
+  const receivedSceneIds = validated.scenes.map((s) => s.sceneId);
+
   const enrichedScenes: Scene[] = scenes.map((scene) => {
     const enrichment = validated.scenes.find(
       (s) => s.sceneId === scene.sceneId
     );
     if (!enrichment) {
       throw new Error(
-        `Scene with ID ${scene.sceneId} not found in visual prompt result`
+        `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${receivedSceneIds.join(', ')}]. ` +
+          `Input had [${expectedSceneIds.join(', ')}].`
       );
     }
     return {

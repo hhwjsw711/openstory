@@ -24,6 +24,9 @@ import { z } from 'zod';
 /**
  * Schema for motion prompt generation validation
  * Uses canonical schemas from scene-analysis.schema.ts
+ *
+ * Note: The motion field uses a transform to handle AI model variations.
+ * Some models return motion as an array instead of an object - we take the first element.
  */
 const motionPromptGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']),
@@ -42,7 +45,16 @@ const motionPromptGenerationResultSchema = z.object({
         })
         .optional(),
       prompts: z.object({
-        motion: motionPromptSchema,
+        // Handle AI returning motion as array (take first element) or object
+        motion: z.preprocess((val) => {
+          if (Array.isArray(val) && val.length > 0) {
+            console.warn(
+              '[MotionPrompts] AI returned motion as array, using first element'
+            );
+            return val[0];
+          }
+          return val;
+        }, motionPromptSchema),
       }),
     })
   ),
@@ -113,13 +125,17 @@ ${scenesJson}
   const validated = motionPromptGenerationResultSchema.parse(parsed);
 
   // Merge enrichment data back into input scenes
+  const expectedSceneIds = scenes.map((s) => s.sceneId);
+  const receivedSceneIds = validated.scenes.map((s) => s.sceneId);
+
   const enrichedScenes: Scene[] = scenes.map((scene) => {
     const enrichment = validated.scenes.find(
       (s) => s.sceneId === scene.sceneId
     );
     if (!enrichment) {
       throw new Error(
-        `Scene with ID ${scene.sceneId} not found in motion prompt result`
+        `Scene ID mismatch in motion prompts: expected "${scene.sceneId}" but AI returned [${receivedSceneIds.join(', ')}]. ` +
+          `Input had [${expectedSceneIds.join(', ')}].`
       );
     }
 
