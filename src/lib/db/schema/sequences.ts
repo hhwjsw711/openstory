@@ -31,6 +31,14 @@ const SEQUENCE_STATUSES = [
 ] as const;
 export type SequenceStatus = (typeof SEQUENCE_STATUSES)[number];
 
+const MERGED_VIDEO_STATUSES = [
+  'pending',
+  'merging',
+  'completed',
+  'failed',
+] as const;
+export type MergedVideoStatus = (typeof MERGED_VIDEO_STATUSES)[number];
+
 /**
  * Sequences table
  * Main video sequence/project entity
@@ -78,6 +86,18 @@ export const sequences = sqliteTable(
       .default(DEFAULT_VIDEO_MODEL)
       .notNull(),
     workflow: text('workflow', { length: 100 }),
+
+    // Merged video fields (final stitched video from all frames)
+    mergedVideoUrl: text('merged_video_url'),
+    mergedVideoPath: text('merged_video_path'),
+    mergedVideoStatus: text('merged_video_status')
+      .$type<MergedVideoStatus>()
+      .default('pending'),
+    mergedVideoGeneratedAt: integer('merged_video_generated_at', {
+      mode: 'timestamp',
+    }),
+    mergedVideoError: text('merged_video_error'),
+    mergedVideoDurationMs: integer('merged_video_duration_ms'),
   },
   (table) => [
     index('idx_sequences_created_at').on(table.createdAt),

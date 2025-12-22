@@ -37,7 +37,7 @@ const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
   ];
 
   return {
-    id: faker.string.uuid(),
+    id: faker.string.ulid(),
     title: faker.lorem.sentence(3).replace('.', ''),
     script: faker.lorem.paragraphs(3, '\n\n'),
     status: faker.helpers.arrayElement([
@@ -47,8 +47,8 @@ const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
       'failed',
       'archived',
     ]),
-    teamId: faker.string.uuid(),
-    styleId: faker.string.uuid(),
+    teamId: faker.string.ulid(),
+    styleId: faker.string.ulid(),
     aspectRatio: faker.helpers.arrayElement(['16:9', '9:16', '1:1']),
     analysisModel: faker.helpers.arrayElement([
       'anthropic/claude-haiku-4.5',
@@ -67,9 +67,15 @@ const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
     ]),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    createdBy: faker.string.uuid(),
-    updatedBy: faker.string.uuid(),
+    createdBy: faker.string.ulid(),
+    updatedBy: faker.string.ulid(),
     workflow: null,
+    mergedVideoUrl: null,
+    mergedVideoPath: null,
+    mergedVideoStatus: 'pending',
+    mergedVideoGeneratedAt: null,
+    mergedVideoError: null,
+    mergedVideoDurationMs: null,
     ...overrides,
   };
 };
@@ -86,8 +92,8 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
   const moods = ['Tense', 'Happy', 'Sad', 'Excited', 'Calm', 'Angry'];
 
   return {
-    id: faker.string.uuid(),
-    sequenceId: faker.string.uuid(),
+    id: faker.string.ulid(),
+    sequenceId: faker.string.ulid(),
     orderIndex: faker.number.int({ min: 1, max: 10 }),
     description: faker.lorem.paragraph(),
     thumbnailUrl: `https://picsum.photos/seed/${faker.helpers.arrayElement([
@@ -100,14 +106,14 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       '1506905925346-21bda4d32df4', // Mountain landscape
       '1507003211169-0a1dd7228f2d', // Portrait
     ])}/1920/1080`,
-    thumbnailPath: `teams/${faker.string.uuid()}/sequences/${faker.string.uuid()}/frames/${faker.string.uuid()}/thumbnail.jpg`,
+    thumbnailPath: `teams/${faker.string.ulid()}/sequences/${faker.string.ulid()}/frames/${faker.string.ulid()}/thumbnail.jpg`,
     variantImageUrl: null,
     variantImageStatus: 'pending',
     videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
       : null,
     videoPath: faker.datatype.boolean()
-      ? `teams/${faker.string.uuid()}/sequences/${faker.string.uuid()}/frames/${faker.string.uuid()}/motion.mp4`
+      ? `teams/${faker.string.ulid()}/sequences/${faker.string.ulid()}/frames/${faker.string.ulid()}/motion.mp4`
       : null,
     durationMs: faker.number.int({ min: 3000, max: 10000 }),
     thumbnailStatus: faker.helpers.arrayElement([
@@ -116,7 +122,7 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'completed',
       'failed',
     ]),
-    thumbnailWorkflowRunId: faker.string.uuid(),
+    thumbnailWorkflowRunId: faker.string.ulid(),
     thumbnailGeneratedAt: faker.date.recent(),
     thumbnailError: null,
     imageModel: faker.helpers.arrayElement([
@@ -137,13 +143,13 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       'kling_v2_5_turbo_pro',
       'wan_i2v',
     ]),
-    videoWorkflowRunId: faker.string.uuid(),
+    videoWorkflowRunId: faker.string.ulid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     metadata: {
-      sceneId: faker.string.uuid(),
+      sceneId: faker.string.ulid(),
       sceneNumber: faker.number.int({ min: 1, max: 20 }),
       originalScript: {
         extract: faker.lorem.paragraph(),
@@ -272,7 +278,7 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
   ];
 
   return {
-    id: faker.string.uuid(),
+    id: faker.string.ulid(),
     name: faker.lorem.words(2),
     description: faker.lorem.sentence(),
     category: faker.helpers.arrayElement([
@@ -356,12 +362,12 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
       ),
       colorGrading: faker.helpers.arrayElement(colorGradings),
     },
-    teamId: faker.string.uuid(),
+    teamId: faker.string.ulid(),
     isPublic: faker.datatype.boolean(),
     isTemplate: faker.datatype.boolean(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    createdBy: faker.string.uuid(),
+    createdBy: faker.string.ulid(),
     usageCount: null,
     version: null,
     ...overrides,
@@ -371,7 +377,7 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
 const generateMockTeam = (overrides?: Partial<Team>): Team => {
   const name = faker.company.name();
   return {
-    id: faker.string.uuid(),
+    id: faker.string.ulid(),
     name,
     slug: faker.helpers.slugify(name).toLowerCase(),
     createdAt: faker.date.past(),
@@ -382,7 +388,7 @@ const generateMockTeam = (overrides?: Partial<Team>): Team => {
 
 const generateMockUser = (overrides?: Partial<UserProfile>): UserProfile => {
   return {
-    id: faker.string.uuid(),
+    id: faker.string.ulid(),
     name: faker.person.fullName(),
     email: faker.internet.email(),
     emailVerified: faker.datatype.boolean(),
