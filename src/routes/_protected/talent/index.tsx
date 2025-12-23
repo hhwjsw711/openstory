@@ -1,5 +1,5 @@
 import {
-  TalentLibraryDialog,
+  AddTalentDialog,
   TalentLibraryFilters,
   TalentLibraryList,
 } from '@/components/talent-library';
@@ -37,7 +37,7 @@ function TalentPage() {
   return (
     <div className="h-full overflow-auto">
       <PageContainer>
-        <PageHeader actions={<TalentLibraryDialog mode="create" />}>
+        <PageHeader actions={<AddTalentDialog />}>
           <PageHeading>Talent Library</PageHeading>
           <PageDescription>
             Manage your team's talent library for consistent AI-generated
@@ -52,7 +52,7 @@ function TalentPage() {
             icon={<User className="h-12 w-12" />}
             title="No talent yet"
             description="Add talent to your library to maintain visual consistency across your sequences."
-            action={<TalentLibraryDialog mode="create" />}
+            action={<AddTalentDialog />}
           />
         ) : (
           <TalentLibraryList

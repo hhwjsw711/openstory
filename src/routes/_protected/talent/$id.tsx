@@ -1,4 +1,4 @@
-import { TalentLibraryDialog } from '@/components/talent-library';
+import { EditTalentDialog } from '@/components/talent-library';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
@@ -110,8 +110,7 @@ function TalentDetailPage() {
         <PageHeader
           actions={
             <div className="flex items-center gap-2">
-              <TalentLibraryDialog
-                mode="edit"
+              <EditTalentDialog
                 talent={talent}
                 trigger={
                   <Button variant="outline" size="icon">
@@ -158,6 +157,35 @@ function TalentDetailPage() {
           )}
         </PageHeader>
 
+        {/* Media Section */}
+        {talent.media && talent.media.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold mb-4">
+              Reference Media ({talent.media.length})
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {talent.media.map((media) => (
+                <Card key={media.id} className="overflow-hidden">
+                  <div className="aspect-square bg-muted">
+                    {media.type === 'image' && (
+                      <img
+                        src={media.url}
+                        alt="Reference"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {media.type === 'video' && (
+                      <video
+                        src={media.url}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
         {/* Talent Sheets Section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -282,36 +310,6 @@ function TalentDetailPage() {
             </div>
           )}
         </section>
-
-        {/* Media Section */}
-        {talent.media && talent.media.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold mb-4">
-              Reference Media ({talent.media.length})
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {talent.media.map((media) => (
-                <Card key={media.id} className="overflow-hidden">
-                  <div className="aspect-square bg-muted">
-                    {media.type === 'image' && (
-                      <img
-                        src={media.url}
-                        alt="Reference"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                    {media.type === 'video' && (
-                      <video
-                        src={media.url}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
       </PageContainer>
     </div>
   );
