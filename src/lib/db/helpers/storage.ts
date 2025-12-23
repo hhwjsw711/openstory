@@ -191,6 +191,32 @@ export function getPublicUrl(bucket: StorageBucket, path: string): string {
 }
 
 /**
+ * Extract the storage path from a public URL
+ * Inverse of getPublicUrl
+ *
+ * @param url - The public URL
+ * @param bucket - The storage bucket the file is in
+ * @returns The path within the bucket
+ *
+ * @example
+ * ```ts
+ * getPathFromUrl('https://storage.velro.ai/talent/team-id/temp/file.jpg', STORAGE_BUCKETS.TALENT);
+ * // Returns: 'team-id/temp/file.jpg'
+ * ```
+ */
+export function getPathFromUrl(url: string, bucket: StorageBucket): string {
+  const domain = getEnv().R2_PUBLIC_STORAGE_DOMAIN;
+  if (!domain) {
+    throw new Error('R2_PUBLIC_STORAGE_DOMAIN environment variable is not set');
+  }
+  const prefix = `https://${domain}/${bucket}/`;
+  if (!url.startsWith(prefix)) {
+    throw new Error(`URL does not match expected bucket format: ${url}`);
+  }
+  return url.slice(prefix.length);
+}
+
+/**
  * Extract file extension from a URL
  * Handles URLs with query parameters and fragments
  *
@@ -485,7 +511,7 @@ export async function listFiles(
  * );
  * ```
  */
-async function moveFile(
+export async function moveFile(
   bucket: StorageBucket,
   fromPath: string,
   toPath: string

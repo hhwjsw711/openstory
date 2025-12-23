@@ -10,13 +10,17 @@ import { z } from 'zod';
 export const createTalentSchema = createInsertSchema(talent, {
   name: z.string().min(1).max(255),
   description: z.string().optional(),
-}).omit({
-  id: true,
-  teamId: true,
-  createdBy: true,
-  createdAt: true,
-  updatedAt: true,
-});
+})
+  .omit({
+    id: true,
+    teamId: true,
+    createdBy: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    referenceImageUrls: z.array(z.string().url()).optional(),
+  });
 
 export const updateTalentSchema = createUpdateSchema(talent).omit({
   id: true,

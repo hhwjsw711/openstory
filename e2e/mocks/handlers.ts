@@ -1,9 +1,12 @@
 /**
  * Playwright Route Handlers for E2E Tests
- * Intercepts external API calls (fal.ai, QStash) to return mock responses
+ * Intercepts external API calls (fal.ai, QStash, R2) to return mock responses
  */
 
 import type { Page, Route } from 'playwright/test';
+
+/** Counter for generating unique mock file IDs */
+let mockFileCounter = 0;
 
 /**
  * Mock image generation response
@@ -127,6 +130,38 @@ export async function setupMockRoutes(page: Page): Promise<void> {
       contentType: 'application/json',
       body: JSON.stringify(mockWorkflowStatusResponse),
     });
+  });
+
+  // Mock R2 storage uploads (PutObject operations)
+  await page.route('**/*.r2.cloudflarestorage.com/**', async (route: Route) => {
+    const method = route.request().method();
+
+    if (method === 'PUT') {
+      // Successfully mock file upload
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ETag: `"mock-etag-${++mockFileCounter}"`,
+        },
+      });
+    } else if (method === 'GET' || method === 'HEAD') {
+      // Mock file exists/download
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Content-Length': '1024',
+        },
+        body: Buffer.from([]),
+      });
+    } else if (method === 'DELETE') {
+      // Mock file deletion
+      await route.fulfill({
+        status: 204,
+      });
+    } else {
+      await route.continue();
+    }
   });
 }
 

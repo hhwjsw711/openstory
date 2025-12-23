@@ -1,0 +1,139 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useCreateTalent } from '@/hooks/use-talent';
+import { Plus } from 'lucide-react';
+import { TalentMediaUpload } from './talent-media-upload';
+
+type AddTalentDialogProps = {
+  trigger?: React.ReactNode;
+};
+
+export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
+  trigger,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+
+  const createTalent = useCreateTalent();
+
+  const handleClose = () => {
+    setFiles([]);
+    setUploadedUrls([]);
+    setOpen(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const nameValue = formData.get('name');
+    const descriptionValue = formData.get('description');
+
+    const name = typeof nameValue === 'string' ? nameValue : '';
+    const description =
+      typeof descriptionValue === 'string' ? descriptionValue : '';
+
+    if (!name.trim()) return;
+
+    createTalent.mutate(
+      {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        isHuman: true,
+        referenceImageUrls: uploadedUrls,
+      },
+      {
+        onSuccess: () => handleClose(),
+      }
+    );
+  };
+
+  const isPending = createTalent.isPending;
+  const isUploading = files.length > uploadedUrls.length;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => (isOpen ? setOpen(true) : handleClose())}
+    >
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Talent
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Add Talent</DialogTitle>
+            <DialogDescription>
+              Add a new talent to your library.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Talent name…"
+                autoComplete="off"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Describe the talent's appearance, style…"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Reference Media</Label>
+              <TalentMediaUpload
+                files={files}
+                onFilesChange={setFiles}
+                onUploadedUrlsChange={setUploadedUrls}
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" disabled={isPending || isUploading}>
+              {isPending
+                ? 'Creating…'
+                : isUploading
+                  ? 'Uploading…'
+                  : 'Add Talent'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

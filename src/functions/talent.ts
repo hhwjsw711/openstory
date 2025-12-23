@@ -36,6 +36,9 @@ import {
   deleteFile,
   getExtensionFromUrl,
   getMimeTypeFromExtension,
+  getPathFromUrl,
+  getPublicUrl,
+  moveFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow';
@@ -109,15 +112,43 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       createdBy: context.user.id,
     });
 
+    // Move temp files to permanent location and create media records
+    const tempUrls = data.referenceImageUrls ?? [];
+    const permanentUrls: string[] = [];
+
+    for (const tempUrl of tempUrls) {
+      // Extract temp path from URL
+      const tempPath = getPathFromUrl(tempUrl, STORAGE_BUCKETS.TALENT);
+
+      // Generate new path under the talent folder
+      const ext = getExtensionFromUrl(tempUrl);
+      const mediaId = generateId();
+      const permanentPath = `${context.teamId}/${newTalent.id}/${mediaId}.${ext}`;
+
+      // Move file from temp to permanent location
+      await moveFile(STORAGE_BUCKETS.TALENT, tempPath, permanentPath);
+
+      // Get new public URL
+      const permanentUrl = getPublicUrl(STORAGE_BUCKETS.TALENT, permanentPath);
+      permanentUrls.push(permanentUrl);
+
+      // Create media record with permanent URL
+      await createTalentMediaRecord({
+        talentId: newTalent.id,
+        type: 'image',
+        url: permanentUrl,
+        path: permanentPath,
+      });
+    }
+
     // Automatically trigger talent sheet generation workflow
-    // No reference images at creation time - will generate from name/description
     const workflowInput: LibraryTalentSheetWorkflowInput = {
       userId: context.user.id,
       teamId: context.teamId,
       talentId: newTalent.id,
       talentName: newTalent.name,
       talentDescription: newTalent.description ?? undefined,
-      referenceImageUrls: [], // Empty - will generate from name/description
+      referenceImageUrls: permanentUrls,
       sheetName: 'Default Sheet',
     };
 
@@ -369,6 +400,35 @@ export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
     });
 
     return media;
+  });
+
+const uploadTempMediaInputSchema = z.object({
+  base64Data: z.string(),
+  filename: z.string(),
+  type: z.enum(['image', 'video']),
+});
+
+/**
+ * Upload media to temporary storage (no talent association required)
+ * Used for uploading reference media before talent creation
+ */
+export const uploadTempMediaFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(zodValidator(uploadTempMediaInputSchema))
+  .handler(async ({ context, data }) => {
+    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
+    const buffer = Buffer.from(base64Content, 'base64');
+    const blob = new Blob([buffer]);
+
+    const ext = getExtensionFromUrl(data.filename);
+    const uploadId = generateId();
+    const storagePath = `${context.teamId}/temp/${uploadId}.${ext}`;
+
+    const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
+      contentType: getMimeTypeFromExtension(ext),
+    });
+
+    return { url: result.publicUrl, path: result.path };
   });
 
 const deleteMediaInputSchema = z.object({
