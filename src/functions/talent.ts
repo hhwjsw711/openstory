@@ -36,6 +36,9 @@ import {
   deleteFile,
   getExtensionFromUrl,
   getMimeTypeFromExtension,
+  getPathFromUrl,
+  getPublicUrl,
+  moveFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow';
@@ -109,6 +112,35 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       createdBy: context.user.id,
     });
 
+    // Move temp files to permanent location and create media records
+    const tempUrls = data.referenceImageUrls ?? [];
+    const permanentUrls: string[] = [];
+
+    for (const tempUrl of tempUrls) {
+      // Extract temp path from URL
+      const tempPath = getPathFromUrl(tempUrl, STORAGE_BUCKETS.TALENT);
+
+      // Generate new path under the talent folder
+      const ext = getExtensionFromUrl(tempUrl);
+      const mediaId = generateId();
+      const permanentPath = `${context.teamId}/${newTalent.id}/${mediaId}.${ext}`;
+
+      // Move file from temp to permanent location
+      await moveFile(STORAGE_BUCKETS.TALENT, tempPath, permanentPath);
+
+      // Get new public URL
+      const permanentUrl = getPublicUrl(STORAGE_BUCKETS.TALENT, permanentPath);
+      permanentUrls.push(permanentUrl);
+
+      // Create media record with permanent URL
+      await createTalentMediaRecord({
+        talentId: newTalent.id,
+        type: 'image',
+        url: permanentUrl,
+        path: permanentPath,
+      });
+    }
+
     // Automatically trigger talent sheet generation workflow
     const workflowInput: LibraryTalentSheetWorkflowInput = {
       userId: context.user.id,
@@ -116,7 +148,7 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       talentId: newTalent.id,
       talentName: newTalent.name,
       talentDescription: newTalent.description ?? undefined,
-      referenceImageUrls: data.referenceImageUrls ?? [],
+      referenceImageUrls: permanentUrls,
       sheetName: 'Default Sheet',
     };
 
