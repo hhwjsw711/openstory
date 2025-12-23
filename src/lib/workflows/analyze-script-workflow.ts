@@ -3,7 +3,6 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { getEnv } from '#env';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
@@ -23,10 +22,7 @@ import {
   splitScriptIntoScenes,
 } from '@/lib/script';
 import type { Scene } from '@/lib/script/types';
-import {
-  buildCharacterReferenceImages,
-  buildPromptWithCharacterReferences,
-} from '@/lib/prompts/character-prompt';
+import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
 import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
@@ -37,14 +33,11 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import type { FlowControl } from '@upstash/qstash';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
-
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
@@ -91,21 +84,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       suggestedTalentIds,
     } = input;
 
-    // Flow control for image and motion generation
-
-    const runtimeEnv = getEnv();
-    const falConcurrencyLimit =
-      'FAL_CONCURRENCY_LIMIT' in runtimeEnv &&
-      typeof runtimeEnv.FAL_CONCURRENCY_LIMIT === 'string'
-        ? runtimeEnv.FAL_CONCURRENCY_LIMIT
-        : undefined;
-    const flowControl: FlowControl = {
-      key: 'fal-requests', // Shared key for both image & motion
-      rate: 10,
-      period: '5s', // 5 seconds
-      parallelism: falConcurrencyLimit ? parseInt(falConcurrencyLimit) : 10,
-    };
-
     // STEP: Split script into basic scenes and store in sequence metadata
     const { scenes, title, startTime } = await context.run(
       'split-script-into-scenes',
@@ -143,9 +121,9 @@ export const analyzeScriptWorkflow = createWorkflow(
           await getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
-            title: scene.metadata.title,
-            scriptExtract: scene.originalScript.extract,
-            durationSeconds: scene.metadata.durationSeconds,
+            title: scene.metadata?.title || 'Untitled Scene',
+            scriptExtract: scene.originalScript?.extract || '',
+            durationSeconds: scene.metadata?.durationSeconds || 3,
           });
         }
 
@@ -187,11 +165,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           (scene, index) =>
             ({
               sequenceId,
-              description: scene.originalScript.extract,
+              description: scene.originalScript?.extract || '',
               orderIndex: index,
               metadata: scene, // Store BasicScene object - will be enriched later
               durationMs: Math.round(
-                (scene.metadata.durationSeconds || 3) * 1000
+                (scene.metadata?.durationSeconds || 3) * 1000
               ),
               thumbnailStatus: 'generating', // we're going to generate the thumbnail
               videoStatus: autoGenerateMotion ? 'generating' : 'pending',
@@ -461,7 +439,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: imageInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
@@ -633,7 +610,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             prompt: motionPrompt,
             model: videoModel,
             aspectRatio,
-            duration: scene.metadata.durationSeconds,
+            duration: scene.metadata?.durationSeconds || 3,
           };
 
           await context.invoke('motion', {
@@ -641,7 +618,6 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: motionInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-            flowControl,
           });
         })
       );

@@ -6,21 +6,21 @@ import { z } from 'zod';
 
 const firstMentionSchema = z.object({
   sceneId: z.string(),
-  originalText: z.string(),
-  lineNumber: z.number(),
+  originalText: z.string().catch(''),
+  lineNumber: z.number().catch(0),
 });
 
 export const characterBibleEntrySchema = z.object({
   characterId: z.string(),
   name: z.string(),
-  firstMention: firstMentionSchema,
+  firstMention: firstMentionSchema.optional(),
   age: z.union([z.number(), z.string()]).nullish(), // Accept numbers, age ranges like "30s", null, or undefined
   gender: z.string().optional(),
   ethnicity: z.string().optional(),
-  physicalDescription: z.string(),
-  standardClothing: z.string(),
+  physicalDescription: z.string().catch(''),
+  standardClothing: z.string().catch(''),
   distinguishingFeatures: z.string().optional(),
-  consistencyTag: z.string(),
+  consistencyTag: z.string().catch(''),
 });
 
 // ============================================================================
@@ -28,9 +28,9 @@ export const characterBibleEntrySchema = z.object({
 // ============================================================================
 
 const projectMetadataSchema = z.object({
-  title: z.string(),
-  aspectRatio: z.string(),
-  generatedAt: z.string(),
+  title: z.string().catch('Untitled'),
+  aspectRatio: z.string().catch('16:9'),
+  generatedAt: z.string().catch(''),
 });
 
 // ============================================================================
@@ -38,14 +38,14 @@ const projectMetadataSchema = z.object({
 // ============================================================================
 
 export const cameraAngleVariantSchema = z.object({
-  id: z.enum(['A1', 'A2', 'A3']),
-  description: z.string(),
-  effect: z.string(),
+  id: z.enum(['A1', 'A2', 'A3']).catch('A1'),
+  description: z.string().catch(''),
+  effect: z.string().catch(''),
 });
 
 export const movementStyleVariantSchema = z.object({
-  id: z.enum(['B1', 'B2', 'B3']),
-  description: z.string(),
+  id: z.enum(['B1', 'B2', 'B3']).catch('B1'),
+  description: z.string().catch(''),
   energy: z
     .string()
     .transform((v) => v.toLowerCase())
@@ -54,15 +54,15 @@ export const movementStyleVariantSchema = z.object({
 });
 
 export const moodTreatmentVariantSchema = z.object({
-  id: z.enum(['C1', 'C2', 'C3']),
-  description: z.string(),
-  tone: z.string(),
+  id: z.enum(['C1', 'C2', 'C3']).catch('C1'),
+  description: z.string().catch(''),
+  tone: z.string().catch(''),
 });
 
 const variantsSchema = z.object({
-  cameraAngles: z.array(cameraAngleVariantSchema).length(3),
-  movementStyles: z.array(movementStyleVariantSchema).length(3).optional(), // Added in phase 4
-  moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
+  cameraAngles: z.array(cameraAngleVariantSchema).min(1).max(5).catch([]),
+  movementStyles: z.array(movementStyleVariantSchema).min(1).max(5).optional(),
+  moodTreatments: z.array(moodTreatmentVariantSchema).min(1).max(5).catch([]),
 });
 
 // ============================================================================
@@ -70,10 +70,10 @@ const variantsSchema = z.object({
 // ============================================================================
 
 const selectedVariantSchema = z.object({
-  cameraAngle: z.enum(['A1', 'A2', 'A3']),
-  movementStyle: z.enum(['B1', 'B2', 'B3']).optional(), // Added in phase 4
-  moodTreatment: z.enum(['C1', 'C2', 'C3']),
-  rationale: z.string().optional(), // Complete only when all selections made
+  cameraAngle: z.enum(['A1', 'A2', 'A3']).catch('A1'),
+  movementStyle: z.enum(['B1', 'B2', 'B3']).optional(),
+  moodTreatment: z.enum(['C1', 'C2', 'C3']).catch('C1'),
+  rationale: z.string().optional(),
 });
 
 // ============================================================================
@@ -81,75 +81,87 @@ const selectedVariantSchema = z.object({
 // ============================================================================
 
 const visualPromptComponentsSchema = z.object({
-  sceneDescription: z.string(),
-  subject: z.string(),
-  environment: z.string(),
-  lighting: z.string(),
-  camera: z.string(),
-  composition: z.string(),
-  style: z.string(),
-  technical: z.string(),
-  atmosphere: z.string(),
+  sceneDescription: z.string().catch(''),
+  subject: z.string().catch(''),
+  environment: z.string().catch(''),
+  lighting: z.string().catch(''),
+  camera: z.string().catch(''),
+  composition: z.string().catch(''),
+  style: z.string().catch(''),
+  technical: z.string().catch(''),
+  atmosphere: z.string().catch(''),
 });
 
-const visualPromptParametersSchema = z.object({
-  dimensions: z.object({
-    width: z.number(),
-    height: z.number(),
-    aspectRatio: z.string(),
-  }),
-  quality: z.object({
-    steps: z.number(),
-    guidance: z.number(),
-  }),
-  control: z.object({
-    seed: z.number().nullable(),
-  }),
-});
+const visualPromptParametersSchema = z
+  .object({
+    dimensions: z
+      .object({
+        width: z.number().optional(),
+        height: z.number().optional(),
+        aspectRatio: z.string().optional(),
+      })
+      .optional(),
+    quality: z
+      .object({
+        steps: z.number().optional(),
+        guidance: z.number().optional(),
+      })
+      .optional(),
+    control: z
+      .object({
+        seed: z.number().nullable().optional(),
+      })
+      .optional(),
+  })
+  .optional();
 
 export const visualPromptSchema = z.object({
-  fullPrompt: z.string(),
-  negativePrompt: z.string(),
-  components: visualPromptComponentsSchema,
+  fullPrompt: z.string().min(1), // STRICT - required for image generation
+  negativePrompt: z.string().catch(''),
+  components: visualPromptComponentsSchema.optional(),
   parameters: visualPromptParametersSchema,
 });
 
 const motionPromptComponentsSchema = z.object({
-  cameraMovement: z.string(),
-  startPosition: z.string(),
-  endPosition: z.string(),
-  durationSeconds: z.number(),
-  speed: z.string(),
-  smoothness: z.string(),
-  subjectTracking: z.string(),
-  equipment: z.string(),
+  cameraMovement: z.string().catch(''),
+  startPosition: z.string().catch(''),
+  endPosition: z.string().catch(''),
+  durationSeconds: z.number().catch(3),
+  speed: z.string().catch('medium'),
+  smoothness: z.string().catch('smooth'),
+  subjectTracking: z.string().catch(''),
+  equipment: z.string().catch(''),
 });
 
-const motionPromptParametersSchema = z.object({
-  durationSeconds: z.number(),
-  fps: z.number(),
-  motionAmount: z
-    .string()
-    .transform((v) => v.toLowerCase())
-    .pipe(z.enum(['low', 'medium', 'high']))
-    .catch('medium'), // Handle case variations
-  cameraControl: z.object({
-    pan: z.number(),
-    tilt: z.number(),
-    zoom: z.number(),
-    movement: z.string(),
-  }),
-});
+const motionPromptParametersSchema = z
+  .object({
+    durationSeconds: z.number().optional(),
+    fps: z.number().optional(),
+    motionAmount: z
+      .string()
+      .transform((v) => v.toLowerCase())
+      .pipe(z.enum(['low', 'medium', 'high']))
+      .optional(),
+    cameraControl: z
+      .object({
+        pan: z.number().optional(),
+        tilt: z.number().optional(),
+        zoom: z.number().optional(),
+        movement: z.string().optional(),
+      })
+      .optional(),
+  })
+  .optional();
 
 export const motionPromptSchema = z.object({
-  fullPrompt: z.string(),
-  components: motionPromptComponentsSchema,
+  fullPrompt: z.string().min(1), // STRICT - required for motion generation
+  components: motionPromptComponentsSchema.optional(),
   parameters: motionPromptParametersSchema,
 });
 
 const promptsSchema = z.object({
-  visual: visualPromptSchema.optional(), // Added in phase 3
-  motion: motionPromptSchema.optional(), // Added in phase 4
+  visual: visualPromptSchema.optional(),
+  motion: motionPromptSchema.optional(),
 });
 
 // ============================================================================
@@ -157,43 +169,43 @@ const promptsSchema = z.object({
 // ============================================================================
 
 const musicSchema = z.object({
-  presence: z.enum(['none', 'minimal', 'moderate', 'full']),
-  style: z.string().nullable().default('').optional(), // Handle null when no music
-  mood: z.string().nullable().default('').optional(), // Handle null when no music
+  presence: z.enum(['none', 'minimal', 'moderate', 'full']).catch('none'),
+  style: z.string().nullable().catch(''),
+  mood: z.string().nullable().catch(''),
   rationale: z.string().optional(),
 });
 
 const soundEffectSchema = z.object({
-  sfxId: z.string(),
-  type: z.string().catch('ambient'), // Accept any string, default to ambient
-  description: z.string(),
-  timing: z.string(),
+  sfxId: z.string().catch(''),
+  type: z.string().catch('ambient'),
+  description: z.string().catch(''),
+  timing: z.string().catch(''),
   volume: z
     .string()
     .transform((v) => v.toLowerCase())
     .pipe(z.enum(['low', 'medium', 'high']))
-    .catch('medium'), // Handle case variations
-  spatialPosition: z.string().catch('center'), // Accept any string, default to center
+    .catch('medium'),
+  spatialPosition: z.string().catch('center'),
 });
 
 const dialogueLineSchema = z.object({
-  character: z.string().nullable(),
-  line: z.string(),
+  character: z.string().nullable().catch(null),
+  line: z.string().catch(''),
 });
 
 const dialogueSchema = z.object({
-  presence: z.boolean(),
-  lines: z.array(dialogueLineSchema),
+  presence: z.boolean().catch(false),
+  lines: z.array(dialogueLineSchema).catch([]),
 });
 
 const ambientSchema = z.object({
-  roomTone: z.string(),
-  atmosphere: z.string(),
+  roomTone: z.string().catch(''),
+  atmosphere: z.string().catch(''),
 });
 
 export const audioDesignSchema = z.object({
   music: musicSchema.optional(),
-  soundEffects: z.array(soundEffectSchema).optional(),
+  soundEffects: z.array(soundEffectSchema).catch([]),
   dialogue: dialogueSchema.optional(),
   ambient: ambientSchema.optional(),
 });
@@ -203,7 +215,7 @@ export const audioDesignSchema = z.object({
 // ============================================================================
 
 export const continuitySchema = z.object({
-  characterTags: z.array(z.string()).optional(),
+  characterTags: z.array(z.string()).catch([]), // Defensive default to empty array
   environmentTag: z.string().optional(),
   colorPalette: z.string().optional(),
   lightingSetup: z.string().optional(),
@@ -215,9 +227,9 @@ export const continuitySchema = z.object({
 // ============================================================================
 
 const originalScriptSchema = z.object({
-  extract: z.string(),
-  lineNumber: z.number(),
-  dialogue: z.array(dialogueLineSchema),
+  extract: z.string().catch(''),
+  lineNumber: z.number().catch(0),
+  dialogue: z.array(dialogueLineSchema).catch([]),
 });
 
 // ============================================================================
@@ -225,11 +237,11 @@ const originalScriptSchema = z.object({
 // ============================================================================
 
 const sceneMetadataSchema = z.object({
-  title: z.string(),
-  durationSeconds: z.number(),
-  location: z.string(),
-  timeOfDay: z.string(),
-  storyBeat: z.string(),
+  title: z.string().catch('Untitled Scene'),
+  durationSeconds: z.number().catch(3),
+  location: z.string().catch(''),
+  timeOfDay: z.string().catch(''),
+  storyBeat: z.string().catch(''),
 });
 
 // ============================================================================
@@ -237,16 +249,16 @@ const sceneMetadataSchema = z.object({
 // ============================================================================
 
 export const sceneSchema = z.object({
-  sceneId: z.string(),
-  sceneNumber: z.number(),
-  originalScript: originalScriptSchema,
-  metadata: sceneMetadataSchema,
-  variants: variantsSchema.optional(), // Added progressively in phases 3-4
-  selectedVariant: selectedVariantSchema.optional(), // Added in phase 3, completed in phase 4
-  prompts: promptsSchema.optional(), // Added progressively in phases 3-4
-  audioDesign: audioDesignSchema.optional(), // Added in phase 5
-  continuity: continuitySchema.optional(), // Added in phase 3
-  sourceImageUrl: z.string().optional(), // Temporary FAL URL for API calls
+  sceneId: z.string(), // STRICT - required for identity
+  sceneNumber: z.number(), // STRICT - required for ordering
+  originalScript: originalScriptSchema.optional(),
+  metadata: sceneMetadataSchema.optional(),
+  variants: variantsSchema.optional(),
+  selectedVariant: selectedVariantSchema.optional(),
+  prompts: promptsSchema.optional(),
+  audioDesign: audioDesignSchema.optional(),
+  continuity: continuitySchema.optional(),
+  sourceImageUrl: z.string().optional(),
 });
 
 // ============================================================================
@@ -254,7 +266,7 @@ export const sceneSchema = z.object({
 // ============================================================================
 
 export const sceneAnalysisSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
   projectMetadata: projectMetadataSchema.optional(),
   characterBible: z.array(characterBibleEntrySchema).optional(),
   scenes: z.array(sceneSchema),

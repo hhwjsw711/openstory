@@ -30,28 +30,36 @@ import { z } from 'zod';
  * Schema for visual prompt generation validation
  * Uses canonical schemas from scene-analysis.schema.ts
  */
-const visualPromptGenerationResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
+const visualPromptGenerationResultSchema = z.looseObject({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.object({
-      sceneId: z.string(),
+    z.looseObject({
+      sceneId: z.string(), // STRICT - required for identity
       variants: z
-        .object({
-          cameraAngles: z.array(cameraAngleVariantSchema).length(3),
-          moodTreatments: z.array(moodTreatmentVariantSchema).length(3),
+        .looseObject({
+          cameraAngles: z
+            .array(cameraAngleVariantSchema)
+            .min(1)
+            .max(5)
+            .catch([]),
+          moodTreatments: z
+            .array(moodTreatmentVariantSchema)
+            .min(1)
+            .max(5)
+            .catch([]),
         })
         .optional(),
       selectedVariant: z
-        .object({
-          cameraAngle: z.enum(['A1', 'A2', 'A3']),
-          moodTreatment: z.enum(['C1', 'C2', 'C3']),
+        .looseObject({
+          cameraAngle: z.enum(['A1', 'A2', 'A3']).catch('A1'),
+          moodTreatment: z.enum(['C1', 'C2', 'C3']).catch('C1'),
           rationale: z.string().optional(),
         })
         .optional(),
-      prompts: z.object({
-        visual: visualPromptSchema,
+      prompts: z.looseObject({
+        visual: visualPromptSchema, // Uses canonical schema with STRICT fullPrompt
       }),
-      continuity: continuitySchema,
+      continuity: continuitySchema.optional(),
     })
   ),
 });

@@ -1,5 +1,5 @@
 import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
-import type { Style } from '@/types/database';
+import type { Frame, Style } from '@/types/database';
 import { http, HttpResponse } from 'msw';
 import { generateMockFrames } from './data-generators';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
@@ -221,11 +221,14 @@ export const handlers = [
   // GET /api/sequences/:sequenceId/chapters.vtt - Chapter markers
   http.get('/api/sequences/:sequenceId/chapters.vtt', ({ params }) => {
     const { sequenceId } = params;
+    if (typeof sequenceId !== 'string') {
+      return new HttpResponse('Sequence ID is required', { status: 400 });
+    }
 
     // Generate mock frames with scene metadata
-    const mockFrames = generateMockFrames(5, sequenceId as string).map(
+    const mockFrames: Frame[] = generateMockFrames(5, sequenceId).map(
       (frame, index) => {
-        if (!frame.metadata) {
+        if (!frame.metadata?.metadata) {
           return frame;
         }
 

@@ -24,9 +24,9 @@ import type { Scene } from './types';
 /**
  * Zod schema for validating character extraction results
  */
-const characterExtractionResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']),
-  characterBible: z.array(characterBibleEntrySchema),
+const characterExtractionResultSchema = z.looseObject({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
+  characterBible: z.array(characterBibleEntrySchema).catch([]), // Uses canonical schema with defensive defaults
 });
 
 /**

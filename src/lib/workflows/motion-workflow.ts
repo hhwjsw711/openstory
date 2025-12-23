@@ -19,6 +19,7 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import { getFalFlowControl } from './constants';
 
 /**
  * Motion generation workflow
@@ -270,10 +271,7 @@ export const generateMotionWorkflow = createWorkflow(
   {
     retries: 3,
     retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-    flowControl: {
-      key: 'fal-requests', // Shared key for both image & motion
-      parallelism: parseInt(process.env.FAL_CONCURRENCY_LIMIT || '10'),
-    },
+    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       if (input.frameId) {
