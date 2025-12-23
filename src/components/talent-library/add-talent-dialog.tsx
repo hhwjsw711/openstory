@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,21 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  FileUpload,
-  FileUploadDropzone,
-  FileUploadItem,
-  FileUploadItemDelete,
-  FileUploadItemPreview,
-  FileUploadItemProgress,
-  FileUploadList,
-  type FileUploadProps,
-} from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateTalent, useUploadTempMedia } from '@/hooks/use-talent';
-import { Plus, Upload, X } from 'lucide-react';
+import { useCreateTalent } from '@/hooks/use-talent';
+import { Plus } from 'lucide-react';
+import { TalentMediaUpload } from './talent-media-upload';
 
 type AddTalentDialogProps = {
   trigger?: React.ReactNode;
@@ -35,73 +26,14 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  // Track uploaded URLs by file key (name + lastModified)
-  const [uploadedUrls, setUploadedUrls] = useState<Map<string, string>>(
-    new Map()
-  );
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
   const createTalent = useCreateTalent();
-  const uploadTempMedia = useUploadTempMedia();
 
   const handleClose = () => {
     setFiles([]);
-    setUploadedUrls(new Map());
+    setUploadedUrls([]);
     setOpen(false);
-  };
-
-  const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
-
-  const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
-    async (newFiles, { onProgress, onSuccess, onError }) => {
-      const uploadPromises = newFiles.map(async (file) => {
-        try {
-          onProgress(file, 10);
-
-          const base64 = await fileToBase64(file);
-          onProgress(file, 30);
-
-          const type = file.type.startsWith('video/') ? 'video' : 'image';
-          const result = await uploadTempMedia.mutateAsync({
-            base64Data: base64,
-            filename: file.name,
-            type,
-          });
-
-          // Store the URL for images (used in sheet generation)
-          if (type === 'image') {
-            setUploadedUrls((prev) =>
-              new Map(prev).set(getFileKey(file), result.url)
-            );
-          }
-
-          onProgress(file, 100);
-          onSuccess(file);
-        } catch (error) {
-          onError(
-            file,
-            error instanceof Error ? error : new Error('Upload failed')
-          );
-        }
-      });
-
-      await Promise.all(uploadPromises);
-    },
-    [uploadTempMedia]
-  );
-
-  const handleValueChange = (newFiles: File[]) => {
-    setFiles(newFiles);
-    // Clean up URLs for removed files
-    const currentKeys = new Set(newFiles.map(getFileKey));
-    setUploadedUrls((prev) => {
-      const next = new Map(prev);
-      for (const key of next.keys()) {
-        if (!currentKeys.has(key)) {
-          next.delete(key);
-        }
-      }
-      return next;
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -116,15 +48,12 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
 
     if (!name.trim()) return;
 
-    // Get all uploaded image URLs
-    const referenceImageUrls = Array.from(uploadedUrls.values());
-
     createTalent.mutate(
       {
         name: name.trim(),
         description: description.trim() || undefined,
         isHuman: true,
-        referenceImageUrls,
+        referenceImageUrls: uploadedUrls,
       },
       {
         onSuccess: () => handleClose(),
@@ -132,8 +61,8 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
     );
   };
 
-  const isUploading = uploadTempMedia.isPending;
   const isPending = createTalent.isPending;
+  const isUploading = files.length > uploadedUrls.length;
 
   return (
     <Dialog
@@ -182,60 +111,12 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
 
             <div className="flex flex-col gap-2">
               <Label>Reference Media</Label>
-              <FileUpload
-                accept="image/*,video/*"
-                maxSize={100 * 1024 * 1024}
-                multiple
+              <TalentMediaUpload
+                files={files}
+                onFilesChange={setFiles}
+                onUploadedUrlsChange={setUploadedUrls}
                 disabled={isPending}
-                value={files}
-                onValueChange={handleValueChange}
-                onUpload={onUpload}
-              >
-                <FileUploadDropzone className="min-h-[120px]">
-                  <Upload className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="text-sm font-medium">
-                    Drag & drop, click to upload, or paste
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Images and videos up to 100MB
-                  </p>
-                </FileUploadDropzone>
-
-                <FileUploadList className="grid grid-cols-3 gap-3">
-                  {files.map((file) => (
-                    <FileUploadItem
-                      key={getFileKey(file)}
-                      value={file}
-                      className="relative aspect-square p-0 border-0 overflow-hidden rounded-lg group"
-                    >
-                      <FileUploadItemPreview
-                        className="size-full rounded-none border-0"
-                        render={(file, fallback) =>
-                          file.type.startsWith('video/') ? (
-                            <video
-                              src={URL.createObjectURL(file)}
-                              className="size-full object-cover"
-                            />
-                          ) : (
-                            fallback()
-                          )
-                        }
-                      />
-                      <FileUploadItemProgress className="absolute bottom-0 left-0 right-0 h-1" />
-                      <FileUploadItemDelete asChild>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </FileUploadItemDelete>
-                    </FileUploadItem>
-                  ))}
-                </FileUploadList>
-              </FileUpload>
+              />
             </div>
           </div>
 
@@ -256,18 +137,3 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
     </Dialog>
   );
 };
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
