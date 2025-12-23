@@ -1,4 +1,4 @@
-import { EditTalentDialog } from '@/components/talent-library';
+import { EditTalentDialog } from '@/components/talent-library/edit-talent-dialog';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
@@ -58,7 +58,7 @@ function TalentDetailPage() {
     if (!confirm(`Delete "${talent.name}"? This cannot be undone.`)) return;
 
     await deleteTalent.mutateAsync(talent.id);
-    navigate({ to: '/talent' });
+    void navigate({ to: '/talent' });
   };
 
   if (isLoading) {

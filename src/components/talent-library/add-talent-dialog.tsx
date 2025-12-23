@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,12 +16,14 @@ import {
   FileUploadItem,
   FileUploadItemDelete,
   FileUploadItemPreview,
+  FileUploadItemProgress,
   FileUploadList,
+  type FileUploadProps,
 } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateTalent, useUploadTalentMedia } from '@/hooks/use-talent';
+import { useCreateTalent, useUploadTempMedia } from '@/hooks/use-talent';
 import { Plus, Upload, X } from 'lucide-react';
 
 type AddTalentDialogProps = {
@@ -32,15 +34,74 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
   trigger,
 }) => {
   const [open, setOpen] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  // Track uploaded URLs by file key (name + lastModified)
+  const [uploadedUrls, setUploadedUrls] = useState<Map<string, string>>(
+    new Map()
+  );
 
   const createTalent = useCreateTalent();
-  const uploadMedia = useUploadTalentMedia();
+  const uploadTempMedia = useUploadTempMedia();
 
   const handleClose = () => {
-    setPendingFiles([]);
+    setFiles([]);
+    setUploadedUrls(new Map());
     setOpen(false);
+  };
+
+  const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
+
+  const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
+    async (newFiles, { onProgress, onSuccess, onError }) => {
+      const uploadPromises = newFiles.map(async (file) => {
+        try {
+          onProgress(file, 10);
+
+          const base64 = await fileToBase64(file);
+          onProgress(file, 30);
+
+          const type = file.type.startsWith('video/') ? 'video' : 'image';
+          const result = await uploadTempMedia.mutateAsync({
+            base64Data: base64,
+            filename: file.name,
+            type,
+          });
+
+          // Store the URL for images (used in sheet generation)
+          if (type === 'image') {
+            setUploadedUrls((prev) =>
+              new Map(prev).set(getFileKey(file), result.url)
+            );
+          }
+
+          onProgress(file, 100);
+          onSuccess(file);
+        } catch (error) {
+          onError(
+            file,
+            error instanceof Error ? error : new Error('Upload failed')
+          );
+        }
+      });
+
+      await Promise.all(uploadPromises);
+    },
+    [uploadTempMedia]
+  );
+
+  const handleValueChange = (newFiles: File[]) => {
+    setFiles(newFiles);
+    // Clean up URLs for removed files
+    const currentKeys = new Set(newFiles.map(getFileKey));
+    setUploadedUrls((prev) => {
+      const next = new Map(prev);
+      for (const key of next.keys()) {
+        if (!currentKeys.has(key)) {
+          next.delete(key);
+        }
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -55,36 +116,24 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
 
     if (!name.trim()) return;
 
+    // Get all uploaded image URLs
+    const referenceImageUrls = Array.from(uploadedUrls.values());
+
     createTalent.mutate(
       {
         name: name.trim(),
         description: description.trim() || undefined,
         isHuman: true,
+        referenceImageUrls,
       },
       {
-        onSuccess: async (newTalent) => {
-          if (pendingFiles.length > 0) {
-            setIsUploading(true);
-
-            for (const file of pendingFiles) {
-              const base64 = await fileToBase64(file);
-              const type = file.type.startsWith('video/') ? 'video' : 'image';
-              await uploadMedia.mutateAsync({
-                talentId: newTalent.id,
-                type,
-                base64Data: base64,
-                filename: file.name,
-              });
-            }
-            setIsUploading(false);
-          }
-          handleClose();
-        },
+        onSuccess: () => handleClose(),
       }
     );
   };
 
-  const isPending = createTalent.isPending || isUploading;
+  const isUploading = uploadTempMedia.isPending;
+  const isPending = createTalent.isPending;
 
   return (
     <Dialog
@@ -138,11 +187,9 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
                 maxSize={100 * 1024 * 1024}
                 multiple
                 disabled={isPending}
-                onAccept={(files) =>
-                  setPendingFiles((prev) => [...prev, ...files])
-                }
-                value={pendingFiles}
-                onValueChange={setPendingFiles}
+                value={files}
+                onValueChange={handleValueChange}
+                onUpload={onUpload}
               >
                 <FileUploadDropzone className="min-h-[120px]">
                   <Upload className="h-8 w-8 text-muted-foreground/50" />
@@ -155,9 +202,9 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
                 </FileUploadDropzone>
 
                 <FileUploadList className="grid grid-cols-3 gap-3">
-                  {pendingFiles.map((file) => (
+                  {files.map((file) => (
                     <FileUploadItem
-                      key={file.name + file.lastModified}
+                      key={getFileKey(file)}
                       value={file}
                       className="relative aspect-square p-0 border-0 overflow-hidden rounded-lg group"
                     >
@@ -174,6 +221,7 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
                           )
                         }
                       />
+                      <FileUploadItemProgress className="absolute bottom-0 left-0 right-0 h-1" />
                       <FileUploadItemDelete asChild>
                         <Button
                           type="button"
@@ -195,12 +243,12 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || isUploading}>
               {isPending
-                ? isUploading
-                  ? 'Uploading media…'
-                  : 'Creating…'
-                : 'Add Talent'}
+                ? 'Creating…'
+                : isUploading
+                  ? 'Uploading…'
+                  : 'Add Talent'}
             </Button>
           </DialogFooter>
         </DialogContent>

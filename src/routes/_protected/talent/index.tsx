@@ -1,8 +1,6 @@
-import {
-  AddTalentDialog,
-  TalentLibraryFilters,
-  TalentLibraryList,
-} from '@/components/talent-library';
+import { AddTalentDialog } from '@/components/talent-library/add-talent-dialog';
+import { TalentLibraryFilters } from '@/components/talent-library/talent-library-filters';
+import { TalentLibraryList } from '@/components/talent-library/talent-library-list';
 import { PageContainer } from '@/components/layout';
 import {
   PageDescription,
