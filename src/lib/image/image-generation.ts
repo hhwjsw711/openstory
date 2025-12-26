@@ -8,6 +8,7 @@ import {
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
+import { startObservation } from '@langfuse/tracing';
 
 import { type QueueStatus, fal, isQueueStatus } from '@fal-ai/client';
 
@@ -128,6 +129,36 @@ export async function generateImageWithProvider(
 ): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
 
+  const span = startObservation(`fal-image-${params.model}`, {
+    input: {
+      prompt: params.prompt,
+      model: params.model,
+      imageSize: params.imageSize,
+    },
+  });
+
+  try {
+    const result = await generateImageInternal(params, modelId);
+    span.update({ output: { imageUrls: result.imageUrls } }).end();
+    return result;
+  } catch (error) {
+    span
+      .update({
+        level: 'ERROR',
+        statusMessage: error instanceof Error ? error.message : String(error),
+      })
+      .end();
+    throw error;
+  }
+}
+
+/**
+ * Internal image generation implementation
+ */
+async function generateImageInternal(
+  params: ImageGenerationParams,
+  modelId: string
+): Promise<ImageGenerationResult> {
   switch (params.model) {
     case 'flux_pro':
     case 'flux_dev':

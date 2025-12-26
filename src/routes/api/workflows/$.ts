@@ -4,21 +4,25 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
+import { flushTracing, initTracing } from '@/lib/observability/langfuse';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
+import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow';
-import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
 import { regenerateFramesWorkflow } from '@/lib/workflows/regenerate-frames-workflow';
+import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow';
 import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow';
-import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
-import { serveMany } from '@upstash/workflow/tanstack';
+import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { getQStashClient } from '@/lib/workflow/client';
+import { serveMany } from '@upstash/workflow/tanstack';
+
+// Initialize Langfuse tracing at module load
+initTracing();
 
 const handler = serveMany(
   {
@@ -45,7 +49,9 @@ export const Route = createFileRoute('/api/workflows/$')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        return handler.POST({ request });
+        const response = await handler.POST({ request });
+        await flushTracing();
+        return response;
       },
     },
   },

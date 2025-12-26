@@ -5,6 +5,7 @@
 
 import { getEnv } from '#env';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
+import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -110,6 +111,15 @@ export async function callOpenRouter(
 ): Promise<OpenRouterResponse> {
   const apiKey = getEnv().OPENROUTER_KEY;
 
+  const generation = startObservation(
+    'openrouter-call',
+    {
+      model: params.model,
+      input: params.messages,
+    },
+    { asType: 'generation' }
+  );
+
   try {
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -143,14 +153,38 @@ export async function callOpenRouter(
     if (!response.ok) {
       const error = await response.text();
       console.error('[OpenRouter] API error:', error);
+      generation
+        .update({
+          level: 'ERROR',
+          statusMessage: `API error: ${response.status} ${error}`,
+        })
+        .end();
       throw new Error(`OpenRouter API error: ${response.status} ${error}`);
     }
 
     const data = await response.json();
     const validated = openRouterResponseSchema.parse(data);
 
+    generation
+      .update({
+        output: validated.choices[0]?.message?.content,
+        usageDetails: validated.usage
+          ? {
+              input: validated.usage.prompt_tokens,
+              output: validated.usage.completion_tokens,
+            }
+          : undefined,
+      })
+      .end();
+
     return validated;
   } catch (error) {
+    generation
+      .update({
+        level: 'ERROR',
+        statusMessage: error instanceof Error ? error.message : String(error),
+      })
+      .end();
     console.error('[OpenRouter] Request failed:', error);
     throw error;
   }
@@ -164,108 +198,149 @@ export async function* callOpenRouterStream(
 ): AsyncGenerator<StreamChunk> {
   const apiKey = getEnv().OPENROUTER_KEY;
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://velro.ai',
-      'X-Title': 'Velro AI',
-    },
-    body: JSON.stringify({
+  const generation = startObservation(
+    'openrouter-stream',
+    {
       model: params.model,
-      messages: params.messages,
-      ...(params.temperature !== undefined && {
-        temperature: params.temperature,
-      }),
-      ...(params.max_tokens !== undefined && {
-        max_tokens: params.max_tokens,
-      }),
-      ...(params.top_p !== undefined && { top_p: params.top_p }),
-      ...(params.frequency_penalty !== undefined && {
-        frequency_penalty: params.frequency_penalty,
-      }),
-      ...(params.presence_penalty !== undefined && {
-        presence_penalty: params.presence_penalty,
-      }),
-      provider: params.provider ?? DEFAULT_PROVIDER,
-      stream: true, // Force streaming
-    }),
-  });
+      input: params.messages,
+    },
+    { asType: 'generation' }
+  );
 
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('[OpenRouter] API error:', error);
-    throw new Error(`OpenRouter API error: ${response.status} ${error}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body reader available');
-  }
-
-  const decoder = new TextDecoder();
   let accumulated = '';
-  let buffer = '';
+  let hasError = false;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://velro.ai',
+        'X-Title': 'Velro AI',
+      },
+      body: JSON.stringify({
+        model: params.model,
+        messages: params.messages,
+        ...(params.temperature !== undefined && {
+          temperature: params.temperature,
+        }),
+        ...(params.max_tokens !== undefined && {
+          max_tokens: params.max_tokens,
+        }),
+        ...(params.top_p !== undefined && { top_p: params.top_p }),
+        ...(params.frequency_penalty !== undefined && {
+          frequency_penalty: params.frequency_penalty,
+        }),
+        ...(params.presence_penalty !== undefined && {
+          presence_penalty: params.presence_penalty,
+        }),
+        provider: params.provider ?? DEFAULT_PROVIDER,
+        stream: true, // Force streaming
+      }),
+    });
 
-      if (done) {
-        if (buffer.trim()) {
-          const line = buffer.trim();
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data !== '[DONE]') {
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content || '';
-                if (delta) accumulated += delta;
-              } catch (e) {
-                console.warn('[OpenRouter] Failed to parse final chunk:', e);
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[OpenRouter] API error:', error);
+      hasError = true;
+      generation
+        .update({
+          level: 'ERROR',
+          statusMessage: `API error: ${response.status} ${error}`,
+        })
+        .end();
+      throw new Error(`OpenRouter API error: ${response.status} ${error}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      hasError = true;
+      generation
+        .update({
+          level: 'ERROR',
+          statusMessage: 'No response body reader available',
+        })
+        .end();
+      throw new Error('No response body reader available');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          if (buffer.trim()) {
+            const line = buffer.trim();
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data !== '[DONE]') {
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || '';
+                  if (delta) accumulated += delta;
+                } catch (e) {
+                  console.warn('[OpenRouter] Failed to parse final chunk:', e);
+                }
               }
             }
           }
+          yield { delta: '', accumulated, done: true };
+          break;
         }
-        yield { delta: '', accumulated, done: true };
-        break;
-      }
 
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
 
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) continue;
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
 
-        if (trimmedLine.startsWith('data: ')) {
-          const data = trimmedLine.slice(6);
+          if (trimmedLine.startsWith('data: ')) {
+            const data = trimmedLine.slice(6);
 
-          if (data === '[DONE]') {
-            yield { delta: '', accumulated, done: true };
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content || '';
-
-            if (delta) {
-              accumulated += delta;
-              yield { delta, accumulated, done: false };
+            if (data === '[DONE]') {
+              yield { delta: '', accumulated, done: true };
+              return;
             }
-          } catch {
-            // Skip invalid JSON chunks (wait for more data)
-            continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content || '';
+
+              if (delta) {
+                accumulated += delta;
+                yield { delta, accumulated, done: false };
+              }
+            } catch {
+              // Skip invalid JSON chunks (wait for more data)
+              continue;
+            }
           }
         }
       }
+    } finally {
+      reader.releaseLock();
     }
+  } catch (error) {
+    if (!hasError) {
+      generation
+        .update({
+          level: 'ERROR',
+          statusMessage: error instanceof Error ? error.message : String(error),
+        })
+        .end();
+    }
+    throw error;
   } finally {
-    reader.releaseLock();
+    if (!hasError) {
+      generation.update({ output: accumulated }).end();
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import {
 
 // Re-export for tests
 import { getEnv } from '#env';
+import { startObservation } from '@langfuse/tracing';
 import {
   type AspectRatio,
   aspectRatioSchema,
@@ -165,6 +166,36 @@ export async function generateMotionForFrame(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
+  const span = startObservation(`fal-motion-${modelKey}`, {
+    input: {
+      prompt: options.prompt,
+      model: modelKey,
+      imageUrl: options.imageUrl,
+    },
+  });
+
+  try {
+    const result = await generateMotionInternal(options, modelConfig);
+    span.update({ output: { videoUrl: result.videoUrl } }).end();
+    return result;
+  } catch (error) {
+    span
+      .update({
+        level: 'ERROR',
+        statusMessage: error instanceof Error ? error.message : String(error),
+      })
+      .end();
+    throw error;
+  }
+}
+
+/**
+ * Internal motion generation implementation
+ */
+async function generateMotionInternal(
+  options: GenerateMotionOptions,
+  modelConfig: ImageToVideoModelConfig
+): Promise<MotionResult> {
   // Get the provider-specific input builder
   const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
