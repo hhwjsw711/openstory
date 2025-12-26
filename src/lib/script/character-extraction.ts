@@ -17,7 +17,7 @@ import {
   characterBibleEntrySchema,
   type CharacterBibleEntry,
 } from '@/lib/ai/scene-analysis.schema';
-import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts';
+import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts/character-extraction';
 import { z } from 'zod';
 import type { Scene } from './types';
 

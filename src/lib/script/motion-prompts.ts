@@ -18,7 +18,7 @@ import {
   movementStyleVariantSchema,
   type Scene,
 } from '@/lib/ai/scene-analysis.schema';
-import { getMotionPromptGenerationPrompt } from '@/lib/prompts';
+import { getMotionPromptGenerationPrompt } from '@/lib/prompts/motion-prompt-generation';
 import { z } from 'zod';
 
 /**

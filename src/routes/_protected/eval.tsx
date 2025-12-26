@@ -1,5 +1,5 @@
 import { EvalView } from '@/components/eval/eval-view';
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
 import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/eval')({

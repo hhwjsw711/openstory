@@ -22,7 +22,7 @@ import {
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { getVisualPromptGenerationPrompt } from '@/lib/prompts';
+import { getVisualPromptGenerationPrompt } from '@/lib/prompts/visual-prompt-generation';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
 

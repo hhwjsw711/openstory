@@ -14,7 +14,10 @@ import {
 } from '@/lib/ai/openrouter-client';
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import type { TalentWithSheets } from '@/lib/db/schema';
-import type { TalentCharacterMatch, TalentMatchResult } from '@/lib/workflow';
+import type {
+  TalentCharacterMatch,
+  TalentMatchResult,
+} from '@/lib/workflow/types';
 import { z } from 'zod';
 
 /**

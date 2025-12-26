@@ -15,12 +15,10 @@ import {
 } from '@/lib/db/helpers/sequences';
 import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import {
-  extractCharacterBible,
-  generateAudioDesignForScenes,
-  generateMotionPromptsForScenes,
-  splitScriptIntoScenes,
-} from '@/lib/script';
+import { extractCharacterBible } from '@/lib/script/character-extraction';
+import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
+import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
+import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import type { Scene } from '@/lib/script/types';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
@@ -31,7 +29,7 @@ import type {
   ImageWorkflowInput,
   MotionWorkflowInput,
   TalentCharacterMatch,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

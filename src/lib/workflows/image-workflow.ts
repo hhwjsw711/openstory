@@ -7,7 +7,10 @@ import {
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
+import type {
+  ImageWorkflowInput,
+  ImageWorkflowResult,
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

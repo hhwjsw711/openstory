@@ -16,7 +16,7 @@ import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from '@/lib/db/id';

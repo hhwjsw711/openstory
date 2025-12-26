@@ -4,7 +4,7 @@
  */
 
 import { AuthForm } from '@/components/auth/auth-form';
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';

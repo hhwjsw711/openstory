@@ -4,7 +4,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import { VelroLogo } from '@/components/icons';
+import { VelroLogo } from '@/components/icons/velro-logo';
 import { Route as evalRoute } from '@/routes/_protected/eval';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';

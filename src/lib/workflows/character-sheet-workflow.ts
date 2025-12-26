@@ -21,7 +21,7 @@ import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

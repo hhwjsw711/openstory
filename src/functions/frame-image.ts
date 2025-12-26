@@ -19,8 +19,8 @@ import type {
   StoryboardWorkflowInput,
   VariantWorkflowInput,
   UpscaleVariantWorkflowInput,
-} from '@/lib/workflow';
-import { triggerWorkflow } from '@/lib/workflow';
+} from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';

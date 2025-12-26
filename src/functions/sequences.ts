@@ -29,8 +29,8 @@ import {
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
-import { triggerWorkflow } from '@/lib/workflow';
-import type { StoryboardWorkflowInput } from '@/lib/workflow';
+import { triggerWorkflow } from '@/lib/workflow/client';
+import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import type { Sequence } from '@/lib/db/schema';
 
 // ============================================================================

@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { getDb } from '#db-client';
 import { authMiddleware } from './middleware';
 import { isValidAccessCode } from '@/lib/auth/access-codes';
-import { ensureUserAndTeam } from '@/lib/db/helpers';
+import { ensureUserAndTeam } from '@/lib/db/helpers/ensure-user-team';
 import { user } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 

@@ -9,9 +9,12 @@ import {
   updateFrame,
 } from '@/lib/db/helpers/frames';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { MergeVideoWorkflowInput } from '@/lib/workflow';
+import type { MergeVideoWorkflowInput } from '@/lib/workflow/types';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
+import type {
+  MotionWorkflowInput,
+  MotionWorkflowResult,
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

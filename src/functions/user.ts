@@ -6,7 +6,8 @@
 import { createServerFn } from '@tanstack/react-start';
 
 import { authMiddleware } from './middleware';
-import { ensureUserAndTeam, getUserDefaultTeam } from '@/lib/db/helpers';
+import { ensureUserAndTeam } from '@/lib/db/helpers/ensure-user-team';
+import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import type { UserProfile } from '@/types/database';
 
 // ============================================================================

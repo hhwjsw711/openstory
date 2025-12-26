@@ -19,7 +19,7 @@ import {
   type AspectRatio,
   aspectRatioSchema,
 } from '@/lib/constants/aspect-ratios';
-import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts';
+import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts/scene-splitting';
 import { z } from 'zod';
 
 /**

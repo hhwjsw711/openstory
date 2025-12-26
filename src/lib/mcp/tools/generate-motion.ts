@@ -3,7 +3,7 @@
  * Uses existing Velro motion generation service
  */
 
-import type { Scene } from '@/lib/script';
+import type { Scene } from '@/lib/script/types';
 import {
   generateMotionForFrame,
   type GenerateMotionOptions,

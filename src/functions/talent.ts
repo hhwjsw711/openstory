@@ -25,11 +25,11 @@ import {
   getTalentSheetById,
   getTalentWithRelations,
   getTeamTalent,
-  requireTeamManagement,
   toggleTalentFavorite,
   updateTalent,
   updateTalentSheet,
-} from '@/lib/db/helpers';
+} from '@/lib/db/helpers/talent';
+import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import {
   STORAGE_BUCKETS,
   uploadFile,
@@ -38,8 +38,8 @@ import {
   getMimeTypeFromExtension,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
-import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow';
-import { triggerWorkflow } from '@/lib/workflow';
+import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import type { TalentSheetSource, TalentWithSheets } from '@/lib/db/schema';
 
 // ============================================================================

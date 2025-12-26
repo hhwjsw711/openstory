@@ -13,8 +13,8 @@ import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
-} from '@/lib/workflow';
-import { triggerWorkflow } from '@/lib/workflow';
+} from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
 // ============================================================================

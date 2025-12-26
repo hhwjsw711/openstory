@@ -1,10 +1,8 @@
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
+import { PageDescription } from '@/components/typography/page-description';
+import { PageHeader } from '@/components/typography/page-header';
+import { PageHeading } from '@/components/typography/page-heading';
 import { ScriptView } from '@/components/script/script-view';
-import {
-  PageDescription,
-  PageHeader,
-  PageHeading,
-} from '@/components/typography';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';

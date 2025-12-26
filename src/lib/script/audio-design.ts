@@ -14,7 +14,7 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
-import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts';
+import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts/audio-design';
 import { z } from 'zod';
 
 /**

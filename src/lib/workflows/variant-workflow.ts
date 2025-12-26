@@ -10,7 +10,7 @@ import { getGenerationChannel } from '@/lib/realtime';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

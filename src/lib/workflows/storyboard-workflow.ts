@@ -20,10 +20,8 @@ import { getSequenceForUser } from '@/lib/db/helpers/sequences';
 import { sequences, styles } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
-import {
-  validateSequenceAuth,
-  type StoryboardWorkflowInput,
-} from '@/lib/workflow';
+import { validateSequenceAuth } from '@/lib/workflow/auth';
+import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
