@@ -214,6 +214,7 @@ export async function* callOpenRouterStream(
 
   let accumulated = '';
   let hasError = false;
+  let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
@@ -242,6 +243,7 @@ export async function* callOpenRouterStream(
         }),
         provider: params.provider ?? DEFAULT_PROVIDER,
         stream: true, // Force streaming
+        stream_options: { include_usage: true }, // Request usage in final chunk
       }),
     });
 
@@ -287,6 +289,13 @@ export async function* callOpenRouterStream(
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || '';
                   if (delta) accumulated += delta;
+                  // Capture usage from final chunk if available
+                  if (parsed.usage) {
+                    usage = {
+                      prompt_tokens: parsed.usage.prompt_tokens,
+                      completion_tokens: parsed.usage.completion_tokens,
+                    };
+                  }
                 } catch (e) {
                   console.warn('[OpenRouter] Failed to parse final chunk:', e);
                 }
@@ -318,6 +327,14 @@ export async function* callOpenRouterStream(
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta?.content || '';
 
+              // Capture usage from final chunk if available
+              if (parsed.usage) {
+                usage = {
+                  prompt_tokens: parsed.usage.prompt_tokens,
+                  completion_tokens: parsed.usage.completion_tokens,
+                };
+              }
+
               if (delta) {
                 accumulated += delta;
                 yield { delta, accumulated, done: false };
@@ -344,7 +361,17 @@ export async function* callOpenRouterStream(
     throw error;
   } finally {
     if (!hasError) {
-      generation.update({ output: accumulated }).end();
+      generation
+        .update({
+          output: accumulated,
+          usageDetails: usage
+            ? {
+                input: usage.prompt_tokens,
+                output: usage.completion_tokens,
+              }
+            : undefined,
+        })
+        .end();
     }
   }
 }
