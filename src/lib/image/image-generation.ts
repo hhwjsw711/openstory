@@ -129,13 +129,14 @@ export async function generateImageWithProvider(
 ): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
 
-  const span = startObservation(`fal-image-${params.model}`, {
-    input: {
-      prompt: params.prompt,
+  const span = startObservation(
+    'fal-image',
+    {
       model: params.model,
-      imageSize: params.imageSize,
+      input: { prompt: params.prompt, imageSize: params.imageSize },
     },
-  });
+    { asType: 'generation' }
+  );
 
   try {
     const result = await generateImageInternal(params, modelId);

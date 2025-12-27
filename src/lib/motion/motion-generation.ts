@@ -166,13 +166,14 @@ export async function generateMotionForFrame(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
-  const span = startObservation(`fal-motion-${modelKey}`, {
-    input: {
-      prompt: options.prompt,
+  const span = startObservation(
+    'fal-motion',
+    {
       model: modelKey,
-      imageUrl: options.imageUrl,
+      input: { prompt: options.prompt, imageUrl: options.imageUrl },
     },
-  });
+    { asType: 'generation' }
+  );
 
   try {
     const result = await generateMotionInternal(options, modelConfig);
