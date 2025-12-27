@@ -19,6 +19,17 @@ const TEXT_TO_VIDEO_MODELS = {
  * Image-to-video models (for motion generation)
  * Enriched with capabilities, pricing, and performance metadata
  */
+/**
+ * Video pricing unit types - all Fal video models use per-second pricing
+ */
+type VideoPricingUnit = 'seconds';
+
+type VideoModelPricing = {
+  pricePerSecond: number;
+  currency: 'USD';
+  unit: VideoPricingUnit;
+};
+
 export const IMAGE_TO_VIDEO_MODELS = {
   // Premium models - highest quality
   seedance_v1_pro: {
@@ -36,9 +47,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
     pricing: {
-      estimatedCost: 0.5,
-      unit: 'frame',
-    },
+      pricePerSecond: 0.5, // API reports "1m tokens" but effectively ~$0.50/sec based on typical usage
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 12,
       quality: 'best',
@@ -60,9 +72,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedDurations: [8], // Only 8s supported
     },
     pricing: {
-      estimatedCost: 1.0,
-      unit: 'second',
-    },
+      pricePerSecond: 0.4,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 25,
       quality: 'best',
@@ -83,9 +96,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
-      estimatedCost: 0.2, // $0.20/sec without audio, $0.40/sec with audio
-      unit: 'second',
-    },
+      pricePerSecond: 0.4, // Same as veo3 per Fal API
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 25,
       quality: 'best',
@@ -107,9 +121,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
-      estimatedCost: 0.35, // $0.35 for 5s + $0.07/s
-      unit: 'video',
-    },
+      pricePerSecond: 0.07,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 15,
       quality: 'best',
@@ -131,9 +146,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
-      estimatedCost: 0.4,
-      unit: 'video',
-    },
+      pricePerSecond: 0.07,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 15,
       quality: 'best',
@@ -153,9 +169,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
     pricing: {
-      estimatedCost: 1.5, // Estimated, subject to OpenAI pricing
-      unit: 'video',
-    },
+      pricePerSecond: 0.1,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 30,
       quality: 'best',
@@ -177,9 +194,10 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
     },
     pricing: {
-      estimatedCost: 0.35, // Similar to kling_v2_5_turbo_pro
-      unit: 'video',
-    },
+      pricePerSecond: 0.112,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
     performance: {
       estimatedGenerationTime: 15,
       quality: 'best',
@@ -206,6 +224,17 @@ const VIDEO_MODELS = {
 /**
  * Available models for image generation with rich metadata
  */
+/**
+ * Pricing unit types for Fal.ai models
+ */
+type ImagePricingUnit = 'images' | 'megapixels' | 'compute_seconds';
+
+type ImageModelPricing = {
+  price: number;
+  unit: ImagePricingUnit;
+  currency: 'USD';
+};
+
 export const IMAGE_MODELS = {
   nano_banana: {
     id: 'fal-ai/nano-banana' as const,
@@ -214,6 +243,11 @@ export const IMAGE_MODELS = {
     tier: 'ultra-fast',
     description: 'Fastest generation, good for iteration',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.0398,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   nano_banana_pro: {
     id: 'fal-ai/nano-banana-pro' as const,
@@ -223,6 +257,11 @@ export const IMAGE_MODELS = {
     description:
       "Enhanced realism and typography, Google's latest image generation model",
     maxPromptLength: 50000, // ~12,800 tokens (supports very long prompts)
+    pricing: {
+      price: 0.15,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_schnell: {
     id: 'fal-ai/flux/schnell' as const,
@@ -231,6 +270,11 @@ export const IMAGE_MODELS = {
     tier: 'fast',
     description: 'Fast high-quality images',
     maxPromptLength: 1000, // ~256 tokens (Schnell uses shorter prompts)
+    pricing: {
+      price: 0.003,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_dev: {
     id: 'fal-ai/flux/dev' as const,
@@ -239,6 +283,11 @@ export const IMAGE_MODELS = {
     tier: 'balanced',
     description: 'Balance of speed and quality',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.025,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_pro: {
     id: 'fal-ai/flux-pro' as const,
@@ -247,6 +296,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Professional quality images',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.05,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_pro_v1_1_ultra: {
     id: 'fal-ai/flux-pro/v1.1-ultra' as const,
@@ -255,6 +309,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Highest quality Flux model',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.06,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_krea_lora: {
     id: 'fal-ai/flux-krea-lora' as const,
@@ -263,6 +322,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Flux with creative LoRA',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.035,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   flux_2: {
     id: 'fal-ai/flux-2' as const,
@@ -271,6 +335,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Enhanced realism, crisper text generation, native editing',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.012,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   sdxl_lightning: {
     id: 'fal-ai/fast-lightning-sdxl' as const,
@@ -279,6 +348,11 @@ export const IMAGE_MODELS = {
     tier: 'fast',
     description: 'Fast SDXL variant',
     maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
+    pricing: {
+      price: 0.00125,
+      unit: 'compute_seconds',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   sdxl: {
     id: 'fal-ai/fast-sdxl' as const,
@@ -287,6 +361,11 @@ export const IMAGE_MODELS = {
     tier: 'balanced',
     description: 'Stable Diffusion XL',
     maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
+    pricing: {
+      price: 0.00111,
+      unit: 'compute_seconds',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   imagen4_preview_ultra: {
     id: 'fal-ai/imagen4/preview/ultra' as const,
@@ -295,6 +374,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Google latest image model',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.06,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   recraft_v3: {
     id: 'fal-ai/recraft/v3/text-to-image' as const,
@@ -303,6 +387,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Design-focused generation',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.04,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   hidream_i1_full: {
     id: 'fal-ai/hidream-i1-full' as const,
@@ -311,6 +400,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'High detail rendering',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.05,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   seedream_v4_5: {
     id: 'fal-ai/bytedance/seedream/v4.5/text-to-image' as const,
@@ -319,6 +413,11 @@ export const IMAGE_MODELS = {
     tier: 'premium',
     description: 'Unified generation and editing, high resolution up to 4K',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: {
+      price: 0.04,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
   },
   letzai: {
     id: 'letzai/image' as const,
@@ -327,6 +426,7 @@ export const IMAGE_MODELS = {
     tier: 'balanced',
     description: 'Alternative provider',
     maxPromptLength: 2000, // ~512 tokens
+    pricing: null, // Not a Fal.ai model
   },
 } as const;
 

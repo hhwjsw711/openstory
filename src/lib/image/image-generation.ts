@@ -1,6 +1,7 @@
 import {
   getEditEndpoint,
   getTextToImageModelId,
+  IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
 import {
@@ -140,7 +141,14 @@ export async function generateImageWithProvider(
 
   try {
     const result = await generateImageInternal(params, modelId);
-    span.update({ output: { imageUrls: result.imageUrls } }).end();
+    span
+      .update({
+        output: { imageUrls: result.imageUrls },
+        costDetails: result.metadata.cost
+          ? { total: result.metadata.cost }
+          : undefined,
+      })
+      .end();
     return result;
   } catch (error) {
     span
@@ -602,6 +610,45 @@ async function generateImageInternal(
 }
 
 /**
+ * Calculate estimated cost based on model pricing and output
+ */
+function calculateImageCost(
+  model: TextToImageModel,
+  numImages: number,
+  dimensions: { width: number; height: number }[],
+  processingTimeMs: number
+): number | undefined {
+  const modelConfig = IMAGE_MODELS[model];
+  if (!modelConfig.pricing) return undefined;
+
+  const { price, unit } = modelConfig.pricing;
+
+  switch (unit) {
+    case 'images':
+      // Flat rate per image
+      return price * numImages;
+
+    case 'megapixels': {
+      // Calculate total megapixels across all images
+      const totalMegapixels = dimensions.reduce((sum, dim) => {
+        const megapixels = (dim.width * dim.height) / 1_000_000;
+        return sum + megapixels;
+      }, 0);
+      return price * totalMegapixels;
+    }
+
+    case 'compute_seconds': {
+      // Cost based on compute time
+      const seconds = processingTimeMs / 1000;
+      return price * seconds;
+    }
+
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Parse result by provider
  */
 function resultByProvider(
@@ -623,7 +670,7 @@ function resultByProvider(
       seed: (resp as { seed?: number }).seed,
       has_nsfw_concepts: (resp as { has_nsfw_concepts?: boolean[] })
         .has_nsfw_concepts,
-      cost: (resp as { cost?: number }).cost,
+      cost: undefined as number | undefined,
       requestId: (resp as { requestId?: string }).requestId,
     },
   };
@@ -678,6 +725,15 @@ function resultByProvider(
     result.metadata.seed = falResp.seed;
     result.metadata.has_nsfw_concepts = falResp.has_nsfw_concepts;
   }
+
+  // Calculate cost based on model pricing
+  const numImages = result.imageUrls.length || params.numImages || 1;
+  result.metadata.cost = calculateImageCost(
+    params.model,
+    numImages,
+    result.metadata.dimensions,
+    result.processingTimeMs
+  );
 
   return result;
 }

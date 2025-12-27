@@ -177,7 +177,14 @@ export async function generateMotionForFrame(
 
   try {
     const result = await generateMotionInternal(options, modelConfig);
-    span.update({ output: { videoUrl: result.videoUrl } }).end();
+    span
+      .update({
+        output: { videoUrl: result.videoUrl },
+        costDetails: result.metadata?.cost
+          ? { total: result.metadata.cost as number }
+          : undefined,
+      })
+      .end();
     return result;
   } catch (error) {
     span
@@ -298,6 +305,9 @@ async function generateMotionInternal(
     options.duration || modelConfig.capabilities.defaultDuration;
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
+  // Calculate cost based on duration and per-second pricing
+  const estimatedCost = modelConfig.pricing.pricePerSecond * validatedDuration;
+
   return {
     success: true,
     videoUrl,
@@ -312,7 +322,7 @@ async function generateMotionInternal(
       fps: validatedFps,
       motionBucket: options.motionBucket,
       totalFrames: Math.round(validatedDuration * validatedFps),
-      cost: modelConfig.pricing.estimatedCost,
+      cost: estimatedCost,
       generatedAt: new Date().toISOString(),
     },
   };
