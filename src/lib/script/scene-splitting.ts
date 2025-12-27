@@ -19,7 +19,7 @@ import {
   type AspectRatio,
   aspectRatioSchema,
 } from '@/lib/constants/aspect-ratios';
-import { SCENE_SPLITTING_PROMPT } from '@/lib/prompts/scene-splitting';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
@@ -80,6 +80,9 @@ export async function splitScriptIntoScenes(
 ): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt('velro/phase/scene-splitting');
+
   // Sanitize script content
   const sanitizedScript = sanitizeScriptContent(script);
 
@@ -103,7 +106,8 @@ Respond with ONLY valid JSON matching the schema.`;
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [systemMessage(SCENE_SPLITTING_PROMPT), userMessage(userPrompt)],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
   })) {
     finalContent = chunk.accumulated;
 

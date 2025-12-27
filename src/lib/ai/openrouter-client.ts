@@ -5,6 +5,7 @@
 
 import { getEnv } from '#env';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
+import type { TextPromptClient } from '@langfuse/client';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
 // OpenRouter API configuration
@@ -77,6 +78,8 @@ interface OpenRouterRequestParams {
   presence_penalty?: number;
   stream?: boolean;
   provider?: OpenRouterProviderPreference;
+  /** Langfuse prompt for trace linking */
+  prompt?: TextPromptClient;
 }
 
 /**
@@ -116,6 +119,7 @@ export async function callOpenRouter(
     {
       model: params.model,
       input: params.messages,
+      ...(params.prompt && { prompt: params.prompt }),
     },
     { asType: 'generation' }
   );
@@ -203,6 +207,7 @@ export async function* callOpenRouterStream(
     {
       model: params.model,
       input: params.messages,
+      ...(params.prompt && { prompt: params.prompt }),
     },
     { asType: 'generation' }
   );
@@ -361,7 +366,7 @@ export function userMessage(content: string): OpenRouterMessage {
 /**
  * Helper function to create an assistant message
  */
-function assistantMessage(content: string): OpenRouterMessage {
+export function assistantMessage(content: string): OpenRouterMessage {
   return { role: 'assistant', content };
 }
 

@@ -17,7 +17,7 @@ import {
   characterBibleEntrySchema,
   type CharacterBibleEntry,
 } from '@/lib/ai/scene-analysis.schema';
-import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts/character-extraction';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 import type { Scene } from './types';
 
@@ -47,6 +47,11 @@ export async function extractCharacterBible(
 ): Promise<CharacterBibleEntry[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt(
+    'velro/phase/character-extraction'
+  );
+
   // Build user prompt with scenes
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -70,10 +75,8 @@ Respond with ONLY valid JSON matching the schema.`;
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [
-      systemMessage(CHARACTER_EXTRACTION_PROMPT),
-      userMessage(userPrompt),
-    ],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
   })) {
     finalContent = chunk.accumulated;
 

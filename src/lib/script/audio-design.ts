@@ -14,7 +14,7 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
-import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts/audio-design';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
@@ -48,6 +48,9 @@ export async function generateAudioDesignForScenes(
   }
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt('velro/phase/audio-design');
 
   // Build user prompt with scenes (including visual/motion for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
@@ -88,7 +91,8 @@ Respond with ONLY valid JSON matching the schema.`;
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [systemMessage(AUDIO_DESIGN_PROMPT), userMessage(userPrompt)],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
   })) {
     finalContent = chunk.accumulated;
 

@@ -79,6 +79,7 @@
     "@better-auth/passkey": "^1.4.7",
     "@cf-wasm/photon": "^0.3.4",
     "@fal-ai/client": "^1.7.2",
+    "@langfuse/client": "^4.5.1",
     "@langfuse/otel": "^4.5.1",
     "@langfuse/tracing": "^4.5.1",
     "@libsql/client": "^0.15.15",

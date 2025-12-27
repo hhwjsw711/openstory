@@ -22,7 +22,7 @@ import {
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { getVisualPromptGenerationPrompt } from '@/lib/prompts/visual-prompt-generation';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
 
@@ -87,6 +87,11 @@ export async function generateVisualPromptsForScenes(
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt(
+    'velro/phase/visual-prompt-generation'
+  );
+
   // Build user prompt with scenes, character bible, and style config
   const scenesJson = JSON.stringify(scenes, null, 2);
   const characterBibleJson = JSON.stringify(characterBible, null, 2);
@@ -115,10 +120,8 @@ ${aspectRatio}
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [
-      systemMessage(getVisualPromptGenerationPrompt()),
-      userMessage(userPrompt),
-    ],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
   })) {
     finalContent = chunk.accumulated;
 

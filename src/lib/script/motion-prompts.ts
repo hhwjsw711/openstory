@@ -18,7 +18,7 @@ import {
   movementStyleVariantSchema,
   type Scene,
 } from '@/lib/ai/scene-analysis.schema';
-import { getMotionPromptGenerationPrompt } from '@/lib/prompts/motion-prompt-generation';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
@@ -82,6 +82,11 @@ export async function generateMotionPromptsForScenes(
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt(
+    'velro/phase/motion-prompt-generation'
+  );
+
   // Build user prompt with scenes (including visual prompts for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -96,10 +101,8 @@ ${scenesJson}
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [
-      systemMessage(getMotionPromptGenerationPrompt()),
-      userMessage(userPrompt),
-    ],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
   })) {
     finalContent = chunk.accumulated;
 
