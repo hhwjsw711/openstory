@@ -489,7 +489,10 @@ export const analyzeScriptWorkflow = createWorkflow(
               (frame) => frame.sceneId === scene.sceneId
             );
             if (!frame) return;
-            await updateFrame(frame.frameId, { metadata: scene });
+            await updateFrame(frame.frameId, {
+              metadata: scene,
+              motionPrompt: scene.prompts?.motion?.fullPrompt,
+            });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
