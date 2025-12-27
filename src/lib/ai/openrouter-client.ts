@@ -28,6 +28,7 @@ const openRouterResponseSchema = z.object({
       prompt_tokens: z.number(),
       completion_tokens: z.number(),
       total_tokens: z.number(),
+      cost: z.number().optional(),
     })
     .optional(),
   model: z.string(),
@@ -151,6 +152,7 @@ export async function callOpenRouter(
         }),
         ...(params.stream !== undefined && { stream: params.stream }),
         provider: params.provider ?? DEFAULT_PROVIDER,
+        usage: { include: true },
       }),
     });
 
@@ -177,6 +179,9 @@ export async function callOpenRouter(
               input: validated.usage.prompt_tokens,
               output: validated.usage.completion_tokens,
             }
+          : undefined,
+        costDetails: validated.usage?.cost
+          ? { total: validated.usage.cost }
           : undefined,
       })
       .end();
@@ -214,7 +219,9 @@ export async function* callOpenRouterStream(
 
   let accumulated = '';
   let hasError = false;
-  let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
+  let usage:
+    | { prompt_tokens: number; completion_tokens: number; cost?: number }
+    | undefined;
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
@@ -244,6 +251,7 @@ export async function* callOpenRouterStream(
         provider: params.provider ?? DEFAULT_PROVIDER,
         stream: true, // Force streaming
         stream_options: { include_usage: true }, // Request usage in final chunk
+        usage: { include: true }, // Request cost in response
       }),
     });
 
@@ -294,6 +302,7 @@ export async function* callOpenRouterStream(
                     usage = {
                       prompt_tokens: parsed.usage.prompt_tokens,
                       completion_tokens: parsed.usage.completion_tokens,
+                      cost: parsed.usage.cost,
                     };
                   }
                 } catch (e) {
@@ -332,6 +341,7 @@ export async function* callOpenRouterStream(
                 usage = {
                   prompt_tokens: parsed.usage.prompt_tokens,
                   completion_tokens: parsed.usage.completion_tokens,
+                  cost: parsed.usage.cost,
                 };
               }
 
@@ -370,6 +380,7 @@ export async function* callOpenRouterStream(
                 output: usage.completion_tokens,
               }
             : undefined,
+          costDetails: usage?.cost ? { total: usage.cost } : undefined,
         })
         .end();
     }
