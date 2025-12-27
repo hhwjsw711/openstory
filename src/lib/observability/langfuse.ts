@@ -5,6 +5,7 @@
 
 import { getEnv } from '#env';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
+import { propagateAttributes } from '@langfuse/tracing';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
 let processor: LangfuseSpanProcessor | null = null;
@@ -47,4 +48,26 @@ export async function flushTracing(): Promise<void> {
   if (processor) {
     await processor.forceFlush();
   }
+}
+
+/**
+ * Wrap execution with Langfuse session context.
+ * All traces created within fn() will be grouped by sessionId in Langfuse.
+ *
+ * @param sequenceId - Used as the Langfuse sessionId to group traces
+ * @param userId - Optional user ID for user attribution
+ * @param fn - Async function to execute within the session context
+ */
+export async function withSequenceSession<T>(
+  sequenceId: string,
+  userId: string | undefined,
+  fn: () => Promise<T>
+): Promise<T> {
+  return propagateAttributes(
+    {
+      sessionId: sequenceId,
+      ...(userId && { userId }),
+    },
+    fn
+  );
 }
