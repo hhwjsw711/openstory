@@ -153,7 +153,12 @@ export async function generateImageWithProvider(
     const result = await generateImageInternal(params, modelId);
     span
       .update({
-        output: { imageUrls: result.imageUrls },
+        output: {
+          imageUrls: result.imageUrls,
+          images: result.imageUrls.map(
+            (url, i) => `![Generated Image ${i + 1}](${url})`
+          ),
+        },
         costDetails: result.metadata.cost
           ? { total: result.metadata.cost }
           : undefined,

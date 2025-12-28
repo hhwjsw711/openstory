@@ -172,7 +172,11 @@ export async function generateMotionForFrame(
     options.traceName ?? 'fal-motion',
     {
       model: modelKey,
-      input: { prompt: options.prompt, imageUrl: options.imageUrl },
+      input: {
+        prompt: options.prompt,
+        imageUrl: options.imageUrl,
+        inputImage: `![Input Image](${options.imageUrl})`,
+      },
     },
     { asType: 'generation' }
   );
@@ -181,7 +185,10 @@ export async function generateMotionForFrame(
     const result = await generateMotionInternal(options, modelConfig);
     span
       .update({
-        output: { videoUrl: result.videoUrl },
+        output: {
+          videoUrl: result.videoUrl,
+          video: `![Generated Video](${result.videoUrl})`,
+        },
         costDetails: result.metadata?.cost
           ? { total: result.metadata.cost as number }
           : undefined,
