@@ -122,6 +122,7 @@ export const generateMotionWorkflow = createWorkflow(
           fps: input.fps,
           motionBucket: input.motionBucket,
           aspectRatio: input.aspectRatio,
+          traceName: 'frame-motion',
         });
 
         if (!result.success || !result.videoUrl) {

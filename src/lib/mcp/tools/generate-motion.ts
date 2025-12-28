@@ -54,6 +54,7 @@ export async function generateMotionTool(
       duration: input.duration,
       fps: input.fps,
       aspectRatio: input.aspectRatio,
+      traceName: 'mcp-motion',
     });
 
     if (!result.success || !result.videoUrl) {

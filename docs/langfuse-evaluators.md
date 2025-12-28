@@ -298,6 +298,132 @@ Score 1 if: Seamless flow from script to production-ready outputs with full cons
 
 ---
 
+## Image Quality Evaluator (Vision)
+
+**Name:** `velro-image-quality`
+
+**Note:** This evaluator requires a **vision-capable model** (GPT-4o, Claude 3.5 Sonnet, or Gemini Pro Vision) configured in Langfuse.
+
+**Prompt:**
+
+```
+You are evaluating the visual quality and aesthetics of an AI-generated image.
+
+## Generation Prompt:
+{{prompt}}
+
+## Reference Images (if any):
+{{referenceImageUrls}}
+
+## Generated Image:
+![image]({{imageUrl}})
+
+## Evaluation Criteria:
+
+1. **Composition**: Is the image well-composed with balanced elements, clear focal points, and appropriate framing?
+2. **Lighting Quality**: Is the lighting natural, consistent, and appropriate for the scene?
+3. **Clarity & Sharpness**: Is the image crisp and detailed without blur, noise, or artifacts?
+4. **Artistic Quality**: Does the image have visual appeal, appropriate color harmony, and professional aesthetics?
+5. **Technical Quality**: Is the image free of AI artifacts (distorted hands, text errors, unnatural proportions)?
+6. **Reference Consistency** (if reference images provided): Does the generated image maintain visual consistency with the reference images (character appearance, style, etc.)?
+
+Score 0 if: Image has major artifacts, is blurry, has broken anatomy, or is technically unusable.
+Score 0.5 if: Image is acceptable but has minor quality issues (slight blur, minor artifacts, or composition problems).
+Score 1 if: Image is high quality with excellent composition, lighting, and no visible artifacts.
+```
+
+**Output Schema:**
+
+```json
+{
+  "score": "Score between 0 and 1 based on visual quality",
+  "reasoning": "Brief explanation of quality assessment, citing specific visual elements"
+}
+```
+
+**Filter:** Trace name = `frame-image` (or use `contains` for all image types)
+
+**Available Trace Names:**
+
+| Trace Name              | Description                      |
+| ----------------------- | -------------------------------- |
+| `frame-image`           | Frame thumbnail generation       |
+| `variant-image`         | Frame variant generation         |
+| `character-sheet-image` | Character sheet generation       |
+| `character-bible-image` | Character bible sheet generation |
+| `talent-sheet-image`    | Talent sheet generation          |
+| `talent-headshot-image` | Talent headshot generation       |
+| `mcp-image`             | MCP tool image generation        |
+
+**Variable Mapping:**
+
+- `{{prompt}}` → Object: Trace, Object Variable: Input, JSONPath: `$.prompt`
+- `{{referenceImageUrls}}` → Object: Trace, Object Variable: Input, JSONPath: `$.referenceImageUrls`
+- `{{imageUrl}}` → Object: Trace, Object Variable: Output, JSONPath: `$.imageUrls[0]`
+
+---
+
+## Video Quality Evaluator (Vision)
+
+**Name:** `velro-video-quality`
+
+**Note:** This evaluator requires a **vision-capable model** (GPT-4o, Claude 3.5 Sonnet, or Gemini Pro Vision) configured in Langfuse. Video analysis may be limited - the evaluator will assess based on the source image and motion prompt if video cannot be viewed directly.
+
+**Prompt:**
+
+```
+You are evaluating the quality of an AI-generated video (image-to-video motion).
+
+## Motion Prompt:
+{{prompt}}
+
+## Source Image:
+{{sourceImageUrl}}
+
+## Generated Video:
+{{videoUrl}}
+
+## Evaluation Criteria:
+
+1. **Motion Quality**: Does the movement appear smooth, natural, and free of jitter or stuttering?
+2. **Prompt Adherence**: Does the motion match what was requested in the prompt (camera movement, subject motion)?
+3. **Visual Consistency**: Is the subject stable throughout? No flickering, morphing, or unnatural deformations?
+4. **Temporal Coherence**: Do frames flow naturally from one to the next without jarring transitions?
+5. **Source Fidelity**: Does the video maintain the visual quality and content of the source image?
+
+Score 0 if: Video has severe artifacts, uncontrolled morphing, or motion that contradicts the prompt.
+Score 0.5 if: Motion is present but has minor issues (slight jitter, partial prompt adherence, minor flickering).
+Score 1 if: Smooth, natural motion that accurately follows the prompt with no visible artifacts.
+
+Note: If you cannot view the video directly, evaluate based on whether the motion prompt is appropriate for the source image and likely to produce good results.
+```
+
+**Output Schema:**
+
+```json
+{
+  "score": "Score between 0 and 1 based on video quality",
+  "reasoning": "Brief explanation of motion quality, prompt adherence, and any artifacts"
+}
+```
+
+**Filter:** Trace name = `frame-motion` (or use `contains` for all motion types)
+
+**Available Trace Names:**
+
+| Trace Name     | Description                |
+| -------------- | -------------------------- |
+| `frame-motion` | Frame motion generation    |
+| `mcp-motion`   | MCP tool motion generation |
+
+**Variable Mapping:**
+
+- `{{prompt}}` → Object: Trace, Object Variable: Input, JSONPath: `$.prompt`
+- `{{sourceImageUrl}}` → Object: Trace, Object Variable: Input, JSONPath: `$.imageUrl`
+- `{{videoUrl}}` → Object: Trace, Object Variable: Output, JSONPath: `$.videoUrl`
+
+---
+
 ## Filtering Guide
 
 Langfuse LLM-as-a-Judge evaluators support filtering on **trace-level attributes only** (not observations/spans):

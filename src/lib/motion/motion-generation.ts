@@ -47,6 +47,8 @@ export type GenerateMotionOptions = {
   fps?: number;
   motionBucket?: number;
   aspectRatio?: AspectRatio;
+  // Langfuse trace name (defaults to 'fal-motion')
+  traceName?: string;
 };
 
 export type MotionResult = {
@@ -167,7 +169,7 @@ export async function generateMotionForFrame(
   }
 
   const span = startObservation(
-    'fal-motion',
+    options.traceName ?? 'fal-motion',
     {
       model: modelKey,
       input: { prompt: options.prompt, imageUrl: options.imageUrl },

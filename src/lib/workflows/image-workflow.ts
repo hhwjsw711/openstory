@@ -87,6 +87,7 @@ export const generateImageWorkflow = createWorkflow(
             referenceImageUrls:
               input.referenceImages?.map((image) => image.referenceImageUrl) ??
               [],
+            traceName: 'frame-image',
           } satisfies ImageGenerationParams;
         }
       );

@@ -77,6 +77,7 @@ export const generateVariantWorkflow = createWorkflow(
           numImages: input.numImages ?? 1,
           seed: input.seed,
           referenceImageUrls: [input.thumbnailUrl],
+          traceName: 'variant-image',
         };
       }
     );

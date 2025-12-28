@@ -87,6 +87,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'landscape_16_9',
           numImages: 1,
           resolution: '2K',
+          traceName: 'talent-sheet-image',
         };
 
       // Only include referenceImageUrls if provided
@@ -174,6 +175,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           prompt,
           imageSize: 'square_hd',
           numImages: 1,
+          traceName: 'talent-headshot-image',
         };
 
         // Only include referenceImageUrls if provided

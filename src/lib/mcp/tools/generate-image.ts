@@ -106,6 +106,7 @@ export async function generateImageTool(
       model: (input.model as TextToImageModel) || 'nano_banana_pro',
       imageSize: (input.imageSize as ImageSize) || 'landscape_16_9',
       numImages: input.numImages || 1,
+      traceName: 'mcp-image',
     };
 
     // Use existing Velro image generation service

@@ -63,6 +63,9 @@ export type ImageGenerationParams = {
 
   // Reference images for character consistency (auto-switches to edit endpoint)
   referenceImageUrls?: string[];
+
+  // Langfuse trace name (defaults to 'fal-image')
+  traceName?: string;
 };
 
 /**
@@ -131,10 +134,17 @@ export async function generateImageWithProvider(
   const modelId = getTextToImageModelId(params.model);
 
   const span = startObservation(
-    'fal-image',
+    params.traceName ?? 'fal-image',
     {
       model: params.model,
-      input: { prompt: params.prompt, imageSize: params.imageSize },
+      input: {
+        prompt: params.prompt,
+        imageSize: params.imageSize,
+        ...(params.referenceImageUrls &&
+          params.referenceImageUrls.length > 0 && {
+            referenceImageUrls: params.referenceImageUrls,
+          }),
+      },
     },
     { asType: 'generation' }
   );

@@ -73,6 +73,7 @@ export const characterBibleWorkflow = createWorkflow(
             resolution: '2K' as const,
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
+            traceName: 'character-bible-image',
           });
 
           const imageUrl = imageResult.imageUrls[0];
