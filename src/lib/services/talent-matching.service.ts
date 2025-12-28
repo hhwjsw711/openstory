@@ -12,6 +12,7 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import type {
@@ -33,31 +34,6 @@ const talentMatchResponseSchema = z.object({
     })
   ),
 });
-
-/**
- * Build the system prompt for talent matching
- */
-function buildSystemPrompt(): string {
-  return `You are a casting director AI. Your job is to match available talent (actors) to character roles.
-
-The user has EXPLICITLY SELECTED these talent members because they want them cast in this production.
-Your job is to find the BEST character match for each talent member.
-
-MATCHING PRIORITY (in order of importance):
-1. Gender compatibility (prefer matching, but can be flexible for unspecified characters)
-2. Age compatibility (within reasonable range)
-3. Physical appearance similarity
-4. Role prominence (prefer giving main roles to talent)
-
-CRITICAL RULES:
-- You MUST match every talent to a character (the user selected them for a reason)
-- Each talent can only be matched to ONE character
-- Each character can only have ONE talent assigned
-- If there are more talent than characters, match as many as possible (up to character count)
-- Be creative - talent can play characters of different ages/types with makeup and costume
-
-Respond with ONLY valid JSON matching the schema.`;
-}
 
 /**
  * Build the user prompt for matching
@@ -109,13 +85,7 @@ REQUIREMENTS:
 - Each character can only have one talent
 ${numTalent > numCharacters ? `- Note: More talent than characters. Match the ${numCharacters} best fits.` : ''}
 
-For each match provide:
-- characterId: The character's ID
-- talentId: The talent's ID
-- confidence: Match quality (0.0 to 1.0) - provide a value even for imperfect matches
-- reason: Brief explanation
-
-Respond with JSON: { "matches": [...] } with exactly ${expectedMatches} matches.`;
+Respond with exactly ${expectedMatches} matches.`;
 }
 
 /**
@@ -148,15 +118,19 @@ export async function matchTalentToCharacters(
     };
   }
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt('velro/phase/talent-matching');
+
   let finalContent = '';
 
   // Stream the response
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
-      systemMessage(buildSystemPrompt()),
+      systemMessage(compiled),
       userMessage(buildMatchingPrompt(characters, talentWithData)),
     ],
+    prompt, // Link to Langfuse trace
     observationName: 'talent-matching',
     tags: ['talent-matching', 'casting', 'analysis'],
     metadata: {
