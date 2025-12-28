@@ -26,10 +26,17 @@ You are evaluating the quality of a scene splitting analysis from a video script
 3. **Metadata Quality**: Does each scene have meaningful title, duration estimate, location, and time of day?
 4. **Script Preservation**: Is the originalScript.extract an exact copy from the input (not modified or enhanced)?
 5. **Logical Ordering**: Are sceneNumber values sequential and sceneIds unique?
+6. **Single Shot Compliance**: Does each scene represent exactly ONE camera shot (single continuous take)?
+   - Check for multi-shot indicators in originalScript.extract:
+     * "Cut to", "cuts to", "we cut to"
+     * "Then we see", "now we see", "next we see"
+     * Multiple camera framings: "Close-up... Wide shot..." in same scene
+     * "Meanwhile", "elsewhere", "back to"
+   - A scene with ANY of these indicators should have been split further
 
-Score 0 if: Scenes are arbitrarily split, script content is missing, or metadata is fabricated.
-Score 0.5 if: Basic scene splits are correct but metadata is incomplete or script extracts are paraphrased.
-Score 1 if: Scene boundaries are narratively logical, all script content is preserved exactly, and metadata is accurate.
+Score 0 if: Scenes are arbitrarily split, script content is missing, metadata is fabricated, OR scenes contain multiple shots/cuts.
+Score 0.5 if: Basic scene splits are correct but metadata is incomplete, script extracts are paraphrased, OR minor multi-shot issues exist.
+Score 1 if: Scene boundaries are narratively logical, all script content is preserved exactly, metadata is accurate, AND each scene is a single continuous shot.
 ```
 
 **Output Schema:**
@@ -111,10 +118,15 @@ You are evaluating the quality of visual prompts generated for video frame gener
 5. **Negative Prompt Appropriateness**: Does negativePrompt exclude common artifacts (blur, distortion, text)?
 6. **Continuity Tags**: Are characterTags and environmentTag useful for cross-scene consistency?
 7. **Style Adherence**: Does the prompt incorporate the director's style config (if provided)?
+8. **Single Shot Focus**: Does the prompt describe exactly ONE camera position/angle for ONE continuous action?
+   - Prompt should describe a SINGLE frame/moment, not a sequence
+   - Should NOT contain: "then", "next", "followed by", "after that", or other temporal sequences
+   - Should have ONE camera framing (not "wide shot transitioning to close-up")
+   - Should describe ONE moment in time (what would be captured in a single photograph)
 
-Score 0 if: Prompt is vague, contradicts the scene, or misrepresents characters.
-Score 0.5 if: Prompt captures the scene but lacks specificity or technical image-gen optimization.
-Score 1 if: Prompt is detailed, technically optimized, faithful to script, and maintains character/style consistency.
+Score 0 if: Prompt is vague, contradicts the scene, misrepresents characters, OR describes multiple shots/camera setups.
+Score 0.5 if: Prompt captures the scene but lacks specificity, technical image-gen optimization, OR has minor multi-shot language.
+Score 1 if: Prompt is detailed, technically optimized, faithful to script, maintains character/style consistency, AND describes a single continuous shot from one camera position.
 ```
 
 **Output Schema:**

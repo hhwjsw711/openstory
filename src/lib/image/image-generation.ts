@@ -4,6 +4,7 @@ import {
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
@@ -151,13 +152,17 @@ export async function generateImageWithProvider(
 
   try {
     const result = await generateImageInternal(params, modelId);
+
+    // Fetch first image for inline preview in Langfuse
+    const imageMedia = result.imageUrls[0]
+      ? await createImageMedia(result.imageUrls[0])
+      : null;
+
     span
       .update({
         output: {
           imageUrls: result.imageUrls,
-          images: result.imageUrls.map(
-            (url, i) => `![Generated Image ${i + 1}](${url})`
-          ),
+          ...(imageMedia && { generatedImage: imageMedia }),
         },
         costDetails: result.metadata.cost
           ? { total: result.metadata.cost }
