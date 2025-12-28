@@ -108,6 +108,9 @@ Respond with ONLY valid JSON matching the schema.`;
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
     prompt, // Link to trace
+    observationName: 'phase-1-scene-splitting',
+    tags: ['scene-splitting', 'phase-1', 'analysis'],
+    metadata: { phase: 1, phaseName: 'Scene Splitting' },
   })) {
     finalContent = chunk.accumulated;
 

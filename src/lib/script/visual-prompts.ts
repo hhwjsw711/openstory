@@ -122,6 +122,13 @@ ${aspectRatio}
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
     prompt, // Link to trace
+    observationName: 'phase-3-visual-prompts',
+    tags: ['visual-prompts', 'phase-3', 'analysis'],
+    metadata: {
+      phase: 3,
+      phaseName: 'Visual Prompt Generation',
+      sceneCount: scenes.length,
+    },
   })) {
     finalContent = chunk.accumulated;
 

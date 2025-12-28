@@ -77,6 +77,9 @@ Respond with ONLY valid JSON matching the schema.`;
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
     prompt, // Link to trace
+    observationName: 'phase-2-character-extraction',
+    tags: ['character-extraction', 'phase-2', 'analysis'],
+    metadata: { phase: 2, phaseName: 'Character Extraction' },
   })) {
     finalContent = chunk.accumulated;
 

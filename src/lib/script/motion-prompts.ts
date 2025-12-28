@@ -103,6 +103,13 @@ ${scenesJson}
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
     prompt, // Link to trace
+    observationName: 'phase-4-motion-prompts',
+    tags: ['motion-prompts', 'phase-4', 'analysis'],
+    metadata: {
+      phase: 4,
+      phaseName: 'Motion Prompt Generation',
+      sceneCount: scenes.length,
+    },
   })) {
     finalContent = chunk.accumulated;
 

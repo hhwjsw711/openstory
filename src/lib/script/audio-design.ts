@@ -93,6 +93,13 @@ Respond with ONLY valid JSON matching the schema.`;
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
     prompt, // Link to trace
+    observationName: 'phase-5-audio-design',
+    tags: ['audio-design', 'phase-5', 'analysis'],
+    metadata: {
+      phase: 5,
+      phaseName: 'Audio Design',
+      sceneCount: scenes.length,
+    },
   })) {
     finalContent = chunk.accumulated;
 

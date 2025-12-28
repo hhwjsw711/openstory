@@ -157,6 +157,12 @@ export async function matchTalentToCharacters(
       systemMessage(buildSystemPrompt()),
       userMessage(buildMatchingPrompt(characters, talentWithData)),
     ],
+    observationName: 'talent-matching',
+    tags: ['talent-matching', 'casting', 'analysis'],
+    metadata: {
+      characterCount: characters.length,
+      talentCount: talentWithData.length,
+    },
   })) {
     finalContent = chunk.accumulated;
     if (chunk.done) break;

@@ -81,6 +81,12 @@ interface OpenRouterRequestParams {
   provider?: OpenRouterProviderPreference;
   /** Langfuse prompt for trace linking */
   prompt?: TextPromptClient;
+  /** Custom observation name for Langfuse filtering (e.g., 'phase-1-scene-splitting') */
+  observationName?: string;
+  /** Tags for Langfuse filtering */
+  tags?: string[];
+  /** Additional metadata for Langfuse */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -116,11 +122,13 @@ export async function callOpenRouter(
   const apiKey = getEnv().OPENROUTER_KEY;
 
   const generation = startObservation(
-    'openrouter-call',
+    params.observationName ?? 'openrouter-call',
     {
       model: params.model,
       input: params.messages,
       ...(params.prompt && { prompt: params.prompt }),
+      ...(params.tags && { tags: params.tags }),
+      ...(params.metadata && { metadata: params.metadata }),
     },
     { asType: 'generation' }
   );
@@ -208,11 +216,13 @@ export async function* callOpenRouterStream(
   const apiKey = getEnv().OPENROUTER_KEY;
 
   const generation = startObservation(
-    'openrouter-stream',
+    params.observationName ?? 'openrouter-stream',
     {
       model: params.model,
       input: params.messages,
       ...(params.prompt && { prompt: params.prompt }),
+      ...(params.tags && { tags: params.tags }),
+      ...(params.metadata && { metadata: params.metadata }),
     },
     { asType: 'generation' }
   );
