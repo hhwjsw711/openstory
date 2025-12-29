@@ -149,7 +149,21 @@ ${scenesJson}
     return {
       ...scene,
       prompts: {
-        ...scene.prompts,
+        visual: scene.prompts?.visual || {
+          fullPrompt: '',
+          negativePrompt: '',
+          components: {
+            sceneDescription: '',
+            subject: '',
+            environment: '',
+            lighting: '',
+            camera: '',
+            composition: '',
+            style: '',
+            technical: '',
+            atmosphere: '',
+          },
+        },
         motion: enrichment.prompts.motion,
       },
     };

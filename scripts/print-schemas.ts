@@ -82,7 +82,13 @@ const visualPromptGenerationResultSchema = z.object({
             })
             .meta({ description: 'Visual generation prompts for this scene' }),
           continuity: continuitySchema
-            .catch({ characterTags: [] })
+            .catch({
+              characterTags: [],
+              environmentTag: '',
+              colorPalette: '',
+              lightingSetup: '',
+              styleTag: '',
+            })
             .meta({ description: 'Continuity tracking for scene consistency' }),
         })
     )

@@ -30,7 +30,6 @@ describe('Scene Analysis Schema Validation', () => {
       expect(scene.sceneNumber).toBeGreaterThan(0);
       expect(scene.originalScript).toBeDefined();
       expect(scene.metadata).toBeDefined();
-      expect(scene.selectedVariant).toBeDefined();
       expect(scene.prompts).toBeDefined();
       expect(scene.prompts?.visual).toBeDefined();
       expect(scene.prompts?.motion).toBeDefined();
@@ -66,27 +65,6 @@ describe('Scene Analysis Schema Validation', () => {
       expect(components?.subjectTracking).toBeDefined();
       expect(components?.equipment).toBeDefined();
     }
-  });
-
-  test('variants have exactly 3 options each when present', () => {
-    const scene1 = sceneAnalysisExample.scenes[0];
-    if (scene1.variants) {
-      expect(scene1.variants.cameraAngles).toHaveLength(3);
-      expect(scene1.variants.movementStyles).toHaveLength(3);
-      expect(scene1.variants.moodTreatments).toHaveLength(3);
-    }
-  });
-
-  test('selected variants reference valid variant IDs', () => {
-    const scene1 = sceneAnalysisExample.scenes[0];
-    if (!scene1.selectedVariant) return;
-    expect(['A1', 'A2', 'A3']).toContain(scene1.selectedVariant.cameraAngle);
-    if (scene1.selectedVariant.movementStyle) {
-      expect(['B1', 'B2', 'B3']).toContain(
-        scene1.selectedVariant.movementStyle
-      );
-    }
-    expect(['C1', 'C2', 'C3']).toContain(scene1.selectedVariant.moodTreatment);
   });
 
   test('character bible entries have required fields', () => {

@@ -111,12 +111,7 @@ export const characterBibleWorkflow = createWorkflow(
               characterId: character.characterId,
               name: character.name,
               // Flattened character bible fields
-              age:
-                character.age != null
-                  ? typeof character.age === 'number'
-                    ? String(character.age)
-                    : character.age
-                  : null,
+              age: character.age ?? '',
               gender: character.gender ?? null,
               ethnicity: character.ethnicity ?? null,
               physicalDescription: character.physicalDescription,

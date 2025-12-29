@@ -50,7 +50,7 @@ export const characters = sqliteTable(
     characterId: text('character_id').notNull(), // e.g. "char_001" from script analysis
     name: text({ length: 255 }).notNull(),
     // Flattened character bible fields (previously in metadata JSON)
-    age: text(), // Can be "30s" or "35"
+    age: text().notNull(), // Can be "30s" or "35"
     gender: text(),
     ethnicity: text(),
     physicalDescription: text('physical_description'),

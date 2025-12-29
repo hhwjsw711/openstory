@@ -24,7 +24,7 @@ const mockFrame: Frame = {
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
-  motionPrompt: null,
+  motionPrompt: '',
   motionModel: 'veo3',
   metadata: {
     sceneId: 'scene-1',
@@ -33,10 +33,7 @@ const mockFrame: Frame = {
       extract:
         'INT. COFFEE SHOP - MORNING\n\nSARAH sits at a corner table, typing furiously on her laptop. Steam rises from her untouched latte.',
       dialogue: [
-        {
-          character: 'SARAH',
-          line: 'This deadline is going to kill me.',
-        },
+        { character: 'SARAH', line: 'This deadline is going to kill me.' },
       ],
     },
     metadata: {
@@ -45,12 +42,6 @@ const mockFrame: Frame = {
       location: 'Coffee Shop',
       timeOfDay: 'Morning',
       storyBeat: 'Establish protagonist stress and setting',
-    },
-    selectedVariant: {
-      cameraAngle: 'A2' as const,
-      movementStyle: 'B1' as const,
-      moodTreatment: 'C1' as const,
-      rationale: 'Selected for emotional impact',
     },
     prompts: {
       visual: {
@@ -94,6 +85,31 @@ const mockFrame: Frame = {
         },
       },
     },
+    audioDesign: {
+      music: {
+        presence: 'none',
+        style: '',
+        mood: '',
+        rationale: '',
+      },
+      soundEffects: [],
+      dialogue: {
+        presence: false,
+        lines: [],
+      },
+      ambient: {
+        roomTone: '',
+        atmosphere: '',
+      },
+    },
+    continuity: {
+      characterTags: [],
+      environmentTag: '',
+      colorPalette: '',
+      lightingSetup: '',
+      styleTag: '',
+    },
+    sourceImageUrl: '',
   },
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -194,13 +210,76 @@ export const LongTitle: Story = {
     frame: {
       ...mockFrame,
       metadata: {
-        ...mockFrame.metadata,
+        sceneId: mockFrame.metadata?.sceneId ?? '',
+        sceneNumber: mockFrame.metadata?.sceneNumber ?? 1,
+        originalScript: mockFrame.metadata?.originalScript ?? {
+          extract: '',
+          dialogue: [],
+        },
         metadata: {
-          ...mockFrame.metadata?.metadata,
           title:
             'An Extremely Long Scene Title That Should Wrap Properly Without Breaking Layout',
+          durationSeconds: mockFrame.metadata?.metadata?.durationSeconds ?? 3,
+          location: mockFrame.metadata?.metadata?.location ?? '',
+          timeOfDay: mockFrame.metadata?.metadata?.timeOfDay ?? '',
+          storyBeat: mockFrame.metadata?.metadata?.storyBeat ?? '',
         },
-      } as Frame['metadata'],
+        prompts: mockFrame.metadata?.prompts ?? {
+          visual: {
+            fullPrompt: '',
+            negativePrompt: '',
+            components: {
+              sceneDescription: '',
+              subject: '',
+              environment: '',
+              lighting: '',
+              camera: '',
+              composition: '',
+              style: '',
+              technical: '',
+              atmosphere: '',
+            },
+          },
+          motion: {
+            fullPrompt: '',
+            components: {
+              cameraMovement: '',
+              startPosition: '',
+              endPosition: '',
+              durationSeconds: 3,
+              speed: '',
+              smoothness: '',
+              subjectTracking: '',
+              equipment: '',
+            },
+            parameters: {
+              durationSeconds: 3,
+              fps: 24,
+              motionAmount: 'medium' as const,
+              cameraControl: {
+                pan: 0,
+                tilt: 0,
+                zoom: 0,
+                movement: '',
+              },
+            },
+          },
+        },
+        audioDesign: mockFrame.metadata?.audioDesign ?? {
+          music: { presence: 'none', style: '', mood: '', rationale: '' },
+          soundEffects: [],
+          dialogue: { presence: false, lines: [] },
+          ambient: { roomTone: '', atmosphere: '' },
+        },
+        continuity: mockFrame.metadata?.continuity ?? {
+          characterTags: [],
+          environmentTag: '',
+          colorPalette: '',
+          lightingSetup: '',
+          styleTag: '',
+        },
+        sourceImageUrl: mockFrame.metadata?.sourceImageUrl ?? '',
+      } satisfies Frame['metadata'],
     },
     isActive: false,
     isCompleted: false,
@@ -212,7 +291,8 @@ export const LongScript: Story = {
     frame: {
       ...mockFrame,
       metadata: {
-        ...mockFrame.metadata,
+        sceneId: mockFrame.metadata?.sceneId ?? '',
+        sceneNumber: mockFrame.metadata?.sceneNumber ?? 1,
         originalScript: {
           ...(mockFrame.metadata?.originalScript ?? {
             extract: '',
@@ -221,7 +301,69 @@ export const LongScript: Story = {
           extract:
             'INT. COFFEE SHOP - MORNING\n\nSARAH sits at a corner table, typing furiously on her laptop. Steam rises from her untouched latte. The morning sun streams through large windows, casting long shadows across the wooden floor. Other patrons bustle about, ordering drinks and chatting, creating a backdrop of ambient noise that Sarah tries to tune out.',
         },
-      } as Frame['metadata'],
+        metadata: mockFrame.metadata?.metadata ?? {
+          title: '',
+          durationSeconds: 3,
+          location: '',
+          timeOfDay: '',
+          storyBeat: '',
+        },
+        prompts: mockFrame.metadata?.prompts ?? {
+          visual: {
+            fullPrompt: '',
+            negativePrompt: '',
+            components: {
+              sceneDescription: '',
+              subject: '',
+              environment: '',
+              lighting: '',
+              camera: '',
+              composition: '',
+              style: '',
+              technical: '',
+              atmosphere: '',
+            },
+          },
+          motion: {
+            fullPrompt: '',
+            components: {
+              cameraMovement: '',
+              startPosition: '',
+              endPosition: '',
+              durationSeconds: 3,
+              speed: '',
+              smoothness: '',
+              subjectTracking: '',
+              equipment: '',
+            },
+            parameters: {
+              durationSeconds: 3,
+              fps: 24,
+              motionAmount: 'medium' as const,
+              cameraControl: {
+                pan: 0,
+                tilt: 0,
+                zoom: 0,
+                movement: '',
+              },
+            },
+          },
+        },
+        audioDesign: mockFrame.metadata?.audioDesign ?? {
+          music: { presence: 'none', style: '', mood: '', rationale: '' },
+          soundEffects: [],
+          dialogue: { presence: false, lines: [] },
+          ambient: { roomTone: '', atmosphere: '' },
+        },
+        continuity: mockFrame.metadata?.continuity ?? {
+          characterTags: [],
+          environmentTag: '',
+          colorPalette: '',
+          lightingSetup: '',
+          styleTag: '',
+        },
+        sourceImageUrl: mockFrame.metadata?.sourceImageUrl ?? '',
+      } satisfies Frame['metadata'],
     },
     isActive: false,
     isCompleted: false,

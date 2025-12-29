@@ -12,14 +12,14 @@ export const characterBibleEntrySchema = z.object({
   name: z
     .string()
     .meta({ description: 'Full character name as written in the script' }),
-  age: z.union([z.number(), z.string()]).nullish().meta({
+  age: z.string().meta({
     description: 'Age as number (e.g., 35) or range (e.g., "30s", "early 40s")',
   }),
   gender: z
     .string()
-    .optional()
+    .catch('')
     .meta({ description: 'Character gender for casting consistency' }),
-  ethnicity: z.string().optional().meta({
+  ethnicity: z.string().catch('').meta({
     description: 'Character ethnicity for accurate visual representation',
   }),
   physicalDescription: z.string().catch('').meta({
@@ -30,7 +30,7 @@ export const characterBibleEntrySchema = z.object({
     description:
       'Default outfit and clothing style for visual consistency across scenes',
   }),
-  distinguishingFeatures: z.string().optional().meta({
+  distinguishingFeatures: z.string().catch('').meta({
     description:
       'Unique visual markers: scars, tattoos, accessories, distinctive mannerisms',
   }),
@@ -246,48 +246,61 @@ export const motionPromptParametersSchema = z
   .object({
     durationSeconds: z
       .number()
-      .optional()
       .meta({ description: 'Override duration in seconds' }),
     fps: z
       .number()
-      .optional()
+      .catch(30)
       .meta({ description: 'Frames per second (24, 30, 60)' }),
     motionAmount: z
       .string()
       .transform((v) => v.toLowerCase())
       .pipe(z.enum(['low', 'medium', 'high']))
-      .optional()
+      .catch('medium')
       .meta({ description: 'Amount of motion: low, medium, high' }),
     cameraControl: z
       .object({
         pan: z
           .number()
-          .optional()
+          .catch(0)
           .meta({ description: 'Horizontal rotation in degrees' }),
         tilt: z
           .number()
-          .optional()
+          .catch(0)
           .meta({ description: 'Vertical rotation in degrees' }),
         zoom: z
           .number()
-          .optional()
+          .catch(0)
           .meta({ description: 'Zoom factor (1.0 = no zoom)' }),
         movement: z
           .string()
-          .optional()
+          .catch('')
           .meta({ description: 'Direction of camera movement' }),
       })
-      .optional()
+      .catch({ pan: 0, tilt: 0, zoom: 0, movement: '' })
       .meta({ description: 'Precise camera control parameters' }),
   })
-  .optional();
+  .catch({
+    durationSeconds: 3,
+    fps: 30,
+    motionAmount: 'medium',
+    cameraControl: { pan: 0, tilt: 0, zoom: 0, movement: '' },
+  });
 
 export const motionPromptSchema = z.object({
   fullPrompt: z.string().min(1).meta({
     description: 'Complete motion prompt describing camera movement and action',
   }),
   components: motionPromptComponentsSchema
-    .optional()
+    .catch({
+      cameraMovement: '',
+      startPosition: '',
+      endPosition: '',
+      durationSeconds: 3,
+      speed: 'medium',
+      smoothness: 'smooth',
+      subjectTracking: '',
+      equipment: '',
+    })
     .meta({ description: 'Structured breakdown of motion prompt components' }),
   parameters: motionPromptParametersSchema.meta({
     description: 'Technical parameters for motion generation',
@@ -312,16 +325,16 @@ export const musicSchema = z.object({
     description:
       'How prominent the music should be: none, minimal, moderate, full',
   }),
-  style: z.string().nullable().catch('').meta({
+  style: z.string().catch('').meta({
     description:
       'Music genre or style (e.g., "orchestral", "electronic ambient")',
   }),
-  mood: z.string().nullable().catch('').meta({
+  mood: z.string().catch('').meta({
     description: 'Emotional quality of the music (e.g., "tense", "uplifting")',
   }),
   rationale: z
     .string()
-    .optional()
+    .catch('')
     .meta({ description: 'Explanation for the music choices' }),
 });
 
@@ -352,7 +365,7 @@ export const soundEffectSchema = z.object({
 });
 
 export const dialogueLineSchema = z.object({
-  character: z.string().nullable().catch(null).meta({
+  character: z.string().catch('').meta({
     description: 'Character name speaking the line, or null for narrator',
   }),
   line: z.string().catch('').meta({ description: 'The spoken dialogue text' }),
@@ -380,17 +393,17 @@ export const ambientSchema = z.object({
 
 export const audioDesignSchema = z.object({
   music: musicSchema
-    .optional()
+    .catch({ presence: 'none', style: '', mood: '', rationale: '' })
     .meta({ description: 'Background music specifications' }),
   soundEffects: z
     .array(soundEffectSchema)
     .catch([])
     .meta({ description: 'Array of sound effects for the scene' }),
   dialogue: dialogueSchema
-    .optional()
+    .catch({ presence: false, lines: [] })
     .meta({ description: 'Dialogue and speech specifications' }),
   ambient: ambientSchema
-    .optional()
+    .catch({ roomTone: '', atmosphere: '' })
     .meta({ description: 'Ambient sound design' }),
 });
 
@@ -404,18 +417,18 @@ export const continuitySchema = z.object({
   }),
   environmentTag: z
     .string()
-    .optional()
+    .catch('')
     .meta({ description: 'Location/setting tag for environment consistency' }),
   colorPalette: z
     .string()
-    .optional()
+    .catch('')
     .meta({ description: 'Dominant colors for visual continuity' }),
-  lightingSetup: z.string().optional().meta({
+  lightingSetup: z.string().catch('').meta({
     description: 'Lighting configuration for consistency across shots',
   }),
   styleTag: z
     .string()
-    .optional()
+    .catch('')
     .meta({ description: 'Visual style reference for consistent look' }),
 });
 
@@ -472,20 +485,14 @@ export const sceneSchema = z.object({
     .number()
     .meta({ description: 'Scene order number starting from 1 (required)' }),
   originalScript: originalScriptSchema
-    .optional()
+    .catch({ extract: '', dialogue: [] })
     .meta({ description: 'Original script content for this scene' }),
   metadata: sceneMetadataSchema
     .optional()
     .meta({ description: 'Scene metadata and context' }),
-  variants: variantsSchema
-    .optional()
-    .meta({ description: 'Camera, movement, and mood options' }),
-  selectedVariant: selectedVariantSchema
-    .optional()
-    .meta({ description: 'Currently selected variant options' }),
-  prompts: promptsSchema
-    .optional()
-    .meta({ description: 'Visual and motion generation prompts' }),
+  prompts: promptsSchema.optional().meta({
+    description: 'Visual and motion generation prompts',
+  }),
   audioDesign: audioDesignSchema
     .optional()
     .meta({ description: 'Audio and sound design specs' }),
@@ -508,11 +515,11 @@ export const sceneAnalysisSchema = z.object({
     .catch('success')
     .meta({ description: 'Processing status: success, error, or rejected' }),
   projectMetadata: projectMetadataSchema
-    .optional()
+    .catch({ title: 'Untitled', aspectRatio: '16:9', generatedAt: '' })
     .meta({ description: 'Project-level metadata extracted from script' }),
   characterBible: z
     .array(characterBibleEntrySchema)
-    .optional()
+    .catch([])
     .meta({ description: 'Character descriptions for visual consistency' }),
   scenes: z
     .array(sceneSchema)

@@ -47,11 +47,29 @@ const mockFrame = {
       timeOfDay: 'Morning',
       storyBeat: 'Establish protagonist stress and setting',
     },
-    selectedVariant: {
-      cameraAngle: 'A2' as const,
-      movementStyle: 'B1' as const,
-      moodTreatment: 'C1' as const,
-      rationale: 'Selected for emotional impact',
+    continuity: {
+      characterTags: [],
+      environmentTag: '',
+      colorPalette: '',
+      lightingSetup: '',
+      styleTag: '',
+    },
+    audioDesign: {
+      music: {
+        presence: 'none',
+        style: '',
+        mood: '',
+        rationale: '',
+      },
+      soundEffects: [],
+      dialogue: {
+        presence: false,
+        lines: [],
+      },
+      ambient: {
+        roomTone: '',
+        atmosphere: '',
+      },
     },
     prompts: {
       visual: {
@@ -96,6 +114,7 @@ const mockFrame = {
         },
       },
     },
+    sourceImageUrl: '',
   },
   createdAt: new Date(),
   updatedAt: new Date(),

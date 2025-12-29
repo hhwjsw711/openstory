@@ -12,7 +12,7 @@ export const sceneAnalysisExample: SceneAnalysis = {
     {
       characterId: 'char_001',
       name: 'Character Name',
-      age: 0,
+      age: 'age',
       gender: 'gender',
       ethnicity: 'ethnicity',
       physicalDescription: 'Complete physical description for prompts',
@@ -43,67 +43,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
         location: 'Specific location',
         timeOfDay: 'Exact time',
         storyBeat: 'What happens narratively',
-      },
-
-      variants: {
-        cameraAngles: [
-          {
-            id: 'A1',
-            description: 'Camera angle description',
-            effect: 'Psychological impact',
-          },
-          {
-            id: 'A2',
-            description: 'Alternative angle description',
-            effect: 'Different psychological impact',
-          },
-          {
-            id: 'A3',
-            description: 'Third angle description',
-            effect: 'Third psychological impact',
-          },
-        ],
-        movementStyles: [
-          {
-            id: 'B1',
-            description: 'Movement style description',
-            energy: 'low',
-          },
-          {
-            id: 'B2',
-            description: 'Alternative movement description',
-            energy: 'medium',
-          },
-          {
-            id: 'B3',
-            description: 'Third movement description',
-            energy: 'high',
-          },
-        ],
-        moodTreatments: [
-          {
-            id: 'C1',
-            description: 'Mood treatment description',
-            tone: 'emotional tone',
-          },
-          {
-            id: 'C2',
-            description: 'Alternative mood description',
-            tone: 'different emotional tone',
-          },
-          {
-            id: 'C3',
-            description: 'Third mood description',
-            tone: 'third emotional tone',
-          },
-        ],
-      },
-
-      selectedVariant: {
-        cameraAngle: 'A1',
-        movementStyle: 'B1',
-        moodTreatment: 'C1',
-        rationale: 'Why these variants work together',
       },
 
       prompts: {
@@ -186,6 +125,8 @@ export const sceneAnalysisExample: SceneAnalysis = {
         lightingSetup: 'Lighting consistency notes',
         styleTag: 'Style consistency notes',
       },
+
+      sourceImageUrl: 'https://example.com/image.jpg',
     },
   ],
 };

@@ -166,12 +166,31 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
         ]),
         storyBeat: faker.lorem.sentence(),
       },
-      selectedVariant: {
-        cameraAngle: 'A1' as const,
-        movementStyle: 'B1' as const,
-        moodTreatment: 'C1' as const,
-        rationale: faker.lorem.sentence(),
+      audioDesign: {
+        music: {
+          presence: 'none',
+          style: '',
+          mood: '',
+          rationale: '',
+        },
+        soundEffects: [],
+        dialogue: {
+          presence: false,
+          lines: [],
+        },
+        ambient: {
+          roomTone: '',
+          atmosphere: '',
+        },
       },
+      continuity: {
+        characterTags: [],
+        environmentTag: '',
+        colorPalette: '',
+        lightingSetup: '',
+        styleTag: '',
+      },
+      sourceImageUrl: '',
       prompts: {
         visual: {
           fullPrompt: faker.lorem.paragraph(),

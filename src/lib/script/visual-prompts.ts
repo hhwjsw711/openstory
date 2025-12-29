@@ -48,11 +48,9 @@ const visualPromptGenerationResultSchema = z.object({
               }),
             })
             .meta({ description: 'Visual generation prompts for this scene' }),
-          continuity: continuitySchema
-            .catch({
-              characterTags: [],
-            })
-            .meta({ description: 'Continuity tracking for scene consistency' }),
+          continuity: continuitySchema.meta({
+            description: 'Continuity tracking for scene consistency',
+          }),
         })
     )
     .meta({ description: 'Array of scenes with visual prompts' }),
@@ -163,7 +161,10 @@ ${aspectRatio}
     }
     return {
       ...scene,
-      prompts: enrichment.prompts,
+      prompts: {
+        ...scene.prompts,
+        visual: enrichment.prompts.visual,
+      },
       continuity: enrichment.continuity,
     };
   });

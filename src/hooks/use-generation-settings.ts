@@ -160,11 +160,13 @@ export function useGenerationSettings() {
   // localStorage values are loaded in useEffect after mount
   const [settings, setSettings] =
     useState<GenerationSettings>(DEFAULT_SETTINGS);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load settings on mount (client-side only)
   useEffect(() => {
     const loaded = loadSettings();
     setSettings(loaded);
+    setIsLoaded(true);
   }, []);
 
   /**
@@ -204,6 +206,7 @@ export function useGenerationSettings() {
 
   return {
     settings,
+    isLoaded,
     save,
     reset,
   };
