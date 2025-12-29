@@ -632,7 +632,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           { script, styleConfig, aspectRatio },
           completeScenes,
           sequenceId,
-          input.userId
+          input.userId,
+          {
+            model: analysisModelId,
+            durationMs: Date.now() - startTime,
+          }
         );
       });
     }

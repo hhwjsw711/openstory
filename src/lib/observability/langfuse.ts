@@ -50,6 +50,11 @@ export async function flushTracing(): Promise<void> {
   }
 }
 
+type WorkflowTraceOptions = {
+  model?: string;
+  durationMs?: number;
+};
+
 /**
  * Record a completed workflow trace to Langfuse.
  * Call inside context.run() to ensure it only runs once (durable step).
@@ -59,13 +64,15 @@ export async function flushTracing(): Promise<void> {
  * @param output - Output data produced by the workflow
  * @param sequenceId - Used as the Langfuse sessionId to group traces
  * @param userId - Optional user ID for user attribution
+ * @param options - Optional model and durationMs for the trace
  */
 export async function recordWorkflowTrace<TInput, TOutput>(
   traceName: string,
   input: TInput,
   output: TOutput,
   sequenceId: string,
-  userId: string | undefined
+  userId: string | undefined,
+  options?: WorkflowTraceOptions
 ): Promise<void> {
   await propagateAttributes(
     {
@@ -75,10 +82,17 @@ export async function recordWorkflowTrace<TInput, TOutput>(
     async () => {
       await startActiveObservation(
         traceName,
-        async (span) => {
-          span.update({ input, output });
+        async (generation) => {
+          generation.update({
+            input,
+            output: {
+              ...(typeof output === 'object' ? output : { result: output }),
+              ...(options?.durationMs && { durationMs: options.durationMs }),
+            },
+            ...(options?.model && { model: options.model }),
+          });
         },
-        { asType: 'span' }
+        { asType: 'generation' }
       );
     }
   );
