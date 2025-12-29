@@ -38,12 +38,13 @@ describe('Motion Service', () => {
       expect(result.success).toBe(true);
       expect(result.videoUrl).toBe(mockVideoUrl);
       expect(result.requestId).toBe('test-kling-v26-request-id');
-      expect(result.metadata).toMatchObject({
-        model: 'fal-ai/kling-video/v2.6/pro/image-to-video',
-        provider: 'kling',
-        duration: 5,
-        cost: 0.4,
-      });
+      expect(result.metadata?.model).toBe(
+        'fal-ai/kling-video/v2.6/pro/image-to-video'
+      );
+      expect(result.metadata?.provider).toBe('kling');
+      expect(result.metadata?.duration).toBe(5);
+      expect(result.metadata?.fps).toBe(30);
+      expect(result.metadata?.cost).toBeCloseTo(0.35, 2); // 0.07 * 5 seconds
 
       expect(mockSubscribe).toHaveBeenCalledWith(
         'fal-ai/kling-video/v2.6/pro/image-to-video',
@@ -188,8 +189,9 @@ describe('Motion Service', () => {
           requiresStringDuration: true,
         },
         pricing: {
-          estimatedCost: 0.4,
-          unit: 'video',
+          pricePerSecond: 0.07,
+          currency: 'USD',
+          unit: 'seconds',
         },
         performance: {
           estimatedGenerationTime: 15,
@@ -204,7 +206,9 @@ describe('Motion Service', () => {
           defaultDuration: 5,
         },
         pricing: {
-          estimatedCost: 0.5,
+          pricePerSecond: 0.5,
+          currency: 'USD',
+          unit: 'seconds',
         },
         performance: {
           quality: 'best',
@@ -223,8 +227,9 @@ describe('Motion Service', () => {
           requiresStringDuration: true,
         },
         pricing: {
-          estimatedCost: 0.35,
-          unit: 'video',
+          pricePerSecond: 0.112,
+          currency: 'USD',
+          unit: 'seconds',
         },
         performance: {
           quality: 'best',

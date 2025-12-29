@@ -137,7 +137,7 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
  * Default model to use when none is specified
  */
 export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
-  'google/gemini-3-flash-preview';
+  'anthropic/claude-sonnet-4.5';
 
 /**
  * Image generation models are now in src/lib/ai/models.ts
