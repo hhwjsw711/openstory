@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
@@ -123,7 +122,7 @@ export async function matchTalentToCharacters(
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [
@@ -137,34 +136,26 @@ export async function matchTalentToCharacters(
       characterCount: characters.length,
       talentCount: talentWithData.length,
     },
+    responseSchema: talentMatchResponseSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
     if (chunk.done) break;
   }
 
-  // Parse and validate response - fallback to empty matches if AI fails
+  // Parse and validate response - structured outputs guarantees valid JSON
   let aiMatches: z.infer<typeof talentMatchResponseSchema>['matches'] = [];
 
-  console.log(
-    '[TalentMatching] AI response content length:',
-    finalContent?.length ?? 0
-  );
-  console.log('[TalentMatching] AI response:', finalContent?.slice(0, 500));
-
   if (finalContent) {
-    const parsed =
-      extractJSON<z.infer<typeof talentMatchResponseSchema>>(finalContent);
-    console.log('[TalentMatching] Parsed JSON:', parsed);
-    if (parsed) {
-      const validated = talentMatchResponseSchema.safeParse(parsed);
-      console.log(
-        '[TalentMatching] Validation result:',
-        validated.success,
-        validated.error?.message
+    const validated = talentMatchResponseSchema.safeParse(
+      JSON.parse(finalContent)
+    );
+    if (validated.success) {
+      aiMatches = validated.data.matches;
+    } else {
+      console.error(
+        '[TalentMatching] Validation failed:',
+        validated.error.message
       );
-      if (validated.success) {
-        aiMatches = validated.data.matches;
-      }
     }
   }
 

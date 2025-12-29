@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -25,31 +24,31 @@ import { z } from 'zod';
 /**
  * Zod schema for validating scene splitting results
  */
-const sceneSplittingResultSchema = z.looseObject({
+const sceneSplittingResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  projectMetadata: z.looseObject({
+  projectMetadata: z.object({
     title: z.string().catch('Untitled'),
     aspectRatio: aspectRatioSchema.catch('16:9'),
     totalDurationSeconds: z.number().optional(),
     generatedAt: z.string().catch(''),
   }),
   scenes: z.array(
-    z.looseObject({
+    z.object({
       sceneId: z.string(), // STRICT - required for identity
       sceneNumber: z.number(), // STRICT - required for ordering
-      originalScript: z.looseObject({
+      originalScript: z.object({
         extract: z.string().catch(''),
         lineNumber: z.number().catch(0),
         dialogue: z
           .array(
-            z.looseObject({
+            z.object({
               character: z.string().nullable().catch(null),
               line: z.string().catch(''),
             })
           )
           .catch([]),
       }),
-      metadata: z.looseObject({
+      metadata: z.object({
         title: z.string().catch('Untitled Scene'),
         durationSeconds: z.number().catch(3),
         location: z.string().catch(''),
@@ -103,7 +102,7 @@ Respond with ONLY valid JSON matching the schema.`;
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
@@ -111,6 +110,7 @@ Respond with ONLY valid JSON matching the schema.`;
     observationName: 'phase-1-scene-splitting',
     tags: ['scene-splitting', 'phase-1', 'analysis'],
     metadata: { phase: 1, phaseName: 'Scene Splitting' },
+    responseSchema: sceneSplittingResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -129,16 +129,8 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed =
-    extractJSON<z.infer<typeof sceneSplittingResultSchema>>(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod
-  const validated = sceneSplittingResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = sceneSplittingResultSchema.parse(JSON.parse(finalContent));
 
   // Notify with final parsed result
   if (onProgress) {

@@ -4,7 +4,6 @@
  */
 
 import { getEnv } from '#env';
-import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import type { TextPromptClient } from '@langfuse/client';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
@@ -87,6 +86,53 @@ interface OpenRouterRequestParams {
   tags?: string[];
   /** Additional metadata for Langfuse */
   metadata?: Record<string, unknown>;
+  /** Zod schema for structured outputs - when provided, OpenRouter enforces JSON schema */
+  responseSchema?: z.ZodTypeAny;
+}
+
+/**
+ * Models that support structured outputs via OpenRouter
+ * https://openrouter.ai/docs/guides/features/structured-outputs
+ * Curated list - only latest version of each model family
+ */
+const STRUCTURED_OUTPUT_MODELS = new Set([
+  // Fast tier
+  'bytedance-seed/seed-1.6-flash',
+  'minimax/minimax-m2',
+  'mistralai/mistral-small-3.2-24b-instruct',
+  'x-ai/grok-4.1-fast',
+  'openai/gpt-5-mini',
+  'google/gemini-3-flash-preview',
+  'z-ai/glm-4.7',
+  // Premium tier
+  'deepseek/deepseek-v3.2',
+  'google/gemini-3-pro-preview',
+  'openai/gpt-5.2',
+  'anthropic/claude-sonnet-4.5',
+  'anthropic/claude-opus-4.5',
+]);
+
+/**
+ * Check if a model supports structured outputs
+ */
+function modelSupportsStructuredOutputs(model: string): boolean {
+  return STRUCTURED_OUTPUT_MODELS.has(model);
+}
+
+/**
+ * Build OpenRouter response_format from Zod schema
+ */
+function buildResponseFormat(schema: z.ZodTypeAny, name: string) {
+  const jsonSchema = z.toJSONSchema(schema);
+
+  return {
+    type: 'json_schema' as const,
+    json_schema: {
+      name,
+      strict: true,
+      schema: jsonSchema,
+    },
+  };
 }
 
 /**
@@ -98,6 +144,7 @@ const DEFAULT_PROVIDER: OpenRouterProviderPreference = {
 
 /**
  * Model recommendations for different tasks
+ * Note: All models here support structured outputs
  */
 export const RECOMMENDED_MODELS = {
   // For creative writing and scene descriptions
@@ -106,8 +153,8 @@ export const RECOMMENDED_MODELS = {
   // For structured data extraction
   structured: 'anthropic/claude-sonnet-4.5',
 
-  // For fast responses with good quality
-  fast: DEFAULT_ANALYSIS_MODEL,
+  // For fast responses with good quality (supports structured outputs)
+  fast: 'google/gemini-3-flash-preview',
 
   // For highest quality (more expensive)
   premium: 'anthropic/claude-opus-4.5',
@@ -120,6 +167,14 @@ export async function callOpenRouter(
   params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
   const apiKey = getEnv().OPENROUTER_KEY;
+
+  // Validate model supports structured outputs if schema is provided
+  if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
+    throw new Error(
+      `Model ${params.model} does not support structured outputs. ` +
+        `Supported models: ${[...STRUCTURED_OUTPUT_MODELS].join(', ')}`
+    );
+  }
 
   const generation = startObservation(
     params.observationName ?? 'openrouter-call',
@@ -161,6 +216,13 @@ export async function callOpenRouter(
         ...(params.stream !== undefined && { stream: params.stream }),
         provider: params.provider ?? DEFAULT_PROVIDER,
         usage: { include: true },
+        // Structured outputs - enforce JSON schema at API level
+        ...(params.responseSchema && {
+          response_format: buildResponseFormat(
+            params.responseSchema,
+            params.observationName ?? 'response'
+          ),
+        }),
       }),
     });
 
@@ -215,6 +277,14 @@ export async function* callOpenRouterStream(
 ): AsyncGenerator<StreamChunk> {
   const apiKey = getEnv().OPENROUTER_KEY;
 
+  // Validate model supports structured outputs if schema is provided
+  if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
+    throw new Error(
+      `Model ${params.model} does not support structured outputs. ` +
+        `Supported models: ${[...STRUCTURED_OUTPUT_MODELS].join(', ')}`
+    );
+  }
+
   const generation = startObservation(
     params.observationName ?? 'openrouter-stream',
     {
@@ -262,6 +332,13 @@ export async function* callOpenRouterStream(
         stream: true, // Force streaming
         stream_options: { include_usage: true }, // Request usage in final chunk
         usage: { include: true }, // Request cost in response
+        // Structured outputs - enforce JSON schema at API level
+        ...(params.responseSchema && {
+          response_format: buildResponseFormat(
+            params.responseSchema,
+            params.observationName ?? 'response'
+          ),
+        }),
       }),
     });
 

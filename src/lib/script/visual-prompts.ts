@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -30,10 +29,10 @@ import { z } from 'zod';
  * Schema for visual prompt generation validation
  * Uses canonical schemas from scene-analysis.schema.ts
  */
-const visualPromptGenerationResultSchema = z.looseObject({
+const visualPromptGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.looseObject({
+    z.object({
       sceneId: z.string(), // STRICT - required for identity
       variants: z
         .looseObject({
@@ -56,7 +55,7 @@ const visualPromptGenerationResultSchema = z.looseObject({
           rationale: z.string().optional(),
         })
         .optional(),
-      prompts: z.looseObject({
+      prompts: z.object({
         visual: visualPromptSchema, // Uses canonical schema with STRICT fullPrompt
       }),
       continuity: continuitySchema.optional(),
@@ -117,7 +116,7 @@ ${aspectRatio}
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
@@ -129,6 +128,7 @@ ${aspectRatio}
       phaseName: 'Visual Prompt Generation',
       sceneCount: scenes.length,
     },
+    responseSchema: visualPromptGenerationResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -147,15 +147,10 @@ ${aspectRatio}
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed = extractJSON(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod (validates only the enrichment data)
-  const validated = visualPromptGenerationResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = visualPromptGenerationResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Merge enrichment data back into input scenes
   const expectedSceneIds = scenes.map((s) => s.sceneId);

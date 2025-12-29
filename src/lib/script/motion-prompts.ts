@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -28,10 +27,10 @@ import { z } from 'zod';
  * Note: The motion field uses a transform to handle AI model variations.
  * Some models return motion as an array instead of an object - we take the first element.
  */
-const motionPromptGenerationResultSchema = z.looseObject({
+const motionPromptGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.looseObject({
+    z.object({
       sceneId: z.string(), // STRICT - required for identity
       variants: z
         .looseObject({
@@ -48,7 +47,7 @@ const motionPromptGenerationResultSchema = z.looseObject({
           rationale: z.string().optional(),
         })
         .optional(),
-      prompts: z.looseObject({
+      prompts: z.object({
         // Handle AI returning motion as array (take first element) or object
         motion: z.preprocess((val) => {
           if (Array.isArray(val) && val.length > 0) {
@@ -98,7 +97,7 @@ ${scenesJson}
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
@@ -110,6 +109,7 @@ ${scenesJson}
       phaseName: 'Motion Prompt Generation',
       sceneCount: scenes.length,
     },
+    responseSchema: motionPromptGenerationResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -128,15 +128,10 @@ ${scenesJson}
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed = extractJSON(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod (validates only the enrichment data)
-  const validated = motionPromptGenerationResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = motionPromptGenerationResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Merge enrichment data back into input scenes
   const expectedSceneIds = scenes.map((s) => s.sceneId);

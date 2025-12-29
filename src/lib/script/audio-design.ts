@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -21,10 +20,10 @@ import { z } from 'zod';
  * Schema for audio design generation validation
  * Uses canonical schemas from scene-analysis.schema.ts
  */
-const audioDesignGenerationResultSchema = z.looseObject({
+const audioDesignGenerationResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']).catch('success'),
   scenes: z.array(
-    z.looseObject({
+    z.object({
       sceneId: z.string(), // STRICT - required for identity
       audioDesign: audioDesignSchema, // Uses canonical schema with defensive defaults
     })
@@ -88,7 +87,7 @@ Respond with ONLY valid JSON matching the schema.`;
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
@@ -100,6 +99,7 @@ Respond with ONLY valid JSON matching the schema.`;
       phaseName: 'Audio Design',
       sceneCount: scenes.length,
     },
+    responseSchema: audioDesignGenerationResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -118,19 +118,10 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed =
-    extractJSON<z.infer<typeof audioDesignGenerationResultSchema>>(
-      finalContent
-    );
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod (validates only the enrichment data)
-  const validatedAudioDesignResult =
-    audioDesignGenerationResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validatedAudioDesignResult = audioDesignGenerationResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Merge enrichment data back into input scenes
   const enrichedScenes: Scene[] = scenes.map((scene) => {

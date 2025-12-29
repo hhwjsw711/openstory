@@ -177,13 +177,15 @@ export async function enhanceScript(
     // Create user prompt with sanitized script
     const userPrompt = createUserPrompt(validatedOptions.originalScript);
 
-    // Make API call to OpenRouter
+    // Make API call to OpenRouter with structured outputs
     const completion = await callOpenRouter({
       model: RECOMMENDED_MODELS.structured,
       messages: [systemMessage(compiled), userMessage(userPrompt)],
-      max_tokens: 1500,
+      max_tokens: 4000, // Increased for full script + JSON
       temperature: 0.7,
       prompt, // Link to trace
+      observationName: 'script-enhancement',
+      responseSchema: EnhancedScriptSchema, // Enforce JSON schema at API level
     });
 
     const response = completion.choices[0]?.message?.content;
@@ -195,18 +197,8 @@ export async function enhanceScript(
     // Security: Validate AI response for potential injection attempts
     validateAIResponse(response);
 
-    // Parse the response which contains enhanced script text and JSON metadata
-    const { enhancedScript, styleRecommendation } =
-      parseEnhancedScriptResponse(response);
-
-    // Create the structured response
-    const validatedResponse: EnhancedScript = {
-      enhanced_script: enhancedScript,
-      style_stack_recommendation: styleRecommendation,
-    };
-
-    // Validate the response structure
-    EnhancedScriptSchema.parse(validatedResponse);
+    // Parse JSON directly - structured outputs guarantees valid JSON
+    const validatedResponse = EnhancedScriptSchema.parse(JSON.parse(response));
 
     // Extract token usage information
     const tokenUsage = completion.usage

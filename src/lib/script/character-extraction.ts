@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -24,7 +23,7 @@ import type { Scene } from './types';
 /**
  * Zod schema for validating character extraction results
  */
-const characterExtractionResultSchema = z.looseObject({
+const characterExtractionResultSchema = z.object({
   status: z.enum(['success', 'error', 'rejected']).catch('success'),
   characterBible: z.array(characterBibleEntrySchema).catch([]), // Uses canonical schema with defensive defaults
 });
@@ -72,7 +71,7 @@ Respond with ONLY valid JSON matching the schema.`;
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
     messages: [systemMessage(compiled), userMessage(userPrompt)],
@@ -80,6 +79,7 @@ Respond with ONLY valid JSON matching the schema.`;
     observationName: 'phase-2-character-extraction',
     tags: ['character-extraction', 'phase-2', 'analysis'],
     metadata: { phase: 2, phaseName: 'Character Extraction' },
+    responseSchema: characterExtractionResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -98,16 +98,10 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed =
-    extractJSON<z.infer<typeof characterExtractionResultSchema>>(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod
-  const validated = characterExtractionResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = characterExtractionResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Notify with final parsed result
   if (onProgress) {
