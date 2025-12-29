@@ -4,16 +4,9 @@ import { z } from 'zod';
 // Character Bible Schemas
 // ============================================================================
 
-const firstMentionSchema = z.object({
-  sceneId: z.string(),
-  originalText: z.string().catch(''),
-  lineNumber: z.number().catch(0),
-});
-
 export const characterBibleEntrySchema = z.object({
   characterId: z.string(),
   name: z.string(),
-  firstMention: firstMentionSchema.optional(),
   age: z.union([z.number(), z.string()]).nullish(), // Accept numbers, age ranges like "30s", null, or undefined
   gender: z.string().optional(),
   ethnicity: z.string().optional(),
@@ -77,7 +70,7 @@ const selectedVariantSchema = z.object({
 });
 
 // ============================================================================
-// Prompt Component Schemas
+// Prompt Schemas
 // ============================================================================
 
 const visualPromptComponentsSchema = z.object({
@@ -92,34 +85,10 @@ const visualPromptComponentsSchema = z.object({
   atmosphere: z.string().catch(''),
 });
 
-const visualPromptParametersSchema = z
-  .object({
-    dimensions: z
-      .object({
-        width: z.number().optional(),
-        height: z.number().optional(),
-        aspectRatio: z.string().optional(),
-      })
-      .optional(),
-    quality: z
-      .object({
-        steps: z.number().optional(),
-        guidance: z.number().optional(),
-      })
-      .optional(),
-    control: z
-      .object({
-        seed: z.number().nullable().optional(),
-      })
-      .optional(),
-  })
-  .optional();
-
 export const visualPromptSchema = z.object({
   fullPrompt: z.string().min(1), // STRICT - required for image generation
   negativePrompt: z.string().catch(''),
-  components: visualPromptComponentsSchema.optional(),
-  parameters: visualPromptParametersSchema,
+  components: visualPromptComponentsSchema,
 });
 
 const motionPromptComponentsSchema = z.object({
@@ -228,7 +197,6 @@ export const continuitySchema = z.object({
 
 const originalScriptSchema = z.object({
   extract: z.string().catch(''),
-  lineNumber: z.number().catch(0),
   dialogue: z.array(dialogueLineSchema).catch([]),
 });
 

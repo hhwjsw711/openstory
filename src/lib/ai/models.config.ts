@@ -41,6 +41,14 @@ export const SCRIPT_ANALYSIS_MODELS = [
     description: 'Compact GPT-5 with 128K context',
   },
   {
+    id: 'openai/gpt-5-nano',
+    name: 'GPT-5 Nano',
+    provider: 'OpenAI',
+    tier: 'fast',
+    description:
+      'GPT-5-Nano is the smallest and fastest variant in the GPT-5 system',
+  },
+  {
     id: 'google/gemini-3-flash-preview',
     name: 'Gemini 3 Flash',
     provider: 'Google',

@@ -12,12 +12,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
     {
       characterId: 'char_001',
       name: 'Character Name',
-      firstMention: {
-        sceneId: 'scene_001',
-        originalText:
-          'Exact text from user script where character first appears',
-        lineNumber: 1,
-      },
       age: 0,
       gender: 'gender',
       ethnicity: 'ethnicity',
@@ -35,7 +29,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
 
       originalScript: {
         extract: "Exact text from user's original script for this scene",
-        lineNumber: 1,
         dialogue: [
           {
             character: 'CHARACTER NAME or null if unknown',
@@ -129,20 +122,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
             style: 'Director aesthetic and color grading',
             technical: 'Camera equipment and settings',
             atmosphere: 'Mood, textures, emotional tone',
-          },
-          parameters: {
-            dimensions: {
-              width: 1344,
-              height: 576,
-              aspectRatio: '21:9',
-            },
-            quality: {
-              steps: 30,
-              guidance: 7.5,
-            },
-            control: {
-              seed: null,
-            },
           },
         },
 

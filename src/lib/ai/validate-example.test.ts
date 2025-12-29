@@ -93,7 +93,6 @@ describe('Scene Analysis Schema Validation', () => {
     for (const character of sceneAnalysisExample.characterBible || []) {
       expect(character.characterId).toBeDefined();
       expect(character.name).toBeDefined();
-      expect(character.firstMention).toBeDefined();
       expect(character.physicalDescription).toBeDefined();
       expect(character.standardClothing).toBeDefined();
       expect(character.consistencyTag).toBeDefined();

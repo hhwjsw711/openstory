@@ -548,11 +548,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
           standardClothing: character.standardClothing ?? '',
           distinguishingFeatures: character.distinguishingFeatures ?? undefined,
           consistencyTag: character.consistencyTag ?? '',
-          firstMention: {
-            sceneId: character.firstMentionSceneId ?? '',
-            originalText: character.firstMentionText ?? '',
-            lineNumber: character.firstMentionLine ?? 0,
-          },
         },
         isDefault: true,
         source: 'script_analysis',

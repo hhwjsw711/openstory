@@ -29,7 +29,6 @@ const sceneSplittingResultSchema = z.object({
   projectMetadata: z.object({
     title: z.string().catch('Untitled'),
     aspectRatio: aspectRatioSchema.catch('16:9'),
-    totalDurationSeconds: z.number().optional(),
     generatedAt: z.string().catch(''),
   }),
   scenes: z.array(
@@ -38,7 +37,6 @@ const sceneSplittingResultSchema = z.object({
       sceneNumber: z.number(), // STRICT - required for ordering
       originalScript: z.object({
         extract: z.string().catch(''),
-        lineNumber: z.number().catch(0),
         dialogue: z
           .array(
             z.object({

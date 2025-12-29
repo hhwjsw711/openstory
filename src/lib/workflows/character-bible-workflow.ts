@@ -123,10 +123,10 @@ export const characterBibleWorkflow = createWorkflow(
               standardClothing: character.standardClothing,
               distinguishingFeatures: character.distinguishingFeatures ?? null,
               consistencyTag: character.consistencyTag,
-              // First mention
-              firstMentionSceneId: character.firstMention?.sceneId,
-              firstMentionText: character.firstMention?.originalText,
-              firstMentionLine: character.firstMention?.lineNumber,
+              // First mention - no longer collected from AI
+              firstMentionSceneId: null,
+              firstMentionText: null,
+              firstMentionLine: null,
               // Sheet image
               sheetImageUrl: storageResult.publicUrl,
               sheetImagePath: storageResult.path,

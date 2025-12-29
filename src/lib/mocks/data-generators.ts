@@ -152,7 +152,6 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       sceneNumber: faker.number.int({ min: 1, max: 20 }),
       originalScript: {
         extract: faker.lorem.paragraph(),
-        lineNumber: faker.number.int({ min: 1, max: 100 }),
         dialogue: [],
       },
       metadata: {
@@ -187,20 +186,6 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
             style: faker.lorem.word(),
             technical: faker.lorem.words(2),
             atmosphere: faker.helpers.arrayElement(moods),
-          },
-          parameters: {
-            dimensions: {
-              width: 1920,
-              height: 1080,
-              aspectRatio: '16:9',
-            },
-            quality: {
-              steps: 30,
-              guidance: 7.5,
-            },
-            control: {
-              seed: null,
-            },
           },
         },
         motion: {

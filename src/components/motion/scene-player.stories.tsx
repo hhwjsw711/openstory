@@ -33,7 +33,6 @@ const mockFrameBase = {
     sceneNumber: 1,
     originalScript: {
       extract: 'Sample scene text',
-      lineNumber: 1,
       dialogue: [],
     },
     metadata: {

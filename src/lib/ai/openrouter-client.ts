@@ -102,6 +102,7 @@ const STRUCTURED_OUTPUT_MODELS = new Set([
   'mistralai/mistral-small-3.2-24b-instruct',
   'x-ai/grok-4.1-fast',
   'openai/gpt-5-mini',
+  'openai/gpt-5-nano',
   'google/gemini-3-flash-preview',
   'z-ai/glm-4.7',
   // Premium tier
