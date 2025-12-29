@@ -198,7 +198,7 @@ export const visualPromptComponentsSchema = z.object({
 });
 
 export const visualPromptSchema = z.object({
-  fullPrompt: z.string().min(1).meta({
+  fullPrompt: z.string().meta({
     description: 'Complete image generation prompt with all visual details',
   }),
   negativePrompt: z
@@ -287,7 +287,7 @@ export const motionPromptParametersSchema = z
   });
 
 export const motionPromptSchema = z.object({
-  fullPrompt: z.string().min(1).meta({
+  fullPrompt: z.string().meta({
     description: 'Complete motion prompt describing camera movement and action',
   }),
   components: motionPromptComponentsSchema
