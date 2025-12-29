@@ -78,9 +78,14 @@ export async function recordWorkflowTrace<TInput, TOutput>(
     {
       sessionId: sequenceId,
       ...(userId && { userId }),
-      ...(options?.model && {
-        tags: [`model:${options.model}`],
-        metadata: { model: options.model },
+      ...((options?.model || options?.durationMs) && {
+        tags: options?.model ? [`model:${options.model}`] : [],
+        metadata: {
+          ...(options?.model && { model: options.model }),
+          ...(options?.durationMs && {
+            durationMs: String(options.durationMs),
+          }),
+        },
       }),
     },
     async () => {
@@ -89,10 +94,7 @@ export async function recordWorkflowTrace<TInput, TOutput>(
         async (generation) => {
           generation.update({
             input,
-            output: {
-              ...(typeof output === 'object' ? output : { result: output }),
-              ...(options?.durationMs && { durationMs: options.durationMs }),
-            },
+            output: typeof output === 'object' ? output : { result: output },
             ...(options?.model && { model: options.model }),
           });
         },
