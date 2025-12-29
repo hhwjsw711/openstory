@@ -1,0 +1,177 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useUpdateTalent, useDeleteTalentMedia } from '@/hooks/use-talent';
+import { AddTalentMediaDialog } from './add-talent-media-dialog';
+import type { Talent, TalentMediaRecord, TalentSheet } from '@/lib/db/schema';
+import { Pencil, Plus, X } from 'lucide-react';
+
+type TalentWithRelations = Talent & {
+  sheets: TalentSheet[];
+  media: TalentMediaRecord[];
+};
+
+type EditTalentDialogProps = {
+  talent: TalentWithRelations;
+  trigger?: React.ReactNode;
+};
+
+export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
+  talent,
+  trigger,
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const updateTalent = useUpdateTalent();
+  const deleteMedia = useDeleteTalentMedia();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const nameValue = formData.get('name');
+    const descriptionValue = formData.get('description');
+
+    const name = typeof nameValue === 'string' ? nameValue : '';
+    const description =
+      typeof descriptionValue === 'string' ? descriptionValue : '';
+
+    if (!name.trim()) return;
+
+    updateTalent.mutate(
+      {
+        talentId: talent.id,
+        name: name.trim(),
+        description: description.trim() || undefined,
+      },
+      {
+        onSuccess: () => setOpen(false),
+      }
+    );
+  };
+
+  const handleDeleteMedia = async (mediaId: string) => {
+    await deleteMedia.mutateAsync({
+      mediaId,
+      talentId: talent.id,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Button variant="outline" size="icon">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+      </DialogTrigger>
+      <form onSubmit={handleSubmit}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Talent</DialogTitle>
+            <DialogDescription>
+              Update talent details and reference media.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                defaultValue={talent.name}
+                placeholder="Talent name…"
+                autoComplete="off"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                defaultValue={talent.description ?? ''}
+                placeholder="Describe the talent's appearance, style…"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Reference Media</Label>
+              {talent.media.length > 0 ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {talent.media.map((media) => (
+                    <div
+                      key={media.id}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+                    >
+                      {media.type === 'video' ? (
+                        <video
+                          src={media.url}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={media.url}
+                          alt="Reference"
+                          className="size-full object-cover"
+                        />
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteMedia(media.id)}
+                        disabled={deleteMedia.isPending}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No reference media uploaded yet.
+                </p>
+              )}
+              <AddTalentMediaDialog
+                talentId={talent.id}
+                trigger={
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Media
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" disabled={updateTalent.isPending}>
+              {updateTalent.isPending ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </form>
+    </Dialog>
+  );
+};

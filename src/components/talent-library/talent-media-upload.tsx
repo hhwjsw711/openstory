@@ -1,0 +1,208 @@
+import { useCallback, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  FileUpload,
+  FileUploadDropzone,
+  FileUploadItem,
+  FileUploadItemDelete,
+  FileUploadItemPreview,
+  FileUploadItemProgress,
+  FileUploadList,
+  FileUploadTrigger,
+  type FileUploadProps,
+} from '@/components/ui/file-upload';
+import { useUploadTalentMedia, useUploadTempMedia } from '@/hooks/use-talent';
+import { Upload, X } from 'lucide-react';
+
+type TalentMediaUploadProps = {
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  /** Called with URLs when uploading to temp storage (no talentId) */
+  onUploadedUrlsChange?: (urls: string[]) => void;
+  /** If provided, uploads directly to this talent instead of temp storage */
+  talentId?: string;
+  /** Called when all uploads complete (for talentId mode) */
+  onComplete?: () => void;
+  disabled?: boolean;
+};
+
+const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read file'));
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
+  files,
+  onFilesChange,
+  onUploadedUrlsChange,
+  talentId,
+  onComplete,
+  disabled = false,
+}) => {
+  const [, setUploadedUrls] = useState<Map<string, string>>(new Map());
+  const uploadTempMedia = useUploadTempMedia();
+  const uploadTalentMedia = useUploadTalentMedia();
+
+  const handleValueChange = useCallback(
+    (newFiles: File[]) => {
+      onFilesChange(newFiles);
+      // Clean up URLs for removed files
+      const currentKeys = new Set(newFiles.map(getFileKey));
+      setUploadedUrls((prev) => {
+        const next = new Map(prev);
+        let changed = false;
+        for (const key of next.keys()) {
+          if (!currentKeys.has(key)) {
+            next.delete(key);
+            changed = true;
+          }
+        }
+        if (changed) {
+          onUploadedUrlsChange?.(Array.from(next.values()));
+        }
+        return changed ? next : prev;
+      });
+    },
+    [onFilesChange, onUploadedUrlsChange]
+  );
+
+  const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
+    async (newFiles, { onProgress, onSuccess, onError }) => {
+      const uploadPromises = newFiles.map(async (file) => {
+        try {
+          onProgress(file, 10);
+
+          const base64 = await fileToBase64(file);
+          onProgress(file, 30);
+
+          const type = file.type.startsWith('video/') ? 'video' : 'image';
+
+          if (talentId) {
+            // Upload directly to talent
+            await uploadTalentMedia.mutateAsync({
+              talentId,
+              base64Data: base64,
+              filename: file.name,
+              type,
+            });
+          } else {
+            // Upload to temp storage
+            const result = await uploadTempMedia.mutateAsync({
+              base64Data: base64,
+              filename: file.name,
+              type,
+            });
+
+            setUploadedUrls((prev) => {
+              const next = new Map(prev).set(getFileKey(file), result.url);
+              onUploadedUrlsChange?.(Array.from(next.values()));
+              return next;
+            });
+          }
+
+          onProgress(file, 100);
+          onSuccess(file);
+        } catch (error) {
+          onError(
+            file,
+            error instanceof Error ? error : new Error('Upload failed')
+          );
+        }
+      });
+
+      await Promise.all(uploadPromises);
+      if (talentId) {
+        onComplete?.();
+      }
+    },
+    [
+      talentId,
+      uploadTempMedia,
+      uploadTalentMedia,
+      onUploadedUrlsChange,
+      onComplete,
+    ]
+  );
+
+  const isUploading = uploadTempMedia.isPending || uploadTalentMedia.isPending;
+
+  return (
+    <FileUpload
+      accept="image/*,video/*"
+      maxSize={100 * 1024 * 1024}
+      multiple
+      disabled={disabled || isUploading}
+      value={files}
+      onValueChange={handleValueChange}
+      onUpload={onUpload}
+    >
+      <FileUploadDropzone
+        className="min-h-[120px] focus:border-ring/50 focus:bg-accent/30"
+        onClick={(e) => {
+          e.preventDefault();
+          e.currentTarget.focus();
+        }}
+      >
+        <Upload className="h-8 w-8 text-muted-foreground/50" />
+        <p className="text-sm font-medium">Drag & drop or paste</p>
+        <FileUploadTrigger asChild>
+          <Button type="button" variant="outline" size="sm">
+            Browse files
+          </Button>
+        </FileUploadTrigger>
+        <p className="text-xs text-muted-foreground">
+          Images and videos up to 100MB
+        </p>
+      </FileUploadDropzone>
+
+      <FileUploadList className="grid grid-cols-3 gap-3">
+        {files.map((file) => (
+          <FileUploadItem
+            key={getFileKey(file)}
+            value={file}
+            className="relative aspect-square p-0 border-0 overflow-hidden rounded-lg group"
+          >
+            <FileUploadItemPreview
+              className="size-full rounded-none border-0"
+              render={(file, fallback) =>
+                file.type.startsWith('video/') ? (
+                  <video
+                    src={URL.createObjectURL(file)}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  fallback()
+                )
+              }
+            />
+            <FileUploadItemProgress className="absolute bottom-0 left-0 right-0 h-1" />
+            <FileUploadItemDelete asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </FileUploadItemDelete>
+          </FileUploadItem>
+        ))}
+      </FileUploadList>
+    </FileUpload>
+  );
+};
+
+export { type TalentMediaUploadProps };

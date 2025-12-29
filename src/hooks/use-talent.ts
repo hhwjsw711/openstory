@@ -9,6 +9,7 @@ import {
   toggleTalentFavoriteFn,
   updateTalentFn,
   uploadTalentMediaFn,
+  uploadTempMediaFn,
   deleteTalentMediaFn,
 } from '@/functions/talent';
 import type {
@@ -131,6 +132,19 @@ export function useUploadTalentMedia() {
         queryKey: talentKeys.detail(variables.talentId),
       });
     },
+  });
+}
+
+/**
+ * Hook to upload media to temporary storage (before talent creation)
+ */
+export function useUploadTempMedia() {
+  return useMutation({
+    mutationFn: (data: {
+      base64Data: string;
+      filename: string;
+      type: 'image' | 'video';
+    }) => uploadTempMediaFn({ data }),
   });
 }
 
