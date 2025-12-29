@@ -51,59 +51,32 @@ export async function flushTracing(): Promise<void> {
 }
 
 /**
- * Wrap execution with Langfuse session context.
- * All traces created within fn() will be grouped by sessionId in Langfuse.
+ * Record a completed workflow trace to Langfuse.
+ * Call inside context.run() to ensure it only runs once (durable step).
  *
+ * @param traceName - Name for the trace (e.g., 'analyzeScriptWorkflow')
+ * @param input - Input data that was passed to the workflow
+ * @param output - Output data produced by the workflow
  * @param sequenceId - Used as the Langfuse sessionId to group traces
  * @param userId - Optional user ID for user attribution
- * @param fn - Async function to execute within the session context
  */
-export async function withSequenceSession<T>(
-  sequenceId: string,
-  userId: string | undefined,
-  fn: () => Promise<T>
-): Promise<T> {
-  return propagateAttributes(
-    {
-      sessionId: sequenceId,
-      ...(userId && { userId }),
-    },
-    fn
-  );
-}
-
-/**
- * Wrap a workflow execution with a root Langfuse trace.
- * Creates a parent trace that contains all LLM calls and can be evaluated end-to-end.
- *
- * @param traceName - Name for the root trace (e.g., 'analyzeScriptWorkflow')
- * @param input - Input data to log on the trace
- * @param sequenceId - Used as the Langfuse sessionId to group traces
- * @param userId - Optional user ID for user attribution
- * @param fn - Async function that returns the workflow output
- */
-export async function withWorkflowTrace<TInput, TOutput>(
+export async function recordWorkflowTrace<TInput, TOutput>(
   traceName: string,
   input: TInput,
+  output: TOutput,
   sequenceId: string,
-  userId: string | undefined,
-  fn: () => Promise<TOutput>
-): Promise<TOutput> {
-  return propagateAttributes(
+  userId: string | undefined
+): Promise<void> {
+  await propagateAttributes(
     {
       sessionId: sequenceId,
       ...(userId && { userId }),
     },
     async () => {
-      return startActiveObservation(
+      await startActiveObservation(
         traceName,
         async (span) => {
-          span.update({ input });
-
-          const output = await fn();
-
-          span.update({ output });
-          return output;
+          span.update({ input, output });
         },
         { asType: 'span' }
       );
