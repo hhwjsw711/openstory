@@ -5,7 +5,7 @@
 
 import { getEnv } from '#env';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
-import { propagateAttributes } from '@langfuse/tracing';
+import { propagateAttributes, startActiveObservation } from '@langfuse/tracing';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
 let processor: LangfuseSpanProcessor | null = null;
@@ -69,5 +69,44 @@ export async function withSequenceSession<T>(
       ...(userId && { userId }),
     },
     fn
+  );
+}
+
+/**
+ * Wrap a workflow execution with a root Langfuse trace.
+ * Creates a parent trace that contains all LLM calls and can be evaluated end-to-end.
+ *
+ * @param traceName - Name for the root trace (e.g., 'analyzeScriptWorkflow')
+ * @param input - Input data to log on the trace
+ * @param sequenceId - Used as the Langfuse sessionId to group traces
+ * @param userId - Optional user ID for user attribution
+ * @param fn - Async function that returns the workflow output
+ */
+export async function withWorkflowTrace<TInput, TOutput>(
+  traceName: string,
+  input: TInput,
+  sequenceId: string,
+  userId: string | undefined,
+  fn: () => Promise<TOutput>
+): Promise<TOutput> {
+  return propagateAttributes(
+    {
+      sessionId: sequenceId,
+      ...(userId && { userId }),
+    },
+    async () => {
+      return startActiveObservation(
+        traceName,
+        async (span) => {
+          span.update({ input });
+
+          const output = await fn();
+
+          span.update({ output });
+          return output;
+        },
+        { asType: 'span' }
+      );
+    }
   );
 }

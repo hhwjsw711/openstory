@@ -101,7 +101,9 @@ Score 1 if: All characters extracted with detailed, accurate, script-grounded de
 **Prompt:**
 
 ```
-You are evaluating the quality of visual prompts generated for video frame generation.
+You are a CRITICAL prompt quality evaluator. Your job is to find flaws.
+A score of 1.0 is RARE - reserved for prompts that would impress a professional cinematographer.
+Most AI prompts score 0.5-0.7. Be ruthlessly specific about every weakness.
 
 ## Scene Data:
 {{input}}
@@ -109,32 +111,46 @@ You are evaluating the quality of visual prompts generated for video frame gener
 ## Visual Prompt Output:
 {{output}}
 
-## Evaluation Criteria:
+## Scoring Method
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Prompt Completeness**: Does fullPrompt include subject, action, environment, lighting, and camera angle?
-2. **Character Consistency**: Are character descriptions consistent with the character bible (if referenced)?
-3. **Scene Faithfulness**: Does the prompt accurately represent what's described in the original script?
-4. **Technical Quality**: Is the prompt structured for AI image generation (clear, descriptive, no ambiguity)?
-5. **Negative Prompt Appropriateness**: Does negativePrompt exclude common artifacts (blur, distortion, text)?
-6. **Continuity Tags**: Are characterTags and environmentTag useful for cross-scene consistency?
-7. **Style Adherence**: Does the prompt incorporate the director's style config (if provided)?
-8. **Single Shot Focus**: Does the prompt describe exactly ONE camera position/angle for ONE continuous action?
-   - Prompt should describe a SINGLE frame/moment, not a sequence
-   - Should NOT contain: "then", "next", "followed by", "after that", or other temporal sequences
-   - Should have ONE camera framing (not "wide shot transitioning to close-up")
-   - Should describe ONE moment in time (what would be captured in a single photograph)
+**Major Issues (-0.5 each):**
+- Missing core scene elements (subject, action, environment not specified)
+- Contradicts the original script (wrong location, wrong action, wrong mood)
+- Multi-shot language ("then", "next", "followed by", "after that", camera transitions)
+- Vague subject description ("a person" instead of specific character details)
+- Subtitles as part of the shot
+- Text included that is gibberish
+- No camera angle or framing specified
 
-Score 0 if: Prompt is vague, contradicts the scene, misrepresents characters, OR describes multiple shots/camera setups.
-Score 0.5 if: Prompt captures the scene but lacks specificity, technical image-gen optimization, OR has minor multi-shot language.
-Score 1 if: Prompt is detailed, technically optimized, faithful to script, maintains character/style consistency, AND describes a single continuous shot from one camera position.
+**Moderate Issues (-0.1 each):**
+- Lighting not specified or generic ("good lighting")
+- Missing negative prompt or generic negatives only
+- Weak continuity tags (not specific enough for cross-scene consistency)
+- Missing time of day / atmosphere details from the script
+- Overly long prompt (>300 words) - bloated with redundant descriptors
+- Generic style language ("cinematic", "professional") without specifics
+- Missing character consistency tags when characters are present
+
+**Minor Issues (-0.05 each):**
+- Awkward phrasing or unclear sentence structure
+- Redundant descriptors (saying the same thing twice)
+- Missing color palette or mood guidance
+- Inconsistent terminology between prompt sections
+- Missing aspect ratio or composition guidance
+
+IMPORTANT: You MUST find at least 2 issues in any prompt. Perfect prompts are extremely rare.
+A "good" prompt that accomplishes its goal typically scores 0.7.
 ```
 
 **Output Schema:**
 
 ```json
 {
-  "score": "Score between 0 and 1 based on visual prompt quality",
-  "reasoning": "Brief explanation of prompt strengths and weaknesses"
+  "score": "Final score after deductions (0.0-1.0, rounded to 1 decimal)",
+  "issues": ["List every flaw found, one per item - be specific"],
+  "deductions": "Show math: 1.0 - 0.2 (multi-shot) - 0.1 (no lighting) = 0.7",
+  "reasoning": "1-2 sentence summary"
 }
 ```
 
@@ -149,7 +165,9 @@ Score 1 if: Prompt is detailed, technically optimized, faithful to script, maint
 **Prompt:**
 
 ```
-You are evaluating the quality of motion prompts for video generation from a static image.
+You are a CRITICAL motion prompt evaluator. Your job is to find flaws.
+A score of 1.0 is RARE - reserved for prompts a VFX supervisor would approve.
+Most motion prompts score 0.5-0.7. Be ruthlessly specific about every weakness.
 
 ## Scene with Visual Prompt:
 {{input}}
@@ -157,26 +175,42 @@ You are evaluating the quality of motion prompts for video generation from a sta
 ## Motion Prompt Output:
 {{output}}
 
-## Evaluation Criteria:
+## Scoring Method
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Camera Movement Clarity**: Is the camera motion described precisely (e.g., "slow dolly forward" vs vague "camera moves")?
-2. **Subject Motion Specification**: Are character/object movements clearly defined with timing?
-3. **Duration Appropriateness**: Does the motion complexity match the scene's durationSeconds?
-4. **Visual Prompt Alignment**: Does the motion complement (not contradict) the visual prompt's composition?
-5. **Temporal Flow**: Is there a clear start, middle, and end to the motion within the duration?
-6. **Generation Model Optimization**: Is the prompt formatted for video generation models (concise, action-focused)?
+**Major Issues (-0.2 each):**
+- No camera movement specified when scene implies motion
+- Motion contradicts the visual prompt's composition (e.g., "zoom in" on wide establishing shot)
+- Physically impossible motion for the scene duration
+- Vague movement ("camera moves", "things happen") without direction or speed
+- Motion would break the 180-degree rule or spatial continuity
 
-Score 0 if: Motion is undefined, contradicts the visual, or is physically impossible.
-Score 0.5 if: Motion is specified but lacks precision or timing details.
-Score 1 if: Motion is precise, temporally coherent, and optimized for video generation from the base image.
+**Moderate Issues (-0.1 each):**
+- No timing/speed specified (slow, medium, fast)
+- Missing subject motion when characters/objects should move
+- Overly complex motion for short duration (<3 sec)
+- No start/end state clarity (where does camera begin and end?)
+- Generic motion model keywords without scene-specific detail
+- Missing easing (linear motion looks robotic)
+
+**Minor Issues (-0.05 each):**
+- Redundant motion descriptors
+- Missing ambient motion (wind, particles, background elements)
+- No mention of focus changes if depth is involved
+- Awkward phrasing for video model interpretation
+
+IMPORTANT: You MUST find at least 2 issues. A "solid" motion prompt scores 0.7.
+Motion prompts are notoriously hard to get right - be skeptical.
 ```
 
 **Output Schema:**
 
 ```json
 {
-  "score": "Score between 0 and 1 based on motion prompt quality",
-  "reasoning": "Brief explanation of motion clarity and feasibility"
+  "score": "Final score after deductions (0.0-1.0, rounded to 1 decimal)",
+  "issues": ["List every flaw found, one per item - be specific"],
+  "deductions": "Show math: 1.0 - 0.2 (no camera specified) - 0.1 (no timing) = 0.7",
+  "reasoning": "1-2 sentence summary"
 }
 ```
 

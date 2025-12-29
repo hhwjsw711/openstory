@@ -31,7 +31,7 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { withSequenceSession } from '@/lib/observability/langfuse';
+import { withWorkflowTrace } from '@/lib/observability/langfuse';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
@@ -653,11 +653,24 @@ export const analyzeScriptWorkflow = createWorkflow(
           })
         );
       }
+
+      // Return complete scenes for Langfuse trace output (used by workflow coherence evaluator)
+      return completeScenes;
     };
 
-    // Wrap in session context if sequenceId is available
+    // Wrap in root trace for end-to-end evaluation
     if (input.sequenceId) {
-      return withSequenceSession(input.sequenceId, input.userId, runWorkflow);
+      return withWorkflowTrace(
+        'analyzeScriptWorkflow',
+        {
+          script: input.script,
+          styleConfig: input.styleConfig,
+          aspectRatio: input.aspectRatio,
+        },
+        input.sequenceId,
+        input.userId,
+        runWorkflow
+      );
     }
     return runWorkflow();
   },
