@@ -13,20 +13,24 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import {
-  characterBibleEntrySchema,
   type CharacterBibleEntry,
+  sceneAnalysisSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 import type { Scene } from './types';
 
 /**
- * Zod schema for validating character extraction results
+ * Zod schema for validating character extraction results.
+ * Reuses canonical schemas from scene-analysis.schema.ts for consistency and metadata.
  */
-const characterExtractionResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  characterBible: z.array(characterBibleEntrySchema).catch([]), // Uses canonical schema with defensive defaults
-});
+
+const characterExtractionResultSchema = sceneAnalysisSchema
+  .pick({
+    status: true,
+    characterBible: true,
+  })
+  .required();
 
 /**
  * Extract character bible from scenes

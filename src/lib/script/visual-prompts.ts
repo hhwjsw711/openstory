@@ -13,10 +13,9 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import {
-  cameraAngleVariantSchema,
   type CharacterBibleEntry,
   continuitySchema,
-  moodTreatmentVariantSchema,
+  sceneSchema,
   type Scene,
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
@@ -26,41 +25,37 @@ import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { z } from 'zod';
 
 /**
- * Schema for visual prompt generation validation
- * Uses canonical schemas from scene-analysis.schema.ts
+ * Schema for visual prompt generation validation.
+ * Uses .pick().required() from canonical sceneSchema and extends with prompts.visual + continuity.
  */
 const visualPromptGenerationResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  scenes: z.array(
-    z.object({
-      sceneId: z.string(), // STRICT - required for identity
-      variants: z
-        .looseObject({
-          cameraAngles: z
-            .array(cameraAngleVariantSchema)
-            .min(1)
-            .max(5)
-            .catch([]),
-          moodTreatments: z
-            .array(moodTreatmentVariantSchema)
-            .min(1)
-            .max(5)
-            .catch([]),
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
         })
-        .optional(),
-      selectedVariant: z
-        .looseObject({
-          cameraAngle: z.enum(['A1', 'A2', 'A3']).catch('A1'),
-          moodTreatment: z.enum(['C1', 'C2', 'C3']).catch('C1'),
-          rationale: z.string().optional(),
+        .required()
+        .extend({
+          prompts: z
+            .object({
+              visual: visualPromptSchema.meta({
+                description: 'Image generation prompt data',
+              }),
+            })
+            .meta({ description: 'Visual generation prompts for this scene' }),
+          continuity: continuitySchema
+            .catch({
+              characterTags: [],
+            })
+            .meta({ description: 'Continuity tracking for scene consistency' }),
         })
-        .optional(),
-      prompts: z.object({
-        visual: visualPromptSchema, // Uses canonical schema with STRICT fullPrompt
-      }),
-      continuity: continuitySchema.optional(),
-    })
-  ),
+    )
+    .meta({ description: 'Array of scenes with visual prompts' }),
 });
 
 /**

@@ -12,22 +12,29 @@ import {
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
-import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
+import { sceneSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
 import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
- * Schema for audio design generation validation
- * Uses canonical schemas from scene-analysis.schema.ts
+ * Schema for audio design generation validation.
+ * Uses .pick().required() from canonical sceneSchema to reuse field definitions and metadata.
  */
 const audioDesignGenerationResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  scenes: z.array(
-    z.object({
-      sceneId: z.string(), // STRICT - required for identity
-      audioDesign: audioDesignSchema, // Uses canonical schema with defensive defaults
-    })
-  ),
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+          audioDesign: true,
+        })
+        .required()
+    )
+    .meta({ description: 'Array of scenes with audio design' }),
 });
 
 /**

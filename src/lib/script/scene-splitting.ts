@@ -13,48 +13,40 @@ import {
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
-import type { ProjectMetadata, Scene } from '@/lib/ai/scene-analysis.schema';
 import {
-  type AspectRatio,
-  aspectRatioSchema,
-} from '@/lib/constants/aspect-ratios';
+  projectMetadataSchema,
+  sceneSchema,
+  type ProjectMetadata,
+  type Scene,
+} from '@/lib/ai/scene-analysis.schema';
+import { type AspectRatio } from '@/lib/constants/aspect-ratios';
 import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
- * Zod schema for validating scene splitting results
+ * Zod schema for validating scene splitting results.
+ * Uses .pick() from canonical sceneSchema to reuse field definitions and metadata.
  */
 const sceneSplittingResultSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  projectMetadata: z.object({
-    title: z.string().catch('Untitled'),
-    aspectRatio: aspectRatioSchema.catch('16:9'),
-    generatedAt: z.string().catch(''),
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  projectMetadata: projectMetadataSchema.meta({
+    description: 'Project-level metadata extracted from script',
   }),
-  scenes: z.array(
-    z.object({
-      sceneId: z.string(), // STRICT - required for identity
-      sceneNumber: z.number(), // STRICT - required for ordering
-      originalScript: z.object({
-        extract: z.string().catch(''),
-        dialogue: z
-          .array(
-            z.object({
-              character: z.string().nullable().catch(null),
-              line: z.string().catch(''),
-            })
-          )
-          .catch([]),
-      }),
-      metadata: z.object({
-        title: z.string().catch('Untitled Scene'),
-        durationSeconds: z.number().catch(3),
-        location: z.string().catch(''),
-        timeOfDay: z.string().catch(''),
-        storyBeat: z.string().catch(''),
-      }),
-    })
-  ),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+          sceneNumber: true,
+          originalScript: true,
+          metadata: true,
+        })
+        .required()
+    )
+    .meta({ description: 'Array of scenes split from the script' }),
 });
 
 /**
