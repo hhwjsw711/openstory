@@ -78,6 +78,10 @@ export async function recordWorkflowTrace<TInput, TOutput>(
     {
       sessionId: sequenceId,
       ...(userId && { userId }),
+      ...(options?.model && {
+        tags: [`model:${options.model}`],
+        metadata: { model: options.model },
+      }),
     },
     async () => {
       await startActiveObservation(
