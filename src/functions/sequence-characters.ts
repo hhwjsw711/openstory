@@ -21,6 +21,7 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
+import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 
 /**
  * Get all characters for a sequence
@@ -124,12 +125,12 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     const characterMetadata = {
       characterId: character.characterId,
       name: character.name,
-      age: character.age ?? undefined,
-      gender: character.gender ?? undefined,
-      ethnicity: character.ethnicity ?? undefined,
+      age: character.age,
+      gender: character.gender ?? '',
+      ethnicity: character.ethnicity ?? '',
       physicalDescription: character.physicalDescription ?? '',
       standardClothing: character.standardClothing ?? '',
-      distinguishingFeatures: character.distinguishingFeatures ?? undefined,
+      distinguishingFeatures: character.distinguishingFeatures ?? '',
       consistencyTag: character.consistencyTag ?? '',
       firstMention: {
         sceneId: character.firstMentionSceneId ?? '',
@@ -142,7 +143,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     const workflowInput: RecastCharacterWorkflowInput = {
       characterDbId: data.characterId,
       characterName: character.name,
-      characterMetadata,
+      characterMetadata: characterMetadata,
       sequenceId: character.sequenceId,
       teamId: context.teamId,
       userId: context.user.id,

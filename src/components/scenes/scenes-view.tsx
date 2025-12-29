@@ -13,7 +13,8 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
-import { PageHeader, PageHeading } from '@/components/typography';
+import { PageHeader } from '@/components/typography/page-header';
+import { PageHeading } from '@/components/typography/page-heading';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';

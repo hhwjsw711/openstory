@@ -1,12 +1,10 @@
 import { AddTalentDialog } from '@/components/talent-library/add-talent-dialog';
 import { TalentLibraryFilters } from '@/components/talent-library/talent-library-filters';
 import { TalentLibraryList } from '@/components/talent-library/talent-library-list';
-import { PageContainer } from '@/components/layout';
-import {
-  PageDescription,
-  PageHeader,
-  PageHeading,
-} from '@/components/typography';
+import { PageContainer } from '@/components/layout/page-container';
+import { PageDescription } from '@/components/typography/page-description';
+import { PageHeader } from '@/components/typography/page-header';
+import { PageHeading } from '@/components/typography/page-heading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useTalent } from '@/hooks/use-talent';
 import { createFileRoute } from '@tanstack/react-router';

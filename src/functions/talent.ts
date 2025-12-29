@@ -25,11 +25,11 @@ import {
   getTalentSheetById,
   getTalentWithRelations,
   getTeamTalent,
-  requireTeamManagement,
   toggleTalentFavorite,
   updateTalent,
   updateTalentSheet,
-} from '@/lib/db/helpers';
+} from '@/lib/db/helpers/talent';
+import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import {
   STORAGE_BUCKETS,
   uploadFile,
@@ -41,8 +41,8 @@ import {
   moveFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
-import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow';
-import { triggerWorkflow } from '@/lib/workflow';
+import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import type { TalentSheetSource, TalentWithSheets } from '@/lib/db/schema';
 
 // ============================================================================
@@ -602,17 +602,12 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
           characterId: character.characterId,
           name: character.name,
           age: character.age ?? undefined,
-          gender: character.gender ?? undefined,
-          ethnicity: character.ethnicity ?? undefined,
+          gender: character.gender ?? '',
+          ethnicity: character.ethnicity ?? '',
           physicalDescription: character.physicalDescription ?? '',
           standardClothing: character.standardClothing ?? '',
-          distinguishingFeatures: character.distinguishingFeatures ?? undefined,
+          distinguishingFeatures: character.distinguishingFeatures ?? '',
           consistencyTag: character.consistencyTag ?? '',
-          firstMention: {
-            sceneId: character.firstMentionSceneId ?? '',
-            originalText: character.firstMentionText ?? '',
-            lineNumber: character.firstMentionLine ?? 0,
-          },
         },
         isDefault: true,
         source: 'script_analysis',

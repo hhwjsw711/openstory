@@ -7,7 +7,6 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
@@ -15,53 +14,51 @@ import {
 } from '@/lib/ai/openrouter-client';
 import {
   motionPromptSchema,
-  movementStyleVariantSchema,
+  sceneSchema,
   type Scene,
 } from '@/lib/ai/scene-analysis.schema';
-import { getMotionPromptGenerationPrompt } from '@/lib/prompts';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
- * Schema for motion prompt generation validation
- * Uses canonical schemas from scene-analysis.schema.ts
+ * Schema for motion prompt generation validation.
+ * Uses .pick().required() from canonical sceneSchema and extends with prompts.motion.
  *
- * Note: The motion field uses a transform to handle AI model variations.
+ * Note: The motion field uses a preprocess to handle AI model variations.
  * Some models return motion as an array instead of an object - we take the first element.
  */
-const motionPromptGenerationResultSchema = z.looseObject({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  scenes: z.array(
-    z.looseObject({
-      sceneId: z.string(), // STRICT - required for identity
-      variants: z
-        .looseObject({
-          movementStyles: z
-            .array(movementStyleVariantSchema)
-            .min(1)
-            .max(5)
-            .catch([]),
+const motionPromptGenerationResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
         })
-        .optional(),
-      selectedVariant: z
-        .looseObject({
-          movementStyle: z.enum(['B1', 'B2', 'B3']).catch('B1'),
-          rationale: z.string().optional(),
+        .required()
+        .extend({
+          prompts: z
+            .object({
+              // Handle AI returning motion as array (take first element) or object
+              motion: z
+                .preprocess((val) => {
+                  if (Array.isArray(val) && val.length > 0) {
+                    console.warn(
+                      '[MotionPrompts] AI returned motion as array, using first element'
+                    );
+                    return val[0];
+                  }
+                  return val;
+                }, motionPromptSchema)
+                .meta({ description: 'Motion/video generation prompt data' }),
+            })
+            .meta({ description: 'Motion generation prompts for this scene' }),
         })
-        .optional(),
-      prompts: z.looseObject({
-        // Handle AI returning motion as array (take first element) or object
-        motion: z.preprocess((val) => {
-          if (Array.isArray(val) && val.length > 0) {
-            console.warn(
-              '[MotionPrompts] AI returned motion as array, using first element'
-            );
-            return val[0];
-          }
-          return val;
-        }, motionPromptSchema), // Uses canonical schema with STRICT fullPrompt
-      }),
-    })
-  ),
+    )
+    .meta({ description: 'Array of scenes with motion prompts' }),
 });
 
 /**
@@ -82,6 +79,11 @@ export async function generateMotionPromptsForScenes(
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt(
+    'velro/phase/motion-prompt-generation'
+  );
+
   // Build user prompt with scenes (including visual prompts for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
 
@@ -93,13 +95,19 @@ ${scenesJson}
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [
-      systemMessage(getMotionPromptGenerationPrompt()),
-      userMessage(userPrompt),
-    ],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
+    observationName: 'phase-4-motion-prompts',
+    tags: ['motion-prompts', 'phase-4', 'analysis'],
+    metadata: {
+      phase: 4,
+      phaseName: 'Motion Prompt Generation',
+      sceneCount: scenes.length,
+    },
+    responseSchema: motionPromptGenerationResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -118,15 +126,10 @@ ${scenesJson}
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed = extractJSON(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod (validates only the enrichment data)
-  const validated = motionPromptGenerationResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = motionPromptGenerationResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Merge enrichment data back into input scenes
   const expectedSceneIds = scenes.map((s) => s.sceneId);
@@ -146,7 +149,21 @@ ${scenesJson}
     return {
       ...scene,
       prompts: {
-        ...scene.prompts,
+        visual: scene.prompts?.visual || {
+          fullPrompt: '',
+          negativePrompt: '',
+          components: {
+            sceneDescription: '',
+            subject: '',
+            environment: '',
+            lighting: '',
+            camera: '',
+            composition: '',
+            style: '',
+            technical: '',
+            atmosphere: '',
+          },
+        },
         motion: enrichment.prompts.motion,
       },
     };

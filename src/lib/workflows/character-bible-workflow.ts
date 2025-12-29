@@ -16,7 +16,7 @@ import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from '@/lib/db/id';
@@ -73,6 +73,7 @@ export const characterBibleWorkflow = createWorkflow(
             resolution: '2K' as const,
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
+            traceName: 'character-bible-image',
           });
 
           const imageUrl = imageResult.imageUrls[0];
@@ -110,22 +111,17 @@ export const characterBibleWorkflow = createWorkflow(
               characterId: character.characterId,
               name: character.name,
               // Flattened character bible fields
-              age:
-                character.age != null
-                  ? typeof character.age === 'number'
-                    ? String(character.age)
-                    : character.age
-                  : null,
+              age: character.age ?? '',
               gender: character.gender ?? null,
               ethnicity: character.ethnicity ?? null,
               physicalDescription: character.physicalDescription,
               standardClothing: character.standardClothing,
               distinguishingFeatures: character.distinguishingFeatures ?? null,
               consistencyTag: character.consistencyTag,
-              // First mention
-              firstMentionSceneId: character.firstMention?.sceneId,
-              firstMentionText: character.firstMention?.originalText,
-              firstMentionLine: character.firstMention?.lineNumber,
+              // First mention - no longer collected from AI
+              firstMentionSceneId: null,
+              firstMentionText: null,
+              firstMentionLine: null,
               // Sheet image
               sheetImageUrl: storageResult.publicUrl,
               sheetImagePath: storageResult.path,

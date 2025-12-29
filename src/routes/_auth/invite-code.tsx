@@ -5,7 +5,7 @@
  */
 
 import { InviteCodeForm } from '@/components/auth/invite-code-form';
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { useSession } from '@/lib/auth/client';
 import {

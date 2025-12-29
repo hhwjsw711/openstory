@@ -10,7 +10,7 @@ import {
   createTalentSheet,
   getTalentById,
   updateTalent,
-} from '@/lib/db/helpers';
+} from '@/lib/db/helpers/talent';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
@@ -22,7 +22,7 @@ import { getTalentChannel } from '@/lib/realtime';
 import type {
   LibraryTalentSheetWorkflowInput,
   LibraryTalentSheetWorkflowResult,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -87,6 +87,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'landscape_16_9',
           numImages: 1,
           resolution: '2K',
+          traceName: 'talent-sheet-image',
         };
 
       // Only include referenceImageUrls if provided
@@ -174,6 +175,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           prompt,
           imageSize: 'square_hd',
           numImages: 1,
+          traceName: 'talent-headshot-image',
         };
 
         // Only include referenceImageUrls if provided

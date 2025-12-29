@@ -58,8 +58,11 @@ export const ScriptView: FC<{
   );
 
   // Load saved settings from localStorage
-  const { settings: savedSettings, save: saveSettings } =
-    useGenerationSettings();
+  const {
+    settings: savedSettings,
+    isLoaded: settingsLoaded,
+    save: saveSettings,
+  } = useGenerationSettings();
 
   // Determine if we're editing an existing sequence
   const isEditing = !!sequence?.id;
@@ -120,6 +123,10 @@ export const ScriptView: FC<{
       hasSyncedRef.current = false;
       return;
     }
+    // Wait for localStorage to load before syncing
+    if (!settingsLoaded) {
+      return;
+    }
     // Sync once when creating new sequence
     if (!hasSyncedRef.current) {
       setAspectRatio(savedSettings.aspectRatio);
@@ -129,11 +136,12 @@ export const ScriptView: FC<{
       setAutoGenerateMotion(savedSettings.autoGenerateMotion);
       hasSyncedRef.current = true;
     }
-  }, [isEditing, savedSettings]);
+  }, [isEditing, settingsLoaded, savedSettings]);
 
   // Persist settings to localStorage when creating new sequences (not when editing)
+  // Only save after initial load to prevent overwriting with defaults
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing && settingsLoaded) {
       saveSettings({
         aspectRatio,
         analysisModels,
@@ -144,6 +152,7 @@ export const ScriptView: FC<{
     }
   }, [
     isEditing,
+    settingsLoaded,
     aspectRatio,
     analysisModels,
     imageModel,

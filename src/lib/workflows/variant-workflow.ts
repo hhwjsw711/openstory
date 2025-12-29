@@ -10,7 +10,7 @@ import { getGenerationChannel } from '@/lib/realtime';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -77,6 +77,7 @@ export const generateVariantWorkflow = createWorkflow(
           numImages: input.numImages ?? 1,
           seed: input.seed,
           referenceImageUrls: [input.thumbnailUrl],
+          traceName: 'variant-image',
         };
       }
     );

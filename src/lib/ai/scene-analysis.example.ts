@@ -12,13 +12,7 @@ export const sceneAnalysisExample: SceneAnalysis = {
     {
       characterId: 'char_001',
       name: 'Character Name',
-      firstMention: {
-        sceneId: 'scene_001',
-        originalText:
-          'Exact text from user script where character first appears',
-        lineNumber: 1,
-      },
-      age: 0,
+      age: 'age',
       gender: 'gender',
       ethnicity: 'ethnicity',
       physicalDescription: 'Complete physical description for prompts',
@@ -35,7 +29,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
 
       originalScript: {
         extract: "Exact text from user's original script for this scene",
-        lineNumber: 1,
         dialogue: [
           {
             character: 'CHARACTER NAME or null if unknown',
@@ -50,67 +43,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
         location: 'Specific location',
         timeOfDay: 'Exact time',
         storyBeat: 'What happens narratively',
-      },
-
-      variants: {
-        cameraAngles: [
-          {
-            id: 'A1',
-            description: 'Camera angle description',
-            effect: 'Psychological impact',
-          },
-          {
-            id: 'A2',
-            description: 'Alternative angle description',
-            effect: 'Different psychological impact',
-          },
-          {
-            id: 'A3',
-            description: 'Third angle description',
-            effect: 'Third psychological impact',
-          },
-        ],
-        movementStyles: [
-          {
-            id: 'B1',
-            description: 'Movement style description',
-            energy: 'low',
-          },
-          {
-            id: 'B2',
-            description: 'Alternative movement description',
-            energy: 'medium',
-          },
-          {
-            id: 'B3',
-            description: 'Third movement description',
-            energy: 'high',
-          },
-        ],
-        moodTreatments: [
-          {
-            id: 'C1',
-            description: 'Mood treatment description',
-            tone: 'emotional tone',
-          },
-          {
-            id: 'C2',
-            description: 'Alternative mood description',
-            tone: 'different emotional tone',
-          },
-          {
-            id: 'C3',
-            description: 'Third mood description',
-            tone: 'third emotional tone',
-          },
-        ],
-      },
-
-      selectedVariant: {
-        cameraAngle: 'A1',
-        movementStyle: 'B1',
-        moodTreatment: 'C1',
-        rationale: 'Why these variants work together',
       },
 
       prompts: {
@@ -129,20 +61,6 @@ export const sceneAnalysisExample: SceneAnalysis = {
             style: 'Director aesthetic and color grading',
             technical: 'Camera equipment and settings',
             atmosphere: 'Mood, textures, emotional tone',
-          },
-          parameters: {
-            dimensions: {
-              width: 1344,
-              height: 576,
-              aspectRatio: '21:9',
-            },
-            quality: {
-              steps: 30,
-              guidance: 7.5,
-            },
-            control: {
-              seed: null,
-            },
           },
         },
 
@@ -207,6 +125,8 @@ export const sceneAnalysisExample: SceneAnalysis = {
         lightingSetup: 'Lighting consistency notes',
         styleTag: 'Style consistency notes',
       },
+
+      sourceImageUrl: 'https://example.com/image.jpg',
     },
   ],
 };

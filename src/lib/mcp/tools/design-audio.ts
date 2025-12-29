@@ -5,7 +5,7 @@
 
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
-import type { Scene } from '@/lib/script';
+import type { Scene } from '@/lib/script/types';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
 import { z } from 'zod';
 

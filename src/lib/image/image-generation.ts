@@ -1,13 +1,16 @@
 import {
   getEditEndpoint,
   getTextToImageModelId,
+  IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
+import { startObservation } from '@langfuse/tracing';
 
 import { type QueueStatus, fal, isQueueStatus } from '@fal-ai/client';
 
@@ -61,6 +64,9 @@ export type ImageGenerationParams = {
 
   // Reference images for character consistency (auto-switches to edit endpoint)
   referenceImageUrls?: string[];
+
+  // Langfuse trace name (defaults to 'fal-image')
+  traceName?: string;
 };
 
 /**
@@ -120,6 +126,27 @@ function extractProgress(update: QueueStatus): number | undefined {
 }
 
 /**
+ * Truncate prompt to model's maximum length
+ * Returns original prompt if under limit or if model has no limit
+ */
+function truncatePromptForModel(
+  prompt: string,
+  model: TextToImageModel
+): string {
+  const maxLength = IMAGE_MODELS[model].maxPromptLength;
+  if (!maxLength || prompt.length <= maxLength) {
+    return prompt;
+  }
+
+  // Leave room for ellipsis indicator
+  const truncated = prompt.slice(0, maxLength - 3) + '...';
+  console.warn(
+    `[Image Generation] Prompt truncated from ${prompt.length} to ${maxLength} chars for ${model}`
+  );
+  return truncated;
+}
+
+/**
  * Generate image using a switch statement to determine parameters by model type
  * Pure switch-statement approach with fully inlined fal.subscribe calls
  */
@@ -127,6 +154,63 @@ export async function generateImageWithProvider(
   params: ImageGenerationParams
 ): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
+
+  const span = startObservation(
+    params.traceName ?? 'fal-image',
+    {
+      model: params.model,
+      input: {
+        prompt: params.prompt,
+        imageSize: params.imageSize,
+        ...(params.referenceImageUrls &&
+          params.referenceImageUrls.length > 0 && {
+            referenceImageUrls: params.referenceImageUrls,
+          }),
+      },
+    },
+    { asType: 'generation' }
+  );
+
+  try {
+    const result = await generateImageInternal(params, modelId);
+
+    // Fetch first image for inline preview in Langfuse
+    const imageMedia = result.imageUrls[0]
+      ? await createImageMedia(result.imageUrls[0])
+      : null;
+
+    span
+      .update({
+        output: {
+          imageUrls: result.imageUrls,
+          ...(imageMedia && { generatedImage: imageMedia }),
+        },
+        costDetails: result.metadata.cost
+          ? { total: result.metadata.cost }
+          : undefined,
+      })
+      .end();
+    return result;
+  } catch (error) {
+    span
+      .update({
+        level: 'ERROR',
+        statusMessage: error instanceof Error ? error.message : String(error),
+      })
+      .end();
+    throw error;
+  }
+}
+
+/**
+ * Internal image generation implementation
+ */
+async function generateImageInternal(
+  params: ImageGenerationParams,
+  modelId: string
+): Promise<ImageGenerationResult> {
+  // Truncate prompt to model's max length
+  const prompt = truncatePromptForModel(params.prompt, params.model);
 
   switch (params.model) {
     case 'flux_pro':
@@ -139,7 +223,7 @@ export async function generateImageWithProvider(
       const defaultSteps = params.model === 'flux_schnell' ? 4 : 28;
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           // Sizing: Ultra uses aspect_ratio, others use image_size
           ...(isUltra
             ? {
@@ -204,7 +288,7 @@ export async function generateImageWithProvider(
       // FLUX 2 - Enhanced realism, crisper text, native editing
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           num_inference_steps: params.numInferenceSteps ?? 28,
           guidance_scale: params.guidanceScale ?? 2.5,
@@ -247,7 +331,7 @@ export async function generateImageWithProvider(
       const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           num_inference_steps: params.numInferenceSteps ?? defaultSteps,
           enable_safety_checker: true,
@@ -300,7 +384,7 @@ export async function generateImageWithProvider(
     case 'imagen4_preview_ultra': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -335,7 +419,7 @@ export async function generateImageWithProvider(
     case 'nano_banana': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -375,7 +459,7 @@ export async function generateImageWithProvider(
 
       const resp = await fal.subscribe(endpoint, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -412,7 +496,7 @@ export async function generateImageWithProvider(
     case 'recraft_v3': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           style: params.style ?? 'realistic_image',
           enable_safety_checker: false, // Default false for Recraft
@@ -443,7 +527,7 @@ export async function generateImageWithProvider(
     case 'hidream_i1_full': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: { width: 1024, height: 1024 }, // HiDream uses object
           num_inference_steps: params.numInferenceSteps ?? 50,
           guidance_scale: params.guidanceScale ?? 5,
@@ -483,7 +567,7 @@ export async function generateImageWithProvider(
     case 'seedream_v4_5': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           enable_safety_checker: true,
           ...(params.seed !== undefined && { seed: params.seed }),
@@ -524,7 +608,7 @@ export async function generateImageWithProvider(
       const resp = await imagesCreate({
         // @ts-expect-error - webhookUrl is not required for imagesCreate
         body: {
-          prompt: params.prompt,
+          prompt,
           width: presetDims.width,
           height: presetDims.height,
           quality: params.quality ?? 5,
@@ -570,6 +654,45 @@ export async function generateImageWithProvider(
 }
 
 /**
+ * Calculate estimated cost based on model pricing and output
+ */
+function calculateImageCost(
+  model: TextToImageModel,
+  numImages: number,
+  dimensions: { width: number; height: number }[],
+  processingTimeMs: number
+): number | undefined {
+  const modelConfig = IMAGE_MODELS[model];
+  if (!modelConfig.pricing) return undefined;
+
+  const { price, unit } = modelConfig.pricing;
+
+  switch (unit) {
+    case 'images':
+      // Flat rate per image
+      return price * numImages;
+
+    case 'megapixels': {
+      // Calculate total megapixels across all images
+      const totalMegapixels = dimensions.reduce((sum, dim) => {
+        const megapixels = (dim.width * dim.height) / 1_000_000;
+        return sum + megapixels;
+      }, 0);
+      return price * totalMegapixels;
+    }
+
+    case 'compute_seconds': {
+      // Cost based on compute time
+      const seconds = processingTimeMs / 1000;
+      return price * seconds;
+    }
+
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Parse result by provider
  */
 function resultByProvider(
@@ -591,7 +714,7 @@ function resultByProvider(
       seed: (resp as { seed?: number }).seed,
       has_nsfw_concepts: (resp as { has_nsfw_concepts?: boolean[] })
         .has_nsfw_concepts,
-      cost: (resp as { cost?: number }).cost,
+      cost: undefined as number | undefined,
       requestId: (resp as { requestId?: string }).requestId,
     },
   };
@@ -646,6 +769,15 @@ function resultByProvider(
     result.metadata.seed = falResp.seed;
     result.metadata.has_nsfw_concepts = falResp.has_nsfw_concepts;
   }
+
+  // Calculate cost based on model pricing
+  const numImages = result.imageUrls.length || params.numImages || 1;
+  result.metadata.cost = calculateImageCost(
+    params.model,
+    numImages,
+    result.metadata.dimensions,
+    result.processingTimeMs
+  );
 
   return result;
 }

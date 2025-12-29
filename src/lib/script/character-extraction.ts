@@ -7,27 +7,30 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
 import {
-  characterBibleEntrySchema,
   type CharacterBibleEntry,
+  sceneAnalysisSchema,
 } from '@/lib/ai/scene-analysis.schema';
-import { CHARACTER_EXTRACTION_PROMPT } from '@/lib/prompts';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 import type { Scene } from './types';
 
 /**
- * Zod schema for validating character extraction results
+ * Zod schema for validating character extraction results.
+ * Reuses canonical schemas from scene-analysis.schema.ts for consistency and metadata.
  */
-const characterExtractionResultSchema = z.looseObject({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  characterBible: z.array(characterBibleEntrySchema).catch([]), // Uses canonical schema with defensive defaults
-});
+
+const characterExtractionResultSchema = sceneAnalysisSchema
+  .pick({
+    status: true,
+    characterBible: true,
+  })
+  .required();
 
 /**
  * Extract character bible from scenes
@@ -46,6 +49,11 @@ export async function extractCharacterBible(
   }
 ): Promise<CharacterBibleEntry[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt(
+    'velro/phase/character-extraction'
+  );
 
   // Build user prompt with scenes
   const scenesJson = JSON.stringify(scenes, null, 2);
@@ -67,13 +75,15 @@ Respond with ONLY valid JSON matching the schema.`;
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [
-      systemMessage(CHARACTER_EXTRACTION_PROMPT),
-      userMessage(userPrompt),
-    ],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
+    observationName: 'phase-2-character-extraction',
+    tags: ['character-extraction', 'phase-2', 'analysis'],
+    metadata: { phase: 2, phaseName: 'Character Extraction' },
+    responseSchema: characterExtractionResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -92,16 +102,10 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed =
-    extractJSON<z.infer<typeof characterExtractionResultSchema>>(finalContent);
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod
-  const validated = characterExtractionResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validated = characterExtractionResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Notify with final parsed result
   if (onProgress) {

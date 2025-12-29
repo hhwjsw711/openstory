@@ -33,7 +33,6 @@ const mockFrame = {
     originalScript: {
       extract:
         'INT. COFFEE SHOP - MORNING\n\nSARAH sits at a corner table, typing furiously on her laptop. Steam rises from her untouched latte.',
-      lineNumber: 1,
       dialogue: [
         {
           character: 'SARAH',
@@ -48,11 +47,29 @@ const mockFrame = {
       timeOfDay: 'Morning',
       storyBeat: 'Establish protagonist stress and setting',
     },
-    selectedVariant: {
-      cameraAngle: 'A2' as const,
-      movementStyle: 'B1' as const,
-      moodTreatment: 'C1' as const,
-      rationale: 'Selected for emotional impact',
+    continuity: {
+      characterTags: [],
+      environmentTag: '',
+      colorPalette: '',
+      lightingSetup: '',
+      styleTag: '',
+    },
+    audioDesign: {
+      music: {
+        presence: 'none',
+        style: '',
+        mood: '',
+        rationale: '',
+      },
+      soundEffects: [],
+      dialogue: {
+        presence: false,
+        lines: [],
+      },
+      ambient: {
+        roomTone: '',
+        atmosphere: '',
+      },
     },
     prompts: {
       visual: {
@@ -69,20 +86,6 @@ const mockFrame = {
           style: 'Cinematic',
           technical: '4K, sharp focus',
           atmosphere: 'Bustling yet intimate',
-        },
-        parameters: {
-          dimensions: {
-            width: 1920,
-            height: 1080,
-            aspectRatio: '16:9',
-          },
-          quality: {
-            steps: 30,
-            guidance: 7.5,
-          },
-          control: {
-            seed: null,
-          },
         },
       },
       motion: {
@@ -111,6 +114,7 @@ const mockFrame = {
         },
       },
     },
+    sourceImageUrl: '',
   },
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -181,7 +185,6 @@ BARISTA (O.S.)
     Large oat milk latte for Sarah!
 
 Sarah doesn't respond, too absorbed in her work. The barista shrugs and sets the drink aside.`,
-          lineNumber: 1,
           dialogue: [
             {
               character: 'BARISTA',
@@ -215,20 +218,6 @@ export const LongPrompts: Story = {
               style: 'Cinematic',
               technical: '4K, sharp focus',
               atmosphere: 'Bustling yet intimate',
-            },
-            parameters: {
-              dimensions: {
-                width: 1920,
-                height: 1080,
-                aspectRatio: '16:9',
-              },
-              quality: {
-                steps: 30,
-                guidance: 7.5,
-              },
-              control: {
-                seed: null,
-              },
             },
           },
           motion: {
@@ -271,7 +260,6 @@ export const ShortScript: Story = {
         ...mockFrame.metadata,
         originalScript: {
           extract: 'INT. COFFEE SHOP - MORNING\n\nSARAH types on laptop.',
-          lineNumber: 1,
           dialogue: [],
         },
       },

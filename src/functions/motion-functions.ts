@@ -13,8 +13,8 @@ import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
-} from '@/lib/workflow';
-import { triggerWorkflow } from '@/lib/workflow';
+} from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
 // ============================================================================
@@ -141,8 +141,12 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
         // TypeScript guard - we already filtered for frames with thumbnails
         if (!frame.thumbnailUrl) continue;
 
-        // Use motion prompt or empty string as fallback
-        const prompt = frame.motionPrompt || '';
+        // Use motion prompt with metadata fallback (same as generateFrameMotionFn)
+        const prompt =
+          frame.motionPrompt ||
+          frame.metadata?.prompts?.motion?.fullPrompt ||
+          frame.description ||
+          '';
 
         // Trigger motion workflow
         const workflowInput: MotionWorkflowInput = {

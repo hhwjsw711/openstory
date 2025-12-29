@@ -7,7 +7,7 @@ import {
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { ImageWorkflowInput, ImageWorkflowResult } from '@/lib/workflow';
+import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -81,6 +81,7 @@ export const generateImageWorkflow = createWorkflow(
           referenceImageUrls:
             input.referenceImages?.map((image) => image.referenceImageUrl) ??
             [],
+          traceName: 'frame-image',
         } satisfies ImageGenerationParams;
       }
     );
@@ -176,13 +177,11 @@ export const generateImageWorkflow = createWorkflow(
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
     // Return workflow result
-    const result: ImageWorkflowResult = {
+    return {
       imageUrl: imageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };
-
-    return result;
   },
   {
     flowControl: getFalFlowControl(),

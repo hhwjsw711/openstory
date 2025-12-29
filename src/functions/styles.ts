@@ -17,8 +17,8 @@ import {
   getStyleById,
   getPublicStyles,
   getTeamAndPublicStyles,
-  requireTeamManagement,
-} from '@/lib/db/helpers';
+} from '@/lib/db/helpers/queries';
+import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import { styles } from '@/lib/db/schema';
 import type { Style } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';

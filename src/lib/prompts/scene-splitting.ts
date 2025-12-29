@@ -43,7 +43,6 @@ Extract with character name (null if unknown) and exact text.
   "projectMetadata": {
     "title": "string",
     "aspectRatio": "16:9",
-    "totalDurationSeconds": 0,
     "generatedAt": "ISO 8601"
   },
   "scenes": [{
@@ -51,7 +50,6 @@ Extract with character name (null if unknown) and exact text.
     "sceneNumber": 1,
     "originalScript": {
       "extract": "EXACT user text - never modified",
-      "lineNumber": 1,
       "dialogue": [{"character": "NAME or null", "line": "exact text"}]
     },
     "metadata": {

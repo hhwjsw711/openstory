@@ -4,12 +4,12 @@
  * Generates visual prompts for scenes based on character bible and style config.
  */
 
-import type { VisualPromptWorkflowInput } from '@/lib/workflow';
+import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { Scene } from '@/lib/script/types';
-import { generateVisualPromptsForScenes } from '@/lib/script';
+import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import type { ProgressCallback } from '@/lib/ai/openrouter-client';
 import { updateFrame } from '@/lib/db/helpers/frames';
 

@@ -9,9 +9,9 @@ import {
   updateFrame,
 } from '@/lib/db/helpers/frames';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { MergeVideoWorkflowInput } from '@/lib/workflow';
+import type { MergeVideoWorkflowInput } from '@/lib/workflow/types';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { MotionWorkflowInput, MotionWorkflowResult } from '@/lib/workflow';
+import type { MotionWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -116,6 +116,7 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
+        traceName: 'frame-motion',
       });
 
       if (!result.success || !result.videoUrl) {
@@ -261,12 +262,10 @@ export const generateMotionWorkflow = createWorkflow(
         ? videoResult.metadata.duration
         : null;
     const actualDuration = metadataDuration ?? input.duration ?? 2;
-    const result: MotionWorkflowResult = {
+    return {
       videoUrl, // Return signed URL for backward compatibility
       duration: actualDuration,
     };
-
-    return result;
   },
   {
     retries: 3,

@@ -4,33 +4,59 @@ import { z } from 'zod';
 // Character Bible Schemas
 // ============================================================================
 
-const firstMentionSchema = z.object({
-  sceneId: z.string(),
-  originalText: z.string().catch(''),
-  lineNumber: z.number().catch(0),
-});
-
 export const characterBibleEntrySchema = z.object({
-  characterId: z.string(),
-  name: z.string(),
-  firstMention: firstMentionSchema.optional(),
-  age: z.union([z.number(), z.string()]).nullish(), // Accept numbers, age ranges like "30s", null, or undefined
-  gender: z.string().optional(),
-  ethnicity: z.string().optional(),
-  physicalDescription: z.string().catch(''),
-  standardClothing: z.string().catch(''),
-  distinguishingFeatures: z.string().optional(),
-  consistencyTag: z.string().catch(''),
+  characterId: z.string().meta({
+    description:
+      'Unique identifier for cross-referencing this character across scenes',
+  }),
+  name: z
+    .string()
+    .meta({ description: 'Full character name as written in the script' }),
+  age: z.string().meta({
+    description: 'Age as number (e.g., 35) or range (e.g., "30s", "early 40s")',
+  }),
+  gender: z
+    .string()
+    .catch('')
+    .meta({ description: 'Character gender for casting consistency' }),
+  ethnicity: z.string().catch('').meta({
+    description: 'Character ethnicity for accurate visual representation',
+  }),
+  physicalDescription: z.string().catch('').meta({
+    description:
+      'Detailed appearance: height, build, hair color, eye color, distinguishing features',
+  }),
+  standardClothing: z.string().catch('').meta({
+    description:
+      'Default outfit and clothing style for visual consistency across scenes',
+  }),
+  distinguishingFeatures: z.string().catch('').meta({
+    description:
+      'Unique visual markers: scars, tattoos, accessories, distinctive mannerisms',
+  }),
+  consistencyTag: z.string().catch('').meta({
+    description:
+      'Short prompt tag for image generation (e.g., "detective_sarah_blonde_30s")',
+  }),
 });
 
 // ============================================================================
 // Project Metadata Schema
 // ============================================================================
 
-const projectMetadataSchema = z.object({
-  title: z.string().catch('Untitled'),
-  aspectRatio: z.string().catch('16:9'),
-  generatedAt: z.string().catch(''),
+export const projectMetadataSchema = z.object({
+  title: z
+    .string()
+    .catch('Untitled')
+    .meta({ description: 'Project title extracted from the script' }),
+  aspectRatio: z
+    .string()
+    .catch('16:9')
+    .meta({ description: 'Video aspect ratio (e.g., "16:9", "9:16", "1:1")' }),
+  generatedAt: z
+    .string()
+    .catch('')
+    .meta({ description: 'ISO 8601 timestamp of generation' }),
 });
 
 // ============================================================================
@@ -38,176 +64,347 @@ const projectMetadataSchema = z.object({
 // ============================================================================
 
 export const cameraAngleVariantSchema = z.object({
-  id: z.enum(['A1', 'A2', 'A3']).catch('A1'),
-  description: z.string().catch(''),
-  effect: z.string().catch(''),
+  id: z
+    .enum(['A1', 'A2', 'A3'])
+    .catch('A1')
+    .meta({ description: 'Camera angle option identifier (A1, A2, or A3)' }),
+  description: z.string().catch('').meta({
+    description:
+      'Description of the camera angle (e.g., "wide establishing shot")',
+  }),
+  effect: z
+    .string()
+    .catch('')
+    .meta({ description: 'Visual/emotional effect of this angle' }),
 });
 
 export const movementStyleVariantSchema = z.object({
-  id: z.enum(['B1', 'B2', 'B3']).catch('B1'),
-  description: z.string().catch(''),
+  id: z
+    .enum(['B1', 'B2', 'B3'])
+    .catch('B1')
+    .meta({ description: 'Movement style option identifier (B1, B2, or B3)' }),
+  description: z.string().catch('').meta({
+    description: 'Description of camera movement (e.g., "slow dolly forward")',
+  }),
   energy: z
     .string()
     .transform((v) => v.toLowerCase())
     .pipe(z.enum(['low', 'medium', 'high']))
-    .catch('medium'), // Handle case variations
+    .catch('medium')
+    .meta({
+      description: 'Energy level of the movement: low, medium, or high',
+    }),
 });
 
 export const moodTreatmentVariantSchema = z.object({
-  id: z.enum(['C1', 'C2', 'C3']).catch('C1'),
-  description: z.string().catch(''),
-  tone: z.string().catch(''),
+  id: z
+    .enum(['C1', 'C2', 'C3'])
+    .catch('C1')
+    .meta({ description: 'Mood treatment option identifier (C1, C2, or C3)' }),
+  description: z
+    .string()
+    .catch('')
+    .meta({ description: 'Description of the mood/atmosphere treatment' }),
+  tone: z
+    .string()
+    .catch('')
+    .meta({ description: 'Emotional tone (e.g., "tense", "hopeful")' }),
 });
 
-const variantsSchema = z.object({
-  cameraAngles: z.array(cameraAngleVariantSchema).min(1).max(5).catch([]),
-  movementStyles: z.array(movementStyleVariantSchema).min(1).max(5).optional(),
-  moodTreatments: z.array(moodTreatmentVariantSchema).min(1).max(5).catch([]),
+export const variantsSchema = z.object({
+  cameraAngles: z
+    .array(cameraAngleVariantSchema)
+    .min(1)
+    .max(5)
+    .catch([])
+    .meta({ description: 'Array of camera angle options (A1, A2, A3)' }),
+  movementStyles: z
+    .array(movementStyleVariantSchema)
+    .min(1)
+    .max(5)
+    .catch([])
+    .meta({ description: 'Array of movement style options (B1, B2, B3)' }),
+  moodTreatments: z
+    .array(moodTreatmentVariantSchema)
+    .min(1)
+    .max(5)
+    .catch([])
+    .meta({ description: 'Array of mood treatment options (C1, C2, C3)' }),
 });
 
 // ============================================================================
 // Selected Variant Schema
 // ============================================================================
 
-const selectedVariantSchema = z.object({
-  cameraAngle: z.enum(['A1', 'A2', 'A3']).catch('A1'),
-  movementStyle: z.enum(['B1', 'B2', 'B3']).optional(),
-  moodTreatment: z.enum(['C1', 'C2', 'C3']).catch('C1'),
-  rationale: z.string().optional(),
+export const selectedVariantSchema = z.object({
+  cameraAngle: z
+    .enum(['A1', 'A2', 'A3'])
+    .catch('A1')
+    .meta({ description: 'Selected camera angle option (A1, A2, or A3)' }),
+  movementStyle: z
+    .enum(['B1', 'B2', 'B3'])
+    .catch('B1')
+    .meta({ description: 'Selected movement style option (B1, B2, or B3)' }),
+  moodTreatment: z
+    .enum(['C1', 'C2', 'C3'])
+    .catch('C1')
+    .meta({ description: 'Selected mood treatment option (C1, C2, or C3)' }),
+  rationale: z
+    .string()
+    .catch('')
+    .meta({ description: 'Explanation for why these variants were chosen' }),
 });
 
 // ============================================================================
-// Prompt Component Schemas
+// Prompt Schemas
 // ============================================================================
 
-const visualPromptComponentsSchema = z.object({
-  sceneDescription: z.string().catch(''),
-  subject: z.string().catch(''),
-  environment: z.string().catch(''),
-  lighting: z.string().catch(''),
-  camera: z.string().catch(''),
-  composition: z.string().catch(''),
-  style: z.string().catch(''),
-  technical: z.string().catch(''),
-  atmosphere: z.string().catch(''),
+export const visualPromptComponentsSchema = z.object({
+  sceneDescription: z
+    .string()
+    .catch('')
+    .meta({ description: 'Overall scene action and composition description' }),
+  subject: z
+    .string()
+    .catch('')
+    .meta({ description: 'Main subject or character focus' }),
+  environment: z
+    .string()
+    .catch('')
+    .meta({ description: 'Setting, location, and background details' }),
+  lighting: z
+    .string()
+    .catch('')
+    .meta({ description: 'Light sources, quality, direction, and mood' }),
+  camera: z
+    .string()
+    .catch('')
+    .meta({ description: 'Camera angle, lens choice, and framing' }),
+  composition: z
+    .string()
+    .catch('')
+    .meta({ description: 'Visual arrangement and focal points' }),
+  style: z
+    .string()
+    .catch('')
+    .meta({ description: 'Artistic style and visual treatment' }),
+  technical: z.string().catch('').meta({
+    description: 'Technical parameters: resolution, quality settings',
+  }),
+  atmosphere: z
+    .string()
+    .catch('')
+    .meta({ description: 'Mood, emotion, and ambient feeling' }),
 });
-
-const visualPromptParametersSchema = z
-  .object({
-    dimensions: z
-      .object({
-        width: z.number().optional(),
-        height: z.number().optional(),
-        aspectRatio: z.string().optional(),
-      })
-      .optional(),
-    quality: z
-      .object({
-        steps: z.number().optional(),
-        guidance: z.number().optional(),
-      })
-      .optional(),
-    control: z
-      .object({
-        seed: z.number().nullable().optional(),
-      })
-      .optional(),
-  })
-  .optional();
 
 export const visualPromptSchema = z.object({
-  fullPrompt: z.string().min(1), // STRICT - required for image generation
-  negativePrompt: z.string().catch(''),
-  components: visualPromptComponentsSchema.optional(),
-  parameters: visualPromptParametersSchema,
+  fullPrompt: z.string().meta({
+    description: 'Complete image generation prompt with all visual details',
+  }),
+  negativePrompt: z
+    .string()
+    .catch('')
+    .meta({ description: 'Elements to avoid in the generated image' }),
+  components: visualPromptComponentsSchema.meta({
+    description: 'Structured breakdown of the visual prompt components',
+  }),
 });
 
-const motionPromptComponentsSchema = z.object({
-  cameraMovement: z.string().catch(''),
-  startPosition: z.string().catch(''),
-  endPosition: z.string().catch(''),
-  durationSeconds: z.number().catch(3),
-  speed: z.string().catch('medium'),
-  smoothness: z.string().catch('smooth'),
-  subjectTracking: z.string().catch(''),
-  equipment: z.string().catch(''),
+export const motionPromptComponentsSchema = z.object({
+  cameraMovement: z.string().catch('').meta({
+    description: 'Type of camera motion (pan, tilt, dolly, truck, zoom)',
+  }),
+  startPosition: z
+    .string()
+    .catch('')
+    .meta({ description: 'Camera starting position and framing' }),
+  endPosition: z
+    .string()
+    .catch('')
+    .meta({ description: 'Camera ending position and framing' }),
+  durationSeconds: z
+    .number()
+    .catch(3)
+    .meta({ description: 'Shot duration in seconds (typically 3-10)' }),
+  speed: z
+    .string()
+    .catch('medium')
+    .meta({ description: 'Movement speed: slow, medium, fast' }),
+  smoothness: z.string().catch('smooth').meta({
+    description: 'Motion quality: jerky, natural, smooth, ultra-smooth',
+  }),
+  subjectTracking: z
+    .string()
+    .catch('')
+    .meta({ description: 'How camera follows subject movement' }),
+  equipment: z.string().catch('').meta({
+    description: 'Suggested equipment: handheld, gimbal, dolly, crane',
+  }),
 });
 
-const motionPromptParametersSchema = z
+export const motionPromptParametersSchema = z
   .object({
-    durationSeconds: z.number().optional(),
-    fps: z.number().optional(),
+    durationSeconds: z
+      .number()
+      .meta({ description: 'Override duration in seconds' }),
+    fps: z
+      .number()
+      .catch(30)
+      .meta({ description: 'Frames per second (24, 30, 60)' }),
     motionAmount: z
       .string()
       .transform((v) => v.toLowerCase())
       .pipe(z.enum(['low', 'medium', 'high']))
-      .optional(),
+      .catch('medium')
+      .meta({ description: 'Amount of motion: low, medium, high' }),
     cameraControl: z
       .object({
-        pan: z.number().optional(),
-        tilt: z.number().optional(),
-        zoom: z.number().optional(),
-        movement: z.string().optional(),
+        pan: z
+          .number()
+          .catch(0)
+          .meta({ description: 'Horizontal rotation in degrees' }),
+        tilt: z
+          .number()
+          .catch(0)
+          .meta({ description: 'Vertical rotation in degrees' }),
+        zoom: z
+          .number()
+          .catch(0)
+          .meta({ description: 'Zoom factor (1.0 = no zoom)' }),
+        movement: z
+          .string()
+          .catch('')
+          .meta({ description: 'Direction of camera movement' }),
       })
-      .optional(),
+      .catch({ pan: 0, tilt: 0, zoom: 0, movement: '' })
+      .meta({ description: 'Precise camera control parameters' }),
   })
-  .optional();
+  .catch({
+    durationSeconds: 3,
+    fps: 30,
+    motionAmount: 'medium',
+    cameraControl: { pan: 0, tilt: 0, zoom: 0, movement: '' },
+  });
 
 export const motionPromptSchema = z.object({
-  fullPrompt: z.string().min(1), // STRICT - required for motion generation
-  components: motionPromptComponentsSchema.optional(),
-  parameters: motionPromptParametersSchema,
+  fullPrompt: z.string().meta({
+    description: 'Complete motion prompt describing camera movement and action',
+  }),
+  components: motionPromptComponentsSchema
+    .catch({
+      cameraMovement: '',
+      startPosition: '',
+      endPosition: '',
+      durationSeconds: 3,
+      speed: 'medium',
+      smoothness: 'smooth',
+      subjectTracking: '',
+      equipment: '',
+    })
+    .meta({ description: 'Structured breakdown of motion prompt components' }),
+  parameters: motionPromptParametersSchema.meta({
+    description: 'Technical parameters for motion generation',
+  }),
 });
 
-const promptsSchema = z.object({
-  visual: visualPromptSchema.optional(),
-  motion: motionPromptSchema.optional(),
+export const promptsSchema = z.object({
+  visual: visualPromptSchema
+    .optional()
+    .meta({ description: 'Image generation prompt data' }),
+  motion: motionPromptSchema
+    .optional()
+    .meta({ description: 'Motion/video generation prompt data' }),
 });
 
 // ============================================================================
 // Audio Design Schemas
 // ============================================================================
 
-const musicSchema = z.object({
-  presence: z.enum(['none', 'minimal', 'moderate', 'full']).catch('none'),
-  style: z.string().nullable().catch(''),
-  mood: z.string().nullable().catch(''),
-  rationale: z.string().optional(),
+export const musicSchema = z.object({
+  presence: z.enum(['none', 'minimal', 'moderate', 'full']).catch('none').meta({
+    description:
+      'How prominent the music should be: none, minimal, moderate, full',
+  }),
+  style: z.string().catch('').meta({
+    description:
+      'Music genre or style (e.g., "orchestral", "electronic ambient")',
+  }),
+  mood: z.string().catch('').meta({
+    description: 'Emotional quality of the music (e.g., "tense", "uplifting")',
+  }),
+  rationale: z
+    .string()
+    .catch('')
+    .meta({ description: 'Explanation for the music choices' }),
 });
 
-const soundEffectSchema = z.object({
-  sfxId: z.string().catch(''),
-  type: z.string().catch('ambient'),
-  description: z.string().catch(''),
-  timing: z.string().catch(''),
+export const soundEffectSchema = z.object({
+  sfxId: z
+    .string()
+    .catch('')
+    .meta({ description: 'Unique identifier for this sound effect' }),
+  type: z.string().catch('ambient').meta({
+    description: 'Sound effect category (e.g., "ambient", "foley", "impact")',
+  }),
+  description: z.string().catch('').meta({
+    description: 'Description of the sound (e.g., "distant thunder rumble")',
+  }),
+  timing: z.string().catch('').meta({
+    description: 'When the sound plays (e.g., "scene start", "on action")',
+  }),
   volume: z
     .string()
     .transform((v) => v.toLowerCase())
     .pipe(z.enum(['low', 'medium', 'high']))
-    .catch('medium'),
-  spatialPosition: z.string().catch('center'),
+    .catch('medium')
+    .meta({ description: 'Relative volume level: low, medium, high' }),
+  spatialPosition: z
+    .string()
+    .catch('center')
+    .meta({ description: 'Audio positioning: left, center, right, surround' }),
 });
 
-const dialogueLineSchema = z.object({
-  character: z.string().nullable().catch(null),
-  line: z.string().catch(''),
+export const dialogueLineSchema = z.object({
+  character: z.string().catch('').meta({
+    description: 'Character name speaking the line, or null for narrator',
+  }),
+  line: z.string().catch('').meta({ description: 'The spoken dialogue text' }),
 });
 
-const dialogueSchema = z.object({
-  presence: z.boolean().catch(false),
-  lines: z.array(dialogueLineSchema).catch([]),
+export const dialogueSchema = z.object({
+  presence: z
+    .boolean()
+    .catch(false)
+    .meta({ description: 'Whether dialogue is present in scene' }),
+  lines: z
+    .array(dialogueLineSchema)
+    .catch([])
+    .meta({ description: 'Array of dialogue lines in the scene' }),
 });
 
-const ambientSchema = z.object({
-  roomTone: z.string().catch(''),
-  atmosphere: z.string().catch(''),
+export const ambientSchema = z.object({
+  roomTone: z.string().catch('').meta({
+    description: 'Background room ambience (e.g., "quiet office hum")',
+  }),
+  atmosphere: z.string().catch('').meta({
+    description: 'Environmental atmosphere (e.g., "busy city street")',
+  }),
 });
 
 export const audioDesignSchema = z.object({
-  music: musicSchema.optional(),
-  soundEffects: z.array(soundEffectSchema).catch([]),
-  dialogue: dialogueSchema.optional(),
-  ambient: ambientSchema.optional(),
+  music: musicSchema
+    .catch({ presence: 'none', style: '', mood: '', rationale: '' })
+    .meta({ description: 'Background music specifications' }),
+  soundEffects: z
+    .array(soundEffectSchema)
+    .catch([])
+    .meta({ description: 'Array of sound effects for the scene' }),
+  dialogue: dialogueSchema
+    .catch({ presence: false, lines: [] })
+    .meta({ description: 'Dialogue and speech specifications' }),
+  ambient: ambientSchema
+    .catch({ roomTone: '', atmosphere: '' })
+    .meta({ description: 'Ambient sound design' }),
 });
 
 // ============================================================================
@@ -215,33 +412,65 @@ export const audioDesignSchema = z.object({
 // ============================================================================
 
 export const continuitySchema = z.object({
-  characterTags: z.array(z.string()).catch([]), // Defensive default to empty array
-  environmentTag: z.string().optional(),
-  colorPalette: z.string().optional(),
-  lightingSetup: z.string().optional(),
-  styleTag: z.string().optional(),
+  characterTags: z.array(z.string()).catch([]).meta({
+    description: 'List of character consistency tags appearing in this scene',
+  }),
+  environmentTag: z
+    .string()
+    .catch('')
+    .meta({ description: 'Location/setting tag for environment consistency' }),
+  colorPalette: z
+    .string()
+    .catch('')
+    .meta({ description: 'Dominant colors for visual continuity' }),
+  lightingSetup: z.string().catch('').meta({
+    description: 'Lighting configuration for consistency across shots',
+  }),
+  styleTag: z
+    .string()
+    .catch('')
+    .meta({ description: 'Visual style reference for consistent look' }),
 });
 
 // ============================================================================
 // Original Script Schema
 // ============================================================================
 
-const originalScriptSchema = z.object({
-  extract: z.string().catch(''),
-  lineNumber: z.number().catch(0),
-  dialogue: z.array(dialogueLineSchema).catch([]),
+export const originalScriptSchema = z.object({
+  extract: z
+    .string()
+    .catch('')
+    .meta({ description: 'Original script text for this scene' }),
+  dialogue: z
+    .array(dialogueLineSchema)
+    .catch([])
+    .meta({ description: 'Dialogue lines extracted from the script' }),
 });
 
 // ============================================================================
 // Scene Metadata Schema
 // ============================================================================
 
-const sceneMetadataSchema = z.object({
-  title: z.string().catch('Untitled Scene'),
-  durationSeconds: z.number().catch(3),
-  location: z.string().catch(''),
-  timeOfDay: z.string().catch(''),
-  storyBeat: z.string().catch(''),
+export const sceneMetadataSchema = z.object({
+  title: z
+    .string()
+    .catch('Untitled Scene')
+    .meta({ description: 'Short descriptive scene title' }),
+  durationSeconds: z.number().catch(3).meta({
+    description: 'Estimated scene duration in seconds (typically 3-10)',
+  }),
+  location: z
+    .string()
+    .catch('')
+    .meta({ description: 'Scene location (e.g., "INT. OFFICE - DAY")' }),
+  timeOfDay: z
+    .string()
+    .catch('')
+    .meta({ description: 'Time of day: day, night, dawn, dusk, etc.' }),
+  storyBeat: z
+    .string()
+    .catch('')
+    .meta({ description: 'Narrative purpose of this scene in the story' }),
 });
 
 // ============================================================================
@@ -249,16 +478,31 @@ const sceneMetadataSchema = z.object({
 // ============================================================================
 
 export const sceneSchema = z.object({
-  sceneId: z.string(), // STRICT - required for identity
-  sceneNumber: z.number(), // STRICT - required for ordering
-  originalScript: originalScriptSchema.optional(),
-  metadata: sceneMetadataSchema.optional(),
-  variants: variantsSchema.optional(),
-  selectedVariant: selectedVariantSchema.optional(),
-  prompts: promptsSchema.optional(),
-  audioDesign: audioDesignSchema.optional(),
-  continuity: continuitySchema.optional(),
-  sourceImageUrl: z.string().optional(),
+  sceneId: z
+    .string()
+    .meta({ description: 'Unique identifier for this scene (required)' }),
+  sceneNumber: z
+    .number()
+    .meta({ description: 'Scene order number starting from 1 (required)' }),
+  originalScript: originalScriptSchema
+    .catch({ extract: '', dialogue: [] })
+    .meta({ description: 'Original script content for this scene' }),
+  metadata: sceneMetadataSchema
+    .optional()
+    .meta({ description: 'Scene metadata and context' }),
+  prompts: promptsSchema.optional().meta({
+    description: 'Visual and motion generation prompts',
+  }),
+  audioDesign: audioDesignSchema
+    .optional()
+    .meta({ description: 'Audio and sound design specs' }),
+  continuity: continuitySchema
+    .optional()
+    .meta({ description: 'Continuity tracking for scene consistency' }),
+  sourceImageUrl: z
+    .string()
+    .optional()
+    .meta({ description: 'URL of generated or uploaded source image' }),
 });
 
 // ============================================================================
@@ -266,10 +510,20 @@ export const sceneSchema = z.object({
 // ============================================================================
 
 export const sceneAnalysisSchema = z.object({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  projectMetadata: projectMetadataSchema.optional(),
-  characterBible: z.array(characterBibleEntrySchema).optional(),
-  scenes: z.array(sceneSchema),
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  projectMetadata: projectMetadataSchema
+    .catch({ title: 'Untitled', aspectRatio: '16:9', generatedAt: '' })
+    .meta({ description: 'Project-level metadata extracted from script' }),
+  characterBible: z
+    .array(characterBibleEntrySchema)
+    .catch([])
+    .meta({ description: 'Character descriptions for visual consistency' }),
+  scenes: z
+    .array(sceneSchema)
+    .meta({ description: 'Array of analyzed scenes from the script' }),
 });
 
 // ============================================================================

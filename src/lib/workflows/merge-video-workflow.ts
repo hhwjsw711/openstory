@@ -16,7 +16,7 @@ import { generateId } from '@/lib/db/id';
 import type {
   MergeVideoWorkflowInput,
   MergeVideoWorkflowResult,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';

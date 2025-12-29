@@ -98,3 +98,6 @@ dist/
 
 # doppler
 doppler.json
+
+# schemas
+scripts/schemas/

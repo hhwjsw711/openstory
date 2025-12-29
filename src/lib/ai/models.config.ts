@@ -4,156 +4,100 @@
  */
 
 export const SCRIPT_ANALYSIS_MODELS = [
+  // === FAST TIER ===
   {
-    id: 'z-ai/glm-4.6',
-    name: 'GLM 4.6',
-    provider: 'Z.ai',
-    tier: 'ultra-fast',
-    description: 'Strong reasoning and tool use, 200K context (~1,000 tok/s)',
-  },
-  {
-    id: 'cerebras/qwen-3-235b-a22b-instruct-2507',
-    name: 'Qwen 3 235B Instruct',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Very large model, excellent for complex analysis',
-  },
-  {
-    id: 'cerebras/qwen-3-coder-480b',
-    name: 'Qwen 3 480B Coder',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Very large model, excellent for complex analysis',
-  },
-  // Anthropic models
-  {
-    id: 'anthropic/claude-haiku-4.5',
-    name: 'Claude Haiku 4.5',
-    provider: 'Anthropic',
+    id: 'bytedance-seed/seed-1.6-flash',
+    name: 'Seed 1.6 Flash',
+    provider: 'ByteDance',
     tier: 'fast',
-    description: 'Quick analysis, lower cost',
+    description: 'Ultra-fast multimodal with 256K context',
   },
   {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
-    provider: 'Anthropic',
-    tier: 'premium',
-    description: 'State-of-the-art coding performance',
+    id: 'minimax/minimax-m2',
+    name: 'MiniMax M2',
+    provider: 'MiniMax',
+    tier: 'fast',
+    description: 'Fast with 131K context',
   },
   {
-    id: 'anthropic/claude-opus-4.5',
-    name: 'Claude Opus 4.5',
-    provider: 'Anthropic',
-    tier: 'premium',
-    description: 'Frontier reasoning for complex tasks',
+    id: 'mistralai/mistral-small-3.2-24b-instruct',
+    name: 'Mistral Small 3.2',
+    provider: 'Mistral',
+    tier: 'fast',
+    description: 'Latest small model with 131K context',
   },
   {
-    id: 'x-ai/grok-4-fast',
-    name: 'Grok 4 Fast',
+    id: 'x-ai/grok-4.1-fast',
+    name: 'Grok 4.1 Fast',
     provider: 'xAI',
-    tier: 'premium',
-    description: 'Fast analysis, higher quality',
-  },
-  // Google models
-  {
-    id: 'google/gemini-3-pro-preview',
-    name: 'Gemini 3 Pro',
-    provider: 'Google',
-    tier: 'premium',
-    description: 'Latest multimodal reasoning model',
-  },
-  {
-    id: 'google/gemini-3-flash-preview',
-    name: 'Gemini 3 Flash',
-    provider: 'Google',
     tier: 'fast',
-    description: 'High-speed Gemini 3 model',
-  },
-  // OpenAI models
-  {
-    id: 'openai/gpt-5.2-pro',
-    name: 'GPT-5.2 Pro',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'Latest flagship model',
-  },
-  {
-    id: 'openai/gpt-5.2',
-    name: 'GPT-5.2',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'Latest GPT-5 series model',
-  },
-  {
-    id: 'openai/gpt-5.1-codex',
-    name: 'GPT-5.1 Codex',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'Optimized for code generation',
+    description: 'Latest fast xAI model',
   },
   {
     id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'OpenAI',
     tier: 'fast',
-    description: 'Compact, efficient model',
+    description: 'Compact GPT-5 with 128K context',
   },
   {
-    id: 'openai/o3-pro',
-    name: 'o3 Pro',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'Advanced reasoning model',
-  },
-  {
-    id: 'openai/o3',
-    name: 'o3',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'Well-rounded reasoning model',
-  },
-  {
-    id: 'openai/o4-mini-high',
-    name: 'o4 Mini High',
+    id: 'openai/gpt-5-nano',
+    name: 'GPT-5 Nano',
     provider: 'OpenAI',
     tier: 'fast',
-    description: 'Cost-efficient reasoning model',
-  },
-  // Cerebras models - ultra-fast inference (1,400-3,000 tokens/second)
-  {
-    id: 'cerebras/llama3.1-8b',
-    name: 'Llama 3.1 8B',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Fastest inference (~3,000 tok/s), great for rapid iterations',
+    description:
+      'GPT-5-Nano is the smallest and fastest variant in the GPT-5 system',
   },
   {
-    id: 'cerebras/llama-4-scout-17b-16e-instruct',
-    name: 'Llama 4 Scout 17B',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Balanced speed and quality (~2,200 tok/s)',
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash',
+    provider: 'Google',
+    tier: 'fast',
+    description: 'Fast multimodal model',
   },
   {
-    id: 'cerebras/qwen-3-32b',
-    name: 'Qwen 3 32B',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'High-quality medium model with excellent speed',
+    id: 'z-ai/glm-4.7',
+    name: 'GLM 4.7',
+    provider: 'Z.ai',
+    tier: 'fast',
+    description: 'Strong reasoning with 200K context',
+  },
+
+  // === PREMIUM TIER ===
+  {
+    id: 'deepseek/deepseek-v3.2',
+    name: 'DeepSeek V3.2',
+    provider: 'DeepSeek',
+    tier: 'premium',
+    description: 'Latest DeepSeek model',
   },
   {
-    id: 'cerebras/llama-3.3-70b',
-    name: 'Llama 3.3 70B',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Large model with fast inference (~1,800 tok/s)',
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro',
+    provider: 'Google',
+    tier: 'premium',
+    description: 'High-quality multimodal reasoning',
   },
   {
-    id: 'cerebras/gpt-oss-120b',
-    name: 'GPT OSS 120B',
-    provider: 'Cerebras',
-    tier: 'ultra-fast',
-    description: 'Very large model, excellent for complex analysis',
+    id: 'openai/gpt-5.2',
+    name: 'GPT-5.2',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'Latest GPT-5 series',
+  },
+  {
+    id: 'anthropic/claude-sonnet-4.5',
+    name: 'Claude Sonnet 4.5',
+    provider: 'Anthropic',
+    tier: 'premium',
+    description: 'State-of-the-art coding',
+  },
+  {
+    id: 'anthropic/claude-opus-4.5',
+    name: 'Claude Opus 4.5',
+    provider: 'Anthropic',
+    tier: 'premium',
+    description: 'Frontier reasoning',
   },
 ] as const;
 
@@ -165,14 +109,6 @@ export type AnalysisModelId = AnalysisModel['id'];
  */
 export function getAnalysisModelById(id: string): AnalysisModel | undefined {
   return SCRIPT_ANALYSIS_MODELS.find((model) => model.id === id);
-}
-
-/**
- * Get display name for a model
- */
-function getModelDisplayName(modelId: string): string {
-  const model = getAnalysisModelById(modelId);
-  return model?.name ?? modelId;
 }
 
 /**
@@ -201,7 +137,7 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
  * Default model to use when none is specified
  */
 export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
-  'anthropic/claude-haiku-4.5';
+  'anthropic/claude-sonnet-4.5';
 
 /**
  * Image generation models are now in src/lib/ai/models.ts

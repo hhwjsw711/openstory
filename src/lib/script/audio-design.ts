@@ -7,28 +7,34 @@
 
 import {
   callOpenRouterStream,
-  extractJSON,
   type ProgressCallback,
   RECOMMENDED_MODELS,
   systemMessage,
   userMessage,
 } from '@/lib/ai/openrouter-client';
-import { audioDesignSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
-import { AUDIO_DESIGN_PROMPT } from '@/lib/prompts';
+import { sceneSchema, type Scene } from '@/lib/ai/scene-analysis.schema';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import { z } from 'zod';
 
 /**
- * Schema for audio design generation validation
- * Uses canonical schemas from scene-analysis.schema.ts
+ * Schema for audio design generation validation.
+ * Uses .pick().required() from canonical sceneSchema to reuse field definitions and metadata.
  */
-const audioDesignGenerationResultSchema = z.looseObject({
-  status: z.enum(['success', 'error', 'rejected']).catch('success'),
-  scenes: z.array(
-    z.looseObject({
-      sceneId: z.string(), // STRICT - required for identity
-      audioDesign: audioDesignSchema, // Uses canonical schema with defensive defaults
-    })
-  ),
+const audioDesignGenerationResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+          audioDesign: true,
+        })
+        .required()
+    )
+    .meta({ description: 'Array of scenes with audio design' }),
 });
 
 /**
@@ -48,6 +54,9 @@ export async function generateAudioDesignForScenes(
   }
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
+
+  // Fetch prompt from Langfuse
+  const { prompt, compiled } = await getPrompt('velro/phase/audio-design');
 
   // Build user prompt with scenes (including visual/motion for context)
   const scenesJson = JSON.stringify(scenes, null, 2);
@@ -85,10 +94,19 @@ Respond with ONLY valid JSON matching the schema.`;
 
   let finalContent = '';
 
-  // Stream the response
+  // Stream the response with structured outputs
   for await (const chunk of callOpenRouterStream({
     model,
-    messages: [systemMessage(AUDIO_DESIGN_PROMPT), userMessage(userPrompt)],
+    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    prompt, // Link to trace
+    observationName: 'phase-5-audio-design',
+    tags: ['audio-design', 'phase-5', 'analysis'],
+    metadata: {
+      phase: 5,
+      phaseName: 'Audio Design',
+      sceneCount: scenes.length,
+    },
+    responseSchema: audioDesignGenerationResultSchema, // Enforce JSON schema at API level
   })) {
     finalContent = chunk.accumulated;
 
@@ -107,19 +125,10 @@ Respond with ONLY valid JSON matching the schema.`;
     throw new Error('AI response contained no content');
   }
 
-  // Extract JSON from response
-  const parsed =
-    extractJSON<z.infer<typeof audioDesignGenerationResultSchema>>(
-      finalContent
-    );
-
-  if (!parsed) {
-    throw new Error('Failed to parse AI response - invalid or missing JSON');
-  }
-
-  // Validate with Zod (validates only the enrichment data)
-  const validatedAudioDesignResult =
-    audioDesignGenerationResultSchema.parse(parsed);
+  // Parse JSON directly - structured outputs guarantees valid JSON
+  const validatedAudioDesignResult = audioDesignGenerationResultSchema.parse(
+    JSON.parse(finalContent)
+  );
 
   // Merge enrichment data back into input scenes
   const enrichedScenes: Scene[] = scenes.map((scene) => {

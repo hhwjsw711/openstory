@@ -6,7 +6,7 @@
 import { sceneSchema } from '@/lib/ai/scene-analysis.schema';
 import { designAudioTool } from '@/lib/mcp/tools/design-audio';
 import { createSSEStream, SSE_HEADERS } from '@/lib/mcp/utils/sse-stream';
-import type { Scene } from '@/lib/script';
+import type { Scene } from '@/lib/script/types';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 

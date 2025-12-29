@@ -3,7 +3,7 @@
  * Uses existing Velro motion generation service
  */
 
-import type { Scene } from '@/lib/script';
+import type { Scene } from '@/lib/script/types';
 import {
   generateMotionForFrame,
   type GenerateMotionOptions,
@@ -54,6 +54,7 @@ export async function generateMotionTool(
       duration: input.duration,
       fps: input.fps,
       aspectRatio: input.aspectRatio,
+      traceName: 'mcp-motion',
     });
 
     if (!result.success || !result.videoUrl) {

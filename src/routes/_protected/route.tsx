@@ -1,4 +1,4 @@
-import { AppLayout } from '@/components/layout';
+import { AppLayout } from '@/components/layout/app-layout';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { redirect } from '@tanstack/react-router';
 import { getSessionFn } from '@/lib/auth/server';

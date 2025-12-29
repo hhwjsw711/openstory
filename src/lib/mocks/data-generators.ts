@@ -152,7 +152,6 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
       sceneNumber: faker.number.int({ min: 1, max: 20 }),
       originalScript: {
         extract: faker.lorem.paragraph(),
-        lineNumber: faker.number.int({ min: 1, max: 100 }),
         dialogue: [],
       },
       metadata: {
@@ -167,12 +166,31 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
         ]),
         storyBeat: faker.lorem.sentence(),
       },
-      selectedVariant: {
-        cameraAngle: 'A1' as const,
-        movementStyle: 'B1' as const,
-        moodTreatment: 'C1' as const,
-        rationale: faker.lorem.sentence(),
+      audioDesign: {
+        music: {
+          presence: 'none',
+          style: '',
+          mood: '',
+          rationale: '',
+        },
+        soundEffects: [],
+        dialogue: {
+          presence: false,
+          lines: [],
+        },
+        ambient: {
+          roomTone: '',
+          atmosphere: '',
+        },
       },
+      continuity: {
+        characterTags: [],
+        environmentTag: '',
+        colorPalette: '',
+        lightingSetup: '',
+        styleTag: '',
+      },
+      sourceImageUrl: '',
       prompts: {
         visual: {
           fullPrompt: faker.lorem.paragraph(),
@@ -187,20 +205,6 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
             style: faker.lorem.word(),
             technical: faker.lorem.words(2),
             atmosphere: faker.helpers.arrayElement(moods),
-          },
-          parameters: {
-            dimensions: {
-              width: 1920,
-              height: 1080,
-              aspectRatio: '16:9',
-            },
-            quality: {
-              steps: 30,
-              guidance: 7.5,
-            },
-            control: {
-              seed: null,
-            },
           },
         },
         motion: {

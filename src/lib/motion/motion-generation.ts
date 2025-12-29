@@ -9,9 +9,14 @@ import {
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
+import {
+  createImageMedia,
+  createVideoMedia,
+} from '@/lib/observability/langfuse-media';
 
 // Re-export for tests
 import { getEnv } from '#env';
+import { startObservation } from '@langfuse/tracing';
 import {
   type AspectRatio,
   aspectRatioSchema,
@@ -46,6 +51,8 @@ export type GenerateMotionOptions = {
   fps?: number;
   motionBucket?: number;
   aspectRatio?: AspectRatio;
+  // Langfuse trace name (defaults to 'fal-motion')
+  traceName?: string;
 };
 
 export type MotionResult = {
@@ -165,6 +172,60 @@ export async function generateMotionForFrame(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
+  // Fetch input image for inline preview in Langfuse
+  const inputImageMedia = await createImageMedia(options.imageUrl);
+
+  const span = startObservation(
+    options.traceName ?? 'fal-motion',
+    {
+      model: modelKey,
+      input: {
+        prompt: options.prompt,
+        imageUrl: options.imageUrl,
+        ...(inputImageMedia && { inputImage: inputImageMedia }),
+      },
+    },
+    { asType: 'generation' }
+  );
+
+  try {
+    const result = await generateMotionInternal(options, modelConfig);
+
+    // Fetch output video for Langfuse media attachment
+    const outputVideoMedia = result.videoUrl
+      ? await createVideoMedia(result.videoUrl)
+      : null;
+
+    span
+      .update({
+        output: {
+          videoUrl: result.videoUrl,
+          ...(outputVideoMedia && { generatedVideo: outputVideoMedia }),
+        },
+        costDetails: result.metadata?.cost
+          ? { total: result.metadata.cost as number }
+          : undefined,
+      })
+      .end();
+    return result;
+  } catch (error) {
+    span
+      .update({
+        level: 'ERROR',
+        statusMessage: error instanceof Error ? error.message : String(error),
+      })
+      .end();
+    throw error;
+  }
+}
+
+/**
+ * Internal motion generation implementation
+ */
+async function generateMotionInternal(
+  options: GenerateMotionOptions,
+  modelConfig: ImageToVideoModelConfig
+): Promise<MotionResult> {
   // Get the provider-specific input builder
   const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
@@ -266,6 +327,9 @@ export async function generateMotionForFrame(
     options.duration || modelConfig.capabilities.defaultDuration;
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
+  // Calculate cost based on duration and per-second pricing
+  const estimatedCost = modelConfig.pricing.pricePerSecond * validatedDuration;
+
   return {
     success: true,
     videoUrl,
@@ -280,7 +344,7 @@ export async function generateMotionForFrame(
       fps: validatedFps,
       motionBucket: options.motionBucket,
       totalFrames: Math.round(validatedDuration * validatedFps),
-      cost: modelConfig.pricing.estimatedCost,
+      cost: estimatedCost,
       generatedAt: new Date().toISOString(),
     },
   };

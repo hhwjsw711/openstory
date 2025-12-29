@@ -15,12 +15,10 @@ import {
 } from '@/lib/db/helpers/sequences';
 import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import {
-  extractCharacterBible,
-  generateAudioDesignForScenes,
-  generateMotionPromptsForScenes,
-  splitScriptIntoScenes,
-} from '@/lib/script';
+import { extractCharacterBible } from '@/lib/script/character-extraction';
+import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
+import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
+import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import type { Scene } from '@/lib/script/types';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
@@ -31,8 +29,9 @@ import type {
   ImageWorkflowInput,
   MotionWorkflowInput,
   TalentCharacterMatch,
-} from '@/lib/workflow';
+} from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
@@ -71,7 +70,6 @@ function matchCharactersToScene(
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
     const input = context.requestPayload;
-
     const {
       sequenceId,
       script,
@@ -491,7 +489,10 @@ export const analyzeScriptWorkflow = createWorkflow(
               (frame) => frame.sceneId === scene.sceneId
             );
             if (!frame) return;
-            await updateFrame(frame.frameId, { metadata: scene });
+            await updateFrame(frame.frameId, {
+              metadata: scene,
+              motionPrompt: scene.prompts?.motion?.fullPrompt,
+            });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
@@ -622,6 +623,25 @@ export const analyzeScriptWorkflow = createWorkflow(
         })
       );
     }
+
+    // Record workflow trace as a durable step (only runs once at completion)
+    if (sequenceId) {
+      await context.run('record-workflow-trace', async () => {
+        await recordWorkflowTrace(
+          'analyzeScriptWorkflow',
+          { script, styleConfig, aspectRatio },
+          completeScenes,
+          sequenceId,
+          input.userId,
+          {
+            model: analysisModelId,
+            durationMs: Date.now() - startTime,
+          }
+        );
+      });
+    }
+
+    return completeScenes;
   },
   {
     retries: 3,

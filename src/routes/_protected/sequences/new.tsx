@@ -1,4 +1,4 @@
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
 import { ScriptView } from '@/components/script/script-view';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';

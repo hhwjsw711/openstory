@@ -4,7 +4,7 @@
  */
 
 import { VerifyForm } from '@/components/auth/verify-form';
-import { PageContainer } from '@/components/layout';
+import { PageContainer } from '@/components/layout/page-container';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
 import { Navigate, createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';

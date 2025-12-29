@@ -1,13 +1,11 @@
-import { VideoIcon } from '@/components/icons';
-import { PageContainer } from '@/components/layout';
-import { SequencesList } from '@/components/sequence/sequences-list';
-import {
-  PageDescription,
-  PageHeader,
-  PageHeading,
-} from '@/components/typography';
+import { VideoIcon } from '@/components/icons/video-icon';
+import { PageContainer } from '@/components/layout/page-container';
+import { PageDescription } from '@/components/typography/page-description';
+import { PageHeader } from '@/components/typography/page-header';
+import { PageHeading } from '@/components/typography/page-heading';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SequencesList } from '@/components/sequence/sequences-list';
 import { useSequences } from '@/hooks/use-sequences';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
 import { createFileRoute, Link } from '@tanstack/react-router';

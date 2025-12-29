@@ -9,7 +9,7 @@ import {
   sceneSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
-import type { Scene } from '@/lib/script';
+import type { Scene } from '@/lib/script/types';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { z } from 'zod';

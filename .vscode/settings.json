@@ -56,12 +56,11 @@
   "oxc.typeAware": true,
   "git.repositoryScanIgnoredFolders": ["node_modules", ".conductor", ".trees"],
   "typescript.experimental.useTsgo": true,
-  "oxc.fmt.experimental": true,
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "oxc.fixKind": "dangerous_fix_or_suggestion",
   "oxc.fmt.configPath": ".oxfmtrc.json",
   "javascript.updateImportsOnFileMove.enabled": "always",
   "typescript.updateImportsOnFileMove.enabled": "always",
   "workbench.editor.closeOnFileDelete": false,
-  "bun.test.filePattern": "src/**/*{.test.,.spec.,_test_,_spec_}{js,ts,tsx,jsx,mts,cts,cjs,mjs}"
+  "bun.test.filePattern": "**/src/**/*{.test.,.spec.,_test_,_spec_}{js,ts,tsx,jsx,mts,cts,cjs,mjs}"
 }
