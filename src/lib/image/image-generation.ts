@@ -126,6 +126,27 @@ function extractProgress(update: QueueStatus): number | undefined {
 }
 
 /**
+ * Truncate prompt to model's maximum length
+ * Returns original prompt if under limit or if model has no limit
+ */
+function truncatePromptForModel(
+  prompt: string,
+  model: TextToImageModel
+): string {
+  const maxLength = IMAGE_MODELS[model].maxPromptLength;
+  if (!maxLength || prompt.length <= maxLength) {
+    return prompt;
+  }
+
+  // Leave room for ellipsis indicator
+  const truncated = prompt.slice(0, maxLength - 3) + '...';
+  console.warn(
+    `[Image Generation] Prompt truncated from ${prompt.length} to ${maxLength} chars for ${model}`
+  );
+  return truncated;
+}
+
+/**
  * Generate image using a switch statement to determine parameters by model type
  * Pure switch-statement approach with fully inlined fal.subscribe calls
  */
@@ -188,6 +209,9 @@ async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
 ): Promise<ImageGenerationResult> {
+  // Truncate prompt to model's max length
+  const prompt = truncatePromptForModel(params.prompt, params.model);
+
   switch (params.model) {
     case 'flux_pro':
     case 'flux_dev':
@@ -199,7 +223,7 @@ async function generateImageInternal(
       const defaultSteps = params.model === 'flux_schnell' ? 4 : 28;
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           // Sizing: Ultra uses aspect_ratio, others use image_size
           ...(isUltra
             ? {
@@ -264,7 +288,7 @@ async function generateImageInternal(
       // FLUX 2 - Enhanced realism, crisper text, native editing
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           num_inference_steps: params.numInferenceSteps ?? 28,
           guidance_scale: params.guidanceScale ?? 2.5,
@@ -307,7 +331,7 @@ async function generateImageInternal(
       const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           num_inference_steps: params.numInferenceSteps ?? defaultSteps,
           enable_safety_checker: true,
@@ -360,7 +384,7 @@ async function generateImageInternal(
     case 'imagen4_preview_ultra': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -395,7 +419,7 @@ async function generateImageInternal(
     case 'nano_banana': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -435,7 +459,7 @@ async function generateImageInternal(
 
       const resp = await fal.subscribe(endpoint, {
         input: {
-          prompt: params.prompt,
+          prompt,
           aspect_ratio: imageSizeToAspectRatio(
             params.imageSize ?? DEFAULT_IMAGE_SIZE
           ),
@@ -472,7 +496,7 @@ async function generateImageInternal(
     case 'recraft_v3': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           style: params.style ?? 'realistic_image',
           enable_safety_checker: false, // Default false for Recraft
@@ -503,7 +527,7 @@ async function generateImageInternal(
     case 'hidream_i1_full': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: { width: 1024, height: 1024 }, // HiDream uses object
           num_inference_steps: params.numInferenceSteps ?? 50,
           guidance_scale: params.guidanceScale ?? 5,
@@ -543,7 +567,7 @@ async function generateImageInternal(
     case 'seedream_v4_5': {
       const resp = await fal.subscribe(modelId, {
         input: {
-          prompt: params.prompt,
+          prompt,
           image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
           enable_safety_checker: true,
           ...(params.seed !== undefined && { seed: params.seed }),
@@ -584,7 +608,7 @@ async function generateImageInternal(
       const resp = await imagesCreate({
         // @ts-expect-error - webhookUrl is not required for imagesCreate
         body: {
-          prompt: params.prompt,
+          prompt,
           width: presetDims.width,
           height: presetDims.height,
           quality: params.quality ?? 5,

@@ -11,32 +11,41 @@ Custom evaluators for the `analyze-script-workflow.ts` pipeline. Copy-paste thes
 **Prompt:**
 
 ```
-You are evaluating the quality of a scene splitting analysis from a video script.
+You are a CRITICAL scene splitting evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most scene splits score 0.5-0.7. Be specific about every weakness.
 
-## Input Script:
+<input_script>
 {{input}}
+</input_script>
 
-## Scene Splitting Output:
+<scene_splitting_output>
 {{output}}
+</scene_splitting_output>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Scene Boundary Accuracy**: Are scenes split at natural narrative breaks (location changes, time jumps, new actions)?
-2. **Completeness**: Does every part of the script appear in exactly one scene?
-3. **Metadata Quality**: Does each scene have meaningful title, duration estimate, location, and time of day?
-4. **Script Preservation**: Is the originalScript.extract an exact copy from the input (not modified or enhanced)?
-5. **Logical Ordering**: Are sceneNumber values sequential and sceneIds unique?
-6. **Single Shot Compliance**: Does each scene represent exactly ONE camera shot (single continuous take)?
-   - Check for multi-shot indicators in originalScript.extract:
-     * "Cut to", "cuts to", "we cut to"
-     * "Then we see", "now we see", "next we see"
-     * Multiple camera framings: "Close-up... Wide shot..." in same scene
-     * "Meanwhile", "elsewhere", "back to"
-   - A scene with ANY of these indicators should have been split further
+**Major Issues (-0.3 each):**
+- Multi-shot scene: contains "cut to", "then we see", "meanwhile", or multiple camera framings
+- Missing script content: parts of the input script not represented in any scene
+- Fabricated content: scene contains details not in the original script
 
-Score 0 if: Scenes are arbitrarily split, script content is missing, metadata is fabricated, OR scenes contain multiple shots/cuts.
-Score 0.5 if: Basic scene splits are correct but metadata is incomplete, script extracts are paraphrased, OR minor multi-shot issues exist.
-Score 1 if: Scene boundaries are narratively logical, all script content is preserved exactly, metadata is accurate, AND each scene is a single continuous shot.
+**Moderate Issues (-0.15 each):**
+- Scene boundaries at awkward narrative points (mid-action, mid-dialogue)
+- Paraphrased script extracts instead of exact copies
+- Missing or vague metadata (no location, no time of day, generic titles)
+- Non-sequential sceneNumber values or duplicate sceneIds
+
+**Minor Issues (-0.05 each):**
+- Duration estimates unrealistic for the action described
+- Inconsistent metadata formatting across scenes
+- Overly granular splits (single line that doesn't need its own scene)
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect scene splits are rare.
+A "good" scene split typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -59,26 +68,41 @@ Score 1 if: Scene boundaries are narratively logical, all script content is pres
 **Prompt:**
 
 ```
-You are evaluating the quality of a character bible extracted from script scenes.
+You are a CRITICAL character bible evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most character bibles score 0.5-0.7. Be specific about every weakness.
 
-## Scene Data:
+<scene_data>
 {{input}}
+</scene_data>
 
-## Character Bible Output:
+<character_bible_output>
 {{output}}
+</character_bible_output>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Character Coverage**: Are ALL characters mentioned in the scenes identified? (No missing characters)
-2. **Physical Description Quality**: Are descriptions detailed enough for visual consistency (hair, build, skin tone, distinguishing features)?
-3. **Costume Accuracy**: Are clothing details specific and useful for image generation?
-4. **First Appearance Tracking**: Is firstAppearance correctly linked to the right scene with accurate line references?
-5. **Consistency Tag Usefulness**: Is the consistencyTag short, memorable, and unique per character?
-6. **No Hallucination**: Are all character details actually derivable from the script, not invented?
+**Major Issues (-0.3 each):**
+- Missing character: a speaking or named character from the script is not in the bible
+- Hallucinated details: physical features or clothing not derivable from the script
+- Vague description: "a man", "a woman", "person" without visual specifics
 
-Score 0 if: Major characters are missing, descriptions are vague ("a man"), or details are fabricated.
-Score 0.5 if: Characters are identified but descriptions lack visual specificity or have minor inaccuracies.
-Score 1 if: All characters extracted with detailed, accurate, script-grounded descriptions suitable for consistent image generation.
+**Moderate Issues (-0.15 each):**
+- Incomplete physical description (missing hair, build, or skin tone when inferable)
+- Generic costume description ("casual clothes", "business attire" without specifics)
+- Wrong firstAppearance scene or line reference
+- Duplicate or confusing consistencyTags
+
+**Minor Issues (-0.05 each):**
+- ConsistencyTag too long or not memorable
+- Minor characters over-described beyond what script supports
+- Inconsistent formatting across character entries
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect character bibles are rare.
+A "good" character bible typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -105,13 +129,15 @@ You are a CRITICAL prompt quality evaluator. Your job is to find flaws.
 A score of 1.0 is RARE - reserved for prompts that would impress a professional cinematographer.
 Most AI prompts score 0.5-0.7. Be ruthlessly specific about every weakness.
 
-## Scene Data:
+<scene_data>
 {{input}}
+</scene_data>
 
-## Visual Prompt Output:
+<visual_prompt_output>
 {{output}}
+</visual_prompt_output>
 
-## Scoring Method
+<scoring_method>
 Start at 1.0 and DEDUCT for each issue:
 
 **Major Issues (-0.5 each):**
@@ -138,9 +164,12 @@ Start at 1.0 and DEDUCT for each issue:
 - Missing color palette or mood guidance
 - Inconsistent terminology between prompt sections
 - Missing aspect ratio or composition guidance
+</scoring_method>
 
+<instructions>
 IMPORTANT: You MUST find at least 2 issues in any prompt. Perfect prompts are extremely rare.
 A "good" prompt that accomplishes its goal typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -148,9 +177,7 @@ A "good" prompt that accomplishes its goal typically scores 0.7.
 ```json
 {
   "score": "Final score after deductions (0.0-1.0, rounded to 1 decimal)",
-  "issues": ["List every flaw found, one per item - be specific"],
-  "deductions": "Show math: 1.0 - 0.2 (multi-shot) - 0.1 (no lighting) = 0.7",
-  "reasoning": "1-2 sentence summary"
+  "reasoning": "List each issue found with its deduction, then show math: 1.0 - 0.2 (multi-shot) - 0.1 (no lighting) = 0.7"
 }
 ```
 
@@ -169,13 +196,15 @@ You are a CRITICAL motion prompt evaluator. Your job is to find flaws.
 A score of 1.0 is RARE - reserved for prompts a VFX supervisor would approve.
 Most motion prompts score 0.5-0.7. Be ruthlessly specific about every weakness.
 
-## Scene with Visual Prompt:
+<scene_with_visual_prompt>
 {{input}}
+</scene_with_visual_prompt>
 
-## Motion Prompt Output:
+<motion_prompt_output>
 {{output}}
+</motion_prompt_output>
 
-## Scoring Method
+<scoring_method>
 Start at 1.0 and DEDUCT for each issue:
 
 **Major Issues (-0.2 each):**
@@ -198,9 +227,12 @@ Start at 1.0 and DEDUCT for each issue:
 - Missing ambient motion (wind, particles, background elements)
 - No mention of focus changes if depth is involved
 - Awkward phrasing for video model interpretation
+</scoring_method>
 
+<instructions>
 IMPORTANT: You MUST find at least 2 issues. A "solid" motion prompt scores 0.7.
 Motion prompts are notoriously hard to get right - be skeptical.
+</instructions>
 ```
 
 **Output Schema:**
@@ -208,9 +240,7 @@ Motion prompts are notoriously hard to get right - be skeptical.
 ```json
 {
   "score": "Final score after deductions (0.0-1.0, rounded to 1 decimal)",
-  "issues": ["List every flaw found, one per item - be specific"],
-  "deductions": "Show math: 1.0 - 0.2 (no camera specified) - 0.1 (no timing) = 0.7",
-  "reasoning": "1-2 sentence summary"
+  "reasoning": "List each issue found with its deduction, then show math: 1.0 - 0.2 (no camera) - 0.1 (no timing) = 0.7"
 }
 ```
 
@@ -225,27 +255,42 @@ Motion prompts are notoriously hard to get right - be skeptical.
 **Prompt:**
 
 ```
-You are evaluating the quality of audio design specifications for a video scene.
+You are a CRITICAL audio design evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most audio designs score 0.5-0.7. Be specific about every weakness.
 
-## Scene Data (with visual/motion context):
+<scene_data>
 {{input}}
+</scene_data>
 
-## Audio Design Output:
+<audio_design_output>
 {{output}}
+</audio_design_output>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Music Appropriateness**: Does music presence and style match the scene's mood and energy?
-2. **Sound Effects Relevance**: Are SFX tied to visible actions or environment in the visual prompt?
-3. **Dialogue Accuracy**: If dialogue exists in the original script, is it correctly represented?
-4. **Ambient Sound Coherence**: Does ambient audio match the location (indoor/outdoor, urban/natural)?
-5. **Spatial Design**: Are sound positions (left/center/right/surround) narratively motivated?
-6. **Volume Balance**: Do volume levels (low/medium/high) create appropriate hierarchy?
-7. **Timing Precision**: Are SFX timings realistic for the scene duration?
+**Major Issues (-0.3 each):**
+- Sound for non-existent element: SFX for action not in the visual prompt
+- Missing dialogue: script dialogue not represented in audio design
+- Contradictory audio: music mood clashes with scene tone (upbeat music for somber scene)
 
-Score 0 if: Audio contradicts the visual scene or includes sounds for non-existent elements.
-Score 0.5 if: Audio is generally appropriate but lacks detail or spatial consideration.
-Score 1 if: Audio design is comprehensive, spatially aware, and perfectly aligned with visual/motion content.
+**Moderate Issues (-0.15 each):**
+- Generic ambient sound not matching specific location
+- No spatial positioning when scene has clear left/right action
+- Missing obvious SFX for visible actions (footsteps, door, etc.)
+- Unrealistic timing (SFX duration doesn't match scene length)
+- Volume hierarchy issues (SFX drowning dialogue)
+
+**Minor Issues (-0.05 each):**
+- Overly generic music description ("background music")
+- Missing ambient layer entirely
+- Inconsistent volume level terminology
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect audio designs are rare.
+A "good" audio design typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -268,25 +313,40 @@ Score 1 if: Audio design is comprehensive, spatially aware, and perfectly aligne
 **Prompt:**
 
 ```
-You are evaluating the accuracy of talent-to-character matching.
+You are a CRITICAL talent matching evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most talent matches score 0.5-0.7. Be specific about every weakness.
 
-## Character Bible:
+<character_bible>
 {{input}}
+</character_bible>
 
-## Talent Matches Output:
+<talent_matches_output>
 {{output}}
+</talent_matches_output>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Match Relevance**: Do matched talent physically resemble the character descriptions?
-2. **Coverage**: Are all major characters with suggested talent assigned a match (when appropriate)?
-3. **No Force-Fitting**: Are unmatched talents correctly left unused rather than forced onto incompatible characters?
-4. **Confidence Justification**: Is the matching rationale based on actual visual similarity?
-5. **Consistency**: If talent has multiple characteristics, are they all considered?
+**Major Issues (-0.3 each):**
+- Physical mismatch: talent appearance contradicts character description (wrong age, build, etc.)
+- Force-fitted match: incompatible talent assigned to fill a gap
+- Missing major character: a lead character has no talent match when suitable options exist
 
-Score 0 if: Matches are random or ignore physical descriptions entirely.
-Score 0.5 if: Matches are reasonable but some are forced or lack clear justification.
-Score 1 if: All matches are visually justified and unused talent is appropriately flagged.
+**Moderate Issues (-0.15 each):**
+- Weak justification: match rationale doesn't reference specific physical similarities
+- Partial mismatch: some characteristics align but others clearly don't
+- Unused suitable talent: talent that fits a character well is left unassigned
+
+**Minor Issues (-0.05 each):**
+- Over-confident match score for marginal fit
+- Inconsistent matching criteria across characters
+- Vague matching rationale ("looks similar" without specifics)
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect talent matches are rare.
+A "good" talent matching typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -309,26 +369,42 @@ Score 1 if: All matches are visually justified and unused talent is appropriatel
 **Prompt:**
 
 ```
-You are evaluating the overall coherence of a complete script-to-video analysis workflow.
+You are a CRITICAL workflow coherence evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most workflows score 0.5-0.7. Be specific about every weakness.
 
-## Original Script:
+<original_script>
 {{input}}
+</original_script>
 
-## Complete Workflow Output (all phases):
+<complete_workflow_output>
 {{output}}
+</complete_workflow_output>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Information Flow**: Does each phase correctly build on previous phases (scenes -> characters -> prompts -> motion -> audio)?
-2. **No Contradictions**: Are there any conflicts between phases (e.g., character in audio not in visual)?
-3. **Script Fidelity**: Does the final output faithfully represent the original script's intent?
-4. **Production Readiness**: Could these outputs directly drive image/video/audio generation?
-5. **Consistency Maintenance**: Are character tags and style consistent across all scenes?
-6. **Completeness**: Are all scenes fully processed through all applicable phases?
+**Major Issues (-0.3 each):**
+- Phase contradiction: character in audio not present in visual prompt
+- Lost script intent: final output doesn't represent original script meaning
+- Missing scene: a scene from splitting not processed through later phases
+- Broken information flow: later phase ignores data from earlier phase
 
-Score 0 if: Major disconnects between phases or script intent is lost.
-Score 0.5 if: Workflow is connected but has minor inconsistencies or gaps.
-Score 1 if: Seamless flow from script to production-ready outputs with full consistency.
+**Moderate Issues (-0.15 each):**
+- Inconsistent character tags across scenes
+- Style drift: visual style changes between scenes without narrative reason
+- Incomplete phase: scene missing motion or audio when it should have both
+- Production blockers: output format unusable for generation
+
+**Minor Issues (-0.05 each):**
+- Minor terminology inconsistencies across phases
+- Redundant information repeated across phases
+- Formatting inconsistencies in output structure
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect workflow coherence is rare.
+A "good" workflow typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -353,29 +429,48 @@ Score 1 if: Seamless flow from script to production-ready outputs with full cons
 **Prompt:**
 
 ```
-You are evaluating the visual quality and aesthetics of an AI-generated image.
+You are a CRITICAL image quality evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most AI images score 0.5-0.7. Be specific about every weakness.
 
-## Generation Prompt:
+<generation_prompt>
 {{prompt}}
+</generation_prompt>
 
-## Reference Images (if any):
+<reference_images>
 {{referenceImageUrls}}
+</reference_images>
 
-## Generated Image:
+<generated_image>
 ![image]({{imageUrl}})
+</generated_image>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Composition**: Is the image well-composed with balanced elements, clear focal points, and appropriate framing?
-2. **Lighting Quality**: Is the lighting natural, consistent, and appropriate for the scene?
-3. **Clarity & Sharpness**: Is the image crisp and detailed without blur, noise, or artifacts?
-4. **Artistic Quality**: Does the image have visual appeal, appropriate color harmony, and professional aesthetics?
-5. **Technical Quality**: Is the image free of AI artifacts (distorted hands, text errors, unnatural proportions)?
-6. **Reference Consistency** (if reference images provided): Does the generated image maintain visual consistency with the reference images (character appearance, style, etc.)?
+**Major Issues (-0.3 each):**
+- Broken anatomy: distorted hands, extra limbs, impossible body proportions
+- Text artifacts: gibberish text, mangled letters, unreadable signage
+- Major blur: subject is unfocused or image lacks sharpness
+- Reference mismatch: character looks nothing like reference images
 
-Score 0 if: Image has major artifacts, is blurry, has broken anatomy, or is technically unusable.
-Score 0.5 if: Image is acceptable but has minor quality issues (slight blur, minor artifacts, or composition problems).
-Score 1 if: Image is high quality with excellent composition, lighting, and no visible artifacts.
+**Moderate Issues (-0.15 each):**
+- Composition problems: awkward framing, cut-off subjects, poor balance
+- Lighting inconsistencies: shadows going wrong direction, unnatural highlights
+- Minor anatomical issues: slightly off proportions, stiff poses
+- Style drift from reference images
+- Visible AI artifacts (smoothing, texture repetition)
+
+**Minor Issues (-0.05 each):**
+- Slight blur in non-focal areas
+- Minor color harmony issues
+- Background lacks detail or interest
+- Prompt elements missing but not critical
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect AI images are rare.
+A "good" AI image typically scores 0.7.
+</instructions>
 ```
 
 **Output Schema:**
@@ -418,30 +513,49 @@ Score 1 if: Image is high quality with excellent composition, lighting, and no v
 **Prompt:**
 
 ```
-You are evaluating the quality of an AI-generated video (image-to-video motion).
+You are a CRITICAL video quality evaluator. Your job is to find flaws.
+A score of 1.0 is RARE. Most AI videos score 0.5-0.7. Be specific about every weakness.
 
-## Motion Prompt:
+<motion_prompt>
 {{prompt}}
+</motion_prompt>
 
-## Source Image:
+<source_image>
 {{sourceImageUrl}}
+</source_image>
 
-## Generated Video:
+<generated_video>
 {{videoUrl}}
+</generated_video>
 
-## Evaluation Criteria:
+<scoring_method>
+Start at 1.0 and DEDUCT for each issue:
 
-1. **Motion Quality**: Does the movement appear smooth, natural, and free of jitter or stuttering?
-2. **Prompt Adherence**: Does the motion match what was requested in the prompt (camera movement, subject motion)?
-3. **Visual Consistency**: Is the subject stable throughout? No flickering, morphing, or unnatural deformations?
-4. **Temporal Coherence**: Do frames flow naturally from one to the next without jarring transitions?
-5. **Source Fidelity**: Does the video maintain the visual quality and content of the source image?
+**Major Issues (-0.3 each):**
+- Uncontrolled morphing: subject deforms unnaturally during motion
+- Motion contradicts prompt: camera moves opposite direction, wrong type of movement
+- Severe artifacts: flickering, frame jumps, visual corruption
+- Source degradation: video quality much worse than source image
 
-Score 0 if: Video has severe artifacts, uncontrolled morphing, or motion that contradicts the prompt.
-Score 0.5 if: Motion is present but has minor issues (slight jitter, partial prompt adherence, minor flickering).
-Score 1 if: Smooth, natural motion that accurately follows the prompt with no visible artifacts.
+**Moderate Issues (-0.15 each):**
+- Jittery motion: movement stutters or lacks smoothness
+- Partial prompt adherence: some requested motion present, some missing
+- Temporal inconsistency: subject appearance changes between frames
+- Unnatural physics: motion defies gravity or expected physics
 
-Note: If you cannot view the video directly, evaluate based on whether the motion prompt is appropriate for the source image and likely to produce good results.
+**Minor Issues (-0.05 each):**
+- Slight flickering in background elements
+- Motion slightly faster/slower than appropriate
+- Minor quality loss from source image
+- Ambient motion missing (static background when wind implied)
+</scoring_method>
+
+<instructions>
+IMPORTANT: You MUST find at least 2 issues. Perfect AI videos are rare.
+A "good" AI video typically scores 0.7.
+
+If you cannot view the video directly, evaluate based on whether the motion prompt is appropriate for the source image and likely to produce good results.
+</instructions>
 ```
 
 **Output Schema:**
