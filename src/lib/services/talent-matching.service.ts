@@ -28,7 +28,7 @@ const talentMatchResponseSchema = z.object({
     z.object({
       characterId: z.string(),
       talentId: z.string(),
-      confidence: z.number().min(0).max(1),
+      confidence: z.number(), // 0-1 range enforced by prompt, not schema (Anthropic doesn't support min/max)
       reason: z.string(),
     })
   ),
