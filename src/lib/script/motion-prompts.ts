@@ -27,7 +27,7 @@ import { z } from 'zod';
  * Note: The motion field uses a preprocess to handle AI model variations.
  * Some models return motion as an array instead of an object - we take the first element.
  */
-const motionPromptGenerationResultSchema = z.object({
+export const motionPromptGenerationResultSchema = z.object({
   status: z
     .enum(['success', 'error', 'rejected'])
     .catch('success')

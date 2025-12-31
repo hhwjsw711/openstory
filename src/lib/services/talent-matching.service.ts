@@ -23,7 +23,7 @@ import { z } from 'zod';
 /**
  * Schema for AI matching response
  */
-const talentMatchResponseSchema = z.object({
+export const talentMatchResponseSchema = z.object({
   matches: z.array(
     z.object({
       characterId: z.string(),
@@ -37,7 +37,7 @@ const talentMatchResponseSchema = z.object({
 /**
  * Build the user prompt for matching
  */
-function buildMatchingPrompt(
+export function buildMatchingPrompt(
   characters: CharacterBibleEntry[],
   talentList: TalentWithSheets[]
 ): string {

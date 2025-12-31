@@ -5,7 +5,7 @@
 
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import type { ProgressCallback } from '@/lib/ai/openrouter-client';
+import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   updateSequenceAnalysisDurationMs,
@@ -15,14 +15,17 @@ import {
 } from '@/lib/db/helpers/sequences';
 import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { extractCharacterBible } from '@/lib/script/character-extraction';
-import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
-import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
-import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
+import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
+import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
+import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
+import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
 import type { Scene } from '@/lib/script/types';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
-import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
+import {
+  talentMatchResponseSchema,
+  buildMatchingPrompt,
+} from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   AnalyzeScriptWorkflowInput,
@@ -31,7 +34,13 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { recordWorkflowTrace } from '@/lib/observability/langfuse';
+import {
+  logGeneration,
+  recordWorkflowTrace,
+} from '@/lib/observability/langfuse';
+import { getChatPrompt, getPrompt } from '@/lib/observability/langfuse-prompts';
+import { getEnv } from '#env';
+import { z } from 'zod';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
@@ -82,40 +91,106 @@ export const analyzeScriptWorkflow = createWorkflow(
       suggestedTalentIds,
     } = input;
 
-    // STEP: Split script into basic scenes and store in sequence metadata
-    const { scenes, title, startTime } = await context.run(
-      'split-script-into-scenes',
-      async () => {
-        const startTime = Date.now();
+    // ============================================================
+    // PHASE 1: Scene Splitting (three-step durable pattern)
+    // ============================================================
 
-        if (!script) {
-          throw new WorkflowValidationError('No script found');
+    // Step 1: Validate input, emit phase start, fetch prompts, record start time
+    const {
+      startTime,
+      messages: sceneSplittingMessages,
+      promptClient: sceneSplittingPromptClient,
+    } = await context.run('prepare-scene-splitting', async () => {
+      if (!script) {
+        throw new WorkflowValidationError('No script found');
+      }
+
+      // Emit Phase 1 start
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 1,
+        phaseName: 'Scene Splitting',
+      });
+
+      // Fetch chat prompt from Langfuse (contains both system + user messages)
+      const { prompt: promptClient, messages } = await getChatPrompt(
+        'velro/phase/scene-splitting-chat',
+        {
+          aspectRatio,
+          script: sanitizeScriptContent(script),
+        }
+      );
+
+      return {
+        startTime: Date.now(),
+        promptClient,
+        messages,
+      };
+    });
+
+    // Step 2: Durable LLM call via context.api.openai
+    const { body } = await context.api.openai.call('scene-splitting', {
+      baseURL: 'https://openrouter.ai/api',
+      token: getEnv().OPENROUTER_KEY,
+      operation: 'chat.completions.create',
+      body: {
+        model: analysisModelId,
+        messages: sceneSplittingMessages,
+        usage: {
+          include: true,
+        },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'scene-splitting',
+            strict: true,
+            schema: z.toJSONSchema(sceneSplittingResultSchema),
+          },
+        },
+      },
+    });
+    const sceneSplittingResponse = body;
+
+    if (!sceneSplittingResponse) {
+      throw new WorkflowValidationError(
+        'Scene splitting LLM call failed - no response'
+      );
+    }
+
+    // Step 3: Log to Langfuse with precise timing, parse response, emit events
+    const { scenes, title } = await context.run(
+      'log-scene-splitting',
+      async () => {
+        const content = sceneSplittingResponse.choices[0]?.message?.content;
+        if (!content) {
+          throw new WorkflowValidationError(
+            'Scene splitting LLM response has no content'
+          );
         }
 
-        // Emit Phase 1 start
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 1,
-          phaseName: 'Scene Splitting',
+        // Log to Langfuse with precise start time
+        logGeneration({
+          name: 'phase-1-scene-splitting',
+          model: analysisModelId,
+          input: sceneSplittingMessages,
+          output: content,
+          usage: sceneSplittingResponse.usage,
+          prompt: sceneSplittingPromptClient,
+          tags: ['scene-splitting', 'phase-1', 'analysis'],
+          metadata: { phase: 1, phaseName: 'Scene Splitting' },
+          startTime: new Date(startTime),
         });
 
-        const splitScriptProgressCallback: ProgressCallback = () => {};
-        const result = await splitScriptIntoScenes(
-          script,
-          aspectRatio,
-          splitScriptProgressCallback,
-          {
-            model: analysisModelId,
-          }
-        );
+        // Parse and validate
+        const validated = sceneSplittingResultSchema.parse(JSON.parse(content));
 
-        if (!result.scenes || result.scenes.length === 0) {
+        if (!validated.scenes || validated.scenes.length === 0) {
           throw new WorkflowValidationError(
             'Script splitting returned no scenes - script may be too short or invalid'
           );
         }
 
         // Emit scene:new for each scene that was split
-        for (const scene of result.scenes) {
+        for (const scene of validated.scenes) {
           await getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
@@ -132,9 +207,8 @@ export const analyzeScriptWorkflow = createWorkflow(
         );
 
         return {
-          scenes: result.scenes,
-          title: result.projectMetadata?.title || 'Untitled',
-          startTime: startTime,
+          scenes: validated.scenes as Scene[],
+          title: validated.projectMetadata?.title || 'Untitled',
         };
       }
     );
@@ -202,25 +276,95 @@ export const analyzeScriptWorkflow = createWorkflow(
         return frameMapping;
       });
 
-    // ------------------------------------------------------------
-    // Extract character bible from scenes
-    const characterBible = await context.run(
-      'extract-character-bible',
-      async () => {
-        const extractCharacterBibleProgressCallback: ProgressCallback =
-          () => {};
+    // ============================================================
+    // PHASE 2: Character Extraction (three-step durable pattern)
+    // ============================================================
 
-        // Emit Phase 2 start
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 2,
-          phaseName: 'Character Extraction',
+    // Step 1: Emit phase start, fetch prompts, record start time
+    const {
+      startTime: charExtractionStartTime,
+      messages: charExtractionMessages,
+      promptClient: charExtractionPromptClient,
+    } = await context.run('prepare-character-extraction', async () => {
+      // Emit Phase 2 start
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 2,
+        phaseName: 'Character Extraction',
+      });
+
+      // Fetch chat prompt from Langfuse (contains both system + user messages)
+      const { prompt: promptClient, messages } = await getChatPrompt(
+        'velro/phase/character-extraction-chat',
+        {
+          scenes: JSON.stringify(scenes, null, 2),
+        }
+      );
+
+      return {
+        startTime: Date.now(),
+        promptClient,
+        messages,
+      };
+    });
+
+    // Step 2: Durable LLM call via context.api.openai
+    const { body: charExtractionResponse } = await context.api.openai.call(
+      'character-extraction',
+      {
+        baseURL: 'https://openrouter.ai/api',
+        token: getEnv().OPENROUTER_KEY,
+        operation: 'chat.completions.create',
+        body: {
+          model: analysisModelId,
+          messages: charExtractionMessages,
+          usage: {
+            include: true,
+          },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'character-extraction',
+              strict: true,
+              schema: z.toJSONSchema(characterExtractionResultSchema),
+            },
+          },
+        },
+      }
+    );
+
+    if (!charExtractionResponse) {
+      throw new WorkflowValidationError(
+        'Character extraction LLM call failed - no response'
+      );
+    }
+
+    // Step 3: Log to Langfuse with precise timing, parse response, emit events
+    const characterBible = await context.run(
+      'log-character-extraction',
+      async () => {
+        const content = charExtractionResponse.choices[0]?.message?.content;
+        if (!content) {
+          throw new WorkflowValidationError(
+            'Character extraction LLM response has no content'
+          );
+        }
+
+        // Log to Langfuse with precise start time
+        logGeneration({
+          name: 'phase-2-character-extraction',
+          model: analysisModelId,
+          input: charExtractionMessages,
+          output: content,
+          usage: charExtractionResponse.usage,
+          prompt: charExtractionPromptClient,
+          tags: ['character-extraction', 'phase-2', 'analysis'],
+          metadata: { phase: 2, phaseName: 'Character Extraction' },
+          startTime: new Date(charExtractionStartTime),
         });
-        const characterBible = await extractCharacterBible(
-          scenes,
-          extractCharacterBibleProgressCallback,
-          {
-            model: analysisModelId,
-          }
+
+        // Parse and validate
+        const validated = characterExtractionResultSchema.parse(
+          JSON.parse(content)
         );
 
         // Emit Phase 2 complete
@@ -229,24 +373,19 @@ export const analyzeScriptWorkflow = createWorkflow(
           { phase: 2 }
         );
 
-        // Start phase 3
-
-        return characterBible;
+        return validated.characterBible;
       }
     );
 
-    // ------------------------------------------------------------
-    // Match suggested talent to extracted characters (if provided)
-    const talentMatches: TalentCharacterMatch[] = await context.run(
-      'match-talent-to-characters',
+    // ============================================================
+    // TALENT MATCHING (conditional three-step durable pattern)
+    // ============================================================
+
+    // Step 1: Prepare - check if we should run, fetch data, prepare prompts
+    const talentMatchPrepare = await context.run(
+      'prepare-talent-matching',
       async () => {
         console.log('[TalentMatching] Starting talent matching step');
-        console.log('[TalentMatching] suggestedTalentIds:', suggestedTalentIds);
-        console.log('[TalentMatching] teamId:', input.teamId);
-        console.log(
-          '[TalentMatching] characterBible count:',
-          characterBible.length
-        );
 
         // Skip if no suggested talent
         if (
@@ -257,7 +396,11 @@ export const analyzeScriptWorkflow = createWorkflow(
           console.log(
             '[TalentMatching] Skipping - no suggested talent or teamId'
           );
-          return [];
+          return {
+            shouldCall: false as const,
+            unusedTalentIds: [] as string[],
+            unusedTalentNames: [] as string[],
+          };
         }
 
         // Fetch suggested talent with their default sheets
@@ -270,45 +413,192 @@ export const analyzeScriptWorkflow = createWorkflow(
           '[TalentMatching] Fetched talent count:',
           talentList.length
         );
-        console.log(
-          '[TalentMatching] Talent details:',
-          talentList.map((t) => ({
-            id: t.id,
-            name: t.name,
-            hasDefaultSheet: !!t.defaultSheet,
-            defaultSheetImageUrl: t.defaultSheet?.imageUrl,
-            defaultSheetHasMetadata: !!t.defaultSheet?.metadata,
-          }))
-        );
 
         if (talentList.length === 0) {
           console.log('[TalentMatching] No talent fetched from DB');
+          return {
+            shouldCall: false as const,
+            unusedTalentIds: [] as string[],
+            unusedTalentNames: [] as string[],
+          };
+        }
+
+        // Filter talent that have at least a default sheet with an image
+        const talentWithData = talentList.filter(
+          (t) => t.defaultSheet?.imageUrl
+        );
+        const unusedNoSheet = talentList.filter(
+          (t) => !t.defaultSheet?.imageUrl
+        );
+
+        if (talentWithData.length === 0 || characterBible.length === 0) {
+          return {
+            shouldCall: false as const,
+            unusedTalentIds: unusedNoSheet.map((t) => t.id),
+            unusedTalentNames: unusedNoSheet.map((t) => t.name),
+          };
+        }
+
+        // Fetch prompt from Langfuse
+        const { prompt: systemPromptClient, compiled: systemPrompt } =
+          await getPrompt('velro/phase/talent-matching/system');
+
+        // Build user prompt using exported function
+        const userPrompt = buildMatchingPrompt(characterBible, talentWithData);
+
+        return {
+          shouldCall: true as const,
+          startTime: Date.now(),
+          systemPromptClient,
+          messages: [
+            { role: 'system' as const, content: systemPrompt },
+            { role: 'user' as const, content: userPrompt },
+          ],
+          talentWithData: talentWithData.map((t) => ({
+            id: t.id,
+            name: t.name,
+            imageUrl: t.defaultSheet?.imageUrl ?? '',
+            metadata: t.defaultSheet?.metadata ?? null,
+          })),
+          unusedTalentIds: unusedNoSheet.map((t) => t.id),
+          unusedTalentNames: unusedNoSheet.map((t) => t.name),
+        };
+      }
+    );
+
+    // Step 2: Conditional LLM call via context.api.openai
+
+    const { body: talentBody } = talentMatchPrepare.shouldCall
+      ? await context.api.openai.call('talent-matching', {
+          baseURL: 'https://openrouter.ai/api',
+          token: getEnv().OPENROUTER_KEY,
+          operation: 'chat.completions.create',
+          body: {
+            model: analysisModelId,
+            messages: talentMatchPrepare.messages,
+            usage: {
+              include: true,
+            },
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'talent-matching',
+                strict: true,
+                schema: z.toJSONSchema(talentMatchResponseSchema),
+              },
+            },
+          },
+        })
+      : { body: null };
+
+    // Step 3: Log and process results
+    const talentMatches: TalentCharacterMatch[] = await context.run(
+      'log-talent-matching',
+      async () => {
+        if (!talentMatchPrepare.shouldCall || !talentBody) {
+          // Emit unused talent event if any
+          if (talentMatchPrepare.unusedTalentIds.length > 0) {
+            await getGenerationChannel(sequenceId).emit(
+              'generation.talent:unmatched',
+              {
+                unusedTalentIds: talentMatchPrepare.unusedTalentIds,
+                unusedTalentNames: talentMatchPrepare.unusedTalentNames,
+              }
+            );
+          }
           return [];
         }
 
-        // Match talent to characters using AI
-        const matchResult = await matchTalentToCharacters(
-          characterBible,
-          talentList,
-          { model: analysisModelId }
+        const content = talentBody.choices[0]?.message?.content;
+        if (!content) {
+          console.error('[TalentMatching] No content in LLM response');
+          return [];
+        }
+
+        // Log to Langfuse with precise start time
+        logGeneration({
+          name: 'talent-matching',
+          model: analysisModelId,
+          input: talentMatchPrepare.messages,
+          output: content,
+          usage: talentBody.usage,
+          prompt: talentMatchPrepare.systemPromptClient,
+          tags: ['talent-matching', 'casting', 'analysis'],
+          metadata: {
+            characterCount: characterBible.length,
+            talentCount: talentMatchPrepare.talentWithData.length,
+          },
+          startTime: new Date(talentMatchPrepare.startTime),
+        });
+
+        // Parse and validate
+        const validated = talentMatchResponseSchema.safeParse(
+          JSON.parse(content)
         );
 
+        if (!validated.success) {
+          console.error(
+            '[TalentMatching] Validation failed:',
+            validated.error.message
+          );
+          return [];
+        }
+
+        // Build match results
+        const usedTalentIds = new Set<string>();
+        const usedCharacterIds = new Set<string>();
+        const matches: TalentCharacterMatch[] = [];
+
+        for (const match of validated.data.matches) {
+          if (usedTalentIds.has(match.talentId)) continue;
+          if (usedCharacterIds.has(match.characterId)) continue;
+
+          const talent = talentMatchPrepare.talentWithData.find(
+            (t) => t.id === match.talentId
+          );
+          if (!talent || !talent.imageUrl) continue;
+
+          const character = characterBible.find(
+            (c) => c.characterId === match.characterId
+          );
+          if (!character) continue;
+
+          usedTalentIds.add(match.talentId);
+          usedCharacterIds.add(match.characterId);
+          matches.push({
+            characterId: match.characterId,
+            talentId: match.talentId,
+            talentName: talent.name,
+            sheetImageUrl: talent.imageUrl,
+            sheetMetadata: talent.metadata ?? undefined,
+          });
+        }
+
+        // Track unused talent
+        const allUnusedIds = [
+          ...talentMatchPrepare.unusedTalentIds,
+          ...talentMatchPrepare.talentWithData
+            .filter((t) => !usedTalentIds.has(t.id))
+            .map((t) => t.id),
+        ];
+        const allUnusedNames = [
+          ...talentMatchPrepare.unusedTalentNames,
+          ...talentMatchPrepare.talentWithData
+            .filter((t) => !usedTalentIds.has(t.id))
+            .map((t) => t.name),
+        ];
+
         console.log('[TalentMatching] Match result:', {
-          matchCount: matchResult.matches.length,
-          matches: matchResult.matches.map((m) => ({
-            charId: m.characterId,
-            talentName: m.talentName,
-          })),
-          unusedCount: matchResult.unusedTalentIds.length,
-          unusedNames: matchResult.unusedTalentNames,
+          matchCount: matches.length,
+          unusedCount: allUnusedIds.length,
         });
 
         // Emit matched talent event
-        if (matchResult.matches.length > 0) {
+        if (matches.length > 0) {
           await getGenerationChannel(sequenceId).emit(
             'generation.talent:matched',
             {
-              matches: matchResult.matches.map((m) => {
+              matches: matches.map((m) => {
                 const char = characterBible.find(
                   (c) => c.characterId === m.characterId
                 );
@@ -324,17 +614,17 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
 
         // Emit unused talent event
-        if (matchResult.unusedTalentIds.length > 0) {
+        if (allUnusedIds.length > 0) {
           await getGenerationChannel(sequenceId).emit(
             'generation.talent:unmatched',
             {
-              unusedTalentIds: matchResult.unusedTalentIds,
-              unusedTalentNames: matchResult.unusedTalentNames,
+              unusedTalentIds: allUnusedIds,
+              unusedTalentNames: allUnusedNames,
             }
           );
         }
 
-        return matchResult.matches;
+        return matches;
       }
     );
 
@@ -470,24 +760,132 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     });
 
-    // Step 6: Generate motion prompts for each batch
-    const motionPromptResults: Scene[][] = await Promise.all(
-      scenesWithVisualPrompts.map(async (scene, batchIndex) => {
-        return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          const generateMotionPromptsProgressCallback: ProgressCallback =
-            () => {};
-          return await generateMotionPromptsForScenes(
-            [scene],
-            generateMotionPromptsProgressCallback,
-            {
-              model: analysisModelId,
-            }
-          );
-        });
-      })
+    // ============================================================
+    // PHASE 4: Motion Prompts (three-step durable pattern)
+    // ============================================================
+
+    // Step 1: Fetch prompts, record start time
+    const {
+      startTime: motionPromptStartTime,
+      messages: motionPromptMessages,
+      promptClient: motionPromptPromptClient,
+    } = await context.run('prepare-motion-prompts', async () => {
+      // Fetch chat prompt from Langfuse (contains both system + user messages)
+      const { prompt: promptClient, messages } = await getChatPrompt(
+        'velro/phase/motion-prompt-generation-chat',
+        {
+          scenes: JSON.stringify(scenesWithVisualPrompts, null, 2),
+        }
+      );
+
+      return {
+        startTime: Date.now(),
+        promptClient,
+        messages,
+      };
+    });
+
+    // Step 2: Durable LLM call via context.api.openai
+    const { body: motionPromptResponse } = await context.api.openai.call(
+      'motion-prompts',
+      {
+        baseURL: 'https://openrouter.ai/api',
+        token: getEnv().OPENROUTER_KEY,
+        operation: 'chat.completions.create',
+        body: {
+          model: analysisModelId,
+          messages: motionPromptMessages,
+          usage: {
+            include: true,
+          },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'motion-prompt-generation',
+              strict: true,
+              schema: z.toJSONSchema(motionPromptGenerationResultSchema),
+            },
+          },
+        },
+      }
     );
 
-    const scenesWithMotionPrompts = motionPromptResults.flat();
+    if (!motionPromptResponse) {
+      throw new WorkflowValidationError(
+        'Motion prompt generation LLM call failed - no response'
+      );
+    }
+
+    // Step 3: Log to Langfuse with precise timing, parse response, merge with scenes
+    const scenesWithMotionPrompts = await context.run(
+      'log-motion-prompts',
+      async () => {
+        const content = motionPromptResponse.choices[0]?.message?.content;
+        if (!content) {
+          throw new WorkflowValidationError(
+            'Motion prompt generation LLM response has no content'
+          );
+        }
+
+        // Log to Langfuse with precise start time
+        logGeneration({
+          name: 'phase-4-motion-prompts',
+          model: analysisModelId,
+          input: motionPromptMessages,
+          output: content,
+          usage: motionPromptResponse.usage,
+          prompt: motionPromptPromptClient,
+          tags: ['motion-prompts', 'phase-4', 'analysis'],
+          metadata: {
+            phase: 4,
+            phaseName: 'Motion Prompt Generation',
+            sceneCount: scenesWithVisualPrompts.length,
+          },
+          startTime: new Date(motionPromptStartTime),
+        });
+
+        // Parse and validate
+        const validated = motionPromptGenerationResultSchema.parse(
+          JSON.parse(content)
+        );
+
+        // Merge enrichment data back into input scenes
+        const enrichedScenes: Scene[] = scenesWithVisualPrompts.map((scene) => {
+          const enrichment = validated.scenes.find(
+            (s) => s.sceneId === scene.sceneId
+          );
+          if (!enrichment) {
+            throw new WorkflowValidationError(
+              `Scene ID mismatch in motion prompts: expected "${scene.sceneId}"`
+            );
+          }
+
+          return {
+            ...scene,
+            prompts: {
+              visual: scene.prompts?.visual || {
+                fullPrompt: '',
+                negativePrompt: '',
+                components: {
+                  sceneDescription: '',
+                  subject: '',
+                  environment: '',
+                  lighting: '',
+                  camera: '',
+                  composition: '',
+                  style: '',
+                  technical: '',
+                  atmosphere: '',
+                },
+              },
+              motion: enrichment.prompts.motion,
+            },
+          };
+        });
+
+        return enrichedScenes;
+      }
+    );
 
     if (sequenceId) {
       // Update frames with motion prompt data (Phase 4)
@@ -523,25 +921,111 @@ export const analyzeScriptWorkflow = createWorkflow(
         phaseName: 'Audio Design',
       });
     });
-    // Step 7: Generate audio design for each batch
-    const audioDesignResults: Scene[][] = await Promise.all(
-      motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
-        return context.run(`audio-design-batch-${batchIndex}`, async () => {
-          const generateAudioDesignProgressCallback: ProgressCallback =
-            () => {};
+    // ============================================================
+    // PHASE 5: Audio Design (three-step durable pattern)
+    // ============================================================
 
-          return await generateAudioDesignForScenes(
-            batchWithMotionPrompts,
-            generateAudioDesignProgressCallback,
-            {
-              model: analysisModelId,
-            }
-          );
-        });
-      })
+    // Step 1: Fetch prompts, record start time
+    const {
+      startTime: audioDesignStartTime,
+      messages: audioDesignMessages,
+      promptClient: audioDesignPromptClient,
+    } = await context.run('prepare-audio-design', async () => {
+      // Fetch chat prompt from Langfuse (contains both system + user messages)
+      const { prompt: promptClient, messages } = await getChatPrompt(
+        'velro/phase/audio-design-chat',
+        {
+          scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
+        }
+      );
+
+      return {
+        startTime: Date.now(),
+        promptClient,
+        messages,
+      };
+    });
+
+    // Step 2: Durable LLM call via context.api.openai
+    const { body: audioDesignResponse } = await context.api.openai.call(
+      'audio-design',
+      {
+        baseURL: 'https://openrouter.ai/api',
+        token: getEnv().OPENROUTER_KEY,
+        operation: 'chat.completions.create',
+        body: {
+          model: analysisModelId,
+          messages: audioDesignMessages,
+          usage: {
+            include: true,
+          },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'audio-design',
+              strict: true,
+              schema: z.toJSONSchema(audioDesignGenerationResultSchema),
+            },
+          },
+        },
+      }
     );
 
-    const completeScenes = audioDesignResults.flat();
+    if (!audioDesignResponse) {
+      throw new WorkflowValidationError(
+        'Audio design generation LLM call failed - no response'
+      );
+    }
+
+    // Step 3: Log to Langfuse with precise timing, parse response, merge with scenes
+    const completeScenes = await context.run('log-audio-design', async () => {
+      const content = audioDesignResponse.choices[0]?.message?.content;
+      if (!content) {
+        throw new WorkflowValidationError(
+          'Audio design generation LLM response has no content'
+        );
+      }
+
+      // Log to Langfuse with precise start time
+      logGeneration({
+        name: 'phase-5-audio-design',
+        model: analysisModelId,
+        input: audioDesignMessages,
+        output: content,
+        usage: audioDesignResponse.usage,
+        prompt: audioDesignPromptClient,
+        tags: ['audio-design', 'phase-5', 'analysis'],
+        metadata: {
+          phase: 5,
+          phaseName: 'Audio Design',
+          sceneCount: scenesWithMotionPrompts.length,
+        },
+        startTime: new Date(audioDesignStartTime),
+      });
+
+      // Parse and validate
+      const validated = audioDesignGenerationResultSchema.parse(
+        JSON.parse(content)
+      );
+
+      // Merge enrichment data back into input scenes
+      const enrichedScenes: Scene[] = scenesWithMotionPrompts.map((scene) => {
+        const enrichment = validated.scenes.find(
+          (s) => s.sceneId === scene.sceneId
+        );
+        if (!enrichment) {
+          throw new WorkflowValidationError(
+            `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
+          );
+        }
+        return {
+          ...scene,
+          audioDesign: enrichment.audioDesign,
+        };
+      });
+
+      return enrichedScenes;
+    });
     if (sequenceId) {
       // Update frames with audio design data (Phase 5)
       await context.run('update-frames-after-audio-design', async () => {

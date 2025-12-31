@@ -27,7 +27,7 @@ import { z } from 'zod';
  * Zod schema for validating scene splitting results.
  * Uses .pick() from canonical sceneSchema to reuse field definitions and metadata.
  */
-const sceneSplittingResultSchema = z.object({
+export const sceneSplittingResultSchema = z.object({
   status: z
     .enum(['success', 'error', 'rejected'])
     .catch('success')

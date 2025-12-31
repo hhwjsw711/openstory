@@ -139,6 +139,7 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,
+      workflowRunId: `analyze-script-${sequenceId}`,
       body: {
         userId: input.userId,
         teamId: input.teamId,
