@@ -339,31 +339,40 @@ export const analyzeScriptWorkflow = createWorkflow(
     );
 
     // Characters with completed sheets - populated after character sheet generation
-    const [{ body: charactersWithSheets }, { body: scenesWithVisualPrompts }] =
-      await Promise.all([
-        context.invoke('character-sheet-from-bible', {
-          workflow: characterBibleWorkflow,
-          body: {
-            sequenceId,
-            userId: input.userId,
-            teamId: input.teamId,
-            characterBible,
-            talentMatches,
-          },
-        }),
-        context.invoke('visual-prompts', {
-          workflow: visualPromptWorkflow,
-          body: {
-            sequenceId,
-            scenes,
-            aspectRatio,
-            characterBible,
-            styleConfig,
-            analysisModelId,
-            frameMapping,
-          },
-        }),
-      ]);
+    const [charResult, visualResult] = await Promise.all([
+      context.invoke('character-sheet-from-bible', {
+        workflow: characterBibleWorkflow,
+        body: {
+          sequenceId,
+          userId: input.userId,
+          teamId: input.teamId,
+          characterBible,
+          talentMatches,
+        },
+      }),
+      context.invoke('visual-prompts', {
+        workflow: visualPromptWorkflow,
+        body: {
+          sequenceId,
+          scenes,
+          aspectRatio,
+          characterBible,
+          styleConfig,
+          analysisModelId,
+          frameMapping,
+        },
+      }),
+    ]);
+
+    if (charResult.isFailed || charResult.isCanceled) {
+      throw new Error('Character sheet generation failed');
+    }
+    if (visualResult.isFailed || visualResult.isCanceled) {
+      throw new Error('Visual prompt generation failed');
+    }
+
+    const charactersWithSheets = charResult.body;
+    const scenesWithVisualPrompts = visualResult.body;
 
     let imageUrls: string[] = [];
     // Step 8: Generate thumbnails in parallel if enabled
