@@ -140,7 +140,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         token: getEnv().OPENROUTER_KEY,
         operation: 'chat.completions.create',
         body: {
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           messages: sceneSplittingMessages,
           usage: {
             include: true,
@@ -177,7 +177,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Log to Langfuse with precise start time
         logGeneration({
           name: 'phase-1-scene-splitting',
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           input: sceneSplittingMessages,
           output: content,
           usage: sceneSplittingResponseBody.usage,
@@ -328,7 +328,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         token: getEnv().OPENROUTER_KEY,
         operation: 'chat.completions.create',
         body: {
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           messages: charExtractionMessages,
           usage: {
             include: true,
@@ -365,7 +365,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Log to Langfuse with precise start time
         logGeneration({
           name: 'phase-2-character-extraction',
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           input: charExtractionMessages,
           output: content,
           usage: charExtractionResponse.usage,
@@ -495,7 +495,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           token: getEnv().OPENROUTER_KEY,
           operation: 'chat.completions.create',
           body: {
-            model: analysisModelId,
+            model: `${analysisModelId}:nitro`,
             messages: talentMatchPrepare.messages,
             usage: {
               include: true,
@@ -539,7 +539,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Log to Langfuse with precise start time
         logGeneration({
           name: 'talent-matching',
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           input: talentMatchPrepare.messages,
           output: content,
           usage: talentBody.usage,
@@ -820,7 +820,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         token: getEnv().OPENROUTER_KEY,
         operation: 'chat.completions.create',
         body: {
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           messages: motionPromptMessages,
           usage: {
             include: true,
@@ -857,7 +857,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Log to Langfuse with precise start time
         logGeneration({
           name: 'phase-4-motion-prompts',
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           input: motionPromptMessages,
           output: content,
           usage: motionPromptResponse.usage,
@@ -987,7 +987,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         token: getEnv().OPENROUTER_KEY,
         operation: 'chat.completions.create',
         body: {
-          model: analysisModelId,
+          model: `${analysisModelId}:nitro`,
           messages: audioDesignMessages,
           usage: {
             include: true,
@@ -1022,7 +1022,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       // Log to Langfuse with precise start time
       logGeneration({
         name: 'phase-5-audio-design',
-        model: analysisModelId,
+        model: `${analysisModelId}:nitro`,
         input: audioDesignMessages,
         output: content,
         usage: audioDesignResponse.usage,
@@ -1161,7 +1161,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           completeScenes,
           sequenceId,
           input.userId,
-          analysisModelId,
+          `${analysisModelId}:nitro`,
           new Date(startTime)
         );
       });

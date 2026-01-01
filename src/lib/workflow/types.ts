@@ -357,5 +357,5 @@ export interface MergeVideoWorkflowInput extends SequenceWorkflowContext {
 
 export interface MergeVideoWorkflowResult {
   mergedVideoUrl: string;
-  mergedVideoPath: string;
+  mergedVideoPath: string | null;
 }
