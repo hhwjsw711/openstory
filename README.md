@@ -1,6 +1,6 @@
 # Velro
 
-AI-powered video sequence platform.
+AI-powered video platform.
 
 ## Tech Stack
 
