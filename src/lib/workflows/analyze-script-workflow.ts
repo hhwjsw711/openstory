@@ -35,6 +35,7 @@ import type {
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import {
+  type PromptReference,
   logGeneration,
   recordWorkflowTrace,
 } from '@/lib/observability/langfuse';
@@ -99,7 +100,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const {
       startTime,
       messages: sceneSplittingMessages,
-      promptClient: sceneSplittingPromptClient,
+      promptReference: sceneSplittingPromptReference,
     } = await context.run('prepare-scene-splitting', async () => {
       if (!script) {
         throw new WorkflowValidationError('No script found');
@@ -119,38 +120,44 @@ export const analyzeScriptWorkflow = createWorkflow(
           script: sanitizeScriptContent(script),
         }
       );
+      const promptReference: PromptReference = {
+        name: promptClient.name,
+        version: promptClient.version,
+        isFallback: promptClient.isFallback,
+      };
 
       return {
         startTime: Date.now(),
-        promptClient,
+        promptReference,
         messages,
       };
     });
-
     // Step 2: Durable LLM call via context.api.openai
-    const { body } = await context.api.openai.call('scene-splitting', {
-      baseURL: 'https://openrouter.ai/api',
-      token: getEnv().OPENROUTER_KEY,
-      operation: 'chat.completions.create',
-      body: {
-        model: analysisModelId,
-        messages: sceneSplittingMessages,
-        usage: {
-          include: true,
-        },
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'scene-splitting',
-            strict: true,
-            schema: z.toJSONSchema(sceneSplittingResultSchema),
+    const { body: sceneSplittingResponseBody } = await context.api.openai.call(
+      'scene-splitting',
+      {
+        baseURL: 'https://openrouter.ai/api',
+        token: getEnv().OPENROUTER_KEY,
+        operation: 'chat.completions.create',
+        body: {
+          model: analysisModelId,
+          messages: sceneSplittingMessages,
+          usage: {
+            include: true,
+          },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'scene-splitting',
+              strict: true,
+              schema: z.toJSONSchema(sceneSplittingResultSchema),
+            },
           },
         },
-      },
-    });
-    const sceneSplittingResponse = body;
+      }
+    );
 
-    if (!sceneSplittingResponse) {
+    if (!sceneSplittingResponseBody) {
       throw new WorkflowValidationError(
         'Scene splitting LLM call failed - no response'
       );
@@ -160,7 +167,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const { scenes, title } = await context.run(
       'log-scene-splitting',
       async () => {
-        const content = sceneSplittingResponse.choices[0]?.message?.content;
+        const content = sceneSplittingResponseBody.choices[0]?.message?.content;
         if (!content) {
           throw new WorkflowValidationError(
             'Scene splitting LLM response has no content'
@@ -173,11 +180,13 @@ export const analyzeScriptWorkflow = createWorkflow(
           model: analysisModelId,
           input: sceneSplittingMessages,
           output: content,
-          usage: sceneSplittingResponse.usage,
-          prompt: sceneSplittingPromptClient,
+          usage: sceneSplittingResponseBody.usage,
+          prompt: sceneSplittingPromptReference,
           tags: ['scene-splitting', 'phase-1', 'analysis'],
           metadata: { phase: 1, phaseName: 'Scene Splitting' },
           startTime: new Date(startTime),
+          sequenceId,
+          userId: input.userId,
         });
 
         // Parse and validate
@@ -284,7 +293,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const {
       startTime: charExtractionStartTime,
       messages: charExtractionMessages,
-      promptClient: charExtractionPromptClient,
+      promptReference: charExtractionPromptReference,
     } = await context.run('prepare-character-extraction', async () => {
       // Emit Phase 2 start
       await getGenerationChannel(sequenceId).emit('generation.phase:start', {
@@ -299,10 +308,14 @@ export const analyzeScriptWorkflow = createWorkflow(
           scenes: JSON.stringify(scenes, null, 2),
         }
       );
-
+      const promptReference: PromptReference = {
+        name: promptClient.name,
+        version: promptClient.version,
+        isFallback: promptClient.isFallback,
+      };
       return {
         startTime: Date.now(),
-        promptClient,
+        promptReference,
         messages,
       };
     });
@@ -356,10 +369,12 @@ export const analyzeScriptWorkflow = createWorkflow(
           input: charExtractionMessages,
           output: content,
           usage: charExtractionResponse.usage,
-          prompt: charExtractionPromptClient,
+          prompt: charExtractionPromptReference,
           tags: ['character-extraction', 'phase-2', 'analysis'],
           metadata: { phase: 2, phaseName: 'Character Extraction' },
           startTime: new Date(charExtractionStartTime),
+          sequenceId,
+          userId: input.userId,
         });
 
         // Parse and validate
@@ -446,10 +461,16 @@ export const analyzeScriptWorkflow = createWorkflow(
         // Build user prompt using exported function
         const userPrompt = buildMatchingPrompt(characterBible, talentWithData);
 
+        const promptReference: PromptReference = {
+          name: systemPromptClient.name,
+          version: systemPromptClient.version,
+          isFallback: systemPromptClient.isFallback,
+        };
+
         return {
           shouldCall: true as const,
           startTime: Date.now(),
-          systemPromptClient,
+          promptReference,
           messages: [
             { role: 'system' as const, content: systemPrompt },
             { role: 'user' as const, content: userPrompt },
@@ -522,13 +543,15 @@ export const analyzeScriptWorkflow = createWorkflow(
           input: talentMatchPrepare.messages,
           output: content,
           usage: talentBody.usage,
-          prompt: talentMatchPrepare.systemPromptClient,
+          prompt: talentMatchPrepare.promptReference,
           tags: ['talent-matching', 'casting', 'analysis'],
           metadata: {
             characterCount: characterBible.length,
             talentCount: talentMatchPrepare.talentWithData.length,
           },
           startTime: new Date(talentMatchPrepare.startTime),
+          sequenceId,
+          userId: input.userId,
         });
 
         // Parse and validate
@@ -768,7 +791,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const {
       startTime: motionPromptStartTime,
       messages: motionPromptMessages,
-      promptClient: motionPromptPromptClient,
+      promptReference: motionPromptPromptReference,
     } = await context.run('prepare-motion-prompts', async () => {
       // Fetch chat prompt from Langfuse (contains both system + user messages)
       const { prompt: promptClient, messages } = await getChatPrompt(
@@ -777,10 +800,14 @@ export const analyzeScriptWorkflow = createWorkflow(
           scenes: JSON.stringify(scenesWithVisualPrompts, null, 2),
         }
       );
-
+      const promptReference: PromptReference = {
+        name: promptClient.name,
+        version: promptClient.version,
+        isFallback: promptClient.isFallback,
+      };
       return {
         startTime: Date.now(),
-        promptClient,
+        promptReference,
         messages,
       };
     });
@@ -834,7 +861,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           input: motionPromptMessages,
           output: content,
           usage: motionPromptResponse.usage,
-          prompt: motionPromptPromptClient,
+          prompt: motionPromptPromptReference,
           tags: ['motion-prompts', 'phase-4', 'analysis'],
           metadata: {
             phase: 4,
@@ -842,6 +869,8 @@ export const analyzeScriptWorkflow = createWorkflow(
             sceneCount: scenesWithVisualPrompts.length,
           },
           startTime: new Date(motionPromptStartTime),
+          sequenceId,
+          userId: input.userId,
         });
 
         // Parse and validate
@@ -1001,6 +1030,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           sceneCount: scenesWithMotionPrompts.length,
         },
         startTime: new Date(audioDesignStartTime),
+        sequenceId,
+        userId: input.userId,
       });
 
       // Parse and validate
@@ -1126,10 +1157,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           completeScenes,
           sequenceId,
           input.userId,
-          {
-            model: analysisModelId,
-            durationMs: Date.now() - startTime,
-          }
+          analysisModelId,
+          new Date(startTime)
         );
       });
     }

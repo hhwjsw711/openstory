@@ -13,26 +13,10 @@ import type { Scene } from '@/lib/script/types';
 import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
-import { startObservation } from '@langfuse/tracing';
+import { logGeneration } from '@/lib/observability/langfuse';
 import { getEnv } from '#env';
 import { z } from 'zod';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-
-// Type for OpenAI-compatible response from context.api.openai.call
-type OpenAIResponseBody = {
-  id: string;
-  model: string;
-  choices: {
-    message: { role: string; content: string };
-    finish_reason: string | null;
-  }[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    cost?: number;
-  };
-};
 
 export const visualPromptWorkflow = createWorkflow(
   async (
@@ -84,7 +68,7 @@ export const visualPromptWorkflow = createWorkflow(
     });
 
     // Step 2: Durable LLM call via context.api.openai
-    const { body: visualBody } = await context.api.openai.call(
+    const { body: visualPromptResponse } = await context.api.openai.call(
       'visual-prompts',
       {
         baseURL: 'https://openrouter.ai/api',
@@ -104,7 +88,6 @@ export const visualPromptWorkflow = createWorkflow(
         },
       }
     );
-    const visualPromptResponse = visualBody as OpenAIResponseBody;
 
     if (!visualPromptResponse) {
       throw new WorkflowValidationError(
@@ -124,40 +107,23 @@ export const visualPromptWorkflow = createWorkflow(
         }
 
         // Log to Langfuse with precise start time
-        const tags = ['visual-prompts', 'phase-3', 'analysis'];
-        const observationMetadata = {
-          phase: 3,
-          phaseName: 'Visual Prompt Generation',
-          sceneCount: scenes.length,
-        };
-        const generation = startObservation(
-          'phase-3-visual-prompts',
-          {
-            model: analysisModelId,
-            input: visualPromptMessages,
-            ...(visualPromptPromptClient && {
-              prompt: visualPromptPromptClient,
-            }),
-            ...(tags && { tags }),
-            ...(observationMetadata && { metadata: observationMetadata }),
+        logGeneration({
+          name: 'phase-3-visual-prompts',
+          model: analysisModelId,
+          input: visualPromptMessages,
+          output: content,
+          usage: visualPromptResponse.usage,
+          prompt: visualPromptPromptClient,
+          tags: ['visual-prompts', 'phase-3', 'analysis'],
+          metadata: {
+            phase: 3,
+            phaseName: 'Visual Prompt Generation',
+            sceneCount: scenes.length,
           },
-          { asType: 'generation', startTime: new Date(visualPromptStartTime) }
-        );
-
-        generation
-          .update({
-            output: content,
-            usageDetails: visualPromptResponse.usage
-              ? {
-                  input: visualPromptResponse.usage.prompt_tokens,
-                  output: visualPromptResponse.usage.completion_tokens,
-                }
-              : undefined,
-            costDetails: visualPromptResponse.usage?.cost
-              ? { total: visualPromptResponse.usage.cost }
-              : undefined,
-          })
-          .end();
+          startTime: new Date(visualPromptStartTime),
+          sequenceId,
+          userId: input.userId,
+        });
 
         // Parse and validate
         const validated = visualPromptGenerationResultSchema.parse(

@@ -54,11 +54,6 @@ export async function flushTracing(): Promise<void> {
   }
 }
 
-type WorkflowTraceOptions = {
-  model?: string;
-  durationMs?: number;
-};
-
 /**
  * Record a completed workflow trace to Langfuse.
  * Call inside context.run() to ensure it only runs once (durable step).
@@ -76,19 +71,17 @@ export async function recordWorkflowTrace<TInput, TOutput>(
   output: TOutput,
   sequenceId: string,
   userId: string | undefined,
-  options?: WorkflowTraceOptions
+  model?: string,
+  startTime?: Date
 ): Promise<void> {
   await propagateAttributes(
     {
       sessionId: sequenceId,
       ...(userId && { userId }),
-      ...((options?.model || options?.durationMs) && {
-        tags: options?.model ? [`model:${options.model}`] : [],
+      ...(model && {
+        tags: model ? [`model:${model}`] : [],
         metadata: {
-          ...(options?.model && { model: options.model }),
-          ...(options?.durationMs && {
-            durationMs: String(options.durationMs),
-          }),
+          ...(model && { model: model }),
         },
       }),
     },
@@ -99,10 +92,12 @@ export async function recordWorkflowTrace<TInput, TOutput>(
           generation.update({
             input,
             output: typeof output === 'object' ? output : { result: output },
-            ...(options?.model && { model: options.model }),
+            ...(model && { model: model }),
+            ...(startTime && { completionStartTime: startTime }),
           });
+          // Note: Do NOT call .end() here - startActiveObservation ends automatically
         },
-        { asType: 'generation' }
+        { asType: 'generation', ...(startTime && { startTime }) }
       );
     }
   );
@@ -111,8 +106,9 @@ export async function recordWorkflowTrace<TInput, TOutput>(
 /**
  * Prompt reference for Langfuse trace linking.
  * Compatible with TextPromptClient and ChatPromptClient from @langfuse/client.
+ * Must include at minimum: name, version, isFallback (additional properties allowed).
  */
-type PromptReference = {
+export type PromptReference = {
   name: string;
   version: number;
   isFallback: boolean;
@@ -138,14 +134,15 @@ function extractUsage(usage: unknown): LLMUsage | undefined {
     usage !== null &&
     'prompt_tokens' in usage &&
     'completion_tokens' in usage &&
-    typeof (usage as Record<string, unknown>).prompt_tokens === 'number' &&
-    typeof (usage as Record<string, unknown>).completion_tokens === 'number'
+    typeof usage.prompt_tokens === 'number' &&
+    typeof usage.completion_tokens === 'number' &&
+    'cost' in usage &&
+    typeof usage.cost === 'number'
   ) {
-    const u = usage as Record<string, unknown>;
     return {
-      prompt_tokens: u.prompt_tokens as number,
-      completion_tokens: u.completion_tokens as number,
-      cost: typeof u.cost === 'number' ? u.cost : undefined,
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      cost: usage.cost,
     };
   }
   return undefined;
@@ -173,6 +170,10 @@ type LogGenerationOptions = {
   metadata?: Record<string, unknown>;
   /** Custom start time (for precise timing when LLM call was made in a previous step) */
   startTime?: Date;
+  /** Sequence ID for trace grouping */
+  sequenceId?: string;
+  /** User ID for trace attribution */
+  userId?: string;
 };
 
 /**
@@ -184,7 +185,7 @@ type LogGenerationOptions = {
  * @example
  * ```typescript
  * // In a workflow context.run() step after an LLM call:
- * logGeneration({
+ * await logGeneration({
  *   name: 'phase-2-character-extraction',
  *   model: 'anthropic/claude-sonnet-4',
  *   input: messages,
@@ -194,37 +195,54 @@ type LogGenerationOptions = {
  *   tags: ['character-extraction', 'phase-2'],
  *   metadata: { phase: 2, phaseName: 'Character Extraction' },
  *   startTime: new Date(startTimeMs),
+ *   sequenceId: 'seq_123', // Groups trace under this session
+ *   userId: 'user_456',
  * });
  * ```
  */
-export function logGeneration(options: LogGenerationOptions): void {
-  const generation = startObservation(
-    options.name,
-    {
-      model: options.model,
-      input: options.input,
-      ...(options.prompt && { prompt: options.prompt }),
-      ...(options.tags && { tags: options.tags }),
-      ...(options.metadata && { metadata: options.metadata }),
-    },
-    {
-      asType: 'generation',
-      ...(options.startTime && { startTime: options.startTime }),
-    }
-  );
+export function logGeneration(options: LogGenerationOptions) {
+  const createObservation = () => {
+    const generation = startObservation(
+      options.name,
+      {
+        model: options.model,
+        input: options.input,
+        ...(options.prompt && { prompt: options.prompt }),
+        ...(options.tags && { tags: options.tags }),
+        ...(options.metadata && { metadata: options.metadata }),
+      },
+      {
+        asType: 'generation',
+        ...(options.startTime && { startTime: options.startTime }),
+      }
+    );
 
-  const usage = extractUsage(options.usage);
+    const usage = extractUsage(options.usage);
 
-  generation
-    .update({
-      output: options.output,
-      usageDetails: usage
-        ? {
-            input: usage.prompt_tokens,
-            output: usage.completion_tokens,
-          }
-        : undefined,
-      costDetails: usage?.cost ? { total: usage.cost } : undefined,
-    })
-    .end();
+    generation
+      .update({
+        output: options.output,
+        usageDetails: usage
+          ? {
+              input: usage.prompt_tokens,
+              output: usage.completion_tokens,
+            }
+          : undefined,
+        costDetails: usage?.cost ? { total: usage.cost } : undefined,
+      })
+      .end();
+  };
+
+  // Wrap with session context if sequenceId provided
+  if (options.sequenceId) {
+    propagateAttributes(
+      {
+        sessionId: options.sequenceId,
+        ...(options.userId && { userId: options.userId }),
+      },
+      createObservation
+    );
+  } else {
+    createObservation();
+  }
 }
