@@ -13,7 +13,10 @@ import type { Scene } from '@/lib/script/types';
 import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
-import { logGeneration } from '@/lib/observability/langfuse';
+import {
+  type PromptReference,
+  logGeneration,
+} from '@/lib/observability/langfuse';
 import { getEnv } from '#env';
 import { z } from 'zod';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -41,7 +44,7 @@ export const visualPromptWorkflow = createWorkflow(
     const {
       startTime: visualPromptStartTime,
       messages: visualPromptMessages,
-      promptClient: visualPromptPromptClient,
+      promptReference: visualPromptPromptReference,
     } = await context.run('prepare-visual-prompts', async () => {
       // Emit Phase 4 start
       await getGenerationChannel(sequenceId).emit('generation.phase:start', {
@@ -59,10 +62,15 @@ export const visualPromptWorkflow = createWorkflow(
           aspectRatio,
         }
       );
+      const promptReference: PromptReference = {
+        name: promptClient.name,
+        version: promptClient.version,
+        isFallback: promptClient.isFallback,
+      };
 
       return {
         startTime: Date.now(),
-        promptClient,
+        promptReference,
         messages,
       };
     });
@@ -113,7 +121,7 @@ export const visualPromptWorkflow = createWorkflow(
           input: visualPromptMessages,
           output: content,
           usage: visualPromptResponse.usage,
-          prompt: visualPromptPromptClient,
+          prompt: visualPromptPromptReference,
           tags: ['visual-prompts', 'phase-3', 'analysis'],
           metadata: {
             phase: 3,

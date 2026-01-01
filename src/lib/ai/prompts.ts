@@ -1,7 +1,7 @@
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import { sceneAnalysisExample } from './scene-analysis.example';
 
-export const VELRO_UNIVERSAL_SYSTEM_PROMPT = `You are a Cinematic Previsualization Engine that transforms scripts into director-specific visual narratives with scene-based structure, variants, and precise timing.
+const VELRO_UNIVERSAL_SYSTEM_PROMPT = `You are a Cinematic Previsualization Engine that transforms scripts into director-specific visual narratives with scene-based structure, variants, and precise timing.
 
 You ALWAYS output valid JSON format for platform integration.
 
@@ -507,7 +507,7 @@ Start with { and end with }
 </response_constraints>`;
 
 // This is used to enhance a script when the user clicks the "Enhance with AI" button
-export const enhanceScriptPrompt = (
+const enhanceScriptPrompt = (
   sanitizedScript: string
 ) => `Please enhance this script for a short film:
 

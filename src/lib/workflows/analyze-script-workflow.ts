@@ -456,7 +456,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         // Fetch prompt from Langfuse
         const { prompt: systemPromptClient, compiled: systemPrompt } =
-          await getPrompt('velro/phase/talent-matching/system');
+          await getPrompt('velro/phase/talent-matching');
 
         // Build user prompt using exported function
         const userPrompt = buildMatchingPrompt(characterBible, talentWithData);
