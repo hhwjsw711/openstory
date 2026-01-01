@@ -132,38 +132,42 @@ export const analyzeScriptWorkflow = createWorkflow(
         messages,
       };
     });
-    // Step 2: Durable LLM call via context.api.openai
-    const { body: sceneSplittingResponseBody } = await context.api.openai.call(
-      'scene-splitting',
-      {
-        baseURL: 'https://openrouter.ai/api',
-        token: getEnv().OPENROUTER_KEY,
-        operation: 'chat.completions.create',
-        body: {
-          model: analysisModelId,
-          messages: sceneSplittingMessages,
-          usage: {
-            include: true,
-          },
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'scene-splitting',
-              strict: true,
-              schema: z.toJSONSchema(sceneSplittingResultSchema),
-            },
-          },
-        },
-        headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    // Step 2: Durable LLM call via context.call
+    const sceneSplittingResponse = await context.call('scene-splitting', {
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getEnv().OPENROUTER_KEY}`,
+        ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
           ? {
               'Upstash-Forward-X-Vercel-Protection-Bypass':
                 process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
               'x-vercel-protection-bypass':
                 process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
             }
-          : undefined,
-      }
-    );
+          : {}),
+      },
+      body: JSON.stringify({
+        model: analysisModelId,
+        messages: sceneSplittingMessages,
+        usage: {
+          include: true,
+        },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'scene-splitting',
+            strict: true,
+            schema: z.toJSONSchema(sceneSplittingResultSchema),
+          },
+        },
+      }),
+    });
+
+    const sceneSplittingResponseBody = sceneSplittingResponse
+      ? JSON.parse(sceneSplittingResponse.body as string)
+      : null;
 
     if (!sceneSplittingResponseBody) {
       throw new WorkflowValidationError(
