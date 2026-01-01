@@ -958,7 +958,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const {
       startTime: audioDesignStartTime,
       messages: audioDesignMessages,
-      promptClient: audioDesignPromptClient,
+      promptReference: audioDesignPromptReference,
     } = await context.run('prepare-audio-design', async () => {
       // Fetch chat prompt from Langfuse (contains both system + user messages)
       const { prompt: promptClient, messages } = await getChatPrompt(
@@ -967,10 +967,14 @@ export const analyzeScriptWorkflow = createWorkflow(
           scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
         }
       );
-
+      const promptReference: PromptReference = {
+        name: promptClient.name,
+        version: promptClient.version,
+        isFallback: promptClient.isFallback,
+      };
       return {
         startTime: Date.now(),
-        promptClient,
+        promptReference,
         messages,
       };
     });
@@ -1022,7 +1026,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         input: audioDesignMessages,
         output: content,
         usage: audioDesignResponse.usage,
-        prompt: audioDesignPromptClient,
+        prompt: audioDesignPromptReference,
         tags: ['audio-design', 'phase-5', 'analysis'],
         metadata: {
           phase: 5,
