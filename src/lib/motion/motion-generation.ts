@@ -85,9 +85,15 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
     // Kling requires string duration: "5" or "10"
     const klingDuration = validatedDuration <= 7 ? '5' : '10';
 
+    // Kling O1 uses start_image_url, other Kling models use image_url
+    const imageUrlParamName =
+      'imageUrlParamName' in modelConfig.capabilities
+        ? modelConfig.capabilities.imageUrlParamName
+        : 'image_url';
+
     return {
       prompt: options.prompt,
-      image_url: options.imageUrl,
+      [imageUrlParamName]: options.imageUrl,
       duration: klingDuration, // Must be string enum
       cfg_scale: 0.5, // Default CFG scale
       negative_prompt: 'blur, distort, and low quality',
@@ -107,8 +113,12 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       options.duration || modelConfig.capabilities.defaultDuration;
 
     // If model has discrete supported durations, snap to nearest
-    if ('supportedDurations' in modelConfig.capabilities) {
-      const supportedDurations = modelConfig.capabilities.supportedDurations;
+    const capabilities = modelConfig.capabilities;
+    if (
+      'supportedDurations' in capabilities &&
+      capabilities.supportedDurations
+    ) {
+      const supportedDurations = capabilities.supportedDurations;
       validatedDuration = supportedDurations.reduce((prev, curr) =>
         Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
           ? curr
@@ -116,10 +126,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       );
     } else {
       // Otherwise just cap to max
-      validatedDuration = Math.min(
-        validatedDuration,
-        modelConfig.capabilities.maxDuration
-      );
+      validatedDuration = Math.min(validatedDuration, capabilities.maxDuration);
     }
 
     return {
@@ -153,16 +160,32 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   },
 
   openai: (options, modelConfig) => {
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
+    let validatedDuration =
+      options.duration || modelConfig.capabilities.defaultDuration;
+
+    // If model has discrete supported durations, snap to nearest
+    const capabilities = modelConfig.capabilities;
+    if (
+      'supportedDurations' in capabilities &&
+      capabilities.supportedDurations
+    ) {
+      const supportedDurations = capabilities.supportedDurations;
+      validatedDuration = supportedDurations.reduce((prev, curr) =>
+        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
+          ? curr
+          : prev
+      );
+    } else {
+      // Otherwise just cap to max
+      validatedDuration = Math.min(validatedDuration, capabilities.maxDuration);
+    }
 
     const validatedFps = options.fps
       ? Math.max(
-          modelConfig.capabilities.fpsRange.min,
-          Math.min(options.fps, modelConfig.capabilities.fpsRange.max)
+          capabilities.fpsRange.min,
+          Math.min(options.fps, capabilities.fpsRange.max)
         )
-      : modelConfig.capabilities.fpsRange.default;
+      : capabilities.fpsRange.default;
 
     return {
       prompt: options.prompt,

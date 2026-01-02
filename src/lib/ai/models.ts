@@ -189,8 +189,9 @@ export const IMAGE_TO_VIDEO_MODELS = {
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
-      maxDuration: 10,
-      defaultDuration: 5,
+      maxDuration: 12,
+      defaultDuration: 4,
+      supportedDurations: [4, 8, 12],
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
@@ -218,6 +219,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
       supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
+      imageUrlParamName: 'start_image_url' as const, // O1 uses start_image_url instead of image_url
     },
     pricing: {
       pricePerSecond: 0.112,
