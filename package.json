@@ -50,6 +50,7 @@
     "db:studio:local": "bun drizzle-kit studio --config=drizzle.config.local.ts",
     "db:setup:local": "bun db:migrate:local && bun db:seed:local",
     "qstash:dev": "docker run -p 8080:8080 public.ecr.aws/upstash/qstash:latest qstash dev",
+    "qstash:dev:proxy": "docker run -p 8080:8080 -e HTTP_PROXY=http://host.docker.internal:9090 -e HTTPS_PROXY=http://host.docker.internal:9090 -e NO_PROXY=localhost,127.0.0.1,host.docker.internal -e NODE_TLS_REJECT_UNAUTHORIZED=1 public.ecr.aws/upstash/qstash:latest qstash dev",
     "setup:env": "./scripts/setup-env.sh",
     "bash:setup:env": "bash ./scripts/setup-env.sh",
     "cert:setup": "bash ./scripts/setup-cert.sh",
