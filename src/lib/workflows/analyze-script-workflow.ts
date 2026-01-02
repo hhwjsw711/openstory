@@ -491,38 +491,41 @@ export const analyzeScriptWorkflow = createWorkflow(
       { sequenceId, userId: input.userId }
     );
 
-    const scenesWithMotionPrompts: Scene[] = scenesWithVisualPrompts.map(
-      (scene) => {
-        const enrichment = partialScenesWithMotionPrompts.find(
-          (s) => s.sceneId === scene.sceneId
-        );
-        if (!enrichment) {
-          throw new WorkflowValidationError(
-            `Scene ID mismatch in motion prompts: expected "${scene.sceneId}"`
+    const scenesWithMotionPrompts: Scene[] = await context.run(
+      'merge-motion-prompts',
+      async () => {
+        return scenesWithVisualPrompts.map((scene) => {
+          const enrichment = partialScenesWithMotionPrompts.find(
+            (s) => s.sceneId === scene.sceneId
           );
-        }
+          if (!enrichment) {
+            throw new WorkflowValidationError(
+              `Scene ID mismatch in motion prompts: expected "${scene.sceneId}"`
+            );
+          }
 
-        return {
-          ...scene,
-          prompts: {
-            visual: scene.prompts?.visual || {
-              fullPrompt: '',
-              negativePrompt: '',
-              components: {
-                sceneDescription: '',
-                subject: '',
-                environment: '',
-                lighting: '',
-                camera: '',
-                composition: '',
-                style: '',
-                technical: '',
-                atmosphere: '',
+          return {
+            ...scene,
+            prompts: {
+              visual: scene.prompts?.visual || {
+                fullPrompt: '',
+                negativePrompt: '',
+                components: {
+                  sceneDescription: '',
+                  subject: '',
+                  environment: '',
+                  lighting: '',
+                  camera: '',
+                  composition: '',
+                  style: '',
+                  technical: '',
+                  atmosphere: '',
+                },
               },
+              motion: enrichment.prompts.motion,
             },
-            motion: enrichment.prompts.motion,
-          },
-        };
+          };
+        });
       }
     );
 
@@ -577,20 +580,25 @@ export const analyzeScriptWorkflow = createWorkflow(
       { sequenceId, userId: input.userId }
     );
 
-    const completeScenes: Scene[] = scenesWithMotionPrompts.map((scene) => {
-      const enrichment = scenesWithAudioDesign.find(
-        (s) => s.sceneId === scene.sceneId
-      );
-      if (!enrichment) {
-        throw new WorkflowValidationError(
-          `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
-        );
+    const completeScenes: Scene[] = await context.run(
+      'merge-audio-design',
+      async () => {
+        return scenesWithMotionPrompts.map((scene) => {
+          const enrichment = scenesWithAudioDesign.find(
+            (s) => s.sceneId === scene.sceneId
+          );
+          if (!enrichment) {
+            throw new WorkflowValidationError(
+              `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
+            );
+          }
+          return {
+            ...scene,
+            audioDesign: enrichment.audioDesign,
+          };
+        });
       }
-      return {
-        ...scene,
-        audioDesign: enrichment.audioDesign,
-      };
-    });
+    );
 
     if (sequenceId) {
       // Update frames with audio design data (Phase 5)
