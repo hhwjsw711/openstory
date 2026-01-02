@@ -36,6 +36,9 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 
   // Optional: Additional metadata to merge with auto-generated metadata
   additionalMetadata?: Record<string, unknown>;
+
+  // Optional: Additonal Validation. Retry if failing
+  retryResponse?: (response: z.infer<TSchema>) => boolean;
 };
 
 export type DurableLLMCallContext = {
@@ -138,7 +141,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   );
 
   // Step 2: Durable LLM Call
-  const responseBody = await (async () => {
+  const { body, validated } = await (async () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const { body, status, header } = await context.api.openai.call(
         callStepName,
@@ -169,9 +172,41 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             : undefined,
         }
       );
+      // Log to Langfuse with precise timing
+      logGeneration({
+        name: logName,
+        model: config.modelId,
+        input: messages,
+        output: body.choices[0]?.message?.content ?? '',
+        usage: body.usage,
+        prompt: promptReference,
+        tags: logTags,
+        metadata: logMetadata,
+        startTime: new Date(startTime),
+        sequenceId: callContext.sequenceId,
+        userId: callContext.userId,
+      });
 
       if (status < 300) {
-        return body;
+        try {
+          const validated = config.responseSchema.parse(
+            JSON.parse(body.choices[0]?.message?.content ?? '')
+          );
+          // It's valid, now check if we need to retry
+          if (config.retryResponse && config.retryResponse(validated)) {
+            await context.sleep('pause-to-avoid-spam', 5);
+            continue;
+          }
+
+          return {
+            body,
+            validated,
+          };
+        } catch {
+          // If the response is not valid, retry
+          await context.sleep('pause-to-avoid-spam', 5);
+          continue;
+        }
       }
       if (status === 429) {
         const resetTime =
@@ -187,41 +222,17 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       await context.sleep('pause-to-avoid-spam', 5);
     }
 
-    return null;
+    return { body: null, validated: null };
   })();
-
-  if (!responseBody) {
-    throw new WorkflowValidationError(
-      `${logName} LLM call failed - no response`
-    );
-  }
 
   // Step 3: Log & Process
   return await context.run(logStepName, async () => {
-    const content = responseBody?.choices[0]?.message?.content;
-    if (!content) {
+    const content = body?.choices[0]?.message?.content;
+    if (!content || !validated) {
       throw new WorkflowValidationError(
-        `${logName} LLM response has no content`
+        `${logName} LLM response has no content or is not valid`
       );
     }
-
-    // Log to Langfuse with precise timing
-    logGeneration({
-      name: logName,
-      model: config.modelId,
-      input: messages,
-      output: content,
-      usage: responseBody.usage,
-      prompt: promptReference,
-      tags: logTags,
-      metadata: logMetadata,
-      startTime: new Date(startTime),
-      sequenceId: callContext.sequenceId,
-      userId: callContext.userId,
-    });
-
-    // Parse and validate
-    const validated = config.responseSchema.parse(JSON.parse(content));
 
     // Custom processing logic (or just return validated data)
     const result = validated;

@@ -30,10 +30,29 @@ export const visualPromptWorkflow = createWorkflow(
       frameMapping,
     } = input;
 
+    console.log(
+      '[VisualPromptWorkflow] Starting visual prompt generation input:',
+      input
+    );
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
     // ============================================================
-
+    const { promptVariables, additionalMetadata } = await context.run(
+      'prepare-visual-prompt-generation',
+      async () => {
+        return {
+          promptVariables: {
+            scenes: JSON.stringify(scenes, null, 2),
+            characterBible: JSON.stringify(characterBible, null, 2),
+            styleConfig: JSON.stringify(styleConfig, null, 2),
+            aspectRatio,
+          },
+          additionalMetadata: {
+            sceneCount: scenes.length,
+          },
+        };
+      }
+    );
     const { scenes: partialScenesWithVisualPrompts } = await durableLLMCall(
       context,
       {
@@ -41,65 +60,57 @@ export const visualPromptWorkflow = createWorkflow(
         phase: { number: 4, name: 'Visual Prompts' },
 
         promptName: 'velro/phase/visual-prompt-generation-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenes, null, 2),
-          characterBible: JSON.stringify(characterBible, null, 2),
-          styleConfig: JSON.stringify(styleConfig, null, 2),
-          aspectRatio,
-        },
+        promptVariables,
 
         modelId: analysisModelId,
         responseSchema: visualPromptGenerationResultSchema,
 
-        additionalMetadata: {
-          sceneCount: scenes.length,
+        additionalMetadata,
+
+        retryResponse: (validated) => {
+          for (const scene of scenes) {
+            const enrichment = validated.scenes.find(
+              (s) => s.sceneId === scene.sceneId
+            );
+            if (!enrichment || !enrichment.prompts.visual.fullPrompt) {
+              // Missing data, retry
+              return true;
+            }
+          }
+          // All data is present, no retry
+          return false;
         },
       },
       { sequenceId, userId: input.userId }
     );
 
     // Merge in the response
-    const scenesWithVisualPrompts: Scene[] = scenes.map((scene) => {
-      const enrichment = partialScenesWithVisualPrompts.find(
-        (s) => s.sceneId === scene.sceneId
-      );
-      if (!enrichment) {
-        throw new WorkflowValidationError(
-          `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${partialScenesWithVisualPrompts.map((s) => s.sceneId).join(', ')}]. ` +
-            `Input had [${scenes.map((s) => s.sceneId).join(', ')}].`
-        );
+    const { scenes: scenesWithVisualPrompts } = await context.run(
+      'merge-visual-prompts',
+      async () => {
+        return {
+          scenes: scenes.map((scene) => {
+            const enrichment = partialScenesWithVisualPrompts.find(
+              (s) => s.sceneId === scene.sceneId
+            );
+            if (!enrichment) {
+              throw new WorkflowValidationError(
+                `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${partialScenesWithVisualPrompts.map((s) => s.sceneId).join(', ')}]. ` +
+                  `Input had [${scenes.map((s) => s.sceneId).join(', ')}].`
+              );
+            }
+            return {
+              ...scene,
+              prompts: {
+                ...scene.prompts,
+                visual: enrichment.prompts.visual,
+              },
+              continuity: enrichment.continuity,
+            };
+          }),
+        };
       }
-      return {
-        ...scene,
-        prompts: {
-          ...scene.prompts,
-          visual: enrichment.prompts.visual,
-        },
-        continuity: enrichment.continuity,
-      };
-    });
-    if (sequenceId) {
-      // Update frames with visual prompt data (Phase 3)
-      await context.run('update-frames-after-visual-prompts', async () => {
-        await Promise.all(
-          scenesWithVisualPrompts.map(async (scene) => {
-            const frame = frameMapping.find(
-              (frame) => frame.sceneId === scene.sceneId
-            );
-            if (!frame) return;
-            await updateFrame(frame.frameId, { metadata: scene });
-            await getGenerationChannel(sequenceId).emit(
-              'generation.frame:updated',
-              {
-                frameId: frame.frameId,
-                updateType: 'visual-prompt',
-                metadata: scene,
-              }
-            );
-          })
-        );
-      });
-    }
+    );
 
     return scenesWithVisualPrompts;
   },

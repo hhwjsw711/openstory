@@ -24,6 +24,7 @@ import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
 import {
+  buildMatchingPromptVariables,
   talentMatchResponseSchema,
   buildMatchingPrompt,
 } from '@/lib/services/talent-matching.service';
@@ -226,189 +227,63 @@ export const analyzeScriptWorkflow = createWorkflow(
     // TALENT MATCHING (conditional three-step durable pattern)
     // ============================================================
 
-    // Step 1: Prepare - check if we should run, fetch data, prepare prompts
-    const talentMatchPrepare = await context.run(
-      'prepare-talent-matching',
+    const { talentList, matchingPromptVariables } = await context.run(
+      'get-talent-list',
       async () => {
-        console.log('[TalentMatching] Starting talent matching step');
-
-        // Skip if no suggested talent
         if (
           !suggestedTalentIds ||
           suggestedTalentIds.length === 0 ||
           !input.teamId
         ) {
-          console.log(
-            '[TalentMatching] Skipping - no suggested talent or teamId'
-          );
-          return {
-            shouldCall: false as const,
-            unusedTalentIds: [] as string[],
-            unusedTalentNames: [] as string[],
-          };
+          return { talentList: [], matchingPromptVariables: {} };
         }
-
-        // Fetch suggested talent with their default sheets
         const talentList = await getTalentByIds(
           suggestedTalentIds,
           input.teamId
         );
-
-        console.log(
-          '[TalentMatching] Fetched talent count:',
-          talentList.length
+        const matchingPromptVariables = buildMatchingPromptVariables(
+          characterBible,
+          talentList
         );
 
-        if (talentList.length === 0) {
-          console.log('[TalentMatching] No talent fetched from DB');
-          return {
-            shouldCall: false as const,
-            unusedTalentIds: [] as string[],
-            unusedTalentNames: [] as string[],
-          };
-        }
-
-        // Filter talent that have at least a default sheet with an image
-        const talentWithData = talentList.filter(
-          (t) => t.defaultSheet?.imageUrl
-        );
-        const unusedNoSheet = talentList.filter(
-          (t) => !t.defaultSheet?.imageUrl
-        );
-
-        if (talentWithData.length === 0 || characterBible.length === 0) {
-          return {
-            shouldCall: false as const,
-            unusedTalentIds: unusedNoSheet.map((t) => t.id),
-            unusedTalentNames: unusedNoSheet.map((t) => t.name),
-          };
-        }
-
-        // Fetch prompt from Langfuse
-        const { prompt: systemPromptClient, compiled: systemPrompt } =
-          await getPrompt('velro/phase/talent-matching');
-
-        // Build user prompt using exported function
-        const userPrompt = buildMatchingPrompt(characterBible, talentWithData);
-
-        const promptReference: PromptReference = {
-          name: systemPromptClient.name,
-          version: systemPromptClient.version,
-          isFallback: systemPromptClient.isFallback,
-        };
-
-        return {
-          shouldCall: true as const,
-          startTime: Date.now(),
-          promptReference,
-          messages: [
-            { role: 'system' as const, content: systemPrompt },
-            { role: 'user' as const, content: userPrompt },
-          ],
-          talentWithData: talentWithData.map((t) => ({
-            id: t.id,
-            name: t.name,
-            imageUrl: t.defaultSheet?.imageUrl ?? '',
-            metadata: t.defaultSheet?.metadata ?? null,
-          })),
-          unusedTalentIds: unusedNoSheet.map((t) => t.id),
-          unusedTalentNames: unusedNoSheet.map((t) => t.name),
-        };
+        return { talentList, matchingPromptVariables };
       }
     );
 
-    // Step 2: Conditional LLM call via context.api.openai
+    // Call the talent matching LLM call
 
-    const { body: talentBody } = talentMatchPrepare.shouldCall
-      ? await context.api.openai.call('talent-matching', {
-          baseURL: 'https://openrouter.ai/api',
-          token: getEnv().OPENROUTER_KEY,
-          operation: 'chat.completions.create',
-          body: {
-            model: analysisModelId,
-            messages: talentMatchPrepare.messages,
-            usage: {
-              include: true,
-            },
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'talent-matching',
-                strict: true,
-                schema: z.toJSONSchema(talentMatchResponseSchema),
-              },
-            },
-          },
-        })
-      : { body: null };
+    const { matches: talentMatches } =
+      talentList.length > 0
+        ? await durableLLMCall(
+            context,
+            {
+              name: 'talent-matching',
+              phase: { number: 3, name: 'Talent Matching' },
 
-    // Step 3: Log and process results
-    const talentMatches: TalentCharacterMatch[] = await context.run(
-      'log-talent-matching',
+              promptName: 'velro/phase/talent-matching-chat',
+              promptVariables: matchingPromptVariables,
+              modelId: analysisModelId,
+              responseSchema: talentMatchResponseSchema,
+            },
+            { sequenceId, userId: input.userId }
+          )
+        : { matches: [] };
+
+    const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
+      'build-matches',
       async () => {
-        if (!talentMatchPrepare.shouldCall || !talentBody) {
-          // Emit unused talent event if any
-          if (talentMatchPrepare.unusedTalentIds.length > 0) {
-            await getGenerationChannel(sequenceId).emit(
-              'generation.talent:unmatched',
-              {
-                unusedTalentIds: talentMatchPrepare.unusedTalentIds,
-                unusedTalentNames: talentMatchPrepare.unusedTalentNames,
-              }
-            );
-          }
-          return [];
-        }
-
-        const content = talentBody.choices[0]?.message?.content;
-        if (!content) {
-          console.error('[TalentMatching] No content in LLM response');
-          return [];
-        }
-
-        // Log to Langfuse with precise start time
-        logGeneration({
-          name: 'talent-matching',
-          model: analysisModelId,
-          input: talentMatchPrepare.messages,
-          output: content,
-          usage: talentBody.usage,
-          prompt: talentMatchPrepare.promptReference,
-          tags: ['talent-matching', 'casting', 'analysis'],
-          metadata: {
-            characterCount: characterBible.length,
-            talentCount: talentMatchPrepare.talentWithData.length,
-          },
-          startTime: new Date(talentMatchPrepare.startTime),
-          sequenceId,
-          userId: input.userId,
-        });
-
-        // Parse and validate
-        const validated = talentMatchResponseSchema.safeParse(
-          JSON.parse(content)
-        );
-
-        if (!validated.success) {
-          console.error(
-            '[TalentMatching] Validation failed:',
-            validated.error.message
-          );
-          return [];
-        }
-
         // Build match results
         const usedTalentIds = new Set<string>();
         const usedCharacterIds = new Set<string>();
         const matches: TalentCharacterMatch[] = [];
 
-        for (const match of validated.data.matches) {
+        for (const match of talentMatches) {
+          // This ensures that talent is never cast twice
           if (usedTalentIds.has(match.talentId)) continue;
+          // This ensures that a character is never cast twice
           if (usedCharacterIds.has(match.characterId)) continue;
 
-          const talent = talentMatchPrepare.talentWithData.find(
-            (t) => t.id === match.talentId
-          );
+          const talent = talentList.find((t) => t.id === match.talentId);
           if (!talent || !talent.imageUrl) continue;
 
           const character = characterBible.find(
@@ -422,29 +297,10 @@ export const analyzeScriptWorkflow = createWorkflow(
             characterId: match.characterId,
             talentId: match.talentId,
             talentName: talent.name,
-            sheetImageUrl: talent.imageUrl,
-            sheetMetadata: talent.metadata ?? undefined,
+            sheetImageUrl: talent.defaultSheet?.imageUrl ?? '',
+            sheetMetadata: talent.defaultSheet?.metadata ?? undefined,
           });
         }
-
-        // Track unused talent
-        const allUnusedIds = [
-          ...talentMatchPrepare.unusedTalentIds,
-          ...talentMatchPrepare.talentWithData
-            .filter((t) => !usedTalentIds.has(t.id))
-            .map((t) => t.id),
-        ];
-        const allUnusedNames = [
-          ...talentMatchPrepare.unusedTalentNames,
-          ...talentMatchPrepare.talentWithData
-            .filter((t) => !usedTalentIds.has(t.id))
-            .map((t) => t.name),
-        ];
-
-        console.log('[TalentMatching] Match result:', {
-          matchCount: matches.length,
-          unusedCount: allUnusedIds.length,
-        });
 
         // Emit matched talent event
         if (matches.length > 0) {
@@ -466,17 +322,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
         }
 
-        // Emit unused talent event
-        if (allUnusedIds.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.talent:unmatched',
-            {
-              unusedTalentIds: allUnusedIds,
-              unusedTalentNames: allUnusedNames,
-            }
-          );
-        }
-
         return matches;
       }
     );
@@ -490,7 +335,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           userId: input.userId,
           teamId: input.teamId,
           characterBible,
-          talentMatches,
+          talentMatches: talentCharacterMatches,
         },
       }),
       context.invoke('visual-prompts', {
