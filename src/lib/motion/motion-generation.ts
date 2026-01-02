@@ -180,19 +180,13 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       validatedDuration = Math.min(validatedDuration, capabilities.maxDuration);
     }
 
-    const validatedFps = options.fps
-      ? Math.max(
-          capabilities.fpsRange.min,
-          Math.min(options.fps, capabilities.fpsRange.max)
-        )
-      : capabilities.fpsRange.default;
-
+    // Sora 2 API parameters (no fps or seed support)
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      duration: validatedDuration,
-      fps: validatedFps,
-      seed: Math.floor(Math.random() * 1000000),
+      duration: validatedDuration, // Integer enum: 4, 8, or 12
+      aspect_ratio: options.aspectRatio || 'auto',
+      resolution: '720p', // "auto" or "720p"
     };
   },
 };
