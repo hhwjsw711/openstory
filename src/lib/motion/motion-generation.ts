@@ -91,6 +91,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       duration: klingDuration, // Must be string enum
       cfg_scale: 0.5, // Default CFG scale
       negative_prompt: 'blur, distort, and low quality',
+      generate_audio: modelConfig.capabilities.supportsAudio, // Control audio generation
     };
   },
 
