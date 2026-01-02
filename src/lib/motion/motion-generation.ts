@@ -102,15 +102,30 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   }),
 
   google: (options, modelConfig) => {
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
+    let validatedDuration =
+      options.duration || modelConfig.capabilities.defaultDuration;
+
+    // If model has discrete supported durations, snap to nearest
+    if ('supportedDurations' in modelConfig.capabilities) {
+      const supportedDurations = modelConfig.capabilities.supportedDurations;
+      validatedDuration = supportedDurations.reduce((prev, curr) =>
+        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
+          ? curr
+          : prev
+      );
+    } else {
+      // Otherwise just cap to max
+      validatedDuration = Math.min(
+        validatedDuration,
+        modelConfig.capabilities.maxDuration
+      );
+    }
 
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
       aspect_ratio: options.aspectRatio || 'auto',
-      duration: `${Math.round(validatedDuration)}s`,
+      duration: `${validatedDuration}s`,
       generate_audio: true,
       resolution: '1080p',
     };

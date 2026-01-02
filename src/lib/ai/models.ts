@@ -90,8 +90,9 @@ export const IMAGE_TO_VIDEO_MODELS = {
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
-      maxDuration: 12,
-      defaultDuration: 10,
+      maxDuration: 8,
+      defaultDuration: 8,
+      supportedDurations: [4, 6, 8],
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
