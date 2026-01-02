@@ -474,6 +474,19 @@ export const analyzeScriptWorkflow = createWorkflow(
         additionalMetadata: {
           sceneCount: scenesWithVisualPrompts.length,
         },
+        retryResponse: (validated) => {
+          for (const scene of scenes) {
+            const enrichment = validated.scenes.find(
+              (s) => s.sceneId === scene.sceneId
+            );
+            if (!enrichment || !enrichment.prompts.motion.fullPrompt) {
+              // Missing data, retry
+              return true;
+            }
+          }
+          // All data is present, no retry
+          return false;
+        },
       },
       { sequenceId, userId: input.userId }
     );
