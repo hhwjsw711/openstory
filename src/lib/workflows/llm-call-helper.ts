@@ -14,7 +14,7 @@ import { getEnv } from '#env';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { getGenerationChannel } from '@/lib/realtime';
 
-const BASE_DELAY = 10;
+const BASE_DELAY = 5;
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   // Base name (e.g., "scene-splitting") - used to derive step names
@@ -141,37 +141,38 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   );
 
   // Step 2: Durable LLM Call
-  const { body, validated } = await (async () => {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const { body, status, header } = await context.api.openai.call(
-        callStepName,
-        {
-          baseURL: 'https://openrouter.ai/api',
-          token: getEnv().OPENROUTER_KEY,
-          operation: 'chat.completions.create',
-          body: {
-            model: config.modelId,
-            messages,
-            usage: { include: true },
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: schemaName,
-                strict: true,
-                schema: z.toJSONSchema(config.responseSchema),
-              },
+  let jsonResponse: z.infer<TSchema> | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { body, status, header } = await context.api.openai.call(
+      callStepName,
+      {
+        baseURL: 'https://openrouter.ai/api',
+        token: getEnv().OPENROUTER_KEY,
+        operation: 'chat.completions.create',
+        body: {
+          model: config.modelId,
+          messages,
+          usage: { include: true },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: schemaName,
+              strict: true,
+              schema: z.toJSONSchema(config.responseSchema),
             },
           },
-          headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-            ? {
-                'Upstash-Forward-X-Vercel-Protection-Bypass':
-                  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-                'x-vercel-protection-bypass':
-                  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-              }
-            : undefined,
-        }
-      );
+        },
+        headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+          ? {
+              'Upstash-Forward-X-Vercel-Protection-Bypass':
+                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+              'x-vercel-protection-bypass':
+                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+            }
+          : undefined,
+      }
+    );
+    await context.run('log-generation', async () => {
       // Log to Langfuse with precise timing
       logGeneration({
         name: logName,
@@ -186,57 +187,81 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         sequenceId: callContext.sequenceId,
         userId: callContext.userId,
       });
+    });
 
-      if (status < 300) {
-        try {
-          const validated = config.responseSchema.parse(
-            JSON.parse(body.choices[0]?.message?.content ?? '')
-          );
-          // It's valid, now check if we need to retry
-          if (config.retryResponse && config.retryResponse(validated)) {
-            await context.sleep('pause-to-avoid-spam', 5);
-            continue;
+    const result = await context.run(
+      'validate-response',
+      async (): Promise<
+        | {
+            isValid: true;
+            jsonResponse: z.infer<TSchema> | null;
           }
-
-          return {
-            body,
-            validated,
-          };
-        } catch {
-          // If the response is not valid, retry
-          await context.sleep('pause-to-avoid-spam', 5);
-          continue;
+        | {
+            isValid: false;
+            sleepTime: number;
+          }
+      > => {
+        if (status < 300) {
+          try {
+            const validated = config.responseSchema.parse(
+              JSON.parse(body.choices[0]?.message?.content ?? '')
+            );
+            // It's valid, now check if we need to retry
+            if (config.retryResponse && config.retryResponse(validated)) {
+              return {
+                isValid: false,
+                sleepTime: BASE_DELAY,
+              };
+            }
+            return {
+              jsonResponse: validated,
+              isValid: true,
+            };
+          } catch {
+            // If the response is not valid, retry
+            return {
+              isValid: false,
+              sleepTime: BASE_DELAY,
+            };
+          }
         }
-      }
-      if (status === 429) {
-        const resetTime =
-          header['x-ratelimit-reset-tokens']?.[0] ||
-          header['x-ratelimit-reset-requests']?.[0] ||
-          BASE_DELAY;
+        if (status === 429) {
+          const sleepTime =
+            Number(header['x-ratelimit-reset-tokens']?.[0]) ||
+            Number(header['x-ratelimit-reset-requests']?.[0]) ||
+            BASE_DELAY;
 
-        // assuming `resetTime` is in seconds
-        await context.sleep('sleep-until-retry', Number(resetTime));
-        continue;
+          // assuming `resetTime` is in seconds
+          return {
+            isValid: false,
+            sleepTime,
+          };
+        }
+        // Otherwise it's not a valid response
+        return {
+          isValid: false,
+          sleepTime: BASE_DELAY,
+        };
       }
+    );
+    if (!result.isValid) {
       // Any other scenario - pause for 5 seconds to avoid overloading OpenAI API
-      await context.sleep('pause-to-avoid-spam', 5);
+      await context.sleep('pause-to-avoid-spam', result.sleepTime);
+      continue;
     }
+    jsonResponse = result.jsonResponse;
+    break;
+  }
 
-    return { body: null, validated: null };
-  })();
+  if (!jsonResponse) {
+    // If we get here, we tried multiple times to get a valid response, but failed
+    throw new WorkflowValidationError(
+      `${logName} Tried multiple times to get a valid response, but failed`
+    );
+  }
 
   // Step 3: Log & Process
-  return await context.run(logStepName, async () => {
-    const content = body?.choices[0]?.message?.content;
-    if (!content || !validated) {
-      throw new WorkflowValidationError(
-        `${logName} LLM response has no content or is not valid`
-      );
-    }
-
-    // Custom processing logic (or just return validated data)
-    const result = validated;
-
+  await context.run(logStepName, async () => {
     // Emit phase complete
     if (callContext.sequenceId) {
       await getGenerationChannel(callContext.sequenceId).emit(
@@ -244,7 +269,6 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         { phase: config.phase.number }
       );
     }
-
-    return result;
   });
+  return jsonResponse;
 }

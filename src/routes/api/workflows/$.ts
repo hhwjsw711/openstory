@@ -18,6 +18,7 @@ import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow'
 import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow';
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
 import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
+import { visualPromptSceneWorkflow } from '@/lib/workflows/visual-prompt-scene-workflow';
 import { getQStashClient } from '@/lib/workflow/client';
 import { serveMany } from '@upstash/workflow/tanstack';
 
@@ -39,6 +40,7 @@ const handler = serveMany(
     'upscale-variant': upscaleVariantWorkflow,
     'recast-character': recastCharacterWorkflow,
     'regenerate-frames': regenerateFramesWorkflow,
+    'visual-prompt-scene': visualPromptSceneWorkflow,
   },
   {
     qstashClient: getQStashClient(), // This must be the QStash client

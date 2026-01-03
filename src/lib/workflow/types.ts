@@ -238,7 +238,10 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
   styleConfig: DirectorDnaConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
-  frameMapping: { sceneId: string; frameId: string }[];
+}
+
+export interface VisualPromptSceneWorkflowInput extends VisualPromptWorkflowInput {
+  sceneIndex: number;
 }
 /**
  * Script analysis workflow input

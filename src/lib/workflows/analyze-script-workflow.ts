@@ -347,7 +347,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           characterBible,
           styleConfig,
           analysisModelId,
-          frameMapping,
         },
       }),
     ]);

@@ -14,6 +14,7 @@ import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts'
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { durableLLMCall } from './llm-call-helper';
+import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
 
 export const visualPromptWorkflow = createWorkflow(
   async (
@@ -27,7 +28,6 @@ export const visualPromptWorkflow = createWorkflow(
       styleConfig,
       analysisModelId,
       sequenceId,
-      frameMapping,
     } = input;
 
     console.log(
@@ -37,51 +37,21 @@ export const visualPromptWorkflow = createWorkflow(
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
     // ============================================================
-    const { promptVariables, additionalMetadata } = await context.run(
-      'prepare-visual-prompt-generation',
-      async () => {
-        return {
-          promptVariables: {
-            scenes: JSON.stringify(scenes, null, 2),
-            characterBible: JSON.stringify(characterBible, null, 2),
-            styleConfig: JSON.stringify(styleConfig, null, 2),
-            aspectRatio,
-          },
-          additionalMetadata: {
-            sceneCount: scenes.length,
-          },
-        };
-      }
-    );
-    const { scenes: partialScenesWithVisualPrompts } = await durableLLMCall(
-      context,
-      {
-        name: 'visual-prompts',
-        phase: { number: 4, name: 'Visual Prompts' },
-
-        promptName: 'velro/phase/visual-prompt-generation-chat',
-        promptVariables,
-
-        modelId: analysisModelId,
-        responseSchema: visualPromptGenerationResultSchema,
-
-        additionalMetadata,
-
-        retryResponse: (validated) => {
-          for (const scene of scenes) {
-            const enrichment = validated.scenes.find(
-              (s) => s.sceneId === scene.sceneId
-            );
-            if (!enrichment || !enrichment.prompts.visual.fullPrompt) {
-              // Missing data, retry
-              return true;
-            }
-          }
-          // All data is present, no retry
-          return false;
-        },
-      },
-      { sequenceId, userId: input.userId }
+    const visualPromptResults = await Promise.all(
+      scenes.map(
+        async (_scene, sceneIndex) =>
+          await context.invoke('visual-prompt-scene', {
+            workflow: visualPromptSceneWorkflow,
+            body: {
+              scenes,
+              sceneIndex: sceneIndex,
+              aspectRatio,
+              characterBible,
+              styleConfig,
+              analysisModelId,
+            },
+          })
+      )
     );
 
     // Merge in the response
@@ -90,12 +60,12 @@ export const visualPromptWorkflow = createWorkflow(
       async () => {
         return {
           scenes: scenes.map((scene) => {
-            const enrichment = partialScenesWithVisualPrompts.find(
-              (s) => s.sceneId === scene.sceneId
+            const enrichment = visualPromptResults.find(
+              (s) => s.body.sceneId === scene.sceneId
             );
             if (!enrichment) {
               throw new WorkflowValidationError(
-                `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${partialScenesWithVisualPrompts.map((s) => s.sceneId).join(', ')}]. ` +
+                `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${visualPromptResults.map((s) => s.body.sceneId).join(', ')}]. ` +
                   `Input had [${scenes.map((s) => s.sceneId).join(', ')}].`
               );
             }
@@ -103,9 +73,8 @@ export const visualPromptWorkflow = createWorkflow(
               ...scene,
               prompts: {
                 ...scene.prompts,
-                visual: enrichment.prompts.visual,
+                visual: enrichment.body.visualPrompt,
               },
-              continuity: enrichment.continuity,
             };
           }),
         };
