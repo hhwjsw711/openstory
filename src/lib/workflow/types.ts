@@ -243,6 +243,19 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
 export interface VisualPromptSceneWorkflowInput extends VisualPromptWorkflowInput {
   sceneIndex: number;
 }
+
+export interface MotionPromptWorkflowInput extends Partial<SequenceWorkflowContext> {
+  scenes: Scene[];
+  aspectRatio: AspectRatio;
+  characterBible: CharacterBibleEntry[];
+  styleConfig: DirectorDnaConfig;
+  analysisModelId: AnalysisModelId;
+  videoModel?: ImageToVideoModel;
+}
+
+export interface MotionPromptSceneWorkflowInput extends MotionPromptWorkflowInput {
+  sceneIndex: number;
+}
 /**
  * Script analysis workflow input
  */

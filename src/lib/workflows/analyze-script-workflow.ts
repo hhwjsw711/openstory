@@ -50,7 +50,7 @@ import { characterBibleWorkflow } from './character-bible-workflow';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 import { durableLLMCall } from './llm-call-helper';
-
+import { motionPromptWorkflow } from './motion-prompt-workflow';
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
 const BATCH_SIZE = 1; // Process this many scenes at a time
@@ -455,46 +455,26 @@ export const analyzeScriptWorkflow = createWorkflow(
     // ============================================================
     // PHASE 4: Motion Prompts (using durableLLMCall helper)
     // ============================================================
-
-    const { scenes: partialScenesWithMotionPrompts } = await durableLLMCall(
-      context,
+    const partialScenesWithMotionPrompts = await context.invoke(
+      'motion-prompts',
       {
-        name: 'motion-prompts',
-        phase: { number: 6, name: 'Motion Prompts' },
-
-        promptName: 'velro/phase/motion-prompt-generation-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenesWithVisualPrompts, null, 2),
+        workflow: motionPromptWorkflow,
+        body: {
+          sequenceId,
+          scenes,
+          aspectRatio,
+          characterBible,
+          styleConfig,
+          analysisModelId,
         },
-
-        modelId: analysisModelId,
-        responseSchema: motionPromptGenerationResultSchema,
-
-        additionalMetadata: {
-          sceneCount: scenesWithVisualPrompts.length,
-        },
-        retryResponse: (validated) => {
-          for (const scene of scenes) {
-            const enrichment = validated.scenes.find(
-              (s) => s.sceneId === scene.sceneId
-            );
-            if (!enrichment || !enrichment.prompts.motion.fullPrompt) {
-              // Missing data, retry
-              return true;
-            }
-          }
-          // All data is present, no retry
-          return false;
-        },
-      },
-      { sequenceId, userId: input.userId }
+      }
     );
 
     const scenesWithMotionPrompts: Scene[] = await context.run(
       'merge-motion-prompts',
       async () => {
         return scenesWithVisualPrompts.map((scene) => {
-          const enrichment = partialScenesWithMotionPrompts.find(
+          const enrichment = partialScenesWithMotionPrompts.body.find(
             (s) => s.sceneId === scene.sceneId
           );
           if (!enrichment) {
@@ -521,7 +501,7 @@ export const analyzeScriptWorkflow = createWorkflow(
                   atmosphere: '',
                 },
               },
-              motion: enrichment.prompts.motion,
+              motion: enrichment.prompts?.motion,
             },
           };
         });
