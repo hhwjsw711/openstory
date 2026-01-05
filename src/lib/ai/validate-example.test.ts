@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { sceneAnalysisExample } from './scene-analysis.example';
 import { sceneAnalysisSchema } from './scene-analysis.schema';
-import { VELRO_UNIVERSAL_SYSTEM_PROMPT } from './prompts';
 
 describe('Scene Analysis Schema Validation', () => {
   test('example data conforms to schema', () => {
@@ -75,35 +74,5 @@ describe('Scene Analysis Schema Validation', () => {
       expect(character.standardClothing).toBeDefined();
       expect(character.consistencyTag).toBeDefined();
     }
-  });
-});
-
-describe('VELRO_UNIVERSAL_SYSTEM_PROMPT Integration', () => {
-  test('includes the stringified sceneAnalysisExample', () => {
-    // The prompt should contain the actual JSON, not the template literal
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('"status": "success"');
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('"characterBible"');
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('"scenes"');
-
-    // Should not contain the template literal syntax
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).not.toContain('${JSON.stringify');
-  });
-
-  test('includes example structure with proper formatting', () => {
-    // Check that key parts of the example are present
-    const expectedJson = JSON.stringify(sceneAnalysisExample, null, 2);
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain(expectedJson);
-  });
-
-  test('includes critical JSON rules after example', () => {
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('CRITICAL JSON RULES');
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain(
-      'CRITICAL SCRIPT EXTRACTION RULES'
-    );
-  });
-
-  test('prompt contains json_output_format section', () => {
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('<json_output_format>');
-    expect(VELRO_UNIVERSAL_SYSTEM_PROMPT).toContain('</json_output_format>');
   });
 });

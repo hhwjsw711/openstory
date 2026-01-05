@@ -4,7 +4,11 @@
  */
 
 import { getEnv } from '#env';
-import { LangfuseClient, type TextPromptClient } from '@langfuse/client';
+import {
+  LangfuseClient,
+  type ChatPromptClient,
+  type TextPromptClient,
+} from '@langfuse/client';
 
 let client: LangfuseClient | null = null;
 
@@ -24,7 +28,7 @@ function getClient(): LangfuseClient {
 }
 
 /**
- * Fetch a prompt from Langfuse and optionally compile with variables
+ * Fetch a text prompt from Langfuse and optionally compile with variables
  *
  * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
  * @param variables - Optional variables to compile into the prompt
@@ -37,4 +41,31 @@ export async function getPrompt(
   const prompt = await getClient().prompt.get(name, { type: 'text' });
   const compiled = variables ? prompt.compile(variables) : prompt.prompt;
   return { prompt, compiled };
+}
+
+/**
+ * Message format returned by Langfuse chat prompts
+ */
+export type ChatMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+/**
+ * Fetch a chat prompt from Langfuse and compile with variables
+ *
+ * Chat prompts contain multiple messages (system + user) in a single prompt.
+ * This is the preferred format for LLM calls.
+ *
+ * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
+ * @param variables - Variables to compile into the prompt messages
+ * @returns The prompt client (for trace linking) and compiled messages array
+ */
+export async function getChatPrompt(
+  name: string,
+  variables?: Record<string, string>
+): Promise<{ prompt: ChatPromptClient; messages: ChatMessage[] }> {
+  const prompt = await getClient().prompt.get(name, { type: 'chat' });
+  const messages = variables ? prompt.compile(variables) : prompt.prompt;
+  return { prompt, messages };
 }

@@ -25,7 +25,7 @@ import type { Scene } from './types';
  * Reuses canonical schemas from scene-analysis.schema.ts for consistency and metadata.
  */
 
-const characterExtractionResultSchema = sceneAnalysisSchema
+export const characterExtractionResultSchema = sceneAnalysisSchema
   .pick({
     status: true,
     characterBible: true,

@@ -20,7 +20,7 @@ import { z } from 'zod';
  * Schema for audio design generation validation.
  * Uses .pick().required() from canonical sceneSchema to reuse field definitions and metadata.
  */
-const audioDesignGenerationResultSchema = z.object({
+export const audioDesignGenerationResultSchema = z.object({
   status: z
     .enum(['success', 'error', 'rejected'])
     .catch('success')

@@ -44,6 +44,32 @@ export const mergeVideoWorkflow = createWorkflow(
       `[MergeVideoWorkflow] Starting merge for sequence ${input.sequenceId} with ${input.videoUrls.length} videos`
     );
 
+    // Single video optimization: skip merge and use existing video directly
+    if (input.videoUrls.length === 1) {
+      console.log(
+        `[MergeVideoWorkflow] Single video - skipping merge for sequence ${input.sequenceId}`
+      );
+
+      await context.run('update-sequence-single', async () => {
+        await getDb()
+          .update(sequences)
+          .set({
+            mergedVideoUrl: input.videoUrls[0],
+            mergedVideoPath: null,
+            mergedVideoStatus: 'completed',
+            mergedVideoGeneratedAt: new Date(),
+            mergedVideoError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(sequences.id, input.sequenceId));
+      });
+
+      return {
+        mergedVideoUrl: input.videoUrls[0],
+        mergedVideoPath: null,
+      };
+    }
+
     // Step 1: Set status to merging
     await context.run('set-merging-status', async () => {
       await getDb()

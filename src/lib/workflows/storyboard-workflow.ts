@@ -42,24 +42,6 @@ export const generateStoryboardWorkflow = createWorkflow(
     });
 
     // Helper to safely emit events (no-op if realtime unavailable)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const emit = async (event: string, data: any) => {
-      if (!input.sequenceId) return;
-      const channel = getGenerationChannel(input.sequenceId);
-      if (!channel) return;
-      try {
-        console.log('emitting event', event, data);
-        await channel.emit(
-          `generation.${event}` as 'generation.complete',
-          data
-        );
-      } catch (error) {
-        console.warn(
-          '[StoryboardGenerationWorkflow] Failed to emit event:',
-          error
-        );
-      }
-    };
 
     // Step 1: Verify sequence and get data
     const {
@@ -139,6 +121,7 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,
+      workflowRunId: `analyze-script-${sequenceId}`,
       body: {
         userId: input.userId,
         teamId: input.teamId,
@@ -158,7 +141,7 @@ export const generateStoryboardWorkflow = createWorkflow(
 
     // Emit generation complete
     await context.run('emit-complete', async () => {
-      await emit('complete', {
+      await getGenerationChannel(sequenceId).emit('generation.complete', {
         sequenceId,
       });
     });

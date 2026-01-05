@@ -90,12 +90,20 @@ export async function uploadVideoToStorage(
     }
 
     // Generate human-readable filename with short hash for uniqueness
+    // Use last 6 chars of ULID (from random portion) for better collision resistance
+    // ULID structure: first 10 = timestamp, last 16 = random
     const ulid = generateId();
-    const shortHash = ulid.slice(0, 6).toLowerCase();
+    const shortHash = ulid.slice(-6).toLowerCase();
     const sequenceSlug = slugify(sequenceTitle) || 'video';
     const sceneSlug = sceneTitle ? slugify(sceneTitle) : 'scene';
     const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_velro.${extension}`;
     const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${filename}`;
+
+    console.log(`[Video Storage] Generated filename with hash: ${shortHash}`, {
+      ulid,
+      filename,
+      frameId,
+    });
 
     const videoBlob = await response.blob();
 

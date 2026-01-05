@@ -23,7 +23,7 @@ import { z } from 'zod';
 /**
  * Schema for AI matching response
  */
-const talentMatchResponseSchema = z.object({
+export const talentMatchResponseSchema = z.object({
   matches: z.array(
     z.object({
       characterId: z.string(),
@@ -37,10 +37,10 @@ const talentMatchResponseSchema = z.object({
 /**
  * Build the user prompt for matching
  */
-function buildMatchingPrompt(
+export function buildMatchingPromptVariables(
   characters: CharacterBibleEntry[],
   talentList: TalentWithSheets[]
-): string {
+) {
   const charactersDescription = characters
     .map(
       (c) => `- Character ID: ${c.characterId}
@@ -70,6 +70,35 @@ function buildMatchingPrompt(
   const numCharacters = characters.length;
   const expectedMatches = Math.min(numTalent, numCharacters);
 
+  return {
+    charactersDescription,
+    talentDescription,
+    numTalent: `${numTalent}`,
+    numCharacters: `${numCharacters}`,
+    expectedMatches: `${expectedMatches}`,
+    additionalRequirements:
+      numTalent > numCharacters
+        ? `- Note: More talent than characters. Match the ${numCharacters} best fits.`
+        : '',
+  };
+}
+
+/**
+ * Build the user prompt for matching
+ */
+export function buildMatchingPrompt(
+  characters: CharacterBibleEntry[],
+  talentList: TalentWithSheets[]
+): string {
+  const {
+    charactersDescription,
+    talentDescription,
+    expectedMatches,
+    numTalent,
+    numCharacters,
+    additionalRequirements,
+  } = buildMatchingPromptVariables(characters, talentList);
+
   return `Cast the following talent into character roles. The user specifically selected these ${numTalent} talent members.
 
 CHARACTERS (${numCharacters} available):
@@ -82,7 +111,7 @@ REQUIREMENTS:
 - Match ALL ${expectedMatches} talent to characters (${numTalent} talent, ${numCharacters} characters available)
 - Each talent gets exactly one character
 - Each character can only have one talent
-${numTalent > numCharacters ? `- Note: More talent than characters. Match the ${numCharacters} best fits.` : ''}
+${additionalRequirements}
 
 Respond with exactly ${expectedMatches} matches.`;
 }

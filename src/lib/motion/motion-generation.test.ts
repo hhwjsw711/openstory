@@ -163,10 +163,11 @@ describe('Motion Service', () => {
         expect.objectContaining({
           input: expect.objectContaining({
             prompt: 'Smooth camera movement',
-            image_url: 'https://example.com/image.jpg',
+            start_image_url: 'https://example.com/image.jpg', // O1 uses start_image_url
             duration: '10', // Should be string
             cfg_scale: 0.5,
             negative_prompt: 'blur, distort, and low quality',
+            generate_audio: false, // O1 doesn't support audio
           }),
           logs: true,
           pollInterval: 5000,

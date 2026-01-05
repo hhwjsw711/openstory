@@ -33,7 +33,9 @@ const openRouterResponseSchema = z.object({
   model: z.string(),
 });
 
-type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
+export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
+
+export { openRouterResponseSchema };
 
 type StreamChunk = {
   delta: string; // Text chunk

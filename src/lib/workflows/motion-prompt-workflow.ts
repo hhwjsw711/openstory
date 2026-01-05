@@ -5,20 +5,16 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
-import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
+import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { getGenerationChannel } from '@/lib/realtime';
 import type { Scene } from '@/lib/script/types';
-import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
-import { updateFrame } from '@/lib/db/helpers/frames';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { durableLLMCall } from './llm-call-helper';
-import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
+import { motionPromptSceneWorkflow } from './motion-prompt-scene-workflow';
 
-export const visualPromptWorkflow = createWorkflow(
+export const motionPromptWorkflow = createWorkflow(
   async (
-    context: WorkflowContext<VisualPromptWorkflowInput>
+    context: WorkflowContext<MotionPromptWorkflowInput>
   ): Promise<Scene[]> => {
     const input = context.requestPayload;
     const {
@@ -27,7 +23,6 @@ export const visualPromptWorkflow = createWorkflow(
       characterBible,
       styleConfig,
       analysisModelId,
-      sequenceId,
     } = input;
 
     console.log(
@@ -35,13 +30,13 @@ export const visualPromptWorkflow = createWorkflow(
       input
     );
     // ============================================================
-    // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
+    // PHASE 3: Motion Prompt Generation (using durableLLMCall helper)
     // ============================================================
-    const visualPromptResults = await Promise.all(
+    const motionPromptResults = await Promise.all(
       scenes.map(
         async (_scene, sceneIndex) =>
-          await context.invoke('visual-prompt-scene', {
-            workflow: visualPromptSceneWorkflow,
+          await context.invoke('motion-prompt-scene', {
+            workflow: motionPromptSceneWorkflow,
             body: {
               scenes,
               sceneIndex: sceneIndex,
@@ -55,17 +50,17 @@ export const visualPromptWorkflow = createWorkflow(
     );
 
     // Merge in the response
-    const { scenes: scenesWithVisualPrompts } = await context.run(
-      'merge-visual-prompts',
+    const { scenes: scenesWithMotionPrompts } = await context.run(
+      'merge-motion-prompts',
       async () => {
         return {
           scenes: scenes.map((scene) => {
-            const enrichment = visualPromptResults.find(
+            const enrichment = motionPromptResults.find(
               (s) => s.body.sceneId === scene.sceneId
             );
             if (!enrichment) {
               throw new WorkflowValidationError(
-                `Scene ID mismatch in visual prompts: expected "${scene.sceneId}" but AI returned [${visualPromptResults.map((s) => s.body.sceneId).join(', ')}]. ` +
+                `Scene ID mismatch in motion prompts: expected "${scene.sceneId}" but AI returned [${motionPromptResults.map((s) => s.body.sceneId).join(', ')}]. ` +
                   `Input had [${scenes.map((s) => s.sceneId).join(', ')}].`
               );
             }
@@ -73,7 +68,7 @@ export const visualPromptWorkflow = createWorkflow(
               ...scene,
               prompts: {
                 ...scene.prompts,
-                visual: enrichment.body.visualPrompt,
+                motion: enrichment.body.motionPrompt,
               },
             };
           }),
@@ -81,11 +76,11 @@ export const visualPromptWorkflow = createWorkflow(
       }
     );
 
-    return scenesWithVisualPrompts;
+    return scenesWithMotionPrompts;
   },
   {
     failureFunction: async () => {
-      return `Visual prompt generation failed`;
+      return `Motion prompt generation failed`;
     },
   }
 );

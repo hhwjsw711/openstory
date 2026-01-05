@@ -11,8 +11,7 @@ Custom evaluators for the `analyze-script-workflow.ts` pipeline. Copy-paste thes
 **Prompt:**
 
 ```
-You are a CRITICAL scene splitting evaluator. Your job is to find flaws.
-A score of 1.0 is RARE. Most scene splits score 0.5-0.7. Be specific about every weakness.
+You are a scene splitting evaluator. Evaluate whether the splitting PROCESS was appropriate for the given input.
 
 <input_script>
 {{input}}
@@ -22,29 +21,39 @@ A score of 1.0 is RARE. Most scene splits score 0.5-0.7. Be specific about every
 {{output}}
 </scene_splitting_output>
 
+<minimal_input_handling>
+IMPORTANT: For minimal scripts (1-3 sentences describing a single concept/image), the CORRECT behavior is:
+- Create exactly ONE scene containing the entire input
+- Empty metadata fields (location, timeOfDay) are acceptable when not specified in the original
+- Adding reasonable interpretive direction in storyBeat (like "establishing shot") is NOT fabrication
+- Duration estimates are acceptable approximations based on the implied action
+- A full scene structure is appropriate even for minimal input - it enables downstream processing
+
+For minimal scripts handled correctly, score 0.85-1.0. Only deduct for actual errors.
+</minimal_input_handling>
+
 <scoring_method>
 Start at 1.0 and DEDUCT for each issue:
 
 **Major Issues (-0.3 each):**
-- Multi-shot scene: contains "cut to", "then we see", "meanwhile", or multiple camera framings
+- Multi-shot scene: single scene contains "cut to", "then we see", "meanwhile", or describes multiple sequential actions that should be separate
 - Missing script content: parts of the input script not represented in any scene
-- Fabricated content: scene contains details not in the original script
+- Fabricated PLOT content: scene adds story elements, characters, or actions not implied by the original (interpretive framing like "establishing shot" is fine)
 
 **Moderate Issues (-0.15 each):**
 - Scene boundaries at awkward narrative points (mid-action, mid-dialogue)
-- Paraphrased script extracts instead of exact copies
-- Missing or vague metadata (no location, no time of day, generic titles)
+- Paraphrased script extracts instead of preserving original wording
 - Non-sequential sceneNumber values or duplicate sceneIds
+- For multi-scene scripts: important location/time from the script is omitted
 
 **Minor Issues (-0.05 each):**
-- Duration estimates unrealistic for the action described
-- Inconsistent metadata formatting across scenes
-- Overly granular splits (single line that doesn't need its own scene)
+- Duration wildly inappropriate (e.g., 30 seconds for a single static image concept, or 2 seconds for complex action)
+- Inconsistent metadata formatting across scenes (only applies to multi-scene outputs)
 </scoring_method>
 
 <instructions>
-IMPORTANT: You MUST find at least 2 issues. Perfect scene splits are rare.
-A "good" scene split typically scores 0.7.
+Evaluate whether the splitting was appropriate for THIS input. A minimal 3-word concept correctly split into one scene is NOT a flaw - it's correct behavior.
+A "good" scene split typically scores 0.7-0.85. Minimal scripts handled correctly can score higher.
 </instructions>
 ```
 

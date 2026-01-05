@@ -1,7 +1,11 @@
 /**
- * Print JSON schemas for all structured output Zod schemas
+ * Generate Langfuse prompt configurations for all structured output Zod schemas
  * Run with: bun scripts/print-schemas.ts
  * Outputs to: scripts/schemas/*.json
+ *
+ * Generates Langfuse prompt configs with:
+ * - name: Langfuse prompt name
+ * - response_format: JSON schema for structured outputs
  *
  * Validates:
  * - Required field coverage for strict JSON schema
@@ -23,142 +27,51 @@ import {
   visualPromptSchema,
 } from '@/lib/ai/scene-analysis.schema';
 
+// Import result schemas from their source files
+import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
+import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
+import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
+import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
+import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
+import { talentMatchResponseSchema } from '@/lib/services/talent-matching.service';
+
 const SCHEMA_OUTPUT_DIR = join(import.meta.dir, 'schemas');
 
-// Phase 1: Scene Splitting Schema (mirrors scene-splitting.ts)
-const sceneSplittingResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status' }),
-  projectMetadata: projectMetadataSchema.meta({
-    description: 'Project-level metadata extracted from script',
-  }),
-  scenes: z
-    .array(
-      sceneSchema
-        .pick({
-          sceneId: true,
-          sceneNumber: true,
-          originalScript: true,
-          metadata: true,
-        })
-        .required()
-    )
-    .meta({ description: 'Array of scenes split from the script' }),
-});
+// All result schemas are now imported from their source files
 
-// Phase 2: Character Extraction Schema (mirrors character-extraction.ts)
-const characterExtractionResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status' }),
-  characterBible: z
-    .array(characterBibleEntrySchema)
-    .catch([])
-    .meta({ description: 'Character descriptions' }),
-});
-
-// Phase 3: Visual Prompt Schema (mirrors visual-prompts.ts)
-const visualPromptGenerationResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status' }),
-  scenes: z
-    .array(
-      sceneSchema
-        .pick({
-          sceneId: true,
-        })
-        .required()
-        .extend({
-          prompts: z
-            .object({
-              visual: visualPromptSchema.meta({
-                description: 'Image generation prompt data',
-              }),
-            })
-            .meta({ description: 'Visual generation prompts for this scene' }),
-          continuity: continuitySchema
-            .catch({
-              characterTags: [],
-              environmentTag: '',
-              colorPalette: '',
-              lightingSetup: '',
-              styleTag: '',
-            })
-            .meta({ description: 'Continuity tracking for scene consistency' }),
-        })
-    )
-    .meta({ description: 'Array of scenes with visual prompts' }),
-});
-
-// Phase 4: Motion Prompt Schema (mirrors motion-prompts.ts)
-const motionPromptGenerationResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status' }),
-  scenes: z
-    .array(
-      sceneSchema
-        .pick({
-          sceneId: true,
-        })
-        .required()
-        .extend({
-          prompts: z
-            .object({
-              motion: motionPromptSchema.meta({
-                description: 'Motion/video generation prompt data',
-              }),
-            })
-            .meta({ description: 'Motion generation prompts for this scene' }),
-        })
-    )
-    .meta({ description: 'Array of scenes with motion prompts' }),
-});
-
-// Phase 5: Audio Design Schema (mirrors audio-design.ts)
-const audioDesignGenerationResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status' }),
-  scenes: z
-    .array(
-      sceneSchema
-        .pick({
-          sceneId: true,
-          audioDesign: true,
-        })
-        .required()
-    )
-    .meta({ description: 'Array of scenes with audio design' }),
-});
-
-// Helper to print schema and write to file
-async function printSchema(name: string, schema: z.ZodTypeAny) {
+// Helper to generate Langfuse config and write to file
+async function generateLangfuseConfig(phaseName: string, schema: z.ZodTypeAny) {
   console.log(`\n${'='.repeat(80)}`);
-  console.log(`SCHEMA: ${name}`);
+  console.log(`LANGFUSE CONFIG: ${phaseName}`);
   console.log('='.repeat(80));
 
   const jsonSchema = z.toJSONSchema(schema);
-  console.log(JSON.stringify(jsonSchema, null, 2));
+
+  // Generate Langfuse prompt configuration
+  const langfuseConfig = {
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: phaseName.replace(/[^a-zA-Z0-9_]/g, '_'), // Convert phase name to valid schema name
+        schema: jsonSchema,
+        strict: true,
+      },
+    },
+  };
+
+  console.log(JSON.stringify(langfuseConfig, null, 2));
 
   // Write to file
-  const filePath = join(SCHEMA_OUTPUT_DIR, `${name}.json`);
-  await writeFile(filePath, JSON.stringify(jsonSchema, null, 2));
+  const filePath = join(SCHEMA_OUTPUT_DIR, `${phaseName}.json`);
+  await writeFile(filePath, JSON.stringify(langfuseConfig, null, 2));
   console.log(`\n📁 Written to: ${filePath}`);
 
   // Check for properties without required
-  checkRequiredFields(jsonSchema, name);
+  checkRequiredFields(jsonSchema, phaseName);
 
   // Check for missing descriptions
   console.log('\n📝 Checking descriptions:');
-  const missingDescriptions = checkDescriptions(jsonSchema, name);
+  const missingDescriptions = checkDescriptions(jsonSchema, phaseName);
   if (missingDescriptions === 0) {
     console.log('   ✅ All properties have descriptions');
   } else {
@@ -232,35 +145,47 @@ function checkDescriptions(schema: unknown, path: string): number {
 // Main
 async function main() {
   console.log(
-    '\n🔍 Analyzing Zod schemas for structured output compatibility...\n'
+    '\n🔍 Generating Langfuse prompt configurations from imported result schemas...\n'
   );
 
   // Create output directory
   await mkdir(SCHEMA_OUTPUT_DIR, { recursive: true });
 
-  // Print all phase schemas
-  await printSchema('phase-1-scene-splitting', sceneSplittingResultSchema);
-  await printSchema(
+  // Generate Langfuse configs for all phase schemas
+  await generateLangfuseConfig(
+    'phase-1-scene-splitting',
+    sceneSplittingResultSchema
+  );
+  await generateLangfuseConfig(
     'phase-2-character-extraction',
     characterExtractionResultSchema
   );
-  await printSchema(
+  await generateLangfuseConfig(
     'phase-3-visual-prompts',
     visualPromptGenerationResultSchema
   );
-  await printSchema(
+  await generateLangfuseConfig(
     'phase-4-motion-prompts',
     motionPromptGenerationResultSchema
   );
-  await printSchema('phase-5-audio-design', audioDesignGenerationResultSchema);
+  await generateLangfuseConfig(
+    'phase-5-audio-design',
+    audioDesignGenerationResultSchema
+  );
+  await generateLangfuseConfig(
+    'phase-6-talent-matching',
+    talentMatchResponseSchema
+  );
 
-  // Print canonical schema for reference
-  await printSchema('canonical-scene-analysis', sceneAnalysisSchema);
+  // Generate canonical schema for reference (raw JSON schema, not Langfuse config)
+  await generateLangfuseConfig('canonical-scene-analysis', sceneAnalysisSchema);
 
   console.log('\n\n' + '='.repeat(80));
   console.log('SUMMARY');
   console.log('='.repeat(80));
   console.log(`
+Langfuse prompt configurations generated with structured output schemas.
+
 For strict JSON schema validation (Azure/OpenRouter/GPT-mini), ALL properties
 in an object must be listed in the 'required' array.
 
@@ -275,7 +200,8 @@ Safe alternatives:
 For AI structured outputs, use .meta({ description: '...' }) on all fields
 to help the model understand the expected data format.
 
-Schema files written to: ${SCHEMA_OUTPUT_DIR}/
+Langfuse config files written to: ${SCHEMA_OUTPUT_DIR}/
+Use these configs to create chat prompts in Langfuse dashboard.
 `);
 }
 

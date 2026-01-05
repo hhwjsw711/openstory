@@ -5,7 +5,7 @@
 
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import type { ProgressCallback } from '@/lib/ai/openrouter-client';
+import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   updateSequenceAnalysisDurationMs,
@@ -15,14 +15,19 @@ import {
 } from '@/lib/db/helpers/sequences';
 import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { extractCharacterBible } from '@/lib/script/character-extraction';
-import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
-import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
-import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
+import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
+import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
+import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
+import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
 import type { Scene } from '@/lib/script/types';
+import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
-import { matchTalentToCharacters } from '@/lib/services/talent-matching.service';
+import {
+  buildMatchingPromptVariables,
+  talentMatchResponseSchema,
+  buildMatchingPrompt,
+} from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   AnalyzeScriptWorkflowInput,
@@ -31,13 +36,21 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { recordWorkflowTrace } from '@/lib/observability/langfuse';
+import {
+  type PromptReference,
+  logGeneration,
+  recordWorkflowTrace,
+} from '@/lib/observability/langfuse';
+import { getPrompt } from '@/lib/observability/langfuse-prompts';
+import { getEnv } from '#env';
+import { z } from 'zod';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
-
+import { durableLLMCall } from './llm-call-helper';
+import { motionPromptWorkflow } from './motion-prompt-workflow';
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
 const BATCH_SIZE = 1; // Process this many scenes at a time
@@ -82,40 +95,44 @@ export const analyzeScriptWorkflow = createWorkflow(
       suggestedTalentIds,
     } = input;
 
-    // STEP: Split script into basic scenes and store in sequence metadata
-    const { scenes, title, startTime } = await context.run(
-      'split-script-into-scenes',
-      async () => {
-        const startTime = Date.now();
+    // ============================================================
+    // PHASE 1: Scene Splitting (using durableLLMCall helper)
+    // ============================================================
 
-        if (!script) {
-          throw new WorkflowValidationError('No script found');
-        }
+    // Validate input before calling
+    if (!script) {
+      throw new WorkflowValidationError('No script found');
+    }
 
-        // Emit Phase 1 start
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 1,
-          phaseName: 'Scene Splitting',
-        });
+    const startTime = await context.run('start-time', async () => {
+      return Date.now();
+    });
 
-        const splitScriptProgressCallback: ProgressCallback = () => {};
-        const result = await splitScriptIntoScenes(
-          script,
+    const {
+      scenes,
+      projectMetadata: { title },
+    } = await durableLLMCall(
+      context,
+      {
+        name: 'scene-splitting',
+        phase: { number: 1, name: 'Scene Splitting' },
+
+        promptName: 'velro/phase/scene-splitting-chat',
+        promptVariables: {
           aspectRatio,
-          splitScriptProgressCallback,
-          {
-            model: analysisModelId,
-          }
-        );
+          script: sanitizeScriptContent(script),
+        },
 
-        if (!result.scenes || result.scenes.length === 0) {
-          throw new WorkflowValidationError(
-            'Script splitting returned no scenes - script may be too short or invalid'
-          );
-        }
+        modelId: analysisModelId,
+        responseSchema: sceneSplittingResultSchema,
+      },
+      { sequenceId, userId: input.userId }
+    );
 
-        // Emit scene:new for each scene that was split
-        for (const scene of result.scenes) {
+    // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
+    const frameMapping: { sceneId: string; frameId: string }[] =
+      await context.run('update-title-and-create-frames', async () => {
+        for (const scene of scenes) {
           await getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
@@ -125,23 +142,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           });
         }
 
-        // Emit Phase 1 complete
-        await getGenerationChannel(sequenceId).emit(
-          'generation.phase:complete',
-          { phase: 1 }
-        );
-
-        return {
-          scenes: result.scenes,
-          title: result.projectMetadata?.title || 'Untitled',
-          startTime: startTime,
-        };
-      }
-    );
-
-    // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
-    const frameMapping: { sceneId: string; frameId: string }[] =
-      await context.run('update-title-and-create-frames', async () => {
         if (!sequenceId) return [];
 
         // Add the updated metadata to the sequence
@@ -202,113 +202,112 @@ export const analyzeScriptWorkflow = createWorkflow(
         return frameMapping;
       });
 
-    // ------------------------------------------------------------
-    // Extract character bible from scenes
-    const characterBible = await context.run(
-      'extract-character-bible',
-      async () => {
-        const extractCharacterBibleProgressCallback: ProgressCallback =
-          () => {};
+    // ============================================================
+    // PHASE 2: Character Extraction (using durableLLMCall helper)
+    // ============================================================
 
-        // Emit Phase 2 start
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 2,
-          phaseName: 'Character Extraction',
-        });
-        const characterBible = await extractCharacterBible(
-          scenes,
-          extractCharacterBibleProgressCallback,
-          {
-            model: analysisModelId,
-          }
-        );
+    const { characterBible } = await durableLLMCall(
+      context,
+      {
+        name: 'character-extraction',
+        phase: { number: 2, name: 'Character Extraction' },
 
-        // Emit Phase 2 complete
-        await getGenerationChannel(sequenceId).emit(
-          'generation.phase:complete',
-          { phase: 2 }
-        );
+        promptName: 'velro/phase/character-extraction-chat',
+        promptVariables: {
+          scenes: JSON.stringify(scenes, null, 2),
+        },
 
-        // Start phase 3
-
-        return characterBible;
-      }
+        modelId: analysisModelId,
+        responseSchema: characterExtractionResultSchema,
+      },
+      { sequenceId, userId: input.userId }
     );
 
-    // ------------------------------------------------------------
-    // Match suggested talent to extracted characters (if provided)
-    const talentMatches: TalentCharacterMatch[] = await context.run(
-      'match-talent-to-characters',
-      async () => {
-        console.log('[TalentMatching] Starting talent matching step');
-        console.log('[TalentMatching] suggestedTalentIds:', suggestedTalentIds);
-        console.log('[TalentMatching] teamId:', input.teamId);
-        console.log(
-          '[TalentMatching] characterBible count:',
-          characterBible.length
-        );
+    // ============================================================
+    // TALENT MATCHING (conditional three-step durable pattern)
+    // ============================================================
 
-        // Skip if no suggested talent
+    const { talentList, matchingPromptVariables } = await context.run(
+      'get-talent-list',
+      async () => {
         if (
           !suggestedTalentIds ||
           suggestedTalentIds.length === 0 ||
           !input.teamId
         ) {
-          console.log(
-            '[TalentMatching] Skipping - no suggested talent or teamId'
-          );
-          return [];
+          return { talentList: [], matchingPromptVariables: {} };
         }
-
-        // Fetch suggested talent with their default sheets
         const talentList = await getTalentByIds(
           suggestedTalentIds,
           input.teamId
         );
-
-        console.log(
-          '[TalentMatching] Fetched talent count:',
-          talentList.length
-        );
-        console.log(
-          '[TalentMatching] Talent details:',
-          talentList.map((t) => ({
-            id: t.id,
-            name: t.name,
-            hasDefaultSheet: !!t.defaultSheet,
-            defaultSheetImageUrl: t.defaultSheet?.imageUrl,
-            defaultSheetHasMetadata: !!t.defaultSheet?.metadata,
-          }))
+        const matchingPromptVariables = buildMatchingPromptVariables(
+          characterBible,
+          talentList
         );
 
-        if (talentList.length === 0) {
-          console.log('[TalentMatching] No talent fetched from DB');
-          return [];
+        return { talentList, matchingPromptVariables };
+      }
+    );
+
+    // Call the talent matching LLM call
+
+    const { matches: talentMatches } =
+      talentList.length > 0
+        ? await durableLLMCall(
+            context,
+            {
+              name: 'talent-matching',
+              phase: { number: 3, name: 'Talent Matching' },
+
+              promptName: 'velro/phase/talent-matching-chat',
+              promptVariables: matchingPromptVariables,
+              modelId: analysisModelId,
+              responseSchema: talentMatchResponseSchema,
+            },
+            { sequenceId, userId: input.userId }
+          )
+        : { matches: [] };
+
+    const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
+      'build-matches',
+      async () => {
+        // Build match results
+        const usedTalentIds = new Set<string>();
+        const usedCharacterIds = new Set<string>();
+        const matches: TalentCharacterMatch[] = [];
+
+        for (const match of talentMatches) {
+          // This ensures that talent is never cast twice
+          if (usedTalentIds.has(match.talentId)) continue;
+          // This ensures that a character is never cast twice
+          if (usedCharacterIds.has(match.characterId)) continue;
+
+          const talent = talentList.find((t) => t.id === match.talentId);
+          if (!talent || !talent.imageUrl) continue;
+
+          const character = characterBible.find(
+            (c) => c.characterId === match.characterId
+          );
+          if (!character) continue;
+
+          usedTalentIds.add(match.talentId);
+          usedCharacterIds.add(match.characterId);
+          matches.push({
+            characterId: match.characterId,
+            talentId: match.talentId,
+            talentName: talent.name,
+            sheetImageUrl: talent.defaultSheet?.imageUrl ?? '',
+            sheetMetadata: talent.defaultSheet?.metadata ?? undefined,
+          });
         }
 
-        // Match talent to characters using AI
-        const matchResult = await matchTalentToCharacters(
-          characterBible,
-          talentList,
-          { model: analysisModelId }
-        );
-
-        console.log('[TalentMatching] Match result:', {
-          matchCount: matchResult.matches.length,
-          matches: matchResult.matches.map((m) => ({
-            charId: m.characterId,
-            talentName: m.talentName,
-          })),
-          unusedCount: matchResult.unusedTalentIds.length,
-          unusedNames: matchResult.unusedTalentNames,
-        });
-
         // Emit matched talent event
-        if (matchResult.matches.length > 0) {
+        if (matches.length > 0) {
           await getGenerationChannel(sequenceId).emit(
             'generation.talent:matched',
             {
-              matches: matchResult.matches.map((m) => {
+              matches: matches.map((m) => {
                 const char = characterBible.find(
                   (c) => c.characterId === m.characterId
                 );
@@ -323,47 +322,44 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
         }
 
-        // Emit unused talent event
-        if (matchResult.unusedTalentIds.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.talent:unmatched',
-            {
-              unusedTalentIds: matchResult.unusedTalentIds,
-              unusedTalentNames: matchResult.unusedTalentNames,
-            }
-          );
-        }
-
-        return matchResult.matches;
+        return matches;
       }
     );
 
     // Characters with completed sheets - populated after character sheet generation
-    const [{ body: charactersWithSheets }, { body: scenesWithVisualPrompts }] =
-      await Promise.all([
-        context.invoke('character-sheet-from-bible', {
-          workflow: characterBibleWorkflow,
-          body: {
-            sequenceId,
-            userId: input.userId,
-            teamId: input.teamId,
-            characterBible,
-            talentMatches,
-          },
-        }),
-        context.invoke('visual-prompts', {
-          workflow: visualPromptWorkflow,
-          body: {
-            sequenceId,
-            scenes,
-            aspectRatio,
-            characterBible,
-            styleConfig,
-            analysisModelId,
-            frameMapping,
-          },
-        }),
-      ]);
+    const [charResult, visualResult] = await Promise.all([
+      context.invoke('character-sheet-from-bible', {
+        workflow: characterBibleWorkflow,
+        body: {
+          sequenceId,
+          userId: input.userId,
+          teamId: input.teamId,
+          characterBible,
+          talentMatches: talentCharacterMatches,
+        },
+      }),
+      context.invoke('visual-prompts', {
+        workflow: visualPromptWorkflow,
+        body: {
+          sequenceId,
+          scenes,
+          aspectRatio,
+          characterBible,
+          styleConfig,
+          analysisModelId,
+        },
+      }),
+    ]);
+
+    if (charResult.isFailed || charResult.isCanceled) {
+      throw new Error('Character sheet generation failed');
+    }
+    if (visualResult.isFailed || visualResult.isCanceled) {
+      throw new Error('Visual prompt generation failed');
+    }
+
+    const charactersWithSheets = charResult.body;
+    const scenesWithVisualPrompts = visualResult.body;
 
     let imageUrls: string[] = [];
     // Step 8: Generate thumbnails in parallel if enabled
@@ -449,36 +445,68 @@ export const analyzeScriptWorkflow = createWorkflow(
       );
     }
 
-    // End phase 5, start phase 6
+    // End phase 5
     await context.run('frame-images-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
         phase: 5,
       });
-
-      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-        phase: 6,
-        phaseName: 'Motion Prompts',
-      });
     });
 
-    // Step 6: Generate motion prompts for each batch
-    const motionPromptResults: Scene[][] = await Promise.all(
-      scenesWithVisualPrompts.map(async (scene, batchIndex) => {
-        return context.run(`motion-prompts-batch-${batchIndex}`, async () => {
-          const generateMotionPromptsProgressCallback: ProgressCallback =
-            () => {};
-          return await generateMotionPromptsForScenes(
-            [scene],
-            generateMotionPromptsProgressCallback,
-            {
-              model: analysisModelId,
-            }
-          );
-        });
-      })
+    // ============================================================
+    // PHASE 4: Motion Prompts (using durableLLMCall helper)
+    // ============================================================
+    const partialScenesWithMotionPrompts = await context.invoke(
+      'motion-prompts',
+      {
+        workflow: motionPromptWorkflow,
+        body: {
+          sequenceId,
+          scenes,
+          aspectRatio,
+          characterBible,
+          styleConfig,
+          analysisModelId,
+        },
+      }
     );
 
-    const scenesWithMotionPrompts = motionPromptResults.flat();
+    const scenesWithMotionPrompts: Scene[] = await context.run(
+      'merge-motion-prompts',
+      async () => {
+        return scenesWithVisualPrompts.map((scene) => {
+          const enrichment = partialScenesWithMotionPrompts.body.find(
+            (s) => s.sceneId === scene.sceneId
+          );
+          if (!enrichment) {
+            throw new WorkflowValidationError(
+              `Scene ID mismatch in motion prompts: expected "${scene.sceneId}"`
+            );
+          }
+
+          return {
+            ...scene,
+            prompts: {
+              visual: scene.prompts?.visual || {
+                fullPrompt: '',
+                negativePrompt: '',
+                components: {
+                  sceneDescription: '',
+                  subject: '',
+                  environment: '',
+                  lighting: '',
+                  camera: '',
+                  composition: '',
+                  style: '',
+                  technical: '',
+                  atmosphere: '',
+                },
+              },
+              motion: enrichment.prompts?.motion,
+            },
+          };
+        });
+      }
+    );
 
     if (sequenceId) {
       // Update frames with motion prompt data (Phase 4)
@@ -505,34 +533,52 @@ export const analyzeScriptWorkflow = createWorkflow(
         );
       });
     }
-    await context.run('motion-prompts-complete', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
-        phase: 6,
-      });
-      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-        phase: 7,
-        phaseName: 'Audio Design',
-      });
-    });
-    // Step 7: Generate audio design for each batch
-    const audioDesignResults: Scene[][] = await Promise.all(
-      motionPromptResults.map(async (batchWithMotionPrompts, batchIndex) => {
-        return context.run(`audio-design-batch-${batchIndex}`, async () => {
-          const generateAudioDesignProgressCallback: ProgressCallback =
-            () => {};
 
-          return await generateAudioDesignForScenes(
-            batchWithMotionPrompts,
-            generateAudioDesignProgressCallback,
-            {
-              model: analysisModelId,
-            }
-          );
-        });
-      })
+    // ============================================================
+    // PHASE 5: Audio Design (using durableLLMCall helper)
+    // ============================================================
+
+    const { scenes: scenesWithAudioDesign } = await durableLLMCall(
+      context,
+      {
+        name: 'audio-design',
+        phase: { number: 7, name: 'Audio Design' },
+
+        promptName: 'velro/phase/audio-design-chat',
+        promptVariables: {
+          scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
+        },
+
+        modelId: analysisModelId,
+        responseSchema: audioDesignGenerationResultSchema,
+
+        additionalMetadata: {
+          sceneCount: scenesWithMotionPrompts.length,
+        },
+      },
+      { sequenceId, userId: input.userId }
     );
 
-    const completeScenes = audioDesignResults.flat();
+    const completeScenes: Scene[] = await context.run(
+      'merge-audio-design',
+      async () => {
+        return scenesWithMotionPrompts.map((scene) => {
+          const enrichment = scenesWithAudioDesign.find(
+            (s) => s.sceneId === scene.sceneId
+          );
+          if (!enrichment) {
+            throw new WorkflowValidationError(
+              `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
+            );
+          }
+          return {
+            ...scene,
+            audioDesign: enrichment.audioDesign,
+          };
+        });
+      }
+    );
+
     if (sequenceId) {
       // Update frames with audio design data (Phase 5)
       await context.run('update-frames-after-audio-design', async () => {
@@ -553,17 +599,10 @@ export const analyzeScriptWorkflow = createWorkflow(
             );
           })
         );
-
-        await getGenerationChannel(sequenceId).emit(
-          'generation.phase:complete',
-          {
-            phase: 6,
-          }
-        );
       });
     }
 
-    if (videoModel && imageUrls && imageUrls.length > 0) {
+    if (autoGenerateMotion && videoModel && imageUrls && imageUrls.length > 0) {
       // Start phase 7
       await context.run('start-motion-generation', async () => {
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
@@ -633,10 +672,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           completeScenes,
           sequenceId,
           input.userId,
-          {
-            model: analysisModelId,
-            durationMs: Date.now() - startTime,
-          }
+          analysisModelId,
+          new Date(startTime)
         );
       });
     }

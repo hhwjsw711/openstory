@@ -90,8 +90,9 @@ export const IMAGE_TO_VIDEO_MODELS = {
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
-      maxDuration: 12,
-      defaultDuration: 10,
+      maxDuration: 8,
+      defaultDuration: 8,
+      supportedDurations: [4, 6, 8],
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
@@ -156,6 +157,31 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
   },
 
+  kling_v2_6_pro_no_audio: {
+    id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+    name: 'Kling v2.6 Pro (no Audio)',
+    provider: 'kling',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false, // Audio generation disabled
+      maxDuration: 10,
+      defaultDuration: 10,
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
+      requiresStringDuration: true, // API expects string, not number
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
+    },
+    pricing: {
+      pricePerSecond: 0.07,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
+    performance: {
+      estimatedGenerationTime: 15,
+      quality: 'best',
+    },
+  },
+
   sora_2: {
     id: 'fal-ai/sora-2/image-to-video',
     name: 'OpenAI Sora 2',
@@ -163,8 +189,9 @@ export const IMAGE_TO_VIDEO_MODELS = {
     capabilities: {
       supportsPrompt: true,
       supportsAudio: true,
-      maxDuration: 10,
-      defaultDuration: 5,
+      maxDuration: 12,
+      defaultDuration: 4,
+      supportedDurations: [4, 8, 12],
       fpsRange: { min: 24, max: 60, default: 30 },
       supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
     },
@@ -192,6 +219,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
       requiresStringDuration: true, // API expects string, not number
       supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
+      imageUrlParamName: 'start_image_url' as const, // O1 uses start_image_url instead of image_url
     },
     pricing: {
       pricePerSecond: 0.112,
@@ -217,6 +245,7 @@ const VIDEO_MODELS = {
   veo3_1: IMAGE_TO_VIDEO_MODELS.veo3_1.id,
   kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
   kling_v2_6_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro.id,
+  kling_v2_6_pro_no_audio: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro_no_audio.id,
   sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
   kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
 } as const;

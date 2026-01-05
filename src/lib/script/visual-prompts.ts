@@ -28,7 +28,7 @@ import { z } from 'zod';
  * Schema for visual prompt generation validation.
  * Uses .pick().required() from canonical sceneSchema and extends with prompts.visual + continuity.
  */
-const visualPromptGenerationResultSchema = z.object({
+export const visualPromptGenerationResultSchema = z.object({
   status: z
     .enum(['success', 'error', 'rejected'])
     .catch('success')
