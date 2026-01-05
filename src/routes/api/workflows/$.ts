@@ -21,6 +21,8 @@ import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { visualPromptSceneWorkflow } from '@/lib/workflows/visual-prompt-scene-workflow';
 import { getQStashClient } from '@/lib/workflow/client';
 import { serveMany } from '@upstash/workflow/tanstack';
+import { motionPromptWorkflow } from '@/lib/workflows/motion-prompt-workflow';
+import { motionPromptSceneWorkflow } from '@/lib/workflows/motion-prompt-scene-workflow';
 
 // Initialize Langfuse tracing at module load
 initTracing();
@@ -41,6 +43,8 @@ const handler = serveMany(
     'recast-character': recastCharacterWorkflow,
     'regenerate-frames': regenerateFramesWorkflow,
     'visual-prompt-scene': visualPromptSceneWorkflow,
+    'motion-prompts': motionPromptWorkflow,
+    'motion-prompt-scene': motionPromptSceneWorkflow,
   },
   {
     qstashClient: getQStashClient(), // This must be the QStash client
