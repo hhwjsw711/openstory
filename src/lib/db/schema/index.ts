@@ -35,6 +35,12 @@ import { characterSheets, characterSheetsRelations } from './character-sheets';
 
 import { frameCharacters, frameCharactersRelations } from './frame-characters';
 
+import { locations, locationsRelations } from './locations';
+
+import { locationSheets, locationSheetsRelations } from './location-sheets';
+
+import { frameLocations, frameLocationsRelations } from './frame-locations';
+
 import {
   talent,
   talentMedia,
@@ -100,6 +106,7 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
   }),
   frames: many(frames),
   characters: many(characters),
+  locations: many(locations),
 }));
 
 // Better Auth tables
@@ -159,6 +166,35 @@ export type {
   FrameCharacterWithDetails,
   NewFrameCharacter,
 } from './frame-characters';
+
+// Locations (extracted from script)
+export { locations };
+
+export type {
+  Location,
+  LocationMinimal,
+  LocationWithDetails,
+  NewLocation,
+  ReferenceStatus,
+} from './locations';
+
+// Location Sheets (location-specific variations)
+export { locationSheets };
+
+export type {
+  LocationSheet,
+  LocationSheetSource,
+  NewLocationSheet,
+} from './location-sheets';
+
+// Frame Locations (which location in each frame)
+export { frameLocations };
+
+export type {
+  FrameLocation,
+  FrameLocationWithDetails,
+  NewFrameLocation,
+} from './frame-locations';
 
 // Talent Library
 export { talent, talentMedia, talentSheets };
@@ -247,6 +283,18 @@ export const schema = {
   // Frame Characters (which characters in each frame)
   frameCharacters,
   frameCharactersRelations,
+
+  // Locations (extracted from script)
+  locations,
+  locationsRelations,
+
+  // Location Sheets (location-specific variations)
+  locationSheets,
+  locationSheetsRelations,
+
+  // Frame Locations (which location in each frame)
+  frameLocations,
+  frameLocationsRelations,
 
   // Talent Library
   talent,
