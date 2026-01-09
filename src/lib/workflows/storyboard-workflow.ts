@@ -38,6 +38,7 @@ export const generateStoryboardWorkflow = createWorkflow(
       teamId: input.teamId,
       userId: input.userId,
       suggestedTalentIds: input.suggestedTalentIds,
+      suggestedLocationIds: input.suggestedLocationIds,
       autoGenerateMotion: input.autoGenerateMotion,
     });
 
@@ -134,6 +135,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         videoModel,
         autoGenerateMotion: input.autoGenerateMotion ?? false,
         suggestedTalentIds: input.suggestedTalentIds,
+        suggestedLocationIds: input.suggestedLocationIds,
       },
       retries: 3,
       retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
