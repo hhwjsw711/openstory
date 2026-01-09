@@ -12,6 +12,7 @@ import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { libraryLocationSheetWorkflow } from '@/lib/workflows/library-location-sheet-workflow';
 import { locationBibleWorkflow } from '@/lib/workflows/location-bible-workflow';
 import { locationSheetWorkflow } from '@/lib/workflows/location-sheet-workflow';
 import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
@@ -47,6 +48,7 @@ const handler = serveMany(
     'recast-location': recastLocationWorkflow,
     'location-sheet': locationSheetWorkflow,
     'location-sheet-from-bible': locationBibleWorkflow,
+    'library-location-sheet': libraryLocationSheetWorkflow,
     'regenerate-frames': regenerateFramesWorkflow,
     'visual-prompt-scene': visualPromptSceneWorkflow,
     'motion-prompts': motionPromptWorkflow,

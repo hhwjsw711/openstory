@@ -73,11 +73,10 @@ export const buildPromptWithLocationReferences = (
 /**
  * Build a location reference sheet prompt structure
  *
- * Creates a consistent prompt for generating location reference images with:
- * - Establishing shot showing the full environment
- * - Key architectural and design details
- * - Lighting and atmosphere matching the specified setup
- * - Color palette visualization
+ * Creates a 3x3 grid of 16:9 images showing different angles and views:
+ * - Row 1: Wide establishing shots (exterior/approach, main view, alternate angle)
+ * - Row 2: Medium shots (key areas and features)
+ * - Row 3: Detail shots (architectural details, textures, atmosphere)
  *
  * @param entry - The location bible entry from script analysis
  * @param libraryLocationOverrides - Optional library location data for overrides
@@ -115,13 +114,15 @@ export const buildLocationSheetPrompt = (
   let referenceInstruction = '';
   if (referenceUrls.length > 0) {
     referenceInstruction = `
-IMPORTANT - Reference Image:
-Match the provided reference image for the overall look and feel of this location. Use it as the visual basis but ensure lighting and time of day match the specified setting.
+IMPORTANT - Reference Images:
+Use the provided reference images as the definitive source for this location's appearance.
+Match all visual details exactly: architecture, materials, colors, lighting atmosphere, and distinctive features.
+Every panel must be visually consistent with the references while showing different angles and areas.
 `;
   }
 
   const prompt =
-    `A professional establishing shot of a cinematic location, optimized for visual consistency across multiple scenes.
+    `A professional 3x3 grid location reference sheet for film production, showing 9 distinct views of the same location in consistent visual style.
 
 [LOCATION]:
 ${entry.name}${timeOfDayLabel}
@@ -131,7 +132,7 @@ Type: ${typeLabel}
 ${description}
 
 [ARCHITECTURAL STYLE]:
-${entry.architecturalStyle || 'Not specified - derive from description'}
+${entry.architecturalStyle || 'Derive from description and references'}
 
 [KEY FEATURES]:
 ${entry.keyFeatures || 'Key visual elements that define this space'}
@@ -140,22 +141,117 @@ ${entry.keyFeatures || 'Key visual elements that define this space'}
 ${entry.colorPalette || 'Derive from description and mood'}
 
 [LIGHTING]:
-${entry.lightingSetup || 'Match time of day and mood'}
+${entry.lightingSetup || 'Match time of day and mood - consistent across all panels'}
 
 [ATMOSPHERE]:
 ${entry.ambiance || 'Derive from description and setting'}
 ${referenceInstruction}
-[TECHNICAL SPECIFICATIONS]:
-- Wide establishing shot capturing the full environment
-- Cinematic composition with depth and scale
-- High resolution with rich detail
-- Film-like color grading matching the mood
-- Focus on architectural and environmental details
-- No people or characters in frame
-- Capture the essence and mood of the location
+[GRID LAYOUT - 3 rows × 3 columns, each panel 16:9 aspect ratio]:
 
-Style: Cinematic location photography, film production reference.
-Aspect ratio: 16:9 landscape format.`.trim();
+Row 1 - ESTABLISHING SHOTS:
+- Panel 1 (Top-Left): Wide exterior/approach view showing the location in context
+- Panel 2 (Top-Center): Main establishing shot - the primary view of the location
+- Panel 3 (Top-Right): Alternate angle establishing shot
+
+Row 2 - MEDIUM SHOTS:
+- Panel 4 (Middle-Left): Key interior/exterior area view
+- Panel 5 (Middle-Center): Central focal point of the location
+- Panel 6 (Middle-Right): Secondary important area
+
+Row 3 - DETAIL & ATMOSPHERE:
+- Panel 7 (Bottom-Left): Architectural or design details close-up
+- Panel 8 (Bottom-Center): Texture and material details
+- Panel 9 (Bottom-Right): Atmospheric/mood shot capturing the essence
+
+[TECHNICAL SPECIFICATIONS]:
+- All 9 panels must show the SAME location from different angles
+- Maintain absolute visual consistency across all panels (architecture, colors, materials, lighting)
+- Each panel is 16:9 landscape format
+- Cinematic film production quality
+- High resolution with rich detail
+- No people or characters in any frame
+- Clean grid layout with thin dividing lines
+
+Style: Professional film location reference sheet, production design documentation.
+Output: Single image containing 3×3 grid of location views.`.trim();
+
+  return { prompt, referenceUrls };
+};
+
+/**
+ * Build a library location sheet prompt from user-provided reference images
+ *
+ * Similar to buildLocationSheetPrompt but designed for library locations
+ * where the reference images ARE the source of truth (not script analysis).
+ *
+ * @param name - Location name
+ * @param description - Optional location description
+ * @param referenceImageUrls - Array of reference image URLs
+ * @returns Complete prompt string and reference URLs
+ */
+export const buildLibraryLocationSheetPrompt = (
+  name: string,
+  description?: string,
+  referenceImageUrls?: string[]
+): { prompt: string; referenceUrls: string[] } => {
+  const referenceUrls = referenceImageUrls ?? [];
+
+  const descSection = description
+    ? `\n[LOCATION DESCRIPTION]:\n${description}`
+    : '';
+
+  const referenceInstruction =
+    referenceUrls.length > 0
+      ? `
+IMPORTANT - Reference Images:
+The provided reference images are the DEFINITIVE source for this location's appearance.
+Analyze the references to understand:
+- Architectural style and design elements
+- Color palette and materials
+- Lighting conditions and atmosphere
+- Key distinctive features
+Generate 9 different views that all clearly depict the SAME location shown in the references.
+`
+      : `
+Generate a realistic, detailed location based on the name and description.
+Create 9 consistent views showing different angles of this location.
+`;
+
+  const prompt =
+    `A professional 3x3 grid location reference sheet for film production, showing 9 distinct views of the same location in consistent visual style.
+
+[LOCATION]:
+${name}
+${descSection}
+${referenceInstruction}
+[GRID LAYOUT - 3 rows × 3 columns, each panel 16:9 aspect ratio]:
+
+Row 1 - ESTABLISHING SHOTS:
+- Panel 1 (Top-Left): Wide exterior/approach view showing the location in context
+- Panel 2 (Top-Center): Main establishing shot - the primary view of the location
+- Panel 3 (Top-Right): Alternate angle establishing shot
+
+Row 2 - MEDIUM SHOTS:
+- Panel 4 (Middle-Left): Key interior/exterior area view
+- Panel 5 (Middle-Center): Central focal point of the location
+- Panel 6 (Middle-Right): Secondary important area
+
+Row 3 - DETAIL & ATMOSPHERE:
+- Panel 7 (Bottom-Left): Architectural or design details close-up
+- Panel 8 (Bottom-Center): Texture and material details
+- Panel 9 (Bottom-Right): Atmospheric/mood shot capturing the essence
+
+[TECHNICAL SPECIFICATIONS]:
+- All 9 panels must show the SAME location from different angles
+- Maintain absolute visual consistency across all panels (architecture, colors, materials, lighting)
+- Each panel is 16:9 landscape format
+- Cinematic film production quality
+- High resolution with rich detail
+- No people or characters in any frame
+- Clean grid layout with thin dividing lines
+
+Style: Professional film location reference sheet, production design documentation.
+Output: Single image containing 3×3 grid of location views.`.trim();
 
   return { prompt, referenceUrls };
 };

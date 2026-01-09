@@ -31,13 +31,14 @@ export const getSequenceLocationsFn = createServerFn({ method: 'GET' })
   });
 
 /**
- * Get all locations with completed references across the team
- * Used as a "location library" for recasting
+ * Get all locations across the team
+ * Used for the location library UI and recasting
  */
 export const getTeamLocationsLibraryFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getTeamLocationsLibrary(context.teamId);
+    // Show all locations (including pending) for the library UI
+    return getTeamLocationsLibrary(context.teamId, { completedOnly: false });
   });
 
 // =============================================================================

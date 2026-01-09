@@ -313,14 +313,16 @@ export function matchLocationsToFrame(
 // ============================================================================
 
 /**
- * Get all locations with completed reference images across all team sequences
- * Used as a "location library" for recasting
+ * Get all locations across all team sequences
+ * Used as a "location library" for browsing and recasting
  */
 export async function getTeamLocationsLibrary(
   teamId: string,
   options?: {
     excludeSequenceId?: string;
     limit?: number;
+    /** If true, only return locations with completed reference images */
+    completedOnly?: boolean;
   }
 ): Promise<(Location & { sequenceTitle: string })[]> {
   const { sequences } = await import('@/lib/db/schema');
@@ -334,7 +336,9 @@ export async function getTeamLocationsLibrary(
     .where(
       and(
         eq(sequences.teamId, teamId),
-        eq(locations.referenceStatus, 'completed'),
+        options?.completedOnly
+          ? eq(locations.referenceStatus, 'completed')
+          : undefined,
         options?.excludeSequenceId
           ? // Optionally exclude current sequence
             // to avoid showing duplicate locations
@@ -346,6 +350,9 @@ export async function getTeamLocationsLibrary(
 
   return result.map((r) => ({
     ...r.location,
-    sequenceTitle: r.sequenceTitle ?? 'Untitled',
+    sequenceTitle:
+      r.sequenceTitle === '__library__'
+        ? 'Library'
+        : (r.sequenceTitle ?? 'Untitled'),
   }));
 }

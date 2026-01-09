@@ -1,0 +1,67 @@
+import { LocationLibraryCard } from '@/components/location-library/location-library-card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import type { TeamLibraryLocation } from '@/hooks/use-sequence-locations';
+import { useNavigate } from '@tanstack/react-router';
+
+type LocationLibraryListProps = {
+  locations?: TeamLibraryLocation[];
+  isLoading?: boolean;
+  error?: Error | null;
+};
+
+export const LocationLibraryList: React.FC<LocationLibraryListProps> = ({
+  locations,
+  isLoading,
+  error,
+}) => {
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="overflow-hidden animate-pulse">
+            <div className="aspect-video bg-muted" />
+            <div className="p-4">
+              <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+              <div className="h-3 bg-muted rounded w-1/2" />
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-8 text-center">
+        <p className="text-destructive mb-4">Failed to load locations</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </Card>
+    );
+  }
+
+  if (!locations || locations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {locations.map((location) => (
+        <LocationLibraryCard
+          key={location.id}
+          location={location}
+          onClick={() =>
+            navigate({
+              to: '/locations/$locationId',
+              params: { locationId: location.id },
+            })
+          }
+        />
+      ))}
+    </div>
+  );
+};

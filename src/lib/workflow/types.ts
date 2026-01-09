@@ -91,6 +91,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
   autoGenerateMotion?: boolean;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
+  /** Location IDs suggested by user for visual consistency */
+  suggestedLocationIds?: string[];
 }
 
 /**
@@ -399,6 +401,36 @@ export interface LocationSheetWorkflowResult {
   referenceImageUrl: string;
   locationDbId?: string;
   referenceImagePath?: string;
+}
+
+/**
+ * Library location sheet generation workflow input
+ * Generates a 3x3 grid reference sheet from user-uploaded reference images
+ */
+export interface LibraryLocationSheetWorkflowInput {
+  /** locations.id */
+  locationDbId: string;
+  /** Location name for prompt */
+  locationName: string;
+  /** Location description for prompt */
+  locationDescription?: string;
+  /** Reference image URLs (user uploads) */
+  referenceImageUrls: string[];
+  /** Team ID for storage path */
+  teamId: string;
+  /** Sequence ID (library sequence) for storage path */
+  sequenceId: string;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+}
+
+export interface LibraryLocationSheetWorkflowResult {
+  /** Generated sheet image URL */
+  sheetImageUrl: string;
+  /** Storage path */
+  sheetImagePath?: string;
+  /** Location ID */
+  locationDbId: string;
 }
 
 /**

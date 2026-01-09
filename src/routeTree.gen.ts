@@ -22,11 +22,13 @@ import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
 import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
+import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
+import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
 import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
 import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
@@ -107,6 +109,11 @@ const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   path: '/sequences/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedLocationsIndexRoute = ProtectedLocationsIndexRouteImport.update({
+  id: '/locations/',
+  path: '/locations/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   id: '/api/workflows/$',
   path: '/api/workflows/$',
@@ -133,6 +140,12 @@ const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   path: '/sequences/new',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedLocationsLocationIdRoute =
+  ProtectedLocationsLocationIdRouteImport.update({
+    id: '/locations/$locationId',
+    path: '/locations/$locationId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ApiWorkflowsStatusRunIdRoute = ApiWorkflowsStatusRunIdRouteImport.update({
   id: '/api/workflows/status/$runId',
   path: '/api/workflows/status/$runId',
@@ -236,11 +249,13 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
+  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
   '/talent': typeof ProtectedTalentIndexRoute
@@ -270,11 +285,13 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
+  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
   '/talent': typeof ProtectedTalentIndexRoute
@@ -307,11 +324,13 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
+  '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
+  '/_protected/locations/': typeof ProtectedLocationsIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/_protected/talent/': typeof ProtectedTalentIndexRoute
@@ -343,11 +362,13 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
+    | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
+    | '/locations'
     | '/sequences'
     | '/settings'
     | '/talent'
@@ -377,11 +398,13 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
+    | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
+    | '/locations'
     | '/sequences'
     | '/settings'
     | '/talent'
@@ -413,11 +436,13 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/realtime'
+    | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
     | '/_protected/settings/passkeys'
     | '/_protected/talent/$id'
     | '/api/auth/$'
     | '/api/workflows/$'
+    | '/_protected/locations/'
     | '/_protected/sequences/'
     | '/_protected/settings/'
     | '/_protected/talent/'
@@ -546,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSequencesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/locations/': {
+      id: '/_protected/locations/'
+      path: '/locations'
+      fullPath: '/locations'
+      preLoaderRoute: typeof ProtectedLocationsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/api/workflows/$': {
       id: '/api/workflows/$'
       path: '/api/workflows/$'
@@ -579,6 +611,13 @@ declare module '@tanstack/react-router' {
       path: '/sequences/new'
       fullPath: '/sequences/new'
       preLoaderRoute: typeof ProtectedSequencesNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/locations/$locationId': {
+      id: '/_protected/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof ProtectedLocationsLocationIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/api/workflows/status/$runId': {
@@ -714,9 +753,11 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface ProtectedRouteRouteChildren {
   ProtectedEvalRoute: typeof ProtectedEvalRoute
+  ProtectedLocationsLocationIdRoute: typeof ProtectedLocationsLocationIdRoute
   ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
   ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedTalentIdRoute: typeof ProtectedTalentIdRoute
+  ProtectedLocationsIndexRoute: typeof ProtectedLocationsIndexRoute
   ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
   ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
   ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute
@@ -731,9 +772,11 @@ interface ProtectedRouteRouteChildren {
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedEvalRoute: ProtectedEvalRoute,
+  ProtectedLocationsLocationIdRoute: ProtectedLocationsLocationIdRoute,
   ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
   ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
   ProtectedTalentIdRoute: ProtectedTalentIdRoute,
+  ProtectedLocationsIndexRoute: ProtectedLocationsIndexRoute,
   ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
   ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   ProtectedTalentIndexRoute: ProtectedTalentIndexRoute,

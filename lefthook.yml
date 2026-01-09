@@ -9,7 +9,7 @@ pre-commit:
     lint:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
       exclude: 'routeTree.gen.ts'
-      run: bun run --bun oxlint --type-aware --fix {staged_files}
+      run: bun run --bun oxlint --type-aware --fix --quiet {staged_files}
       stage_fixed: true
     format:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'

@@ -98,6 +98,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       videoModel,
       autoGenerateMotion,
       suggestedTalentIds,
+      suggestedLocationIds,
     } = data;
 
     // Create sequences in parallel for each selected model
@@ -130,6 +131,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
           },
           autoGenerateMotion: autoGenerateMotion ?? false,
           suggestedTalentIds,
+          suggestedLocationIds,
         };
 
         await triggerWorkflow('/storyboard', workflowInput, {

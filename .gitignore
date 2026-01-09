@@ -53,7 +53,7 @@ cerebras-validation-error.json
 # src/lib/gen.types.ts
 
 # local database (SQLite)
-local.db
+local*.db
 local.db-shm
 local.db-wal
 test.db
@@ -102,3 +102,5 @@ doppler.json
 # schemas
 scripts/schemas/
 docs/architecture/scoped-db-context-implementation.md
+
+.tanstack
