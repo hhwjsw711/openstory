@@ -261,7 +261,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         name: 'location-extraction',
         phase: { number: 2, name: 'Location Extraction' },
 
-        promptName: 'velro/phase/location-extraction',
+        promptName: 'velro/phase/location-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },

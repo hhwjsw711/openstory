@@ -51,7 +51,7 @@ export async function extractLocationBible(
   let prompt: Awaited<ReturnType<typeof getPrompt>>['prompt'] | undefined;
 
   try {
-    const result = await getPrompt('velro/phase/location-extraction');
+    const result = await getPrompt('velro/phase/location-extraction-chat');
     prompt = result.prompt;
     systemPrompt = result.compiled;
   } catch {

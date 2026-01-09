@@ -34,6 +34,7 @@ import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts'
 import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
 import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
 import { talentMatchResponseSchema } from '@/lib/services/talent-matching.service';
+import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
 
 const SCHEMA_OUTPUT_DIR = join(import.meta.dir, 'schemas');
 
@@ -175,6 +176,10 @@ async function main() {
   await generateLangfuseConfig(
     'phase-6-talent-matching',
     talentMatchResponseSchema
+  );
+  await generateLangfuseConfig(
+    'phase-2b-location-extraction',
+    locationExtractionResultSchema
   );
 
   // Generate canonical schema for reference (raw JSON schema, not Langfuse config)
