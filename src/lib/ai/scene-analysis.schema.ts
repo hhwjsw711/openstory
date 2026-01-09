@@ -498,6 +498,20 @@ export const continuitySchema = z.object({
     .meta({ description: 'Visual style reference for consistent look' }),
 });
 
+/**
+ * Combined schema for visual prompt generation response.
+ * Used by visual-prompt-scene-workflow to capture both prompt AND continuity.
+ */
+export const visualPromptWithContinuitySchema = z.object({
+  visual: visualPromptSchema.meta({
+    description: 'Image generation prompt data',
+  }),
+  continuity: continuitySchema.meta({
+    description:
+      'Continuity tracking - characterTags and environmentTag for matching to bibles',
+  }),
+});
+
 // ============================================================================
 // Original Script Schema
 // ============================================================================
@@ -606,6 +620,9 @@ export type CharacterBibleEntry = z.infer<typeof characterBibleEntrySchema>;
 export type LocationBibleEntry = z.infer<typeof locationBibleEntrySchema>;
 export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;
 export type VisualPrompt = z.infer<typeof visualPromptSchema>;
+export type VisualPromptWithContinuity = z.infer<
+  typeof visualPromptWithContinuitySchema
+>;
 export type MotionPrompt = z.infer<typeof motionPromptSchema>;
 export type AudioDesign = z.infer<typeof audioDesignSchema>;
 export type Continuity = z.infer<typeof continuitySchema>;

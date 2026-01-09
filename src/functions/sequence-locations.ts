@@ -9,7 +9,7 @@ import {
   getTeamLocationsLibrary,
   updateReferenceStatus,
 } from '@/lib/db/helpers/sequence-locations';
-import { locations as locationsTable } from '@/lib/db/schema';
+import { sequenceLocations } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { RecastLocationWorkflowInput } from '@/lib/workflow/types';
@@ -86,8 +86,8 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
     // Get the location
     const [location] = await getDb()
       .select()
-      .from(locationsTable)
-      .where(eq(locationsTable.id, data.locationId));
+      .from(sequenceLocations)
+      .where(eq(sequenceLocations.id, data.locationId));
 
     if (!location) {
       throw new Error('Location not found');

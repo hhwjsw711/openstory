@@ -43,6 +43,8 @@
     "db:seed:local": "doppler run -c dev -- bun --bun scripts/seed.ts --local",
     "db:seed:test": "bun --bun scripts/seed.ts --test",
     "db:check": "bun --bun drizzle-kit check",
+    "db:check-migrations": "bun --bun scripts/check-migrations.ts",
+    "db:check-migrations:all": "bun --bun scripts/check-migrations.ts --all",
     "db:seed": "bun --bun scripts/seed.ts",
     "db:migrate-templates": "bun --bun scripts/migrate-system-templates.ts",
     "db:setup": "bun db:migrate && bun db:seed",

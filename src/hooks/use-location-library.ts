@@ -12,14 +12,12 @@ import {
   updateLibraryLocationFn,
   uploadLocationMediaFn,
 } from '@/functions/location-library';
-import {
-  sequenceLocationKeys,
-  type TeamLibraryLocation,
-} from '@/hooks/use-sequence-locations';
-import type { LocationSheet } from '@/lib/db/schema/location-sheets';
+import { sequenceLocationKeys } from '@/hooks/use-sequence-locations';
+import type { LibraryLocation, LocationSheet } from '@/lib/db/schema';
 
-/** Location with sheets for detail view */
-export type LocationWithSheets = TeamLibraryLocation & {
+/** Library location with sheets for detail view */
+export type LibraryLocationWithSheets = LibraryLocation & {
+  sequenceTitle: string; // For backwards compatibility - always 'Library' for library locations
   sheets: LocationSheet[];
 };
 
@@ -35,7 +33,7 @@ export const locationLibraryKeys = {
  * Hook to fetch a single location with details and reference sheets
  */
 export function useLibraryLocationById(locationId: string) {
-  return useQuery<LocationWithSheets>({
+  return useQuery<LibraryLocationWithSheets>({
     queryKey: locationLibraryKeys.detail(locationId),
     queryFn: () => getLibraryLocationByIdFn({ data: { locationId } }),
     enabled: !!locationId,

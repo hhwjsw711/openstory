@@ -35,7 +35,14 @@ import { characterSheets, characterSheetsRelations } from './character-sheets';
 
 import { frameCharacters, frameCharactersRelations } from './frame-characters';
 
-import { locations, locationsRelations } from './locations';
+// Location Library (team-level templates)
+import { locationLibrary, locationLibraryRelations } from './location-library';
+
+// Sequence Locations (script-extracted)
+import {
+  sequenceLocations,
+  sequenceLocationsRelations,
+} from './sequence-locations';
 
 import { locationSheets, locationSheetsRelations } from './location-sheets';
 
@@ -106,7 +113,7 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
   }),
   frames: many(frames),
   characters: many(characters),
-  locations: many(locations),
+  locations: many(sequenceLocations),
 }));
 
 // Better Auth tables
@@ -167,18 +174,27 @@ export type {
   NewFrameCharacter,
 } from './frame-characters';
 
-// Locations (extracted from script)
-export { locations };
+// Location Library (team-level templates)
+export { locationLibrary };
 
 export type {
-  Location,
-  LocationMinimal,
-  LocationWithDetails,
-  NewLocation,
-  ReferenceStatus,
-} from './locations';
+  LibraryLocation,
+  LibraryLocationMinimal,
+  NewLibraryLocation,
+} from './location-library';
 
-// Location Sheets (location-specific variations)
+// Sequence Locations (extracted from script)
+export { sequenceLocations };
+
+export type {
+  NewSequenceLocation,
+  ReferenceStatus,
+  SequenceLocation,
+  SequenceLocationMinimal,
+  SequenceLocationWithDetails,
+} from './sequence-locations';
+
+// Location Sheets (location-specific variations for library locations)
 export { locationSheets };
 
 export type {
@@ -284,11 +300,15 @@ export const schema = {
   frameCharacters,
   frameCharactersRelations,
 
-  // Locations (extracted from script)
-  locations,
-  locationsRelations,
+  // Location Library (team-level templates)
+  locationLibrary,
+  locationLibraryRelations,
 
-  // Location Sheets (location-specific variations)
+  // Sequence Locations (extracted from script)
+  sequenceLocations,
+  sequenceLocationsRelations,
+
+  // Location Sheets (location-specific variations for library locations)
   locationSheets,
   locationSheetsRelations,
 

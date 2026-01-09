@@ -6,16 +6,16 @@
 import { getDb } from '#db-client';
 import type {
   Frame,
-  Location,
-  NewLocation,
+  NewSequenceLocation,
   ReferenceStatus,
+  SequenceLocation,
 } from '@/lib/db/schema';
-import { frames, locations } from '@/lib/db/schema';
+import { frames, sequenceLocations } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 // Re-export types for convenience
-export type { Location as SequenceLocation } from '@/lib/db/schema';
-export type { NewLocation as NewSequenceLocation } from '@/lib/db/schema';
+export type { SequenceLocation } from '@/lib/db/schema';
+export type { NewSequenceLocation } from '@/lib/db/schema';
 
 // ============================================================================
 // Core CRUD Operations
@@ -26,11 +26,11 @@ export type { NewLocation as NewSequenceLocation } from '@/lib/db/schema';
  */
 export async function getSequenceLocationById(
   id: string
-): Promise<Location | null> {
+): Promise<SequenceLocation | null> {
   const result = await getDb()
     .select()
-    .from(locations)
-    .where(eq(locations.id, id));
+    .from(sequenceLocations)
+    .where(eq(sequenceLocations.id, id));
   return result[0] ?? null;
 }
 
@@ -40,14 +40,14 @@ export async function getSequenceLocationById(
 export async function getSequenceLocationByLocationId(
   sequenceId: string,
   locationId: string
-): Promise<Location | null> {
+): Promise<SequenceLocation | null> {
   const result = await getDb()
     .select()
-    .from(locations)
+    .from(sequenceLocations)
     .where(
       and(
-        eq(locations.sequenceId, sequenceId),
-        eq(locations.locationId, locationId)
+        eq(sequenceLocations.sequenceId, sequenceId),
+        eq(sequenceLocations.locationId, locationId)
       )
     );
   return result[0] ?? null;
@@ -58,11 +58,11 @@ export async function getSequenceLocationByLocationId(
  */
 export async function getSequenceLocations(
   sequenceId: string
-): Promise<Location[]> {
+): Promise<SequenceLocation[]> {
   return await getDb()
     .select()
-    .from(locations)
-    .where(eq(locations.sequenceId, sequenceId));
+    .from(sequenceLocations)
+    .where(eq(sequenceLocations.sequenceId, sequenceId));
 }
 
 /**
@@ -70,12 +70,12 @@ export async function getSequenceLocations(
  */
 export async function getSequenceLocationsByIds(
   ids: string[]
-): Promise<Location[]> {
+): Promise<SequenceLocation[]> {
   if (ids.length === 0) return [];
   return await getDb()
     .select()
-    .from(locations)
-    .where(inArray(locations.id, ids));
+    .from(sequenceLocations)
+    .where(inArray(sequenceLocations.id, ids));
 }
 
 /**
@@ -83,14 +83,14 @@ export async function getSequenceLocationsByIds(
  */
 export async function getSequenceLocationsWithReferences(
   sequenceId: string
-): Promise<Location[]> {
+): Promise<SequenceLocation[]> {
   return await getDb()
     .select()
-    .from(locations)
+    .from(sequenceLocations)
     .where(
       and(
-        eq(locations.sequenceId, sequenceId),
-        eq(locations.referenceStatus, 'completed')
+        eq(sequenceLocations.sequenceId, sequenceId),
+        eq(sequenceLocations.referenceStatus, 'completed')
       )
     );
 }
@@ -99,9 +99,12 @@ export async function getSequenceLocationsWithReferences(
  * Create a new sequence location
  */
 export async function createSequenceLocation(
-  data: NewLocation
-): Promise<Location> {
-  const [location] = await getDb().insert(locations).values(data).returning();
+  data: NewSequenceLocation
+): Promise<SequenceLocation> {
+  const [location] = await getDb()
+    .insert(sequenceLocations)
+    .values(data)
+    .returning();
   return location;
 }
 
@@ -109,11 +112,11 @@ export async function createSequenceLocation(
  * Create multiple sequence locations in a transaction
  */
 export async function createSequenceLocationsBulk(
-  data: NewLocation[]
-): Promise<Location[]> {
+  data: NewSequenceLocation[]
+): Promise<SequenceLocation[]> {
   if (data.length === 0) return [];
   return await getDb().transaction(async (tx) => {
-    return await tx.insert(locations).values(data).returning();
+    return await tx.insert(sequenceLocations).values(data).returning();
   });
 }
 
@@ -122,12 +125,12 @@ export async function createSequenceLocationsBulk(
  */
 export async function updateSequenceLocation(
   id: string,
-  data: Partial<NewLocation>
-): Promise<Location> {
+  data: Partial<NewSequenceLocation>
+): Promise<SequenceLocation> {
   const [location] = await getDb()
-    .update(locations)
+    .update(sequenceLocations)
     .set({ ...data, updatedAt: new Date() })
-    .where(eq(locations.id, id))
+    .where(eq(sequenceLocations.id, id))
     .returning();
 
   if (!location) {
@@ -141,7 +144,9 @@ export async function updateSequenceLocation(
  * Delete a sequence location
  */
 export async function deleteSequenceLocation(id: string): Promise<boolean> {
-  const result = await getDb().delete(locations).where(eq(locations.id, id));
+  const result = await getDb()
+    .delete(sequenceLocations)
+    .where(eq(sequenceLocations.id, id));
   return (result.rowsAffected ?? 0) > 0;
 }
 
@@ -152,8 +157,8 @@ export async function deleteSequenceLocations(
   sequenceId: string
 ): Promise<number> {
   const result = await getDb()
-    .delete(locations)
-    .where(eq(locations.sequenceId, sequenceId));
+    .delete(sequenceLocations)
+    .where(eq(sequenceLocations.sequenceId, sequenceId));
   return result.rowsAffected ?? 0;
 }
 
@@ -168,7 +173,7 @@ export async function updateReferenceStatus(
   id: string,
   status: ReferenceStatus,
   error?: string
-): Promise<Location> {
+): Promise<SequenceLocation> {
   return await updateSequenceLocation(id, {
     referenceStatus: status,
     referenceError: error ?? null,
@@ -183,7 +188,7 @@ export async function updateLocationReference(
   id: string,
   referenceImageUrl: string,
   referenceImagePath: string
-): Promise<Location> {
+): Promise<SequenceLocation> {
   return await updateSequenceLocation(id, {
     referenceImageUrl,
     referenceImagePath,
@@ -198,14 +203,14 @@ export async function updateLocationReference(
  */
 export async function getLocationsNeedingReferences(
   sequenceId: string
-): Promise<Location[]> {
+): Promise<SequenceLocation[]> {
   return await getDb()
     .select()
-    .from(locations)
+    .from(sequenceLocations)
     .where(
       and(
-        eq(locations.sequenceId, sequenceId),
-        inArray(locations.referenceStatus, ['pending', 'failed'])
+        eq(sequenceLocations.sequenceId, sequenceId),
+        inArray(sequenceLocations.referenceStatus, ['pending', 'failed'])
       )
     );
 }
@@ -218,7 +223,7 @@ export async function getLocationsNeedingReferences(
  * Match a location to a scene's environmentTag
  */
 export function locationMatchesTag(
-  location: Location,
+  location: SequenceLocation,
   environmentTag: string
 ): boolean {
   if (!environmentTag) return false;
@@ -293,8 +298,8 @@ export async function getFrameIdsForLocation(
  */
 export function matchLocationsToFrame(
   frame: Pick<Frame, 'metadata'>,
-  allLocations: Location[]
-): Location[] {
+  allLocations: SequenceLocation[]
+): SequenceLocation[] {
   const environmentTag = frame.metadata?.continuity?.environmentTag ?? '';
   const sceneLocation = frame.metadata?.metadata?.location ?? '';
 
@@ -324,20 +329,20 @@ export async function getTeamLocationsLibrary(
     /** If true, only return locations with completed reference images */
     completedOnly?: boolean;
   }
-): Promise<(Location & { sequenceTitle: string })[]> {
+): Promise<(SequenceLocation & { sequenceTitle: string })[]> {
   const { sequences } = await import('@/lib/db/schema');
   const result = await getDb()
     .select({
-      location: locations,
+      location: sequenceLocations,
       sequenceTitle: sequences.title,
     })
-    .from(locations)
-    .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
+    .from(sequenceLocations)
+    .innerJoin(sequences, eq(sequenceLocations.sequenceId, sequences.id))
     .where(
       and(
         eq(sequences.teamId, teamId),
         options?.completedOnly
-          ? eq(locations.referenceStatus, 'completed')
+          ? eq(sequenceLocations.referenceStatus, 'completed')
           : undefined,
         options?.excludeSequenceId
           ? // Optionally exclude current sequence
@@ -350,9 +355,6 @@ export async function getTeamLocationsLibrary(
 
   return result.map((r) => ({
     ...r.location,
-    sequenceTitle:
-      r.sequenceTitle === '__library__'
-        ? 'Library'
-        : (r.sequenceTitle ?? 'Untitled'),
+    sequenceTitle: r.sequenceTitle ?? 'Untitled',
   }));
 }

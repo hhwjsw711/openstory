@@ -40,7 +40,10 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { locationBibleWorkflow } from './location-bible-workflow';
-import type { CharacterMinimal, LocationMinimal } from '@/lib/db/schema';
+import type {
+  CharacterMinimal,
+  SequenceLocationMinimal,
+} from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 import { durableLLMCall } from './llm-call-helper';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
@@ -78,10 +81,10 @@ function matchCharactersToScene(
  * Pure function that works in-memory without DB queries
  */
 function matchLocationsToScene(
-  allLocations: LocationMinimal[],
+  allLocations: SequenceLocationMinimal[],
   environmentTag: string,
   sceneLocation: string
-): LocationMinimal[] {
+): SequenceLocationMinimal[] {
   if (!environmentTag && !sceneLocation) return [];
 
   return allLocations.filter((loc) => {
@@ -403,6 +406,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           scenes,
           aspectRatio,
           characterBible,
+          locationBible,
           styleConfig,
           analysisModelId,
         },
@@ -432,7 +436,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       // Build scene character map in-memory using characters from Phase 3
       const sceneCharacterMap: Record<string, CharacterMinimal[]> = {};
       // Build scene location map in-memory using locations from Phase 4
-      const sceneLocationMap: Record<string, LocationMinimal[]> = {};
+      const sceneLocationMap: Record<string, SequenceLocationMinimal[]> = {};
       for (const scene of scenesWithVisualPrompts) {
         const sceneCharTags = scene.continuity?.characterTags || [];
         sceneCharacterMap[scene.sceneId] = matchCharactersToScene(

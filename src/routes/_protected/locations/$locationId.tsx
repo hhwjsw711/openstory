@@ -9,21 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   useLibraryLocationById,
   useDeleteLibraryLocation,
-  useUpdateLibraryLocation,
   useAddLocationSheets,
   useDeleteLocationSheet,
 } from '@/hooks/use-location-library';
-import { cn } from '@/lib/utils';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import {
-  ArrowLeft,
-  Loader2,
-  MapPin,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { LocationMediaUpload } from '@/components/location-library/location-media-upload';
 
@@ -40,7 +30,6 @@ function LocationDetailPage() {
     error,
   } = useLibraryLocationById(locationId);
   const deleteLocation = useDeleteLibraryLocation();
-  const updateLocation = useUpdateLibraryLocation();
   const addSheets = useAddLocationSheets();
   const deleteSheet = useDeleteLocationSheet();
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -151,14 +140,7 @@ function LocationDetailPage() {
             </div>
           }
         >
-          <div className="flex items-center gap-3">
-            <PageHeading>{location.name}</PageHeading>
-            {location.type && (
-              <span className="px-2 py-1 bg-muted rounded text-xs font-medium capitalize">
-                {location.type}
-              </span>
-            )}
-          </div>
+          <PageHeading>{location.name}</PageHeading>
           {location.description && (
             <PageDescription>{location.description}</PageDescription>
           )}
@@ -171,14 +153,7 @@ function LocationDetailPage() {
             Location Sheet
           </h2>
 
-          {location.referenceStatus === 'generating' ? (
-            <Card className="p-8 text-center">
-              <Loader2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground animate-spin" />
-              <p className="text-muted-foreground">
-                Generating location sheet from reference images…
-              </p>
-            </Card>
-          ) : location.referenceImageUrl ? (
+          {location.referenceImageUrl ? (
             <Card className="overflow-hidden">
               <img
                 src={location.referenceImageUrl}
@@ -282,91 +257,25 @@ function LocationDetailPage() {
           <h2 className="text-lg font-semibold mb-4">Details</h2>
 
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {location.sequenceTitle &&
-              location.sequenceTitle !== '__library__' && (
-                <div className="space-y-1">
-                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Source Sequence
-                  </dt>
-                  <dd className="text-sm">{location.sequenceTitle}</dd>
-                </div>
-              )}
-
-            {location.type && (
+            {location.sequenceTitle && location.sequenceTitle !== 'Library' && (
               <div className="space-y-1">
                 <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Type
+                  Source
                 </dt>
-                <dd className="text-sm capitalize">{location.type}</dd>
+                <dd className="text-sm">{location.sequenceTitle}</dd>
               </div>
             )}
 
-            {location.timeOfDay && (
-              <div className="space-y-1">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Time of Day
-                </dt>
-                <dd className="text-sm capitalize">{location.timeOfDay}</dd>
-              </div>
-            )}
-
-            {location.architecturalStyle && (
-              <div className="space-y-1">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Architectural Style
-                </dt>
-                <dd className="text-sm">{location.architecturalStyle}</dd>
-              </div>
-            )}
-
-            {location.keyFeatures && (
-              <div className="space-y-1 md:col-span-2">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Key Features
-                </dt>
-                <dd className="text-sm">{location.keyFeatures}</dd>
-              </div>
-            )}
-
-            {location.colorPalette && (
-              <div className="space-y-1">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Color Palette
-                </dt>
-                <dd className="text-sm">{location.colorPalette}</dd>
-              </div>
-            )}
-
-            {location.lightingSetup && (
-              <div className="space-y-1">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Lighting Setup
-                </dt>
-                <dd className="text-sm">{location.lightingSetup}</dd>
-              </div>
-            )}
-
-            {location.ambiance && (
-              <div className="space-y-1">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Ambiance
-                </dt>
-                <dd className="text-sm">{location.ambiance}</dd>
-              </div>
-            )}
-
-            {location.consistencyTag && (
-              <div className="space-y-1 md:col-span-2">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Consistency Tag
-                </dt>
-                <dd>
-                  <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
-                    {location.consistencyTag}
-                  </span>
-                </dd>
-              </div>
-            )}
+            <div className="space-y-1">
+              <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Created
+              </dt>
+              <dd className="text-sm">
+                {location.createdAt
+                  ? new Date(location.createdAt).toLocaleDateString()
+                  : 'Unknown'}
+              </dd>
+            </div>
           </dl>
         </section>
       </PageContainer>

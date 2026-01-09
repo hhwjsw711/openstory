@@ -9,13 +9,13 @@ import {
   getTeamLocationsLibraryFn,
   recastLocationFn,
 } from '@/functions/sequence-locations';
-import type { Location } from '@/lib/db/schema';
+import type { SequenceLocation } from '@/lib/db/schema';
 
-// Re-export Location as SequenceLocation for consistency with characters
-export type SequenceLocation = Location;
+// Re-export for backwards compatibility
+export type { SequenceLocation };
 
 // Extended type for team library locations
-export type TeamLibraryLocation = Location & { sequenceTitle: string };
+export type TeamLibraryLocation = SequenceLocation & { sequenceTitle: string };
 
 export const sequenceLocationKeys = {
   all: ['sequence-locations'] as const,
@@ -27,7 +27,7 @@ export const sequenceLocationKeys = {
 };
 
 export function useSequenceLocations(sequenceId: string) {
-  return useQuery<Location[]>({
+  return useQuery<SequenceLocation[]>({
     queryKey: sequenceLocationKeys.list(sequenceId),
     queryFn: async () => {
       return getSequenceLocationsFn({ data: { sequenceId } });

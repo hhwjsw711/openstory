@@ -6,30 +6,29 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDb } from '#db-client';
-import { locations, locationSheets, sequences, styles } from '@/lib/db/schema';
-import type { NewSequence } from '@/lib/db/schema';
+import { locationLibrary, locationSheets } from '@/lib/db/schema';
 import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { ValidationError } from '@/lib/errors';
-import {
-  getSequenceLocationById,
-  updateSequenceLocation,
-} from '@/lib/db/helpers/sequence-locations';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import {
   STORAGE_BUCKETS,
-  uploadFile,
   getMimeTypeFromExtension,
   getExtensionFromUrl,
   getPublicUrl,
   moveFile,
+  uploadFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
-import { updateReferenceStatus } from '@/lib/db/helpers/sequence-locations';
+import {
+  createLibraryLocation,
+  updateLibraryLocation,
+  deleteLibraryLocation,
+  getLibraryLocationById,
+} from '@/lib/db/helpers/location-library';
 
 // ============================================================================
 // Get Location By ID
@@ -40,25 +39,15 @@ const getLocationInputSchema = z.object({
 });
 
 /**
- * Get a single location with sequence title and reference sheets
+ * Get a single library location with reference sheets
  */
 export const getLibraryLocationByIdFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(getLocationInputSchema))
   .handler(async ({ context, data }) => {
-    const result = await getDb()
-      .select({
-        location: locations,
-        sequenceTitle: sequences.title,
-        teamId: sequences.teamId,
-      })
-      .from(locations)
-      .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
-      .where(eq(locations.id, data.locationId));
+    const location = await getLibraryLocationById(data.locationId);
 
-    const record = result[0];
-
-    if (!record || record.teamId !== context.teamId) {
+    if (!location || location.teamId !== context.teamId) {
       throw new Error('Location not found');
     }
 
@@ -69,11 +58,8 @@ export const getLibraryLocationByIdFn = createServerFn({ method: 'GET' })
       .where(eq(locationSheets.locationId, data.locationId));
 
     return {
-      ...record.location,
-      sequenceTitle:
-        record.sequenceTitle === '__library__'
-          ? 'Library'
-          : (record.sequenceTitle ?? 'Untitled'),
+      ...location,
+      sequenceTitle: 'Library', // For backwards compatibility with UI
       sheets,
     };
   });
@@ -90,56 +76,11 @@ const createLocationInputSchema = z.object({
 
 /**
  * Create a new location in the team library
- * Creates a "library sequence" if one doesn't exist
  */
 export const createLibraryLocationFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createLocationInputSchema))
   .handler(async ({ context, data }) => {
-    // Find or create the library sequence for this team
-    let librarySequence = await getDb().query.sequences.findFirst({
-      where: and(
-        eq(sequences.teamId, context.teamId),
-        eq(sequences.title, '__library__')
-      ),
-    });
-
-    if (!librarySequence) {
-      // Get any style to use as placeholder (library sequence is just a container)
-      // First try team styles, then fall back to any public/system style
-      let anyStyle = await getDb().query.styles.findFirst({
-        where: eq(styles.teamId, context.teamId),
-      });
-
-      if (!anyStyle) {
-        // Fall back to any available style in the system
-        anyStyle = await getDb().query.styles.findFirst();
-      }
-
-      if (!anyStyle) {
-        throw new ValidationError(
-          'No styles available. Please contact support.'
-        );
-      }
-
-      const librarySequenceData: NewSequence = {
-        teamId: context.teamId,
-        title: '__library__',
-        status: 'draft',
-        aspectRatio: '16:9',
-        styleId: anyStyle.id,
-      };
-
-      const [newSequence] = await getDb()
-        .insert(sequences)
-        .values(librarySequenceData)
-        .returning();
-      librarySequence = newSequence;
-    }
-
-    // Generate location ID
-    const locationId = `loc_${generateId()}`;
-
     // Process reference images - move from temp and track for location_sheets
     const processedImages: { url: string; path: string }[] = [];
     const referenceImageUrls = data.referenceImageUrls ?? [];
@@ -147,7 +88,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
     for (const tempUrl of referenceImageUrls) {
       const ext = getExtensionFromUrl(tempUrl);
       const imageId = generateId();
-      const permanentPath = `${context.teamId}/${librarySequence.id}/${imageId}.${ext}`;
+      const permanentPath = `${context.teamId}/library/${imageId}.${ext}`;
 
       // Extract temp path from URL
       const tempPathMatch = tempUrl.match(/\/locations\/(.+)$/);
@@ -164,24 +105,16 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
 
     // Use first image as the main reference (for card previews)
     const mainImage = processedImages[0];
-    // Status is 'generating' if we have images (will trigger workflow), otherwise 'pending'
-    const referenceStatus =
-      processedImages.length > 0 ? 'generating' : 'pending';
 
-    // Create the location
-    const [newLocation] = await getDb()
-      .insert(locations)
-      .values({
-        sequenceId: librarySequence.id,
-        locationId,
-        name: data.name,
-        description: data.description,
-        referenceImageUrl: mainImage?.url,
-        referenceImagePath: mainImage?.path,
-        referenceStatus,
-        consistencyTag: `${locationId}: ${data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-      })
-      .returning();
+    // Create the library location
+    const newLocation = await createLibraryLocation({
+      teamId: context.teamId,
+      name: data.name,
+      description: data.description,
+      referenceImageUrl: mainImage?.url,
+      referenceImagePath: mainImage?.path,
+      createdBy: context.user.id,
+    });
 
     // Create location_sheets for each reference image
     if (processedImages.length > 0) {
@@ -205,7 +138,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
         locationDescription: data.description,
         referenceImageUrls: processedImages.map((img) => img.url),
         teamId: context.teamId,
-        sequenceId: librarySequence.id,
+        sequenceId: 'library', // Placeholder for storage path
       };
 
       await triggerWorkflow('/library-location-sheet', workflowInput);
@@ -213,7 +146,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
 
     return {
       ...newLocation,
-      sequenceTitle: 'Library',
+      sequenceTitle: 'Library', // For backwards compatibility
     };
   });
 
@@ -235,25 +168,15 @@ export const updateLibraryLocationFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(updateLocationInputSchema))
   .handler(async ({ context, data }) => {
-    // Get location with sequence to verify team ownership
-    const result = await getDb()
-      .select({
-        location: locations,
-        teamId: sequences.teamId,
-      })
-      .from(locations)
-      .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
-      .where(eq(locations.id, data.locationId));
+    const location = await getLibraryLocationById(data.locationId);
 
-    const record = result[0];
-
-    if (!record || record.teamId !== context.teamId) {
+    if (!location || location.teamId !== context.teamId) {
       throw new Error('Location not found');
     }
 
     const { locationId, ...updateData } = data;
 
-    const updated = await updateSequenceLocation(locationId, updateData);
+    const updated = await updateLibraryLocation(locationId, updateData);
 
     return updated;
   });
@@ -273,27 +196,17 @@ export const deleteLibraryLocationFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(deleteLocationInputSchema))
   .handler(async ({ context, data }) => {
-    // Get location with sequence to verify team ownership
-    const result = await getDb()
-      .select({
-        location: locations,
-        teamId: sequences.teamId,
-      })
-      .from(locations)
-      .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
-      .where(eq(locations.id, data.locationId));
+    const location = await getLibraryLocationById(data.locationId);
 
-    const record = result[0];
-
-    if (!record || record.teamId !== context.teamId) {
+    if (!location || location.teamId !== context.teamId) {
       throw new Error('Location not found');
     }
 
     // Check if user has admin/owner role
     await requireTeamManagement(context.user.id, context.teamId);
 
-    // Delete the location
-    await getDb().delete(locations).where(eq(locations.id, data.locationId));
+    // Delete the location (cascades to sheets)
+    await deleteLibraryLocation(data.locationId);
 
     return { success: true };
   });
@@ -328,23 +241,14 @@ export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
     let storagePath: string;
 
     if (data.locationId) {
-      // Get location to verify ownership and get sequence ID
-      const location = await getSequenceLocationById(data.locationId);
+      // Get location to verify ownership
+      const location = await getLibraryLocationById(data.locationId);
 
-      if (!location) {
+      if (!location || location.teamId !== context.teamId) {
         throw new Error('Location not found');
       }
 
-      // Verify team ownership via sequence
-      const sequence = await getDb().query.sequences.findFirst({
-        where: eq(sequences.id, location.sequenceId),
-      });
-
-      if (!sequence || sequence.teamId !== context.teamId) {
-        throw new Error('Location not found');
-      }
-
-      storagePath = `${context.teamId}/${location.sequenceId}/${uploadId}.${ext}`;
+      storagePath = `${context.teamId}/library/${uploadId}.${ext}`;
     } else {
       // Upload to temp folder
       storagePath = `${context.teamId}/temp/${uploadId}.${ext}`;
@@ -361,11 +265,9 @@ export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
 
     // If locationId provided, update the location's reference image
     if (data.locationId) {
-      await updateSequenceLocation(data.locationId, {
+      await updateLibraryLocation(data.locationId, {
         referenceImageUrl: result.publicUrl,
         referenceImagePath: result.path,
-        referenceStatus: 'completed',
-        referenceGeneratedAt: new Date(),
       });
     }
 
@@ -382,29 +284,17 @@ const addSheetInputSchema = z.object({
 });
 
 /**
- * Add reference images to an existing location
+ * Add reference images to an existing library location
  */
 export const addLocationSheetsFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(addSheetInputSchema))
   .handler(async ({ context, data }) => {
-    // Get location with sequence to verify team ownership
-    const result = await getDb()
-      .select({
-        location: locations,
-        teamId: sequences.teamId,
-      })
-      .from(locations)
-      .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
-      .where(eq(locations.id, data.locationId));
+    const location = await getLibraryLocationById(data.locationId);
 
-    const record = result[0];
-
-    if (!record || record.teamId !== context.teamId) {
+    if (!location || location.teamId !== context.teamId) {
       throw new Error('Location not found');
     }
-
-    const location = record.location;
 
     // Process each image - move from temp and create sheets
     const processedImages: { url: string; path: string }[] = [];
@@ -412,7 +302,7 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
     for (const tempUrl of data.imageUrls) {
       const ext = getExtensionFromUrl(tempUrl);
       const imageId = generateId();
-      const permanentPath = `${context.teamId}/${location.sequenceId}/${imageId}.${ext}`;
+      const permanentPath = `${context.teamId}/library/${imageId}.${ext}`;
 
       // Extract temp path from URL
       const tempPathMatch = tempUrl.match(/\/locations\/(.+)$/);
@@ -476,9 +366,6 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
         ...processedImages.map((img) => img.url),
       ];
 
-      // Mark location as generating
-      await updateReferenceStatus(data.locationId, 'generating');
-
       // Trigger the library location sheet workflow to generate a 3x3 grid
       const workflowInput: LibraryLocationSheetWorkflowInput = {
         locationDbId: data.locationId,
@@ -486,7 +373,7 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
         locationDescription: location.description ?? undefined,
         referenceImageUrls: allReferenceUrls.filter((url) => url !== null),
         teamId: context.teamId,
-        sequenceId: location.sequenceId,
+        sequenceId: 'library', // Placeholder for storage path
       };
 
       const workflowRunId = await triggerWorkflow(
@@ -509,27 +396,28 @@ const deleteSheetInputSchema = z.object({
 });
 
 /**
- * Delete a reference image from a location
+ * Delete a reference image from a library location
  */
 export const deleteLocationSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(deleteSheetInputSchema))
   .handler(async ({ context, data }) => {
-    // Get the sheet with location and sequence to verify ownership
+    // Get the sheet with location to verify ownership
     const result = await getDb()
       .select({
         sheet: locationSheets,
-        location: locations,
-        teamId: sequences.teamId,
+        location: locationLibrary,
       })
       .from(locationSheets)
-      .innerJoin(locations, eq(locationSheets.locationId, locations.id))
-      .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
+      .innerJoin(
+        locationLibrary,
+        eq(locationSheets.locationId, locationLibrary.id)
+      )
       .where(eq(locationSheets.id, data.sheetId));
 
     const record = result[0];
 
-    if (!record || record.teamId !== context.teamId) {
+    if (!record || record.location.teamId !== context.teamId) {
       throw new Error('Sheet not found');
     }
 
@@ -557,17 +445,16 @@ export const deleteLocationSheetFn = createServerFn({ method: 'POST' })
 
         // Update location's main reference image
         if (remainingSheets[0].imageUrl) {
-          await updateSequenceLocation(locationId, {
+          await updateLibraryLocation(locationId, {
             referenceImageUrl: remainingSheets[0].imageUrl,
             referenceImagePath: remainingSheets[0].imagePath,
           });
         }
       } else {
         // No more sheets, clear the location's reference image
-        await updateSequenceLocation(locationId, {
+        await updateLibraryLocation(locationId, {
           referenceImageUrl: null,
           referenceImagePath: null,
-          referenceStatus: 'pending',
         });
       }
     }

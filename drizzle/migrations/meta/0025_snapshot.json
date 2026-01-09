@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e0825d95-547c-480b-bdf2-76eb224c4fef",
+  "id": "816fcd0b-91cc-4245-b442-2f8d144d959a",
   "prevId": "3222b70c-9ce7-4b7b-83d0-b97191dd51fc",
   "tables": {
     "account": {
@@ -677,10 +677,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "frame_locations_location_id_locations_id_fk": {
-          "name": "frame_locations_location_id_locations_id_fk",
+        "frame_locations_location_id_sequence_locations_id_fk": {
+          "name": "frame_locations_location_id_sequence_locations_id_fk",
           "tableFrom": "frame_locations",
-          "tableTo": "locations",
+          "tableTo": "sequence_locations",
           "columnsFrom": ["location_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
@@ -923,6 +923,109 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "location_library": {
+      "name": "location_library",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reference_image_url": {
+          "name": "reference_image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reference_image_path": {
+          "name": "reference_image_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_location_library_team_id": {
+          "name": "idx_location_library_team_id",
+          "columns": ["team_id"],
+          "isUnique": false
+        },
+        "idx_location_library_name": {
+          "name": "idx_location_library_name",
+          "columns": ["name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "location_library_team_id_teams_id_fk": {
+          "name": "location_library_team_id_teams_id_fk",
+          "tableFrom": "location_library",
+          "tableTo": "teams",
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "location_library_created_by_user_id_fk": {
+          "name": "location_library_created_by_user_id_fk",
+          "tableFrom": "location_library",
+          "tableTo": "user",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "location_sheets": {
       "name": "location_sheets",
       "columns": {
@@ -1012,10 +1115,10 @@
         }
       },
       "foreignKeys": {
-        "location_sheets_location_id_locations_id_fk": {
-          "name": "location_sheets_location_id_locations_id_fk",
+        "location_sheets_location_id_location_library_id_fk": {
+          "name": "location_sheets_location_id_location_library_id_fk",
           "tableFrom": "location_sheets",
-          "tableTo": "locations",
+          "tableTo": "location_library",
           "columnsFrom": ["location_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
@@ -1026,8 +1129,116 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "locations": {
-      "name": "locations",
+    "passkey": {
+      "name": "passkey",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "counter": {
+          "name": "counter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "device_type": {
+          "name": "device_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "backed_up": {
+          "name": "backed_up",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "transports": {
+          "name": "transports",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aaguid": {
+          "name": "aaguid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "passkey_userId_idx": {
+          "name": "passkey_userId_idx",
+          "columns": ["user_id"],
+          "isUnique": false
+        },
+        "passkey_credentialID_idx": {
+          "name": "passkey_credentialID_idx",
+          "columns": ["credential_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "passkey_user_id_user_id_fk": {
+          "name": "passkey_user_id_user_id_fk",
+          "tableFrom": "passkey",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sequence_locations": {
+      "name": "sequence_locations",
       "columns": {
         "id": {
           "name": "id",
@@ -1041,6 +1252,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "library_location_id": {
+          "name": "library_location_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "location_id": {
@@ -1193,133 +1411,39 @@
         }
       },
       "indexes": {
-        "idx_locations_sequence_id": {
-          "name": "idx_locations_sequence_id",
+        "idx_sequence_locations_sequence_id": {
+          "name": "idx_sequence_locations_sequence_id",
           "columns": ["sequence_id"],
           "isUnique": false
         },
-        "locations_sequence_location_key": {
-          "name": "locations_sequence_location_key",
+        "idx_sequence_locations_library_location_id": {
+          "name": "idx_sequence_locations_library_location_id",
+          "columns": ["library_location_id"],
+          "isUnique": false
+        },
+        "sequence_locations_sequence_location_key": {
+          "name": "sequence_locations_sequence_location_key",
           "columns": ["sequence_id", "location_id"],
           "isUnique": true
         }
       },
       "foreignKeys": {
-        "locations_sequence_id_sequences_id_fk": {
-          "name": "locations_sequence_id_sequences_id_fk",
-          "tableFrom": "locations",
+        "sequence_locations_sequence_id_sequences_id_fk": {
+          "name": "sequence_locations_sequence_id_sequences_id_fk",
+          "tableFrom": "sequence_locations",
           "tableTo": "sequences",
           "columnsFrom": ["sequence_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "passkey": {
-      "name": "passkey",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "public_key": {
-          "name": "public_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_id": {
-          "name": "credential_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "counter": {
-          "name": "counter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "device_type": {
-          "name": "device_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "backed_up": {
-          "name": "backed_up",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "transports": {
-          "name": "transports",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "aaguid": {
-          "name": "aaguid",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "passkey_userId_idx": {
-          "name": "passkey_userId_idx",
-          "columns": ["user_id"],
-          "isUnique": false
-        },
-        "passkey_credentialID_idx": {
-          "name": "passkey_credentialID_idx",
-          "columns": ["credential_id"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "passkey_user_id_user_id_fk": {
-          "name": "passkey_user_id_user_id_fk",
-          "tableFrom": "passkey",
-          "tableTo": "user",
-          "columnsFrom": ["user_id"],
+        "sequence_locations_library_location_id_location_library_id_fk": {
+          "name": "sequence_locations_library_location_id_location_library_id_fk",
+          "tableFrom": "sequence_locations",
+          "tableTo": "location_library",
+          "columnsFrom": ["library_location_id"],
           "columnsTo": ["id"],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1398,7 +1522,7 @@
           "name": "style_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "aspect_ratio": {
@@ -2625,7 +2749,9 @@
   "enums": {},
   "_meta": {
     "schemas": {},
-    "tables": {},
+    "tables": {
+      "\"locations\"": "\"sequence_locations\""
+    },
     "columns": {}
   },
   "internal": {

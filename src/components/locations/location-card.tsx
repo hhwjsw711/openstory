@@ -1,9 +1,9 @@
 import { Card } from '@/components/ui/card';
-import type { Location } from '@/lib/db/schema';
+import type { SequenceLocation } from '@/lib/db/schema';
 import { MapPin, Sparkles } from 'lucide-react';
 
 type LocationCardProps = {
-  location: Location;
+  location: SequenceLocation;
 };
 
 export const LocationCard: React.FC<LocationCardProps> = ({ location }) => {

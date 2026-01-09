@@ -7,7 +7,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { updateLocationReference } from '@/lib/db/helpers/sequence-locations';
+import { updateLibraryLocationReference } from '@/lib/db/helpers/location-library';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -111,7 +111,7 @@ export const libraryLocationSheetWorkflow = createWorkflow(
         `Updating database for ${input.locationName}`
       );
 
-      await updateLocationReference(
+      await updateLibraryLocationReference(
         input.locationDbId,
         storageResult.url,
         storageResult.path

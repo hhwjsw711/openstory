@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'bun:test';
 import type { LocationBibleEntry } from '@/lib/ai/scene-analysis.schema';
-import type { LocationMinimal } from '@/lib/db/schema';
+import type { SequenceLocationMinimal } from '@/lib/db/schema';
 import {
   buildLocationDescription,
   buildLocationReferenceImages,
@@ -32,7 +32,7 @@ const mockLocationEntry: LocationBibleEntry = {
   },
 };
 
-const mockLocations: LocationMinimal[] = [
+const mockLocations: SequenceLocationMinimal[] = [
   {
     id: 'loc-1',
     locationId: 'loc_001',
@@ -72,7 +72,7 @@ describe('location-prompt', () => {
     });
 
     it('should return just name if no description', () => {
-      const location: LocationMinimal = {
+      const location: SequenceLocationMinimal = {
         ...mockLocations[0],
         description: null,
       };

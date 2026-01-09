@@ -9,6 +9,7 @@ import {
   type ChatPromptClient,
   type TextPromptClient,
 } from '@langfuse/client';
+import { isProductionDeployment } from '../utils/environment';
 
 let client: LangfuseClient | null = null;
 

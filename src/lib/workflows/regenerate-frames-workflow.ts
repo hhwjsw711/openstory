@@ -14,7 +14,7 @@ import {
   getSequenceLocationsWithReferences,
   matchLocationsToFrame,
 } from '@/lib/db/helpers/sequence-locations';
-import type { CharacterMinimal, Location } from '@/lib/db/schema';
+import type { CharacterMinimal, SequenceLocation } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
@@ -144,7 +144,7 @@ export const regenerateFramesWorkflow = createWorkflow(
         // Match locations to this frame's environment tag
         const frameLocations = matchLocationsToFrame(
           frame,
-          allLocations as Location[]
+          allLocations as SequenceLocation[]
         );
 
         // Build combined reference images (characters + locations)

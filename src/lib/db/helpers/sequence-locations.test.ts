@@ -7,13 +7,14 @@ import {
   matchLocationsToFrame,
   locationMatchesTag,
 } from './sequence-locations';
-import type { Frame, Location } from '@/lib/db/schema';
+import type { Frame, SequenceLocation } from '@/lib/db/schema';
 
-// Mock location data - using full Location type
-const mockLocations: Location[] = [
+// Mock location data - using full SequenceLocation type
+const mockLocations: SequenceLocation[] = [
   {
     id: 'loc-1',
     sequenceId: 'seq-1',
+    libraryLocationId: null,
     locationId: 'loc_001',
     name: 'INT. OFFICE - DAY',
     type: 'interior',
@@ -39,6 +40,7 @@ const mockLocations: Location[] = [
   {
     id: 'loc-2',
     sequenceId: 'seq-1',
+    libraryLocationId: null,
     locationId: 'loc_002',
     name: 'EXT. STREET - NIGHT',
     type: 'exterior',
@@ -64,6 +66,7 @@ const mockLocations: Location[] = [
   {
     id: 'loc-3',
     sequenceId: 'seq-1',
+    libraryLocationId: null,
     locationId: 'loc_003',
     name: 'INT. APARTMENT - EVENING',
     type: 'interior',

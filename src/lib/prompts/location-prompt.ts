@@ -8,7 +8,7 @@
  */
 
 import type { LocationBibleEntry } from '@/lib/ai/scene-analysis.schema';
-import type { LocationMinimal } from '@/lib/db/schema';
+import type { SequenceLocationMinimal } from '@/lib/db/schema';
 import {
   type PromptWithReferenceImages,
   type ReferenceImageDescription,
@@ -21,7 +21,9 @@ import {
  * @param location - Location with flattened fields
  * @returns Concise description string
  */
-export const buildLocationDescription = (location: LocationMinimal): string => {
+export const buildLocationDescription = (
+  location: SequenceLocationMinimal
+): string => {
   const parts: string[] = [];
 
   if (location.description) {
@@ -40,7 +42,7 @@ export const buildLocationDescription = (location: LocationMinimal): string => {
  * @returns Array of reference images
  */
 export const buildLocationReferenceImages = (
-  locations: LocationMinimal[]
+  locations: SequenceLocationMinimal[]
 ): ReferenceImageDescription[] => {
   return locations
     .filter((l) => l.referenceImageUrl)
@@ -62,7 +64,7 @@ export const buildLocationReferenceImages = (
  */
 export const buildPromptWithLocationReferences = (
   basePrompt: string,
-  locations: LocationMinimal[]
+  locations: SequenceLocationMinimal[]
 ): PromptWithReferenceImages => {
   return buildReferenceImagePrompt(
     basePrompt,

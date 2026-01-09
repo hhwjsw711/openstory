@@ -41,13 +41,9 @@ export const visualPromptGenerationResultSchema = z.object({
         })
         .required()
         .extend({
-          prompts: z
-            .object({
-              visual: visualPromptSchema.meta({
-                description: 'Image generation prompt data',
-              }),
-            })
-            .meta({ description: 'Visual generation prompts for this scene' }),
+          visual: visualPromptSchema.meta({
+            description: 'Image generation prompt data',
+          }),
           continuity: continuitySchema.meta({
             description: 'Continuity tracking for scene consistency',
           }),
@@ -163,7 +159,7 @@ ${aspectRatio}
       ...scene,
       prompts: {
         ...scene.prompts,
-        visual: enrichment.prompts.visual,
+        visual: enrichment.visual,
       },
       continuity: enrichment.continuity,
     };

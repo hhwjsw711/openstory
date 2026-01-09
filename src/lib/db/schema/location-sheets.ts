@@ -1,6 +1,6 @@
 /**
  * Location Sheets Schema
- * Alternative looks/variations for locations in a sequence
+ * Alternative looks/variations for library locations
  * (e.g., same office but at night, during a party, after destruction)
  */
 
@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
-import { locations } from './locations';
+import { locationLibrary } from './location-library';
 
 const LOCATION_SHEET_SOURCES = [
   'manual_upload',
@@ -22,7 +22,7 @@ export type LocationSheetSource = (typeof LOCATION_SHEET_SOURCES)[number];
 
 /**
  * Location Sheets table
- * Stores different variations/looks for a location within a sequence
+ * Stores different variations/looks for a library location
  * e.g., "daytime", "nighttime", "post-battle", "crowded"
  */
 export const locationSheets = sqliteTable(
@@ -34,7 +34,7 @@ export const locationSheets = sqliteTable(
       .notNull(),
     locationId: text('location_id')
       .notNull()
-      .references(() => locations.id, { onDelete: 'cascade' }),
+      .references(() => locationLibrary.id, { onDelete: 'cascade' }),
     name: text({ length: 255 }).notNull(), // e.g., "nighttime", "crowded"
     description: text(), // What makes this variation different
     imageUrl: text('image_url'),
@@ -59,9 +59,9 @@ export const locationSheets = sqliteTable(
 
 // Relations
 export const locationSheetsRelations = relations(locationSheets, ({ one }) => ({
-  location: one(locations, {
+  location: one(locationLibrary, {
     fields: [locationSheets.locationId],
-    references: [locations.id],
+    references: [locationLibrary.id],
   }),
 }));
 

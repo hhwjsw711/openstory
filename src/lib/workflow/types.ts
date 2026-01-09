@@ -238,6 +238,7 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
   styleConfig: DirectorDnaConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;

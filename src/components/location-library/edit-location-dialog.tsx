@@ -13,11 +13,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useUpdateLibraryLocation } from '@/hooks/use-location-library';
-import type { TeamLibraryLocation } from '@/hooks/use-sequence-locations';
+import {
+  useUpdateLibraryLocation,
+  type LibraryLocationWithSheets,
+} from '@/hooks/use-location-library';
 
 type EditLocationDialogProps = {
-  location: TeamLibraryLocation;
+  location: LibraryLocationWithSheets;
   trigger?: React.ReactNode;
 };
 

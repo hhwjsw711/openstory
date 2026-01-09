@@ -1,6 +1,6 @@
 /**
- * Locations Schema
- * Locations extracted from scripts for visual consistency
+ * Sequence Locations Schema
+ * Locations extracted from scripts for visual consistency within a sequence
  */
 
 import {
@@ -16,6 +16,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
+import { locationLibrary } from './location-library';
 import { sequences } from './sequences';
 
 const REFERENCE_STATUSES = [
@@ -27,19 +28,25 @@ const REFERENCE_STATUSES = [
 export type ReferenceStatus = (typeof REFERENCE_STATUSES)[number];
 
 /**
- * Locations table
+ * Sequence Locations table
  * Stores locations extracted from a sequence's script with their generated reference images
  */
-export const locations = sqliteTable(
-  'locations',
+export const sequenceLocations = sqliteTable(
+  'sequence_locations',
   {
     id: text()
       .$defaultFn(() => generateId())
       .primaryKey()
       .notNull(),
+    // Sequence association (required - all sequence locations belong to a sequence)
     sequenceId: text('sequence_id')
       .notNull()
       .references(() => sequences.id, { onDelete: 'cascade' }),
+    // Optional link to library location for visual consistency
+    libraryLocationId: text('library_location_id').references(
+      () => locationLibrary.id,
+      { onDelete: 'set null' }
+    ),
     // From script analysis
     locationId: text('location_id').notNull(), // e.g. "loc_001" from script analysis
     name: text({ length: 255 }).notNull(), // e.g. "INT. OFFICE - DAY"
@@ -78,29 +85,40 @@ export const locations = sqliteTable(
       .notNull(),
   },
   (table) => [
-    index('idx_locations_sequence_id').on(table.sequenceId),
+    index('idx_sequence_locations_sequence_id').on(table.sequenceId),
+    index('idx_sequence_locations_library_location_id').on(
+      table.libraryLocationId
+    ),
     // Unique constraint: one location per sequence/locationId combination
-    uniqueIndex('locations_sequence_location_key').on(
+    // Note: locationId is from script analysis (e.g. "loc_001")
+    uniqueIndex('sequence_locations_sequence_location_key').on(
       table.sequenceId,
       table.locationId
     ),
   ]
 );
 
-// Relations defined in index.ts to avoid circular dependencies
-export const locationsRelations = relations(locations, ({ one }) => ({
-  sequence: one(sequences, {
-    fields: [locations.sequenceId],
-    references: [sequences.id],
-  }),
-}));
+// Relations
+export const sequenceLocationsRelations = relations(
+  sequenceLocations,
+  ({ one }) => ({
+    sequence: one(sequences, {
+      fields: [sequenceLocations.sequenceId],
+      references: [sequences.id],
+    }),
+    libraryLocation: one(locationLibrary, {
+      fields: [sequenceLocations.libraryLocationId],
+      references: [locationLibrary.id],
+    }),
+  })
+);
 
 // Type exports
-export type Location = InferSelectModel<typeof locations>;
-export type NewLocation = InferInsertModel<typeof locations>;
+export type SequenceLocation = InferSelectModel<typeof sequenceLocations>;
+export type NewSequenceLocation = InferInsertModel<typeof sequenceLocations>;
 
-export type LocationMinimal = Pick<
-  Location,
+export type SequenceLocationMinimal = Pick<
+  SequenceLocation,
   | 'id'
   | 'locationId'
   | 'name'
@@ -111,6 +129,11 @@ export type LocationMinimal = Pick<
 >;
 
 // Composite types for API responses
-export type LocationWithDetails = Location & {
+export type SequenceLocationWithDetails = SequenceLocation & {
   frameCount?: number;
+  libraryLocation?: {
+    id: string;
+    name: string;
+    referenceImageUrl: string | null;
+  } | null;
 };

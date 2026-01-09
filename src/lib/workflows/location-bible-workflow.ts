@@ -16,7 +16,10 @@ import {
   updateLocationReference,
 } from '@/lib/db/helpers/sequence-locations';
 import { generateId } from '@/lib/db/id';
-import type { LocationMinimal, NewLocation } from '@/lib/db/schema';
+import type {
+  NewSequenceLocation,
+  SequenceLocationMinimal,
+} from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
@@ -31,7 +34,7 @@ import { getGenerationChannel } from '@/lib/realtime';
 export const locationBibleWorkflow = createWorkflow(
   async (
     context: WorkflowContext<LocationBibleWorkflowInput>
-  ): Promise<LocationMinimal[]> => {
+  ): Promise<SequenceLocationMinimal[]> => {
     const input = context.requestPayload;
     const { libraryLocationMatches = [] } = input;
 
@@ -60,26 +63,33 @@ export const locationBibleWorkflow = createWorkflow(
           return [];
         }
 
-        const locationInserts: NewLocation[] = input.locationBible.map(
-          (location) => ({
-            id: generateId(),
-            sequenceId,
-            locationId: location.locationId,
-            name: location.name,
-            type: location.type ?? null,
-            timeOfDay: location.timeOfDay ?? null,
-            description: location.description ?? null,
-            architecturalStyle: location.architecturalStyle ?? null,
-            keyFeatures: location.keyFeatures ?? null,
-            colorPalette: location.colorPalette ?? null,
-            lightingSetup: location.lightingSetup ?? null,
-            ambiance: location.ambiance ?? null,
-            consistencyTag: location.consistencyTag ?? null,
-            firstMentionSceneId: location.firstMention?.sceneId ?? null,
-            firstMentionText: location.firstMention?.text ?? null,
-            firstMentionLine: location.firstMention?.lineNumber ?? null,
-            referenceStatus: 'generating' as const,
-          })
+        const locationInserts: NewSequenceLocation[] = input.locationBible.map(
+          (location) => {
+            // Check if there's a library match for this location
+            const libraryMatch = matchMap.get(location.locationId);
+
+            return {
+              id: generateId(),
+              sequenceId,
+              locationId: location.locationId,
+              name: location.name,
+              type: location.type ?? null,
+              timeOfDay: location.timeOfDay ?? null,
+              description: location.description ?? null,
+              architecturalStyle: location.architecturalStyle ?? null,
+              keyFeatures: location.keyFeatures ?? null,
+              colorPalette: location.colorPalette ?? null,
+              lightingSetup: location.lightingSetup ?? null,
+              ambiance: location.ambiance ?? null,
+              consistencyTag: location.consistencyTag ?? null,
+              firstMentionSceneId: location.firstMention?.sceneId ?? null,
+              firstMentionText: location.firstMention?.text ?? null,
+              firstMentionLine: location.firstMention?.lineNumber ?? null,
+              referenceStatus: 'generating' as const,
+              // Link to library location if matched
+              libraryLocationId: libraryMatch?.libraryLocationId ?? null,
+            };
+          }
         );
 
         return await createSequenceLocationsBulk(locationInserts);
@@ -92,7 +102,7 @@ export const locationBibleWorkflow = createWorkflow(
     );
 
     // Step 2: Generate reference images for each location in parallel
-    const seqLocations: LocationMinimal[] = await Promise.all(
+    const seqLocations: SequenceLocationMinimal[] = await Promise.all(
       input.locationBible.map(async (location, index) => {
         const dbId = locationIdToDbId.get(location.locationId);
 

@@ -1,6 +1,6 @@
 /**
  * Frame Locations Schema
- * Junction table linking frames to locations (which location is in each frame)
+ * Junction table linking frames to sequence locations (which location is in each frame)
  */
 
 import {
@@ -17,8 +17,8 @@ import {
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { frames } from './frames';
-import { locations } from './locations';
 import { locationSheets } from './location-sheets';
+import { sequenceLocations } from './sequence-locations';
 
 /**
  * Frame Locations junction table
@@ -37,7 +37,7 @@ export const frameLocations = sqliteTable(
       .references(() => frames.id, { onDelete: 'cascade' }),
     locationId: text('location_id')
       .notNull()
-      .references(() => locations.id, { onDelete: 'cascade' }),
+      .references(() => sequenceLocations.id, { onDelete: 'cascade' }),
     // Optional: specific variation used for this frame
     locationSheetId: text('location_sheet_id').references(
       () => locationSheets.id,
@@ -64,9 +64,9 @@ export const frameLocationsRelations = relations(frameLocations, ({ one }) => ({
     fields: [frameLocations.frameId],
     references: [frames.id],
   }),
-  location: one(locations, {
+  location: one(sequenceLocations, {
     fields: [frameLocations.locationId],
-    references: [locations.id],
+    references: [sequenceLocations.id],
   }),
   locationSheet: one(locationSheets, {
     fields: [frameLocations.locationSheetId],
