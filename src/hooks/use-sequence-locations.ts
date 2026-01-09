@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getFrameIdsForLocationFn,
   getSequenceLocationsFn,
+  getTeamLocationsLibraryFn,
   recastLocationFn,
 } from '@/functions/sequence-locations';
 import type { Location } from '@/lib/db/schema';
@@ -13,12 +14,16 @@ import type { Location } from '@/lib/db/schema';
 // Re-export Location as SequenceLocation for consistency with characters
 export type SequenceLocation = Location;
 
+// Extended type for team library locations
+export type TeamLibraryLocation = Location & { sequenceTitle: string };
+
 export const sequenceLocationKeys = {
   all: ['sequence-locations'] as const,
   list: (sequenceId: string) =>
     [...sequenceLocationKeys.all, 'list', sequenceId] as const,
   framesForLocation: (sequenceId: string, locationId: string) =>
     [...sequenceLocationKeys.all, 'frames', sequenceId, locationId] as const,
+  teamLibrary: ['team-locations-library'] as const,
 };
 
 export function useSequenceLocations(sequenceId: string) {
@@ -29,6 +34,20 @@ export function useSequenceLocations(sequenceId: string) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes - locations don't change often
     enabled: !!sequenceId,
+  });
+}
+
+/**
+ * Hook to get all locations with completed references across the team
+ * Used as a "location library" for recasting
+ */
+export function useTeamLocationsLibrary() {
+  return useQuery<TeamLibraryLocation[]>({
+    queryKey: sequenceLocationKeys.teamLibrary,
+    queryFn: async () => {
+      return getTeamLocationsLibraryFn();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

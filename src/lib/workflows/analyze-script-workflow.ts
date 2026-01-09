@@ -17,16 +17,15 @@ import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
 import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
-import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
 import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
 import type { Scene } from '@/lib/script/types';
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
+import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
+import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
 import {
   buildMatchingPromptVariables,
   talentMatchResponseSchema,
-  buildMatchingPrompt,
 } from '@/lib/services/talent-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
@@ -36,18 +35,12 @@ import type {
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import {
-  type PromptReference,
-  logGeneration,
-  recordWorkflowTrace,
-} from '@/lib/observability/langfuse';
-import { getPrompt } from '@/lib/observability/langfuse-prompts';
-import { getEnv } from '#env';
-import { z } from 'zod';
+import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import type { CharacterMinimal } from '@/lib/db/schema';
+import { locationBibleWorkflow } from './location-bible-workflow';
+import type { CharacterMinimal, LocationMinimal } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 import { durableLLMCall } from './llm-call-helper';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
@@ -77,6 +70,41 @@ function matchCharactersToScene(
         tagLower.includes(char.characterId.toLowerCase())
       );
     });
+  });
+}
+
+/**
+ * Match locations to a scene by environment tag or location name
+ * Pure function that works in-memory without DB queries
+ */
+function matchLocationsToScene(
+  allLocations: LocationMinimal[],
+  environmentTag: string,
+  sceneLocation: string
+): LocationMinimal[] {
+  if (!environmentTag && !sceneLocation) return [];
+
+  return allLocations.filter((loc) => {
+    const consistencyTag = (loc.consistencyTag ?? '').toLowerCase();
+    const locName = loc.name.toLowerCase();
+    const locId = loc.locationId.toLowerCase();
+    const envTagLower = environmentTag.toLowerCase();
+    const sceneLocLower = sceneLocation.toLowerCase();
+
+    // Check if any location identifier matches
+    if (consistencyTag) {
+      if (envTagLower.includes(consistencyTag)) return true;
+      if (sceneLocLower.includes(consistencyTag)) return true;
+    }
+    if (envTagLower.includes(locName) || sceneLocLower.includes(locName))
+      return true;
+    if (envTagLower.includes(locId) || sceneLocLower.includes(locId))
+      return true;
+    // Reverse match: location name contains the environment tag
+    if (locName.includes(envTagLower) || locName.includes(sceneLocLower))
+      return true;
+
+    return false;
   });
 }
 
@@ -224,6 +252,27 @@ export const analyzeScriptWorkflow = createWorkflow(
     );
 
     // ============================================================
+    // PHASE 2b: Location Extraction (using durableLLMCall helper)
+    // ============================================================
+
+    const { locationBible } = await durableLLMCall(
+      context,
+      {
+        name: 'location-extraction',
+        phase: { number: 2, name: 'Location Extraction' },
+
+        promptName: 'velro/phase/location-extraction',
+        promptVariables: {
+          scenes: JSON.stringify(scenes, null, 2),
+        },
+
+        modelId: analysisModelId,
+        responseSchema: locationExtractionResultSchema,
+      },
+      { sequenceId, userId: input.userId }
+    );
+
+    // ============================================================
     // TALENT MATCHING (conditional three-step durable pattern)
     // ============================================================
 
@@ -326,8 +375,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
-    // Characters with completed sheets - populated after character sheet generation
-    const [charResult, visualResult] = await Promise.all([
+    // Characters and locations with completed sheets - populated after sheet generation
+    const [charResult, locationResult, visualResult] = await Promise.all([
       context.invoke('character-sheet-from-bible', {
         workflow: characterBibleWorkflow,
         body: {
@@ -336,6 +385,15 @@ export const analyzeScriptWorkflow = createWorkflow(
           teamId: input.teamId,
           characterBible,
           talentMatches: talentCharacterMatches,
+        },
+      }),
+      context.invoke('location-sheet-from-bible', {
+        workflow: locationBibleWorkflow,
+        body: {
+          sequenceId,
+          userId: input.userId,
+          teamId: input.teamId,
+          locationBible,
         },
       }),
       context.invoke('visual-prompts', {
@@ -354,11 +412,15 @@ export const analyzeScriptWorkflow = createWorkflow(
     if (charResult.isFailed || charResult.isCanceled) {
       throw new Error('Character sheet generation failed');
     }
+    if (locationResult.isFailed || locationResult.isCanceled) {
+      throw new Error('Location sheet generation failed');
+    }
     if (visualResult.isFailed || visualResult.isCanceled) {
       throw new Error('Visual prompt generation failed');
     }
 
     const charactersWithSheets = charResult.body;
+    const locationsWithSheets = locationResult.body;
     const scenesWithVisualPrompts = visualResult.body;
 
     let imageUrls: string[] = [];
@@ -369,11 +431,21 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       // Build scene character map in-memory using characters from Phase 3
       const sceneCharacterMap: Record<string, CharacterMinimal[]> = {};
+      // Build scene location map in-memory using locations from Phase 4
+      const sceneLocationMap: Record<string, LocationMinimal[]> = {};
       for (const scene of scenesWithVisualPrompts) {
         const sceneCharTags = scene.continuity?.characterTags || [];
         sceneCharacterMap[scene.sceneId] = matchCharactersToScene(
           charactersWithSheets,
           sceneCharTags
+        );
+        // Match locations to scene
+        const envTag = scene.continuity?.environmentTag || '';
+        const sceneLoc = scene.metadata?.location || '';
+        sceneLocationMap[scene.sceneId] = matchLocationsToScene(
+          locationsWithSheets,
+          envTag,
+          sceneLoc
         );
       }
       // Start phase 5
@@ -405,9 +477,14 @@ export const analyzeScriptWorkflow = createWorkflow(
             (frame) => frame.sceneId === scene.sceneId
           );
 
-          // Get characters for this scene and build enhanced prompt with references
-          // sceneCharacterMap already contains only characters with completed sheets
+          // Get characters and locations for this scene
           const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
+          const locsWithSheets = sceneLocationMap[scene.sceneId] || [];
+
+          // Combine character and location reference images
+          const characterRefs = buildCharacterReferenceImages(charsWithSheets);
+          const locationRefs = buildLocationReferenceImages(locsWithSheets);
+          const allReferences = [...characterRefs, ...locationRefs];
 
           // Generate image for the frame using sequence's selected model
           const imageInput: ImageWorkflowInput = {
@@ -420,8 +497,9 @@ export const analyzeScriptWorkflow = createWorkflow(
             // Not required, but can be used to update the frame thumbnail
             frameId: frame?.frameId,
             sequenceId,
-            // Pass character reference images for consistency
-            referenceImages: buildCharacterReferenceImages(charsWithSheets),
+            // Pass character and location reference images for consistency
+            referenceImages:
+              allReferences.length > 0 ? allReferences : undefined,
           };
 
           const {

@@ -37,9 +37,11 @@ import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/
 import { Route as ProtectedSequencesIdTheatreRouteImport } from './routes/_protected/sequences/$id/theatre'
 import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
 import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
+import { Route as ProtectedSequencesIdLocationsIndexRouteImport } from './routes/_protected/sequences/$id/locations/index'
 import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
 import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
 import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
+import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId'
 import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
@@ -188,6 +190,12 @@ const ProtectedSequencesIdScenesRoute =
     path: '/sequences/$id/scenes',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedSequencesIdLocationsIndexRoute =
+  ProtectedSequencesIdLocationsIndexRouteImport.update({
+    id: '/sequences/$id/locations/',
+    path: '/sequences/$id/locations/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedSequencesIdCastIndexRoute =
   ProtectedSequencesIdCastIndexRouteImport.update({
     id: '/sequences/$id/cast/',
@@ -205,6 +213,12 @@ const ApiSequencesSequenceIdChaptersVttRoute =
     id: '/api/sequences/$sequenceId/chapters/vtt',
     path: '/api/sequences/$sequenceId/chapters/vtt',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ProtectedSequencesIdLocationsLocationIdRoute =
+  ProtectedSequencesIdLocationsLocationIdRouteImport.update({
+    id: '/sequences/$id/locations/$locationId',
+    path: '/sequences/$id/locations/$locationId',
+    getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedSequencesIdCastCharacterIdRoute =
   ProtectedSequencesIdCastCharacterIdRouteImport.update({
@@ -241,9 +255,11 @@ export interface FileRoutesByFullPath {
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
+  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
+  '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,9 +289,11 @@ export interface FileRoutesByTo {
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
+  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
+  '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -308,9 +326,11 @@ export interface FileRoutesById {
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
+  '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
+  '/_protected/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -342,9 +362,11 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
     | '/sequences/$id/cast/$characterId'
+    | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast'
+    | '/sequences/$id/locations'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -374,9 +396,11 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
     | '/sequences/$id/cast/$characterId'
+    | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast'
+    | '/sequences/$id/locations'
   id:
     | '__root__'
     | '/'
@@ -408,9 +432,11 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/visual-prompts'
     | '/api/workflows/status/$runId'
     | '/_protected/sequences/$id/cast/$characterId'
+    | '/_protected/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/_protected/sequences/$id/cast/'
+    | '/_protected/sequences/$id/locations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -625,6 +651,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/sequences/$id/locations/': {
+      id: '/_protected/sequences/$id/locations/'
+      path: '/sequences/$id/locations'
+      fullPath: '/sequences/$id/locations'
+      preLoaderRoute: typeof ProtectedSequencesIdLocationsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/sequences/$id/cast/': {
       id: '/_protected/sequences/$id/cast/'
       path: '/sequences/$id/cast'
@@ -645,6 +678,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/sequences/$sequenceId/chapters/vtt'
       preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_protected/sequences/$id/locations/$locationId': {
+      id: '/_protected/sequences/$id/locations/$locationId'
+      path: '/sequences/$id/locations/$locationId'
+      fullPath: '/sequences/$id/locations/$locationId'
+      preLoaderRoute: typeof ProtectedSequencesIdLocationsLocationIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/sequences/$id/cast/$characterId': {
       id: '/_protected/sequences/$id/cast/$characterId'
@@ -684,7 +724,9 @@ interface ProtectedRouteRouteChildren {
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
   ProtectedSequencesIdTheatreRoute: typeof ProtectedSequencesIdTheatreRoute
   ProtectedSequencesIdCastCharacterIdRoute: typeof ProtectedSequencesIdCastCharacterIdRoute
+  ProtectedSequencesIdLocationsLocationIdRoute: typeof ProtectedSequencesIdLocationsLocationIdRoute
   ProtectedSequencesIdCastIndexRoute: typeof ProtectedSequencesIdCastIndexRoute
+  ProtectedSequencesIdLocationsIndexRoute: typeof ProtectedSequencesIdLocationsIndexRoute
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
@@ -700,7 +742,11 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedSequencesIdTheatreRoute: ProtectedSequencesIdTheatreRoute,
   ProtectedSequencesIdCastCharacterIdRoute:
     ProtectedSequencesIdCastCharacterIdRoute,
+  ProtectedSequencesIdLocationsLocationIdRoute:
+    ProtectedSequencesIdLocationsLocationIdRoute,
   ProtectedSequencesIdCastIndexRoute: ProtectedSequencesIdCastIndexRoute,
+  ProtectedSequencesIdLocationsIndexRoute:
+    ProtectedSequencesIdLocationsIndexRoute,
 }
 
 const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(

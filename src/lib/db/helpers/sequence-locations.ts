@@ -217,10 +217,12 @@ export async function getLocationsNeedingReferences(
 /**
  * Match a location to a scene's environmentTag
  */
-function locationMatchesTag(
+export function locationMatchesTag(
   location: Location,
   environmentTag: string
 ): boolean {
+  if (!environmentTag) return false;
+
   const consistencyTag = (location.consistencyTag ?? '').toLowerCase();
   const locName = location.name.toLowerCase();
   const locId = location.locationId.toLowerCase();
@@ -290,7 +292,7 @@ export async function getFrameIdsForLocation(
  * Used when generating frame images to include location references
  */
 export function matchLocationsToFrame(
-  frame: Frame,
+  frame: Pick<Frame, 'metadata'>,
   allLocations: Location[]
 ): Location[] {
   const environmentTag = frame.metadata?.continuity?.environmentTag ?? '';
@@ -304,4 +306,46 @@ export function matchLocationsToFrame(
       (sceneLocation && locationMatchesTag(location, sceneLocation))
     );
   });
+}
+
+// ============================================================================
+// Team Library Operations
+// ============================================================================
+
+/**
+ * Get all locations with completed reference images across all team sequences
+ * Used as a "location library" for recasting
+ */
+export async function getTeamLocationsLibrary(
+  teamId: string,
+  options?: {
+    excludeSequenceId?: string;
+    limit?: number;
+  }
+): Promise<(Location & { sequenceTitle: string })[]> {
+  const { sequences } = await import('@/lib/db/schema');
+  const result = await getDb()
+    .select({
+      location: locations,
+      sequenceTitle: sequences.title,
+    })
+    .from(locations)
+    .innerJoin(sequences, eq(locations.sequenceId, sequences.id))
+    .where(
+      and(
+        eq(sequences.teamId, teamId),
+        eq(locations.referenceStatus, 'completed'),
+        options?.excludeSequenceId
+          ? // Optionally exclude current sequence
+            // to avoid showing duplicate locations
+            undefined
+          : undefined
+      )
+    )
+    .limit(options?.limit ?? 100);
+
+  return result.map((r) => ({
+    ...r.location,
+    sequenceTitle: r.sequenceTitle ?? 'Untitled',
+  }));
 }

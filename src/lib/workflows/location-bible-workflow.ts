@@ -1,0 +1,211 @@
+/**
+ * Location Bible Workflow
+ *
+ * Generates location reference images for all locations in a sequence.
+ * Creates establishing shots that are used for visual consistency across scenes.
+ *
+ * This workflow:
+ * 1. Inserts location records into the database from the location bible
+ * 2. Generates reference images for each location
+ * 3. Updates database with reference image URLs
+ */
+
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import {
+  createSequenceLocationsBulk,
+  updateLocationReference,
+} from '@/lib/db/helpers/sequence-locations';
+import { generateId } from '@/lib/db/id';
+import type { LocationMinimal, NewLocation } from '@/lib/db/schema';
+import { generateImageWithProvider } from '@/lib/image/image-generation';
+import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
+import type {
+  LibraryLocationMatch,
+  LocationBibleWorkflowInput,
+} from '@/lib/workflow/types';
+import { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/tanstack';
+import { getGenerationChannel } from '@/lib/realtime';
+
+export const locationBibleWorkflow = createWorkflow(
+  async (
+    context: WorkflowContext<LocationBibleWorkflowInput>
+  ): Promise<LocationMinimal[]> => {
+    const input = context.requestPayload;
+    const { libraryLocationMatches = [] } = input;
+
+    // Create lookup map for library location matches
+    const matchMap = new Map<string, LibraryLocationMatch>(
+      libraryLocationMatches.map((m) => [m.locationId, m])
+    );
+
+    // Phase start event
+    await context.run('location-bible-start', async () => {
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.phase:start',
+        {
+          phase: 4,
+          phaseName: 'Location Bible',
+        }
+      );
+    });
+
+    // Step 1: Insert locations into database
+    const createdLocations = await context.run(
+      'create-location-records',
+      async () => {
+        const sequenceId = input.sequenceId;
+        if (!sequenceId) {
+          return [];
+        }
+
+        const locationInserts: NewLocation[] = input.locationBible.map(
+          (location) => ({
+            id: generateId(),
+            sequenceId,
+            locationId: location.locationId,
+            name: location.name,
+            type: location.type ?? null,
+            timeOfDay: location.timeOfDay ?? null,
+            description: location.description ?? null,
+            architecturalStyle: location.architecturalStyle ?? null,
+            keyFeatures: location.keyFeatures ?? null,
+            colorPalette: location.colorPalette ?? null,
+            lightingSetup: location.lightingSetup ?? null,
+            ambiance: location.ambiance ?? null,
+            consistencyTag: location.consistencyTag ?? null,
+            firstMentionSceneId: location.firstMention?.sceneId ?? null,
+            firstMentionText: location.firstMention?.text ?? null,
+            firstMentionLine: location.firstMention?.lineNumber ?? null,
+            referenceStatus: 'generating' as const,
+          })
+        );
+
+        return await createSequenceLocationsBulk(locationInserts);
+      }
+    );
+
+    // Create a mapping from locationId (from bible) to database id
+    const locationIdToDbId = new Map<string, string>(
+      createdLocations.map((loc) => [loc.locationId, loc.id])
+    );
+
+    // Step 2: Generate reference images for each location in parallel
+    const seqLocations: LocationMinimal[] = await Promise.all(
+      input.locationBible.map(async (location, index) => {
+        const dbId = locationIdToDbId.get(location.locationId);
+
+        return await context.run(`location-sheet-${index}`, async () => {
+          // Check if location has a library match
+          const libraryMatch = matchMap.get(location.locationId);
+
+          // Build location sheet prompt (with library overrides if matched)
+          const { prompt, referenceUrls } = libraryMatch
+            ? buildLocationSheetPrompt(location, {
+                description: libraryMatch.description,
+                referenceImageUrl: libraryMatch.referenceImageUrl,
+              })
+            : buildLocationSheetPrompt(location);
+
+          const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
+
+          // Generate location reference image
+          const imageResult = await generateImageWithProvider({
+            model,
+            prompt,
+            imageSize: 'landscape_16_9' as const,
+            numImages: 1,
+            referenceImageUrls:
+              referenceUrls.length > 0 ? referenceUrls : undefined,
+            traceName: 'location-bible-image',
+          });
+
+          const imageUrl = imageResult.imageUrls[0];
+          if (!imageUrl) {
+            throw new Error('No image URL returned from generation');
+          }
+
+          // Save to R2 and update DB if we have all required IDs
+          if (dbId && input.sequenceId && input.teamId) {
+            const uniqueId = generateId();
+            const storagePath = `${input.teamId}/${input.sequenceId}/${dbId}/${uniqueId}.png`;
+
+            // Fetch and upload the image
+            const response = await fetch(imageUrl);
+            if (!response.ok) {
+              throw new Error(
+                `Failed to fetch generated image: ${response.status}`
+              );
+            }
+            const imageBlob = await response.blob();
+
+            const storageResult = await uploadFile(
+              STORAGE_BUCKETS.LOCATIONS,
+              storagePath,
+              imageBlob,
+              { contentType: 'image/png' }
+            );
+
+            // Update location record with reference image
+            await updateLocationReference(
+              dbId,
+              storageResult.publicUrl,
+              storageResult.path
+            );
+
+            return {
+              id: dbId,
+              locationId: location.locationId,
+              name: location.name,
+              referenceImageUrl: storageResult.publicUrl,
+              referenceStatus: 'completed' as const,
+              description: location.description ?? null,
+              consistencyTag: location.consistencyTag ?? null,
+            };
+          }
+
+          return {
+            id: dbId ?? generateId(),
+            locationId: location.locationId,
+            name: location.name,
+            referenceImageUrl: imageUrl,
+            referenceStatus: 'completed' as const,
+            description: location.description ?? null,
+            consistencyTag: location.consistencyTag ?? null,
+          };
+        });
+      })
+    );
+
+    // Phase complete event
+    await context.run('location-bible-complete', async () => {
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.phase:complete',
+        { phase: 4 }
+      );
+    });
+
+    return seqLocations;
+  },
+  {
+    failureFunction: async ({ context, failResponse }) => {
+      const input = context.requestPayload;
+
+      // Emit failure event for phase completion
+      if (input.sequenceId) {
+        await getGenerationChannel(input.sequenceId).emit(
+          'generation.phase:complete',
+          { phase: 4 }
+        );
+      }
+
+      console.error(
+        '[LocationBibleWorkflow]',
+        `Location reference generation failed: ${failResponse}`
+      );
+
+      return `Location bible generation failed`;
+    },
+  }
+);

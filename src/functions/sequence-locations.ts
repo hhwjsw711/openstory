@@ -6,6 +6,7 @@
 import {
   getFrameIdsForLocation,
   getSequenceLocations,
+  getTeamLocationsLibrary,
   updateReferenceStatus,
 } from '@/lib/db/helpers/sequence-locations';
 import { locations as locationsTable } from '@/lib/db/schema';
@@ -27,6 +28,16 @@ export const getSequenceLocationsFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
     return getSequenceLocations(context.sequence.id);
+  });
+
+/**
+ * Get all locations with completed references across the team
+ * Used as a "location library" for recasting
+ */
+export const getTeamLocationsLibraryFn = createServerFn({ method: 'GET' })
+  .middleware([authWithTeamMiddleware])
+  .handler(async ({ context }) => {
+    return getTeamLocationsLibrary(context.teamId);
   });
 
 // =============================================================================
@@ -100,10 +111,17 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
     );
 
     // Build location metadata from the existing location
+    // Type assertion needed because DB stores as text, but workflow expects typed value
+    const locationType: 'interior' | 'exterior' | 'both' =
+      location.type === 'interior' ||
+      location.type === 'exterior' ||
+      location.type === 'both'
+        ? location.type
+        : 'interior';
     const locationMetadata = {
       locationId: location.locationId,
       name: location.name,
-      type: (location.type as 'interior' | 'exterior' | 'both') ?? 'interior',
+      type: locationType,
       timeOfDay: location.timeOfDay ?? '',
       description: location.description ?? '',
       architecturalStyle: location.architecturalStyle ?? '',
