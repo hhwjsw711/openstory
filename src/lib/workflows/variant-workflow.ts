@@ -26,6 +26,13 @@ export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {
     const input = context.requestPayload;
 
+    // Guard against undefined payload (can happen with stale workflow retries)
+    if (!input) {
+      throw new WorkflowValidationError(
+        'Invalid workflow payload: requestPayload is undefined'
+      );
+    }
+
     // Step 1: Set status to generating if frameId is provided
     const generationParams: ImageGenerationParams | null = await context.run(
       'set-generating-status',
