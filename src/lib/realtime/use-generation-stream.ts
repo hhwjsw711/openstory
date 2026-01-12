@@ -165,6 +165,21 @@ export function useGenerationStream(sequenceId?: string) {
             },
           });
           break;
+
+        case 'generation.location:matched':
+          dispatch({
+            type: 'LOCATION_MATCHED',
+            payload: data as {
+              matches: Array<{
+                locationId: string;
+                libraryLocationId: string;
+                libraryLocationName: string;
+                referenceImageUrl: string;
+                description?: string;
+              }>;
+            },
+          });
+          break;
       }
     },
     [queryClient, sequenceId]
@@ -185,6 +200,7 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.variant-image:progress',
       'generation.talent:matched',
       'generation.talent:unmatched',
+      'generation.location:matched',
       'generation.complete',
       'generation.failed',
       'generation.updated',

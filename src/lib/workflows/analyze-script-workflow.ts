@@ -481,6 +481,8 @@ export const analyzeScriptWorkflow = createWorkflow(
                   locationName: loc?.name ?? m.locationId,
                   libraryLocationId: m.libraryLocationId,
                   libraryLocationName: m.libraryLocationName,
+                  referenceImageUrl: m.referenceImageUrl,
+                  description: m.description ?? undefined,
                 };
               }),
             }

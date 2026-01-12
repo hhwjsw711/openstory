@@ -6,13 +6,12 @@ import { PageDescription } from '@/components/typography/page-description';
 import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useTeamLocationsLibrary } from '@/hooks/use-sequence-locations';
+import { useLibraryLocations } from '@/hooks/use-sequence-locations';
 import { createFileRoute } from '@tanstack/react-router';
 import { MapPin } from 'lucide-react';
 import { z } from 'zod';
 
 const searchParamsSchema = z.object({
-  filter: z.enum(['all', 'interior', 'exterior']).optional().default('all'),
   search: z.string().optional(),
 });
 
@@ -22,22 +21,17 @@ export const Route = createFileRoute('/_protected/locations/')({
 });
 
 function LocationsPage() {
-  const { filter, search } = Route.useSearch();
-  const { data: locations, isLoading, error } = useTeamLocationsLibrary();
+  const { search } = Route.useSearch();
+  const { data: locations, isLoading, error } = useLibraryLocations();
 
   // Filter locations based on search params
   const filteredLocations = locations?.filter((loc) => {
-    // Filter by type
-    if (filter === 'interior' && loc.type !== 'interior') return false;
-    if (filter === 'exterior' && loc.type !== 'exterior') return false;
-
     // Filter by search query
     if (search) {
       const query = search.toLowerCase();
       return (
         loc.name.toLowerCase().includes(query) ||
-        loc.description?.toLowerCase().includes(query) ||
-        loc.sequenceTitle.toLowerCase().includes(query)
+        loc.description?.toLowerCase().includes(query)
       );
     }
 
@@ -55,13 +49,13 @@ function LocationsPage() {
           </PageDescription>
         </PageHeader>
 
-        <LocationLibraryFilters currentFilter={filter} currentSearch={search} />
+        <LocationLibraryFilters currentSearch={search} />
 
         {!isLoading && filteredLocations && filteredLocations.length === 0 ? (
           <EmptyState
             icon={<MapPin className="h-12 w-12" />}
             title="No locations yet"
-            description="Locations will appear here once they're extracted from your sequence scripts, or you can add custom locations to your library."
+            description="Add locations to your library to maintain visual consistency across your sequences."
             action={<AddLocationDialog />}
           />
         ) : (

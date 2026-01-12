@@ -122,6 +122,19 @@ export const realtimeSchema = {
       error: z.string(),
     }),
 
+    // Location matching events
+    'location:matched': z.object({
+      matches: z.array(
+        z.object({
+          locationId: z.string(),
+          libraryLocationId: z.string(),
+          libraryLocationName: z.string(),
+          referenceImageUrl: z.string(),
+          description: z.string().optional(),
+        })
+      ),
+    }),
+
     // Talent matching events (during sequence generation)
     'talent:matched': z.object({
       matches: z.array(

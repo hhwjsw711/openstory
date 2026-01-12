@@ -1,10 +1,10 @@
 import { Card } from '@/components/ui/card';
-import type { TeamLibraryLocation } from '@/hooks/use-sequence-locations';
+import type { LibraryLocation } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { MapPin } from 'lucide-react';
 
 type LocationLibraryCardProps = {
-  location: TeamLibraryLocation;
+  location: LibraryLocation;
   isGenerating?: boolean;
   onClick?: () => void;
 };
@@ -37,13 +37,6 @@ export const LocationLibraryCard: React.FC<LocationLibraryCardProps> = ({
             <MapPin className="h-12 w-12 text-muted-foreground/30" />
           </div>
         )}
-
-        {/* Type badge */}
-        {location.type && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs font-medium capitalize">
-            {location.type}
-          </div>
-        )}
       </div>
 
       {/* Info section */}
@@ -52,12 +45,8 @@ export const LocationLibraryCard: React.FC<LocationLibraryCardProps> = ({
           {location.name}
         </h3>
 
-        <p className="text-xs text-muted-foreground line-clamp-1">
-          {location.sequenceTitle}
-        </p>
-
         {location.description && (
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-2">
             {location.description}
           </p>
         )}

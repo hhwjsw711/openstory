@@ -15,10 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useTeamLocationsLibrary,
-  type TeamLibraryLocation,
-} from '@/hooks/use-sequence-locations';
+import { useLibraryLocations } from '@/hooks/use-sequence-locations';
+import type { LibraryLocation } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { Check, MapPin, Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
@@ -30,7 +28,7 @@ type LocationSuggestionSelectorProps = {
 };
 
 type LocationPickerCardProps = {
-  location: TeamLibraryLocation;
+  location: LibraryLocation;
   isSelected: boolean;
   onClick: () => void;
 };
@@ -67,11 +65,6 @@ const LocationPickerCard: React.FC<LocationPickerCardProps> = ({
       <span className="text-sm font-medium truncate w-full">
         {location.name}
       </span>
-      <span className="text-xs text-muted-foreground truncate w-full">
-        {location.sequenceTitle !== '__library__'
-          ? location.sequenceTitle
-          : 'Library'}
-      </span>
       {isSelected && (
         <div className="absolute right-2 top-2 rounded-full bg-primary p-1">
           <Check className="h-3 w-3 text-primary-foreground" />
@@ -82,7 +75,7 @@ const LocationPickerCard: React.FC<LocationPickerCardProps> = ({
 };
 
 type LocationThumbnailProps = {
-  location: TeamLibraryLocation;
+  location: LibraryLocation;
   onRemove?: () => void;
 };
 
@@ -128,7 +121,7 @@ export const LocationSuggestionSelector: React.FC<
 > = ({ selectedLocationIds, onSelectionChange, disabled = false }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: locationList, isLoading } = useTeamLocationsLibrary();
+  const { data: locationList, isLoading } = useLibraryLocations();
 
   // Get selected location objects
   const selectedLocations =
@@ -140,8 +133,7 @@ export const LocationSuggestionSelector: React.FC<
     const query = searchQuery.toLowerCase();
     return (
       l.name.toLowerCase().includes(query) ||
-      l.description?.toLowerCase().includes(query) ||
-      l.sequenceTitle.toLowerCase().includes(query)
+      l.description?.toLowerCase().includes(query)
     );
   });
 
