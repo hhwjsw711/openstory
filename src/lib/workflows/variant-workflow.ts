@@ -15,6 +15,10 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
+import {
+  buildReferenceImagePrompt,
+  type ReferenceImageDescription,
+} from '@/lib/prompts/reference-image-prompt';
 
 const maxDuration = 800; // This function can run for a maximum of 800 seconds
 
@@ -69,14 +73,28 @@ export const generateVariantWorkflow = createWorkflow(
           );
         }
 
+        // Combine all references: thumbnail + characters + locations
+        const basePrompt = getVariantImagePrompt(imageSize);
+        const allReferences: ReferenceImageDescription[] = [
+          {
+            referenceImageUrl: input.thumbnailUrl,
+            description: 'Source image to create variants from',
+          },
+          ...(input.characterReferences ?? []),
+          ...(input.locationReferences ?? []),
+        ];
+
+        const { prompt: enhancedPrompt, referenceUrls } =
+          buildReferenceImagePrompt(basePrompt, allReferences);
+
         // Return the generation params so it shows in the workflow context for debugging
         return {
           model,
-          prompt: getVariantImagePrompt(imageSize),
+          prompt: enhancedPrompt,
           imageSize,
           numImages: input.numImages ?? 1,
           seed: input.seed,
-          referenceImageUrls: [input.thumbnailUrl],
+          referenceImageUrls: referenceUrls,
           traceName: 'variant-image',
         };
       }

@@ -49,7 +49,7 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
 }
 
 /**
- * Image generation workflow input
+ * Variant image generation workflow input
  */
 export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
   thumbnailUrl: string;
@@ -58,6 +58,10 @@ export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
   numImages?: number;
   seed?: number;
   frameId?: string;
+  /** Character reference sheets for visual consistency */
+  characterReferences?: ReferenceImageDescription[];
+  /** Location reference images for environment consistency */
+  locationReferences?: ReferenceImageDescription[];
 }
 
 export interface VariantWorkflowResult {
