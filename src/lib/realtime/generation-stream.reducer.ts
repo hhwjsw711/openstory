@@ -30,6 +30,14 @@ type TalentMatch = {
   talentName: string;
 };
 
+type LocationMatch = {
+  locationId: string;
+  libraryLocationId: string;
+  libraryLocationName: string;
+  referenceImageUrl: string;
+  description?: string;
+};
+
 type UnusedTalent = {
   ids: string[];
   names: string[];
@@ -58,6 +66,8 @@ export type GenerationStreamState = {
   error?: string;
   /** Talent matched to characters during generation */
   talentMatches: TalentMatch[];
+  /** Location matched during generation */
+  locationMatches: LocationMatch[];
   /** Talent that weren't matched to any character */
   unusedTalent: UnusedTalent | null;
 };
@@ -89,6 +99,7 @@ type GenerationStreamAction =
       type: 'TALENT_UNMATCHED';
       payload: { unusedTalentIds: string[]; unusedTalentNames: string[] };
     }
+  | { type: 'LOCATION_MATCHED'; payload: { matches: LocationMatch[] } }
   | { type: 'RESET' };
 
 const PHASE_NAMES = [
@@ -113,6 +124,7 @@ export const initialGenerationStreamState: GenerationStreamState = {
   isComplete: false,
   isFailed: false,
   talentMatches: [],
+  locationMatches: [],
   unusedTalent: null,
 };
 
@@ -249,6 +261,12 @@ export function generationStreamReducer(
           ids: action.payload.unusedTalentIds,
           names: action.payload.unusedTalentNames,
         },
+      };
+
+    case 'LOCATION_MATCHED':
+      return {
+        ...state,
+        locationMatches: action.payload.matches,
       };
 
     case 'RESET':

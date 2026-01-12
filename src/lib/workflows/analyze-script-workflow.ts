@@ -27,10 +27,16 @@ import {
   buildMatchingPromptVariables,
   talentMatchResponseSchema,
 } from '@/lib/services/talent-matching.service';
+import {
+  buildLocationMatchingPromptVariables,
+  locationMatchResponseSchema,
+} from '@/lib/services/location-matching.service';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
+import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
+  LibraryLocationMatch,
   MotionWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
@@ -124,6 +130,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       videoModel,
       autoGenerateMotion = false,
       suggestedTalentIds,
+      suggestedLocationIds,
     } = input;
 
     // ============================================================
@@ -378,6 +385,114 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
+    // ============================================================
+    // LOCATION MATCHING (conditional three-step durable pattern)
+    // ============================================================
+
+    const { libraryLocationList, locationMatchingPromptVariables } =
+      await context.run('get-library-locations', async () => {
+        if (
+          !suggestedLocationIds ||
+          suggestedLocationIds.length === 0 ||
+          !input.teamId
+        ) {
+          return {
+            libraryLocationList: [],
+            locationMatchingPromptVariables: {},
+          };
+        }
+        const libraryLocationList =
+          await getLibraryLocationsByIds(suggestedLocationIds);
+        const locationMatchingPromptVariables =
+          buildLocationMatchingPromptVariables(
+            locationBible,
+            libraryLocationList
+          );
+
+        return { libraryLocationList, locationMatchingPromptVariables };
+      });
+
+    // Call the location matching LLM call
+    const { matches: locationMatches } =
+      libraryLocationList.length > 0
+        ? await durableLLMCall(
+            context,
+            {
+              name: 'location-matching',
+              phase: { number: 3, name: 'Location Matching' },
+
+              promptName: 'velro/phase/location-matching-chat',
+              promptVariables: locationMatchingPromptVariables,
+              modelId: analysisModelId,
+              responseSchema: locationMatchResponseSchema,
+            },
+            { sequenceId, userId: input.userId }
+          )
+        : { matches: [] };
+
+    const libraryLocationMatches: LibraryLocationMatch[] = await context.run(
+      'build-location-matches',
+      async () => {
+        // Build match results
+        const usedLibraryIds = new Set<string>();
+        const usedLocationIds = new Set<string>();
+        const matches: LibraryLocationMatch[] = [];
+
+        for (const match of locationMatches) {
+          // Skip if library location already used
+          if (usedLibraryIds.has(match.libraryLocationId)) continue;
+          // Skip if script location already matched
+          if (usedLocationIds.has(match.locationId)) continue;
+          // Skip low confidence matches
+          if (match.confidence < 0.5) continue;
+
+          const libraryLoc = libraryLocationList.find(
+            (lib) => lib.id === match.libraryLocationId
+          );
+          if (!libraryLoc?.referenceImageUrl) continue;
+
+          const location = locationBible.find(
+            (loc) => loc.locationId === match.locationId
+          );
+          if (!location) continue;
+
+          usedLibraryIds.add(match.libraryLocationId);
+          usedLocationIds.add(match.locationId);
+          matches.push({
+            locationId: match.locationId,
+            libraryLocationId: match.libraryLocationId,
+            libraryLocationName: libraryLoc.name,
+            referenceImageUrl: libraryLoc.referenceImageUrl,
+            description: libraryLoc.description ?? undefined,
+          });
+        }
+
+        // Emit matched locations event
+        if (matches.length > 0) {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.location:matched',
+            {
+              matches: matches.map((m) => {
+                const loc = locationBible.find(
+                  (l) => l.locationId === m.locationId
+                );
+                return {
+                  locationId: m.locationId,
+                  locationName: loc?.name ?? m.locationId,
+                  libraryLocationId: m.libraryLocationId,
+                  libraryLocationName: m.libraryLocationName,
+                  referenceImageUrl: m.referenceImageUrl,
+                  description: m.description ?? undefined,
+                };
+              }),
+            }
+          );
+        }
+
+        return matches;
+      }
+    );
+
     // Characters and locations with completed sheets - populated after sheet generation
     const [charResult, locationResult, visualResult] = await Promise.all([
       context.invoke('character-sheet-from-bible', {
@@ -397,6 +512,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           userId: input.userId,
           teamId: input.teamId,
           locationBible,
+          libraryLocationMatches,
         },
       }),
       context.invoke('visual-prompts', {

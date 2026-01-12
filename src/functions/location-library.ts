@@ -28,7 +28,22 @@ import {
   updateLibraryLocation,
   deleteLibraryLocation,
   getLibraryLocationById,
+  getTeamLibraryLocations,
 } from '@/lib/db/helpers/location-library';
+
+// ============================================================================
+// Get All Team Library Locations
+// ============================================================================
+
+/**
+ * Get all library locations for the current team
+ * Used for the location library listing page
+ */
+export const getTeamLibraryLocationsFn = createServerFn({ method: 'GET' })
+  .middleware([authWithTeamMiddleware])
+  .handler(async ({ context }) => {
+    return getTeamLibraryLocations(context.teamId);
+  });
 
 // ============================================================================
 // Get Location By ID

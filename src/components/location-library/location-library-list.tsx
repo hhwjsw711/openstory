@@ -1,11 +1,11 @@
 import { LocationLibraryCard } from '@/components/location-library/location-library-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import type { TeamLibraryLocation } from '@/hooks/use-sequence-locations';
+import type { LibraryLocation } from '@/lib/db/schema';
 import { useNavigate } from '@tanstack/react-router';
 
 type LocationLibraryListProps = {
-  locations?: TeamLibraryLocation[];
+  locations?: LibraryLocation[];
   isLoading?: boolean;
   error?: Error | null;
 };

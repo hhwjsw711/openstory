@@ -109,6 +109,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   autoGenerateMotion?: boolean;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
+  /** Location IDs suggested by user for visual consistency */
+  suggestedLocationIds?: string[];
 }
 
 /**

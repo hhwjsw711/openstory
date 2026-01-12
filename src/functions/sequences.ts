@@ -80,6 +80,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createSequenceSchema))
   .handler(async ({ data, context }) => {
+    console.log('[CreateSequence] Data:', data);
     const teamId = data.teamId || context.teamId;
 
     // Verify user has access if a different team was specified

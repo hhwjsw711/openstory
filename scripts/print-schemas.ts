@@ -35,6 +35,7 @@ import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts'
 import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
 import { talentMatchResponseSchema } from '@/lib/services/talent-matching.service';
 import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
+import { locationMatchResponseSchema } from '@/lib/services/location-matching.service';
 
 const SCHEMA_OUTPUT_DIR = join(import.meta.dir, 'schemas');
 
@@ -160,6 +161,10 @@ async function main() {
   await generateLangfuseConfig(
     'phase-2-character-extraction',
     characterExtractionResultSchema
+  );
+  await generateLangfuseConfig(
+    'phase-2c-location-matching',
+    locationMatchResponseSchema
   );
   await generateLangfuseConfig(
     'phase-3-visual-prompts',
