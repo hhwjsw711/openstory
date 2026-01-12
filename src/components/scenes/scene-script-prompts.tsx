@@ -31,6 +31,7 @@ import {
   frameKeys,
 } from '@/hooks/use-frames';
 import { SceneCastTab } from './scene-cast-tab';
+import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
 
 export type TabValue =
@@ -38,7 +39,8 @@ export type TabValue =
   | 'image-prompt'
   | 'motion-prompt'
   | 'scene-variants'
-  | 'cast';
+  | 'cast'
+  | 'location';
 
 function isValidTabValue(value: string): value is TabValue {
   return (
@@ -46,7 +48,8 @@ function isValidTabValue(value: string): value is TabValue {
     value === 'image-prompt' ||
     value === 'motion-prompt' ||
     value === 'scene-variants' ||
-    value === 'cast'
+    value === 'cast' ||
+    value === 'location'
   );
 }
 
@@ -447,6 +450,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       <TabsList>
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="cast">Cast</TabsTrigger>
+        <TabsTrigger value="location">Location</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
         <TabsTrigger value="scene-variants">Variants</TabsTrigger>
@@ -686,6 +690,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       <TabsContent value="cast">
         <SceneCastTab frame={frame} sequenceId={sequenceId} />
+      </TabsContent>
+
+      <TabsContent value="location">
+        <SceneLocationTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
     </Tabs>
   );
