@@ -174,11 +174,13 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     );
     await context.run('log-generation', async () => {
       // Log to Langfuse with precise timing
+      // Guard against API errors where body.choices might be undefined
+      const outputContent = body.choices?.[0]?.message?.content ?? '';
       logGeneration({
         name: logName,
         model: config.modelId,
         input: messages,
-        output: body.choices[0]?.message?.content ?? '',
+        output: outputContent,
         usage: body.usage,
         prompt: promptReference,
         tags: logTags,
@@ -203,9 +205,15 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       > => {
         if (status < 300) {
           try {
-            const validated = config.responseSchema.parse(
-              JSON.parse(body.choices[0]?.message?.content ?? '')
-            );
+            // Guard against API errors where body.choices might be undefined
+            const content = body.choices?.[0]?.message?.content ?? '';
+            if (!content) {
+              return {
+                isValid: false,
+                sleepTime: BASE_DELAY,
+              };
+            }
+            const validated = config.responseSchema.parse(JSON.parse(content));
             // It's valid, now check if we need to retry
             if (config.retryResponse && config.retryResponse(validated)) {
               return {

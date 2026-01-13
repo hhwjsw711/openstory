@@ -8,6 +8,7 @@ import type { Scene, SceneAnalysis } from '@/lib/ai/scene-analysis.schema';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { generateAudioDesignForScenes } from '@/lib/script/audio-design';
 import { extractCharacterBible } from '@/lib/script/character-extraction';
+import { extractLocationBible } from '@/lib/script/location-extraction';
 import { generateMotionPromptsForScenes } from '@/lib/script/motion-prompts';
 import { splitScriptIntoScenes } from '@/lib/script/scene-splitting';
 import { generateVisualPromptsForScenes } from '@/lib/script/visual-prompts';
@@ -104,11 +105,18 @@ export async function analyzeScriptTool(
         createPhaseCallback(1, 'Scene Splitting')
       );
 
-    console.log('[MCP] Phase 2: Character Extraction');
+    console.log('[MCP] Phase 2a: Character Extraction');
     onPhaseProgress?.(2, 'Character Extraction', 0);
     const characterBible = await extractCharacterBible(
       initialScenes,
       createPhaseCallback(2, 'Character Extraction')
+    );
+
+    console.log('[MCP] Phase 2b: Location Extraction');
+    onPhaseProgress?.(2.5, 'Location Extraction', 0);
+    const locationBible = await extractLocationBible(
+      initialScenes,
+      createPhaseCallback(2.5, 'Location Extraction')
     );
 
     console.log('[MCP] Phase 3: Visual Prompt Generation');
@@ -144,6 +152,7 @@ export async function analyzeScriptTool(
       status: 'success',
       projectMetadata,
       characterBible,
+      locationBible,
       scenes,
     };
   } catch (error) {

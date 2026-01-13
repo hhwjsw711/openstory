@@ -41,6 +41,72 @@ export const characterBibleEntrySchema = z.object({
 });
 
 // ============================================================================
+// Location Bible Schemas
+// ============================================================================
+
+export const locationBibleEntrySchema = z.object({
+  locationId: z.string().meta({
+    description:
+      'Unique identifier for cross-referencing this location across scenes',
+  }),
+  name: z.string().meta({
+    description:
+      'Location name as written in the script (e.g., "INT. OFFICE - DAY")',
+  }),
+  type: z.enum(['interior', 'exterior', 'both']).catch('interior').meta({
+    description: 'Whether the location is interior, exterior, or both',
+  }),
+  timeOfDay: z.string().catch('').meta({
+    description: 'Default time of day: day, night, dusk, dawn, etc.',
+  }),
+  description: z.string().catch('').meta({
+    description:
+      'Detailed visual description of the location including layout, size, and atmosphere',
+  }),
+  architecturalStyle: z.string().catch('').meta({
+    description:
+      'Architectural or design style (e.g., "modern minimalist", "industrial loft", "Victorian")',
+  }),
+  keyFeatures: z.string().catch('').meta({
+    description:
+      'Notable visual elements that define this location (e.g., "large windows, exposed brick, vintage furniture")',
+  }),
+  colorPalette: z.string().catch('').meta({
+    description:
+      'Dominant colors and color scheme (e.g., "cool blues, steel grays, warm wood accents")',
+  }),
+  lightingSetup: z.string().catch('').meta({
+    description:
+      'Primary lighting characteristics (e.g., "harsh overhead fluorescent", "warm golden hour sunlight")',
+  }),
+  ambiance: z.string().catch('').meta({
+    description:
+      'Mood and atmosphere of the location (e.g., "tense corporate", "cozy intimate", "gritty urban")',
+  }),
+  consistencyTag: z.string().catch('').meta({
+    description:
+      'Short prompt tag for image generation (e.g., "office_modern_steel_glass")',
+  }),
+  firstMention: z
+    .object({
+      sceneId: z
+        .string()
+        .catch('')
+        .meta({ description: 'Scene ID where location first appears' }),
+      text: z
+        .string()
+        .catch('')
+        .meta({ description: 'Original script text mentioning the location' }),
+      lineNumber: z
+        .number()
+        .catch(0)
+        .meta({ description: 'Line number in script' }),
+    })
+    .catch({ sceneId: '', text: '', lineNumber: 0 })
+    .meta({ description: 'First appearance of this location in the script' }),
+});
+
+// ============================================================================
 // Project Metadata Schema
 // ============================================================================
 
@@ -432,6 +498,20 @@ export const continuitySchema = z.object({
     .meta({ description: 'Visual style reference for consistent look' }),
 });
 
+/**
+ * Combined schema for visual prompt generation response.
+ * Used by visual-prompt-scene-workflow to capture both prompt AND continuity.
+ */
+export const visualPromptWithContinuitySchema = z.object({
+  visual: visualPromptSchema.meta({
+    description: 'Image generation prompt data',
+  }),
+  continuity: continuitySchema.meta({
+    description:
+      'Continuity tracking - characterTags and environmentTag for matching to bibles',
+  }),
+});
+
 // ============================================================================
 // Original Script Schema
 // ============================================================================
@@ -521,6 +601,10 @@ export const sceneAnalysisSchema = z.object({
     .array(characterBibleEntrySchema)
     .catch([])
     .meta({ description: 'Character descriptions for visual consistency' }),
+  locationBible: z
+    .array(locationBibleEntrySchema)
+    .catch([])
+    .meta({ description: 'Location descriptions for visual consistency' }),
   scenes: z
     .array(sceneSchema)
     .meta({ description: 'Array of analyzed scenes from the script' }),
@@ -533,8 +617,12 @@ export const sceneAnalysisSchema = z.object({
 export type SceneAnalysis = z.infer<typeof sceneAnalysisSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
 export type CharacterBibleEntry = z.infer<typeof characterBibleEntrySchema>;
+export type LocationBibleEntry = z.infer<typeof locationBibleEntrySchema>;
 export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;
 export type VisualPrompt = z.infer<typeof visualPromptSchema>;
+export type VisualPromptWithContinuity = z.infer<
+  typeof visualPromptWithContinuitySchema
+>;
 export type MotionPrompt = z.infer<typeof motionPromptSchema>;
 export type AudioDesign = z.infer<typeof audioDesignSchema>;
 export type Continuity = z.infer<typeof continuitySchema>;

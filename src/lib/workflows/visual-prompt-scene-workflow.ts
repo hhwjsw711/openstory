@@ -10,20 +10,21 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { durableLLMCall } from './llm-call-helper';
 import {
-  type VisualPrompt,
-  visualPromptSchema,
+  type VisualPromptWithContinuity,
+  visualPromptWithContinuitySchema,
 } from '../ai/scene-analysis.schema';
 
 export const visualPromptSceneWorkflow = createWorkflow(
   async (
     context: WorkflowContext<VisualPromptSceneWorkflowInput>
-  ): Promise<{ sceneId: string; visualPrompt: VisualPrompt }> => {
+  ): Promise<{ sceneId: string } & VisualPromptWithContinuity> => {
     const input = context.requestPayload;
     const {
       scenes,
       sceneIndex,
       aspectRatio,
       characterBible,
+      locationBible,
       styleConfig,
       analysisModelId,
     } = input;
@@ -51,6 +52,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
                 : '(none)',
             scene: JSON.stringify(scenes[sceneIndex], null, 2),
             characterBible: JSON.stringify(characterBible, null, 2),
+            locationBible: JSON.stringify(locationBible, null, 2),
             styleConfig: JSON.stringify(styleConfig, null, 2),
             aspectRatio,
           },
@@ -60,7 +62,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
         };
       }
     );
-    const visualPrompt = await durableLLMCall(
+    const result = await durableLLMCall(
       context,
       {
         name: 'visual-prompts',
@@ -70,7 +72,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
         promptVariables,
 
         modelId: analysisModelId,
-        responseSchema: visualPromptSchema,
+        responseSchema: visualPromptWithContinuitySchema,
 
         additionalMetadata,
       },
@@ -79,7 +81,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
       }
     );
 
-    return { sceneId: scenes[sceneIndex].sceneId, visualPrompt };
+    return { sceneId: scenes[sceneIndex].sceneId, ...result };
   },
   {
     failureFunction: async () => {

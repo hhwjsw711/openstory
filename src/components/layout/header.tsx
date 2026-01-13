@@ -6,6 +6,7 @@
 import { cn } from '@/lib/utils';
 import { VelroLogo } from '@/components/icons/velro-logo';
 import { Route as evalRoute } from '@/routes/_protected/eval';
+import { Route as locationsRoute } from '@/routes/_protected/locations/index';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
 import { Route as talentRoute } from '@/routes/_protected/talent/index';
@@ -50,6 +51,12 @@ export function Header({ className }: HeaderProps) {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Talent
+            </Link>
+            <Link
+              to={locationsRoute.to}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Locations
             </Link>
             <Link
               to={evalRoute.to}

@@ -224,11 +224,23 @@ export async function getTestCharacter(characterId: string): Promise<{
 }
 
 /**
- * Clean up all test sequences and related data for a team
+ * Clean up all test sequences and related data for a team (use only when test isolation isn't needed)
  */
 export async function cleanupTestSequences(teamId: string): Promise<void> {
   // characters and frames cascade delete from sequences
   await testDb.delete(sequences).where(eq(sequences.teamId, teamId));
   // Also clean up styles
   await testDb.delete(styles).where(eq(styles.teamId, teamId));
+}
+
+/**
+ * Clean up a specific sequence and its style by ID (use for parallel test isolation)
+ */
+export async function cleanupSequenceById(
+  sequenceId: string,
+  styleId: string
+): Promise<void> {
+  // characters and frames cascade delete from sequences
+  await testDb.delete(sequences).where(eq(sequences.id, sequenceId));
+  await testDb.delete(styles).where(eq(styles.id, styleId));
 }

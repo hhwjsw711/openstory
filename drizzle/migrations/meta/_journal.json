@@ -169,6 +169,20 @@
       "when": 1766367703861,
       "tag": "0023_keen_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1767914810714,
+      "tag": "0024_thick_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1767997832097,
+      "tag": "0025_blue_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

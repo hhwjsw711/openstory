@@ -25,6 +25,7 @@ export const visualPromptWorkflow = createWorkflow(
       scenes,
       aspectRatio,
       characterBible,
+      locationBible,
       styleConfig,
       analysisModelId,
       sequenceId,
@@ -47,6 +48,7 @@ export const visualPromptWorkflow = createWorkflow(
               sceneIndex: sceneIndex,
               aspectRatio,
               characterBible,
+              locationBible,
               styleConfig,
               analysisModelId,
             },
@@ -54,7 +56,7 @@ export const visualPromptWorkflow = createWorkflow(
       )
     );
 
-    // Merge in the response
+    // Merge in the response (visual prompts AND continuity)
     const { scenes: scenesWithVisualPrompts } = await context.run(
       'merge-visual-prompts',
       async () => {
@@ -73,8 +75,9 @@ export const visualPromptWorkflow = createWorkflow(
               ...scene,
               prompts: {
                 ...scene.prompts,
-                visual: enrichment.body.visualPrompt,
+                visual: enrichment.body.visual,
               },
+              continuity: enrichment.body.continuity,
             };
           }),
         };

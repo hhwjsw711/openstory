@@ -35,6 +35,7 @@ export const STORAGE_BUCKETS = {
   AUDIO: 'audio',
   STYLES: 'styles',
   CHARACTERS: 'characters',
+  LOCATIONS: 'locations',
   TALENT: 'talent',
   VFX: 'vfx',
 } as const;

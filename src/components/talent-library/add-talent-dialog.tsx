@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { useCreateTalent } from '@/hooks/use-talent';
 import { Plus } from 'lucide-react';
 import { TalentMediaUpload } from './talent-media-upload';
@@ -28,6 +29,7 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
+  const isHydrated = useHydrated();
   const createTalent = useCreateTalent();
 
   const handleClose = () => {
@@ -71,7 +73,7 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
     >
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button>
+          <Button disabled={!isHydrated}>
             <Plus className="mr-2 h-4 w-4" />
             Add Talent
           </Button>

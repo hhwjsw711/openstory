@@ -98,6 +98,9 @@ export async function triggerWorkflow(
     deduplicationId?: string;
   }
 ) {
+  console.log('[TriggerWorkflow] URL:', url);
+  console.log('[TriggerWorkflow] Body:', body);
+  console.log('[TriggerWorkflow] Options:', options);
   // Skip workflow triggers in E2E tests - return mock ID
   if (process.env.E2E_TEST === 'true') {
     const mockId = options?.deduplicationId ?? `mock-${Date.now()}`;
@@ -125,6 +128,7 @@ export async function triggerWorkflow(
         }
       : undefined,
   });
+  console.log('[TriggerWorkflow] Response:', response);
   return response.workflowRunId;
 }
 

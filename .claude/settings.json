@@ -19,8 +19,6 @@
       "Bash(rg:*)",
       "Bash(git status)",
       "Bash(bunx supabase status)",
-      "Bash(bun db:generate)",
-      "Bash(bun db:migrate)",
       "Bash(cat:*)",
       "Bash(bun storybook:*)",
       "Bash(grep:*)",
@@ -37,7 +35,18 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(bun dev)",
-      "Bash(bunx supabase:*)"
+      "Bash(bunx supabase:*)",
+      "Bash(bun db:migrate:*)",
+      "Bash(bun db:migrate)",
+      "Bash(bun db:push:*)",
+      "Bash(bun db:push)",
+      "Bash(bun db:generate:*)",
+      "Bash(bun db:generate)",
+      "Bash(drizzle-kit migrate:*)",
+      "Bash(drizzle-kit push:*)",
+      "Bash(drizzle-kit generate:*)",
+      "Bash(bun --bun drizzle-kit:*)",
+      "Bash(bunx drizzle-kit:*)"
     ]
   },
   "hooks": {

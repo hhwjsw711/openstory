@@ -80,6 +80,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createSequenceSchema))
   .handler(async ({ data, context }) => {
+    console.log('[CreateSequence] Data:', data);
     const teamId = data.teamId || context.teamId;
 
     // Verify user has access if a different team was specified
@@ -98,6 +99,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       videoModel,
       autoGenerateMotion,
       suggestedTalentIds,
+      suggestedLocationIds,
     } = data;
 
     // Create sequences in parallel for each selected model
@@ -130,6 +132,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
           },
           autoGenerateMotion: autoGenerateMotion ?? false,
           suggestedTalentIds,
+          suggestedLocationIds,
         };
 
         await triggerWorkflow('/storyboard', workflowInput, {

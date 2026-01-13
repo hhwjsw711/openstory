@@ -22,6 +22,27 @@ export const sceneAnalysisExample: SceneAnalysis = {
     },
   ],
 
+  locationBible: [
+    {
+      locationId: 'loc_001',
+      name: 'INT. OFFICE - DAY',
+      type: 'interior',
+      timeOfDay: 'day',
+      description: 'Complete visual description of the location',
+      architecturalStyle: 'Modern minimalist',
+      keyFeatures: 'Large windows, exposed brick, vintage furniture',
+      colorPalette: 'Cool blues, steel grays, warm wood accents',
+      lightingSetup: 'Harsh overhead fluorescent',
+      ambiance: 'Tense corporate',
+      consistencyTag: 'office_modern_steel',
+      firstMention: {
+        sceneId: 'scene_001',
+        text: 'INT. OFFICE - DAY',
+        lineNumber: 1,
+      },
+    },
+  ],
+
   scenes: [
     {
       sceneId: 'scene_001',

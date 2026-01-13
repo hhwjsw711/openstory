@@ -11,6 +11,7 @@ import type {
 import type { AnalysisModelId } from '@/lib/ai/models.config';
 import type {
   CharacterBibleEntry,
+  LocationBibleEntry,
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
@@ -48,7 +49,7 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
 }
 
 /**
- * Image generation workflow input
+ * Variant image generation workflow input
  */
 export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
   thumbnailUrl: string;
@@ -57,6 +58,10 @@ export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
   numImages?: number;
   seed?: number;
   frameId?: string;
+  /** Character reference sheets for visual consistency */
+  characterReferences?: ReferenceImageDescription[];
+  /** Location reference images for environment consistency */
+  locationReferences?: ReferenceImageDescription[];
 }
 
 export interface VariantWorkflowResult {
@@ -90,6 +95,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
   autoGenerateMotion?: boolean;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
+  /** Location IDs suggested by user for visual consistency */
+  suggestedLocationIds?: string[];
 }
 
 /**
@@ -106,6 +113,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   autoGenerateMotion?: boolean;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
+  /** Location IDs suggested by user for visual consistency */
+  suggestedLocationIds?: string[];
 }
 
 /**
@@ -235,6 +244,7 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
   styleConfig: DirectorDnaConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
@@ -374,4 +384,121 @@ export interface MergeVideoWorkflowInput extends SequenceWorkflowContext {
 export interface MergeVideoWorkflowResult {
   mergedVideoUrl: string;
   mergedVideoPath: string | null;
+}
+
+/**
+ * Location sheet generation workflow input
+ */
+export interface LocationSheetWorkflowInput extends Partial<SequenceWorkflowContext> {
+  /** locations.id */
+  locationDbId: string;
+  /** Location name for logging */
+  locationName: string;
+  /** Location metadata from script analysis */
+  locationMetadata: LocationBibleEntry;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+  /** Reference image URL (e.g., from library location) for overrides */
+  referenceImageUrl?: string;
+  /** Library location description for overrides */
+  libraryLocationDescription?: string;
+}
+
+export interface LocationSheetWorkflowResult {
+  referenceImageUrl: string;
+  locationDbId?: string;
+  referenceImagePath?: string;
+}
+
+/**
+ * Library location sheet generation workflow input
+ * Generates a 3x3 grid reference sheet from user-uploaded reference images
+ */
+export interface LibraryLocationSheetWorkflowInput {
+  /** locations.id */
+  locationDbId: string;
+  /** Location name for prompt */
+  locationName: string;
+  /** Location description for prompt */
+  locationDescription?: string;
+  /** Reference image URLs (user uploads) */
+  referenceImageUrls: string[];
+  /** Team ID for storage path */
+  teamId: string;
+  /** Sequence ID (library sequence) for storage path */
+  sequenceId: string;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+}
+
+export interface LibraryLocationSheetWorkflowResult {
+  /** Generated sheet image URL */
+  sheetImageUrl: string;
+  /** Storage path */
+  sheetImagePath?: string;
+  /** Location ID */
+  locationDbId: string;
+}
+
+/**
+ * Location bible generation workflow input
+ * Generates reference sheets for all locations in a sequence
+ */
+export interface LocationBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
+  /** Location bible from script analysis */
+  locationBible: LocationBibleEntry[];
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+  /** Library location matches for locations that should use library references */
+  libraryLocationMatches?: LibraryLocationMatch[];
+}
+
+/**
+ * Library location match result
+ */
+export type LibraryLocationMatch = {
+  /** Location ID from LocationBibleEntry.locationId */
+  locationId: string;
+  /** Library location database ID */
+  libraryLocationId: string;
+  /** Library location name */
+  libraryLocationName: string;
+  /** Library location reference image URL */
+  referenceImageUrl: string;
+  /** Library location description for prompt enhancement */
+  description?: string;
+};
+
+/**
+ * Regenerate frames workflow input for locations
+ * Bulk regenerates images for frames at a specific location after recast
+ */
+export interface RegenerateLocationFramesWorkflowInput extends SequenceWorkflowContext {
+  /** Frame IDs to regenerate */
+  frameIds: string[];
+  /** Location ID that triggered regeneration (for logging/tracking) */
+  triggeringLocationId: string;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+}
+
+/**
+ * Recast location workflow input
+ * Orchestrates location sheet generation + frame regeneration for recast
+ */
+export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
+  /** Location database ID */
+  locationDbId: string;
+  /** Location name for logging */
+  locationName: string;
+  /** Location metadata from script analysis */
+  locationMetadata: LocationBibleEntry;
+  /** Image model to use */
+  imageModel?: TextToImageModel;
+  /** Reference image URL from library location */
+  referenceImageUrl?: string;
+  /** Library location description */
+  libraryLocationDescription?: string;
+  /** Frame IDs to regenerate after sheet generation */
+  affectedFrameIds: string[];
 }

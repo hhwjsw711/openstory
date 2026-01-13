@@ -3,26 +3,26 @@
  * Tests sequence creation and viewing flows
  */
 
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect } from 'playwright/test';
 
 test.describe('Sequences', () => {
-  test('can access sequences list page', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/sequences');
+  test('can access sequences list page', async ({ page }) => {
+    await page.goto('/sequences');
 
-    await expect(authenticatedPage).toHaveURL(/\/sequences/);
+    await expect(page).toHaveURL(/\/sequences/);
   });
 
-  test('can access new sequence page', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/sequences/new');
+  test('can access new sequence page', async ({ page }) => {
+    await page.goto('/sequences/new');
 
-    await expect(authenticatedPage).toHaveURL('/sequences/new');
+    await expect(page).toHaveURL('/sequences/new');
   });
 
-  test('new sequence page has script input', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/sequences/new');
+  test('new sequence page has script input', async ({ page }) => {
+    await page.goto('/sequences/new');
 
     // Should have some form of text input for the script
-    const textarea = authenticatedPage.locator('textarea');
+    const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
   });
 });

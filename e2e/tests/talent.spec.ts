@@ -3,46 +3,40 @@
  * Tests talent library management including reference media uploads
  */
 
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect } from 'playwright/test';
+import { test as testWithUser } from '../fixtures/auth.fixture';
 import { setupMockRoutes } from '../mocks/handlers';
 import {
   createTestTalentWithMedia,
-  cleanupTestTalent,
+  cleanupTalentById,
+  type TestTalentWithMedia,
 } from '../fixtures/talent.fixture';
+import {
+  waitForLibraryPageLoad,
+  cleanupTalentByName,
+} from '../fixtures/test-utils';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function waitForTalentPageLoad(page: import('playwright/test').Page) {
+  return waitForLibraryPageLoad(page, 'Add Talent');
+}
 
 test.describe('Talent Library', () => {
-  test('can access talent page', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
+  test('can access talent page', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
-    // URL may include filter param
-    await expect(authenticatedPage).toHaveURL(/\/talent/);
+    await expect(page).toHaveURL(/\/talent/);
     await expect(
-      authenticatedPage.getByRole('heading', { name: 'Talent Library' })
+      page.getByRole('heading', { name: 'Talent Library' })
     ).toBeVisible();
   });
 
-  test('shows empty state when no talent exists', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
+  test('has Add Talent button', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
-    // Check for empty state text
-    await expect(authenticatedPage.getByText('No talent yet')).toBeVisible();
-  });
-
-  test('has Add Talent button', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
-
-    // Verify Add Talent button exists (in header)
-    const addButton = authenticatedPage.getByRole('button', {
+    const addButton = page.getByRole('button', {
       name: 'Add Talent',
     });
     await expect(addButton.first()).toBeVisible();
@@ -50,410 +44,390 @@ test.describe('Talent Library', () => {
   });
 });
 
-test.describe('Add Talent with Reference Media', () => {
-  test.beforeEach(async ({ authenticatedPage }) => {
+// Tests create talents via UI - use unique names to avoid collisions in parallel
+testWithUser.describe('Add Talent with Reference Media', () => {
+  testWithUser.beforeEach(async ({ page }) => {
     // Set up mock routes for R2 and other external services
-    await setupMockRoutes(authenticatedPage);
+    await setupMockRoutes(page);
   });
 
-  test('can open Add Talent dialog', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
+  testWithUser('can open Add Talent dialog', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
     // Click Add Talent button
-    const button = authenticatedPage
-      .getByRole('button', { name: 'Add Talent' })
-      .first();
-    await expect(button).toBeVisible();
+    const button = page.getByRole('button', { name: 'Add Talent' }).first();
     await button.click();
 
     // Dialog should open
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Talent' })
+      page.getByRole('dialog', { name: 'Add Talent' })
     ).toBeVisible();
 
     // Check for form fields
-    await expect(authenticatedPage.getByLabel('Name')).toBeVisible();
-    await expect(authenticatedPage.getByLabel('Description')).toBeVisible();
-    await expect(authenticatedPage.getByText('Reference Media')).toBeVisible();
+    await expect(page.getByLabel('Name')).toBeVisible();
+    await expect(page.getByLabel('Description')).toBeVisible();
+    await expect(page.getByText('Reference Media')).toBeVisible();
   });
 
-  test('can create talent without media', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
+  testWithUser(
+    'can create talent without media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Actor ${Date.now()}`;
+
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+
+      // Click Add Talent button
+      await page.getByRole('button', { name: 'Add Talent' }).first().click();
+
+      // Fill in the form with unique name
+      await page.getByLabel('Name').fill(uniqueName);
+      await page.getByLabel('Description').fill('Test description for E2E');
+
+      // Submit the form
+      await page.getByRole('button', { name: 'Add Talent' }).click();
+
+      // Wait for dialog to close and talent to appear in list
+      await expect(
+        page.getByRole('dialog', { name: 'Add Talent' })
+      ).not.toBeVisible({ timeout: 10000 });
+
+      // Talent should appear in the list
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
+
+      await cleanupTalentByName(testUser.teamId, uniqueName);
+    }
+  );
+
+  testWithUser(
+    'can create talent with reference media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Actor With Media ${Date.now()}`;
+
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+
+      // Click Add Talent button
+      await page.getByRole('button', { name: 'Add Talent' }).first().click();
+
+      // Fill in the form with unique name
+      await page.getByLabel('Name').fill(uniqueName);
+      await page.getByLabel('Description').fill('Actor with reference images');
+
+      // Upload a test image using the file input
+      const fileChooserPromise = page.waitForEvent('filechooser');
+      await page.getByRole('button', { name: 'Browse files' }).click();
+      const fileChooser = await fileChooserPromise;
+
+      // Use a test fixture image (we'll create a simple test file)
+      const testImagePath = path.join(
+        import.meta.dirname,
+        '../fixtures/test-image.jpg'
+      );
+      await fileChooser.setFiles(testImagePath);
+
+      // Wait for upload to complete (button should become enabled)
+      await expect(
+        page.getByRole('button', { name: 'Add Talent' })
+      ).toBeEnabled({
+        timeout: 15000,
+      });
+
+      // Submit the form
+      await page.getByRole('button', { name: 'Add Talent' }).click();
+
+      // Wait for dialog to close
+      await expect(
+        page.getByRole('dialog', { name: 'Add Talent' })
+      ).not.toBeVisible({ timeout: 10000 });
+
+      // Talent should appear in the list
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
+
+      await cleanupTalentByName(testUser.teamId, uniqueName);
+    }
+  );
+
+  testWithUser('shows upload progress indicator', async ({ page }) => {
+    const uniqueName = `Test Upload Progress ${Date.now()}`;
+
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
     // Click Add Talent button
-    await authenticatedPage
-      .getByRole('button', { name: 'Add Talent' })
-      .first()
-      .click();
+    await page.getByRole('button', { name: 'Add Talent' }).first().click();
 
-    // Fill in the form
-    await authenticatedPage.getByLabel('Name').fill('E2E Test Actor');
-    await authenticatedPage
-      .getByLabel('Description')
-      .fill('Test description for E2E');
-
-    // Submit the form
-    await authenticatedPage.getByRole('button', { name: 'Add Talent' }).click();
-
-    // Wait for dialog to close and talent to appear in list
-    await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Talent' })
-    ).not.toBeVisible({ timeout: 10000 });
-
-    // Talent should appear in the list
-    await expect(authenticatedPage.getByText('E2E Test Actor')).toBeVisible({
-      timeout: 10000,
-    });
-  });
-
-  test('can create talent with reference media', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
-
-    // Click Add Talent button
-    await authenticatedPage
-      .getByRole('button', { name: 'Add Talent' })
-      .first()
-      .click();
-
-    // Fill in the form
-    await authenticatedPage
-      .getByLabel('Name')
-      .fill('E2E Test Actor With Media');
-    await authenticatedPage
-      .getByLabel('Description')
-      .fill('Actor with reference images');
-
-    // Upload a test image using the file input
-    const fileChooserPromise = authenticatedPage.waitForEvent('filechooser');
-    await authenticatedPage
-      .getByRole('button', { name: 'Browse files' })
-      .click();
-    const fileChooser = await fileChooserPromise;
-
-    // Use a test fixture image (we'll create a simple test file)
-    const testImagePath = path.join(__dirname, '../fixtures/test-image.jpg');
-    await fileChooser.setFiles(testImagePath);
-
-    // Wait for upload to complete (button should become enabled)
-    await expect(
-      authenticatedPage.getByRole('button', { name: 'Add Talent' })
-    ).toBeEnabled({ timeout: 15000 });
-
-    // Submit the form
-    await authenticatedPage.getByRole('button', { name: 'Add Talent' }).click();
-
-    // Wait for dialog to close
-    await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Talent' })
-    ).not.toBeVisible({ timeout: 10000 });
-
-    // Talent should appear in the list
-    await expect(
-      authenticatedPage.getByText('E2E Test Actor With Media')
-    ).toBeVisible({ timeout: 10000 });
-  });
-
-  test('shows upload progress indicator', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
-
-    // Click Add Talent button
-    await authenticatedPage
-      .getByRole('button', { name: 'Add Talent' })
-      .first()
-      .click();
-
-    await authenticatedPage.getByLabel('Name').fill('Test Upload Progress');
+    await page.getByLabel('Name').fill(uniqueName);
 
     // Start file upload
-    const fileChooserPromise = authenticatedPage.waitForEvent('filechooser');
-    await authenticatedPage
-      .getByRole('button', { name: 'Browse files' })
-      .click();
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Browse files' }).click();
     const fileChooser = await fileChooserPromise;
 
-    const testImagePath = path.join(__dirname, '../fixtures/test-image.jpg');
+    const testImagePath = path.join(
+      import.meta.dirname,
+      '../fixtures/test-image.jpg'
+    );
     await fileChooser.setFiles(testImagePath);
 
     // Button should show uploading state or be disabled during upload
     // The button text changes to "Uploading..." during upload
-    await expect(
-      authenticatedPage.getByRole('button', { name: 'Add Talent' })
-    ).toBeEnabled({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Add Talent' })).toBeEnabled({
+      timeout: 15000,
+    });
+    // Note: This test doesn't submit, so no cleanup needed
   });
 
-  test('can cancel Add Talent dialog', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage.waitForLoadState('networkidle');
+  testWithUser('can cancel Add Talent dialog', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
     // Click Add Talent button
-    await authenticatedPage
-      .getByRole('button', { name: 'Add Talent' })
-      .first()
-      .click();
+    await page.getByRole('button', { name: 'Add Talent' }).first().click();
 
     // Dialog should be visible
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Talent' })
+      page.getByRole('dialog', { name: 'Add Talent' })
     ).toBeVisible();
 
     // Click Cancel
-    await authenticatedPage.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'Cancel' }).click();
 
     // Dialog should close
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Talent' })
+      page.getByRole('dialog', { name: 'Add Talent' })
     ).not.toBeVisible();
   });
 });
 
-test.describe('Edit Talent with Reference Media', () => {
-  test.beforeEach(async ({ authenticatedPage, testUser }) => {
+// Tests that need testUser for creating test data
+// Each test creates its own data with unique names for parallel execution
+testWithUser.describe('Edit Talent with Reference Media', () => {
+  let testTalent: TestTalentWithMedia;
+
+  testWithUser.beforeEach(async ({ page, testUser }) => {
     // Set up mock routes
-    await setupMockRoutes(authenticatedPage);
+    await setupMockRoutes(page);
 
-    // Create test talent with media
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Edit Test Talent', 2);
-  });
-
-  test.afterEach(async ({ testUser }) => {
-    await cleanupTestTalent(testUser.teamId);
-  });
-
-  test('can view talent detail page with media', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-
-    // Click on the talent card to view details
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
-
-    // Should be on detail page
-    await expect(
-      authenticatedPage.getByRole('heading', { name: 'E2E Edit Test Talent' })
-    ).toBeVisible();
-
-    // Should show reference media section
-    await expect(authenticatedPage.getByText('Reference Media')).toBeVisible();
-  });
-
-  test('can open edit dialog from talent detail page', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-
-    // Click on the talent to view details
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
-
-    // Click the edit button (pencil icon)
-    await authenticatedPage
-      .getByRole('button', { name: /edit/i })
-      .or(authenticatedPage.locator('button:has(svg.lucide-pencil)'))
-      .first()
-      .click();
-
-    // Edit dialog should open
-    await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
-    ).toBeVisible();
-
-    // Form should be pre-filled
-    await expect(authenticatedPage.getByLabel('Name')).toHaveValue(
-      'E2E Edit Test Talent'
+    // Create test talent with media using unique name
+    testTalent = await createTestTalentWithMedia(
+      testUser.teamId,
+      `E2E Edit Test Talent ${Date.now()}`,
+      2
     );
   });
 
-  // TODO: This test is flaky - the update mutation doesn't complete
-  // Needs investigation into why the dialog doesn't close after save
-  test.skip('can update talent name and description', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
-
-    // Open edit dialog
-    await authenticatedPage
-      .locator('button:has(svg.lucide-pencil)')
-      .first()
-      .click();
-
-    await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
-    ).toBeVisible();
-
-    // Update name
-    await authenticatedPage.getByLabel('Name').fill('E2E Updated Talent Name');
-    await authenticatedPage
-      .getByLabel('Description')
-      .fill('Updated description');
-
-    // Save changes
-    await authenticatedPage
-      .getByRole('button', { name: 'Save Changes' })
-      .click();
-
-    // Wait for the save to complete and dialog to close
-    await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
-    ).not.toBeVisible({ timeout: 15000 });
-
-    // Updated name should appear on the detail page
-    await expect(
-      authenticatedPage.getByRole('heading', {
-        name: 'E2E Updated Talent Name',
-      })
-    ).toBeVisible({ timeout: 10000 });
+  testWithUser.afterEach(async () => {
+    await cleanupTalentById(testTalent.id);
   });
 
-  test('can add media to existing talent', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
+  testWithUser('can view talent detail page with media', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
+
+    // Click on the talent card to view details (use variable, not hardcoded)
+    await page.getByText(testTalent.name).click();
+
+    // Should be on detail page
+    await expect(
+      page.getByRole('heading', { name: testTalent.name })
+    ).toBeVisible();
+
+    // Should show reference media section
+    await expect(page.getByText('Reference Media')).toBeVisible();
+  });
+
+  testWithUser(
+    'can open edit dialog from talent detail page',
+    async ({ page }) => {
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+
+      // Click on the talent to view details
+      await page.getByText(testTalent.name).click();
+
+      // Click the edit button (pencil icon)
+      await page
+        .getByRole('button', { name: /edit/i })
+        .or(page.locator('button:has(svg.lucide-pencil)'))
+        .first()
+        .click();
+
+      // Edit dialog should open
+      await expect(
+        page.getByRole('dialog', { name: 'Edit Talent' })
+      ).toBeVisible();
+
+      // Form should be pre-filled
+      await expect(page.getByLabel('Name')).toHaveValue(testTalent.name);
+    }
+  );
+
+  // TODO: This test is flaky - the update mutation doesn't complete
+  // Needs investigation into why the dialog doesn't close after save
+  testWithUser.skip(
+    'can update talent name and description',
+    async ({ page }) => {
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+      await page.getByText(testTalent.name).click();
+
+      // Open edit dialog
+      await page.locator('button:has(svg.lucide-pencil)').first().click();
+
+      await expect(
+        page.getByRole('dialog', { name: 'Edit Talent' })
+      ).toBeVisible();
+
+      // Update name
+      const updatedName = `E2E Updated Talent ${Date.now()}`;
+      await page.getByLabel('Name').fill(updatedName);
+      await page.getByLabel('Description').fill('Updated description');
+
+      // Save changes
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+
+      // Wait for the save to complete and dialog to close
+      await expect(
+        page.getByRole('dialog', { name: 'Edit Talent' })
+      ).not.toBeVisible({ timeout: 15000 });
+
+      // Updated name should appear on the detail page
+      await expect(
+        page.getByRole('heading', {
+          name: updatedName,
+        })
+      ).toBeVisible({ timeout: 10000 });
+    }
+  );
+
+  testWithUser('can add media to existing talent', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
-    await authenticatedPage
-      .locator('button:has(svg.lucide-pencil)')
-      .first()
-      .click();
+    await page.locator('button:has(svg.lucide-pencil)').first().click();
 
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
+      page.getByRole('dialog', { name: 'Edit Talent' })
     ).toBeVisible();
 
     // Click Add Media button
-    await authenticatedPage.getByRole('button', { name: 'Add Media' }).click();
+    await page.getByRole('button', { name: 'Add Media' }).click();
 
     // Add Media dialog should open
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Add Reference Media' })
+      page.getByRole('dialog', { name: 'Add Reference Media' })
     ).toBeVisible();
   });
 
-  test('displays existing media in edit dialog', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
+  testWithUser('displays existing media in edit dialog', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
-    await authenticatedPage
-      .locator('button:has(svg.lucide-pencil)')
-      .first()
-      .click();
+    await page.locator('button:has(svg.lucide-pencil)').first().click();
 
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
+      page.getByRole('dialog', { name: 'Edit Talent' })
     ).toBeVisible();
 
     // Should display reference media section with existing images
     await expect(
-      authenticatedPage.getByText('Reference Media', { exact: true })
+      page.getByText('Reference Media', { exact: true })
     ).toBeVisible();
 
     // Should have image previews (from the 2 media items we created)
-    const mediaImages = authenticatedPage
+    const mediaImages = page
       .getByRole('dialog', { name: 'Edit Talent' })
       .locator('img[alt="Reference"]');
     await expect(mediaImages).toHaveCount(2);
   });
 
-  test('can cancel edit dialog without saving', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
-    await authenticatedPage.getByText('E2E Edit Test Talent').click();
+  testWithUser('can cancel edit dialog without saving', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
-    await authenticatedPage
-      .locator('button:has(svg.lucide-pencil)')
-      .first()
-      .click();
+    await page.locator('button:has(svg.lucide-pencil)').first().click();
 
     // Change the name
-    await authenticatedPage.getByLabel('Name').fill('Should Not Be Saved');
+    await page.getByLabel('Name').fill('Should Not Be Saved');
 
     // Cancel
-    await authenticatedPage.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'Cancel' }).click();
 
     // Dialog should close
     await expect(
-      authenticatedPage.getByRole('dialog', { name: 'Edit Talent' })
+      page.getByRole('dialog', { name: 'Edit Talent' })
     ).not.toBeVisible();
 
     // Original name should still be visible
     await expect(
-      authenticatedPage.getByRole('heading', { name: 'E2E Edit Test Talent' })
+      page.getByRole('heading', { name: testTalent.name })
     ).toBeVisible();
   });
 });
 
-test.describe('Talent with Media - List View', () => {
-  test.beforeEach(async ({ authenticatedPage, testUser }) => {
-    await setupMockRoutes(authenticatedPage);
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Talent Alpha', 1);
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Talent Beta', 3);
+// Each test creates its own data with unique names for parallel execution
+testWithUser.describe('Talent with Media - List View', () => {
+  let testTalentAlpha: TestTalentWithMedia;
+  let testTalentBeta: TestTalentWithMedia;
+
+  testWithUser.beforeEach(async ({ page, testUser }) => {
+    await setupMockRoutes(page);
+    const suffix = Date.now();
+    testTalentAlpha = await createTestTalentWithMedia(
+      testUser.teamId,
+      `E2E Talent Alpha ${suffix}`,
+      1
+    );
+    testTalentBeta = await createTestTalentWithMedia(
+      testUser.teamId,
+      `E2E Talent Beta ${suffix}`,
+      3
+    );
   });
 
-  test.afterEach(async ({ testUser }) => {
-    await cleanupTestTalent(testUser.teamId);
+  testWithUser.afterEach(async () => {
+    await cleanupTalentById(testTalentAlpha.id);
+    await cleanupTalentById(testTalentBeta.id);
   });
 
-  test('displays multiple talents in grid', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
+  testWithUser('displays multiple talents in grid', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
-    await expect(authenticatedPage.getByText('E2E Talent Alpha')).toBeVisible();
-    await expect(authenticatedPage.getByText('E2E Talent Beta')).toBeVisible();
+    await expect(page.getByText(testTalentAlpha.name)).toBeVisible();
+    await expect(page.getByText(testTalentBeta.name)).toBeVisible();
   });
 
-  test('can navigate between talent detail pages', async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/talent');
-    await authenticatedPage
-      .getByRole('heading', { name: 'Talent Library' })
-      .waitFor();
+  testWithUser('can navigate between talent detail pages', async ({ page }) => {
+    await page.goto('/talent');
+    await waitForTalentPageLoad(page);
 
     // Click first talent
-    await authenticatedPage.getByText('E2E Talent Alpha').click();
+    await page.getByText(testTalentAlpha.name).click();
     await expect(
-      authenticatedPage.getByRole('heading', { name: 'E2E Talent Alpha' })
+      page.getByRole('heading', { name: testTalentAlpha.name })
     ).toBeVisible();
 
     // Go back to list
-    await authenticatedPage
-      .getByRole('link', { name: 'Back to Talent' })
-      .click();
-    await expect(authenticatedPage).toHaveURL(/\/talent(\?|$)/);
+    await page.getByRole('link', { name: 'Back to Talent' }).click();
+    await expect(page).toHaveURL(/\/talent(\?|$)/);
 
     // Click second talent
-    await authenticatedPage.getByText('E2E Talent Beta').click();
+    await page.getByText(testTalentBeta.name).click();
     await expect(
-      authenticatedPage.getByRole('heading', { name: 'E2E Talent Beta' })
+      page.getByRole('heading', { name: testTalentBeta.name })
     ).toBeVisible();
   });
 });

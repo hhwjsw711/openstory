@@ -10,9 +10,14 @@ import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { getFramesByIds } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import type { CharacterMinimal } from '@/lib/db/schema';
+import {
+  getSequenceLocationsWithReferences,
+  matchLocationsToFrame,
+} from '@/lib/db/helpers/sequence-locations';
+import type { CharacterMinimal, SequenceLocation } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
+import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import type {
   ImageWorkflowInput,
   RegenerateFramesWorkflowInput,
@@ -79,6 +84,16 @@ export const regenerateFramesWorkflow = createWorkflow(
       return chars;
     });
 
+    // Step 2b: Get all locations with completed reference images for this sequence
+    const allLocations = await context.run('get-all-locations', async () => {
+      const locs = await getSequenceLocationsWithReferences(sequenceId);
+      console.log(
+        '[RegenerateFramesWorkflow]',
+        `Found ${locs.length} locations with completed reference images`
+      );
+      return locs;
+    });
+
     // Step 3: Get affected frames
     const framesToRegenerate = await context.run('get-frames', async () => {
       const fetchedFrames = await getFramesByIds(frameIds);
@@ -126,6 +141,17 @@ export const regenerateFramesWorkflow = createWorkflow(
           characterTags
         );
 
+        // Match locations to this frame's environment tag
+        const frameLocations = matchLocationsToFrame(
+          frame,
+          allLocations as SequenceLocation[]
+        );
+
+        // Build combined reference images (characters + locations)
+        const characterRefs = buildCharacterReferenceImages(frameCharacters);
+        const locationRefs = buildLocationReferenceImages(frameLocations);
+        const allReferenceImages = [...characterRefs, ...locationRefs];
+
         // Invoke image workflow
         const imageInput: ImageWorkflowInput = {
           userId,
@@ -136,7 +162,7 @@ export const regenerateFramesWorkflow = createWorkflow(
           model: imageModel,
           imageSize,
           numImages: 1,
-          referenceImages: buildCharacterReferenceImages(frameCharacters),
+          referenceImages: allReferenceImages,
         };
 
         const { body, isFailed, isCanceled } = await context.invoke('image', {

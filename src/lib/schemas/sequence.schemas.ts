@@ -84,6 +84,8 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     autoGenerateMotion: z.boolean().default(false).optional(),
     // Suggested talent IDs for AI-assisted casting during generation
     suggestedTalentIds: z.array(z.string()).optional(),
+    // Suggested location IDs for visual consistency during generation
+    suggestedLocationIds: z.array(z.string()).optional(),
   });
 
 export const updateSequenceSchema = createUpdateSchema(sequences, {

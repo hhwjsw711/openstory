@@ -35,6 +35,19 @@ import { characterSheets, characterSheetsRelations } from './character-sheets';
 
 import { frameCharacters, frameCharactersRelations } from './frame-characters';
 
+// Location Library (team-level templates)
+import { locationLibrary, locationLibraryRelations } from './location-library';
+
+// Sequence Locations (script-extracted)
+import {
+  sequenceLocations,
+  sequenceLocationsRelations,
+} from './sequence-locations';
+
+import { locationSheets, locationSheetsRelations } from './location-sheets';
+
+import { frameLocations, frameLocationsRelations } from './frame-locations';
+
 import {
   talent,
   talentMedia,
@@ -100,6 +113,7 @@ export const sequencesRelations = relations(sequences, ({ one, many }) => ({
   }),
   frames: many(frames),
   characters: many(characters),
+  locations: many(sequenceLocations),
 }));
 
 // Better Auth tables
@@ -159,6 +173,44 @@ export type {
   FrameCharacterWithDetails,
   NewFrameCharacter,
 } from './frame-characters';
+
+// Location Library (team-level templates)
+export { locationLibrary };
+
+export type {
+  LibraryLocation,
+  LibraryLocationMinimal,
+  NewLibraryLocation,
+} from './location-library';
+
+// Sequence Locations (extracted from script)
+export { sequenceLocations };
+
+export type {
+  NewSequenceLocation,
+  ReferenceStatus,
+  SequenceLocation,
+  SequenceLocationMinimal,
+  SequenceLocationWithDetails,
+} from './sequence-locations';
+
+// Location Sheets (location-specific variations for library locations)
+export { locationSheets };
+
+export type {
+  LocationSheet,
+  LocationSheetSource,
+  NewLocationSheet,
+} from './location-sheets';
+
+// Frame Locations (which location in each frame)
+export { frameLocations };
+
+export type {
+  FrameLocation,
+  FrameLocationWithDetails,
+  NewFrameLocation,
+} from './frame-locations';
 
 // Talent Library
 export { talent, talentMedia, talentSheets };
@@ -247,6 +299,22 @@ export const schema = {
   // Frame Characters (which characters in each frame)
   frameCharacters,
   frameCharactersRelations,
+
+  // Location Library (team-level templates)
+  locationLibrary,
+  locationLibraryRelations,
+
+  // Sequence Locations (extracted from script)
+  sequenceLocations,
+  sequenceLocationsRelations,
+
+  // Location Sheets (location-specific variations for library locations)
+  locationSheets,
+  locationSheetsRelations,
+
+  // Frame Locations (which location in each frame)
+  frameLocations,
+  frameLocationsRelations,
 
   // Talent Library
   talent,

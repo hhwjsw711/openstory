@@ -25,8 +25,13 @@ import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import type { Character } from '@/lib/db/schema';
+import {
+  getSequenceLocationsWithReferences,
+  locationMatchesTag,
+} from '@/lib/db/helpers/sequence-locations';
+import type { Character, SequenceLocation } from '@/lib/db/schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
+import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
 // ============================================================================
@@ -58,6 +63,27 @@ function getSceneCharacterReferenceImages(
   });
 
   return buildCharacterReferenceImages(matchedCharacters);
+}
+
+/**
+ * Get reference image URLs for locations in a frame
+ * Matches locations by environmentTag or scene location metadata
+ */
+function getSceneLocationReferenceImages(
+  allLocations: SequenceLocation[],
+  environmentTag: string,
+  sceneLocation?: string
+): ReferenceImageDescription[] {
+  if (!environmentTag && !sceneLocation) return [];
+
+  const matchedLocations = allLocations.filter((loc) => {
+    return (
+      (environmentTag && locationMatchesTag(loc, environmentTag)) ||
+      (sceneLocation && locationMatchesTag(loc, sceneLocation))
+    );
+  });
+
+  return buildLocationReferenceImages(matchedLocations);
 }
 
 // ============================================================================
@@ -181,6 +207,24 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       throw new Error('Frame must have a thumbnail image to generate variants');
     }
 
+    // Get character references for this frame
+    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const characterTags = frame.metadata?.continuity?.characterTags ?? [];
+    const characterReferences = getSceneCharacterReferenceImages(
+      allCharacters,
+      characterTags
+    );
+
+    // Get location references for this frame
+    const allLocations = await getSequenceLocationsWithReferences(sequence.id);
+    const environmentTag = frame.metadata?.continuity?.environmentTag ?? '';
+    const sceneLocation = frame.metadata?.metadata?.location ?? '';
+    const locationReferences = getSceneLocationReferenceImages(
+      allLocations,
+      environmentTag,
+      sceneLocation
+    );
+
     const workflowInput: VariantWorkflowInput = {
       userId: context.user.id,
       teamId: sequence.teamId,
@@ -191,6 +235,8 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
       numImages: data.numImages ?? 1,
       seed: data.seed,
+      characterReferences,
+      locationReferences,
     };
 
     const workflowRunId = await triggerWorkflow(

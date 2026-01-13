@@ -125,9 +125,16 @@ export async function createTestTalentWithMedia(
 }
 
 /**
- * Clean up test talent by team ID
+ * Clean up test talent by team ID (use only when test isolation isn't needed)
  */
 export async function cleanupTestTalent(teamId: string): Promise<void> {
   // talent_sheets and talent_media will cascade delete from talent
   await testDb.delete(talent).where(eq(talent.teamId, teamId));
+}
+
+/**
+ * Clean up a specific talent by ID (use for parallel test isolation)
+ */
+export async function cleanupTalentById(talentId: string): Promise<void> {
+  await testDb.delete(talent).where(eq(talent.id, talentId));
 }

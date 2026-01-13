@@ -84,7 +84,15 @@ export const realtimeSchema = {
       error: z.string().optional(),
     }),
 
-    // Recast-triggered frame regeneration events
+    // Location reference generation progress (during recasting)
+    'location-sheet:progress': z.object({
+      locationId: z.string(),
+      status: z.enum(['generating', 'completed', 'failed']),
+      referenceImageUrl: z.string().optional(),
+      error: z.string().optional(),
+    }),
+
+    // Recast-triggered frame regeneration events (characters)
     'recast:start': z.object({
       characterId: z.string(),
       frameCount: z.number(),
@@ -97,6 +105,34 @@ export const realtimeSchema = {
     'recast:failed': z.object({
       characterId: z.string(),
       error: z.string(),
+    }),
+
+    // Recast-location events
+    'recast-location:start': z.object({
+      locationId: z.string(),
+      frameCount: z.number(),
+    }),
+    'recast-location:complete': z.object({
+      locationId: z.string(),
+      successCount: z.number(),
+      failedCount: z.number(),
+    }),
+    'recast-location:failed': z.object({
+      locationId: z.string(),
+      error: z.string(),
+    }),
+
+    // Location matching events
+    'location:matched': z.object({
+      matches: z.array(
+        z.object({
+          locationId: z.string(),
+          libraryLocationId: z.string(),
+          libraryLocationName: z.string(),
+          referenceImageUrl: z.string(),
+          description: z.string().optional(),
+        })
+      ),
     }),
 
     // Talent matching events (during sequence generation)

@@ -1,4 +1,5 @@
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
+import { LocationSuggestionSelector } from '@/components/location-library/location-suggestion-selector';
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
 import { TalentSuggestionSelector } from '@/components/talent/talent-suggestion-selector';
@@ -99,6 +100,7 @@ export const ScriptView: FC<{
     isEditing ? false : savedSettings.autoGenerateMotion
   );
   const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -205,6 +207,8 @@ export const ScriptView: FC<{
           autoGenerateMotion,
           suggestedTalentIds:
             selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
+          suggestedLocationIds:
+            selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
         },
         {
           onSuccess: (result) => {
@@ -253,13 +257,20 @@ export const ScriptView: FC<{
             disabled={loading}
             singleSelectAnalysis={!!sequence?.id}
           />
-          {/* Talent suggestion selector - only shown when creating new sequence */}
+          {/* Suggestion selectors - only shown when creating new sequence */}
           {!isEditing && (
-            <TalentSuggestionSelector
-              selectedTalentIds={selectedTalentIds}
-              onSelectionChange={setSelectedTalentIds}
-              disabled={loading}
-            />
+            <div className="flex items-center gap-3">
+              <TalentSuggestionSelector
+                selectedTalentIds={selectedTalentIds}
+                onSelectionChange={setSelectedTalentIds}
+                disabled={loading}
+              />
+              <LocationSuggestionSelector
+                selectedLocationIds={selectedLocationIds}
+                onSelectionChange={setSelectedLocationIds}
+                disabled={loading}
+              />
+            </div>
           )}
         </CardHeader>
 
