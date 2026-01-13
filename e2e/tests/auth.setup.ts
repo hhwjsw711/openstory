@@ -6,7 +6,7 @@
 import { test as setup } from 'playwright/test';
 import { ulid } from 'ulid';
 import { eq } from 'drizzle-orm';
-import { testDb } from '../fixtures/db-client';
+import { testDb, ensureDbInit } from '../fixtures/db-client';
 import { user, teams, teamMembers, verification } from '@/lib/db/schema';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +23,9 @@ type StoredUserInfo = {
 };
 
 setup('authenticate', async ({ page }) => {
+  // Ensure DB is configured (WAL mode, busy_timeout) before any writes
+  await ensureDbInit();
+
   // Ensure .auth directory exists
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true });
