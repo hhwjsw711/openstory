@@ -19,7 +19,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Reporter configuration
-  reporter: process.env.CI ? 'github' : 'html',
+  // CI: github for annotations + html for uploadable report
+  // Local: html only
+  reporter: process.env.CI ? [['github'], ['html']] : 'html',
 
   // Global test timeout
   timeout: 30_000,
