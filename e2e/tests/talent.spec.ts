@@ -49,15 +49,14 @@ test.describe('Talent Library', () => {
   });
 });
 
-// Run serially because tests create talents that affect empty state visibility
-test.describe('Add Talent with Reference Media', () => {
-  test.describe.configure({ mode: 'serial' });
-  test.beforeEach(async ({ page }) => {
+// Tests create talents via UI - use unique names to avoid collisions in parallel
+testWithUser.describe('Add Talent with Reference Media', () => {
+  testWithUser.beforeEach(async ({ page }) => {
     // Set up mock routes for R2 and other external services
     await setupMockRoutes(page);
   });
 
-  test('can open Add Talent dialog', async ({ page }) => {
+  testWithUser('can open Add Talent dialog', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
 
@@ -76,81 +75,124 @@ test.describe('Add Talent with Reference Media', () => {
     await expect(page.getByText('Reference Media')).toBeVisible();
   });
 
-  test('can create talent without media', async ({ page }) => {
+  testWithUser(
+    'can create talent without media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Actor ${Date.now()}`;
+      let createdTalentId: string | undefined;
+
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+
+      // Click Add Talent button
+      await page.getByRole('button', { name: 'Add Talent' }).first().click();
+
+      // Fill in the form with unique name
+      await page.getByLabel('Name').fill(uniqueName);
+      await page.getByLabel('Description').fill('Test description for E2E');
+
+      // Submit the form
+      await page.getByRole('button', { name: 'Add Talent' }).click();
+
+      // Wait for dialog to close and talent to appear in list
+      await expect(
+        page.getByRole('dialog', { name: 'Add Talent' })
+      ).not.toBeVisible({ timeout: 10000 });
+
+      // Talent should appear in the list
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Cleanup: find and delete the created talent
+      const { testDb } = await import('../fixtures/db-client');
+      const { talent } = await import('@/lib/db/schema');
+      const { eq, and } = await import('drizzle-orm');
+      const [created] = await testDb
+        .select({ id: talent.id })
+        .from(talent)
+        .where(
+          and(eq(talent.teamId, testUser.teamId), eq(talent.name, uniqueName))
+        );
+      if (created) {
+        await cleanupTalentById(created.id);
+      }
+    }
+  );
+
+  testWithUser(
+    'can create talent with reference media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Actor With Media ${Date.now()}`;
+
+      await page.goto('/talent');
+      await waitForTalentPageLoad(page);
+
+      // Click Add Talent button
+      await page.getByRole('button', { name: 'Add Talent' }).first().click();
+
+      // Fill in the form with unique name
+      await page.getByLabel('Name').fill(uniqueName);
+      await page.getByLabel('Description').fill('Actor with reference images');
+
+      // Upload a test image using the file input
+      const fileChooserPromise = page.waitForEvent('filechooser');
+      await page.getByRole('button', { name: 'Browse files' }).click();
+      const fileChooser = await fileChooserPromise;
+
+      // Use a test fixture image (we'll create a simple test file)
+      const testImagePath = path.join(
+        import.meta.dirname,
+        '../fixtures/test-image.jpg'
+      );
+      await fileChooser.setFiles(testImagePath);
+
+      // Wait for upload to complete (button should become enabled)
+      await expect(
+        page.getByRole('button', { name: 'Add Talent' })
+      ).toBeEnabled({
+        timeout: 15000,
+      });
+
+      // Submit the form
+      await page.getByRole('button', { name: 'Add Talent' }).click();
+
+      // Wait for dialog to close
+      await expect(
+        page.getByRole('dialog', { name: 'Add Talent' })
+      ).not.toBeVisible({ timeout: 10000 });
+
+      // Talent should appear in the list
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Cleanup: find and delete the created talent
+      const { testDb } = await import('../fixtures/db-client');
+      const { talent } = await import('@/lib/db/schema');
+      const { eq, and } = await import('drizzle-orm');
+      const [created] = await testDb
+        .select({ id: talent.id })
+        .from(talent)
+        .where(
+          and(eq(talent.teamId, testUser.teamId), eq(talent.name, uniqueName))
+        );
+      if (created) {
+        await cleanupTalentById(created.id);
+      }
+    }
+  );
+
+  testWithUser('shows upload progress indicator', async ({ page }) => {
+    const uniqueName = `Test Upload Progress ${Date.now()}`;
+
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
 
     // Click Add Talent button
     await page.getByRole('button', { name: 'Add Talent' }).first().click();
 
-    // Fill in the form
-    await page.getByLabel('Name').fill('E2E Test Actor');
-    await page.getByLabel('Description').fill('Test description for E2E');
-
-    // Submit the form
-    await page.getByRole('button', { name: 'Add Talent' }).click();
-
-    // Wait for dialog to close and talent to appear in list
-    await expect(
-      page.getByRole('dialog', { name: 'Add Talent' })
-    ).not.toBeVisible({ timeout: 10000 });
-
-    // Talent should appear in the list
-    await expect(page.getByText('E2E Test Actor')).toBeVisible({
-      timeout: 10000,
-    });
-  });
-
-  test('can create talent with reference media', async ({ page }) => {
-    await page.goto('/talent');
-    await waitForTalentPageLoad(page);
-
-    // Click Add Talent button
-    await page.getByRole('button', { name: 'Add Talent' }).first().click();
-
-    // Fill in the form
-    await page.getByLabel('Name').fill('E2E Test Actor With Media');
-    await page.getByLabel('Description').fill('Actor with reference images');
-
-    // Upload a test image using the file input
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Browse files' }).click();
-    const fileChooser = await fileChooserPromise;
-
-    // Use a test fixture image (we'll create a simple test file)
-    const testImagePath = path.join(
-      import.meta.dirname,
-      '../fixtures/test-image.jpg'
-    );
-    await fileChooser.setFiles(testImagePath);
-
-    // Wait for upload to complete (button should become enabled)
-    await expect(page.getByRole('button', { name: 'Add Talent' })).toBeEnabled({
-      timeout: 15000,
-    });
-
-    // Submit the form
-    await page.getByRole('button', { name: 'Add Talent' }).click();
-
-    // Wait for dialog to close
-    await expect(
-      page.getByRole('dialog', { name: 'Add Talent' })
-    ).not.toBeVisible({ timeout: 10000 });
-
-    // Talent should appear in the list
-    await expect(page.getByText('E2E Test Actor With Media')).toBeVisible({
-      timeout: 10000,
-    });
-  });
-
-  test('shows upload progress indicator', async ({ page }) => {
-    await page.goto('/talent');
-    await waitForTalentPageLoad(page);
-
-    // Click Add Talent button
-    await page.getByRole('button', { name: 'Add Talent' }).first().click();
-
-    await page.getByLabel('Name').fill('Test Upload Progress');
+    await page.getByLabel('Name').fill(uniqueName);
 
     // Start file upload
     const fileChooserPromise = page.waitForEvent('filechooser');
@@ -168,9 +210,10 @@ test.describe('Add Talent with Reference Media', () => {
     await expect(page.getByRole('button', { name: 'Add Talent' })).toBeEnabled({
       timeout: 15000,
     });
+    // Note: This test doesn't submit, so no cleanup needed
   });
 
-  test('can cancel Add Talent dialog', async ({ page }) => {
+  testWithUser('can cancel Add Talent dialog', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
 
@@ -193,19 +236,18 @@ test.describe('Add Talent with Reference Media', () => {
 });
 
 // Tests that need testUser for creating test data
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Edit Talent with Reference Media', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testTalent: TestTalentWithMedia;
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     // Set up mock routes
     await setupMockRoutes(page);
 
-    // Create test talent with media
+    // Create test talent with media using unique name
     testTalent = await createTestTalentWithMedia(
       testUser.teamId,
-      'E2E Edit Test Talent',
+      `E2E Edit Test Talent ${Date.now()}`,
       2
     );
   });
@@ -218,12 +260,12 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
 
-    // Click on the talent card to view details
-    await page.getByText('E2E Edit Test Talent').click();
+    // Click on the talent card to view details (use variable, not hardcoded)
+    await page.getByText(testTalent.name).click();
 
     // Should be on detail page
     await expect(
-      page.getByRole('heading', { name: 'E2E Edit Test Talent' })
+      page.getByRole('heading', { name: testTalent.name })
     ).toBeVisible();
 
     // Should show reference media section
@@ -237,7 +279,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
       await waitForTalentPageLoad(page);
 
       // Click on the talent to view details
-      await page.getByText('E2E Edit Test Talent').click();
+      await page.getByText(testTalent.name).click();
 
       // Click the edit button (pencil icon)
       await page
@@ -252,7 +294,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
       ).toBeVisible();
 
       // Form should be pre-filled
-      await expect(page.getByLabel('Name')).toHaveValue('E2E Edit Test Talent');
+      await expect(page.getByLabel('Name')).toHaveValue(testTalent.name);
     }
   );
 
@@ -263,7 +305,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
     async ({ page }) => {
       await page.goto('/talent');
       await waitForTalentPageLoad(page);
-      await page.getByText('E2E Edit Test Talent').click();
+      await page.getByText(testTalent.name).click();
 
       // Open edit dialog
       await page.locator('button:has(svg.lucide-pencil)').first().click();
@@ -273,7 +315,8 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
       ).toBeVisible();
 
       // Update name
-      await page.getByLabel('Name').fill('E2E Updated Talent Name');
+      const updatedName = `E2E Updated Talent ${Date.now()}`;
+      await page.getByLabel('Name').fill(updatedName);
       await page.getByLabel('Description').fill('Updated description');
 
       // Save changes
@@ -287,7 +330,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
       // Updated name should appear on the detail page
       await expect(
         page.getByRole('heading', {
-          name: 'E2E Updated Talent Name',
+          name: updatedName,
         })
       ).toBeVisible({ timeout: 10000 });
     }
@@ -296,7 +339,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
   testWithUser('can add media to existing talent', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
-    await page.getByText('E2E Edit Test Talent').click();
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
     await page.locator('button:has(svg.lucide-pencil)').first().click();
@@ -317,7 +360,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
   testWithUser('displays existing media in edit dialog', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
-    await page.getByText('E2E Edit Test Talent').click();
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
     await page.locator('button:has(svg.lucide-pencil)').first().click();
@@ -341,7 +384,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
   testWithUser('can cancel edit dialog without saving', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
-    await page.getByText('E2E Edit Test Talent').click();
+    await page.getByText(testTalent.name).click();
 
     // Open edit dialog
     await page.locator('button:has(svg.lucide-pencil)').first().click();
@@ -359,27 +402,27 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
 
     // Original name should still be visible
     await expect(
-      page.getByRole('heading', { name: 'E2E Edit Test Talent' })
+      page.getByRole('heading', { name: testTalent.name })
     ).toBeVisible();
   });
 });
 
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Talent with Media - List View', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testTalentAlpha: TestTalentWithMedia;
   let testTalentBeta: TestTalentWithMedia;
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
+    const suffix = Date.now();
     testTalentAlpha = await createTestTalentWithMedia(
       testUser.teamId,
-      'E2E Talent Alpha',
+      `E2E Talent Alpha ${suffix}`,
       1
     );
     testTalentBeta = await createTestTalentWithMedia(
       testUser.teamId,
-      'E2E Talent Beta',
+      `E2E Talent Beta ${suffix}`,
       3
     );
   });
@@ -393,8 +436,8 @@ testWithUser.describe('Talent with Media - List View', () => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
 
-    await expect(page.getByText('E2E Talent Alpha')).toBeVisible();
-    await expect(page.getByText('E2E Talent Beta')).toBeVisible();
+    await expect(page.getByText(testTalentAlpha.name)).toBeVisible();
+    await expect(page.getByText(testTalentBeta.name)).toBeVisible();
   });
 
   testWithUser('can navigate between talent detail pages', async ({ page }) => {
@@ -402,9 +445,9 @@ testWithUser.describe('Talent with Media - List View', () => {
     await waitForTalentPageLoad(page);
 
     // Click first talent
-    await page.getByText('E2E Talent Alpha').click();
+    await page.getByText(testTalentAlpha.name).click();
     await expect(
-      page.getByRole('heading', { name: 'E2E Talent Alpha' })
+      page.getByRole('heading', { name: testTalentAlpha.name })
     ).toBeVisible();
 
     // Go back to list
@@ -412,9 +455,9 @@ testWithUser.describe('Talent with Media - List View', () => {
     await expect(page).toHaveURL(/\/talent(\?|$)/);
 
     // Click second talent
-    await page.getByText('E2E Talent Beta').click();
+    await page.getByText(testTalentBeta.name).click();
     await expect(
-      page.getByRole('heading', { name: 'E2E Talent Beta' })
+      page.getByRole('heading', { name: testTalentBeta.name })
     ).toBeVisible();
   });
 });

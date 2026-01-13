@@ -46,10 +46,8 @@ test.describe('Location Library', () => {
   });
 });
 
-// Run serially because tests create locations that affect empty state visibility
+// Tests create locations via UI - use unique names to avoid collisions in parallel
 testWithUser.describe('Add Location with Reference Media', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
-
   testWithUser.beforeEach(async ({ page }) => {
     await setupMockRoutes(page);
   });
@@ -79,81 +77,127 @@ testWithUser.describe('Add Location with Reference Media', () => {
     ).toBeVisible();
   });
 
-  testWithUser('can create location without media', async ({ page }) => {
-    await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+  testWithUser(
+    'can create location without media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Location ${Date.now()}`;
 
-    // Click Add Location button (header or empty state - use first available)
-    const addButton = page
-      .getByRole('button', { name: 'Add Location' })
-      .first();
-    await expect(addButton).toBeVisible({ timeout: 10000 });
-    await expect(addButton).toBeEnabled();
-    await addButton.click();
+      await page.goto('/locations');
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-    // Wait for dialog to open
-    await page.getByLabel('Name').waitFor({ timeout: 10000 });
-    await page.getByLabel('Name').fill('E2E Test Location');
-    await page.getByLabel('Description').fill('Test description for E2E');
+      // Click Add Location button (header or empty state - use first available)
+      const addButton = page
+        .getByRole('button', { name: 'Add Location' })
+        .first();
+      await expect(addButton).toBeVisible({ timeout: 10000 });
+      await expect(addButton).toBeEnabled();
+      await addButton.click();
 
-    // Click the submit button inside the dialog
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Add Location' })
-      .click();
+      // Wait for dialog to open
+      await page.getByLabel('Name').waitFor({ timeout: 10000 });
+      await page.getByLabel('Name').fill(uniqueName);
+      await page.getByLabel('Description').fill('Test description for E2E');
 
-    await expect(
-      page.getByRole('dialog', { name: 'Add Location' })
-    ).not.toBeVisible({ timeout: 10000 });
+      // Click the submit button inside the dialog
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Add Location' })
+        .click();
 
-    await expect(page.getByText('E2E Test Location')).toBeVisible({
-      timeout: 10000,
-    });
-  });
+      await expect(
+        page.getByRole('dialog', { name: 'Add Location' })
+      ).not.toBeVisible({ timeout: 10000 });
 
-  testWithUser('can create location with reference media', async ({ page }) => {
-    await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
 
-    const addButton = page
-      .getByRole('button', { name: 'Add Location' })
-      .first();
-    await expect(addButton).toBeVisible({ timeout: 10000 });
-    await expect(addButton).toBeEnabled();
-    await addButton.click();
+      // Cleanup: find and delete the created location
+      const { testDb } = await import('../fixtures/db-client');
+      const { locationLibrary } = await import('@/lib/db/schema');
+      const { eq, and } = await import('drizzle-orm');
+      const [created] = await testDb
+        .select({ id: locationLibrary.id })
+        .from(locationLibrary)
+        .where(
+          and(
+            eq(locationLibrary.teamId, testUser.teamId),
+            eq(locationLibrary.name, uniqueName)
+          )
+        );
+      if (created) {
+        await cleanupLocationById(created.id);
+      }
+    }
+  );
 
-    // Wait for dialog to open
-    await page.getByLabel('Name').waitFor({ timeout: 10000 });
-    await page.getByLabel('Name').fill('E2E Test Location With Media');
-    await page.getByLabel('Description').fill('Location with reference images');
+  testWithUser(
+    'can create location with reference media',
+    async ({ page, testUser }) => {
+      const uniqueName = `E2E Test Location With Media ${Date.now()}`;
 
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Browse files' }).click();
-    const fileChooser = await fileChooserPromise;
+      await page.goto('/locations');
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-    const testImagePath = path.join(
-      import.meta.dirname,
-      '../fixtures/test-image.jpg'
-    );
-    await fileChooser.setFiles(testImagePath);
+      const addButton = page
+        .getByRole('button', { name: 'Add Location' })
+        .first();
+      await expect(addButton).toBeVisible({ timeout: 10000 });
+      await expect(addButton).toBeEnabled();
+      await addButton.click();
 
-    // Click the submit button inside the dialog
-    const submitButton = page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Add Location' });
-    await expect(submitButton).toBeEnabled({ timeout: 15000 });
-    await submitButton.click();
+      // Wait for dialog to open
+      await page.getByLabel('Name').waitFor({ timeout: 10000 });
+      await page.getByLabel('Name').fill(uniqueName);
+      await page
+        .getByLabel('Description')
+        .fill('Location with reference images');
 
-    await expect(
-      page.getByRole('dialog', { name: 'Add Location' })
-    ).not.toBeVisible({ timeout: 10000 });
+      const fileChooserPromise = page.waitForEvent('filechooser');
+      await page.getByRole('button', { name: 'Browse files' }).click();
+      const fileChooser = await fileChooserPromise;
 
-    await expect(page.getByText('E2E Test Location With Media')).toBeVisible({
-      timeout: 10000,
-    });
-  });
+      const testImagePath = path.join(
+        import.meta.dirname,
+        '../fixtures/test-image.jpg'
+      );
+      await fileChooser.setFiles(testImagePath);
+
+      // Click the submit button inside the dialog
+      const submitButton = page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Add Location' });
+      await expect(submitButton).toBeEnabled({ timeout: 15000 });
+      await submitButton.click();
+
+      await expect(
+        page.getByRole('dialog', { name: 'Add Location' })
+      ).not.toBeVisible({ timeout: 10000 });
+
+      await expect(page.getByText(uniqueName)).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Cleanup: find and delete the created location
+      const { testDb } = await import('../fixtures/db-client');
+      const { locationLibrary } = await import('@/lib/db/schema');
+      const { eq, and } = await import('drizzle-orm');
+      const [created] = await testDb
+        .select({ id: locationLibrary.id })
+        .from(locationLibrary)
+        .where(
+          and(
+            eq(locationLibrary.teamId, testUser.teamId),
+            eq(locationLibrary.name, uniqueName)
+          )
+        );
+      if (created) {
+        await cleanupLocationById(created.id);
+      }
+    }
+  );
 
   testWithUser('can cancel Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
@@ -180,16 +224,15 @@ testWithUser.describe('Add Location with Reference Media', () => {
 });
 
 // Tests that need testUser for creating test data
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Edit Location', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testLocation: TestLibraryLocation;
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
     testLocation = await createTestLibraryLocation(
       testUser.teamId,
-      'E2E Edit Test Location'
+      `E2E Edit Test Location ${Date.now()}`
     );
   });
 
@@ -201,10 +244,10 @@ testWithUser.describe('Edit Location', () => {
     await page.goto('/locations');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-    await page.getByRole('heading', { name: 'E2E Edit Test Location' }).click();
+    await page.getByRole('heading', { name: testLocation.name }).click();
 
     await expect(
-      page.getByRole('heading', { name: 'E2E Edit Test Location' })
+      page.getByRole('heading', { name: testLocation.name })
     ).toBeVisible();
 
     await expect(
@@ -218,9 +261,7 @@ testWithUser.describe('Edit Location', () => {
       await page.goto('/locations');
       await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-      await page
-        .getByRole('heading', { name: 'E2E Edit Test Location' })
-        .click();
+      await page.getByRole('heading', { name: testLocation.name }).click();
 
       await page.locator('button:has(svg.lucide-pencil)').first().click();
 
@@ -228,16 +269,14 @@ testWithUser.describe('Edit Location', () => {
         page.getByRole('dialog', { name: 'Edit Location' })
       ).toBeVisible();
 
-      await expect(page.getByLabel('Name')).toHaveValue(
-        'E2E Edit Test Location'
-      );
+      await expect(page.getByLabel('Name')).toHaveValue(testLocation.name);
     }
   );
 
   testWithUser('can cancel edit dialog without saving', async ({ page }) => {
     await page.goto('/locations');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
-    await page.getByRole('heading', { name: 'E2E Edit Test Location' }).click();
+    await page.getByRole('heading', { name: testLocation.name }).click();
 
     await page.locator('button:has(svg.lucide-pencil)').first().click();
 
@@ -250,26 +289,26 @@ testWithUser.describe('Edit Location', () => {
     ).not.toBeVisible();
 
     await expect(
-      page.getByRole('heading', { name: 'E2E Edit Test Location' })
+      page.getByRole('heading', { name: testLocation.name })
     ).toBeVisible();
   });
 });
 
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Location Library - List View', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testLocationAlpha: TestLibraryLocation;
   let testLocationBeta: TestLibraryLocation;
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
+    const suffix = Date.now();
     testLocationAlpha = await createTestLibraryLocation(
       testUser.teamId,
-      'E2E Location Alpha'
+      `E2E Location Alpha ${suffix}`
     );
     testLocationBeta = await createTestLibraryLocation(
       testUser.teamId,
-      'E2E Location Beta'
+      `E2E Location Beta ${suffix}`
     );
   });
 
@@ -283,10 +322,10 @@ testWithUser.describe('Location Library - List View', () => {
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
     await expect(
-      page.getByRole('heading', { name: 'E2E Location Alpha' })
+      page.getByRole('heading', { name: testLocationAlpha.name })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'E2E Location Beta' })
+      page.getByRole('heading', { name: testLocationBeta.name })
     ).toBeVisible();
   });
 
@@ -296,17 +335,17 @@ testWithUser.describe('Location Library - List View', () => {
       await page.goto('/locations');
       await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-      await page.getByRole('heading', { name: 'E2E Location Alpha' }).click();
+      await page.getByRole('heading', { name: testLocationAlpha.name }).click();
       await expect(
-        page.getByRole('heading', { name: 'E2E Location Alpha' })
+        page.getByRole('heading', { name: testLocationAlpha.name })
       ).toBeVisible();
 
       await page.getByRole('link', { name: 'Back to Locations' }).click();
       await expect(page).toHaveURL(/\/locations(\?|$)/);
 
-      await page.getByRole('heading', { name: 'E2E Location Beta' }).click();
+      await page.getByRole('heading', { name: testLocationBeta.name }).click();
       await expect(
-        page.getByRole('heading', { name: 'E2E Location Beta' })
+        page.getByRole('heading', { name: testLocationBeta.name })
       ).toBeVisible();
     }
   );

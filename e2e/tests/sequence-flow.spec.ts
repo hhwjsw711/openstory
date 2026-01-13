@@ -27,19 +27,19 @@ import {
   type TestCharacter,
 } from '../fixtures/sequence.fixture';
 
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Sequence Creation Flow', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testTalents: TestTalent[] = [];
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     // Setup mock routes for AI/workflow calls
     await setupMockRoutes(page);
 
-    // Create test talent for the test user's team
+    // Create test talent for the test user's team with unique names
+    const suffix = Date.now();
     testTalents = await createTestTalentSet(testUser.teamId, [
-      'E2E Test Actor One',
-      'E2E Test Actor Two',
+      `E2E Test Actor One ${suffix}`,
+      `E2E Test Actor Two ${suffix}`,
     ]);
   });
 
@@ -99,12 +99,12 @@ Here's your caffeine fix. How's it going?
         talentDialog.getByText('Select Talent for Casting')
       ).toBeVisible();
 
-      // Verify our test talents appear in the dialog
-      await expect(page.getByText('E2E Test Actor One')).toBeVisible();
-      await expect(page.getByText('E2E Test Actor Two')).toBeVisible();
+      // Verify our test talents appear in the dialog (use variable names)
+      await expect(page.getByText(testTalents[0].name)).toBeVisible();
+      await expect(page.getByText(testTalents[1].name)).toBeVisible();
 
       // Select first talent by clicking on it
-      await page.getByText('E2E Test Actor One').click();
+      await page.getByText(testTalents[0].name).click();
 
       // Close dialog
       await page.getByRole('button', { name: 'Done' }).click();
@@ -117,9 +117,8 @@ Here's your caffeine fix. How's it going?
   );
 });
 
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Variant Selection', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testSequence: TestSequence;
   let testFrame: TestFrame;
   const originalThumbnailUrl = 'https://picsum.photos/seed/e2e-thumb/1024/576';
@@ -127,11 +126,11 @@ testWithUser.describe('Variant Selection', () => {
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
 
-    // Create pre-seeded sequence with frame that has variant image
+    // Create pre-seeded sequence with frame that has variant image (unique name)
     testSequence = await createTestSequence(
       testUser.teamId,
       testUser.id,
-      'E2E Variant Test Sequence'
+      `E2E Variant Test Sequence ${Date.now()}`
     );
     testFrame = await createTestFrame(testSequence.id, 0, {
       // Use real placeholder images
@@ -156,7 +155,7 @@ testWithUser.describe('Variant Selection', () => {
     // Don't use networkidle - the page has a realtime SSE connection that never settles
     // Wait for the sequence title to be visible (indicates data has loaded and React is hydrated)
     await expect(
-      page.getByRole('heading', { name: 'E2E Variant Test Sequence' })
+      page.getByRole('heading', { name: testSequence.title })
     ).toBeVisible({ timeout: 15000 });
 
     // Also wait for the frame thumbnail to be visible
@@ -201,9 +200,8 @@ testWithUser.describe('Variant Selection', () => {
   });
 });
 
-// Run serially because tests share data created in beforeEach
+// Each test creates its own data with unique names for parallel execution
 testWithUser.describe('Character Recast', () => {
-  testWithUser.describe.configure({ mode: 'serial' });
   let testTalents: TestTalent[] = [];
   let testSequence: TestSequence;
   let testCharacter: TestCharacter;
@@ -211,17 +209,18 @@ testWithUser.describe('Character Recast', () => {
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
 
-    // Create test talent
+    // Create test talent with unique names
+    const suffix = Date.now();
     testTalents = await createTestTalentSet(testUser.teamId, [
-      'E2E Current Actor',
-      'E2E New Actor',
+      `E2E Current Actor ${suffix}`,
+      `E2E New Actor ${suffix}`,
     ]);
 
-    // Create pre-seeded sequence with character
+    // Create pre-seeded sequence with character (unique name)
     testSequence = await createTestSequence(
       testUser.teamId,
       testUser.id,
-      'E2E Recast Test Sequence'
+      `E2E Recast Test Sequence ${suffix}`
     );
 
     // Create a character linked to the first talent
@@ -270,12 +269,12 @@ testWithUser.describe('Character Recast', () => {
       await expect(talentDialog).toBeVisible();
       await expect(talentDialog.getByText('Select Talent')).toBeVisible();
 
-      // Select the second talent (E2E New Actor)
-      await page.getByText('E2E New Actor').click();
+      // Select the second talent (use variable name)
+      await page.getByText(testTalents[1].name).click();
 
-      // Recast confirmation dialog should appear
+      // Recast confirmation dialog should appear (use regex with variable)
       await expect(
-        page.getByText(/Recast E2E New Actor as John/i)
+        page.getByText(new RegExp(`Recast ${testTalents[1].name} as John`, 'i'))
       ).toBeVisible();
 
       // Confirm the recast
@@ -284,7 +283,7 @@ testWithUser.describe('Character Recast', () => {
       // The confirmation dialog should close (loading state may briefly appear)
       // With mocks, the mutation should complete quickly
       await expect(
-        page.getByText(/Recast E2E New Actor as John/i)
+        page.getByText(new RegExp(`Recast ${testTalents[1].name} as John`, 'i'))
       ).not.toBeVisible({ timeout: 10000 });
 
       // Verify the database was updated - character now linked to second talent
