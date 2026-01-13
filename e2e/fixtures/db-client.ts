@@ -9,6 +9,12 @@ import { schema } from '@/lib/db/schema';
 
 const client = createClient({ url: 'file:test.db' });
 
+// Set busy timeout to wait for locks instead of failing immediately
+// This helps when server and tests access db concurrently
+client.execute('PRAGMA busy_timeout = 5000').catch(() => {
+  // Ignore errors if PRAGMA not supported
+});
+
 /**
  * Drizzle database instance for e2e tests
  * Uses test.db (same as e2e dev server)

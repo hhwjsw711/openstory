@@ -12,7 +12,10 @@ import {
   updateLibraryLocationFn,
   uploadLocationMediaFn,
 } from '@/functions/location-library';
-import { sequenceLocationKeys } from '@/hooks/use-sequence-locations';
+import {
+  libraryLocationKeys,
+  sequenceLocationKeys,
+} from '@/hooks/use-sequence-locations';
 import type { LibraryLocation, LocationSheet } from '@/lib/db/schema';
 
 /** Library location with sheets for detail view */
@@ -54,6 +57,9 @@ export function useCreateLibraryLocation() {
     }) => createLibraryLocationFn({ data }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
+        queryKey: libraryLocationKeys.all,
+      });
+      void queryClient.invalidateQueries({
         queryKey: sequenceLocationKeys.teamLibrary,
       });
     },
@@ -78,6 +84,9 @@ export function useUpdateLibraryLocation() {
         queryKey: locationLibraryKeys.detail(variables.locationId),
       });
       void queryClient.invalidateQueries({
+        queryKey: libraryLocationKeys.all,
+      });
+      void queryClient.invalidateQueries({
         queryKey: sequenceLocationKeys.teamLibrary,
       });
     },
@@ -94,6 +103,9 @@ export function useDeleteLibraryLocation() {
     mutationFn: (locationId: string) =>
       deleteLibraryLocationFn({ data: { locationId } }),
     onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: libraryLocationKeys.all,
+      });
       void queryClient.invalidateQueries({
         queryKey: sequenceLocationKeys.teamLibrary,
       });
@@ -128,6 +140,9 @@ export function useAddLocationSheets() {
         queryKey: locationLibraryKeys.detail(variables.locationId),
       });
       void queryClient.invalidateQueries({
+        queryKey: libraryLocationKeys.all,
+      });
+      void queryClient.invalidateQueries({
         queryKey: sequenceLocationKeys.teamLibrary,
       });
     },
@@ -146,6 +161,9 @@ export function useDeleteLocationSheet() {
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
         queryKey: locationLibraryKeys.detail(variables.locationId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: libraryLocationKeys.all,
       });
       void queryClient.invalidateQueries({
         queryKey: sequenceLocationKeys.teamLibrary,

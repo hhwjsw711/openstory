@@ -8,9 +8,11 @@ export default defineConfig({
   testDir: './e2e/tests',
   outputDir: './e2e/results',
 
-  // Run tests sequentially for now (simpler state management)
-  fullyParallel: false,
-  workers: 1,
+  // Run tests in parallel now that we share auth state
+  // Note: Using 1 worker locally to avoid SQLite locking issues
+  // CI uses WAL mode + multiple workers
+  fullyParallel: true,
+  workers: process.env.CI ? 4 : 1,
 
   // Fail fast on CI
   forbidOnly: !!process.env.CI,
@@ -29,11 +31,28 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  // Configure projects for major browsers
+  // Configure projects
   projects: [
+    // Setup project - authenticates once, saves state
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    // Auth tests - run without stored state to test actual login flow
+    {
+      name: 'auth',
+      testMatch: /auth\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // All other tests - use stored auth state
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /auth\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 

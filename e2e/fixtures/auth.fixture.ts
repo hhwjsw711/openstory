@@ -1,11 +1,20 @@
 /**
  * Auth Fixture for E2E Tests
- * Creates OTP directly in database and navigates to /verify to bypass email sending
+ *
+ * Two modes:
+ * 1. Stored auth (default): Uses pre-authenticated session from auth.setup.ts
+ *    - Tests use `page` directly (already authenticated via storageState)
+ *    - `testUser` reads stored user info from disk
+ *
+ * 2. Per-test auth (auth.spec.ts only): Creates new user for each test
+ *    - Uses `authenticatedPage` fixture for fresh authentication
  */
 
 import { test as base, type Page } from 'playwright/test';
 import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
+import fs from 'node:fs';
+import path from 'node:path';
 import { testDb } from './db-client';
 import {
   user,
@@ -21,6 +30,21 @@ type TestUser = {
   name: string;
   teamId: string;
 };
+
+const userInfoFile = path.join(import.meta.dirname, '../.auth/user-info.json');
+
+/**
+ * Read stored user info from auth.setup.ts
+ * Used by tests running with storageState
+ */
+function getStoredUserInfo(): TestUser {
+  if (!fs.existsSync(userInfoFile)) {
+    throw new Error(
+      'Stored user info not found. Run auth.setup.ts first or use authenticatedPage fixture.'
+    );
+  }
+  return JSON.parse(fs.readFileSync(userInfoFile, 'utf-8'));
+}
 
 /**
  * Create a test user with team directly in the database
@@ -133,20 +157,27 @@ async function authenticateUser(page: Page, email: string): Promise<void> {
   );
 }
 
-// Extended test with authenticated page fixture
+// Extended test with stored auth fixtures
+// For tests using storageState (most tests):
+// - `testUser` reads stored user info from disk
+// - `page` is already authenticated via storageState config
 export const test = base.extend<{
-  authenticatedPage: Page;
   testUser: TestUser;
+  authenticatedPage: Page;
 }>({
+  // Default: read stored user info (for tests with storageState)
   testUser: async ({}, use) => {
-    const user = await createTestUser();
-    await use(user);
-    await cleanupTestUser(user.id, user.teamId);
+    const storedUser = getStoredUserInfo();
+    await use(storedUser);
+    // No cleanup needed - shared user persists across tests
   },
 
-  authenticatedPage: async ({ page, testUser }, use) => {
-    await authenticateUser(page, testUser.email);
+  // For auth.spec.ts: creates fresh user and authenticates per-test
+  authenticatedPage: async ({ page }, use) => {
+    const freshUser = await createTestUser();
+    await authenticateUser(page, freshUser.email);
     await use(page);
+    await cleanupTestUser(freshUser.id, freshUser.teamId);
   },
 });
 
