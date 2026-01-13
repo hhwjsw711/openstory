@@ -11,12 +11,14 @@ import {
   cleanupLocationById,
   type TestLibraryLocation,
 } from '../fixtures/location.fixture';
+import {
+  waitForLibraryPageLoad,
+  cleanupLocationByName,
+} from '../fixtures/test-utils';
 import path from 'node:path';
 
-// Wait for page to be hydrated by checking Add Location button is enabled
-async function waitForLocationsPageLoad(page: import('playwright/test').Page) {
-  const addButton = page.getByRole('button', { name: 'Add Location' }).first();
-  await expect(addButton).toBeEnabled({ timeout: 15000 });
+function waitForLocationsPageLoad(page: import('playwright/test').Page) {
+  return waitForLibraryPageLoad(page, 'Add Location');
 }
 
 test.describe('Location Library', () => {
@@ -106,22 +108,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
         timeout: 10000,
       });
 
-      // Cleanup: find and delete the created location
-      const { testDb } = await import('../fixtures/db-client');
-      const { locationLibrary } = await import('@/lib/db/schema');
-      const { eq, and } = await import('drizzle-orm');
-      const [created] = await testDb
-        .select({ id: locationLibrary.id })
-        .from(locationLibrary)
-        .where(
-          and(
-            eq(locationLibrary.teamId, testUser.teamId),
-            eq(locationLibrary.name, uniqueName)
-          )
-        );
-      if (created) {
-        await cleanupLocationById(created.id);
-      }
+      await cleanupLocationByName(testUser.teamId, uniqueName);
     }
   );
 
@@ -173,22 +160,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
         timeout: 10000,
       });
 
-      // Cleanup: find and delete the created location
-      const { testDb } = await import('../fixtures/db-client');
-      const { locationLibrary } = await import('@/lib/db/schema');
-      const { eq, and } = await import('drizzle-orm');
-      const [created] = await testDb
-        .select({ id: locationLibrary.id })
-        .from(locationLibrary)
-        .where(
-          and(
-            eq(locationLibrary.teamId, testUser.teamId),
-            eq(locationLibrary.name, uniqueName)
-          )
-        );
-      if (created) {
-        await cleanupLocationById(created.id);
-      }
+      await cleanupLocationByName(testUser.teamId, uniqueName);
     }
   );
 

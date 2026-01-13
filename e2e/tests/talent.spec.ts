@@ -11,12 +11,14 @@ import {
   cleanupTalentById,
   type TestTalentWithMedia,
 } from '../fixtures/talent.fixture';
+import {
+  waitForLibraryPageLoad,
+  cleanupTalentByName,
+} from '../fixtures/test-utils';
 import path from 'node:path';
 
-// Wait for page to be hydrated by checking Add Talent button is enabled
-async function waitForTalentPageLoad(page: import('playwright/test').Page) {
-  const addButton = page.getByRole('button', { name: 'Add Talent' }).first();
-  await expect(addButton).toBeEnabled({ timeout: 15000 });
+function waitForTalentPageLoad(page: import('playwright/test').Page) {
+  return waitForLibraryPageLoad(page, 'Add Talent');
 }
 
 test.describe('Talent Library', () => {
@@ -96,19 +98,7 @@ testWithUser.describe('Add Talent with Reference Media', () => {
         timeout: 10000,
       });
 
-      // Cleanup: find and delete the created talent
-      const { testDb } = await import('../fixtures/db-client');
-      const { talent } = await import('@/lib/db/schema');
-      const { eq, and } = await import('drizzle-orm');
-      const [created] = await testDb
-        .select({ id: talent.id })
-        .from(talent)
-        .where(
-          and(eq(talent.teamId, testUser.teamId), eq(talent.name, uniqueName))
-        );
-      if (created) {
-        await cleanupTalentById(created.id);
-      }
+      await cleanupTalentByName(testUser.teamId, uniqueName);
     }
   );
 
@@ -159,19 +149,7 @@ testWithUser.describe('Add Talent with Reference Media', () => {
         timeout: 10000,
       });
 
-      // Cleanup: find and delete the created talent
-      const { testDb } = await import('../fixtures/db-client');
-      const { talent } = await import('@/lib/db/schema');
-      const { eq, and } = await import('drizzle-orm');
-      const [created] = await testDb
-        .select({ id: talent.id })
-        .from(talent)
-        .where(
-          and(eq(talent.teamId, testUser.teamId), eq(talent.name, uniqueName))
-        );
-      if (created) {
-        await cleanupTalentById(created.id);
-      }
+      await cleanupTalentByName(testUser.teamId, uniqueName);
     }
   );
 

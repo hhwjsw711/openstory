@@ -2,7 +2,12 @@
  * Hooks for team-level location library operations
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import {
   addLocationSheetsFn,
   createLibraryLocationFn,
@@ -33,6 +38,25 @@ export const locationLibraryKeys = {
 };
 
 /**
+ * Invalidate all location-related queries.
+ * Use after mutations that affect location data.
+ */
+function invalidateLocationQueries(
+  queryClient: QueryClient,
+  locationId?: string
+): void {
+  if (locationId) {
+    void queryClient.invalidateQueries({
+      queryKey: locationLibraryKeys.detail(locationId),
+    });
+  }
+  void queryClient.invalidateQueries({ queryKey: libraryLocationKeys.all });
+  void queryClient.invalidateQueries({
+    queryKey: sequenceLocationKeys.teamLibrary,
+  });
+}
+
+/**
  * Hook to fetch a single location with details and reference sheets
  */
 export function useLibraryLocationById(locationId: string) {
@@ -55,14 +79,7 @@ export function useCreateLibraryLocation() {
       description?: string;
       referenceImageUrls?: string[];
     }) => createLibraryLocationFn({ data }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: libraryLocationKeys.all,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: sequenceLocationKeys.teamLibrary,
-      });
-    },
+    onSuccess: () => invalidateLocationQueries(queryClient),
   });
 }
 
@@ -79,17 +96,8 @@ export function useUpdateLibraryLocation() {
       description?: string;
       referenceImageUrl?: string;
     }) => updateLibraryLocationFn({ data }),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: locationLibraryKeys.detail(variables.locationId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: libraryLocationKeys.all,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: sequenceLocationKeys.teamLibrary,
-      });
-    },
+    onSuccess: (_, variables) =>
+      invalidateLocationQueries(queryClient, variables.locationId),
   });
 }
 
@@ -102,14 +110,7 @@ export function useDeleteLibraryLocation() {
   return useMutation({
     mutationFn: (locationId: string) =>
       deleteLibraryLocationFn({ data: { locationId } }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: libraryLocationKeys.all,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: sequenceLocationKeys.teamLibrary,
-      });
-    },
+    onSuccess: () => invalidateLocationQueries(queryClient),
   });
 }
 
@@ -135,17 +136,8 @@ export function useAddLocationSheets() {
   return useMutation({
     mutationFn: (data: { locationId: string; imageUrls: string[] }) =>
       addLocationSheetsFn({ data }),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: locationLibraryKeys.detail(variables.locationId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: libraryLocationKeys.all,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: sequenceLocationKeys.teamLibrary,
-      });
-    },
+    onSuccess: (_, variables) =>
+      invalidateLocationQueries(queryClient, variables.locationId),
   });
 }
 
@@ -158,16 +150,7 @@ export function useDeleteLocationSheet() {
   return useMutation({
     mutationFn: (data: { sheetId: string; locationId: string }) =>
       deleteLocationSheetFn({ data: { sheetId: data.sheetId } }),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: locationLibraryKeys.detail(variables.locationId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: libraryLocationKeys.all,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: sequenceLocationKeys.teamLibrary,
-      });
-    },
+    onSuccess: (_, variables) =>
+      invalidateLocationQueries(queryClient, variables.locationId),
   });
 }
