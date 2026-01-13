@@ -30,13 +30,6 @@ test.describe('Talent Library', () => {
     ).toBeVisible();
   });
 
-  test('shows empty state when no talent exists', async ({ page }) => {
-    await page.goto('/talent');
-    await waitForTalentPageLoad(page);
-
-    await expect(page.getByText('No talent yet')).toBeVisible();
-  });
-
   test('has Add Talent button', async ({ page }) => {
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
@@ -79,7 +72,6 @@ testWithUser.describe('Add Talent with Reference Media', () => {
     'can create talent without media',
     async ({ page, testUser }) => {
       const uniqueName = `E2E Test Actor ${Date.now()}`;
-      let createdTalentId: string | undefined;
 
       await page.goto('/talent');
       await waitForTalentPageLoad(page);

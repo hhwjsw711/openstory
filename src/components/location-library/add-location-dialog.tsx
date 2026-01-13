@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { useCreateLibraryLocation } from '@/hooks/use-location-library';
 import { Plus } from 'lucide-react';
 import { LocationMediaUpload } from './location-media-upload';
@@ -28,6 +29,7 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
+  const isHydrated = useHydrated();
   const createLocation = useCreateLibraryLocation();
 
   const handleClose = () => {
@@ -70,7 +72,7 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
     >
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button>
+          <Button disabled={!isHydrated}>
             <Plus className="mr-2 h-4 w-4" />
             Add Location
           </Button>

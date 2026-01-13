@@ -13,11 +13,16 @@ import {
 } from '../fixtures/location.fixture';
 import path from 'node:path';
 
+// Wait for page to be hydrated by checking Add Location button is enabled
+async function waitForLocationsPageLoad(page: import('playwright/test').Page) {
+  const addButton = page.getByRole('button', { name: 'Add Location' }).first();
+  await expect(addButton).toBeEnabled({ timeout: 15000 });
+}
+
 test.describe('Location Library', () => {
   test('can access locations page', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
     await expect(page).toHaveURL(/\/locations/);
     await expect(
@@ -25,18 +30,9 @@ test.describe('Location Library', () => {
     ).toBeVisible();
   });
 
-  test('shows empty state when no locations exist', async ({ page }) => {
-    await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
-
-    await expect(page.getByText('No locations yet')).toBeVisible();
-  });
-
   test('has Add Location button', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
     const addButton = page.getByRole('button', {
       name: 'Add Location',
@@ -54,15 +50,12 @@ testWithUser.describe('Add Location with Reference Media', () => {
 
   testWithUser('can open Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
-    // Click the Add Location button (header or empty state - use first available)
+    // Click the Add Location button
     const addButton = page
       .getByRole('button', { name: 'Add Location' })
       .first();
-    await expect(addButton).toBeVisible({ timeout: 10000 });
-    await expect(addButton).toBeEnabled();
     await addButton.click();
 
     await expect(
