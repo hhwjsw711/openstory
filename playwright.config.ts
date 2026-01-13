@@ -12,7 +12,7 @@ export default defineConfig({
   // Note: Using 1 worker locally to avoid SQLite locking issues
   // CI uses WAL mode + multiple workers
   fullyParallel: true,
-  workers: process.env.CI ? 4 : 1,
+  workers: 4,
 
   // Fail fast on CI
   forbidOnly: !!process.env.CI,
