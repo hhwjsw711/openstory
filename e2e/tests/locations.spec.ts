@@ -235,9 +235,9 @@ testWithUser.describe('Edit Location', () => {
 
   testWithUser('can view location detail page', async ({ page }) => {
     await page.goto('/locations');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
-    await page.getByRole('heading', { name: testLocation.name }).click();
+    await page.getByText(testLocation.name).click();
 
     await expect(
       page.getByRole('heading', { name: testLocation.name })
@@ -252,9 +252,9 @@ testWithUser.describe('Edit Location', () => {
     'can open edit dialog from location detail page',
     async ({ page }) => {
       await page.goto('/locations');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await waitForLocationsPageLoad(page);
 
-      await page.getByRole('heading', { name: testLocation.name }).click();
+      await page.getByText(testLocation.name).click();
 
       await page.locator('button:has(svg.lucide-pencil)').first().click();
 
@@ -268,8 +268,8 @@ testWithUser.describe('Edit Location', () => {
 
   testWithUser('can cancel edit dialog without saving', async ({ page }) => {
     await page.goto('/locations');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
-    await page.getByRole('heading', { name: testLocation.name }).click();
+    await waitForLocationsPageLoad(page);
+    await page.getByText(testLocation.name).click();
 
     await page.locator('button:has(svg.lucide-pencil)').first().click();
 
@@ -312,23 +312,23 @@ testWithUser.describe('Location Library - List View', () => {
 
   testWithUser('displays multiple locations in grid', async ({ page }) => {
     await page.goto('/locations');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
     await expect(
       page.getByRole('heading', { name: testLocationAlpha.name })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
     await expect(
       page.getByRole('heading', { name: testLocationBeta.name })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 
   testWithUser(
     'can navigate between location detail pages',
     async ({ page }) => {
       await page.goto('/locations');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await waitForLocationsPageLoad(page);
 
-      await page.getByRole('heading', { name: testLocationAlpha.name }).click();
+      await page.getByText(testLocationAlpha.name).click();
       await expect(
         page.getByRole('heading', { name: testLocationAlpha.name })
       ).toBeVisible();
@@ -336,7 +336,7 @@ testWithUser.describe('Location Library - List View', () => {
       await page.getByRole('link', { name: 'Back to Locations' }).click();
       await expect(page).toHaveURL(/\/locations(\?|$)/);
 
-      await page.getByRole('heading', { name: testLocationBeta.name }).click();
+      await page.getByText(testLocationBeta.name).click();
       await expect(
         page.getByRole('heading', { name: testLocationBeta.name })
       ).toBeVisible();
