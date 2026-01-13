@@ -8,7 +8,8 @@ import { test as testWithUser } from '../fixtures/auth.fixture';
 import { setupMockRoutes } from '../mocks/handlers';
 import {
   createTestTalentWithMedia,
-  cleanupTestTalent,
+  cleanupTalentById,
+  type TestTalentWithMedia,
 } from '../fixtures/talent.fixture';
 import path from 'node:path';
 
@@ -48,7 +49,9 @@ test.describe('Talent Library', () => {
   });
 });
 
+// Run serially because tests create talents that affect empty state visibility
 test.describe('Add Talent with Reference Media', () => {
+  test.describe.configure({ mode: 'serial' });
   test.beforeEach(async ({ page }) => {
     // Set up mock routes for R2 and other external services
     await setupMockRoutes(page);
@@ -190,17 +193,25 @@ test.describe('Add Talent with Reference Media', () => {
 });
 
 // Tests that need testUser for creating test data
+// Run serially because tests share data created in beforeEach
 testWithUser.describe('Edit Talent with Reference Media', () => {
+  testWithUser.describe.configure({ mode: 'serial' });
+  let testTalent: TestTalentWithMedia;
+
   testWithUser.beforeEach(async ({ page, testUser }) => {
     // Set up mock routes
     await setupMockRoutes(page);
 
     // Create test talent with media
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Edit Test Talent', 2);
+    testTalent = await createTestTalentWithMedia(
+      testUser.teamId,
+      'E2E Edit Test Talent',
+      2
+    );
   });
 
-  testWithUser.afterEach(async ({ testUser }) => {
-    await cleanupTestTalent(testUser.teamId);
+  testWithUser.afterEach(async () => {
+    await cleanupTalentById(testTalent.id);
   });
 
   testWithUser('can view talent detail page with media', async ({ page }) => {
@@ -353,15 +364,29 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
   });
 });
 
+// Run serially because tests share data created in beforeEach
 testWithUser.describe('Talent with Media - List View', () => {
+  testWithUser.describe.configure({ mode: 'serial' });
+  let testTalentAlpha: TestTalentWithMedia;
+  let testTalentBeta: TestTalentWithMedia;
+
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Talent Alpha', 1);
-    await createTestTalentWithMedia(testUser.teamId, 'E2E Talent Beta', 3);
+    testTalentAlpha = await createTestTalentWithMedia(
+      testUser.teamId,
+      'E2E Talent Alpha',
+      1
+    );
+    testTalentBeta = await createTestTalentWithMedia(
+      testUser.teamId,
+      'E2E Talent Beta',
+      3
+    );
   });
 
-  testWithUser.afterEach(async ({ testUser }) => {
-    await cleanupTestTalent(testUser.teamId);
+  testWithUser.afterEach(async () => {
+    await cleanupTalentById(testTalentAlpha.id);
+    await cleanupTalentById(testTalentBeta.id);
   });
 
   testWithUser('displays multiple talents in grid', async ({ page }) => {

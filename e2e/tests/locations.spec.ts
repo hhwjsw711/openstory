@@ -8,7 +8,8 @@ import { test as testWithUser } from '../fixtures/auth.fixture';
 import { setupMockRoutes } from '../mocks/handlers';
 import {
   createTestLibraryLocation,
-  cleanupTestLocations,
+  cleanupLocationById,
+  type TestLibraryLocation,
 } from '../fixtures/location.fixture';
 import path from 'node:path';
 
@@ -45,23 +46,26 @@ test.describe('Location Library', () => {
   });
 });
 
-test.describe('Add Location with Reference Media', () => {
-  test.beforeEach(async ({ page }) => {
+// Run serially because tests create locations that affect empty state visibility
+testWithUser.describe('Add Location with Reference Media', () => {
+  testWithUser.describe.configure({ mode: 'serial' });
+
+  testWithUser.beforeEach(async ({ page }) => {
     await setupMockRoutes(page);
   });
 
-  test('can open Add Location dialog', async ({ page }) => {
+  testWithUser('can open Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-    // Wait for hydration - the empty state button appears after page loads
-    const emptyStateButton = page
+    // Click the Add Location button (header or empty state - use first available)
+    const addButton = page
       .getByRole('button', { name: 'Add Location' })
-      .nth(1);
-    await expect(emptyStateButton).toBeVisible({ timeout: 10000 });
-    await expect(emptyStateButton).toBeEnabled();
-    await emptyStateButton.click();
+      .first();
+    await expect(addButton).toBeVisible({ timeout: 10000 });
+    await expect(addButton).toBeEnabled();
+    await addButton.click();
 
     await expect(
       page.getByRole('dialog', { name: 'Add Location' })
@@ -75,13 +79,15 @@ test.describe('Add Location with Reference Media', () => {
     ).toBeVisible();
   });
 
-  test('can create location without media', async ({ page }) => {
+  testWithUser('can create location without media', async ({ page }) => {
     await page.goto('/locations');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
 
-    // Use the empty state button (nth(1)) as header button has click issues
-    const addButton = page.getByRole('button', { name: 'Add Location' }).nth(1);
+    // Click Add Location button (header or empty state - use first available)
+    const addButton = page
+      .getByRole('button', { name: 'Add Location' })
+      .first();
     await expect(addButton).toBeVisible({ timeout: 10000 });
     await expect(addButton).toBeEnabled();
     await addButton.click();
@@ -106,7 +112,7 @@ test.describe('Add Location with Reference Media', () => {
     });
   });
 
-  test('can create location with reference media', async ({ page }) => {
+  testWithUser('can create location with reference media', async ({ page }) => {
     await page.goto('/locations');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
@@ -149,7 +155,7 @@ test.describe('Add Location with Reference Media', () => {
     });
   });
 
-  test('can cancel Add Location dialog', async ({ page }) => {
+  testWithUser('can cancel Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Location Library' }).waitFor();
@@ -174,14 +180,21 @@ test.describe('Add Location with Reference Media', () => {
 });
 
 // Tests that need testUser for creating test data
+// Run serially because tests share data created in beforeEach
 testWithUser.describe('Edit Location', () => {
+  testWithUser.describe.configure({ mode: 'serial' });
+  let testLocation: TestLibraryLocation;
+
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
-    await createTestLibraryLocation(testUser.teamId, 'E2E Edit Test Location');
+    testLocation = await createTestLibraryLocation(
+      testUser.teamId,
+      'E2E Edit Test Location'
+    );
   });
 
-  testWithUser.afterEach(async ({ testUser }) => {
-    await cleanupTestLocations(testUser.teamId);
+  testWithUser.afterEach(async () => {
+    await cleanupLocationById(testLocation.id);
   });
 
   testWithUser('can view location detail page', async ({ page }) => {
@@ -242,15 +255,27 @@ testWithUser.describe('Edit Location', () => {
   });
 });
 
+// Run serially because tests share data created in beforeEach
 testWithUser.describe('Location Library - List View', () => {
+  testWithUser.describe.configure({ mode: 'serial' });
+  let testLocationAlpha: TestLibraryLocation;
+  let testLocationBeta: TestLibraryLocation;
+
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
-    await createTestLibraryLocation(testUser.teamId, 'E2E Location Alpha');
-    await createTestLibraryLocation(testUser.teamId, 'E2E Location Beta');
+    testLocationAlpha = await createTestLibraryLocation(
+      testUser.teamId,
+      'E2E Location Alpha'
+    );
+    testLocationBeta = await createTestLibraryLocation(
+      testUser.teamId,
+      'E2E Location Beta'
+    );
   });
 
-  testWithUser.afterEach(async ({ testUser }) => {
-    await cleanupTestLocations(testUser.teamId);
+  testWithUser.afterEach(async () => {
+    await cleanupLocationById(testLocationAlpha.id);
+    await cleanupLocationById(testLocationBeta.id);
   });
 
   testWithUser('displays multiple locations in grid', async ({ page }) => {

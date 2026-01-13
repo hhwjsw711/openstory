@@ -55,10 +55,19 @@ export async function createTestLibraryLocationSet(
 }
 
 /**
- * Clean up test library locations by team ID
+ * Clean up test library locations by team ID (use only when test isolation isn't needed)
  */
 export async function cleanupTestLocations(teamId: string): Promise<void> {
   await testDb
     .delete(locationLibrary)
     .where(eq(locationLibrary.teamId, teamId));
+}
+
+/**
+ * Clean up a specific location by ID (use for parallel test isolation)
+ */
+export async function cleanupLocationById(locationId: string): Promise<void> {
+  await testDb
+    .delete(locationLibrary)
+    .where(eq(locationLibrary.id, locationId));
 }

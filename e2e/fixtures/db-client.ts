@@ -9,11 +9,13 @@ import { schema } from '@/lib/db/schema';
 
 const client = createClient({ url: 'file:test.db' });
 
-// Set busy timeout to wait for locks instead of failing immediately
-// This helps when server and tests access db concurrently
-client.execute('PRAGMA busy_timeout = 5000').catch(() => {
-  // Ignore errors if PRAGMA not supported
-});
+// Configure SQLite for better concurrency with parallel tests
+// WAL mode allows concurrent reads while writing
+// busy_timeout waits for locks instead of failing immediately
+const initPromise = (async () => {
+  await client.execute('PRAGMA journal_mode = WAL');
+  await client.execute('PRAGMA busy_timeout = 10000');
+})();
 
 /**
  * Drizzle database instance for e2e tests
@@ -24,6 +26,12 @@ export const testDb = drizzle(client, {
   schema,
   casing: 'snake_case',
 });
+
+/**
+ * Ensure database is initialized before running queries
+ * Call this at the start of test setup if needed
+ */
+export const ensureDbInit = () => initPromise;
 
 /**
  * Get the raw libSQL client for operations that need it
