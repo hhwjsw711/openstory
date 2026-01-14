@@ -4,6 +4,16 @@ import { http, HttpResponse } from 'msw';
 import { generateMockFrames } from './data-generators';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 
+type CreateStyleBody = {
+  name: string;
+  description?: string | null;
+  config: Style['config'];
+  category?: string;
+  tags?: string[];
+  is_public?: boolean;
+  preview_url?: string;
+};
+
 const stylePresets: Style[] = MOCK_SYSTEM_STYLES;
 
 /**
@@ -144,18 +154,19 @@ export const handlers = [
 
   // POST /api/styles - Create new style
   http.post('/api/styles', async ({ request }) => {
-    const body = (await request.json()) as Record<string, unknown>;
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion -- MSW mock handler
+    const body = (await request.json()) as CreateStyleBody;
 
     const newStyle = {
       id: `style-${Date.now()}`,
-      name: body.name as string,
-      description: body.description as string | null,
+      name: body.name,
+      description: body.description ?? null,
       config: body.config,
-      category: (body.category as string) || null,
-      tags: (body.tags as string[]) || null,
-      isPublic: (body.is_public as boolean) || false,
+      category: body.category ?? null,
+      tags: body.tags ?? null,
+      isPublic: body.is_public ?? false,
       isTemplate: false,
-      previewUrl: (body.preview_url as string) || null,
+      previewUrl: body.preview_url ?? null,
       teamId: 'team-1',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -173,7 +184,8 @@ export const handlers = [
   // PATCH /api/styles/:id - Update style
   http.patch('/api/styles/:id', async ({ params, request }) => {
     const { id } = params;
-    const body = (await request.json()) as Record<string, unknown>;
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion -- MSW mock handler
+    const body = (await request.json()) as Partial<CreateStyleBody>;
     const style = stylePresets.find((s) => s.id === id);
 
     if (!style) {

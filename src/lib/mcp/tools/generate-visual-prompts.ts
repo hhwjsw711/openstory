@@ -22,7 +22,8 @@ function getAllStyleNamesTuple(): [string, ...string[]] {
   if (names.length === 0) {
     throw new Error('No style templates available');
   }
-  return names as [string, ...string[]];
+  const [first, ...rest] = names;
+  return [first, ...rest];
 }
 
 export const generateVisualPromptsInputSchema = z.object({
@@ -94,7 +95,7 @@ export async function generateVisualPromptsTool(
 /**
  * Tool description for MCP
  */
-const generateVisualPromptsToolDescription = {
+export const generateVisualPromptsToolDescription = {
   name: 'generate_visual_prompts',
   description: `Generate visual prompts for scenes (Phase 3 of script analysis).
 

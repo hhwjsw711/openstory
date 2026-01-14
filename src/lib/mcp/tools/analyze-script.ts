@@ -31,7 +31,8 @@ function getAllStyleNamesTuple(): [string, ...string[]] {
   if (names.length === 0) {
     throw new Error('No style templates available');
   }
-  return names as [string, ...string[]];
+  const [first, ...rest] = names;
+  return [first, ...rest];
 }
 
 export const analyzeScriptInputSchema = z.object({
@@ -161,7 +162,7 @@ export async function analyzeScriptTool(
   }
 }
 
-const analyzeScriptToolDescription = {
+export const analyzeScriptToolDescription = {
   name: 'analyze_script',
   description: `Analyze script with 5-phase workflow. Available styles: ${getAllStyleNames().join(', ')}`,
   inputSchema: analyzeScriptInputSchema,

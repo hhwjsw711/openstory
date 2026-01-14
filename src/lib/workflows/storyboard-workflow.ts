@@ -27,8 +27,6 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
 
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
-
 export const generateStoryboardWorkflow = createWorkflow(
   async (context: WorkflowContext<StoryboardWorkflowInput>) => {
     const input = context.requestPayload;

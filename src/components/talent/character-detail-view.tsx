@@ -8,7 +8,7 @@ import {
   useRecastCharacter,
   useSequenceCharacters,
 } from '@/hooks/use-sequence-characters';
-import type { CharacterWithTalent, TalentWithSheets } from '@/lib/db/schema';
+import type { TalentWithSheets } from '@/lib/db/schema';
 import { useRealtime } from '@/lib/realtime/client';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';

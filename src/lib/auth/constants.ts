@@ -22,13 +22,6 @@ const ROLE_HIERARCHY = {
 export type TeamRole = keyof typeof ROLE_HIERARCHY;
 
 /**
- * Get the numeric level for a role
- */
-function getRoleLevel(role: TeamRole): number {
-  return ROLE_HIERARCHY[role];
-}
-
-/**
  * Check if a role has sufficient permissions
  */
 export function hasMinimumRole(
@@ -58,13 +51,4 @@ export const INVITATION_CONFIG = {
   TOKEN_BYTES: 32,
   TOKEN_ENCODING: 'base64url' as const, // URL-safe encoding
   EXPIRY_DAYS: 7,
-} as const;
-
-/**
- * Session configuration
- */
-const SESSION_CONFIG = {
-  EXPIRES_IN: 60 * 60 * 24 * 365, // 1 year
-  UPDATE_AGE: 60 * 60 * 24, // 1 day
-  COOKIE_CACHE_MAX_AGE: 5 * 60, // 5 minutes
 } as const;

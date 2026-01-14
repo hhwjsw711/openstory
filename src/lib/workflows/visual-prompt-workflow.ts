@@ -8,12 +8,8 @@
 import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { getGenerationChannel } from '@/lib/realtime';
 import type { Scene } from '@/lib/script/types';
-import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
-import { updateFrame } from '@/lib/db/helpers/frames';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { durableLLMCall } from './llm-call-helper';
 import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
 
 export const visualPromptWorkflow = createWorkflow(
@@ -28,7 +24,6 @@ export const visualPromptWorkflow = createWorkflow(
       locationBible,
       styleConfig,
       analysisModelId,
-      sequenceId,
     } = input;
 
     console.log(

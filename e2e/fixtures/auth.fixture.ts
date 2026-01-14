@@ -166,7 +166,7 @@ export const test = base.extend<{
   authenticatedPage: Page;
 }>({
   // Default: read stored user info (for tests with storageState)
-  testUser: async ({}, use) => {
+  testUser: async (_, use) => {
     const storedUser = getStoredUserInfo();
     await use(storedUser);
     // No cleanup needed - shared user persists across tests

@@ -137,7 +137,7 @@ export async function uploadImageBufferToStorage(
 /**
  * Generate a signed URL for temporary image access
  */
-async function getSignedImageUrl(
+export async function getSignedImageUrl(
   path: string,
   expiresIn: number = 3600 // 1 hour default
 ): Promise<string> {
@@ -147,7 +147,7 @@ async function getSignedImageUrl(
 /**
  * Delete an image from storage
  */
-async function deleteImageFromStorage(
+export async function deleteImageFromStorage(
   path: string
 ): Promise<{ success: boolean; error?: string }> {
   await deleteFile(STORAGE_BUCKETS.THUMBNAILS, path);
@@ -158,7 +158,7 @@ async function deleteImageFromStorage(
 /**
  * List all images for a sequence
  */
-async function listSequenceImages(
+export async function listSequenceImages(
   teamId: string,
   sequenceId: string
 ): Promise<{
@@ -192,7 +192,7 @@ async function listSequenceImages(
 /**
  * Calculate total image storage used by a team
  */
-async function calculateTeamImageStorageUsage(teamId: string): Promise<{
+export async function calculateTeamImageStorageUsage(teamId: string): Promise<{
   totalBytes: number;
   totalMB: number;
 }> {

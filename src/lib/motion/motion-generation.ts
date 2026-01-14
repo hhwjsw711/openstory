@@ -5,6 +5,7 @@
 
 import {
   DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODEL_KEYS,
   IMAGE_TO_VIDEO_MODELS,
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
@@ -29,12 +30,7 @@ export const generationMotionOptionsSchema = z.object({
   imageUrl: z.url(),
   prompt: z.string(),
   model: z
-    .enum(
-      Object.keys(IMAGE_TO_VIDEO_MODELS) as [
-        ImageToVideoModel,
-        ...ImageToVideoModel[],
-      ]
-    )
+    .enum(IMAGE_TO_VIDEO_MODEL_KEYS)
     .optional()
     .default(DEFAULT_VIDEO_MODEL),
   duration: z.number().optional(),
@@ -235,9 +231,10 @@ export async function generateMotionForFrame(
           videoUrl: result.videoUrl,
           ...(outputVideoMedia && { generatedVideo: outputVideoMedia }),
         },
-        costDetails: result.metadata?.cost
-          ? { total: result.metadata.cost as number }
-          : undefined,
+        costDetails:
+          typeof result.metadata?.cost === 'number'
+            ? { total: result.metadata.cost }
+            : undefined,
       })
       .end();
     return result;
@@ -343,8 +340,21 @@ async function generateMotionInternal(
   console.log('[Motion Service] Result:', JSON.stringify(result, null, 2));
 
   // Extract video URL from result (subscribe returns { data, requestId })
-  const data = (result as { data?: unknown }).data;
-  const videoUrl = (data as { video?: { url?: string } })?.video?.url;
+  // Use type guards for safe extraction
+  const resultObj = result && typeof result === 'object' ? result : null;
+  const data =
+    resultObj && 'data' in resultObj && typeof resultObj.data === 'object'
+      ? resultObj.data
+      : null;
+  const videoUrl =
+    data &&
+    'video' in data &&
+    data.video &&
+    typeof data.video === 'object' &&
+    'url' in data.video &&
+    typeof data.video.url === 'string'
+      ? data.video.url
+      : undefined;
 
   if (!videoUrl) {
     console.error('[Motion Service] No video URL in result:', result);
@@ -352,8 +362,13 @@ async function generateMotionInternal(
   }
 
   // Capture requestId from result if not already captured in onEnqueue
-  if (!requestId && (result as { requestId?: string }).requestId) {
-    requestId = (result as { requestId: string }).requestId;
+  if (
+    !requestId &&
+    resultObj &&
+    'requestId' in resultObj &&
+    typeof resultObj.requestId === 'string'
+  ) {
+    requestId = resultObj.requestId;
   }
 
   const validatedDuration =

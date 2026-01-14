@@ -80,7 +80,7 @@ Transform the content within the USER_SCRIPT tags into a professional, visually 
 };
 
 // Parse the enhanced script response which contains both script text and JSON metadata
-function parseEnhancedScriptResponse(response: string): {
+function _parseEnhancedScriptResponse(response: string): {
   enhancedScript: string;
   styleRecommendation: StyleStackRecommendation;
 } {

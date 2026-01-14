@@ -9,5 +9,5 @@ import { z } from 'zod';
 export const createStyleSchema = createInsertSchema(styles);
 export const updateStyleSchema = createUpdateSchema(styles);
 
-type CreateStyleInput = z.infer<typeof createStyleSchema>;
-type UpdateStyleInput = z.infer<typeof updateStyleSchema>;
+export type CreateStyleInput = z.infer<typeof createStyleSchema>;
+export type UpdateStyleInput = z.infer<typeof updateStyleSchema>;

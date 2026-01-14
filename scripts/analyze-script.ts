@@ -29,6 +29,7 @@ import { parseArgs } from 'util';
 import {
   ANALYSIS_MODEL_IDS,
   DEFAULT_ANALYSIS_MODEL,
+  isValidAnalysisModelId,
 } from '../src/lib/ai/models.config';
 import {
   aspectRatioSchema,
@@ -157,11 +158,7 @@ async function main() {
 
   // Validate analysis model
   const analysisModel = values['analysis-model'] ?? DEFAULT_ANALYSIS_MODEL;
-  if (
-    !ANALYSIS_MODEL_IDS.includes(
-      analysisModel as (typeof ANALYSIS_MODEL_IDS)[number]
-    )
-  ) {
+  if (!isValidAnalysisModelId(analysisModel)) {
     console.error(`Error: Invalid analysis model: ${analysisModel}`);
     console.error('Run with --help to see available models');
     process.exit(1);

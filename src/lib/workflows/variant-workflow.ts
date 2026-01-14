@@ -20,8 +20,6 @@ import {
   type ReferenceImageDescription,
 } from '@/lib/prompts/reference-image-prompt';
 
-const maxDuration = 800; // This function can run for a maximum of 800 seconds
-
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {
     const input = context.requestPayload;

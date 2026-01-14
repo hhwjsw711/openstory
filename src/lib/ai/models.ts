@@ -237,7 +237,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
  * All video models combined (for backward compatibility - returns model IDs)
  * @deprecated Use IMAGE_TO_VIDEO_MODELS directly for full metadata
  */
-const VIDEO_MODELS = {
+const _VIDEO_MODELS = {
   ...TEXT_TO_VIDEO_MODELS,
   // Extract just the IDs for backward compatibility
   seedance_v1_pro: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro.id,
@@ -479,7 +479,7 @@ export function getImageModelById(id: string): ImageModelConfig | undefined {
 }
 
 // Helper to get model display name
-function getImageModelDisplayName(modelId: string): string {
+function _getImageModelDisplayName(modelId: string): string {
   const model = getImageModelById(modelId);
   return model?.name ?? modelId;
 }
@@ -494,8 +494,21 @@ type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
 export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
 
+// Typed list of image-to-video model keys for Zod enum schemas
+// This is type-safe because we use satisfies to validate the tuple matches the type
+export const IMAGE_TO_VIDEO_MODEL_KEYS = [
+  'kling_o1',
+  'kling_v2_5_turbo_pro',
+  'kling_v2_6_pro',
+  'kling_v2_6_pro_no_audio',
+  'seedance_v1_pro',
+  'sora_2',
+  'veo3',
+  'veo3_1',
+] as const satisfies readonly ImageToVideoModel[];
+
 // Helper to get model ID from key (for backward compatibility)
-function getImageToVideoModelId(
+function _getImageToVideoModelId(
   modelKey: ImageToVideoModel
 ): ImageToVideoModelId {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
@@ -650,6 +663,6 @@ export function getEditEndpoint(model: TextToImageModel): string | null {
  * @param model - The text-to-image model key
  * @returns true if the model has an edit endpoint for reference images
  */
-function supportsReferenceImages(model: TextToImageModel): boolean {
+function _supportsReferenceImages(model: TextToImageModel): boolean {
   return model in EDIT_ENDPOINTS;
 }

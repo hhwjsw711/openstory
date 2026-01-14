@@ -90,32 +90,3 @@ export const handleApiError = (error: unknown): VelroError => {
     originalError: typeof error,
   });
 };
-
-/**
- * Create standardized error response for Server Actions
- */
-function createActionErrorResponse(error: unknown): {
-  success: false;
-  error: string;
-  code?: string;
-} {
-  if (error instanceof VelroError) {
-    return {
-      success: false,
-      error: error.message,
-      code: error.code,
-    };
-  }
-
-  if (error instanceof Error) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-
-  return {
-    success: false,
-    error: 'An unknown error occurred',
-  };
-}

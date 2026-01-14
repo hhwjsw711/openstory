@@ -281,7 +281,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'flux_2': {
@@ -321,7 +321,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'sdxl':
@@ -378,7 +378,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'imagen4_preview_ultra': {
@@ -413,7 +413,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'nano_banana': {
@@ -447,7 +447,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'nano_banana_pro': {
@@ -490,7 +490,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'recraft_v3': {
@@ -521,7 +521,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'hidream_i1_full': {
@@ -561,7 +561,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'seedream_v4_5': {
@@ -593,7 +593,7 @@ async function generateImageInternal(
         },
       });
       if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByProvider(params.model, params, resp.data);
+      return resultByFal(params, resp.data);
     }
 
     case 'letzai': {
@@ -642,7 +642,7 @@ async function generateImageInternal(
       if (imageDto.status === 'interrupted') {
         throw new Error('Image generation interrupted');
       }
-      return resultByProvider(params.model, params, imageDto);
+      return resultByLetzai(params, imageDto);
     }
 
     default: {
@@ -693,91 +693,108 @@ function calculateImageCost(
 }
 
 /**
- * Parse result by provider
+ * Parse result for LetzAI provider
  */
-function resultByProvider(
-  model: string,
+function resultByLetzai(
   params: ImageGenerationParams,
-  resp: unknown
+  resp: ImageDto
 ): ImageGenerationResult {
-  const result = {
-    imageUrls: [] as string[],
+  // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
+  const presetDims = {
+    square_hd: { width: 1024, height: 1024 },
+    portrait_16_9: { width: 576, height: 1024 },
+    landscape_16_9: { width: 1600, height: 900 },
+  }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
+
+  const originalUrl = resp.imageVersions?.original;
+  const dimensions = [{ width: presetDims.width, height: presetDims.height }];
+
+  const result: ImageGenerationResult = {
+    imageUrls: typeof originalUrl === 'string' ? [originalUrl] : [],
     parameters: params,
     generatedAt: new Date().toISOString(),
-    processingTimeMs: 0,
-    provider: model === 'letzai' ? ('letzai' as const) : ('fal' as const),
+    processingTimeMs: 0, // LetzAI response doesn't include timing info
+    provider: 'letzai',
     metadata: {
-      prompt: (resp as { prompt?: string }).prompt || params.prompt,
-      model,
-      dimensions: [] as { width: number; height: number }[],
-      file_sizes: [] as number[],
-      seed: (resp as { seed?: number }).seed,
-      has_nsfw_concepts: (resp as { has_nsfw_concepts?: boolean[] })
-        .has_nsfw_concepts,
-      cost: undefined as number | undefined,
-      requestId: (resp as { requestId?: string }).requestId,
+      prompt: params.prompt,
+      model: params.model,
+      dimensions,
+      file_sizes: [],
+      seed: undefined,
+      has_nsfw_concepts: undefined,
+      cost: calculateImageCost(params.model, 1, dimensions, 0),
+      requestId: undefined,
     },
   };
 
-  if (model === 'letzai') {
-    const letzaiResp = resp as ImageDto;
+  return result;
+}
 
-    // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
-    const presetDims = {
-      square_hd: { width: 1024, height: 1024 },
-      portrait_16_9: { width: 576, height: 1024 },
-      landscape_16_9: { width: 1600, height: 900 },
-    }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
+/**
+ * Response type for Fal.ai image generation
+ */
+type FalImageResponse = {
+  images?: Array<{
+    url: string;
+    width?: number;
+    height?: number;
+    file_size?: number;
+  }>;
+  timings?: { inference?: number };
+  seed?: number;
+  has_nsfw_concepts?: boolean[];
+  prompt?: string;
+  requestId?: string;
+  latencyMs?: number;
+};
 
-    result.imageUrls = [letzaiResp.imageVersions?.original as string];
-    result.processingTimeMs = 0; // LetzAI response doesn't include timing info
-    result.metadata.dimensions = [
-      {
-        width: presetDims.width,
-        height: presetDims.height,
-      },
-    ];
-  } else {
-    const falResp = resp as {
-      images?: Array<{
-        url: string;
-        width?: number;
-        height?: number;
-        file_size?: number;
-      }>;
-      timings?: { inference?: number };
-      seed?: number;
-      has_nsfw_concepts?: boolean[];
-    };
-    const images = falResp.images;
-    const timings = falResp.timings;
-    const latencyMs = (resp as { latencyMs?: number }).latencyMs;
+/**
+ * Parse result for Fal.ai provider
+ */
+function resultByFal(
+  params: ImageGenerationParams,
+  resp: FalImageResponse
+): ImageGenerationResult {
+  const images = resp.images;
+  const timings = resp.timings;
+  const latencyMs = resp.latencyMs;
 
-    result.imageUrls = Array.isArray(images)
-      ? images.map((img) => img.url)
-      : [];
-    result.processingTimeMs = timings?.inference || latencyMs || 0;
-    result.metadata.dimensions = Array.isArray(images)
-      ? images.map((img) => ({
-          width: img.width ?? 0,
-          height: img.height ?? 0,
-        }))
-      : [];
-    result.metadata.file_sizes = Array.isArray(images)
-      ? images.map((img) => img.file_size ?? 0)
-      : [];
-    result.metadata.seed = falResp.seed;
-    result.metadata.has_nsfw_concepts = falResp.has_nsfw_concepts;
-  }
+  const imageUrls = Array.isArray(images) ? images.map((img) => img.url) : [];
+  const processingTimeMs = timings?.inference || latencyMs || 0;
+  const dimensions = Array.isArray(images)
+    ? images.map((img) => ({
+        width: img.width ?? 0,
+        height: img.height ?? 0,
+      }))
+    : [];
+  const file_sizes = Array.isArray(images)
+    ? images.map((img) => img.file_size ?? 0)
+    : [];
 
-  // Calculate cost based on model pricing
-  const numImages = result.imageUrls.length || params.numImages || 1;
-  result.metadata.cost = calculateImageCost(
-    params.model,
-    numImages,
-    result.metadata.dimensions,
-    result.processingTimeMs
-  );
+  const numImages = imageUrls.length || params.numImages || 1;
+
+  const result: ImageGenerationResult = {
+    imageUrls,
+    parameters: params,
+    generatedAt: new Date().toISOString(),
+    processingTimeMs,
+    provider: 'fal',
+    metadata: {
+      prompt: resp.prompt || params.prompt,
+      model: params.model,
+      dimensions,
+      file_sizes,
+      seed: resp.seed,
+      has_nsfw_concepts: resp.has_nsfw_concepts,
+      cost: calculateImageCost(
+        params.model,
+        numImages,
+        dimensions,
+        processingTimeMs
+      ),
+      requestId: resp.requestId,
+    },
+  };
 
   return result;
 }

@@ -143,7 +143,10 @@ export async function canAccessTeam(
  * }
  * ```
  */
-async function canManageTeam(userId: string, teamId: string): Promise<boolean> {
+export async function canManageTeam(
+  userId: string,
+  teamId: string
+): Promise<boolean> {
   const membership = await getUserTeam(userId, teamId);
   if (!membership) {
     return false;
@@ -164,7 +167,7 @@ async function canManageTeam(userId: string, teamId: string): Promise<boolean> {
  * console.log(`Team has ${members.length} members`);
  * ```
  */
-async function getTeamMembers(
+export async function getTeamMembers(
   teamId: string
 ): Promise<TeamMemberWithDetails[]> {
   const members = await getDb()
@@ -247,7 +250,7 @@ export async function getUserTeams(
  * // If we get here, user has access
  * ```
  */
-async function requireTeamAccess(
+export async function requireTeamAccess(
   userId: string,
   teamId: string
 ): Promise<UserTeamMembership> {

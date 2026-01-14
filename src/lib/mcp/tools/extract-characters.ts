@@ -57,7 +57,7 @@ export async function extractCharactersTool(
 /**
  * Tool description for MCP
  */
-const extractCharactersToolDescription = {
+export const extractCharactersToolDescription = {
   name: 'extract_characters',
   description: `Extract character bible from scenes (Phase 2 of script analysis).
 

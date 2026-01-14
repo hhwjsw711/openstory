@@ -43,7 +43,7 @@ import {
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { TalentSheetSource, TalentWithSheets } from '@/lib/db/schema';
+import type { TalentWithSheets } from '@/lib/db/schema';
 
 // ============================================================================
 // List Talent

@@ -209,6 +209,3 @@ export function getTalentChannel(talentId?: string) {
         emit: () => null,
       };
 }
-
-// Export the schema type for type inference
-type RealtimeSchema = typeof realtimeSchema;

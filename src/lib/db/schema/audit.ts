@@ -63,5 +63,5 @@ export const scriptAnalysisAudit = sqliteTable(
   ]
 );
 
-type ScriptAnalysisAudit = typeof scriptAnalysisAudit.$inferSelect;
-type InsertScriptAnalysisAudit = typeof scriptAnalysisAudit.$inferInsert;
+export type ScriptAnalysisAudit = typeof scriptAnalysisAudit.$inferSelect;
+export type InsertScriptAnalysisAudit = typeof scriptAnalysisAudit.$inferInsert;

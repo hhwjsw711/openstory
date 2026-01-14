@@ -105,13 +105,17 @@ describe('Motion Service', () => {
     it('should handle generation failure', async () => {
       mockSubscribe.mockRejectedValue(new Error('API error'));
 
-      await expect(
-        generateMotionForFrame({
+      let error: Error | undefined;
+      try {
+        await generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
           model: 'kling_v2_6_pro',
-        })
-      ).rejects.toThrow('API error');
+        });
+      } catch (e) {
+        error = e instanceof Error ? e : new Error(String(e));
+      }
+      expect(error?.message).toBe('API error');
     });
 
     it('should handle missing video URL in response', async () => {
@@ -123,13 +127,19 @@ describe('Motion Service', () => {
         requestId: 'test-error-id',
       });
 
-      await expect(
-        generateMotionForFrame({
+      let error: Error | undefined;
+      try {
+        await generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
           model: 'kling_v2_6_pro',
-        })
-      ).rejects.toThrow('No video URL returned from motion generation');
+        });
+      } catch (e) {
+        error = e instanceof Error ? e : new Error(String(e));
+      }
+      expect(error?.message).toBe(
+        'No video URL returned from motion generation'
+      );
     });
 
     it('should generate motion with Kling O1 model', async () => {

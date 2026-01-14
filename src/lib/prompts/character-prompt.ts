@@ -204,11 +204,7 @@ export const buildCharacterSheetPrompt = (
   // These get applied on top of the talent's natural appearance
   const characterFeatures = entry.distinguishingFeatures;
 
-  const ageStr = age
-    ? typeof age === 'number'
-      ? `Age: ${age} years old`
-      : `Age: ${age}`
-    : '';
+  const ageStr = age ? `Age: ${age}` : '';
 
   const genderLine = gender ? `Gender: ${gender}` : '';
   const ethnicityLine = ethnicity ? `Ethnicity: ${ethnicity}` : '';

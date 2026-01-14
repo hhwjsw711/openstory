@@ -13,7 +13,7 @@ type StylesResourceContent = {
 /**
  * Get styles resource content
  */
-function getStylesResource(): StylesResourceContent {
+export function getStylesResource(): StylesResourceContent {
   return {
     styles: DEFAULT_STYLE_TEMPLATES,
     totalStyles: DEFAULT_STYLE_TEMPLATES.length,
@@ -58,7 +58,7 @@ export function formatStylesAsText(): string {
 /**
  * Resource description for MCP
  */
-const stylesResourceDescription = {
+export const stylesResourceDescription = {
   uri: 'velro://styles',
   name: 'Director DNA Styles',
   description:

@@ -24,7 +24,7 @@ function ScriptPage() {
   const handleSuccess = (sequenceIds: string[]) => {
     // Navigate to storyboard page after successful generation
     if (sequenceIds.length > 0) {
-      navigate({
+      void navigate({
         to: '/sequences/$id/scenes',
         params: { id: sequenceIds[0] },
       });
@@ -33,7 +33,7 @@ function ScriptPage() {
 
   const handleCancel = () => {
     // Navigate back to storyboard without making changes
-    navigate({
+    void navigate({
       to: '/sequences/$id/scenes',
       params: { id: sequenceId },
     });

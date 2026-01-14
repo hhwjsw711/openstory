@@ -37,7 +37,7 @@ export function useSequencesWithFrames() {
 
     return sequences.map((seq: Sequence, i: number) => ({
       ...seq,
-      frames: (framesQueries[i]?.data as Frame[]) || [],
+      frames: framesQueries[i]?.data ?? [],
     }));
   }, [sequences, framesQueries]);
 

@@ -33,8 +33,7 @@ export function useStyles(teamId?: string, enabled = true) {
   return useQuery<Style[]>({
     queryKey: styleKeys.list(teamId),
     queryFn: async () => {
-      const data = await getStylesFn();
-      return data as Style[];
+      return getStylesFn();
     },
     staleTime: 10 * 60 * 1000, // 10 minutes (styles change less frequently)
     enabled,
@@ -42,12 +41,11 @@ export function useStyles(teamId?: string, enabled = true) {
 }
 
 // Hook for getting single style
-function useStyle(id: string) {
+export function useStyle(id: string) {
   return useQuery<Style>({
     queryKey: styleKeys.detail(id),
     queryFn: async () => {
-      const data = await getStyleFn({ data: { styleId: id } });
-      return data as Style;
+      return getStyleFn({ data: { styleId: id } });
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!id,
@@ -55,15 +53,16 @@ function useStyle(id: string) {
 }
 
 // Hook for creating style
-function useCreateStyle() {
+export function useCreateStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<Style, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
       const data = await createStyleFn({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
         data: input as Parameters<typeof createStyleFn>[0]['data'],
       });
-      return data as Style;
+      return data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: styleKeys.lists() });
@@ -72,7 +71,7 @@ function useCreateStyle() {
 }
 
 // Hook for updating style
-function useUpdateStyle() {
+export function useUpdateStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -91,12 +90,13 @@ function useUpdateStyle() {
       input: Partial<CreateStyleInput>;
     }) => {
       const data = await updateStyleFn({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
         data: {
           styleId: id,
           ...input,
         } as Parameters<typeof updateStyleFn>[0]['data'],
       });
-      return data as Style;
+      return data;
     },
     onSuccess: async (data) => {
       if (data?.id) {
@@ -108,7 +108,7 @@ function useUpdateStyle() {
 }
 
 // Hook for deleting style
-function useDeleteStyle() {
+export function useDeleteStyle() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({

@@ -40,7 +40,7 @@ export function generateId(): string {
  * const id = generateIdAt(Date.now());
  * ```
  */
-function generateIdAt(timestamp: number): string {
+export function generateIdAt(timestamp: number): string {
   return ulid(timestamp);
 }
 
@@ -57,7 +57,7 @@ function generateIdAt(timestamp: number): string {
  * console.log(new Date(timestamp)); // Creation time
  * ```
  */
-function getTimestampFromId(id: string): number {
+export function getTimestampFromId(id: string): number {
   // ULID spec: first 10 characters encode timestamp
   const timeComponent = id.substring(0, 10);
 

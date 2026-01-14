@@ -32,7 +32,7 @@ type SequenceWithFrames = Sequence & {
  * console.log(`Sequence has ${sequence.frames.length} frames`);
  * ```
  */
-async function getSequenceWithFrames(
+export async function getSequenceWithFrames(
   sequenceId: string
 ): Promise<SequenceWithFrames | null> {
   const result = await getDb().query.sequences.findFirst({
@@ -65,7 +65,7 @@ async function getSequenceWithFrames(
  * const sequences = await getTeamSequences(teamId, { limit: 10 });
  * ```
  */
-async function getTeamSequences(
+export async function getTeamSequences(
   teamId: string,
   options?: {
     limit?: number;
@@ -277,7 +277,7 @@ export async function getStyleById(styleId: string): Promise<Style | null> {
  * }
  * ```
  */
-async function getTeamById(teamId: string) {
+export async function getTeamById(teamId: string) {
   const result = await getDb().select().from(teams).where(eq(teams.id, teamId));
   return result[0] ?? null;
 }
@@ -296,7 +296,7 @@ async function getTeamById(teamId: string) {
  * console.log(`Team has ${library.styles.length} styles`);
  * ```
  */
-async function getTeamLibrary(teamId: string): Promise<{
+export async function getTeamLibrary(teamId: string): Promise<{
   styles: Style[];
   vfx: Vfx[];
   audio: Audio[];
@@ -327,7 +327,7 @@ async function getTeamLibrary(teamId: string): Promise<{
  * const processing = await countTeamSequences(teamId, 'processing');
  * ```
  */
-async function countTeamSequences(
+export async function countTeamSequences(
   teamId: string,
   status?: 'draft' | 'processing' | 'completed' | 'failed' | 'archived'
 ): Promise<number> {
@@ -358,7 +358,9 @@ async function countTeamSequences(
  * }
  * ```
  */
-async function getSequencesWithoutStyle(teamId: string): Promise<Sequence[]> {
+export async function getSequencesWithoutStyle(
+  teamId: string
+): Promise<Sequence[]> {
   return await getDb()
     .select()
     .from(sequences)
@@ -379,7 +381,7 @@ async function getSequencesWithoutStyle(teamId: string): Promise<Sequence[]> {
  * const recentStyles = await getRecentlyUsedStyles(teamId, 3);
  * ```
  */
-async function getRecentlyUsedStyles(
+export async function getRecentlyUsedStyles(
   teamId: string,
   limit = 5
 ): Promise<Style[]> {

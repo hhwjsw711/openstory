@@ -27,8 +27,7 @@ export function useSequences(teamId?: string) {
   return useQuery<Sequence[]>({
     queryKey: sequenceKeys.list(teamId),
     queryFn: async () => {
-      const data = await getSequencesFn();
-      return data as Sequence[];
+      return getSequencesFn();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -107,7 +106,7 @@ export function useCreateSequence() {
       });
 
       return {
-        data: sequences as Sequence[],
+        data: sequences,
         message: 'Sequence created successfully',
       };
     },
@@ -128,13 +127,12 @@ export function useUpdateSequence() {
   return useMutation<Sequence, Error, UpdateSequenceInput & { id: string }>({
     mutationFn: async (input: UpdateSequenceInput & { id: string }) => {
       const { id, ...updateData } = input;
-      const data = await updateSequenceFn({
+      return updateSequenceFn({
         data: {
           sequenceId: id,
           ...updateData,
         },
       });
-      return data as Sequence;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -150,7 +148,7 @@ export function useUpdateSequence() {
 }
 
 // Hook for deleting sequence
-function useDeleteSequence() {
+export function useDeleteSequence() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({

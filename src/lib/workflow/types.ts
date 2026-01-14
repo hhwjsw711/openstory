@@ -69,19 +69,6 @@ export interface VariantWorkflowResult {
 }
 
 /**
- * Video generation workflow input
- */
-interface VideoWorkflowInput extends Partial<SequenceWorkflowContext> {
-  prompt?: string;
-  imageUrl?: string; // For image-to-video
-  imageData?: string; // Base64 encoded
-  model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
-  duration?: number;
-  aspectRatio?: string; // "16:9", "9:16", etc.
-  enableAudio?: boolean;
-}
-
-/**
  * Storyboard generation workflow input
  */
 export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
@@ -129,17 +116,6 @@ export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
   fps?: number;
   motionBucket?: number;
   aspectRatio?: AspectRatio; // "16:9", "9:16", "1:1"
-}
-
-/**
- * Batch motion generation workflow input
- */
-interface BatchMotionWorkflowInput extends Partial<SequenceWorkflowContext> {
-  frameIds?: string[]; // Optional: specific frames to process
-  model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
-  duration?: number;
-  fps?: number;
-  motionBucket?: number;
 }
 
 /**
@@ -267,37 +243,6 @@ export interface MotionPromptSceneWorkflowInput extends MotionPromptWorkflowInpu
   sceneIndex: number;
 }
 /**
- * Script analysis workflow input
- */
-interface ScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
-  script: string;
-  language?: string;
-  genre?: string;
-}
-
-/**
- * Frame generation result
- */
-interface FrameGenerationResult {
-  frames: Array<{
-    description: string;
-    orderIndex: number;
-    durationMs: number;
-    metadata: {
-      scene: number;
-      shotType?: string;
-      cameraAngle?: string;
-      characters?: string[];
-      settings?: string[];
-      mood?: string;
-      generationPrompt?: string;
-    };
-  }>;
-  totalDuration: number;
-  frameCount: number;
-}
-
-/**
  * Workflow result types
  */
 export interface ImageWorkflowResult {
@@ -309,13 +254,6 @@ export interface ImageWorkflowResult {
 export interface MotionWorkflowResult {
   videoUrl: string;
   duration?: number;
-}
-
-interface BatchMotionWorkflowResult {
-  sequenceId: string;
-  processedFrames: string[];
-  failedFrames: Array<{ frameId: string; error: string }>;
-  totalProcessed: number;
 }
 
 export interface CharacterSheetWorkflowResult {

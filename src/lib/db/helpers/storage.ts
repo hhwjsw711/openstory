@@ -410,7 +410,7 @@ export async function deleteFile(
  * ]);
  * ```
  */
-async function deleteFiles(
+export async function deleteFiles(
   bucket: StorageBucket,
   paths: string[]
 ): Promise<void> {

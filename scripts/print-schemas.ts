@@ -17,15 +17,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 // Import canonical schemas from the codebase
-import {
-  characterBibleEntrySchema,
-  continuitySchema,
-  motionPromptSchema,
-  projectMetadataSchema,
-  sceneAnalysisSchema,
-  sceneSchema,
-  visualPromptSchema,
-} from '@/lib/ai/scene-analysis.schema';
+import { sceneAnalysisSchema } from '@/lib/ai/scene-analysis.schema';
 
 // Import result schemas from their source files
 import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
@@ -81,15 +73,19 @@ async function generateLangfuseConfig(phaseName: string, schema: z.ZodTypeAny) {
   }
 }
 
+function isObjectWithProperties(
+  value: unknown
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function checkRequiredFields(schema: unknown, path: string) {
-  if (typeof schema !== 'object' || schema === null) return;
+  if (!isObjectWithProperties(schema)) return;
 
-  const obj = schema as Record<string, unknown>;
-
-  if (obj.type === 'object' && obj.properties) {
-    const properties = obj.properties as Record<string, unknown>;
-    const required = Array.isArray(obj.required)
-      ? obj.required.filter((r): r is string => typeof r === 'string')
+  if (schema.type === 'object' && isObjectWithProperties(schema.properties)) {
+    const properties = schema.properties;
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter((r): r is string => typeof r === 'string')
       : [];
     const propertyNames = Object.keys(properties);
     const missing = propertyNames.filter((p) => !required.includes(p));
@@ -106,8 +102,8 @@ function checkRequiredFields(schema: unknown, path: string) {
     }
   }
 
-  if (obj.items) {
-    checkRequiredFields(obj.items, `${path}[]`);
+  if (schema.items) {
+    checkRequiredFields(schema.items, `${path}[]`);
   }
 }
 
@@ -118,18 +114,16 @@ function checkRequiredFields(schema: unknown, path: string) {
 function checkDescriptions(schema: unknown, path: string): number {
   let missingCount = 0;
 
-  if (typeof schema !== 'object' || schema === null) return missingCount;
+  if (!isObjectWithProperties(schema)) return missingCount;
 
-  const obj = schema as Record<string, unknown>;
-
-  if (obj.type === 'object' && obj.properties) {
-    const properties = obj.properties as Record<
-      string,
-      Record<string, unknown>
-    >;
+  if (schema.type === 'object' && isObjectWithProperties(schema.properties)) {
+    const properties = schema.properties;
 
     for (const [key, value] of Object.entries(properties)) {
-      if (!value.description) {
+      if (
+        isObjectWithProperties(value) &&
+        !('description' in value && value.description)
+      ) {
         console.log(`   ⚠️  Missing description: ${path}.${key}`);
         missingCount++;
       }
@@ -137,8 +131,8 @@ function checkDescriptions(schema: unknown, path: string): number {
     }
   }
 
-  if (obj.items) {
-    missingCount += checkDescriptions(obj.items, `${path}[]`);
+  if (schema.items) {
+    missingCount += checkDescriptions(schema.items, `${path}[]`);
   }
 
   return missingCount;

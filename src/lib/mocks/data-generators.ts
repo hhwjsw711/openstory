@@ -1,83 +1,8 @@
-import type {
-  Frame,
-  Sequence,
-  Style,
-  Team,
-  UserProfile,
-} from '@/types/database';
+import type { Frame, Style } from '@/types/database';
 import { faker } from '@faker-js/faker';
 
 // Set consistent seed for reproducible mock data
 faker.seed(123);
-
-// Mock data generators
-const generateMockSequence = (overrides?: Partial<Sequence>): Sequence => {
-  const genres = [
-    'Action',
-    'Comedy',
-    'Drama',
-    'Horror',
-    'Sci-Fi',
-    'Documentary',
-  ];
-  const moods = [
-    'Dramatic',
-    'Upbeat',
-    'Mysterious',
-    'Romantic',
-    'Intense',
-    'Peaceful',
-  ];
-  const audiences = [
-    'General',
-    'Young Adult',
-    'Children',
-    'Professional',
-    'Educational',
-  ];
-
-  return {
-    id: faker.string.ulid(),
-    title: faker.lorem.sentence(3).replace('.', ''),
-    script: faker.lorem.paragraphs(3, '\n\n'),
-    status: faker.helpers.arrayElement([
-      'draft',
-      'processing',
-      'completed',
-      'failed',
-      'archived',
-    ]),
-    teamId: faker.string.ulid(),
-    styleId: faker.string.ulid(),
-    aspectRatio: faker.helpers.arrayElement(['16:9', '9:16', '1:1']),
-    analysisModel: faker.helpers.arrayElement([
-      'anthropic/claude-haiku-4.5',
-      'anthropic/claude-sonnet-4.5',
-    ]),
-    analysisDurationMs: faker.number.int({ min: 1000, max: 15000 }), // 1-15 seconds
-    imageModel: faker.helpers.arrayElement([
-      'nano_banana_pro',
-      'flux_schnell',
-      'flux_pro',
-    ]),
-    videoModel: faker.helpers.arrayElement([
-      'kling_v2_5_turbo_pro',
-      'wan_i2v',
-      'veo3_1',
-    ]),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
-    createdBy: faker.string.ulid(),
-    updatedBy: faker.string.ulid(),
-    workflow: null,
-    mergedVideoUrl: null,
-    mergedVideoPath: null,
-    mergedVideoStatus: 'pending',
-    mergedVideoGeneratedAt: null,
-    mergedVideoError: null,
-    ...overrides,
-  };
-};
 
 const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
   const settings = [
@@ -377,38 +302,6 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
   };
 };
 
-const generateMockTeam = (overrides?: Partial<Team>): Team => {
-  const name = faker.company.name();
-  return {
-    id: faker.string.ulid(),
-    name,
-    slug: faker.helpers.slugify(name).toLowerCase(),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
-    ...overrides,
-  };
-};
-
-const generateMockUser = (overrides?: Partial<UserProfile>): UserProfile => {
-  return {
-    id: faker.string.ulid(),
-    name: faker.person.fullName(),
-    email: faker.internet.email(),
-    emailVerified: faker.datatype.boolean(),
-    image: faker.image.avatar(),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
-    accessCode: null,
-    status: 'active' as const,
-    ...overrides,
-  };
-};
-
-// Utility functions for generating arrays
-const generateMockSequences = (count: number = 5): Sequence[] => {
-  return Array.from({ length: count }, () => generateMockSequence());
-};
-
 export const generateMockFrames = (
   count: number = 6,
   sequenceId?: string
@@ -423,12 +316,4 @@ export const generateMockFrames = (
 
 export const generateMockStyles = (count: number = 8): Style[] => {
   return Array.from({ length: count }, () => generateMockStyle());
-};
-
-const generateMockTeams = (count: number = 3): Team[] => {
-  return Array.from({ length: count }, () => generateMockTeam());
-};
-
-const generateMockUsers = (count: number = 5): UserProfile[] => {
-  return Array.from({ length: count }, () => generateMockUser());
 };

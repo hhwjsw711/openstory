@@ -280,9 +280,6 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   },
 ];
 
-// Slug for the system templates team
-const SYSTEM_TEAM_SLUG = 'system-templates';
-
 // System styles without teamId - teamId will be added during seeding
 export const DEFAULT_SYSTEM_STYLES: Omit<Style, 'id' | 'teamId'>[] =
   DEFAULT_STYLE_TEMPLATES.map((style) => ({
