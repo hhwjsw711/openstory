@@ -7,12 +7,14 @@ import {
   updateStyleFn,
   deleteStyleFn,
 } from '@/functions/styles';
+import type { StyleConfig } from '@/lib/db/schema/libraries';
 
 // Local hook input types (simpler than server schema types)
 type CreateStyleInput = {
+  teamId: string;
   name: string;
   description?: string;
-  config?: Record<string, unknown>;
+  config: StyleConfig;
   category?: string;
   tags?: string[];
   isPublic?: boolean;
@@ -59,8 +61,7 @@ export function useCreateStyle() {
   return useMutation<Style, Error, CreateStyleInput>({
     mutationFn: async (input: CreateStyleInput) => {
       const data = await createStyleFn({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
-        data: input as Parameters<typeof createStyleFn>[0]['data'],
+        data: input satisfies Parameters<typeof createStyleFn>[0]['data'],
       });
       return data;
     },
@@ -90,11 +91,10 @@ export function useUpdateStyle() {
       input: Partial<CreateStyleInput>;
     }) => {
       const data = await updateStyleFn({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
         data: {
           styleId: id,
           ...input,
-        } as Parameters<typeof updateStyleFn>[0]['data'],
+        } satisfies Parameters<typeof updateStyleFn>[0]['data'],
       });
       return data;
     },

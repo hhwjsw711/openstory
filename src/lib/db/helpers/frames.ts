@@ -6,21 +6,23 @@
 import { getDb } from '#db-client';
 import type { Frame, NewFrame } from '@/lib/db/schema';
 import { frames } from '@/lib/db/schema';
+import type { Sequence } from '@/lib/db/schema/sequences';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 /**
  * Frame with its parent sequence
  */
 type FrameWithSequence = Frame & {
-  sequence: {
-    id: string;
-    teamId: string;
-    title: string;
-    status: string;
-    styleId: string | null;
-    videoModel: string;
-    aspectRatio: string;
-  };
+  sequence: Pick<
+    Sequence,
+    | 'id'
+    | 'teamId'
+    | 'title'
+    | 'status'
+    | 'styleId'
+    | 'videoModel'
+    | 'aspectRatio'
+  >;
 };
 
 /**

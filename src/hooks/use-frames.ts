@@ -18,6 +18,7 @@ import {
   selectFrameVariantFn,
 } from '@/functions/frame-image';
 import type { GenerateVariantInput as SchemaGenerateVariantInput } from '@/lib/schemas/frame.schemas';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 
 type CreateFrameInput = {
   sequenceId: string;
@@ -26,7 +27,7 @@ type CreateFrameInput = {
   thumbnailUrl?: string;
   videoUrl?: string;
   durationMs?: number;
-  metadata?: unknown;
+  metadata?: Scene;
 };
 
 type UpdateFrameInput = {
@@ -36,7 +37,7 @@ type UpdateFrameInput = {
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
   durationMs?: number | null;
-  metadata?: unknown;
+  metadata?: Scene;
 };
 
 type GenerateFramesInput = {
@@ -144,14 +145,13 @@ export function useCreateFrame() {
       const { sequenceId, description, orderIndex, durationMs, ...rest } =
         input;
       const data = await createFrameFn({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
         data: {
           sequenceId,
           description,
           orderIndex,
           durationMs: durationMs ?? null,
           ...rest,
-        } as Parameters<typeof createFrameFn>[0]['data'],
+        } satisfies Parameters<typeof createFrameFn>[0]['data'],
       });
       return data;
     },
@@ -314,11 +314,10 @@ export function useBulkCreateFrames() {
         durationMs: f.durationMs ?? null,
       }));
       const data = await createFramesBulkFn({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Hook input narrowed to server param type
         data: {
           sequenceId,
           frames: transformedFrames,
-        } as Parameters<typeof createFramesBulkFn>[0]['data'],
+        } satisfies Parameters<typeof createFramesBulkFn>[0]['data'],
       });
       return data;
     },

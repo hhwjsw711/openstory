@@ -18,7 +18,7 @@
     "dead-code:fix": "bun --bun knip --fix",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint:open": "./scripts/lint-and-open.sh",
+    "lint:open": "(bun lint 2>&1; bun typecheck 2>&1) | grep -oE '[^ (\\[]+\\.tsx?' | sort -u | sed 's/\\$/\\\\$/g' | tr '\\n' '\\0' | xargs -0 cursor",
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
     "test:ui": "bun test --watch",

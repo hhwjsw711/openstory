@@ -33,7 +33,6 @@ export const CustomDownloadButton: React.FC<CustomDownloadButtonProps> = ({
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- External download URL, not internal navigation */}
         <a
           role="button"
           className="vds-download-button vds-button"

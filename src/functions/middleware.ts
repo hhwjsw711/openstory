@@ -158,8 +158,7 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
     // Type assertion needed because Drizzle's nested relation inference loses the $type<AspectRatio>() annotation
     const sequence: PartialSequence = {
       ...rawSequence,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Database schema guarantees aspectRatio is AspectRatio
-      aspectRatio: rawSequence.aspectRatio as AspectRatio,
+      aspectRatio: rawSequence.aspectRatio satisfies AspectRatio,
     };
 
     return next({
