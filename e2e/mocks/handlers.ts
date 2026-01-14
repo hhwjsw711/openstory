@@ -47,14 +47,6 @@ const mockQStashResponse = {
 };
 
 /**
- * Mock workflow status response
- */
-const mockWorkflowStatusResponse = {
-  status: 'COMPLETED',
-  result: { success: true },
-};
-
-/**
  * Set up route handlers on a page to mock external APIs
  */
 export async function setupMockRoutes(page: Page): Promise<void> {
@@ -120,15 +112,6 @@ export async function setupMockRoutes(page: Page): Promise<void> {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(mockQStashResponse),
-    });
-  });
-
-  // Mock workflow status endpoint
-  await page.route('**/api/workflows/status/**', async (route: Route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(mockWorkflowStatusResponse),
     });
   });
 

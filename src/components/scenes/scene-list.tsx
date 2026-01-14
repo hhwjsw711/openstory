@@ -109,7 +109,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
           <Button
             variant="default"
             className="w-full"
-            onClick={handleGenerateMotion}
+            onClick={() => void handleGenerateMotion()}
             disabled={isGenerating || isMotionInProgress}
           >
             {isGenerating || isMotionInProgress ? (

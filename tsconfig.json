@@ -13,6 +13,12 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "jsx": "react-jsx",
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"],
     },

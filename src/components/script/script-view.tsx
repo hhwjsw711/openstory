@@ -238,7 +238,7 @@ export const ScriptView: FC<{
       className={cn('flex flex-col min-h-0 max-h-full', flat && 'border-none')}
     >
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(e) => void handleSubmit(e)}
         className="flex flex-col min-h-0 max-h-full"
       >
         {/* Control bar */}

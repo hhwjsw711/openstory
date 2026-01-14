@@ -1,20 +1,4 @@
-import { MOCK_SYSTEM_STYLES } from '@/lib/style/style-templates';
-import type { Frame, Style } from '@/types/database';
 import { http, HttpResponse } from 'msw';
-import { generateMockFrames } from './data-generators';
-import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
-
-type CreateStyleBody = {
-  name: string;
-  description?: string | null;
-  config: Style['config'];
-  category?: string;
-  tags?: string[];
-  is_public?: boolean;
-  preview_url?: string;
-};
-
-const stylePresets: Style[] = MOCK_SYSTEM_STYLES;
 
 /**
  * Creates a mock SSE stream for the realtime endpoint.

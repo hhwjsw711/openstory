@@ -79,7 +79,10 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
         )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Add Location</DialogTitle>
             <DialogDescription>

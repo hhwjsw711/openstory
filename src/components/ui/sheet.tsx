@@ -125,4 +125,15 @@ function SheetDescription({
   );
 }
 
-export { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle };
+export {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+  SheetPortal,
+  SheetOverlay,
+};

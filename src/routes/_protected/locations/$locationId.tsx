@@ -132,7 +132,7 @@ function LocationDetailPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 disabled={deleteLocation.isPending}
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -208,7 +208,7 @@ function LocationDetailPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleAddImages}
+                    onClick={() => void handleAddImages()}
                     disabled={
                       uploadedUrls.length === 0 ||
                       uploadFiles.length > uploadedUrls.length ||
@@ -236,7 +236,7 @@ function LocationDetailPage() {
                       />
                       <button
                         className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteSheet(sheet.id)}
+                        onClick={() => void handleDeleteSheet(sheet.id)}
                         disabled={deleteSheet.isPending}
                       >
                         <X className="h-3 w-3" />

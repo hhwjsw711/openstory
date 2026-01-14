@@ -88,7 +88,10 @@ export function UserBadge() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
+        <DropdownMenuItem
+          onClick={() => void handleSignOut()}
+          disabled={isSigningOut}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           {isSigningOut ? 'Signing out...' : 'Sign Out'}
         </DropdownMenuItem>

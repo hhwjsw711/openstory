@@ -40,7 +40,7 @@ export const TalentLibraryFilters: React.FC<TalentLibraryFiltersProps> = ({
           size="sm"
           className="gap-2"
           onClick={() =>
-            navigate({
+            void navigate({
               to: '/talent',
               search: { filter: filter.value },
             })

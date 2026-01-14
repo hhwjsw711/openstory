@@ -158,7 +158,7 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
             <SheetFooter className="border-t pt-4 px-4 justify-center">
               <Button
                 variant="default"
-                onClick={handleGenerateMotion}
+                onClick={() => void handleGenerateMotion()}
                 disabled={isGenerating || isMotionInProgress}
               >
                 {isGenerating || isMotionInProgress ? (

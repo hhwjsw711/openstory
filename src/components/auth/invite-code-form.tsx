@@ -46,7 +46,7 @@ export const InviteCodeForm: React.FC<InviteCodeFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
       <div className="space-y-2">
         <label htmlFor="invite-code" className="text-sm font-medium">
           Invite Code

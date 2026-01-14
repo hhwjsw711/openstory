@@ -55,7 +55,7 @@ export const LocationLibraryList: React.FC<LocationLibraryListProps> = ({
           key={location.id}
           location={location}
           onClick={() =>
-            navigate({
+            void navigate({
               to: '/locations/$locationId',
               params: { locationId: location.id },
             })

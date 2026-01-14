@@ -193,7 +193,7 @@ export function VerifyForm({
           </Link>
           <button
             type="button"
-            onClick={handleResendOtp}
+            onClick={() => void handleResendOtp()}
             className="text-primary hover:underline"
             disabled={isLoading}
           >

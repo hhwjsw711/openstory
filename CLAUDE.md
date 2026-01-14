@@ -177,8 +177,6 @@ export const generateImageWorkflow = async (
 - Steps are durable - execution continues even if server restarts
 - Update DB records directly in workflow steps
 
-**Check status:** `/api/workflows/status/[runId]`
-
 ---
 
 ## Frame System

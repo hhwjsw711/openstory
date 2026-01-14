@@ -129,7 +129,7 @@ export function AuthForm({
               type="button"
               variant="outline"
               className="w-full"
-              onClick={handleGoogleSignIn}
+              onClick={() => void handleGoogleSignIn()}
               disabled={isLoading}
             >
               <svg
@@ -172,7 +172,7 @@ export function AuthForm({
         )}
 
         {/* Email Form */}
-        <form onSubmit={handleSendOtp}>
+        <form onSubmit={(e) => void handleSendOtp(e)}>
           <div className="mb-4 space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
