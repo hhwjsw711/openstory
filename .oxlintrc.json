@@ -1,7 +1,11 @@
 {
   "plugins": ["eslint", "typescript", "unicorn", "react", "react-perf", "oxc"],
   "extends": ["recommended"],
-  "ignorePatterns": ["**/mockServiceWorker.js", "*.gen.ts"],
+  "ignorePatterns": [
+    "**/mockServiceWorker.js",
+    "*.gen.ts",
+    "src/components/ui/**/*.tsx"
+  ],
   "rules": {
     "typescript/no-explicit-any": "error",
     "typescript/consistent-type-assertions": "warn",
