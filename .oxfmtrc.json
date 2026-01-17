@@ -12,6 +12,7 @@
     ".vscode/**",
     "bun.lockb",
     "gen.types.ts",
-    "routeTree.gen.ts"
+    "routeTree.gen.ts",
+    ".vscode/settings.json"
   ]
 }
