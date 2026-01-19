@@ -77,7 +77,7 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
           </Button>
         )}
       </DialogTrigger>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={(e) => void handleSubmit(e)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Talent</DialogTitle>
@@ -137,7 +137,7 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
                         variant="destructive"
                         size="icon"
                         className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteMedia(media.id)}
+                        onClick={() => void handleDeleteMedia(media.id)}
                         disabled={deleteMedia.isPending}
                       >
                         <X className="h-4 w-4" />

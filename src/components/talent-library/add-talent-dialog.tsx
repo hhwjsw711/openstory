@@ -80,7 +80,10 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
         )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Add Talent</DialogTitle>
             <DialogDescription>

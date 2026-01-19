@@ -26,14 +26,12 @@ export const MotionModelSelector: React.FC<MotionModelSelectorProps> = ({
   const models = useMemo(
     () =>
       Object.entries(IMAGE_TO_VIDEO_MODELS)
-        .filter(([key]) =>
-          aspectRatio
-            ? isModelCompatibleWithAspectRatio(
-                key as ImageToVideoModel,
-                aspectRatio
-              )
-            : true
-        )
+        .filter(([key]) => {
+          if (!isValidImageToVideoModel(key)) return false;
+          return aspectRatio
+            ? isModelCompatibleWithAspectRatio(key, aspectRatio)
+            : true;
+        })
         .map(([key, m]) => ({
           id: key,
           name: m.name,

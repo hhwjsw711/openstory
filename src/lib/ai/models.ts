@@ -6,16 +6,6 @@
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
 /**
- * Text-to-video models
- */
-const TEXT_TO_VIDEO_MODELS = {
-  minimax_hailuo: 'fal-ai/minimax-video/text-to-video',
-  mochi_v1: 'fal-ai/mochi-v1/text-to-video',
-  luma_dream_machine: 'fal-ai/luma-dream-machine',
-  kling_v2: 'fal-ai/kling-video-v1-5/standard/text-to-video',
-} as const;
-
-/**
  * Image-to-video models (for motion generation)
  * Enriched with capabilities, pricing, and performance metadata
  */
@@ -231,23 +221,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
       quality: 'best',
     },
   },
-} as const;
-
-/**
- * All video models combined (for backward compatibility - returns model IDs)
- * @deprecated Use IMAGE_TO_VIDEO_MODELS directly for full metadata
- */
-const VIDEO_MODELS = {
-  ...TEXT_TO_VIDEO_MODELS,
-  // Extract just the IDs for backward compatibility
-  seedance_v1_pro: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro.id,
-  veo3: IMAGE_TO_VIDEO_MODELS.veo3.id,
-  veo3_1: IMAGE_TO_VIDEO_MODELS.veo3_1.id,
-  kling_v2_5_turbo_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_5_turbo_pro.id,
-  kling_v2_6_pro: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro.id,
-  kling_v2_6_pro_no_audio: IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro_no_audio.id,
-  sora_2: IMAGE_TO_VIDEO_MODELS.sora_2.id,
-  kling_o1: IMAGE_TO_VIDEO_MODELS.kling_o1.id,
 } as const;
 
 /**
@@ -479,7 +452,7 @@ export function getImageModelById(id: string): ImageModelConfig | undefined {
 }
 
 // Helper to get model display name
-function getImageModelDisplayName(modelId: string): string {
+export function getImageModelDisplayName(modelId: string): string {
   const model = getImageModelById(modelId);
   return model?.name ?? modelId;
 }
@@ -494,8 +467,21 @@ type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
 export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
 
+// Typed list of image-to-video model keys for Zod enum schemas
+// This is type-safe because we use satisfies to validate the tuple matches the type
+export const IMAGE_TO_VIDEO_MODEL_KEYS = [
+  'kling_o1',
+  'kling_v2_5_turbo_pro',
+  'kling_v2_6_pro',
+  'kling_v2_6_pro_no_audio',
+  'seedance_v1_pro',
+  'sora_2',
+  'veo3',
+  'veo3_1',
+] as const satisfies readonly ImageToVideoModel[];
+
 // Helper to get model ID from key (for backward compatibility)
-function getImageToVideoModelId(
+export function getImageToVideoModelId(
   modelKey: ImageToVideoModel
 ): ImageToVideoModelId {
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
@@ -650,6 +636,6 @@ export function getEditEndpoint(model: TextToImageModel): string | null {
  * @param model - The text-to-image model key
  * @returns true if the model has an edit endpoint for reference images
  */
-function supportsReferenceImages(model: TextToImageModel): boolean {
+export function supportsReferenceImages(model: TextToImageModel): boolean {
   return model in EDIT_ENDPOINTS;
 }

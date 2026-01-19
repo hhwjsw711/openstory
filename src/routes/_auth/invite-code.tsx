@@ -20,6 +20,17 @@ const searchSchema = z.object({
   redirectTo: z.string().optional(),
 });
 
+/**
+ * Extract user status from session user object
+ * BetterAuth adds custom fields but the client type doesn't always reflect them
+ */
+function getUserStatus(user: Record<string, unknown>): string | undefined {
+  if ('status' in user && typeof user.status === 'string') {
+    return user.status;
+  }
+  return undefined;
+}
+
 export const Route = createFileRoute('/_auth/invite-code')({
   validateSearch: searchSchema,
   component: InviteCodePage,
@@ -35,7 +46,7 @@ function InviteCodePage() {
   useEffect(() => {
     if (!isPending && !session) {
       // Not authenticated, redirect to login
-      navigate({
+      void navigate({
         to: '/login',
         search: {
           redirectTo: location.href,
@@ -46,12 +57,11 @@ function InviteCodePage() {
     }
 
     if (!isPending && session) {
-      const user = session.user as typeof session.user & { status?: string };
-      const status = user.status;
+      const status = getUserStatus(session.user);
 
       // If user is already active, redirect to app
       if (!status || status === 'active') {
-        navigate({
+        void navigate({
           to: redirectTo,
           replace: true,
         });
@@ -74,8 +84,7 @@ function InviteCodePage() {
     return null; // Redirect is handled in useEffect
   }
 
-  const user = session.user as typeof session.user & { status?: string };
-  const status = user.status;
+  const status = getUserStatus(session.user);
 
   // If user is suspended, show error (shouldn't happen, but handle it)
   if (status === 'suspended') {

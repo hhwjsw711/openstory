@@ -134,7 +134,7 @@ function TalentDetailPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 disabled={deleteTalent.isPending}
               >
                 <Trash2 className="h-4 w-4 text-destructive" />

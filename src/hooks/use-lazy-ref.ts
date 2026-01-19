@@ -7,6 +7,7 @@ function useLazyRef<T>(fn: () => T) {
     ref.current = fn();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe: ref.current is guaranteed to be T after initialization
   return ref as React.RefObject<T>;
 }
 

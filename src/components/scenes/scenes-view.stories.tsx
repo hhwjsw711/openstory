@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-type-assertion -- Storybook mock data uses intentional type assertions */
 import { ScenesView } from '@/components/scenes/scenes-view';
 import type { Frame } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';

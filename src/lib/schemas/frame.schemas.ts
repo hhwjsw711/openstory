@@ -63,6 +63,7 @@ export const regenerateFrameSchema = z.object({
   regenerateDescription: z.boolean().optional(),
   regenerateThumbnail: z.boolean().optional(),
   model: z
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Required for z.enum with dynamic keys
     .enum(Object.keys(IMAGE_MODELS) as [keyof typeof IMAGE_MODELS])
     .optional(),
   prompt: z.string().optional(),
@@ -71,6 +72,7 @@ export const regenerateFrameSchema = z.object({
 export const generateMotionSchema = z.object({
   model: z
     .enum(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Required for z.enum with dynamic keys
       Object.keys(IMAGE_TO_VIDEO_MODELS) as [keyof typeof IMAGE_TO_VIDEO_MODELS]
     )
     .optional(),
@@ -82,6 +84,7 @@ export const generateMotionSchema = z.object({
 
 export const generateVariantSchema = z.object({
   model: z
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Required for z.enum with dynamic keys
     .enum(Object.keys(IMAGE_MODELS) as [keyof typeof IMAGE_MODELS])
     .optional(),
   imageSize: z

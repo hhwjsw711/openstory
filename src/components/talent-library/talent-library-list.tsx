@@ -61,7 +61,7 @@ export const TalentLibraryList: React.FC<TalentLibraryListProps> = ({
           key={t.id}
           talent={t}
           isGenerating={isGenerating(t.id)}
-          onClick={() => navigate({ to: `/talent/${t.id}` })}
+          onClick={() => void navigate({ to: `/talent/${t.id}` })}
         />
       ))}
     </div>

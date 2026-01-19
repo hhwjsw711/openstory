@@ -17,7 +17,6 @@ import {
   sceneAnalysisSchema,
 } from '@/lib/ai/scene-analysis.schema';
 import { getPrompt } from '@/lib/observability/langfuse-prompts';
-import { z } from 'zod';
 import type { Scene } from './types';
 
 /**

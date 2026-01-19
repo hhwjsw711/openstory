@@ -83,7 +83,7 @@ export function PasskeyPromptModal({
         )}
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
-          <Button onClick={handleAddPasskey} disabled={isLoading}>
+          <Button onClick={() => void handleAddPasskey()} disabled={isLoading}>
             {isLoading ? 'Adding…' : 'Add passkey'}
           </Button>
           <Button

@@ -3,7 +3,39 @@ import type { Frame } from '@/types/database';
 import { frameKeys } from '@/hooks/use-frames';
 import { sequenceKeys } from '@/hooks/use-sequences';
 
-type EventData = Record<string, unknown>;
+/**
+ * Helper to safely extract typed values from event data.
+ * Uses runtime checks instead of unsafe type assertions.
+ */
+function getString(data: Record<string, unknown>, key: string): string {
+  const value = data[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function getOptionalString(
+  data: Record<string, unknown>,
+  key: string
+): string | undefined {
+  const value = data[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+/**
+ * Type guard for Scene metadata from realtime events.
+ * Performs minimal runtime validation since data is already Zod-validated upstream.
+ */
+function isSceneMetadata(value: unknown): value is Frame['metadata'] {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== 'object') return false;
+  // Check for required Scene fields using 'in' operator for type narrowing
+  return (
+    value !== null &&
+    'sceneId' in value &&
+    typeof value.sceneId === 'string' &&
+    'sceneNumber' in value &&
+    typeof value.sceneNumber === 'number'
+  );
+}
 
 // Debounce invalidations per query key - multiple rapid events = one refetch
 const pendingInvalidations = new Map<string, NodeJS.Timeout>();
@@ -28,6 +60,20 @@ function debouncedInvalidate(
 }
 
 /**
+ * Validates if a status value is a valid Frame status.
+ */
+function isValidFrameStatus(
+  status: unknown
+): status is Frame['thumbnailStatus'] {
+  return (
+    status === 'pending' ||
+    status === 'generating' ||
+    status === 'completed' ||
+    status === 'failed'
+  );
+}
+
+/**
  * Updates TanStack Query cache based on realtime generation events.
  * This enables instant UI updates without polling.
  */
@@ -35,8 +81,10 @@ export function updateQueryCacheFromEvent(
   queryClient: QueryClient,
   sequenceId: string,
   eventName: string,
-  data: EventData
+  data: Record<string, unknown>
 ) {
+  const frameId = getString(data, 'frameId');
+
   switch (eventName) {
     case 'generation.frame:created':
       // Debounced invalidation - multiple rapid events = one refetch
@@ -47,59 +95,74 @@ export function updateQueryCacheFromEvent(
       );
       break;
 
-    case 'generation.frame:updated':
+    case 'generation.frame:updated': {
       // Update frame metadata with prompts
-      queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
-        old?.map((f) =>
-          f.id === data.frameId
-            ? { ...f, metadata: data.metadata as Frame['metadata'] }
-            : f
-        )
-      );
+      // The metadata is validated by the realtime schema before reaching here
+      const metadata = data.metadata;
+      if (isSceneMetadata(metadata)) {
+        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+          old?.map((f) => (f.id === frameId ? { ...f, metadata } : f))
+        );
+      }
       break;
+    }
 
-    case 'generation.image:progress':
+    case 'generation.image:progress': {
+      const thumbnailUrl = getOptionalString(data, 'thumbnailUrl');
+      const status = data.status;
       queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
         old?.map((f) =>
-          f.id === data.frameId
+          f.id === frameId
             ? {
                 ...f,
-                thumbnailUrl: (data.thumbnailUrl as string) ?? f.thumbnailUrl,
-                thumbnailStatus: data.status as Frame['thumbnailStatus'],
+                thumbnailUrl: thumbnailUrl ?? f.thumbnailUrl,
+                thumbnailStatus: isValidFrameStatus(status)
+                  ? status
+                  : f.thumbnailStatus,
               }
             : f
         )
       );
       break;
+    }
 
-    case 'generation.video:progress':
+    case 'generation.video:progress': {
+      const videoUrl = getOptionalString(data, 'videoUrl');
+      const status = data.status;
       queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
         old?.map((f) =>
-          f.id === data.frameId
+          f.id === frameId
             ? {
                 ...f,
-                videoUrl: (data.videoUrl as string) ?? f.videoUrl,
-                videoStatus: data.status as Frame['videoStatus'],
+                videoUrl: videoUrl ?? f.videoUrl,
+                videoStatus: isValidFrameStatus(status)
+                  ? status
+                  : f.videoStatus,
               }
             : f
         )
       );
       break;
+    }
 
-    case 'generation.variant-image:progress':
+    case 'generation.variant-image:progress': {
+      const variantImageUrl = getOptionalString(data, 'variantImageUrl');
+      const status = data.status;
       queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
         old?.map((f) =>
-          f.id === data.frameId
+          f.id === frameId
             ? {
                 ...f,
-                variantImageUrl:
-                  (data.variantImageUrl as string) ?? f.variantImageUrl,
-                variantImageStatus: data.status as Frame['variantImageStatus'],
+                variantImageUrl: variantImageUrl ?? f.variantImageUrl,
+                variantImageStatus: isValidFrameStatus(status)
+                  ? status
+                  : f.variantImageStatus,
               }
             : f
         )
       );
       break;
+    }
 
     case 'generation.complete':
     case 'generation.failed':
@@ -112,10 +175,10 @@ export function updateQueryCacheFromEvent(
 
     case 'generation.error':
       // Update frame status if frameId present
-      if (data.frameId) {
+      if (frameId) {
         queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
           old?.map((f) =>
-            f.id === data.frameId
+            f.id === frameId
               ? { ...f, thumbnailStatus: 'failed', videoStatus: 'failed' }
               : f
           )

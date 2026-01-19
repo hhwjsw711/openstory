@@ -5,7 +5,6 @@
 
 import type { TextToImageModel } from '@/lib/ai/models';
 import { IMAGE_MODELS } from '@/lib/ai/models';
-import type { ImageSize } from '@/lib/constants/aspect-ratios';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -22,17 +21,27 @@ function getAllStyleNamesTuple(): [string, ...string[]] {
   if (names.length === 0) {
     throw new Error('No style templates available');
   }
-  return names as [string, ...string[]];
+  const [first, ...rest] = names;
+  return [first, ...rest];
+}
+
+function isTextToImageModel(key: string): key is TextToImageModel {
+  return key in IMAGE_MODELS;
+}
+
+function getModelKeysTuple(): [TextToImageModel, ...TextToImageModel[]] {
+  const keys = Object.keys(IMAGE_MODELS).filter(isTextToImageModel);
+  if (keys.length === 0) {
+    throw new Error('No image models available');
+  }
+  const [first, ...rest] = keys;
+  return [first, ...rest];
 }
 
 export const generateImageInputSchema = z.object({
   prompt: z.string(),
   style: z.enum(getAllStyleNamesTuple()),
-  model: z
-    .enum(
-      Object.keys(IMAGE_MODELS) as [TextToImageModel, ...TextToImageModel[]]
-    )
-    .optional(),
+  model: z.enum(getModelKeysTuple()).optional(),
   imageSize: z
     .enum(['square_hd', 'portrait_16_9', 'landscape_16_9'])
     .optional(),
@@ -101,13 +110,13 @@ export async function generateImageTool(
     const enhancedPrompt = enhancePromptWithStyle(input.prompt, input.style);
 
     // Prepare generation parameters using existing Velro types
-    const params: ImageGenerationParams = {
+    const params = {
       prompt: enhancedPrompt,
-      model: (input.model as TextToImageModel) || 'nano_banana_pro',
-      imageSize: (input.imageSize as ImageSize) || 'landscape_16_9',
-      numImages: input.numImages || 1,
+      model: input.model ?? 'nano_banana_pro',
+      imageSize: input.imageSize ?? 'landscape_16_9',
+      numImages: input.numImages ?? 1,
       traceName: 'mcp-image',
-    };
+    } satisfies ImageGenerationParams;
 
     // Use existing Velro image generation service
     const result = await generateImageWithProvider(params);
@@ -122,7 +131,7 @@ export async function generateImageTool(
 /**
  * Tool description for MCP
  */
-const generateImageToolDescription = {
+export const generateImageToolDescription = {
   name: 'generate_image',
   description: `Generate a single cinematic image with a director style applied. 
   

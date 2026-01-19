@@ -3,10 +3,7 @@ import { SequenceTabs } from '@/components/sequence/sequence-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
-import { triggerMergeVideoFn } from '@/functions/motion-functions';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sequenceKeys } from '@/hooks/use-sequences';
 
 export const Route = createFileRoute('/_protected/sequences/$id/theatre')({
   component: TheatrePage,
@@ -14,7 +11,6 @@ export const Route = createFileRoute('/_protected/sequences/$id/theatre')({
 
 function TheatrePage() {
   const { id: sequenceId } = Route.useParams();
-  const queryClient = useQueryClient();
 
   // Verify session
   useUser();

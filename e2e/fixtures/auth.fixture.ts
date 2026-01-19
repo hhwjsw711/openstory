@@ -166,6 +166,7 @@ export const test = base.extend<{
   authenticatedPage: Page;
 }>({
   // Default: read stored user info (for tests with storageState)
+  // oxlint-disable-next-line no-empty-pattern -- Playwright fixture syntax requires empty object destructuring
   testUser: async ({}, use) => {
     const storedUser = getStoredUserInfo();
     await use(storedUser);

@@ -39,7 +39,7 @@ async function getSequenceCharacterById(id: string): Promise<Character | null> {
 /**
  * Get a sequence character by sequence ID and character ID (from character bible)
  */
-async function getSequenceCharacterByCharacterId(
+export async function getSequenceCharacterByCharacterId(
   sequenceId: string,
   characterId: string
 ): Promise<Character | null> {
@@ -95,7 +95,9 @@ export async function getSequenceCharactersWithTalent(
 /**
  * Get sequence characters by their IDs
  */
-async function getSequenceCharactersByIds(ids: string[]): Promise<Character[]> {
+export async function getSequenceCharactersByIds(
+  ids: string[]
+): Promise<Character[]> {
   if (ids.length === 0) return [];
   return await getDb()
     .select()
@@ -133,7 +135,7 @@ export async function createSequenceCharacter(
 /**
  * Create multiple sequence characters in a transaction
  */
-async function createSequenceCharactersBulk(
+export async function createSequenceCharactersBulk(
   data: NewCharacter[]
 ): Promise<Character[]> {
   if (data.length === 0) return [];
@@ -165,7 +167,7 @@ async function updateSequenceCharacter(
 /**
  * Delete a sequence character
  */
-async function deleteSequenceCharacter(id: string): Promise<boolean> {
+export async function deleteSequenceCharacter(id: string): Promise<boolean> {
   const result = await getDb().delete(characters).where(eq(characters.id, id));
   return (result.rowsAffected ?? 0) > 0;
 }
@@ -173,7 +175,9 @@ async function deleteSequenceCharacter(id: string): Promise<boolean> {
 /**
  * Delete all characters for a sequence
  */
-async function deleteSequenceCharacters(sequenceId: string): Promise<number> {
+export async function deleteSequenceCharacters(
+  sequenceId: string
+): Promise<number> {
   const result = await getDb()
     .delete(characters)
     .where(eq(characters.sequenceId, sequenceId));
@@ -219,7 +223,7 @@ export async function updateCharacterSheet(
 /**
  * Get characters with pending or failed sheets for a sequence
  */
-async function getCharactersNeedingSheets(
+export async function getCharactersNeedingSheets(
   sequenceId: string
 ): Promise<Character[]> {
   return await getDb()

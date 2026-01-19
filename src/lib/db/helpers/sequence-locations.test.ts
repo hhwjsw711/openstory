@@ -96,16 +96,27 @@ function createMockFrame(
   environmentTag: string,
   location: string
 ): Pick<Frame, 'metadata'> {
-  return {
-    metadata: {
-      continuity: {
-        environmentTag,
-      },
-      metadata: {
-        location,
-      },
+  // Create a complete Scene object with all required fields
+  const metadata: NonNullable<Frame['metadata']> = {
+    sceneId: 'test-scene',
+    sceneNumber: 1,
+    originalScript: { extract: '', dialogue: [] },
+    continuity: {
+      environmentTag,
+      characterTags: [],
+      colorPalette: '',
+      lightingSetup: '',
+      styleTag: '',
     },
-  } as Frame['metadata'] extends infer M ? { metadata: M } : never;
+    metadata: {
+      location,
+      title: '',
+      durationSeconds: 0,
+      timeOfDay: '',
+      storyBeat: '',
+    },
+  };
+  return { metadata };
 }
 
 describe('sequence-locations helpers', () => {

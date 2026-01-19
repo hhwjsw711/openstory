@@ -72,7 +72,7 @@ export type GenerationStreamState = {
   unusedTalent: UnusedTalent | null;
 };
 
-type GenerationStreamAction =
+export type GenerationStreamAction =
   | {
       type: 'PHASE_START';
       payload: { phase: number; phaseName: string };

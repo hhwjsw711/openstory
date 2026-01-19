@@ -6,8 +6,7 @@ import {
 } from '@/lib/ai/models';
 import {
   DEFAULT_ANALYSIS_MODEL,
-  getAllModelIds,
-  type AnalysisModelId,
+  isValidAnalysisModelId,
 } from '@/lib/ai/models.config';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { sequences } from '@/lib/db/schema/sequences';
@@ -21,7 +20,6 @@ import { z } from 'zod';
  */
 
 // Get valid model IDs for validation
-const validModelIds = getAllModelIds();
 const validImageModelKeys = Object.keys(
   IMAGE_MODELS
 ) satisfies readonly string[];
@@ -58,11 +56,9 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     // Accept array of models for multi-model sequence creation
     analysisModels: z
       .array(
-        z
-          .string()
-          .refine((val) => validModelIds.includes(val as AnalysisModelId), {
-            message: 'Invalid analysis model',
-          })
+        z.string().refine(isValidAnalysisModelId, {
+          message: 'Invalid analysis model',
+        })
       )
       .min(1, 'At least one model must be selected')
       .default([DEFAULT_ANALYSIS_MODEL]),
@@ -92,7 +88,7 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   title: (schema) => schema.min(1), // drizzle-zod auto-applies max from varchar(500)
   script: (schema) => schema.min(10).max(10000), // Business rule: meaningful scripts
   analysisModel: (schema) =>
-    schema.refine((val) => validModelIds.includes(val as AnalysisModelId), {
+    schema.refine(isValidAnalysisModelId, {
       message: 'Invalid analysis model',
     }),
   imageModel: (schema) =>

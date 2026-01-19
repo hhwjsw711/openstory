@@ -19,6 +19,7 @@ import {
 } from '@/lib/auth/action-utils';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { Sequence, Frame } from '@/types/database';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
 // ============================================================================
 // Context Types
@@ -37,8 +38,23 @@ export type SequenceContext = TeamContext & {
   sequence: Sequence;
 };
 
-export type FrameContext = SequenceContext & {
-  frame: Frame;
+/**
+ * Partial sequence type returned by getFrameWithSequence
+ * Contains only the fields selected by the query
+ */
+type PartialSequence = {
+  id: string;
+  teamId: string;
+  title: string;
+  status: string;
+  styleId: string | null;
+  videoModel: string;
+  aspectRatio: AspectRatio;
+};
+
+export type FrameContext = TeamContext & {
+  frame: Omit<Frame, 'sequence'>;
+  sequence: PartialSequence;
 };
 
 // ============================================================================
@@ -136,25 +152,20 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
 
     await requireTeamMemberAccess(context.user.id, frameData.sequence.teamId);
 
-    // Extract sequence from frame data
-    const sequence = {
-      id: frameData.sequence.id,
-      teamId: frameData.sequence.teamId,
-      title: frameData.sequence.title,
-      status: frameData.sequence.status,
-      styleId: frameData.sequence.styleId,
-      videoModel: frameData.sequence.videoModel,
-      aspectRatio: frameData.sequence.aspectRatio,
-    } as Sequence;
+    // Extract sequence from frame data (using the partial sequence from the query)
+    const { sequence: rawSequence, ...frame } = frameData;
 
-    // Remove sequence from frame to get clean frame
-    const { sequence: _, ...frame } = frameData;
+    // Type assertion needed because Drizzle's nested relation inference loses the $type<AspectRatio>() annotation
+    const sequence: PartialSequence = {
+      ...rawSequence,
+      aspectRatio: rawSequence.aspectRatio satisfies AspectRatio,
+    };
 
     return next({
       context: {
-        frame: frame as Frame,
+        frame,
         sequence,
-        teamId: frameData.sequence.teamId,
+        teamId: sequence.teamId,
       },
     });
   });

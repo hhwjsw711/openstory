@@ -3,62 +3,33 @@
  */
 
 import { AuthenticationError } from '@/lib/errors';
-import type { SequenceWorkflowContext, UserWorkflowContext } from './types';
+import type { SequenceWorkflowContext } from './types';
 
 /**
- * Validates that workflow context includes required authentication
- * @throws AuthenticationError if userId or teamId is missing
+ * Type guard to check if an object has the SequenceWorkflowContext shape
  */
-function validateWorkflowAuth(
+function isPartialSequenceContext(
   context: unknown
-): asserts context is UserWorkflowContext {
-  const ctx = context as Partial<UserWorkflowContext>;
-
-  // A sequence Id has been provided, so we need to check the user is part of the team and the sequence belongs to the team.
-  if (!ctx.userId) {
-    throw new AuthenticationError('Workflow context missing userId');
-  }
-
-  if (!ctx.teamId) {
-    throw new AuthenticationError('Workflow context missing teamId');
-  }
+): context is Partial<SequenceWorkflowContext> {
+  return typeof context === 'object' && context !== null;
 }
 
 export function validateSequenceAuth(
   context: unknown
 ): asserts context is SequenceWorkflowContext {
-  validateWorkflowAuth(context);
-  const ctx = context as Partial<SequenceWorkflowContext>;
-  if (!ctx.sequenceId) {
+  if (!isPartialSequenceContext(context)) {
+    throw new AuthenticationError('Sequence context is not an object');
+  }
+
+  if (!context.userId) {
+    throw new AuthenticationError('Workflow context missing userId');
+  }
+
+  if (!context.teamId) {
+    throw new AuthenticationError('Workflow context missing teamId');
+  }
+
+  if (!context.sequenceId) {
     throw new AuthenticationError('Sequence context missing sequenceId');
   }
-}
-/**
- * Extracts auth context from workflow input
- * Validates and returns a WorkflowContext object
- */
-function getWorkflowAuth(input: unknown): UserWorkflowContext {
-  validateWorkflowAuth(input);
-  return {
-    userId: input.userId,
-    teamId: input.teamId,
-  };
-}
-
-/**
- * Checks if a workflow context has valid authentication
- * Non-throwing version of validateWorkflowAuth
- */
-function hasWorkflowAuth(context: unknown): context is UserWorkflowContext {
-  const ctx = context as Partial<UserWorkflowContext>;
-  return Boolean(ctx.userId && ctx.teamId);
-}
-
-/**
- * Checks if a workflow context has valid authentication
- * Non-throwing version of validateWorkflowAuth
- */
-function hasSequenceAuth(context: unknown): context is SequenceWorkflowContext {
-  const ctx = context as Partial<SequenceWorkflowContext>;
-  return Boolean(ctx.sequenceId && ctx.teamId && ctx.userId);
 }

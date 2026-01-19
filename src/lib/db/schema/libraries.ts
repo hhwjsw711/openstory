@@ -15,7 +15,7 @@ import { teams } from './teams';
 
 type ColorString = string;
 
-type StyleConfig = {
+export type StyleConfig = {
   artStyle: string; // 'Neo-noir with stark contrasts and neon accents',
   colorPalette: ColorString[];
   lighting: string; // 'High contrast with venetian blind shadows and neon highlights',

@@ -21,7 +21,6 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
-import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 
 /**
  * Get all characters for a sequence

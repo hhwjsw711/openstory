@@ -1,10 +1,5 @@
 import type { Style } from '@/types/database';
 
-type FilterOptions = {
-  category: string;
-  searchQuery: string;
-};
-
 /**
  * Filters a list of styles based on category and search query.
  * Pure function with no side effects - can be used in any context.

@@ -1,19 +1,5 @@
 import z from 'zod';
 
-type DirectorDnaParams = {
-  prompt: string;
-  directorialIntent: string;
-  mood: string;
-  visualStyle: string;
-  lighting: string;
-  colorPalette: string[];
-  cameraLanguage: string;
-  cinematicReferences: string[];
-  frameLookAndExtras: string[];
-  referenceImageUrl: string | null;
-  styleCategory: string;
-};
-
 export const DirectorDnaConfigSchema = z.object({
   name: z.string().optional(),
   mood: z.string().min(3).max(500),
@@ -27,36 +13,3 @@ export const DirectorDnaConfigSchema = z.object({
 });
 
 export type DirectorDnaConfig = z.infer<typeof DirectorDnaConfigSchema>;
-
-type DirectorDnaResponseData = {
-  message: string;
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-};
-
-interface DNADirectorResponse {
-  status: boolean;
-  error?: string;
-  data?: DirectorDnaResponseData;
-  config?: Record<string, unknown>;
-}
-
-interface DNADirectorTemplateMessage {
-  role: 'system' | 'user' | 'assistant';
-  content:
-    | string
-    | { type: string; text: string }
-    | { type: string; image_url: { url: string } }
-    | Array<
-        | { type: string; text: string }
-        | { type: string; image_url: { url: string } }
-      >;
-}
-
-interface DNADirectorTemplateMessageContent {
-  scene: string;
-  directorialIntent: string;
-  characters: string[];
-  styleConfig: DirectorDnaConfig;
-}

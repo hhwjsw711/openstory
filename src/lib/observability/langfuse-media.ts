@@ -3,24 +3,42 @@
  * Helpers for attaching images/audio/video to Langfuse traces
  */
 
-import { LangfuseMedia, MediaContentType } from '@langfuse/core';
+import { LangfuseMedia, type MediaContentType } from '@langfuse/core';
 
 // Supported image content types for Langfuse
-const SUPPORTED_IMAGE_TYPES = new Set<MediaContentType>([
+const SUPPORTED_IMAGE_TYPES = [
   'image/png',
   'image/jpeg',
   'image/jpg',
   'image/webp',
   'image/gif',
-]);
+] as const satisfies readonly MediaContentType[];
+
+type SupportedImageType = (typeof SUPPORTED_IMAGE_TYPES)[number];
 
 // Supported video content types for Langfuse
-const SUPPORTED_VIDEO_TYPES = new Set<MediaContentType>([
+const SUPPORTED_VIDEO_TYPES = [
   'video/mp4',
   'video/webm',
   'video/ogg',
   'video/mpeg',
-]);
+] as const satisfies readonly MediaContentType[];
+
+type SupportedVideoType = (typeof SUPPORTED_VIDEO_TYPES)[number];
+
+/**
+ * Check if a string is a supported image MediaContentType
+ */
+function isSupportedImageType(type: string): type is SupportedImageType {
+  return (SUPPORTED_IMAGE_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * Check if a string is a supported video MediaContentType
+ */
+function isSupportedVideoType(type: string): type is SupportedVideoType {
+  return (SUPPORTED_VIDEO_TYPES as readonly string[]).includes(type);
+}
 
 /**
  * Fetch image from URL and wrap in LangfuseMedia for inline display in traces.
@@ -36,11 +54,12 @@ export async function createImageMedia(
     // Check content type is a supported image type
     const rawContentType = response.headers.get('content-type') || 'image/png';
     // Extract the MIME type without charset or other parameters
-    const contentType = rawContentType.split(';')[0].trim() as MediaContentType;
+    const mimeType = rawContentType.split(';')[0].trim();
 
-    if (!SUPPORTED_IMAGE_TYPES.has(contentType)) {
+    const arrayBuffer = await response.arrayBuffer();
+
+    if (!isSupportedImageType(mimeType)) {
       // Default to PNG for unknown types
-      const arrayBuffer = await response.arrayBuffer();
       return new LangfuseMedia({
         source: 'bytes',
         contentBytes: Buffer.from(arrayBuffer),
@@ -48,11 +67,10 @@ export async function createImageMedia(
       });
     }
 
-    const arrayBuffer = await response.arrayBuffer();
     return new LangfuseMedia({
       source: 'bytes',
       contentBytes: Buffer.from(arrayBuffer),
-      contentType,
+      contentType: mimeType,
     });
   } catch {
     return null;
@@ -73,11 +91,12 @@ export async function createVideoMedia(
     // Check content type is a supported video type
     const rawContentType = response.headers.get('content-type') || 'video/mp4';
     // Extract the MIME type without charset or other parameters
-    const contentType = rawContentType.split(';')[0].trim() as MediaContentType;
+    const mimeType = rawContentType.split(';')[0].trim();
 
-    if (!SUPPORTED_VIDEO_TYPES.has(contentType)) {
+    const arrayBuffer = await response.arrayBuffer();
+
+    if (!isSupportedVideoType(mimeType)) {
       // Default to MP4 for unknown video types
-      const arrayBuffer = await response.arrayBuffer();
       return new LangfuseMedia({
         source: 'bytes',
         contentBytes: Buffer.from(arrayBuffer),
@@ -85,11 +104,10 @@ export async function createVideoMedia(
       });
     }
 
-    const arrayBuffer = await response.arrayBuffer();
     return new LangfuseMedia({
       source: 'bytes',
       contentBytes: Buffer.from(arrayBuffer),
-      contentType,
+      contentType: mimeType,
     });
   } catch {
     return null;

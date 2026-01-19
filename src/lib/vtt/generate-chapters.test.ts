@@ -3,6 +3,14 @@ import type { Frame } from '@/types/database';
 import { describe, expect, test } from 'bun:test';
 import { generateChaptersVTT } from './generate-chapters';
 
+// Helper to create minimal test scene metadata
+const createTestScene = (overrides: Partial<Scene>): Scene => ({
+  sceneId: 'test-scene',
+  sceneNumber: 1,
+  originalScript: { extract: '', dialogue: [] },
+  ...overrides,
+});
+
 // Helper to create test frames with minimal required fields
 const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   id: '1',
@@ -42,7 +50,7 @@ describe('generateChaptersVTT', () => {
         durationMs: 5000,
         videoUrl: 'https://example.com/video1.mp4',
         videoStatus: 'completed',
-        metadata: {
+        metadata: createTestScene({
           sceneNumber: 1,
           metadata: {
             title: 'Opening Scene',
@@ -51,7 +59,7 @@ describe('generateChaptersVTT', () => {
             timeOfDay: 'morning',
             storyBeat: 'Introduction',
           },
-        } as Scene,
+        }),
       }),
       createTestFrame({
         id: '2',
@@ -59,7 +67,7 @@ describe('generateChaptersVTT', () => {
         durationMs: 3000,
         videoUrl: 'https://example.com/video2.mp4',
         videoStatus: 'completed',
-        metadata: {
+        metadata: createTestScene({
           sceneNumber: 2,
           metadata: {
             title: 'Conflict Arises',
@@ -68,7 +76,7 @@ describe('generateChaptersVTT', () => {
             timeOfDay: 'afternoon',
             storyBeat: 'Rising action',
           },
-        } as Scene,
+        }),
       }),
     ];
 
@@ -194,7 +202,7 @@ describe('generateChaptersVTT', () => {
         durationMs: 3000,
         videoUrl: 'https://example.com/video1.mp4',
         videoStatus: 'completed',
-        metadata: {
+        metadata: createTestScene({
           sceneNumber: 5,
           metadata: {
             title: 'The Great Revelation',
@@ -203,7 +211,7 @@ describe('generateChaptersVTT', () => {
             timeOfDay: 'night',
             storyBeat: 'Climax',
           },
-        } as Scene,
+        }),
       }),
     ];
 

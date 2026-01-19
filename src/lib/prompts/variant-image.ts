@@ -37,6 +37,3 @@ Composition: A sequence of 9 distinct frames showing a progression of action, la
 
 Strict Negative Constraint: No borders between images, Zero text. No dialogue bubbles, no scene numbers, no 'Lorem Ipsum', and no subtitles. The final image should look like a clean, text-free photography contact sheet.`;
 }
-
-/** @deprecated Use getVariantImagePrompt(imageSize) instead */
-const VARIANT_IMAGE_PROMPT = getVariantImagePrompt('landscape_16_9');

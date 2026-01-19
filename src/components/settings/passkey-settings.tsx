@@ -92,7 +92,7 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
         <Button
           variant="ghost"
           className="mb-4"
-          onClick={() => navigate({ to: '/sequences' })}
+          onClick={() => void navigate({ to: '/sequences' })}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to sequences

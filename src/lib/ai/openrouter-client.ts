@@ -500,11 +500,32 @@ export function assistantMessage(content: string): OpenRouterMessage {
 
 /**
  * Extract JSON from a potentially wrapped response
+ * @param content - The content string to parse
+ * @param schema - Optional Zod schema to validate and type the result
+ * @returns Parsed JSON as unknown (caller must validate), or typed T if schema provided
  */
-export function extractJSON<T>(content: string): T | null {
+export function extractJSON<T>(
+  content: string,
+  schema?: z.ZodType<T>
+): T | null {
+  const parseAndValidate = (jsonString: string): T | null => {
+    const parsed: unknown = JSON.parse(jsonString);
+    if (schema) {
+      const result = schema.safeParse(parsed);
+      if (result.success) {
+        return result.data;
+      }
+      console.error('Schema validation failed:', result.error.message);
+      return null;
+    }
+    // When no schema provided, return as T (caller takes responsibility for type safety)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Intentional: function signature indicates optional validation
+    return parsed as T;
+  };
+
   try {
     // Try direct parse first
-    return JSON.parse(content) as T;
+    return parseAndValidate(content);
   } catch (error) {
     if (error instanceof SyntaxError) {
       console.log('Failed to parse JSON from markdown direct parse');
@@ -520,9 +541,11 @@ export function extractJSON<T>(content: string): T | null {
     const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[1]) as T;
-        console.log('parsed from markdown code blocks');
-        return parsed;
+        const result = parseAndValidate(jsonMatch[1]);
+        if (result !== null) {
+          console.log('parsed from markdown code blocks');
+          return result;
+        }
       } catch (error) {
         if (error instanceof SyntaxError) {
           console.error('Failed to parse JSON from markdown code blocks:', {
@@ -549,7 +572,7 @@ export function extractJSON<T>(content: string): T | null {
     const objectMatch = content.match(/{[\s\S]*}/);
     if (objectMatch) {
       try {
-        return JSON.parse(objectMatch[0]) as T;
+        return parseAndValidate(objectMatch[0]);
       } catch {
         console.error('Failed to parse JSON from object match:', objectMatch);
         return null;

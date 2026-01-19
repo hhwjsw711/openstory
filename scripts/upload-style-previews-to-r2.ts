@@ -36,12 +36,6 @@ const isDryRun = !isExecute;
 const envIndex = process.argv.indexOf('--env');
 const environment = envIndex !== -1 ? process.argv[envIndex + 1] : 'dev';
 
-if (!['prd', 'stg'].includes(environment)) {
-  console.error(`❌ Invalid environment: ${environment}`);
-  console.error('   Valid options: prd, stg, dev');
-  process.exit(1);
-}
-
 // Environment-specific configuration
 const ENV_CONFIG = {
   prd: {
@@ -54,9 +48,18 @@ const ENV_CONFIG = {
   },
 };
 
-const R2_PUBLIC_BUCKET =
-  ENV_CONFIG[environment as keyof typeof ENV_CONFIG].bucket;
-const R2_PUBLIC_URL = ENV_CONFIG[environment as keyof typeof ENV_CONFIG].url;
+function isValidEnvironment(env: string): env is keyof typeof ENV_CONFIG {
+  return env in ENV_CONFIG;
+}
+
+if (!isValidEnvironment(environment)) {
+  console.error(`❌ Invalid environment: ${environment}`);
+  console.error('   Valid options: prd, stg');
+  process.exit(1);
+}
+
+const R2_PUBLIC_BUCKET = ENV_CONFIG[environment].bucket;
+const R2_PUBLIC_URL = ENV_CONFIG[environment].url;
 
 if (isDryRun) {
   console.log('🔍 DRY RUN MODE - No uploads will be made');
@@ -148,7 +151,7 @@ async function scanStyleImages(): Promise<ImageInfo[]> {
       }
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       console.error(`❌ Directory not found: ${PUBLIC_ASSETS_DIR}`);
       console.error(
         '   Make sure style preview images exist in /public/assets/styles/'

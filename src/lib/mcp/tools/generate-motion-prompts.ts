@@ -55,7 +55,7 @@ export async function generateMotionPromptsTool(
 /**
  * Tool description for MCP
  */
-const generateMotionPromptsToolDescription = {
+export const generateMotionPromptsToolDescription = {
   name: 'generate_motion_prompts',
   description: `Generate motion prompts for scenes (Phase 4 of script analysis).
 

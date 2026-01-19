@@ -50,8 +50,10 @@ export async function resetTestDatabase(): Promise<void> {
 
   // Delete from all tables
   for (const row of result.rows) {
-    const name = row.name as string;
-    await client.execute(`DELETE FROM "${name}"`);
+    const name = row.name;
+    if (typeof name === 'string') {
+      await client.execute(`DELETE FROM "${name}"`);
+    }
   }
 
   // Re-enable foreign key checks

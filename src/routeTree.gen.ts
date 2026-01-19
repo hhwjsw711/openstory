@@ -29,7 +29,6 @@ import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talen
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
-import { Route as ApiWorkflowsStatusRunIdRouteImport } from './routes/api/workflows/status/$runId'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
 import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
 import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts'
@@ -146,11 +145,6 @@ const ProtectedLocationsLocationIdRoute =
     path: '/locations/$locationId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ApiWorkflowsStatusRunIdRoute = ApiWorkflowsStatusRunIdRouteImport.update({
-  id: '/api/workflows/status/$runId',
-  path: '/api/workflows/status/$runId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiMcpStreamVisualPromptsRoute =
   ApiMcpStreamVisualPromptsRouteImport.update({
     id: '/stream/visual-prompts',
@@ -268,7 +262,6 @@ export interface FileRoutesByFullPath {
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -304,7 +297,6 @@ export interface FileRoutesByTo {
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -343,7 +335,6 @@ export interface FileRoutesById {
   '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
   '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
   '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/api/workflows/status/$runId': typeof ApiWorkflowsStatusRunIdRoute
   '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -381,7 +372,6 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/workflows/status/$runId'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -417,7 +407,6 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/workflows/status/$runId'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -455,7 +444,6 @@ export interface FileRouteTypes {
     | '/api/mcp/stream/motion-prompts'
     | '/api/mcp/stream/split-scenes'
     | '/api/mcp/stream/visual-prompts'
-    | '/api/workflows/status/$runId'
     | '/_protected/sequences/$id/cast/$characterId'
     | '/_protected/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -473,7 +461,6 @@ export interface RootRouteChildren {
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
-  ApiWorkflowsStatusRunIdRoute: typeof ApiWorkflowsStatusRunIdRoute
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
   ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
 }
@@ -619,13 +606,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/locations/$locationId'
       preLoaderRoute: typeof ProtectedLocationsLocationIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
-    }
-    '/api/workflows/status/$runId': {
-      id: '/api/workflows/status/$runId'
-      path: '/api/workflows/status/$runId'
-      fullPath: '/api/workflows/status/$runId'
-      preLoaderRoute: typeof ApiWorkflowsStatusRunIdRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/mcp/stream/visual-prompts': {
       id: '/api/mcp/stream/visual-prompts'
@@ -826,7 +806,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
-  ApiWorkflowsStatusRunIdRoute: ApiWorkflowsStatusRunIdRoute,
   ApiSequencesSequenceIdChaptersVttRoute:
     ApiSequencesSequenceIdChaptersVttRoute,
   ApiTeamsInvitationsInvitationIdAcceptRoute:

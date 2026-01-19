@@ -56,7 +56,7 @@ export async function splitScenesTool(
 /**
  * Tool description for MCP
  */
-const splitScenesToolDescription = {
+export const splitScenesToolDescription = {
   name: 'split_scenes',
   description: `Split a script into logical scenes with metadata (Phase 1 of script analysis).
 

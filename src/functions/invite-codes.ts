@@ -38,14 +38,11 @@ export const activateInviteCodeFn = createServerFn({ method: 'POST' })
       throw new Error('User not found');
     }
 
-    const status = (userRecord as typeof userRecord & { status?: string })
-      .status;
-
-    if (status === 'active') {
+    if (userRecord.status === 'active') {
       throw new Error('Account already activated');
     }
 
-    if (status !== 'pending') {
+    if (userRecord.status !== 'pending') {
       throw new Error('Account cannot be activated at this time');
     }
 

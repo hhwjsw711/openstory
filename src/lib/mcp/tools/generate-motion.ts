@@ -3,37 +3,11 @@
  * Uses existing Velro motion generation service
  */
 
-import type { Scene } from '@/lib/script/types';
 import {
   generateMotionForFrame,
   type GenerateMotionOptions,
   type MotionResult,
 } from '@/lib/motion/motion-generation';
-
-type GenerateMotionFromScenesInput = Omit<
-  GenerateMotionOptions,
-  'imageUrl' | 'prompt'
-> & {
-  scenes: Scene[];
-};
-
-type SceneMotionResult = {
-  sceneId: string;
-  sceneNumber: number;
-  sceneTitle: string;
-  videoUrl?: string;
-  prompt: string;
-  success: boolean;
-  error?: string;
-};
-
-type GenerateMotionFromScenesOutput = {
-  results: SceneMotionResult[];
-  totalGenerated: number;
-  totalFailed: number;
-  model: string;
-  generatedAt: string;
-};
 
 /**
  * Generate motion video from image

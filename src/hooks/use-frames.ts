@@ -17,8 +17,8 @@ import {
   generateFrameVariantsFn,
   selectFrameVariantFn,
 } from '@/functions/frame-image';
-import type { TextToImageModel } from '@/lib/ai/models';
-import type { ImageSize } from '@/lib/constants/aspect-ratios';
+import type { GenerateVariantInput as SchemaGenerateVariantInput } from '@/lib/schemas/frame.schemas';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 
 type CreateFrameInput = {
   sequenceId: string;
@@ -27,7 +27,7 @@ type CreateFrameInput = {
   thumbnailUrl?: string;
   videoUrl?: string;
   durationMs?: number;
-  metadata?: unknown;
+  metadata?: Scene;
 };
 
 type UpdateFrameInput = {
@@ -37,7 +37,7 @@ type UpdateFrameInput = {
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
   durationMs?: number | null;
-  metadata?: unknown;
+  metadata?: Scene;
 };
 
 type GenerateFramesInput = {
@@ -51,13 +51,9 @@ type RegenerateFrameInput = {
   regenerateThumbnail?: boolean;
 };
 
-type GenerateVariantInput = {
+type GenerateVariantInput = SchemaGenerateVariantInput & {
   sequenceId: string;
   frameId: string;
-  model?: string;
-  imageSize?: 'square_hd' | 'portrait_16_9' | 'landscape_16_9';
-  numImages?: number;
-  seed?: number;
 };
 
 type SelectVariantInput = {
@@ -129,12 +125,11 @@ export function useFramesBySequence(
 }
 
 // Hook for getting single frame
-function useFrame(sequenceId: string, frameId: string) {
+export function useFrame(sequenceId: string, frameId: string) {
   return useQuery<Frame>({
     queryKey: frameKeys.detail(frameId),
     queryFn: async () => {
-      const data = await getFrameFn({ data: { sequenceId, frameId } });
-      return data as Frame;
+      return getFrameFn({ data: { sequenceId, frameId } });
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!sequenceId && !!frameId,
@@ -142,7 +137,7 @@ function useFrame(sequenceId: string, frameId: string) {
 }
 
 // Hook for creating frame
-function useCreateFrame() {
+export function useCreateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<Frame, Error, CreateFrameInput>({
@@ -156,9 +151,9 @@ function useCreateFrame() {
           orderIndex,
           durationMs: durationMs ?? null,
           ...rest,
-        } as Parameters<typeof createFrameFn>[0]['data'],
+        } satisfies Parameters<typeof createFrameFn>[0]['data'],
       });
-      return data as Frame;
+      return data;
     },
     onSuccess: async (data) => {
       if (data?.sequenceId) {
@@ -171,12 +166,12 @@ function useCreateFrame() {
 }
 
 // Hook for updating frame
-function useUpdateFrame() {
+export function useUpdateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<Frame, Error, UpdateFrameInput & { sequenceId: string }>({
     mutationFn: async (input) => {
-      const { id, sequenceId, metadata, ...updateData } = input;
+      const { id, sequenceId, metadata: _metadata, ...updateData } = input;
       const data = await updateFrameFn({
         data: {
           sequenceId,
@@ -184,7 +179,10 @@ function useUpdateFrame() {
           ...updateData,
         } as Parameters<typeof updateFrameFn>[0]['data'],
       });
-      return data as Frame;
+      if (!data) {
+        throw new Error(`Frame ${id} not found`);
+      }
+      return data;
     },
     onSuccess: async (data) => {
       if (data?.id) {
@@ -200,7 +198,7 @@ function useUpdateFrame() {
 }
 
 // Hook for deleting frame
-function useDeleteFrame() {
+export function useDeleteFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -229,7 +227,7 @@ function useDeleteFrame() {
 }
 
 // Hook for reordering frames
-function useReorderFrames() {
+export function useReorderFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -292,7 +290,7 @@ function useReorderFrames() {
 }
 
 // Hook for bulk creating frames
-function useBulkCreateFrames() {
+export function useBulkCreateFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -319,7 +317,7 @@ function useBulkCreateFrames() {
         data: {
           sequenceId,
           frames: transformedFrames,
-        } as Parameters<typeof createFramesBulkFn>[0]['data'],
+        } satisfies Parameters<typeof createFramesBulkFn>[0]['data'],
       });
       return data;
     },
@@ -332,7 +330,7 @@ function useBulkCreateFrames() {
 }
 
 // Hook for deleting all frames in a sequence
-function useDeleteFramesBySequence() {
+export function useDeleteFramesBySequence() {
   const queryClient = useQueryClient();
 
   return useMutation<string, Error, string>({
@@ -350,7 +348,7 @@ function useDeleteFramesBySequence() {
 }
 
 // Hook for generating frames with AI
-function useGenerateFrames() {
+export function useGenerateFrames() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -393,7 +391,7 @@ function useGenerateFrames() {
 }
 
 // Hook for regenerating a single frame
-function useRegenerateFrame() {
+export function useRegenerateFrame() {
   const queryClient = useQueryClient();
 
   return useMutation<{ workflowRunId: string }, Error, RegenerateFrameInput>({
@@ -434,8 +432,8 @@ export function useGenerateVariants() {
         data: {
           sequenceId,
           frameId,
-          model: model as TextToImageModel | undefined,
-          imageSize: imageSize as ImageSize | undefined,
+          model,
+          imageSize,
           numImages,
           seed,
         },
@@ -546,7 +544,7 @@ export function useSelectVariant() {
 }
 
 // Hook to track preview image generation status for frames
-function useFramePreviewStatus(frames: Frame[]) {
+export function useFramePreviewStatus(frames: Frame[]) {
   // Get frames that might be generating previews (no thumbnailUrl but were recently created)
   const framesNeedingPreviews = useMemo(() => {
     return frames.filter((frame) => {

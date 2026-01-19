@@ -202,7 +202,6 @@ export const generateImageWorkflow = createWorkflow(
         // Emit failure progress
         if (input.sequenceId) {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await getGenerationChannel(input.sequenceId)?.emit(
               'generation.image:progress',
               {

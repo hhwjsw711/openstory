@@ -60,7 +60,10 @@ export const EditLocationDialog: React.FC<EditLocationDialogProps> = ({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-lg">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Edit Location</DialogTitle>
             <DialogDescription>Update the location details.</DialogDescription>

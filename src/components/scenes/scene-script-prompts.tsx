@@ -460,7 +460,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <PromptTabContent
           text={scriptText}
           isCopied={copiedTab === 'script'}
-          onCopy={() => handleCopy(scriptText, 'script')}
+          onCopy={() => void handleCopy(scriptText, 'script')}
           showDuration={true}
           durationMs={frame?.durationMs}
         />
@@ -515,7 +515,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           {/* Shorten button */}
           <Button
             variant="outline"
-            onClick={handleShortenPrompt}
+            onClick={() => void handleShortenPrompt()}
             disabled={
               isShortening ||
               isGenerating ||
@@ -531,7 +531,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={handleRegenerate}
+            onClick={() => void handleRegenerate()}
             disabled={isGenerating || !frame}
             className="w-full"
           >
@@ -547,7 +547,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <Button
             variant="outline"
             onClick={() =>
-              handleCopy(editedImagePrompt || imagePrompt, 'image-prompt')
+              void handleCopy(editedImagePrompt || imagePrompt, 'image-prompt')
             }
             disabled={!imagePrompt}
             className="w-full"
@@ -601,7 +601,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={handleRegenerateMotion}
+            onClick={() => void handleRegenerateMotion()}
             disabled={isGenerating || isGeneratingMotion || !frame}
             className="w-full"
           >
@@ -619,7 +619,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           <Button
             variant="outline"
             onClick={() =>
-              handleCopy(editedMotionPrompt || motionPrompt, 'motion-prompt')
+              void handleCopy(
+                editedMotionPrompt || motionPrompt,
+                'motion-prompt'
+              )
             }
             disabled={!motionPrompt}
             className="w-full"
@@ -644,7 +647,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             <VariantSelector
               variantImageUrl={frame.variantImageUrl}
               selectedVariantIndex={null} // TODO: Store selected variant index in frame metadata if needed
-              onVariantSelect={handleVariantSelect}
+              onVariantSelect={(index) => void handleVariantSelect(index)}
               loading={isGeneratingSceneVariants || selectVariant.isPending}
               disabled={isGeneratingSceneVariants || selectVariant.isPending}
               aspectRatio={aspectRatio}
@@ -667,7 +670,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={handleGenerateSceneVariants}
+            onClick={() => void handleGenerateSceneVariants()}
             disabled={
               isGenerating ||
               isGeneratingSceneVariants ||

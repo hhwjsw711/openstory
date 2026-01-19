@@ -31,6 +31,10 @@ function getWorkflowClient(): WorkflowClient {
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
           'x-vercel-protection-bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-callback-forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
   });
@@ -57,6 +61,10 @@ export function getQStashClient(): QStashClient {
           'Upstash-Forward-X-Vercel-Protection-Bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
           'x-vercel-protection-bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-callback-forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
@@ -125,6 +133,10 @@ export async function triggerWorkflow(
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
           'X-Vercel-Protection-Bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-callback-forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
   });
@@ -132,7 +144,7 @@ export async function triggerWorkflow(
   return response.workflowRunId;
 }
 
-async function cancelWorkflow(workflowId: string) {
+export async function cancelWorkflow(workflowId: string) {
   const qstash = getWorkflowClient();
   const response = await qstash.cancel({ ids: [workflowId] });
   return response.cancelled;

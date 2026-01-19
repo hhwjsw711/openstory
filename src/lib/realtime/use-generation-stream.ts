@@ -3,15 +3,183 @@ import { useCallback, useReducer } from 'react';
 import { useRealtime } from './client';
 import {
   generationStreamReducer,
-  type GenerationStreamState,
   initialGenerationStreamState,
+  type GenerationStreamAction,
 } from './generation-stream.reducer';
 import { updateQueryCacheFromEvent } from './query-cache-updater';
 
 type GenerationEvent = {
   event: string;
-  data: unknown;
+  data: Record<string, unknown>;
 };
+
+// Type guard helpers for extracting typed values from event data
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === 'number' ? value : 0;
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function asOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' ? value : undefined;
+}
+
+type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
+
+function asFrameStatus(value: unknown): FrameStatus {
+  if (
+    value === 'pending' ||
+    value === 'generating' ||
+    value === 'completed' ||
+    value === 'failed'
+  ) {
+    return value;
+  }
+  return 'pending';
+}
+
+/**
+ * Maps a realtime event to a typed reducer action.
+ * Uses type guards for runtime type safety.
+ */
+function mapEventToAction(
+  eventName: string,
+  data: Record<string, unknown>
+): GenerationStreamAction | null {
+  switch (eventName) {
+    case 'generation.phase:start':
+      return {
+        type: 'PHASE_START',
+        payload: {
+          phase: asNumber(data.phase),
+          phaseName: asString(data.phaseName),
+        },
+      };
+
+    case 'generation.phase:complete':
+      return {
+        type: 'PHASE_COMPLETE',
+        payload: { phase: asNumber(data.phase) },
+      };
+
+    case 'generation.scene:new':
+      return {
+        type: 'SCENE_NEW',
+        payload: {
+          sceneId: asString(data.sceneId),
+          sceneNumber: asNumber(data.sceneNumber),
+          title: asString(data.title),
+          scriptExtract: asString(data.scriptExtract),
+          durationSeconds: asNumber(data.durationSeconds),
+        },
+      };
+
+    case 'generation.frame:created':
+      return {
+        type: 'FRAME_CREATED',
+        payload: {
+          frameId: asString(data.frameId),
+          sceneId: asString(data.sceneId),
+          orderIndex: asNumber(data.orderIndex),
+        },
+      };
+
+    case 'generation.image:progress':
+      return {
+        type: 'IMAGE_PROGRESS',
+        payload: {
+          frameId: asString(data.frameId),
+          status: asFrameStatus(data.status),
+          thumbnailUrl: asOptionalString(data.thumbnailUrl),
+        },
+      };
+
+    case 'generation.video:progress':
+      return {
+        type: 'VIDEO_PROGRESS',
+        payload: {
+          frameId: asString(data.frameId),
+          status: asFrameStatus(data.status),
+          videoUrl: asOptionalString(data.videoUrl),
+        },
+      };
+
+    case 'generation.complete':
+      return {
+        type: 'COMPLETE',
+        payload: { sequenceId: asString(data.sequenceId) },
+      };
+
+    case 'generation.failed':
+      return {
+        type: 'FAILED',
+        payload: { message: asString(data.message) },
+      };
+
+    case 'generation.error':
+      return {
+        type: 'ERROR',
+        payload: {
+          message: asString(data.message),
+          phase: asOptionalNumber(data.phase),
+        },
+      };
+
+    case 'generation.talent:matched':
+      // Trust that the realtime schema enforces proper structure
+      return {
+        type: 'TALENT_MATCHED',
+        payload: {
+          matches: (Array.isArray(data.matches) ? data.matches : []).map(
+            (m: Record<string, unknown>) => ({
+              characterId: asString(m.characterId),
+              characterName: asString(m.characterName),
+              talentId: asString(m.talentId),
+              talentName: asString(m.talentName),
+            })
+          ),
+        },
+      };
+
+    case 'generation.talent:unmatched':
+      return {
+        type: 'TALENT_UNMATCHED',
+        payload: {
+          unusedTalentIds: Array.isArray(data.unusedTalentIds)
+            ? data.unusedTalentIds.map(asString)
+            : [],
+          unusedTalentNames: Array.isArray(data.unusedTalentNames)
+            ? data.unusedTalentNames.map(asString)
+            : [],
+        },
+      };
+
+    case 'generation.location:matched':
+      return {
+        type: 'LOCATION_MATCHED',
+        payload: {
+          matches: (Array.isArray(data.matches) ? data.matches : []).map(
+            (m: Record<string, unknown>) => ({
+              locationId: asString(m.locationId),
+              libraryLocationId: asString(m.libraryLocationId),
+              libraryLocationName: asString(m.libraryLocationName),
+              referenceImageUrl: asString(m.referenceImageUrl),
+              description: asOptionalString(m.description),
+            })
+          ),
+        },
+      };
+
+    default:
+      return null;
+  }
+}
 
 /**
  * Hook for subscribing to real-time generation events for a sequence.
@@ -49,137 +217,13 @@ export function useGenerationStream(sequenceId?: string) {
 
       // Update TanStack Query cache for data-related events
       if (sequenceId) {
-        updateQueryCacheFromEvent(
-          queryClient,
-          sequenceId,
-          eventName,
-          data as Record<string, unknown>
-        );
+        updateQueryCacheFromEvent(queryClient, sequenceId, eventName, data);
       }
 
-      switch (eventName) {
-        case 'generation.phase:start':
-          dispatch({
-            type: 'PHASE_START',
-            payload: data as {
-              phase: number;
-              phaseName: string;
-            },
-          });
-          break;
-
-        case 'generation.phase:complete':
-          dispatch({
-            type: 'PHASE_COMPLETE',
-            payload: data as { phase: number },
-          });
-          break;
-
-        case 'generation.scene:new':
-          dispatch({
-            type: 'SCENE_NEW',
-            payload: data as {
-              sceneId: string;
-              sceneNumber: number;
-              title: string;
-              scriptExtract: string;
-              durationSeconds: number;
-            },
-          });
-          break;
-
-        case 'generation.frame:created':
-          dispatch({
-            type: 'FRAME_CREATED',
-            payload: data as {
-              frameId: string;
-              sceneId: string;
-              orderIndex: number;
-            },
-          });
-          break;
-
-        case 'generation.image:progress':
-          dispatch({
-            type: 'IMAGE_PROGRESS',
-            payload: data as {
-              frameId: string;
-              status: 'pending' | 'generating' | 'completed' | 'failed';
-              thumbnailUrl?: string;
-            },
-          });
-          break;
-
-        case 'generation.video:progress':
-          dispatch({
-            type: 'VIDEO_PROGRESS',
-            payload: data as {
-              frameId: string;
-              status: 'pending' | 'generating' | 'completed' | 'failed';
-              videoUrl?: string;
-            },
-          });
-          break;
-
-        case 'generation.complete':
-          dispatch({
-            type: 'COMPLETE',
-            payload: data as { sequenceId: string },
-          });
-          break;
-
-        case 'generation.failed':
-          dispatch({
-            type: 'FAILED',
-            payload: data as { message: string },
-          });
-          break;
-
-        case 'generation.error':
-          dispatch({
-            type: 'ERROR',
-            payload: data as { message: string; phase?: number },
-          });
-          break;
-
-        case 'generation.talent:matched':
-          dispatch({
-            type: 'TALENT_MATCHED',
-            payload: data as {
-              matches: Array<{
-                characterId: string;
-                characterName: string;
-                talentId: string;
-                talentName: string;
-              }>;
-            },
-          });
-          break;
-
-        case 'generation.talent:unmatched':
-          dispatch({
-            type: 'TALENT_UNMATCHED',
-            payload: data as {
-              unusedTalentIds: string[];
-              unusedTalentNames: string[];
-            },
-          });
-          break;
-
-        case 'generation.location:matched':
-          dispatch({
-            type: 'LOCATION_MATCHED',
-            payload: data as {
-              matches: Array<{
-                locationId: string;
-                libraryLocationId: string;
-                libraryLocationName: string;
-                referenceImageUrl: string;
-                description?: string;
-              }>;
-            },
-          });
-          break;
+      // Map event to typed action and dispatch
+      const action = mapEventToAction(eventName, data);
+      if (action) {
+        dispatch(action);
       }
     },
     [queryClient, sequenceId]

@@ -58,6 +58,12 @@ export const VALID_ACCESS_CODES = [
   'THE-FABELMANS-SAMMY-8392',
 ] as const;
 
+type ValidAccessCode = (typeof VALID_ACCESS_CODES)[number];
+
+function isValidAccessCodeValue(value: string): value is ValidAccessCode {
+  return (VALID_ACCESS_CODES as readonly string[]).includes(value);
+}
+
 /**
  * Validates if a given code is in the list of valid access codes
  * Case-insensitive and trims whitespace
@@ -68,7 +74,5 @@ export function isValidAccessCode(code: string): boolean {
   }
 
   const normalizedCode = code.toUpperCase().trim();
-  return VALID_ACCESS_CODES.includes(
-    normalizedCode as (typeof VALID_ACCESS_CODES)[number]
-  );
+  return isValidAccessCodeValue(normalizedCode);
 }
