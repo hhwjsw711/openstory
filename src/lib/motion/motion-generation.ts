@@ -72,7 +72,7 @@ type ProviderInputBuilder = (
   modelConfig: ImageToVideoModelConfig
 ) => Record<string, unknown>;
 
-const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
+export const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   kling: (options, modelConfig) => {
     const validatedDuration = options.duration
       ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
@@ -188,8 +188,57 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
 };
 
 /**
+ * Build motion generation input for a provider
+ *
+ * Extracts the provider-specific input building logic for use in workflows.
+ * This allows workflows to build the input and submit directly to fal's queue API
+ * with webhooks, rather than using fal.subscribe() which polls.
+ *
+ * @param options - Motion generation options
+ * @returns Provider-specific input and model config
+ * @throws Error if model is invalid or provider has no input builder
+ *
+ * @example
+ * const { input, modelConfig } = buildMotionInput({
+ *   imageUrl: 'https://example.com/image.jpg',
+ *   prompt: 'Camera pan left',
+ *   model: 'kling_v2_6_pro',
+ * });
+ * // Use input with fal queue API
+ */
+export function buildMotionInput(options: GenerateMotionOptions): {
+  input: Record<string, unknown>;
+  modelConfig: ImageToVideoModelConfig;
+} {
+  const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+
+  if (!modelConfig) {
+    throw new Error(`Invalid model: ${modelKey}`);
+  }
+
+  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
+
+  if (!inputBuilder) {
+    throw new Error(
+      `No input builder found for provider: ${modelConfig.provider}`
+    );
+  }
+
+  const input = inputBuilder(options, modelConfig);
+
+  return { input, modelConfig };
+}
+
+/**
  * Generate motion for a single frame using Fal.ai
  * Uses fal.subscribe() for queue-based generation with status tracking
+ *
+ * Note: For workflow usage, prefer using buildMotionInput() with webhooks
+ * to avoid polling. This function is still useful for:
+ * - MCP tools (direct CLI usage)
+ * - Scripts (check-motion-status.ts)
+ * - Testing/debugging
  */
 export async function generateMotionForFrame(
   options: GenerateMotionOptions

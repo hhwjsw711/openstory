@@ -1,6 +1,16 @@
 /**
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
+ *
+ * Uses Upstash Workflow webhooks to externalize fal.ai calls:
+ * - context.createWebhook() generates a callback URL
+ * - context.call() submits to fal's queue API with the webhook
+ * - context.waitForWebhook() pauses until fal calls back
+ *
+ * This is more efficient than polling with fal.subscribe() as it:
+ * - Doesn't tie up workflow execution during generation
+ * - Uses fal's native webhook support
+ * - Is more resilient to long generation times (up to 10 minutes)
  */
 
 import {
@@ -15,11 +25,15 @@ import type { MotionWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-// Import motion service
-import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+import { buildMotionInput } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { getFalFlowControl } from './constants';
+import {
+  buildFalQueueUrl,
+  getFalAuthHeaders,
+  parseFalVideoWebhookResponse,
+} from '@/lib/fal/webhook-utils';
 
 /**
  * Motion generation workflow
@@ -95,11 +109,8 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2: Generate motion/video
-    const videoResult = await context.run('generate-motion', async () => {
-      // Select appropriate image URL based on environment
-      // - Local dev: Use temporary FAL URL (publicly accessible)
-      // - Production: Generate signed URL from R2 storage path
+    // Step 2: Build motion input (pure computation, no API call)
+    const motionConfig = await context.run('build-motion-input', async () => {
       const imageUrl = input.imageUrl;
 
       if (!imageUrl) {
@@ -108,7 +119,7 @@ export const generateMotionWorkflow = createWorkflow(
         );
       }
 
-      const result = await generateMotionForFrame({
+      const { input: motionInput, modelConfig } = buildMotionInput({
         imageUrl,
         prompt: input.prompt,
         model: input.model || DEFAULT_VIDEO_MODEL,
@@ -116,15 +127,63 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        traceName: 'frame-motion',
       });
 
-      if (!result.success || !result.videoUrl) {
-        throw new Error(result.error || 'Motion generation failed');
-      }
-
-      return result;
+      return {
+        motionInput,
+        modelId: modelConfig.id,
+        duration: input.duration || modelConfig.capabilities.defaultDuration,
+      };
     });
+
+    // Step 3: Create webhook for fal callback
+    const webhook = await context.createWebhook('fal-motion-callback');
+
+    // Step 4: Submit to fal queue with webhook URL
+    // Uses context.call() which handles timeouts gracefully
+    const submitResult = await context.call<{ request_id: string }>(
+      'submit-motion-to-fal',
+      {
+        url: buildFalQueueUrl(motionConfig.modelId, webhook.webhookUrl),
+        method: 'POST',
+        body: motionConfig.motionInput,
+        headers: getFalAuthHeaders(),
+        retries: 2,
+        timeout: 30, // 30 second timeout for submission
+      }
+    );
+
+    if (submitResult.status !== 200) {
+      throw new Error(
+        `Failed to submit to fal queue: ${submitResult.status} ${JSON.stringify(submitResult.body)}`
+      );
+    }
+
+    console.log(
+      '[MotionWorkflow]',
+      `Submitted to fal queue: ${submitResult.body.request_id}`
+    );
+
+    // Step 5: Wait for fal to call webhook (up to 10 minutes for video)
+    const webhookResult = await context.waitForWebhook(
+      'wait-for-motion',
+      webhook,
+      '10m'
+    );
+
+    // Step 6: Parse webhook response
+    const falResult = parseFalVideoWebhookResponse(webhookResult);
+
+    // Build result object matching previous structure
+    const videoResult = {
+      success: true,
+      videoUrl: falResult.video.url,
+      metadata: {
+        model: motionConfig.modelId,
+        duration: motionConfig.duration,
+        requestId: submitResult.body.request_id,
+      },
+    };
 
     let videoUrl: string = videoResult.videoUrl || '';
 

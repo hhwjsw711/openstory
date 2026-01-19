@@ -1,8 +1,22 @@
+/**
+ * Image generation workflow
+ * Generates images from prompts using various AI models
+ *
+ * Uses Upstash Workflow webhooks to externalize fal.ai calls:
+ * - context.createWebhook() generates a callback URL
+ * - context.call() submits to fal's queue API with the webhook
+ * - context.waitForWebhook() pauses until fal calls back
+ *
+ * Note: LetzAI uses a different API and falls back to polling
+ */
+
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
+  buildImageInput,
   generateImageWithProvider,
+  getImageModelEndpoint,
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
@@ -13,6 +27,11 @@ import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
 import { getFalFlowControl } from './constants';
+import {
+  buildFalQueueUrl,
+  getFalAuthHeaders,
+  parseFalImageWebhookResponse,
+} from '@/lib/fal/webhook-utils';
 
 export const generateImageWorkflow = createWorkflow(
   async (context: WorkflowContext<ImageWorkflowInput>) => {
@@ -95,25 +114,85 @@ export const generateImageWorkflow = createWorkflow(
       };
     }
 
-    // Step 2: Generate image
-    const imageResult = await context.run('generate-image', async () => {
-      console.log(
-        '[ImageWorkflow]',
-        `Generating image ${input.frameId} with model ${generationParams.model}`
+    // Check if we can use webhook pattern (LetzAI doesn't support it)
+    const usesWebhook = generationParams.model !== 'letzai';
+
+    let imageUrl: string;
+
+    if (usesWebhook) {
+      // Step 2a: Build image input for fal queue submission
+      const imageConfig = await context.run('build-image-input', async () => {
+        console.log(
+          '[ImageWorkflow]',
+          `Building image input for ${input.frameId} with model ${generationParams.model}`
+        );
+
+        const { modelId, input: imageInput } =
+          buildImageInput(generationParams);
+        const endpoint = getImageModelEndpoint(generationParams);
+
+        return { modelId, endpoint, imageInput };
+      });
+
+      // Step 2b: Create webhook for fal callback
+      const webhook = await context.createWebhook('fal-image-callback');
+
+      // Step 2c: Submit to fal queue with webhook URL
+      const submitResult = await context.call<{ request_id: string }>(
+        'submit-image-to-fal',
+        {
+          url: buildFalQueueUrl(imageConfig.endpoint, webhook.webhookUrl),
+          method: 'POST',
+          body: imageConfig.imageInput,
+          headers: getFalAuthHeaders(),
+          retries: 2,
+          timeout: 30, // 30 second timeout for submission
+        }
       );
 
-      return await generateImageWithProvider(generationParams);
-    });
+      if (submitResult.status !== 200) {
+        throw new Error(
+          `Failed to submit to fal queue: ${submitResult.status} ${JSON.stringify(submitResult.body)}`
+        );
+      }
 
-    let imageUrl: string = imageResult.imageUrls[0];
+      console.log(
+        '[ImageWorkflow]',
+        `Submitted to fal queue: ${submitResult.body.request_id}`
+      );
+
+      // Step 2d: Wait for fal to call webhook (up to 5 minutes for images)
+      const webhookResult = await context.waitForWebhook(
+        'wait-for-image',
+        webhook,
+        '5m'
+      );
+
+      // Step 2e: Parse webhook response
+      const falResult = parseFalImageWebhookResponse(webhookResult);
+      imageUrl = falResult.images[0].url;
+    } else {
+      // Fallback for LetzAI: use polling-based approach
+      const imageResult = await context.run(
+        'generate-image-letzai',
+        async () => {
+          console.log(
+            '[ImageWorkflow]',
+            `Generating image ${input.frameId} with LetzAI (polling mode)`
+          );
+
+          return await generateImageWithProvider(generationParams);
+        }
+      );
+
+      imageUrl = imageResult.imageUrls[0];
+    }
 
     if (imageUrl && input.frameId && input.sequenceId && input.teamId) {
       await context.run('upload-to-storage', async () => {
         // We need to check these again as this is an async step and the values may have changed
         if (!input.frameId || !input.sequenceId || !input.teamId || !imageUrl) {
-          throw new Error('Missing required IDs for storage upload', {
-            cause: JSON.stringify(imageResult),
-          });
+          throw new Error('Missing required IDs for storage upload');
         }
 
         const result = await uploadImageToStorage({

@@ -147,8 +147,257 @@ function truncatePromptForModel(
 }
 
 /**
+ * Build image generation input for a model
+ *
+ * Extracts the model-specific input building logic for use in workflows.
+ * This allows workflows to build the input and submit directly to fal's queue API
+ * with webhooks, rather than using fal.subscribe() which polls.
+ *
+ * @param params - Image generation parameters
+ * @returns Model ID and provider-specific input
+ * @throws Error if model is not supported for webhook-based generation (e.g., LetzAI)
+ *
+ * @example
+ * const { modelId, input } = buildImageInput({
+ *   model: 'flux_dev',
+ *   prompt: 'A beautiful sunset',
+ *   imageSize: 'landscape_16_9',
+ * });
+ * // Use modelId and input with fal queue API
+ */
+export function buildImageInput(params: ImageGenerationParams): {
+  modelId: string;
+  input: Record<string, unknown>;
+} {
+  const modelId = getTextToImageModelId(params.model);
+
+  // LetzAI uses a different API and doesn't support webhooks
+  if (params.model === 'letzai') {
+    throw new Error('LetzAI does not support webhook-based generation');
+  }
+
+  // Truncate prompt to model's max length
+  const prompt = truncatePromptForModel(params.prompt, params.model);
+
+  // Build model-specific input
+  const input = buildModelInput(params, prompt);
+
+  return { modelId, input };
+}
+
+/**
+ * Build model-specific input based on model type
+ */
+function buildModelInput(
+  params: ImageGenerationParams,
+  prompt: string
+): Record<string, unknown> {
+  switch (params.model) {
+    case 'flux_pro':
+    case 'flux_dev':
+    case 'flux_schnell':
+    case 'flux_krea_lora':
+    case 'flux_pro_v1_1_ultra': {
+      const isUltra = params.model === 'flux_pro_v1_1_ultra';
+      const defaultSteps = params.model === 'flux_schnell' ? 4 : 28;
+      return {
+        prompt,
+        ...(isUltra
+          ? {
+              aspect_ratio: imageSizeToAspectRatio(
+                params.imageSize ?? DEFAULT_IMAGE_SIZE
+              ),
+            }
+          : { image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE }),
+        ...(!isUltra && {
+          num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+          guidance_scale: params.guidanceScale ?? 3.5,
+        }),
+        ...(params.model !== 'flux_pro' && { enable_safety_checker: true }),
+        ...(isUltra && { raw: false }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...((params.model === 'flux_pro' || isUltra) &&
+          params.safetyTolerance !== undefined && {
+            safety_tolerance: params.safetyTolerance.toString(),
+          }),
+        ...((params.model === 'flux_pro' || isUltra) &&
+          params.enhancePrompt !== undefined && {
+            enhance_prompt: params.enhancePrompt,
+          }),
+        ...((params.model === 'flux_dev' || params.model === 'flux_schnell') &&
+          params.acceleration && { acceleration: params.acceleration }),
+        ...(params.model === 'flux_krea_lora' &&
+          params.loras && { loras: params.loras }),
+        sync_mode: false,
+      };
+    }
+
+    case 'flux_2':
+      return {
+        prompt,
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? 28,
+        guidance_scale: params.guidanceScale ?? 2.5,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.acceleration && { acceleration: params.acceleration }),
+        ...(params.enablePromptExpansion !== undefined && {
+          enable_prompt_expansion: params.enablePromptExpansion,
+        }),
+        sync_mode: false,
+      };
+
+    case 'sdxl':
+    case 'sdxl_lightning': {
+      const defaultSteps = params.model === 'sdxl_lightning' ? 4 : 25;
+      const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
+      return {
+        prompt,
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+        enable_safety_checker: true,
+        ...(params.model === 'sdxl' &&
+          params.guidanceScale !== undefined && {
+            guidance_scale: params.guidanceScale,
+          }),
+        ...(params.model === 'sdxl' &&
+          defaultGuidance !== undefined &&
+          params.guidanceScale === undefined && {
+            guidance_scale: defaultGuidance,
+          }),
+        ...(params.model === 'sdxl' &&
+          params.negativePrompt && { negative_prompt: params.negativePrompt }),
+        ...(params.model === 'sdxl' && params.loras && { loras: params.loras }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { format: params.outputFormat }),
+        ...(params.embeddings && { embeddings: params.embeddings }),
+        sync_mode: false,
+      };
+    }
+
+    case 'imagen4_preview_ultra':
+      return {
+        prompt,
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        resolution: params.resolution ?? '1K',
+        num_images: 1,
+        ...(params.negativePrompt && {
+          negative_prompt: params.negativePrompt,
+        }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+      };
+
+    case 'nano_banana':
+      return {
+        prompt,
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
+
+    case 'nano_banana_pro': {
+      const hasReferences =
+        params.referenceImageUrls && params.referenceImageUrls.length > 0;
+      return {
+        prompt,
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        resolution: params.resolution ?? '2K',
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(hasReferences && { image_urls: params.referenceImageUrls }),
+        sync_mode: false,
+      };
+    }
+
+    case 'recraft_v3':
+      return {
+        prompt,
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        style: params.style ?? 'realistic_image',
+        enable_safety_checker: false,
+        ...(params.colors &&
+          params.colors.length > 0 && { colors: params.colors }),
+      };
+
+    case 'hidream_i1_full':
+      return {
+        prompt,
+        image_size: { width: 1024, height: 1024 },
+        num_inference_steps: params.numInferenceSteps ?? 50,
+        guidance_scale: params.guidanceScale ?? 5,
+        enable_safety_checker: true,
+        ...(params.negativePrompt && {
+          negative_prompt: params.negativePrompt,
+        }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.loras && { loras: params.loras }),
+        sync_mode: false,
+      };
+
+    case 'seedream_v4_5':
+      return {
+        prompt,
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        sync_mode: false,
+      };
+
+    case 'letzai':
+      // LetzAI is handled separately and should not reach here
+      throw new Error('LetzAI does not support webhook-based generation');
+
+    default: {
+      const _exhaustive: never = params.model;
+      throw new Error(`Unsupported model: ${String(_exhaustive)}`);
+    }
+  }
+}
+
+/**
+ * Get the appropriate model endpoint for webhook submission
+ * Some models use different endpoints when reference images are provided
+ */
+export function getImageModelEndpoint(params: ImageGenerationParams): string {
+  const modelId = getTextToImageModelId(params.model);
+
+  // Auto-switch to edit endpoint when reference images are provided
+  if (params.model === 'nano_banana_pro') {
+    const hasReferences =
+      params.referenceImageUrls && params.referenceImageUrls.length > 0;
+    const editEndpoint = getEditEndpoint(params.model);
+    if (hasReferences && editEndpoint) {
+      return editEndpoint;
+    }
+  }
+
+  return modelId;
+}
+
+/**
  * Generate image using a switch statement to determine parameters by model type
  * Pure switch-statement approach with fully inlined fal.subscribe calls
+ *
+ * Note: For workflow usage, prefer using buildImageInput() with webhooks
+ * to avoid polling. This function is still useful for:
+ * - MCP tools (direct CLI usage)
+ * - Scripts
+ * - Testing/debugging
  */
 export async function generateImageWithProvider(
   params: ImageGenerationParams
