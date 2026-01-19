@@ -166,7 +166,8 @@ export const test = base.extend<{
   authenticatedPage: Page;
 }>({
   // Default: read stored user info (for tests with storageState)
-  testUser: async (_, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright fixture syntax requires empty object destructuring
+  testUser: async ({}, use) => {
     const storedUser = getStoredUserInfo();
     await use(storedUser);
     // No cleanup needed - shared user persists across tests
