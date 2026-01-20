@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "doppler run -c dev --watch -- bun --bun vite dev",
+    "dev": "doppler run -c dev --watch -- vite dev",
     "dev:e2e": "vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",
@@ -54,7 +54,9 @@
     "db:setup:local": "bun db:migrate:local && bun db:seed:local",
     "qstash:dev": "docker run -p 8080:8080 public.ecr.aws/upstash/qstash:latest qstash dev",
     "qstash:dev:proxy": "docker run -p 8080:8080 -e HTTP_PROXY=http://host.docker.internal:9090 -e HTTPS_PROXY=http://host.docker.internal:9090 -e NO_PROXY=localhost,127.0.0.1,host.docker.internal -e NODE_TLS_REJECT_UNAUTHORIZED=1 public.ecr.aws/upstash/qstash:latest qstash dev",
+    "workflow:test-image": "doppler run -c dev -- bun scripts/test-image-workflow.ts",
     "setup:env": "./scripts/setup-env.sh",
+    "setup:tunnel": "bun scripts/setup-tunnel.ts",
     "bash:setup:env": "bash ./scripts/setup-env.sh",
     "cert:setup": "bash ./scripts/setup-cert.sh",
     "cert:trust": "mkcert -install",

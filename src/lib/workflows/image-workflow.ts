@@ -138,38 +138,40 @@ export const generateImageWorkflow = createWorkflow(
       const webhook = await context.createWebhook('fal-image-callback');
 
       // Step 2c: Submit to fal queue with webhook URL
-      const submitResult = await context.call<{ request_id: string }>(
-        'submit-image-to-fal',
-        {
-          url: buildFalQueueUrl(imageConfig.endpoint, webhook.webhookUrl),
-          method: 'POST',
-          body: imageConfig.imageInput,
-          headers: getFalAuthHeaders(),
-          retries: 2,
-          timeout: 30, // 30 second timeout for submission
-        }
-      );
-
-      if (submitResult.status !== 200) {
-        throw new Error(
-          `Failed to submit to fal queue: ${submitResult.status} ${JSON.stringify(submitResult.body)}`
-        );
-      }
+      const submitResult = await context.call('submit-image-to-fal', {
+        method: 'POST',
+        url: buildFalQueueUrl(imageConfig.endpoint, webhook.webhookUrl),
+        body: imageConfig.imageInput,
+        headers: getFalAuthHeaders(),
+      });
 
       console.log(
         '[ImageWorkflow]',
-        `Submitted to fal queue: ${submitResult.body.request_id}`
+        `Submitted to fal queue: ${JSON.stringify(submitResult)}`
       );
 
       // Step 2d: Wait for fal to call webhook (up to 5 minutes for images)
-      const webhookResult = await context.waitForWebhook(
+      const webhookResponse = await context.waitForWebhook(
         'wait-for-image',
         webhook,
-        '5m'
+        '10m'
       );
 
       // Step 2e: Parse webhook response
-      const falResult = parseFalImageWebhookResponse(webhookResult);
+      const falResult = await context.run(
+        'parse-fal-image-webhook',
+        async () => {
+          if (webhookResponse.timeout || !webhookResponse.request) {
+            throw new Error(
+              'Fal generation timed out waiting for webhook callback'
+            );
+          }
+          const request = webhookResponse.request;
+
+          const falResult = parseFalImageWebhookResponse(await request.json());
+          return falResult;
+        }
+      );
       imageUrl = falResult.images[0].url;
     } else {
       // Fallback for LetzAI: use polling-based approach

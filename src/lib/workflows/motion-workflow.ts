@@ -148,8 +148,6 @@ export const generateMotionWorkflow = createWorkflow(
         method: 'POST',
         body: motionConfig.motionInput,
         headers: getFalAuthHeaders(),
-        retries: 2,
-        timeout: 30, // 30 second timeout for submission
       }
     );
 
@@ -170,20 +168,28 @@ export const generateMotionWorkflow = createWorkflow(
       webhook,
       '10m'
     );
-
-    // Step 6: Parse webhook response
-    const falResult = parseFalVideoWebhookResponse(webhookResult);
-
-    // Build result object matching previous structure
-    const videoResult = {
-      success: true,
-      videoUrl: falResult.video.url,
-      metadata: {
-        model: motionConfig.modelId,
-        duration: motionConfig.duration,
-        requestId: submitResult.body.request_id,
-      },
-    };
+    const videoResult = await context.run(
+      'parse-fal-video-webhook',
+      async () => {
+        if (webhookResult.timeout || !webhookResult.request) {
+          throw new Error(
+            'Fal generation timed out waiting for webhook callback'
+          );
+        }
+        const request = webhookResult.request;
+        const falResult = parseFalVideoWebhookResponse(await request.json());
+        // Build result object matching previous structure
+        return {
+          success: true,
+          videoUrl: falResult.video.url,
+          metadata: {
+            model: motionConfig.modelId,
+            duration: motionConfig.duration,
+            requestId: submitResult.body.request_id,
+          },
+        };
+      }
+    );
 
     let videoUrl: string = videoResult.videoUrl || '';
 

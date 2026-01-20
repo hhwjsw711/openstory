@@ -165,10 +165,7 @@ function truncatePromptForModel(
  * });
  * // Use modelId and input with fal queue API
  */
-export function buildImageInput(params: ImageGenerationParams): {
-  modelId: string;
-  input: Record<string, unknown>;
-} {
+export function buildImageInput(params: ImageGenerationParams) {
   const modelId = getTextToImageModelId(params.model);
 
   // LetzAI uses a different API and doesn't support webhooks
@@ -188,10 +185,7 @@ export function buildImageInput(params: ImageGenerationParams): {
 /**
  * Build model-specific input based on model type
  */
-function buildModelInput(
-  params: ImageGenerationParams,
-  prompt: string
-): Record<string, unknown> {
+function buildModelInput(params: ImageGenerationParams, prompt: string) {
   switch (params.model) {
     case 'flux_pro':
     case 'flux_dev':

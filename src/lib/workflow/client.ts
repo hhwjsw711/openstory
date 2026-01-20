@@ -76,6 +76,13 @@ export function getQStashClient(): QStashClient {
  * In local development, we use a local QStash server that can reach localhost
  */
 function getQStashWebhookUrl(request: Request): string {
+  const env = getEnv();
+
+  // Explicit override takes precedence
+  if (env.UPSTASH_WORKFLOW_URL) {
+    return env.UPSTASH_WORKFLOW_URL;
+  }
+
   // Use centralized APP_URL, but convert localhost to host.docker.internal
   // for QStash running in Docker to reach the Next.js app
   const serverAppUrl = getServerAppUrl(request);

@@ -67,7 +67,7 @@ export type FalImageResult = {
  */
 export function buildFalQueueUrl(modelId: string, webhookUrl: string): string {
   const baseUrl = `https://queue.fal.run/${modelId}`;
-  const encodedWebhook = encodeURIComponent(webhookUrl);
+  const encodedWebhook = webhookUrl;
   return `${baseUrl}?fal_webhook=${encodedWebhook}`;
 }
 
@@ -130,20 +130,7 @@ function isFalWebhookPayload<T>(value: unknown): value is FalWebhookPayload<T> {
   );
 }
 
-export function parseFalWebhookResponse<T>(webhookResult: {
-  timeout: boolean;
-  request?: { body: unknown };
-}): T {
-  if (webhookResult.timeout) {
-    throw new Error('Fal generation timed out waiting for webhook callback');
-  }
-
-  if (!webhookResult.request?.body) {
-    throw new Error('No webhook payload received from fal');
-  }
-
-  const body = webhookResult.request.body;
-
+export function parseFalWebhookResponse<T>(body: Record<string, unknown>): T {
   if (!isFalWebhookPayload<T>(body)) {
     throw new Error('Invalid fal webhook payload format');
   }
@@ -168,11 +155,10 @@ export function parseFalWebhookResponse<T>(webhookResult: {
  * @returns The video URL and metadata
  * @throws Error if the webhook timed out, fal returned an error, or no video URL
  */
-export function parseFalVideoWebhookResponse(webhookResult: {
-  timeout: boolean;
-  request?: { body: unknown };
-}): FalVideoResult {
-  const result = parseFalWebhookResponse<FalVideoResult>(webhookResult);
+export function parseFalVideoWebhookResponse(
+  body: Record<string, unknown>
+): FalVideoResult {
+  const result = parseFalWebhookResponse<FalVideoResult>(body);
 
   if (!result.video?.url) {
     throw new Error('No video URL in fal webhook response');
@@ -190,11 +176,10 @@ export function parseFalVideoWebhookResponse(webhookResult: {
  * @returns The image URLs and metadata
  * @throws Error if the webhook timed out, fal returned an error, or no images
  */
-export function parseFalImageWebhookResponse(webhookResult: {
-  timeout: boolean;
-  request?: { body: unknown };
-}): FalImageResult {
-  const result = parseFalWebhookResponse<FalImageResult>(webhookResult);
+export function parseFalImageWebhookResponse(
+  body: Record<string, unknown>
+): FalImageResult {
+  const result = parseFalWebhookResponse<FalImageResult>(body);
 
   if (!result.images?.length || !result.images[0].url) {
     throw new Error('No image URLs in fal webhook response');

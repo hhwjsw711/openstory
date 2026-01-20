@@ -1,6 +1,6 @@
 // vite.config.ts
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
@@ -10,11 +10,30 @@ import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
 
+// Plugin to display the tunnel URL in the CLI
+function tunnelDisplay(): Plugin {
+  return {
+    name: 'tunnel-display',
+    configureServer(server) {
+      const _printUrls = server.printUrls.bind(server);
+      server.printUrls = () => {
+        _printUrls();
+        if (process.env.APP_URL) {
+          console.log(
+            `  \x1b[32m➜\x1b[0m  \x1b[1mTunnel:\x1b[0m  \x1b[36m${process.env.APP_URL}\x1b[0m`
+          );
+        }
+      };
+    },
+  };
+}
+
 // Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
 const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
 
 const vidstackPath = path.resolve('node_modules/@vidstack/react');
+
 export default defineConfig({
   // Prevent Vite from replacing process.env at build time
   // This allows workerd's nodejs_compat_populate_process_env to work
@@ -22,7 +41,12 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
-    allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'host.docker.internal',
+      ...(process.env.APP_URL ? [new URL(process.env.APP_URL).hostname] : []),
+    ],
   },
   preview: {
     port: 3000, // Preview server port (for cf:preview)
@@ -77,6 +101,7 @@ export default defineConfig({
       },
     }),
     viteReact(),
+    tunnelDisplay(),
   ],
   ssr: {
     noExternal: ['@upstash/realtime', '@vidstack/react'],
