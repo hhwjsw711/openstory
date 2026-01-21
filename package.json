@@ -86,7 +86,7 @@
     "@aws-sdk/s3-request-presigner": "^3.953.0",
     "@better-auth/passkey": "^1.4.7",
     "@cf-wasm/photon": "^0.3.4",
-    "@fal-ai/client": "^1.7.2",
+    "@fal-ai/client": "^1.8.3",
     "@langfuse/client": "^4.5.1",
     "@langfuse/core": "^4.5.1",
     "@langfuse/otel": "^4.5.1",
