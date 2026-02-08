@@ -84,6 +84,16 @@ import {
 
 import { scriptAnalysisAudit } from './audit';
 
+// DAG Dependency System
+import { entityVersions } from './entity-versions';
+import { dependencies } from './dependencies';
+import { generationRecords } from './generation-records';
+import {
+  workflowSnapshots,
+  workflows as dagWorkflows,
+} from './workflow-snapshots';
+import { generationQueue } from './generation-queue';
+
 // ============================================================================
 // Relations defined here to avoid circular dependencies
 // ============================================================================
@@ -261,6 +271,44 @@ export type {
   TransactionType,
 } from './credits';
 
+// DAG Dependency System
+export {
+  dependencies,
+  dagWorkflows,
+  entityVersions,
+  generationQueue,
+  generationRecords,
+  workflowSnapshots,
+};
+
+export type {
+  EntityType,
+  EntityVersion,
+  LifecycleState,
+  NewEntityVersion,
+} from './entity-versions';
+
+export type { Dependency, DependencyType, NewDependency } from './dependencies';
+
+export type {
+  GenerationRecord,
+  NewGenerationRecord,
+} from './generation-records';
+
+export type {
+  DagWorkflow,
+  NewDagWorkflow,
+  NewWorkflowSnapshot,
+  WorkflowSnapshot,
+  WorkflowStatus,
+} from './workflow-snapshots';
+
+export type {
+  GenerationQueueJob,
+  NewGenerationQueueJob,
+  QueueJobStatus,
+} from './generation-queue';
+
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -348,4 +396,12 @@ export const schema = {
 
   // Audit
   scriptAnalysisAudit,
+
+  // DAG Dependency System
+  entityVersions,
+  dependencies,
+  generationRecords,
+  workflowSnapshots,
+  dagWorkflows,
+  generationQueue,
 };

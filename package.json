@@ -136,6 +136,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "ulid": "^3.0.2",
+    "xstate": "^5.26.0",
     "zod": "^4.2.1"
   },
   "imports": {
