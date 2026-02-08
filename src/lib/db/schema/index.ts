@@ -78,6 +78,8 @@ import {
 import {
   credits,
   creditsRelations,
+  teamBillingSettings,
+  teamBillingSettingsRelations,
   transactions,
   transactionsRelations,
 } from './credits';
@@ -252,11 +254,15 @@ export type {
   NewLetzaiRequest,
 } from './tracking';
 
-// Credits and Transactions
+// Credits, Transactions, and Billing
+export { credits, transactions, teamBillingSettings };
+
 export type {
   Credit,
   NewCredit,
+  NewTeamBillingSetting,
   NewTransaction,
+  TeamBillingSetting,
   Transaction,
   TransactionType,
 } from './credits';
@@ -340,11 +346,13 @@ export const schema = {
   falRequestsRelations,
   letzaiRequestsRelations,
 
-  // Credits
+  // Credits & Billing
   credits,
   transactions,
+  teamBillingSettings,
   creditsRelations,
   transactionsRelations,
+  teamBillingSettingsRelations,
 
   // Audit
   scriptAnalysisAudit,

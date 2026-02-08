@@ -10,12 +10,12 @@ import {
 } from '@/lib/db/helpers/frames';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { MergeVideoWorkflowInput } from '@/lib/workflow/types';
+import { deductCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { MotionWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-// Import motion service
 import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
@@ -125,6 +125,27 @@ export const generateMotionWorkflow = createWorkflow(
 
       return result;
     });
+
+    // Deduct credits for motion generation
+    const motionCost =
+      typeof videoResult.metadata?.cost === 'number'
+        ? videoResult.metadata.cost
+        : 0;
+    const motionTeamId = input.teamId;
+    if (motionCost > 0 && motionTeamId) {
+      await context.run('deduct-credits', async () => {
+        await deductCredits(motionTeamId, motionCost, {
+          userId: input.userId,
+          description: `Motion generation (${input.model || DEFAULT_VIDEO_MODEL})`,
+          metadata: {
+            model: input.model || DEFAULT_VIDEO_MODEL,
+            frameId: input.frameId,
+            sequenceId: input.sequenceId,
+            duration: videoResult.metadata?.duration,
+          },
+        });
+      });
+    }
 
     let videoUrl: string = videoResult.videoUrl || '';
 

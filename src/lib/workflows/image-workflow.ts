@@ -6,6 +6,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { deductCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -104,6 +105,26 @@ export const generateImageWorkflow = createWorkflow(
 
       return await generateImageWithProvider(generationParams);
     });
+
+    // Deduct credits for image generation
+    const imageCost =
+      typeof imageResult.metadata.cost === 'number'
+        ? imageResult.metadata.cost
+        : 0;
+    const imageTeamId = input.teamId;
+    if (imageCost > 0 && imageTeamId) {
+      await context.run('deduct-credits', async () => {
+        await deductCredits(imageTeamId, imageCost, {
+          userId: input.userId,
+          description: `Image generation (${generationParams.model})`,
+          metadata: {
+            model: generationParams.model,
+            frameId: input.frameId,
+            sequenceId: input.sequenceId,
+          },
+        });
+      });
+    }
 
     let imageUrl: string = imageResult.imageUrls[0];
 
