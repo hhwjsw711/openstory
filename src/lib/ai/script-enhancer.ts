@@ -42,6 +42,8 @@ interface EnhanceScriptOptions {
   targetDuration?: number; // Default 30 seconds
   tone?: 'dramatic' | 'comedic' | 'documentary' | 'action';
   style?: string; // Optional style context
+  /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
+  openRouterApiKey?: string;
 }
 
 interface StyleStackRecommendation {
@@ -94,7 +96,8 @@ export async function enhanceScript(
     }
 
     // Check if OpenRouter API key is configured
-    if (!getEnv().OPENROUTER_KEY) {
+    const openRouterKey = options.openRouterApiKey ?? getEnv().OPENROUTER_KEY;
+    if (!openRouterKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
@@ -113,6 +116,7 @@ export async function enhanceScript(
       prompt, // Link to trace
       observationName: 'script-enhancement',
       responseSchema: EnhancedScriptSchema, // Enforce JSON schema at API level
+      apiKey: openRouterKey,
     });
 
     const response = completion.choices[0]?.message?.content;

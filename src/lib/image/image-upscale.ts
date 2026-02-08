@@ -3,7 +3,8 @@
  * Uses FAL.ai Nano Banana Pro Edit for upscaling
  */
 
-import { fal } from '@fal-ai/client';
+import { createFalClient } from '@fal-ai/client';
+import { getEnv } from '#env';
 
 type VariantResolution = '1K' | '2K' | '4K';
 
@@ -50,8 +51,12 @@ OUTPUT
  */
 export async function upscaleWithNanoBanana(
   imageUrl: string,
-  resolution: VariantResolution = '2K'
+  resolution: VariantResolution = '2K',
+  falApiKey?: string
 ): Promise<UpscaleResult> {
+  const fal = createFalClient({
+    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
+  });
   const prompt = buildUpscalePrompt();
 
   try {

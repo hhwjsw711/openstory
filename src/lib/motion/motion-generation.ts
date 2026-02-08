@@ -49,6 +49,8 @@ export type GenerateMotionOptions = {
   aspectRatio?: AspectRatio;
   // Langfuse trace name (defaults to 'fal-motion')
   traceName?: string;
+  // Override Fal.ai API key (e.g., user-provided key). Falls back to platform env key.
+  falApiKey?: string;
 };
 
 export type MotionResult = {
@@ -283,9 +285,9 @@ async function generateMotionInternal(
   let responseUrl: string | undefined;
   let cancelUrl: string | undefined;
 
-  // Configure fal client
+  // Configure fal client (supports user-provided keys)
   const fal = createFalClient({
-    credentials: getEnv().FAL_KEY || '',
+    credentials: options.falApiKey ?? getEnv().FAL_KEY ?? '',
   });
 
   // Call the Fal.ai model using subscribe for queue tracking

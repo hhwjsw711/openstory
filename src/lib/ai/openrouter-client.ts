@@ -90,6 +90,8 @@ interface OpenRouterRequestParams {
   metadata?: Record<string, unknown>;
   /** Zod schema for structured outputs - when provided, OpenRouter enforces JSON schema */
   responseSchema?: z.ZodTypeAny;
+  /** Override API key (e.g., user-provided key). Falls back to platform env key. */
+  apiKey?: string;
 }
 
 /**
@@ -169,7 +171,7 @@ export const RECOMMENDED_MODELS = {
 export async function callOpenRouter(
   params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
-  const apiKey = getEnv().OPENROUTER_KEY;
+  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
 
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
@@ -278,7 +280,7 @@ export async function callOpenRouter(
 export async function* callOpenRouterStream(
   params: OpenRouterRequestParams
 ): AsyncGenerator<StreamChunk> {
-  const apiKey = getEnv().OPENROUTER_KEY;
+  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
 
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
