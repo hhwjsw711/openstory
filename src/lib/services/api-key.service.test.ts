@@ -129,6 +129,6 @@ describe('apiKeyService.validateKey', () => {
       new Response('unauthorized', { status: 401 })
     );
     const result = await apiKeyService.validateKey('fal', 'bad-key');
-    expect(result).toEqual({ valid: false, error: 'Fal.ai returned 401' });
+    expect(result).toEqual({ valid: false, error: 'Invalid Fal.ai API key' });
   });
 });

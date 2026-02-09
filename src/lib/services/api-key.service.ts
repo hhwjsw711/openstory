@@ -205,16 +205,20 @@ async function validateKey(
   }
 
   if (provider === 'fal') {
-    // Fal.ai doesn't have a dedicated key validation endpoint,
-    // so we check against a lightweight models endpoint
+    // Fal.ai doesn't have a dedicated key validation endpoint.
+    // POST with empty body: valid key → 422 (missing input), invalid key → 401.
     const response = await fetch('https://queue.fal.run/fal-ai/flux/schnell', {
-      method: 'OPTIONS',
-      headers: { Authorization: `Key ${apiKey}` },
+      method: 'POST',
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
     });
-    // A non-401 response means the key is valid (even if the request itself isn't meaningful)
-    if (response.status !== 401 && response.status !== 403)
-      return { valid: true };
-    return { valid: false, error: `Fal.ai returned ${response.status}` };
+    if (response.status === 401) {
+      return { valid: false, error: 'Invalid Fal.ai API key' };
+    }
+    return { valid: true };
   }
 
   throw new Error(`Unknown provider`);

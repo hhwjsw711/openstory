@@ -7,7 +7,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { completeOpenRouterOAuth } from '@/functions/openrouter-oauth';
+import { completeOpenRouterOAuth } from '@/functions/openrouter-oauth-callback';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/api/openrouter/callback')({
 
         if (!code) {
           return redirectResponse(
-            '/settings?error=openrouter_oauth_missing_code'
+            '/settings/api-keys?error=openrouter_oauth_missing_code'
           );
         }
 
@@ -36,15 +36,21 @@ export const Route = createFileRoute('/api/openrouter/callback')({
           const team = await getUserDefaultTeam(user.id);
 
           if (!team) {
-            return redirectResponse('/settings?error=openrouter_oauth_no_team');
+            return redirectResponse(
+              '/settings/api-keys?error=openrouter_oauth_no_team'
+            );
           }
 
           await completeOpenRouterOAuth(team.teamId, code);
 
-          return redirectResponse('/settings?success=openrouter_connected');
+          return redirectResponse(
+            '/settings/api-keys?success=openrouter_connected'
+          );
         } catch (error) {
           console.error('[OpenRouter OAuth] Callback error:', error);
-          return redirectResponse('/settings?error=openrouter_oauth_failed');
+          return redirectResponse(
+            '/settings/api-keys?error=openrouter_oauth_failed'
+          );
         }
       },
     },

@@ -10,26 +10,13 @@ import { getRequest } from '@tanstack/react-start/server';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { teamAdminAccessMiddleware } from './middleware';
-import {
-  buildAuthorizationUrl,
-  exchangeCodeForKey,
-  type OAuthState,
-} from '@/lib/services/openrouter-oauth';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { buildAuthorizationUrl } from '@/lib/services/openrouter-oauth';
 import { getServerAppUrl } from '@/lib/utils/environment';
-import { Redis } from '@upstash/redis';
-import { getEnv } from '#env';
-
-function getRedis() {
-  const env = getEnv();
-  return new Redis({
-    url: env.UPSTASH_REDIS_REST_URL,
-    token: env.UPSTASH_REDIS_REST_TOKEN,
-  });
-}
-
-const OAUTH_STATE_PREFIX = 'openrouter-oauth:';
-const OAUTH_STATE_TTL = 600; // 10 minutes
+import {
+  getOAuthRedis,
+  OAUTH_STATE_PREFIX,
+  OAUTH_STATE_TTL,
+} from './openrouter-oauth-utils';
 
 // ============================================================================
 // Initiate OAuth Flow
@@ -59,46 +46,8 @@ export const initiateOpenRouterOAuthFn = createServerFn({ method: 'POST' })
 
     // Store PKCE state in Redis with a TTL
     const stateKey = `${OAUTH_STATE_PREFIX}${context.teamId}`;
-    const redis = getRedis();
+    const redis = getOAuthRedis();
     await redis.set(stateKey, JSON.stringify(state), { ex: OAUTH_STATE_TTL });
 
     return { authUrl: url };
   });
-
-// ============================================================================
-// Complete OAuth Flow (called from callback route)
-// ============================================================================
-
-/**
- * Complete the OpenRouter OAuth PKCE flow.
- * Called by the callback route after OpenRouter redirects back.
- * Throws on failure.
- */
-export async function completeOpenRouterOAuth(
-  teamId: string,
-  code: string
-): Promise<void> {
-  const redis = getRedis();
-  const stateKey = `${OAUTH_STATE_PREFIX}${teamId}`;
-
-  // Retrieve and delete PKCE state
-  const stateJson = await redis.get<string>(stateKey);
-  if (!stateJson) {
-    throw new Error('OAuth session expired or not found');
-  }
-  await redis.del(stateKey);
-
-  const state: OAuthState = JSON.parse(stateJson);
-
-  // Exchange code for API key
-  const { apiKey } = await exchangeCodeForKey(code, state.codeVerifier);
-
-  // Save the key (encrypted)
-  await apiKeyService.saveKey({
-    teamId: state.teamId,
-    provider: 'openrouter',
-    apiKey,
-    source: 'oauth',
-    addedBy: state.userId,
-  });
-}
