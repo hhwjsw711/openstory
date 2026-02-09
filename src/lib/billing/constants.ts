@@ -18,6 +18,9 @@ export const DEFAULT_AUTO_TOPUP_THRESHOLD_USD = 5;
 /** Default auto-top-up recharge amount in USD (user-configurable) */
 export const DEFAULT_AUTO_TOPUP_AMOUNT_USD = 25;
 
+/** Minimum time between auto-top-up charges in milliseconds (60 seconds) */
+export const AUTO_TOPUP_COOLDOWN_MS = 60_000;
+
 /**
  * Apply markup to a raw provider cost
  * @param rawCostUsd - The raw cost from the provider (OpenRouter, Fal.ai)

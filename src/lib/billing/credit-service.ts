@@ -13,10 +13,29 @@ import type {
   TeamBillingSetting,
   TransactionType,
 } from '@/lib/db/schema/credits';
-import { eq, sql, desc } from 'drizzle-orm';
-import { applyMarkup, MIN_TOPUP_AMOUNT_USD } from './constants';
+import { eq, sql, desc, and } from 'drizzle-orm';
+import {
+  applyMarkup,
+  MIN_TOPUP_AMOUNT_USD,
+  AUTO_TOPUP_COOLDOWN_MS,
+} from './constants';
 import { getStripe } from './stripe';
 import { ValidationError } from '@/lib/errors';
+
+/** Check if a transaction with the given Stripe session ID already exists (for idempotency). */
+export async function hasTransactionWithStripeSessionId(
+  stripeSessionId: string
+): Promise<boolean> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(
+      sql`json_extract(${transactions.metadata}, '$.stripeSessionId') = ${stripeSessionId}`
+    )
+    .limit(1);
+  return !!row;
+}
 
 /** Creates a credits row if one doesn't exist yet. */
 export async function getTeamBalance(teamId: string): Promise<number> {
@@ -232,6 +251,17 @@ export async function updateAutoTopUpSettings(
     );
   }
 
+  if (
+    settings.enabled &&
+    settings.thresholdUsd !== undefined &&
+    settings.amountUsd !== undefined &&
+    settings.amountUsd <= settings.thresholdUsd
+  ) {
+    throw new ValidationError(
+      'Auto top-up amount must be greater than the threshold'
+    );
+  }
+
   const db = getDb();
 
   await db
@@ -274,6 +304,30 @@ async function maybeAutoTopUp(
 
   if (currentBalance > settings.autoTopUpThresholdUsd) {
     return;
+  }
+
+  // Cooldown: skip if last auto-top-up was within the cooldown period
+  const db = getDb();
+  const [recentAutoTopUp] = await db
+    .select({ createdAt: transactions.createdAt })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.teamId, teamId),
+        sql`json_extract(${transactions.metadata}, '$.autoTopUp') = true`
+      )
+    )
+    .orderBy(desc(transactions.createdAt))
+    .limit(1);
+
+  if (recentAutoTopUp) {
+    const elapsed = Date.now() - recentAutoTopUp.createdAt.getTime();
+    if (elapsed < AUTO_TOPUP_COOLDOWN_MS) {
+      console.log(
+        `[AutoTopUp] Cooldown active for team ${teamId}, skipping (${Math.round(elapsed / 1000)}s ago)`
+      );
+      return;
+    }
   }
 
   const stripe = getStripe();

@@ -6,7 +6,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { getStripe, getStripeWebhookSecret } from '@/lib/billing/stripe';
-import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
+import {
+  addCredits,
+  saveStripeCustomerId,
+  hasTransactionWithStripeSessionId,
+} from '@/lib/billing/credit-service';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
@@ -46,6 +50,17 @@ export const Route = createFileRoute('/api/billing/webhook')({
 
               if (!teamId || isNaN(amountUsd)) {
                 console.error('[Webhook] Invalid metadata:', session.metadata);
+                break;
+              }
+
+              // Idempotency: skip if this session was already processed
+              const alreadyProcessed = await hasTransactionWithStripeSessionId(
+                session.id
+              );
+              if (alreadyProcessed) {
+                console.log(
+                  `[Webhook] Duplicate event for session ${session.id}, skipping`
+                );
                 break;
               }
 

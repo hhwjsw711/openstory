@@ -13,7 +13,7 @@ import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import { deductCredits } from '@/lib/billing/credit-service';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
@@ -110,6 +110,13 @@ export const generateMotionWorkflow = createWorkflow(
     const { teamId } = input;
     if (motionCost > 0 && teamId) {
       await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(teamId, motionCost);
+        if (!canAfford) {
+          console.warn(
+            `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${motionCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
         await deductCredits(teamId, motionCost, {
           userId: input.userId,
           description: `Motion generation (${model})`,

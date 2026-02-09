@@ -6,7 +6,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
-import { deductCredits } from '@/lib/billing/credit-service';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -114,6 +114,13 @@ export const generateImageWorkflow = createWorkflow(
     const { teamId } = input;
     if (imageCost > 0 && teamId) {
       await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(teamId, imageCost);
+        if (!canAfford) {
+          console.warn(
+            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${imageCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
         await deductCredits(teamId, imageCost, {
           userId: input.userId,
           description: `Image generation (${generationParams.model})`,
