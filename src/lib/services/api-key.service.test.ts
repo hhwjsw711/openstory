@@ -31,16 +31,7 @@ mock.module('#db-client', () => ({
   getDb: () => mockChain,
 }));
 
-mock.module('@/lib/crypto/api-key-encryption', () => ({
-  encryptApiKey: mock(async () => ({
-    encryptedKey: 'enc',
-    keyIv: 'iv',
-    keyTag: 'tag',
-  })),
-  decryptApiKey: mock(async () => 'decrypted-team-key'),
-  getKeyHint: mock(() => '****hint'),
-}));
-
+const { encryptApiKey } = await import('@/lib/crypto/api-key-encryption');
 const { apiKeyService } = await import('./api-key.service');
 
 // --- Tests ---
@@ -60,10 +51,11 @@ describe('apiKeyService.resolveKey', () => {
   });
 
   it('returns the team key when one exists in the DB', async () => {
-    mockDbRows = [{ encryptedKey: 'enc', keyIv: 'iv', keyTag: 'tag' }];
+    const encrypted = await encryptApiKey('my-team-openrouter-key');
+    mockDbRows = [encrypted];
 
     const result = await apiKeyService.resolveKey('openrouter', 'team-1');
-    expect(result).toEqual({ key: 'decrypted-team-key', source: 'team' });
+    expect(result).toEqual({ key: 'my-team-openrouter-key', source: 'team' });
   });
 
   it('falls back to platform openrouter key when no team key', async () => {
