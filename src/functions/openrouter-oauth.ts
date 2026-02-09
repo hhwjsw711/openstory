@@ -72,18 +72,19 @@ export const initiateOpenRouterOAuthFn = createServerFn({ method: 'POST' })
 /**
  * Complete the OpenRouter OAuth PKCE flow.
  * Called by the callback route after OpenRouter redirects back.
+ * Throws on failure.
  */
 export async function completeOpenRouterOAuth(
   teamId: string,
   code: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<void> {
   const redis = getRedis();
   const stateKey = `${OAUTH_STATE_PREFIX}${teamId}`;
 
   // Retrieve and delete PKCE state
   const stateJson = await redis.get<string>(stateKey);
   if (!stateJson) {
-    return { success: false, error: 'OAuth session expired or not found' };
+    throw new Error('OAuth session expired or not found');
   }
   await redis.del(stateKey);
 
@@ -100,6 +101,4 @@ export async function completeOpenRouterOAuth(
     source: 'oauth',
     addedBy: state.userId,
   });
-
-  return { success: true };
 }

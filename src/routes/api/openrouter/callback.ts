@@ -39,13 +39,7 @@ export const Route = createFileRoute('/api/openrouter/callback')({
             return redirectResponse('/settings?error=openrouter_oauth_no_team');
           }
 
-          const result = await completeOpenRouterOAuth(team.teamId, code);
-
-          if (!result.success) {
-            return redirectResponse(
-              `/settings?error=openrouter_oauth_${result.error}`
-            );
-          }
+          await completeOpenRouterOAuth(team.teamId, code);
 
           return redirectResponse('/settings?success=openrouter_connected');
         } catch (error) {

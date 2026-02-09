@@ -19,6 +19,7 @@ import {
   buildReferenceImagePrompt,
   type ReferenceImageDescription,
 } from '@/lib/prompts/reference-image-prompt';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {
@@ -110,6 +111,11 @@ export const generateVariantWorkflow = createWorkflow(
       return { variantImageUrl: '' };
     }
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
@@ -117,7 +123,10 @@ export const generateVariantWorkflow = createWorkflow(
         `Generating variant image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
     });
 
     let imageUrl: string = imageResult.imageUrls[0];

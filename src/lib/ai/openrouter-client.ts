@@ -58,19 +58,19 @@ type OpenRouterMessageContent =
       | { type: 'image_url'; image_url: { url: string } }
     >;
 
-interface OpenRouterMessage {
+type OpenRouterMessage = {
   role: 'system' | 'user' | 'assistant';
   content: OpenRouterMessageContent;
-}
+};
 
-interface OpenRouterProviderPreference {
+type OpenRouterProviderPreference = {
   order?: string[];
   only?: string[];
   ignore?: string[];
   allow_fallbacks?: boolean;
-}
+};
 
-interface OpenRouterRequestParams {
+type OpenRouterRequestParams = {
   model: string;
   messages: OpenRouterMessage[];
   temperature?: number;
@@ -92,7 +92,7 @@ interface OpenRouterRequestParams {
   responseSchema?: z.ZodTypeAny;
   /** Override API key (e.g., user-provided key). Falls back to platform env key. */
   apiKey?: string;
-}
+};
 
 /**
  * Models that support structured outputs via OpenRouter

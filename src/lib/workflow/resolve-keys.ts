@@ -9,18 +9,16 @@
 import { apiKeyService } from '@/lib/services/api-key.service';
 
 export type ResolvedApiKeys = {
+  /** Team's own OpenRouter key, or undefined to use platform key */
   openRouterApiKey?: string;
+  /** Team's own Fal.ai key, or undefined to use platform key */
   falApiKey?: string;
-  /** Whether the team is using their own keys (affects credit deduction) */
-  isUsingOwnKeys: {
-    openrouter: boolean;
-    fal: boolean;
-  };
 };
 
 /**
  * Resolve API keys for a team's workflow execution.
- * Returns the appropriate keys (team-provided or platform fallback).
+ * Returns team-provided keys when configured, undefined otherwise
+ * (callers fall back to platform env keys when undefined).
  *
  * Usage in workflows:
  * ```typescript
@@ -35,9 +33,7 @@ export async function resolveWorkflowApiKeys(
   teamId: string | undefined
 ): Promise<ResolvedApiKeys> {
   if (!teamId) {
-    return {
-      isUsingOwnKeys: { openrouter: false, fal: false },
-    };
+    return {};
   }
 
   const [openrouter, fal] = await Promise.all([
@@ -48,9 +44,5 @@ export async function resolveWorkflowApiKeys(
   return {
     openRouterApiKey: openrouter.source === 'team' ? openrouter.key : undefined,
     falApiKey: fal.source === 'team' ? fal.key : undefined,
-    isUsingOwnKeys: {
-      openrouter: openrouter.source === 'team',
-      fal: fal.source === 'team',
-    },
   };
 }

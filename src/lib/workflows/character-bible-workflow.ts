@@ -17,6 +17,7 @@ import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from '@/lib/db/id';
@@ -44,6 +45,11 @@ export const characterBibleWorkflow = createWorkflow(
           phaseName: 'Character Bible',
         }
       );
+    });
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
     });
 
     const seqCharacters: CharacterMinimal[] = await Promise.all(
@@ -74,6 +80,7 @@ export const characterBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'character-bible-image',
+            falApiKey: apiKeys.falApiKey,
           });
 
           const imageUrl = imageResult.imageUrls[0];

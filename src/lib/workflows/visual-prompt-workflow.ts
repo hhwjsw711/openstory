@@ -46,6 +46,9 @@ export const visualPromptWorkflow = createWorkflow(
               locationBible,
               styleConfig,
               analysisModelId,
+              teamId: input.teamId,
+              userId: input.userId,
+              sequenceId: input.sequenceId,
             },
           })
       )

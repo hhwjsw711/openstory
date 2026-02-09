@@ -87,7 +87,6 @@ export const deleteApiKeyFn = createServerFn({ method: 'POST' })
   .inputValidator(zodValidator(deleteApiKeyInputSchema))
   .handler(async ({ data, context }) => {
     await apiKeyService.deleteKey(context.teamId, data.provider);
-    return { success: true };
   });
 
 // ============================================================================

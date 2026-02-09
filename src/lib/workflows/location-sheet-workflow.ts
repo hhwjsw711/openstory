@@ -23,6 +23,7 @@ import type {
   LocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -88,6 +89,11 @@ export const locationSheetWorkflow = createWorkflow(
       }
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the location reference image
     const imageResult = await context.run(
       'generate-reference-image',
@@ -97,7 +103,10 @@ export const locationSheetWorkflow = createWorkflow(
           `Generating reference for ${input.locationName} with model ${generationParams.model}`
         );
 
-        return await generateImageWithProvider(generationParams);
+        return await generateImageWithProvider({
+          ...generationParams,
+          falApiKey: apiKeys.falApiKey,
+        });
       }
     );
 
