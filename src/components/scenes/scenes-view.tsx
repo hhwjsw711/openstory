@@ -24,6 +24,9 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
+import { toast } from 'sonner';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
@@ -44,6 +47,8 @@ const getPlayerMaxClassNameByAspectRatio = (
 };
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
+  const queryClient = useQueryClient();
+
   // State management
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
     undefined
@@ -198,7 +203,27 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           frameIds.forEach((id) => next.delete(id));
           return next;
         });
-        throw error;
+
+        if (
+          error instanceof Error &&
+          (error.message.includes('INSUFFICIENT_CREDITS') ||
+            error.message.includes('Insufficient credits'))
+        ) {
+          toast.error('Insufficient credits', {
+            description: 'Add credits to generate motion for all frames.',
+            action: {
+              label: 'Add Credits',
+              onClick: () => {
+                window.location.href = '/settings/billing';
+              },
+            },
+          });
+          void queryClient.invalidateQueries({
+            queryKey: [...BILLING_BALANCE_KEY],
+          });
+        } else {
+          throw error;
+        }
       }
     },
     [sequenceId]

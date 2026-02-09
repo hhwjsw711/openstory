@@ -72,6 +72,15 @@ export class AuthenticationError extends VelroError {
   }
 }
 
+export class InsufficientCreditsError extends VelroError {
+  constructor(
+    message: string = 'Insufficient credits',
+    details?: Record<string, unknown>
+  ) {
+    super(message, 'INSUFFICIENT_CREDITS', 402, details);
+  }
+}
+
 /**
  * Utility function to handle and format errors consistently for API routes
  */

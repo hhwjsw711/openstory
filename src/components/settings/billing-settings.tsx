@@ -21,6 +21,10 @@ import {
   PRESET_TOPUP_AMOUNTS_USD,
   MIN_TOPUP_AMOUNT_USD,
 } from '@/lib/billing/constants';
+import {
+  useBillingBalance,
+  BILLING_BALANCE_KEY,
+} from '@/hooks/use-billing-balance';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
@@ -38,14 +42,10 @@ type BillingSettingsProps = {
   canceled?: boolean;
 };
 
-type BalanceData = {
-  balance: number;
-  autoTopUp: {
-    enabled: boolean;
-    thresholdUsd: number | null;
-    amountUsd: number | null;
-  };
-  hasPaymentMethod: boolean;
+type ApiResponse<T> = {
+  success: boolean;
+  data?: T;
+  error?: { message?: string };
 };
 
 type TransactionData = {
@@ -57,29 +57,18 @@ type TransactionData = {
   createdAt: string;
 };
 
-type ApiResponse<T> = {
+type TransactionApiResponse = {
   success: boolean;
-  data?: T;
+  data?: { transactions: TransactionData[]; total: number };
   error?: { message?: string };
 };
-
-async function fetchBalance(): Promise<BalanceData> {
-  const res = await fetch('/api/billing/balance');
-  const json: ApiResponse<BalanceData> = await res.json();
-  if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch balance');
-  return json.data;
-}
 
 async function fetchTransactions(): Promise<{
   transactions: TransactionData[];
   total: number;
 }> {
   const res = await fetch('/api/billing/transactions?limit=20');
-  const json: ApiResponse<{
-    transactions: TransactionData[];
-    total: number;
-  }> = await res.json();
+  const json: TransactionApiResponse = await res.json();
   if (!json.success || !json.data)
     throw new Error(json.error?.message ?? 'Failed to fetch transactions');
   return json.data;
@@ -135,7 +124,9 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   // Refetch balance on success
   useEffect(() => {
     if (success) {
-      void queryClient.invalidateQueries({ queryKey: ['billing-balance'] });
+      void queryClient.invalidateQueries({
+        queryKey: [...BILLING_BALANCE_KEY],
+      });
       void queryClient.invalidateQueries({
         queryKey: ['billing-transactions'],
       });
@@ -146,10 +137,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     data: balanceData,
     isLoading: balanceLoading,
     error: balanceError,
-  } = useQuery({
-    queryKey: ['billing-balance'],
-    queryFn: fetchBalance,
-  });
+  } = useBillingBalance();
 
   const {
     data: txData,
@@ -197,7 +185,9 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       return json;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['billing-balance'] });
+      void queryClient.invalidateQueries({
+        queryKey: [...BILLING_BALANCE_KEY],
+      });
       setError(null);
     },
     onError: (err) => {

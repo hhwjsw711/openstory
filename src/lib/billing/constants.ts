@@ -12,6 +12,9 @@ export const MIN_TOPUP_AMOUNT_USD = 10;
 /** Preset top-up amounts shown on the billing page */
 export const PRESET_TOPUP_AMOUNTS_USD = [10, 25, 50, 100] as const;
 
+/** Low balance warning threshold in USD (used when auto-top-up is disabled) */
+export const LOW_BALANCE_THRESHOLD_USD = 5;
+
 /** Default auto-top-up threshold in USD (user-configurable) */
 export const DEFAULT_AUTO_TOPUP_THRESHOLD_USD = 5;
 
