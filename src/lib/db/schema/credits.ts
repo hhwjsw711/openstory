@@ -1,8 +1,3 @@
-/**
- * Credits, Transactions, and Billing Settings Schema
- * Team credit balances, transaction history, and billing configuration
- */
-
 import {
   type InferInsertModel,
   type InferSelectModel,
@@ -30,10 +25,6 @@ const TRANSACTION_TYPES = [
 ] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
-/**
- * Credits table
- * Stores team credit balances (wallet)
- */
 export const credits = sqliteTable(
   'credits',
   {
@@ -49,10 +40,6 @@ export const credits = sqliteTable(
   (table) => [check('positive_balance', sql`${table.balance} >= 0`)]
 );
 
-/**
- * Transactions table
- * Credit transaction history for auditing and billing
- */
 export const transactions = sqliteTable(
   'transactions',
   {
@@ -83,10 +70,6 @@ export const transactions = sqliteTable(
   ]
 );
 
-/**
- * Team billing settings
- * Stripe customer mapping and auto-top-up configuration
- */
 export const teamBillingSettings = sqliteTable('team_billing_settings', {
   teamId: text('team_id')
     .primaryKey()

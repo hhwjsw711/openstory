@@ -9,15 +9,16 @@ import {
   transactions,
   teamBillingSettings,
 } from '@/lib/db/schema/credits';
-import type { TransactionType } from '@/lib/db/schema/credits';
+import type {
+  TeamBillingSetting,
+  TransactionType,
+} from '@/lib/db/schema/credits';
 import { eq, sql, desc } from 'drizzle-orm';
 import { applyMarkup, MIN_TOPUP_AMOUNT_USD } from './constants';
 import { getStripe } from './stripe';
 import { ValidationError } from '@/lib/errors';
 
-/**
- * Get team credit balance, creating a record if it doesn't exist
- */
+/** Creates a credits row if one doesn't exist yet. */
 export async function getTeamBalance(teamId: string): Promise<number> {
   const db = getDb();
   const [row] = await db
@@ -35,9 +36,6 @@ export async function getTeamBalance(teamId: string): Promise<number> {
   return row.balance;
 }
 
-/**
- * Check if team has enough credits for an estimated cost
- */
 export async function hasEnoughCredits(
   teamId: string,
   estimatedCostUsd: number
@@ -46,9 +44,6 @@ export async function hasEnoughCredits(
   return balance >= applyMarkup(estimatedCostUsd);
 }
 
-/**
- * Add credits to a team (after successful payment)
- */
 export async function addCredits(
   teamId: string,
   amountUsd: number,
@@ -93,10 +88,7 @@ export async function addCredits(
   return { newBalance: updated.balance, transactionId: tx.id };
 }
 
-/**
- * Deduct credits from a team (after API usage)
- * Applies markup automatically. Triggers auto-top-up if configured.
- */
+/** Applies markup automatically. Triggers auto-top-up if balance drops below threshold. */
 export async function deductCredits(
   teamId: string,
   rawCostUsd: number,
@@ -160,9 +152,6 @@ export async function deductCredits(
   return { newBalance: updated.balance, chargedAmount, transactionId: tx.id };
 }
 
-/**
- * Get transaction history for a team
- */
 export async function getTransactionHistory(
   teamId: string,
   opts: { limit?: number; offset?: number } = {}
@@ -205,10 +194,9 @@ export async function getTransactionHistory(
   return { transactions: rows, total: countResult[0].count };
 }
 
-/**
- * Get or create billing settings for a team
- */
-export async function getBillingSettings(teamId: string) {
+export async function getBillingSettings(
+  teamId: string
+): Promise<TeamBillingSetting> {
   const db = getDb();
   const [row] = await db
     .select()
@@ -227,9 +215,6 @@ export async function getBillingSettings(teamId: string) {
   return row;
 }
 
-/**
- * Update auto-top-up settings
- */
 export async function updateAutoTopUpSettings(
   teamId: string,
   settings: {
@@ -272,9 +257,6 @@ export async function updateAutoTopUpSettings(
     });
 }
 
-/**
- * Auto-top-up: charge the team's saved payment method if balance is below threshold
- */
 async function maybeAutoTopUp(
   teamId: string,
   currentBalance: number
@@ -335,9 +317,6 @@ async function maybeAutoTopUp(
   }
 }
 
-/**
- * Save a Stripe customer ID for a team
- */
 export async function saveStripeCustomerId(
   teamId: string,
   stripeCustomerId: string

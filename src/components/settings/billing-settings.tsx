@@ -23,6 +23,7 @@ import {
 } from '@/lib/billing/constants';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft,
   CreditCard,
@@ -82,6 +83,37 @@ async function fetchTransactions(): Promise<{
   if (!json.success || !json.data)
     throw new Error(json.error?.message ?? 'Failed to fetch transactions');
   return json.data;
+}
+
+type SectionHeaderProps = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+};
+
+function SectionHeader({ icon: Icon, title, description }: SectionHeaderProps) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <Icon className="h-5 w-5 text-primary" />
+      </div>
+      <div>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </div>
+    </div>
+  );
+}
+
+function getErrorMessage(
+  error: string | null,
+  balanceError: Error | null,
+  txError: Error | null
+): string {
+  if (error) return error;
+  if (balanceError instanceof Error) return balanceError.message;
+  if (txError instanceof Error) return txError.message;
+  return 'Something went wrong';
 }
 
 export function BillingSettings({ success, canceled }: BillingSettingsProps) {
@@ -214,12 +246,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       {(error || balanceError || txError) && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            {error ??
-              (balanceError instanceof Error
-                ? balanceError.message
-                : txError instanceof Error
-                  ? txError.message
-                  : 'Something went wrong')}
+            {getErrorMessage(error, balanceError, txError)}
           </AlertDescription>
         </Alert>
       )}
@@ -227,17 +254,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       {/* Balance Card */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Wallet className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>Credit Balance</CardTitle>
-              <CardDescription>
-                Credits are used for image and video generation
-              </CardDescription>
-            </div>
-          </div>
+          <SectionHeader
+            icon={Wallet}
+            title="Credit Balance"
+            description="Credits are used for image and video generation"
+          />
         </CardHeader>
         <CardContent>
           {balanceLoading ? (
@@ -253,17 +274,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       {/* Top Up Card */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>Add Credits</CardTitle>
-              <CardDescription>
-                Choose an amount or enter a custom value
-              </CardDescription>
-            </div>
-          </div>
+          <SectionHeader
+            icon={DollarSign}
+            title="Add Credits"
+            description="Choose an amount or enter a custom value"
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -314,17 +329,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       {/* Auto Top-Up Card */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <RefreshCw className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>Auto Top-Up</CardTitle>
-              <CardDescription>
-                Automatically add credits when your balance is low
-              </CardDescription>
-            </div>
-          </div>
+          <SectionHeader
+            icon={RefreshCw}
+            title="Auto Top-Up"
+            description="Automatically add credits when your balance is low"
+          />
         </CardHeader>
         <CardContent>
           {balanceLoading ? (
@@ -352,15 +361,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       {/* Transaction History */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <CreditCard className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>Recent credit activity</CardDescription>
-            </div>
-          </div>
+          <SectionHeader
+            icon={CreditCard}
+            title="Transaction History"
+            description="Recent credit activity"
+          />
         </CardHeader>
         <CardContent>
           {txLoading ? (
@@ -412,14 +417,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   );
 }
 
-// Auto top-up sub-form
-function AutoTopUpForm({
-  enabled: initialEnabled,
-  thresholdUsd: initialThreshold,
-  amountUsd: initialAmount,
-  isPending,
-  onSave,
-}: {
+type AutoTopUpFormProps = {
   enabled: boolean;
   thresholdUsd: number;
   amountUsd: number;
@@ -429,7 +427,15 @@ function AutoTopUpForm({
     thresholdUsd?: number;
     amountUsd?: number;
   }) => void;
-}) {
+};
+
+function AutoTopUpForm({
+  enabled: initialEnabled,
+  thresholdUsd: initialThreshold,
+  amountUsd: initialAmount,
+  isPending,
+  onSave,
+}: AutoTopUpFormProps) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [threshold, setThreshold] = useState(String(initialThreshold));
   const [amount, setAmount] = useState(String(initialAmount));

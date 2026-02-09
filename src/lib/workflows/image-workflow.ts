@@ -111,10 +111,10 @@ export const generateImageWorkflow = createWorkflow(
       typeof imageResult.metadata.cost === 'number'
         ? imageResult.metadata.cost
         : 0;
-    const imageTeamId = input.teamId;
-    if (imageCost > 0 && imageTeamId) {
+    const { teamId } = input;
+    if (imageCost > 0 && teamId) {
       await context.run('deduct-credits', async () => {
-        await deductCredits(imageTeamId, imageCost, {
+        await deductCredits(teamId, imageCost, {
           userId: input.userId,
           description: `Image generation (${generationParams.model})`,
           metadata: {
@@ -138,7 +138,7 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         const result = await uploadImageToStorage({
-          imageUrl: imageUrl,
+          imageUrl,
           teamId: input.teamId,
           sequenceId: input.sequenceId,
           frameId: input.frameId,
@@ -199,7 +199,7 @@ export const generateImageWorkflow = createWorkflow(
 
     // Return workflow result
     return {
-      imageUrl: imageUrl,
+      imageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };

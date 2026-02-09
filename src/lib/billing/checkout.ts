@@ -17,9 +17,6 @@ type CreateCheckoutParams = {
   cancelUrl: string;
 };
 
-/**
- * Create a Stripe Checkout session for a one-time credit purchase
- */
 export async function createCheckoutSession(
   params: CreateCheckoutParams
 ): Promise<{ url: string }> {
@@ -84,11 +81,4 @@ export async function createCheckoutSession(
   }
 
   return { url: session.url };
-}
-
-/**
- * Validate a top-up amount
- */
-export function isValidTopUpAmount(amountUsd: number): boolean {
-  return amountUsd >= MIN_TOPUP_AMOUNT_USD;
 }
