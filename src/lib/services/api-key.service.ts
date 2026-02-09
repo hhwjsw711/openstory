@@ -217,7 +217,7 @@ async function validateKey(
     return { valid: false, error: `Fal.ai returned ${response.status}` };
   }
 
-  return { valid: false, error: `Unknown provider: ${provider}` };
+  throw new Error(`Unknown provider`);
 }
 
 export const apiKeyService = {
