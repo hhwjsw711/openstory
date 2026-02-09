@@ -1,7 +1,7 @@
 /**
- * Visual Prompt Generation Workflow
+ * Motion Prompt Workflow
  *
- * Generates visual prompts for scenes based on character bible and style config.
+ * Generates motion prompts for all scenes, delegating to per-scene sub-workflows.
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
@@ -26,7 +26,7 @@ export const motionPromptWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
+      '[MotionPromptWorkflow] Starting motion prompt generation input:',
       input
     );
     // ============================================================
@@ -44,6 +44,9 @@ export const motionPromptWorkflow = createWorkflow(
               characterBible,
               styleConfig,
               analysisModelId,
+              teamId: input.teamId,
+              userId: input.userId,
+              sequenceId: input.sequenceId,
             },
           })
       )

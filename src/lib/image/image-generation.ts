@@ -12,7 +12,12 @@ import {
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 import { startObservation } from '@langfuse/tracing';
 
-import { type QueueStatus, fal, isQueueStatus } from '@fal-ai/client';
+import {
+  type QueueStatus,
+  createFalClient,
+  isQueueStatus,
+} from '@fal-ai/client';
+import { getEnv } from '#env';
 
 /**
  * Extended parameters for image generation
@@ -67,6 +72,9 @@ export type ImageGenerationParams = {
 
   // Langfuse trace name (defaults to 'fal-image')
   traceName?: string;
+
+  // Override Fal.ai API key (e.g., user-provided key). Falls back to platform env key.
+  falApiKey?: string;
 };
 
 /**
@@ -209,6 +217,11 @@ async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
 ): Promise<ImageGenerationResult> {
+  // Create a per-request fal client (supports user-provided keys)
+  const fal = createFalClient({
+    credentials: params.falApiKey ?? getEnv().FAL_KEY ?? '',
+  });
+
   // Truncate prompt to model's max length
   const prompt = truncatePromptForModel(params.prompt, params.model);
 

@@ -24,6 +24,7 @@ import type {
   LibraryTalentSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -64,6 +65,11 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       });
     });
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the talent sheet image with references
     const imageResult = await context.run('generate-sheet-image', async () => {
       const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
@@ -88,6 +94,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           numImages: 1,
           resolution: '2K',
           traceName: 'talent-sheet-image',
+          falApiKey: apiKeys.falApiKey,
         };
 
       // Only include referenceImageUrls if provided
@@ -176,6 +183,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'square_hd',
           numImages: 1,
           traceName: 'talent-headshot-image',
+          falApiKey: apiKeys.falApiKey,
         };
 
         // Only include referenceImageUrls if provided

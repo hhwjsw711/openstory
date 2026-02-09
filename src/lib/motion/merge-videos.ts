@@ -32,7 +32,8 @@ export type MergeVideosResult = {
 export async function mergeVideos(
   videoUrls: string[],
   targetFps?: number,
-  resolution?: { width: number; height: number }
+  resolution?: { width: number; height: number },
+  falApiKey?: string
 ): Promise<MergeVideosResult> {
   if (videoUrls.length === 0) {
     throw new Error('At least one video URL is required');
@@ -53,9 +54,9 @@ export async function mergeVideos(
   // Track request ID from enqueue callback
   let requestId: string | undefined;
 
-  // Configure fal client
+  // Configure fal client (supports user-provided keys)
   const fal = createFalClient({
-    credentials: getEnv().FAL_KEY || '',
+    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
   });
 
   // Call the Fal.ai merge endpoint

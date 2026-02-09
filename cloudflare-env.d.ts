@@ -6,6 +6,7 @@ declare namespace Cloudflare {
     mainModule: typeof import('./.open-next/worker');
   }
   interface Env {
+    API_KEY_ENCRYPTION_KEY: string;
     BETTER_AUTH_SECRET: string;
     CEREBRAS_API_KEY: string;
     DOPPLER_CONFIG: string;
@@ -46,6 +47,7 @@ declare namespace NodeJS {
   interface ProcessEnv extends StringifyValues<
     Pick<
       Cloudflare.Env,
+      | 'API_KEY_ENCRYPTION_KEY'
       | 'BETTER_AUTH_SECRET'
       | 'CEREBRAS_API_KEY'
       | 'DOPPLER_CONFIG'

@@ -44,6 +44,8 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 export type DurableLLMCallContext = {
   sequenceId?: string;
   userId?: string;
+  /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
+  openRouterApiKey?: string;
 };
 
 /**
@@ -147,7 +149,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       callStepName,
       {
         baseURL: 'https://openrouter.ai/api',
-        token: getEnv().OPENROUTER_KEY,
+        token: callContext.openRouterApiKey ?? getEnv().OPENROUTER_KEY,
         operation: 'chat.completions.create',
         body: {
           model: config.modelId,

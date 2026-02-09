@@ -23,6 +23,7 @@ import type {
   CharacterSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -87,6 +88,11 @@ export const characterSheetWorkflow = createWorkflow(
       }
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the character sheet image
     const imageResult = await context.run('generate-sheet-image', async () => {
       console.log(
@@ -94,7 +100,10 @@ export const characterSheetWorkflow = createWorkflow(
         `Generating sheet for ${input.characterName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
     });
 
     let sheetImageUrl = imageResult.imageUrls[0];

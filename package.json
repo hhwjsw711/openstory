@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "doppler run -c dev --watch -- vite dev",
+    "dev": "vite dev",
+    "dev:doppler": "doppler run -c dev --watch -- vite dev",
     "dev:e2e": "vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",

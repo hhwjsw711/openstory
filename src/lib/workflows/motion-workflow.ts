@@ -21,6 +21,7 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { getFalFlowControl } from './constants';
 
 export const generateMotionWorkflow = createWorkflow(
@@ -75,6 +76,11 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       const result = await generateMotionForFrame({
@@ -86,6 +92,7 @@ export const generateMotionWorkflow = createWorkflow(
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
         traceName: 'frame-motion',
+        falApiKey: apiKeys.falApiKey,
       });
 
       if (!result.success || !result.videoUrl) {
