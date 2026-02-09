@@ -86,8 +86,8 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
     void navigate({ to: '/sequences' });
   };
 
-  return (
-    <div className={isSetupFlow ? 'mx-auto max-w-2xl p-6' : undefined}>
+  const content = (
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -183,4 +183,11 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
       </Card>
     </div>
   );
+
+  // Only wrap with container when in setup flow (standalone page)
+  if (isSetupFlow) {
+    return <div className="mx-auto max-w-2xl p-6">{content}</div>;
+  }
+
+  return content;
 }
