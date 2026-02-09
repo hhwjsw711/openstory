@@ -12,6 +12,7 @@ import type {
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -33,6 +34,11 @@ export const upscaleVariantWorkflow = createWorkflow(
       '[UpscaleVariantWorkflow]',
       `Starting upscale for frame ${input.frameId}`
     );
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
 
     // Step 1: Upscale the cropped tile using Nano Banana Pro Edit
     const upscaleResult = await context.run('upscale-image', async () => {
@@ -62,7 +68,11 @@ export const upscaleVariantWorkflow = createWorkflow(
         return null; // Signal to skip
       }
 
-      const result = await upscaleWithNanoBanana(input.croppedTileUrl, '2K');
+      const result = await upscaleWithNanoBanana(
+        input.croppedTileUrl,
+        '2K',
+        apiKeys.falApiKey
+      );
 
       return {
         imageUrl: result.imageUrl,

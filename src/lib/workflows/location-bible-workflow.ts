@@ -27,6 +27,7 @@ import type {
   LibraryLocationMatch,
   LocationBibleWorkflowInput,
 } from '@/lib/workflow/types';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -101,6 +102,11 @@ export const locationBibleWorkflow = createWorkflow(
       createdLocations.map((loc) => [loc.locationId, loc.id])
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate reference images for each location in parallel
     const seqLocations: SequenceLocationMinimal[] = await Promise.all(
       input.locationBible.map(async (location, index) => {
@@ -129,6 +135,7 @@ export const locationBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'location-bible-image',
+            falApiKey: apiKeys.falApiKey,
           });
 
           const imageUrl = imageResult.imageUrls[0];

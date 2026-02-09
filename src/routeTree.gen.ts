@@ -19,14 +19,17 @@ import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
+import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route'
 import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
+import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
+import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
 import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
@@ -93,15 +96,20 @@ const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
   path: '/invite-code',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const ProtectedSettingsRouteRoute = ProtectedSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedTalentIndexRoute = ProtectedTalentIndexRouteImport.update({
   id: '/talent/',
   path: '/talent/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
-  getParentRoute: () => ProtectedRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProtectedSettingsRouteRoute,
 } as any)
 const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   id: '/sequences/',
@@ -118,6 +126,11 @@ const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   path: '/api/workflows/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOpenrouterCallbackRoute = ApiOpenrouterCallbackRouteImport.update({
+  id: '/api/openrouter/callback',
+  path: '/api/openrouter/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -130,9 +143,15 @@ const ProtectedTalentIdRoute = ProtectedTalentIdRouteImport.update({
 } as any)
 const ProtectedSettingsPasskeysRoute =
   ProtectedSettingsPasskeysRouteImport.update({
-    id: '/settings/passkeys',
-    path: '/settings/passkeys',
-    getParentRoute: () => ProtectedRouteRoute,
+    id: '/passkeys',
+    path: '/passkeys',
+    getParentRoute: () => ProtectedSettingsRouteRoute,
+  } as any)
+const ProtectedSettingsApiKeysRoute =
+  ProtectedSettingsApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => ProtectedSettingsRouteRoute,
   } as any)
 const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   id: '/sequences/new',
@@ -236,6 +255,7 @@ const ProtectedSequencesIdCastCharacterIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
@@ -245,13 +265,15 @@ export interface FileRoutesByFullPath {
   '/api/realtime': typeof ApiRealtimeRoute
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
-  '/settings': typeof ProtectedSettingsIndexRoute
+  '/settings/': typeof ProtectedSettingsIndexRoute
   '/talent': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
@@ -280,9 +302,11 @@ export interface FileRoutesByTo {
   '/api/realtime': typeof ApiRealtimeRoute
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
+  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
@@ -309,6 +333,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
+  '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/_auth/invite-code': typeof AuthInviteCodeRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/verify': typeof AuthVerifyRoute
@@ -318,9 +343,11 @@ export interface FileRoutesById {
   '/api/realtime': typeof ApiRealtimeRoute
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
+  '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/locations/': typeof ProtectedLocationsIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
@@ -346,6 +373,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/settings'
     | '/invite-code'
     | '/login'
     | '/verify'
@@ -355,13 +383,15 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/locations/$locationId'
     | '/sequences/new'
+    | '/settings/api-keys'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
+    | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/locations'
     | '/sequences'
-    | '/settings'
+    | '/settings/'
     | '/talent'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
@@ -390,9 +420,11 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/locations/$locationId'
     | '/sequences/new'
+    | '/settings/api-keys'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
+    | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/locations'
     | '/sequences'
@@ -418,6 +450,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/_protected'
+    | '/_protected/settings'
     | '/_auth/invite-code'
     | '/_auth/login'
     | '/_auth/verify'
@@ -427,9 +460,11 @@ export interface FileRouteTypes {
     | '/api/realtime'
     | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
+    | '/_protected/settings/api-keys'
     | '/_protected/settings/passkeys'
     | '/_protected/talent/$id'
     | '/api/auth/$'
+    | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/_protected/locations/'
     | '/_protected/sequences/'
@@ -460,6 +495,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRouteWithChildren
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
   ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
@@ -537,6 +573,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthInviteCodeRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_protected/settings': {
+      id: '/_protected/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsRouteRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/talent/': {
       id: '/_protected/talent/'
       path: '/talent'
@@ -546,10 +589,10 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/settings/': {
       id: '/_protected/settings/'
-      path: '/settings'
-      fullPath: '/settings'
+      path: '/'
+      fullPath: '/settings/'
       preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
+      parentRoute: typeof ProtectedSettingsRouteRoute
     }
     '/_protected/sequences/': {
       id: '/_protected/sequences/'
@@ -572,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/openrouter/callback': {
+      id: '/api/openrouter/callback'
+      path: '/api/openrouter/callback'
+      fullPath: '/api/openrouter/callback'
+      preLoaderRoute: typeof ApiOpenrouterCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -588,10 +638,17 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/settings/passkeys': {
       id: '/_protected/settings/passkeys'
-      path: '/settings/passkeys'
+      path: '/passkeys'
       fullPath: '/settings/passkeys'
       preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
-      parentRoute: typeof ProtectedRouteRoute
+      parentRoute: typeof ProtectedSettingsRouteRoute
+    }
+    '/_protected/settings/api-keys': {
+      id: '/_protected/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/settings/api-keys'
+      preLoaderRoute: typeof ProtectedSettingsApiKeysRouteImport
+      parentRoute: typeof ProtectedSettingsRouteRoute
     }
     '/_protected/sequences/new': {
       id: '/_protected/sequences/new'
@@ -731,15 +788,32 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
+interface ProtectedSettingsRouteRouteChildren {
+  ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute
+  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
+  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
+}
+
+const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
+  {
+    ProtectedSettingsApiKeysRoute: ProtectedSettingsApiKeysRoute,
+    ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
+    ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
+  }
+
+const ProtectedSettingsRouteRouteWithChildren =
+  ProtectedSettingsRouteRoute._addFileChildren(
+    ProtectedSettingsRouteRouteChildren,
+  )
+
 interface ProtectedRouteRouteChildren {
+  ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren
   ProtectedEvalRoute: typeof ProtectedEvalRoute
   ProtectedLocationsLocationIdRoute: typeof ProtectedLocationsLocationIdRoute
   ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
-  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedTalentIdRoute: typeof ProtectedTalentIdRoute
   ProtectedLocationsIndexRoute: typeof ProtectedLocationsIndexRoute
   ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
-  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
   ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute
   ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
   ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
@@ -751,14 +825,13 @@ interface ProtectedRouteRouteChildren {
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedSettingsRouteRoute: ProtectedSettingsRouteRouteWithChildren,
   ProtectedEvalRoute: ProtectedEvalRoute,
   ProtectedLocationsLocationIdRoute: ProtectedLocationsLocationIdRoute,
   ProtectedSequencesNewRoute: ProtectedSequencesNewRoute,
-  ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
   ProtectedTalentIdRoute: ProtectedTalentIdRoute,
   ProtectedLocationsIndexRoute: ProtectedLocationsIndexRoute,
   ProtectedSequencesIndexRoute: ProtectedSequencesIndexRoute,
-  ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   ProtectedTalentIndexRoute: ProtectedTalentIndexRoute,
   ProtectedSequencesIdScenesRoute: ProtectedSequencesIdScenesRoute,
   ProtectedSequencesIdScriptRoute: ProtectedSequencesIdScriptRoute,
@@ -805,6 +878,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
   ApiSequencesSequenceIdChaptersVttRoute:
     ApiSequencesSequenceIdChaptersVttRoute,

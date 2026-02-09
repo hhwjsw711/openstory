@@ -58,19 +58,19 @@ type OpenRouterMessageContent =
       | { type: 'image_url'; image_url: { url: string } }
     >;
 
-interface OpenRouterMessage {
+type OpenRouterMessage = {
   role: 'system' | 'user' | 'assistant';
   content: OpenRouterMessageContent;
-}
+};
 
-interface OpenRouterProviderPreference {
+type OpenRouterProviderPreference = {
   order?: string[];
   only?: string[];
   ignore?: string[];
   allow_fallbacks?: boolean;
-}
+};
 
-interface OpenRouterRequestParams {
+type OpenRouterRequestParams = {
   model: string;
   messages: OpenRouterMessage[];
   temperature?: number;
@@ -90,7 +90,9 @@ interface OpenRouterRequestParams {
   metadata?: Record<string, unknown>;
   /** Zod schema for structured outputs - when provided, OpenRouter enforces JSON schema */
   responseSchema?: z.ZodTypeAny;
-}
+  /** Override API key (e.g., user-provided key). Falls back to platform env key. */
+  apiKey?: string;
+};
 
 /**
  * Models that support structured outputs via OpenRouter
@@ -169,7 +171,7 @@ export const RECOMMENDED_MODELS = {
 export async function callOpenRouter(
   params: OpenRouterRequestParams
 ): Promise<OpenRouterResponse> {
-  const apiKey = getEnv().OPENROUTER_KEY;
+  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
 
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
@@ -278,7 +280,7 @@ export async function callOpenRouter(
 export async function* callOpenRouterStream(
   params: OpenRouterRequestParams
 ): AsyncGenerator<StreamChunk> {
-  const apiKey = getEnv().OPENROUTER_KEY;
+  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
 
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {

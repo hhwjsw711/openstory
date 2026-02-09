@@ -52,6 +52,7 @@ import type {
 } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 import { durableLLMCall } from './llm-call-helper';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
@@ -146,6 +147,17 @@ export const analyzeScriptWorkflow = createWorkflow(
       return Date.now();
     });
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
+    const llmCallContext = {
+      sequenceId,
+      userId: input.userId,
+      openRouterApiKey: apiKeys.openRouterApiKey,
+    };
+
     const {
       scenes,
       projectMetadata: { title },
@@ -164,7 +176,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         modelId: analysisModelId,
         responseSchema: sceneSplittingResultSchema,
       },
-      { sequenceId, userId: input.userId }
+      llmCallContext
     );
 
     // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
@@ -258,7 +270,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         modelId: analysisModelId,
         responseSchema: characterExtractionResultSchema,
       },
-      { sequenceId, userId: input.userId }
+      llmCallContext
     );
 
     // ============================================================
@@ -279,7 +291,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         modelId: analysisModelId,
         responseSchema: locationExtractionResultSchema,
       },
-      { sequenceId, userId: input.userId }
+      llmCallContext
     );
 
     // ============================================================
@@ -324,7 +336,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               modelId: analysisModelId,
               responseSchema: talentMatchResponseSchema,
             },
-            { sequenceId, userId: input.userId }
+            llmCallContext
           )
         : { matches: [] };
 
@@ -426,7 +438,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               modelId: analysisModelId,
               responseSchema: locationMatchResponseSchema,
             },
-            { sequenceId, userId: input.userId }
+            llmCallContext
           )
         : { matches: [] };
 
@@ -754,7 +766,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           sceneCount: scenesWithMotionPrompts.length,
         },
       },
-      { sequenceId, userId: input.userId }
+      llmCallContext
     );
 
     const completeScenes: Scene[] = await context.run(

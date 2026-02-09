@@ -18,6 +18,7 @@ import type {
   MergeVideoWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
@@ -82,9 +83,19 @@ export const mergeVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Merge videos using fal.ai
     const mergeResult = await context.run('merge-videos', async () => {
-      return mergeVideos(input.videoUrls, input.targetFps, input.resolution);
+      return mergeVideos(
+        input.videoUrls,
+        input.targetFps,
+        input.resolution,
+        apiKeys.falApiKey
+      );
     });
 
     // Step 3: Upload merged video to R2 storage

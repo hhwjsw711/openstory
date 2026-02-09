@@ -1,7 +1,7 @@
 /**
- * Visual Prompt Generation Workflow
+ * Motion Prompt Scene Workflow
  *
- * Generates visual prompts for scenes based on character bible and style config.
+ * Generates motion prompts for a single scene based on character bible and style config.
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
@@ -9,6 +9,7 @@ import type { MotionPromptSceneWorkflowInput } from '@/lib/workflow/types';
 
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { durableLLMCall } from './llm-call-helper';
 import {
   type MotionPrompt,
@@ -30,9 +31,15 @@ export const motionPromptSceneWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
+      '[MotionPromptSceneWorkflow] Starting motion prompt generation input:',
       input
     );
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // ============================================================
     // PHASE 3: Motion Prompt Generation (using durableLLMCall helper)
     // ============================================================
@@ -77,6 +84,7 @@ export const motionPromptSceneWorkflow = createWorkflow(
       },
       {
         // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
+        openRouterApiKey: apiKeys.openRouterApiKey,
       }
     );
 

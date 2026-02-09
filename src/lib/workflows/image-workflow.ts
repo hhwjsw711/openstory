@@ -12,6 +12,7 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { getFalFlowControl } from './constants';
 
 export const generateImageWorkflow = createWorkflow(
@@ -95,6 +96,11 @@ export const generateImageWorkflow = createWorkflow(
       };
     }
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
@@ -102,7 +108,10 @@ export const generateImageWorkflow = createWorkflow(
         `Generating image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
     });
 
     let imageUrl: string = imageResult.imageUrls[0];
