@@ -8,7 +8,9 @@ import { VelroLogo } from '@/components/icons/velro-logo';
 import { Route as locationsRoute } from '@/routes/_protected/locations/index';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as talentRoute } from '@/routes/_protected/talent/index';
+import { CreditBalancePill } from './credit-balance-pill';
 import { UserBadge } from './user-badge';
+import { useLowBalanceWarning } from '@/hooks/use-low-balance-warning';
 import { Link } from '@tanstack/react-router';
 
 interface HeaderProps {
@@ -16,6 +18,8 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
+  useLowBalanceWarning();
+
   return (
     <header
       className={cn(
@@ -54,7 +58,10 @@ export function Header({ className }: HeaderProps) {
         </div>
 
         {/* User badge */}
-        <UserBadge />
+        <div className="flex items-center gap-3">
+          <CreditBalancePill />
+          <UserBadge />
+        </div>
       </div>
     </header>
   );

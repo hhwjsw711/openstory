@@ -14,6 +14,9 @@ import {
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import { estimateImageCost } from '@/lib/billing/cost-estimation';
+import { hasEnoughCredits } from '@/lib/billing/credit-service';
+import { InsufficientCreditsError } from '@/lib/errors';
 import type {
   ImageWorkflowInput,
   StoryboardWorkflowInput,
@@ -162,6 +165,19 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
     const modelToUse =
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
+    // Credit check before triggering workflow
+    const estimatedCost = estimateImageCost(
+      modelToUse,
+      sequence.aspectRatio,
+      1
+    );
+    const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
+    if (!canAfford) {
+      throw new InsufficientCreditsError(
+        'Insufficient credits for image generation'
+      );
+    }
+
     const workflowInput: ImageWorkflowInput = {
       userId: context.user.id,
       teamId: sequence.teamId,
@@ -225,6 +241,21 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       sceneLocation
     );
 
+    // Credit check before triggering workflow
+    const numImages = data.numImages ?? 1;
+    const variantModel = data.model ?? DEFAULT_IMAGE_MODEL;
+    const estimatedCost = estimateImageCost(
+      variantModel,
+      sequence.aspectRatio,
+      numImages
+    );
+    const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
+    if (!canAfford) {
+      throw new InsufficientCreditsError(
+        'Insufficient credits for variant generation'
+      );
+    }
+
     const workflowInput: VariantWorkflowInput = {
       userId: context.user.id,
       teamId: sequence.teamId,
@@ -233,7 +264,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       thumbnailUrl: frame.thumbnailUrl,
       model: data.model,
       imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
-      numImages: data.numImages ?? 1,
+      numImages,
       seed: data.seed,
       characterReferences,
       locationReferences,

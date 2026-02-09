@@ -3,7 +3,7 @@
  * Displays user authentication state with login/logout actions
  */
 
-import { LogOut, Settings, User } from 'lucide-react';
+import { CreditCard, LogOut, Settings, User } from 'lucide-react';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -85,6 +85,12 @@ export function UserBadge() {
           <Link to="/settings">
             <Settings className="mr-2 h-4 w-4" />
             Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings/billing">
+            <CreditCard className="mr-2 h-4 w-4" />
+            Billing
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

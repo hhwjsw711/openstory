@@ -11,6 +11,7 @@ import { generateFrameMotionFn } from '@/functions/motion-functions';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODELS,
   getCompatibleModel,
   safeImageToVideoModel,
   safeTextToImageModel,
@@ -21,6 +22,16 @@ import {
   type AspectRatio,
   aspectRatioToImageSize,
 } from '@/lib/constants/aspect-ratios';
+import {
+  estimateImageCost,
+  estimateVideoCost,
+} from '@/lib/billing/cost-estimation';
+import { applyMarkup } from '@/lib/billing/constants';
+import {
+  useBillingBalance,
+  BILLING_BALANCE_KEY,
+} from '@/hooks/use-billing-balance';
+import { toast } from 'sonner';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -41,6 +52,16 @@ export type TabValue =
   | 'scene-variants'
   | 'cast'
   | 'location';
+
+function isInsufficientCreditsError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return (
+      error.message.includes('INSUFFICIENT_CREDITS') ||
+      error.message.includes('Insufficient credits')
+    );
+  }
+  return false;
+}
 
 function isValidTabValue(value: string): value is TabValue {
   return (
@@ -159,6 +180,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
   const selectVariant = useSelectVariant();
+  const { balance } = useBillingBalance();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -265,6 +287,21 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     } catch (error) {
       console.error('Failed to regenerate image:', error);
 
+      if (isInsufficientCreditsError(error)) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to continue generating.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/settings/billing';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      }
+
       // Rollback on error - set status to failed
       await queryClient.invalidateQueries({
         queryKey: frameKeys.list(frame.sequenceId),
@@ -328,6 +365,21 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       // Don't invalidate immediately - let auto-polling pick up server updates
     } catch (error) {
       console.error('Failed to regenerate motion:', error);
+
+      if (isInsufficientCreditsError(error)) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to continue generating.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/settings/billing';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      }
 
       // Rollback on error
       await queryClient.invalidateQueries({
@@ -437,6 +489,26 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     frame?.variantImageStatus === 'generating' ||
     (frame?.id ? regeneratingSceneVariants.has(frame.id) : false);
 
+  // Credit affordability checks
+  const effectiveImageModel = selectedImageModel || imageModel;
+  const imageCost = aspectRatio
+    ? applyMarkup(estimateImageCost(effectiveImageModel, aspectRatio, 1))
+    : 0;
+  const canAffordImage = balance === null || balance >= imageCost;
+
+  const effectiveMotionModel = selectedMotionModel || DEFAULT_VIDEO_MODEL;
+  const motionDuration =
+    IMAGE_TO_VIDEO_MODELS[effectiveMotionModel].capabilities.defaultDuration;
+  const motionCost = applyMarkup(
+    estimateVideoCost(effectiveMotionModel, motionDuration)
+  );
+  const canAffordMotion = balance === null || balance >= motionCost;
+
+  const variantCost = aspectRatio
+    ? applyMarkup(estimateImageCost(effectiveImageModel, aspectRatio, 1))
+    : 0;
+  const canAffordVariants = balance === null || balance >= variantCost;
+
   return (
     <Tabs
       value={selectedTab}
@@ -532,16 +604,26 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           {/* Regenerate button */}
           <Button
             onClick={() => void handleRegenerate()}
-            disabled={isGenerating || !frame}
+            disabled={isGenerating || !frame || !canAffordImage}
             className="w-full"
           >
             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isGenerating
-              ? 'Generating…'
-              : frame?.thumbnailUrl
-                ? 'Regenerate Image'
-                : 'Generate Image'}
+            {!canAffordImage
+              ? 'Insufficient credits'
+              : isGenerating
+                ? 'Generating…'
+                : frame?.thumbnailUrl
+                  ? 'Regenerate Image'
+                  : 'Generate Image'}
           </Button>
+          {!canAffordImage && (
+            <a
+              href="/settings/billing"
+              className="text-xs text-muted-foreground underline"
+            >
+              Add credits
+            </a>
+          )}
 
           {/* Copy button for current prompt */}
           <Button
@@ -602,18 +684,30 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           {/* Regenerate button */}
           <Button
             onClick={() => void handleRegenerateMotion()}
-            disabled={isGenerating || isGeneratingMotion || !frame}
+            disabled={
+              isGenerating || isGeneratingMotion || !frame || !canAffordMotion
+            }
             className="w-full"
           >
             {isGeneratingMotion && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isGeneratingMotion
-              ? 'Generating…'
-              : frame?.videoUrl
-                ? 'Regenerate Motion'
-                : 'Generate Motion'}
+            {!canAffordMotion
+              ? 'Insufficient credits'
+              : isGeneratingMotion
+                ? 'Generating…'
+                : frame?.videoUrl
+                  ? 'Regenerate Motion'
+                  : 'Generate Motion'}
           </Button>
+          {!canAffordMotion && (
+            <a
+              href="/settings/billing"
+              className="text-xs text-muted-foreground underline"
+            >
+              Add credits
+            </a>
+          )}
 
           {/* Copy button for current prompt */}
           <Button
@@ -675,19 +769,30 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               isGenerating ||
               isGeneratingSceneVariants ||
               generateVariants.isPending ||
-              !frame
+              !frame ||
+              !canAffordVariants
             }
             className="w-full"
           >
             {(isGeneratingSceneVariants || generateVariants.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isGeneratingSceneVariants || generateVariants.isPending
-              ? 'Generating…'
-              : frame?.variantImageUrl
-                ? 'Regenerate Scene Variants'
-                : 'Generate Scene Variants'}
+            {!canAffordVariants
+              ? 'Insufficient credits'
+              : isGeneratingSceneVariants || generateVariants.isPending
+                ? 'Generating…'
+                : frame?.variantImageUrl
+                  ? 'Regenerate Scene Variants'
+                  : 'Generate Scene Variants'}
           </Button>
+          {!canAffordVariants && (
+            <a
+              href="/settings/billing"
+              className="text-xs text-muted-foreground underline"
+            >
+              Add credits
+            </a>
+          )}
         </div>
       </TabsContent>
 

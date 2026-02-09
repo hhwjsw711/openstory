@@ -9,41 +9,21 @@ import {
   updateFrame,
 } from '@/lib/db/helpers/frames';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { MergeVideoWorkflowInput } from '@/lib/workflow/types';
+import type {
+  MergeVideoWorkflowInput,
+  MotionWorkflowInput,
+} from '@/lib/workflow/types';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { MotionWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-// Import motion service
 import { generateMotionForFrame } from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { getFalFlowControl } from './constants';
 
-/**
- * Motion generation workflow
- * Generates video motion from static frame thumbnails (image-to-video)
- * @param context - The workflow context. Input is in the request payload.
- * - userId: string;
- * - teamId: string;
- * - frameId: string;
- * - sequenceId: string;
- * - thumbnailUrl: string;
- * - prompt?: string;
- * - model?: keyof typeof IMAGE_TO_VIDEO_MODELS;
- * - duration?: number;
- * - fps?: number;
- * - motionBucket?: number;
- * @param  - The motion workflow input
- * @returns The motion workflow result
- * @throws WorkflowValidationError if the thumbnail URL is required for motion generation
- * @throws WorkflowValidationError if the team ID is not authorized
- * @throws WorkflowValidationError if the frame is not found
- * @throws WorkflowValidationError if the frame is not authorized
- * @throws WorkflowValidationError if the frame is not found
- */
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
@@ -55,7 +35,7 @@ export const generateMotionWorkflow = createWorkflow(
       );
     }
 
-    // Step 2: Set status to generating and store model being used
+    // Step 1: Set status to generating and store model being used
     const { frameDeleted } = await context.run(
       'set-generating-status',
       async () => {
@@ -103,19 +83,8 @@ export const generateMotionWorkflow = createWorkflow(
 
     // Step 2: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
-      // Select appropriate image URL based on environment
-      // - Local dev: Use temporary FAL URL (publicly accessible)
-      // - Production: Generate signed URL from R2 storage path
-      const imageUrl = input.imageUrl;
-
-      if (!imageUrl) {
-        throw new Error(
-          'No accessible image URL available for motion generation'
-        );
-      }
-
       const result = await generateMotionForFrame({
-        imageUrl,
+        imageUrl: input.imageUrl,
         prompt: input.prompt,
         model: input.model || DEFAULT_VIDEO_MODEL,
         duration: input.duration,
@@ -132,6 +101,41 @@ export const generateMotionWorkflow = createWorkflow(
 
       return result;
     });
+
+    // Resolve duration once from metadata or input defaults
+    const actualDuration =
+      typeof videoResult.metadata?.duration === 'number'
+        ? videoResult.metadata.duration
+        : (input.duration ?? 2);
+
+    // Deduct credits for motion generation
+    const motionCost =
+      typeof videoResult.metadata?.cost === 'number'
+        ? videoResult.metadata.cost
+        : 0;
+    const model = input.model || DEFAULT_VIDEO_MODEL;
+    const { teamId } = input;
+    if (motionCost > 0 && teamId) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(teamId, motionCost);
+        if (!canAfford) {
+          console.warn(
+            `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${motionCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(teamId, motionCost, {
+          userId: input.userId,
+          description: `Motion generation (${model})`,
+          metadata: {
+            model,
+            frameId: input.frameId,
+            sequenceId: input.sequenceId,
+            duration: videoResult.metadata?.duration,
+          },
+        });
+      });
+    }
 
     let videoUrl: string = videoResult.videoUrl || '';
 
@@ -184,13 +188,6 @@ export const generateMotionWorkflow = createWorkflow(
             cause: JSON.stringify(videoResult),
           });
         }
-
-        // Use actual duration from motion generation metadata
-        const metadataDuration =
-          typeof videoResult.metadata?.duration === 'number'
-            ? videoResult.metadata.duration
-            : null;
-        const actualDuration = metadataDuration ?? input.duration ?? 2;
 
         const updatedFrame = await updateFrame(
           input.frameId,
@@ -263,16 +260,7 @@ export const generateMotionWorkflow = createWorkflow(
     }
     console.log('[MotionWorkflow]', 'Motion generation workflow completed');
 
-    // Return result
-    const metadataDuration =
-      typeof videoResult.metadata?.duration === 'number'
-        ? videoResult.metadata.duration
-        : null;
-    const actualDuration = metadataDuration ?? input.duration ?? 2;
-    return {
-      videoUrl, // Return signed URL for backward compatibility
-      duration: actualDuration,
-    };
+    return { videoUrl, duration: actualDuration };
   },
   {
     retries: 3,

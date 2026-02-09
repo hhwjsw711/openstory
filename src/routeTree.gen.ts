@@ -26,9 +26,15 @@ import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected
 import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
+import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
+import { Route as ApiBillingTransactionsRouteImport } from './routes/api/billing/transactions'
+import { Route as ApiBillingCheckoutRouteImport } from './routes/api/billing/checkout'
+import { Route as ApiBillingBalanceRouteImport } from './routes/api/billing/balance'
+import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/auto-topup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
+import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protected/settings/billing'
 import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
@@ -131,6 +137,31 @@ const ApiOpenrouterCallbackRoute = ApiOpenrouterCallbackRouteImport.update({
   path: '/api/openrouter/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
+  id: '/api/billing/webhook',
+  path: '/api/billing/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingTransactionsRoute = ApiBillingTransactionsRouteImport.update({
+  id: '/api/billing/transactions',
+  path: '/api/billing/transactions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingCheckoutRoute = ApiBillingCheckoutRouteImport.update({
+  id: '/api/billing/checkout',
+  path: '/api/billing/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingBalanceRoute = ApiBillingBalanceRouteImport.update({
+  id: '/api/billing/balance',
+  path: '/api/billing/balance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingAutoTopupRoute = ApiBillingAutoTopupRouteImport.update({
+  id: '/api/billing/auto-topup',
+  path: '/api/billing/auto-topup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -145,6 +176,12 @@ const ProtectedSettingsPasskeysRoute =
   ProtectedSettingsPasskeysRouteImport.update({
     id: '/passkeys',
     path: '/passkeys',
+    getParentRoute: () => ProtectedSettingsRouteRoute,
+  } as any)
+const ProtectedSettingsBillingRoute =
+  ProtectedSettingsBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
     getParentRoute: () => ProtectedSettingsRouteRoute,
   } as any)
 const ProtectedSettingsApiKeysRoute =
@@ -266,9 +303,15 @@ export interface FileRoutesByFullPath {
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
+  '/settings/billing': typeof ProtectedSettingsBillingRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
+  '/api/billing/balance': typeof ApiBillingBalanceRoute
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
@@ -303,9 +346,15 @@ export interface FileRoutesByTo {
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
+  '/settings/billing': typeof ProtectedSettingsBillingRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
+  '/api/billing/balance': typeof ApiBillingBalanceRoute
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
@@ -344,9 +393,15 @@ export interface FileRoutesById {
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
+  '/_protected/settings/billing': typeof ProtectedSettingsBillingRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
+  '/api/billing/balance': typeof ApiBillingBalanceRoute
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/locations/': typeof ProtectedLocationsIndexRoute
@@ -384,9 +439,15 @@ export interface FileRouteTypes {
     | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/api-keys'
+    | '/settings/billing'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
+    | '/api/billing/auto-topup'
+    | '/api/billing/balance'
+    | '/api/billing/checkout'
+    | '/api/billing/transactions'
+    | '/api/billing/webhook'
     | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/locations'
@@ -421,9 +482,15 @@ export interface FileRouteTypes {
     | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/api-keys'
+    | '/settings/billing'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
+    | '/api/billing/auto-topup'
+    | '/api/billing/balance'
+    | '/api/billing/checkout'
+    | '/api/billing/transactions'
+    | '/api/billing/webhook'
     | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/locations'
@@ -461,9 +528,15 @@ export interface FileRouteTypes {
     | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
     | '/_protected/settings/api-keys'
+    | '/_protected/settings/billing'
     | '/_protected/settings/passkeys'
     | '/_protected/talent/$id'
     | '/api/auth/$'
+    | '/api/billing/auto-topup'
+    | '/api/billing/balance'
+    | '/api/billing/checkout'
+    | '/api/billing/transactions'
+    | '/api/billing/webhook'
     | '/api/openrouter/callback'
     | '/api/workflows/$'
     | '/_protected/locations/'
@@ -495,6 +568,11 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRouteWithChildren
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
+  ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
+  ApiBillingCheckoutRoute: typeof ApiBillingCheckoutRoute
+  ApiBillingTransactionsRoute: typeof ApiBillingTransactionsRoute
+  ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
   ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -622,6 +700,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOpenrouterCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/webhook': {
+      id: '/api/billing/webhook'
+      path: '/api/billing/webhook'
+      fullPath: '/api/billing/webhook'
+      preLoaderRoute: typeof ApiBillingWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/transactions': {
+      id: '/api/billing/transactions'
+      path: '/api/billing/transactions'
+      fullPath: '/api/billing/transactions'
+      preLoaderRoute: typeof ApiBillingTransactionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/checkout': {
+      id: '/api/billing/checkout'
+      path: '/api/billing/checkout'
+      fullPath: '/api/billing/checkout'
+      preLoaderRoute: typeof ApiBillingCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/balance': {
+      id: '/api/billing/balance'
+      path: '/api/billing/balance'
+      fullPath: '/api/billing/balance'
+      preLoaderRoute: typeof ApiBillingBalanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/auto-topup': {
+      id: '/api/billing/auto-topup'
+      path: '/api/billing/auto-topup'
+      fullPath: '/api/billing/auto-topup'
+      preLoaderRoute: typeof ApiBillingAutoTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -641,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/passkeys'
       fullPath: '/settings/passkeys'
       preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
+      parentRoute: typeof ProtectedSettingsRouteRoute
+    }
+    '/_protected/settings/billing': {
+      id: '/_protected/settings/billing'
+      path: '/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof ProtectedSettingsBillingRouteImport
       parentRoute: typeof ProtectedSettingsRouteRoute
     }
     '/_protected/settings/api-keys': {
@@ -790,6 +910,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface ProtectedSettingsRouteRouteChildren {
   ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute
+  ProtectedSettingsBillingRoute: typeof ProtectedSettingsBillingRoute
   ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
 }
@@ -797,6 +918,7 @@ interface ProtectedSettingsRouteRouteChildren {
 const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
   {
     ProtectedSettingsApiKeysRoute: ProtectedSettingsApiKeysRoute,
+    ProtectedSettingsBillingRoute: ProtectedSettingsBillingRoute,
     ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
     ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   }
@@ -878,6 +1000,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
+  ApiBillingBalanceRoute: ApiBillingBalanceRoute,
+  ApiBillingCheckoutRoute: ApiBillingCheckoutRoute,
+  ApiBillingTransactionsRoute: ApiBillingTransactionsRoute,
+  ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
   ApiSequencesSequenceIdChaptersVttRoute:
