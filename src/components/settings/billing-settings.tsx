@@ -26,15 +26,8 @@ import {
   BILLING_BALANCE_KEY,
 } from '@/hooks/use-billing-balance';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
-import {
-  ArrowLeft,
-  CreditCard,
-  DollarSign,
-  RefreshCw,
-  Wallet,
-} from 'lucide-react';
+import { CreditCard, DollarSign, RefreshCw, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type BillingSettingsProps = {
@@ -106,7 +99,6 @@ function getErrorMessage(
 }
 
 export function BillingSettings({ success, canceled }: BillingSettingsProps) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
@@ -207,16 +199,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => void navigate({ to: '/sequences' })}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to sequences
-      </Button>
-
+    <div className="space-y-6">
       {success && (
         <Alert className="mb-4">
           <AlertDescription>
@@ -242,7 +225,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       )}
 
       {/* Balance Card */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <SectionHeader
             icon={Wallet}
@@ -262,7 +245,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       </Card>
 
       {/* Top Up Card */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <SectionHeader
             icon={DollarSign}
@@ -317,7 +300,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       </Card>
 
       {/* Auto Top-Up Card */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <SectionHeader
             icon={RefreshCw}
