@@ -181,6 +181,7 @@ export async function getTransactionHistory(
     amount: number;
     balanceAfter: number;
     description: string | null;
+    metadata: unknown;
     createdAt: Date;
   }>;
   total: number;
@@ -197,6 +198,7 @@ export async function getTransactionHistory(
         amount: transactions.amount,
         balanceAfter: transactions.balanceAfter,
         description: transactions.description,
+        metadata: transactions.metadata,
         createdAt: transactions.createdAt,
       })
       .from(transactions)
@@ -354,6 +356,7 @@ async function maybeAutoTopUp(
     payment_method: paymentMethodId,
     off_session: true,
     confirm: true,
+    expand: ['latest_charge'],
     metadata: {
       teamId,
       type: 'auto_top_up',
@@ -361,11 +364,16 @@ async function maybeAutoTopUp(
   });
 
   if (paymentIntent.status === 'succeeded') {
+    const charge = paymentIntent.latest_charge;
+    const receiptUrl =
+      charge && typeof charge === 'object' ? charge.receipt_url : undefined;
+
     await addCredits(teamId, settings.autoTopUpAmountUsd, {
       description: `Auto top-up: $${settings.autoTopUpAmountUsd.toFixed(2)}`,
       metadata: {
         stripePaymentIntentId: paymentIntent.id,
         autoTopUp: true,
+        ...(receiptUrl && { receiptUrl }),
       },
     });
   }

@@ -73,6 +73,26 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 await saveStripeCustomerId(teamId, customerId);
               }
 
+              // Retrieve receipt URL from the charge (best-effort, don't block credit addition)
+              let receiptUrl: string | undefined;
+              try {
+                if (session.payment_intent) {
+                  const piId =
+                    typeof session.payment_intent === 'string'
+                      ? session.payment_intent
+                      : session.payment_intent.id;
+                  const pi = await stripe.paymentIntents.retrieve(piId, {
+                    expand: ['latest_charge'],
+                  });
+                  const charge = pi.latest_charge;
+                  if (charge && typeof charge === 'object') {
+                    receiptUrl = charge.receipt_url ?? undefined;
+                  }
+                }
+              } catch (err) {
+                console.error('[Webhook] Failed to fetch receipt URL:', err);
+              }
+
               // Add credits
               await addCredits(teamId, amountUsd, {
                 userId,
@@ -80,6 +100,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 metadata: {
                   stripeSessionId: session.id,
                   stripePaymentIntentId: session.payment_intent,
+                  ...(receiptUrl && { receiptUrl }),
                 },
               });
 
