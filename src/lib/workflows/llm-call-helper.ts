@@ -13,8 +13,18 @@ import {
 import { getEnv } from '#env';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { getGenerationChannel } from '@/lib/realtime';
+import { deductCredits } from '@/lib/billing/credit-service';
 
 const BASE_DELAY = 5;
+
+/** Safely extract OpenRouter's extended `cost` field from usage object */
+function extractUsageCost(usage: unknown): number {
+  if (usage && typeof usage === 'object' && 'cost' in usage) {
+    const val = (usage as { cost: unknown }).cost;
+    return typeof val === 'number' ? val : 0;
+  }
+  return 0;
+}
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   // Base name (e.g., "scene-splitting") - used to derive step names
@@ -44,6 +54,7 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 export type DurableLLMCallContext = {
   sequenceId?: string;
   userId?: string;
+  teamId?: string;
   /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
   openRouterApiKey?: string;
 };
@@ -144,6 +155,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
 
   // Step 2: Durable LLM Call
   let jsonResponse: z.infer<TSchema> | null = null;
+  let llmCostUsd = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     const { body, status, header } = await context.api.openai.call(
       callStepName,
@@ -199,6 +211,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         | {
             isValid: true;
             jsonResponse: z.infer<TSchema> | null;
+            costUsd: number;
           }
         | {
             isValid: false;
@@ -223,9 +236,12 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
                 sleepTime: BASE_DELAY,
               };
             }
+            // Extract cost from OpenRouter usage response (extended field not in base OpenAI types)
+            const costUsd = extractUsageCost(body.usage);
             return {
               jsonResponse: validated,
               isValid: true,
+              costUsd,
             };
           } catch {
             // If the response is not valid, retry
@@ -260,6 +276,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       continue;
     }
     jsonResponse = result.jsonResponse;
+    llmCostUsd = result.costUsd;
     break;
   }
 
@@ -268,6 +285,24 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     throw new WorkflowValidationError(
       `${logName} Tried multiple times to get a valid response, but failed`
     );
+  }
+
+  // Deduct LLM credits (skip if team used own OpenRouter key)
+  if (llmCostUsd > 0 && callContext.teamId && !callContext.openRouterApiKey) {
+    const teamIdForDeduction = callContext.teamId;
+    await context.run(`deduct-llm-credits-${config.name}`, async () => {
+      await deductCredits(teamIdForDeduction, llmCostUsd, {
+        userId: callContext.userId,
+        description: `LLM analysis (${config.modelId})`,
+        metadata: {
+          model: config.modelId,
+          phase: config.phase.number,
+          phaseName: config.phase.name,
+          stepName: config.name,
+          sequenceId: callContext.sequenceId,
+        },
+      });
+    });
   }
 
   // Step 3: Log & Process

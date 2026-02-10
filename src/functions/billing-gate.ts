@@ -1,0 +1,39 @@
+/**
+ * Billing Gate Server Function
+ * Combined endpoint returning balance + BYOK status for billing gate checks
+ */
+
+import { createServerFn } from '@tanstack/react-start';
+import { authWithTeamMiddleware } from './middleware';
+import { apiKeyService } from '@/lib/services/api-key.service';
+import {
+  getTeamBalance,
+  getBillingSettings,
+} from '@/lib/billing/credit-service';
+
+/**
+ * Check billing gate status: balance, BYOK keys, and auto-top-up
+ * Uses member-level auth (not admin-only like checkApiKeyStatusFn)
+ */
+export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
+  .middleware([authWithTeamMiddleware])
+  .handler(async ({ context }) => {
+    const { teamId } = context;
+
+    const [balance, hasFalKey, hasOpenRouterKey, billingSettings] =
+      await Promise.all([
+        getTeamBalance(teamId),
+        apiKeyService.hasKey(teamId, 'fal'),
+        apiKeyService.hasKey(teamId, 'openrouter'),
+        getBillingSettings(teamId),
+      ]);
+
+    return {
+      hasCredits: balance > 0,
+      hasFalKey,
+      hasOpenRouterKey,
+      balance,
+      hasAutoTopUp:
+        billingSettings.autoTopUpEnabled && !!billingSettings.stripeCustomerId,
+    };
+  });

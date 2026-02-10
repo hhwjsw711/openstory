@@ -51,3 +51,14 @@ export function estimateVideoCost(
   const config = IMAGE_TO_VIDEO_MODELS[model];
   return config.pricing.pricePerSecond * durationSeconds;
 }
+
+/**
+ * Rough estimate of LLM cost per call for pre-flight credit checks.
+ * Based on average token usage for script analysis calls.
+ * Only used for client-side gate affordability checks, not actual deduction.
+ */
+const AVERAGE_LLM_COST_PER_CALL_USD = 0.02;
+
+export function estimateLLMCost(numCalls: number = 1): number {
+  return AVERAGE_LLM_COST_PER_CALL_USD * numCalls;
+}

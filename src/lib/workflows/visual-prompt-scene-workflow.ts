@@ -85,6 +85,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
       },
       {
         // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
+        teamId: input.teamId,
         openRouterApiKey: apiKeys.openRouterApiKey,
       }
     );

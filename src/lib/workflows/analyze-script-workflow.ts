@@ -155,6 +155,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
+      teamId: input.teamId,
       openRouterApiKey: apiKeys.openRouterApiKey,
     };
 

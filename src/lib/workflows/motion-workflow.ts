@@ -108,14 +108,14 @@ export const generateMotionWorkflow = createWorkflow(
         ? videoResult.metadata.duration
         : (input.duration ?? 2);
 
-    // Deduct credits for motion generation
+    // Deduct credits for motion generation (skip if team used own fal key)
     const motionCost =
       typeof videoResult.metadata?.cost === 'number'
         ? videoResult.metadata.cost
         : 0;
     const model = input.model || DEFAULT_VIDEO_MODEL;
     const { teamId } = input;
-    if (motionCost > 0 && teamId) {
+    if (motionCost > 0 && teamId && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCost);
         if (!canAfford) {
