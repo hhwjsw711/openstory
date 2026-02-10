@@ -12,6 +12,10 @@ import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterBibleWorkflowInput,
@@ -81,6 +85,17 @@ export const characterBibleWorkflow = createWorkflow(
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'character-bible-image',
             falApiKey: apiKeys.falApiKey,
+          });
+
+          // Deduct credits (skip if team used own fal key)
+          await deductWorkflowCredits({
+            teamId: input.teamId,
+            costUsd: extractImageCost(imageResult.metadata),
+            usedOwnKey: !!apiKeys.falApiKey,
+            userId: input.userId,
+            description: `Character bible sheet (${model})`,
+            metadata: { model, characterId: character.characterId },
+            workflowName: 'CharacterBibleWorkflow',
           });
 
           const imageUrl = imageResult.imageUrls[0];

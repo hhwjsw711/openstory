@@ -6,6 +6,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   VariantWorkflowInput,
@@ -126,6 +130,23 @@ export const generateVariantWorkflow = createWorkflow(
       return await generateImageWithProvider({
         ...generationParams,
         falApiKey: apiKeys.falApiKey,
+      });
+    });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Variant image generation (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          frameId: input.frameId,
+          sequenceId: input.sequenceId,
+        },
+        workflowName: 'VariantWorkflow',
       });
     });
 

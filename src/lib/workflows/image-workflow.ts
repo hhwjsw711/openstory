@@ -115,13 +115,13 @@ export const generateImageWorkflow = createWorkflow(
       });
     });
 
-    // Deduct credits for image generation
+    // Deduct credits for image generation (skip if team used own fal key)
     const imageCost =
       typeof imageResult.metadata.cost === 'number'
         ? imageResult.metadata.cost
         : 0;
     const { teamId } = input;
-    if (imageCost > 0 && teamId) {
+    if (imageCost > 0 && teamId && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, imageCost);
         if (!canAfford) {

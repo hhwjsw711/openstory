@@ -13,6 +13,8 @@ import {
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
+import { useBillingGate } from '@/hooks/use-billing-gate';
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
@@ -165,6 +167,7 @@ export const ScriptView: FC<{
 
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
+  const { needsBillingSetup, showGate, gateProps } = useBillingGate();
 
   const handleCancel = () => {
     if (onCancel) {
@@ -175,6 +178,12 @@ export const ScriptView: FC<{
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) {
       event.preventDefault();
+    }
+
+    // Gate: require billing setup before creating new sequences
+    if (!sequence?.id && needsBillingSetup) {
+      showGate();
+      return;
     }
 
     if (sequence?.id) {
@@ -344,6 +353,7 @@ export const ScriptView: FC<{
           </div>
         </CardFooter>
       </form>
+      <BillingGateDialog {...gateProps} />
     </Card>
   );
 };

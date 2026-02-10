@@ -27,7 +27,13 @@ import {
 } from '@/hooks/use-billing-balance';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
-import { CreditCard, DollarSign, RefreshCw, Wallet } from 'lucide-react';
+import {
+  CreditCard,
+  DollarSign,
+  ExternalLink,
+  RefreshCw,
+  Wallet,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type BillingSettingsProps = {
@@ -47,6 +53,7 @@ type TransactionData = {
   amount: number;
   balanceAfter: number;
   description: string | null;
+  metadata?: { receiptUrl?: string } | null;
   createdAt: string;
 };
 
@@ -102,6 +109,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
 
   // Clear success/canceled from URL after showing
   useEffect(() => {
@@ -189,13 +197,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     },
   });
 
-  const handleCustomTopUp = () => {
-    const amount = parseFloat(customAmount);
-    if (isNaN(amount) || amount < MIN_TOPUP_AMOUNT_USD) {
+  const effectiveAmount = selectedAmount ?? parseFloat(customAmount);
+  const isValidAmount =
+    !isNaN(effectiveAmount) && effectiveAmount >= MIN_TOPUP_AMOUNT_USD;
+
+  const handleTopUp = () => {
+    if (!isValidAmount) {
       setError(`Minimum top-up is $${MIN_TOPUP_AMOUNT_USD}`);
       return;
     }
-    checkoutMutation.mutate(amount);
+    checkoutMutation.mutate(effectiveAmount);
   };
 
   return (
@@ -258,9 +269,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
             {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
               <Button
                 key={amount}
-                variant="outline"
+                variant={selectedAmount === amount ? 'default' : 'outline'}
                 className="h-12 text-lg font-semibold tabular-nums"
-                onClick={() => checkoutMutation.mutate(amount)}
+                onClick={() => {
+                  setSelectedAmount(amount);
+                  setCustomAmount('');
+                  setError(null);
+                }}
                 disabled={checkoutMutation.isPending}
               >
                 ${amount}
@@ -270,32 +285,40 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
 
           <Separator />
 
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                type="number"
-                min={MIN_TOPUP_AMOUNT_USD}
-                step="1"
-                placeholder={`${MIN_TOPUP_AMOUNT_USD}+`}
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCustomTopUp();
-                }}
-                className="pl-7 tabular-nums"
-                autoComplete="off"
-              />
-            </div>
-            <Button
-              onClick={handleCustomTopUp}
-              disabled={checkoutMutation.isPending}
-            >
-              {checkoutMutation.isPending ? 'Loading…' : 'Top up'}
-            </Button>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              $
+            </span>
+            <Input
+              type="number"
+              min={MIN_TOPUP_AMOUNT_USD}
+              step="1"
+              placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
+              value={customAmount}
+              onChange={(e) => {
+                setCustomAmount(e.target.value);
+                setSelectedAmount(null);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleTopUp();
+              }}
+              className="pl-7 tabular-nums"
+              autoComplete="off"
+            />
           </div>
+
+          <Button
+            onClick={handleTopUp}
+            disabled={!isValidAmount || checkoutMutation.isPending}
+            className="w-full"
+          >
+            {checkoutMutation.isPending
+              ? 'Loading…'
+              : isValidAmount
+                ? `Top up $${effectiveAmount}`
+                : 'Top up'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -379,6 +402,17 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                     <Badge variant="outline" className="text-xs">
                       ${tx.balanceAfter.toFixed(2)}
                     </Badge>
+                    {tx.metadata?.receiptUrl && (
+                      <a
+                        href={tx.metadata.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="View receipt"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}

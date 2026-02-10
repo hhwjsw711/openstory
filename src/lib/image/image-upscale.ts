@@ -11,6 +11,7 @@ type VariantResolution = '1K' | '2K' | '4K';
 type UpscaleResult = {
   imageUrl: string;
   requestId: string;
+  cost: number;
 };
 
 /**
@@ -86,9 +87,23 @@ export async function upscaleWithNanoBanana(
       throw new Error('No image URL found in Nano Banana Pro Edit response');
     }
 
+    // fal returns cost in metadata but it's not in the typed response
+    let cost = 0;
+    if (
+      'metadata' in result &&
+      result.metadata &&
+      typeof result.metadata === 'object'
+    ) {
+      const meta = result.metadata;
+      if ('cost' in meta && typeof meta.cost === 'number') {
+        cost = meta.cost;
+      }
+    }
+
     return {
       imageUrl: images[0].url,
       requestId: result.requestId || '',
+      cost,
     };
   } catch (error) {
     console.error('[upscaleWithNanoBanana] Error details:', {

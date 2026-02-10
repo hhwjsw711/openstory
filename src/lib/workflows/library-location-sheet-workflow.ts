@@ -14,6 +14,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
   LibraryLocationSheetWorkflowInput,
@@ -72,6 +76,22 @@ export const libraryLocationSheetWorkflow = createWorkflow(
       return await generateImageWithProvider({
         ...generationParams,
         falApiKey: apiKeys.falApiKey,
+      });
+    });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        description: `Library location sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          locationName: input.locationName,
+          locationDbId: input.locationDbId,
+        },
+        workflowName: 'LibraryLocationSheetWorkflow',
       });
     });
 

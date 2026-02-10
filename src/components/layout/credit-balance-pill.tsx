@@ -1,41 +1,31 @@
 /**
  * Credit Balance Pill
- * Shows current credit balance in the header with color-coded status
+ * Shows as an amber warning when balance is low and user has no safety net
+ * (no auto top-up and no BYOK API keys configured)
  */
 
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useBillingBalance } from '@/hooks/use-billing-balance';
+import { useBillingGateQuery } from '@/hooks/use-billing-gate';
 import { Link } from '@tanstack/react-router';
-import { cn } from '@/lib/utils';
 
 export const CreditBalancePill: React.FC = () => {
-  const { balance, isLowBalance, isZeroBalance, isLoading, data } =
-    useBillingBalance();
+  const { balance, isLowBalance } = useBillingBalance();
+  const { data: gateStatus } = useBillingGateQuery();
 
-  // Don't render if user is not authenticated (no data)
-  if (!isLoading && !data) return null;
+  // Only show when low balance AND no safety net configured
+  const hasSafetyNet =
+    gateStatus?.hasAutoTopUp ||
+    gateStatus?.hasFalKey ||
+    gateStatus?.hasOpenRouterKey;
 
-  if (isLoading) {
-    return <Skeleton className="h-6 w-16 rounded-md" />;
-  }
-
-  const variant = isZeroBalance
-    ? 'destructive'
-    : isLowBalance
-      ? 'outline'
-      : 'secondary';
+  if (!isLowBalance || hasSafetyNet) return null;
 
   return (
     <Link to="/settings/billing">
       <Badge
-        variant={variant}
-        className={cn(
-          'tabular-nums cursor-pointer',
-          isLowBalance &&
-            !isZeroBalance &&
-            'border-amber-500 text-amber-600 dark:text-amber-400'
-        )}
+        variant="outline"
+        className="tabular-nums cursor-pointer border-amber-500 text-amber-600 dark:text-amber-400"
       >
         ${balance?.toFixed(2) ?? '0.00'}
       </Badge>

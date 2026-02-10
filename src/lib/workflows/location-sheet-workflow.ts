@@ -16,6 +16,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
@@ -109,6 +113,23 @@ export const locationSheetWorkflow = createWorkflow(
         });
       }
     );
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId ?? null,
+        description: `Location sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          locationName: input.locationName,
+          locationDbId: input.locationDbId,
+        },
+        workflowName: 'LocationSheetWorkflow',
+      });
+    });
 
     let referenceImageUrl = imageResult.imageUrls[0];
     let referenceImagePath: string | undefined = undefined;

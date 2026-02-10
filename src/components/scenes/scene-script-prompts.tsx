@@ -11,7 +11,6 @@ import { generateFrameMotionFn } from '@/functions/motion-functions';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
   getCompatibleModel,
   safeImageToVideoModel,
   safeTextToImageModel,
@@ -22,16 +21,9 @@ import {
   type AspectRatio,
   aspectRatioToImageSize,
 } from '@/lib/constants/aspect-ratios';
-import {
-  estimateImageCost,
-  estimateVideoCost,
-} from '@/lib/billing/cost-estimation';
-import { applyMarkup } from '@/lib/billing/constants';
-import {
-  useBillingBalance,
-  BILLING_BALANCE_KEY,
-} from '@/hooks/use-billing-balance';
-import { toast } from 'sonner';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { useFalBillingGate } from '@/hooks/use-billing-gate';
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -180,7 +172,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
   const selectVariant = useSelectVariant();
-  const { balance } = useBillingBalance();
+  const {
+    needsBillingSetup: falNeedsBillingSetup,
+    showGate: showFalGate,
+    gateProps: falGateProps,
+  } = useFalBillingGate();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -288,15 +284,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       console.error('Failed to regenerate image:', error);
 
       if (isInsufficientCreditsError(error)) {
-        toast.error('Insufficient credits', {
-          description: 'Add credits to continue generating.',
-          action: {
-            label: 'Add Credits',
-            onClick: () => {
-              window.location.href = '/settings/billing';
-            },
-          },
-        });
+        showFalGate();
         void queryClient.invalidateQueries({
           queryKey: [...BILLING_BALANCE_KEY],
         });
@@ -316,6 +304,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     editedImagePrompt,
     queryClient,
     onRegenerateStart,
+    showFalGate,
   ]);
 
   const handleRegenerateMotion = useCallback(async () => {
@@ -367,15 +356,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       console.error('Failed to regenerate motion:', error);
 
       if (isInsufficientCreditsError(error)) {
-        toast.error('Insufficient credits', {
-          description: 'Add credits to continue generating.',
-          action: {
-            label: 'Add Credits',
-            onClick: () => {
-              window.location.href = '/settings/billing';
-            },
-          },
-        });
+        showFalGate();
         void queryClient.invalidateQueries({
           queryKey: [...BILLING_BALANCE_KEY],
         });
@@ -395,6 +376,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     editedMotionPrompt,
     queryClient,
     onRegenerateStart,
+    showFalGate,
   ]);
 
   const handleGenerateSceneVariants = useCallback(async () => {
@@ -488,26 +470,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const isGeneratingSceneVariants =
     frame?.variantImageStatus === 'generating' ||
     (frame?.id ? regeneratingSceneVariants.has(frame.id) : false);
-
-  // Credit affordability checks
-  const effectiveImageModel = selectedImageModel || imageModel;
-  const imageCost = aspectRatio
-    ? applyMarkup(estimateImageCost(effectiveImageModel, aspectRatio, 1))
-    : 0;
-  const canAffordImage = balance === null || balance >= imageCost;
-
-  const effectiveMotionModel = selectedMotionModel || DEFAULT_VIDEO_MODEL;
-  const motionDuration =
-    IMAGE_TO_VIDEO_MODELS[effectiveMotionModel].capabilities.defaultDuration;
-  const motionCost = applyMarkup(
-    estimateVideoCost(effectiveMotionModel, motionDuration)
-  );
-  const canAffordMotion = balance === null || balance >= motionCost;
-
-  const variantCost = aspectRatio
-    ? applyMarkup(estimateImageCost(effectiveImageModel, aspectRatio, 1))
-    : 0;
-  const canAffordVariants = balance === null || balance >= variantCost;
 
   return (
     <Tabs
@@ -603,27 +565,23 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleRegenerate()}
-            disabled={isGenerating || !frame || !canAffordImage}
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleRegenerate();
+            }}
+            disabled={isGenerating || !frame}
             className="w-full"
           >
             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {!canAffordImage
-              ? 'Insufficient credits'
-              : isGenerating
-                ? 'Generating…'
-                : frame?.thumbnailUrl
-                  ? 'Regenerate Image'
-                  : 'Generate Image'}
+            {isGenerating
+              ? 'Generating…'
+              : frame?.thumbnailUrl
+                ? 'Regenerate Image'
+                : 'Generate Image'}
           </Button>
-          {!canAffordImage && (
-            <a
-              href="/settings/billing"
-              className="text-xs text-muted-foreground underline"
-            >
-              Add credits
-            </a>
-          )}
 
           {/* Copy button for current prompt */}
           <Button
@@ -683,31 +641,25 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleRegenerateMotion()}
-            disabled={
-              isGenerating || isGeneratingMotion || !frame || !canAffordMotion
-            }
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleRegenerateMotion();
+            }}
+            disabled={isGenerating || isGeneratingMotion || !frame}
             className="w-full"
           >
             {isGeneratingMotion && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {!canAffordMotion
-              ? 'Insufficient credits'
-              : isGeneratingMotion
-                ? 'Generating…'
-                : frame?.videoUrl
-                  ? 'Regenerate Motion'
-                  : 'Generate Motion'}
+            {isGeneratingMotion
+              ? 'Generating…'
+              : frame?.videoUrl
+                ? 'Regenerate Motion'
+                : 'Generate Motion'}
           </Button>
-          {!canAffordMotion && (
-            <a
-              href="/settings/billing"
-              className="text-xs text-muted-foreground underline"
-            >
-              Add credits
-            </a>
-          )}
 
           {/* Copy button for current prompt */}
           <Button
@@ -764,35 +716,30 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleGenerateSceneVariants()}
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleGenerateSceneVariants();
+            }}
             disabled={
               isGenerating ||
               isGeneratingSceneVariants ||
               generateVariants.isPending ||
-              !frame ||
-              !canAffordVariants
+              !frame
             }
             className="w-full"
           >
             {(isGeneratingSceneVariants || generateVariants.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {!canAffordVariants
-              ? 'Insufficient credits'
-              : isGeneratingSceneVariants || generateVariants.isPending
-                ? 'Generating…'
-                : frame?.variantImageUrl
-                  ? 'Regenerate Scene Variants'
-                  : 'Generate Scene Variants'}
+            {isGeneratingSceneVariants || generateVariants.isPending
+              ? 'Generating…'
+              : frame?.variantImageUrl
+                ? 'Regenerate Scene Variants'
+                : 'Generate Scene Variants'}
           </Button>
-          {!canAffordVariants && (
-            <a
-              href="/settings/billing"
-              className="text-xs text-muted-foreground underline"
-            >
-              Add credits
-            </a>
-          )}
         </div>
       </TabsContent>
 
@@ -803,6 +750,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       <TabsContent value="location">
         <SceneLocationTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
+
+      <BillingGateDialog {...falGateProps} />
     </Tabs>
   );
 };

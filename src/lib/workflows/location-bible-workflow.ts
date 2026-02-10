@@ -22,6 +22,10 @@ import type {
 } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
   LibraryLocationMatch,
@@ -136,6 +140,17 @@ export const locationBibleWorkflow = createWorkflow(
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'location-bible-image',
             falApiKey: apiKeys.falApiKey,
+          });
+
+          // Deduct credits (skip if team used own fal key)
+          await deductWorkflowCredits({
+            teamId: input.teamId,
+            costUsd: extractImageCost(imageResult.metadata),
+            usedOwnKey: !!apiKeys.falApiKey,
+            userId: input.userId,
+            description: `Location bible sheet (${model})`,
+            metadata: { model, locationId: location.locationId },
+            workflowName: 'LocationBibleWorkflow',
           });
 
           const imageUrl = imageResult.imageUrls[0];

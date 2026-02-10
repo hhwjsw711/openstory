@@ -6,6 +6,7 @@
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
@@ -77,6 +78,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       return {
         imageUrl: result.imageUrl,
         requestId: result.requestId,
+        cost: result.cost,
       };
     });
 
@@ -84,6 +86,19 @@ export const upscaleVariantWorkflow = createWorkflow(
     if (!upscaleResult) {
       return { upscaledUrl: '', upscaledPath: '' };
     }
+
+    // Deduct credits for upscale (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: upscaleResult.cost,
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: 'Variant upscale (nano_banana_pro)',
+        metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
+        workflowName: 'UpscaleVariantWorkflow',
+      });
+    });
 
     // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {
