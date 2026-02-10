@@ -14,7 +14,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
   LibraryLocationSheetWorkflowInput,
@@ -77,29 +80,20 @@ export const libraryLocationSheetWorkflow = createWorkflow(
     });
 
     // Deduct credits for image generation (skip if team used own fal key)
-    const libLocCost =
-      typeof imageResult.metadata.cost === 'number'
-        ? imageResult.metadata.cost
-        : 0;
-    if (libLocCost > 0 && input.teamId && !apiKeys.falApiKey) {
-      await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(input.teamId, libLocCost);
-        if (!canAfford) {
-          console.warn(
-            `[LibraryLocationSheetWorkflow] Insufficient credits for team ${input.teamId}, skipping deduction`
-          );
-          return;
-        }
-        await deductCredits(input.teamId, libLocCost, {
-          description: `Library location sheet (${generationParams.model})`,
-          metadata: {
-            model: generationParams.model,
-            locationName: input.locationName,
-            locationDbId: input.locationDbId,
-          },
-        });
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        description: `Library location sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          locationName: input.locationName,
+          locationDbId: input.locationDbId,
+        },
+        workflowName: 'LibraryLocationSheetWorkflow',
       });
-    }
+    });
 
     // Step 3: Upload to R2 storage
     const storageResult = await context.run('upload-to-storage', async () => {

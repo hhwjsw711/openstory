@@ -36,9 +36,7 @@ import {
 } from '@/lib/ai/models';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
-import { hasEnoughCredits } from '@/lib/billing/credit-service';
-import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import type { Sequence } from '@/lib/db/schema';
@@ -113,32 +111,19 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     } = data;
 
     // Pre-flight billing check (skip if team has both BYOK keys)
-    const [hasFalKey, hasOpenRouterKey] = await Promise.all([
-      apiKeyService.hasKey(teamId, 'fal'),
-      apiKeyService.hasKey(teamId, 'openrouter'),
-    ]);
-    if (!hasFalKey || !hasOpenRouterKey) {
-      const resolvedImageModel = safeTextToImageModel(
-        imageModel,
-        DEFAULT_IMAGE_MODEL
-      );
-      const resolvedVideoModel = safeImageToVideoModel(
-        videoModel,
-        DEFAULT_VIDEO_MODEL
-      );
-      const estimatedCost = estimateStoryboardCost({
-        imageModel: resolvedImageModel,
-        aspectRatio: aspectRatio,
+    await requireCredits(
+      teamId,
+      estimateStoryboardCost({
+        imageModel: safeTextToImageModel(imageModel, DEFAULT_IMAGE_MODEL),
+        aspectRatio,
         autoGenerateMotion: autoGenerateMotion ?? false,
-        videoModel: resolvedVideoModel,
-      });
-      const canAfford = await hasEnoughCredits(teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits to generate storyboard'
-        );
+        videoModel: safeImageToVideoModel(videoModel, DEFAULT_VIDEO_MODEL),
+      }),
+      {
+        providers: ['fal', 'openrouter'],
+        errorMessage: 'Insufficient credits to generate storyboard',
       }
-    }
+    );
 
     // Create sequences in parallel for each selected model
     const sequences = await Promise.all(
@@ -222,31 +207,24 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
     // Trigger storyboard regeneration if needed
     if (needToRegenerateStoryboard) {
       // Pre-flight billing check (skip if team has both BYOK keys)
-      const [hasFalKey, hasOrKey] = await Promise.all([
-        apiKeyService.hasKey(context.teamId, 'fal'),
-        apiKeyService.hasKey(context.teamId, 'openrouter'),
-      ]);
-      if (!hasFalKey || !hasOrKey) {
-        const resolvedModel = safeTextToImageModel(
-          sequence.imageModel,
-          DEFAULT_IMAGE_MODEL
-        );
-        const resolvedVModel = safeImageToVideoModel(
-          sequence.videoModel,
-          DEFAULT_VIDEO_MODEL
-        );
-        const estimatedCost = estimateStoryboardCost({
-          imageModel: resolvedModel,
+      await requireCredits(
+        context.teamId,
+        estimateStoryboardCost({
+          imageModel: safeTextToImageModel(
+            sequence.imageModel,
+            DEFAULT_IMAGE_MODEL
+          ),
           aspectRatio: sequence.aspectRatio,
-          videoModel: resolvedVModel,
-        });
-        const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
-        if (!canAfford) {
-          throw new InsufficientCreditsError(
-            'Insufficient credits to regenerate storyboard'
-          );
+          videoModel: safeImageToVideoModel(
+            sequence.videoModel,
+            DEFAULT_VIDEO_MODEL
+          ),
+        }),
+        {
+          providers: ['fal', 'openrouter'],
+          errorMessage: 'Insufficient credits to regenerate storyboard',
         }
-      }
+      );
 
       const workflowInput: StoryboardWorkflowInput = {
         userId: context.user.id,

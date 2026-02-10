@@ -23,9 +23,7 @@ import {
   estimateImageCost,
   estimateStoryboardCost,
 } from '@/lib/billing/cost-estimation';
-import { hasEnoughCredits } from '@/lib/billing/credit-service';
-import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { requireCredits } from '@/lib/billing/preflight';
 import type {
   ImageWorkflowInput,
   StoryboardWorkflowInput,
@@ -111,31 +109,26 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     // Pre-flight billing check (skip if team has both BYOK keys)
     const { sequence } = context;
-    const [hasFalKey, hasOrKey] = await Promise.all([
-      apiKeyService.hasKey(sequence.teamId, 'fal'),
-      apiKeyService.hasKey(sequence.teamId, 'openrouter'),
-    ]);
-    if (!hasFalKey || !hasOrKey) {
-      const resolvedModel = safeTextToImageModel(
-        sequence.imageModel,
-        DEFAULT_IMAGE_MODEL
-      );
-      const resolvedVModel = safeImageToVideoModel(
-        sequence.videoModel,
-        DEFAULT_VIDEO_MODEL
-      );
-      const estimatedCost = estimateStoryboardCost({
+    const resolvedModel = safeTextToImageModel(
+      sequence.imageModel,
+      DEFAULT_IMAGE_MODEL
+    );
+    const resolvedVModel = safeImageToVideoModel(
+      sequence.videoModel,
+      DEFAULT_VIDEO_MODEL
+    );
+    await requireCredits(
+      sequence.teamId,
+      estimateStoryboardCost({
         imageModel: resolvedModel,
         aspectRatio: sequence.aspectRatio,
         videoModel: resolvedVModel,
-      });
-      const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits to generate storyboard'
-        );
+      }),
+      {
+        providers: ['fal', 'openrouter'],
+        errorMessage: 'Insufficient credits to generate storyboard',
       }
-    }
+    );
 
     const workflowInput: StoryboardWorkflowInput = {
       userId: context.user.id,
@@ -203,20 +196,11 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
     // Credit check before triggering workflow (skip if team has own fal key)
-    const teamHasFalKey = await apiKeyService.hasKey(sequence.teamId, 'fal');
-    if (!teamHasFalKey) {
-      const estimatedCost = estimateImageCost(
-        modelToUse,
-        sequence.aspectRatio,
-        1
-      );
-      const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for image generation'
-        );
-      }
-    }
+    await requireCredits(
+      sequence.teamId,
+      estimateImageCost(modelToUse, sequence.aspectRatio, 1),
+      { errorMessage: 'Insufficient credits for image generation' }
+    );
 
     const workflowInput: ImageWorkflowInput = {
       userId: context.user.id,
@@ -283,24 +267,15 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
 
     // Credit check before triggering workflow (skip if team has own fal key)
     const numImages = data.numImages ?? 1;
-    const variantTeamHasFalKey = await apiKeyService.hasKey(
+    await requireCredits(
       sequence.teamId,
-      'fal'
-    );
-    if (!variantTeamHasFalKey) {
-      const variantModel = data.model ?? DEFAULT_IMAGE_MODEL;
-      const estimatedCost = estimateImageCost(
-        variantModel,
+      estimateImageCost(
+        data.model ?? DEFAULT_IMAGE_MODEL,
         sequence.aspectRatio,
         numImages
-      );
-      const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for variant generation'
-        );
-      }
-    }
+      ),
+      { errorMessage: 'Insufficient credits for variant generation' }
+    );
 
     const workflowInput: VariantWorkflowInput = {
       userId: context.user.id,
@@ -407,22 +382,11 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     });
 
     // Credit check before triggering upscale (skip if team has own fal key)
-    const upscaleTeamHasFalKey = await apiKeyService.hasKey(
+    await requireCredits(
       sequence.teamId,
-      'fal'
+      estimateImageCost('nano_banana_pro', '16:9', 1),
+      { errorMessage: 'Insufficient credits for variant upscale' }
     );
-    if (!upscaleTeamHasFalKey) {
-      const upscaleCost = estimateImageCost('nano_banana_pro', '16:9', 1);
-      const canAffordUpscale = await hasEnoughCredits(
-        sequence.teamId,
-        upscaleCost
-      );
-      if (!canAffordUpscale) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for variant upscale'
-        );
-      }
-    }
 
     // Phase 2: Trigger background upscale workflow
     const workflowInput: UpscaleVariantWorkflowInput = {

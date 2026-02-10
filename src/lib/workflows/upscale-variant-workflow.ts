@@ -6,8 +6,7 @@
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
-import { estimateImageCost } from '@/lib/billing/cost-estimation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
@@ -79,6 +78,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       return {
         imageUrl: result.imageUrl,
         requestId: result.requestId,
+        cost: result.cost,
       };
     });
 
@@ -88,24 +88,17 @@ export const upscaleVariantWorkflow = createWorkflow(
     }
 
     // Deduct credits for upscale (skip if team used own fal key)
-    if (input.teamId && !apiKeys.falApiKey) {
-      await context.run('deduct-credits', async () => {
-        // Estimate cost since fal upscale response may not include cost
-        const estimatedCost = estimateImageCost('nano_banana_pro', '16:9', 1);
-        const canAfford = await hasEnoughCredits(input.teamId, estimatedCost);
-        if (!canAfford) {
-          console.warn(
-            `[UpscaleVariantWorkflow] Insufficient credits for team ${input.teamId}, skipping deduction`
-          );
-          return;
-        }
-        await deductCredits(input.teamId, estimatedCost, {
-          userId: input.userId,
-          description: 'Variant upscale (nano_banana_pro)',
-          metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
-        });
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: upscaleResult.cost,
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: 'Variant upscale (nano_banana_pro)',
+        metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
+        workflowName: 'UpscaleVariantWorkflow',
       });
-    }
+    });
 
     // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {

@@ -13,6 +13,7 @@ const MERGE_VIDEOS_MODEL_ID = 'fal-ai/ffmpeg-api/merge-videos';
 export type MergeVideosResult = {
   videoUrl: string;
   requestId?: string;
+  cost: number;
   metadata: {
     inputCount: number;
     targetFps?: number;
@@ -87,9 +88,23 @@ export async function mergeVideos(
     throw new Error('No video URL returned from merge operation');
   }
 
+  // fal returns cost in metadata but it's not in the typed response
+  let cost = 0;
+  if (
+    'metadata' in result &&
+    result.metadata &&
+    typeof result.metadata === 'object'
+  ) {
+    const meta = result.metadata;
+    if ('cost' in meta && typeof meta.cost === 'number') {
+      cost = meta.cost;
+    }
+  }
+
   return {
     videoUrl,
     requestId: requestId ?? result.requestId,
+    cost,
     metadata: {
       inputCount: videoUrls.length,
       targetFps,

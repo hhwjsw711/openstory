@@ -30,24 +30,37 @@ export function useBillingGateQuery() {
 }
 
 /**
- * Gate for sequence creation (needs both OpenRouter + fal.ai)
+ * Check if BYOK keys cover the required providers.
+ *
+ * - 'all': team has both fal + openrouter keys (sequence creation)
+ * - 'fal': team has fal key (image/motion generation)
  */
-export function useBillingGate() {
+function hasByokCoverage(
+  data: BillingGateStatus,
+  mode: 'all' | 'fal'
+): boolean {
+  if (mode === 'fal') return data.hasFalKey;
+  return data.hasFalKey && data.hasOpenRouterKey;
+}
+
+/**
+ * Gate for credit-consuming actions.
+ *
+ * @param mode - 'all' requires both fal + openrouter BYOK keys to bypass credits.
+ *               'fal' only requires fal key (default).
+ */
+export function useBillingGate(mode: 'all' | 'fal' = 'all') {
   const query = useBillingGateQuery();
   const [open, setOpen] = useState(false);
 
   const data: BillingGateStatus | undefined = query.data;
 
   const canGenerate = data
-    ? data.hasCredits ||
-      (data.hasFalKey && data.hasOpenRouterKey) ||
-      data.hasAutoTopUp
+    ? data.hasCredits || hasByokCoverage(data, mode) || data.hasAutoTopUp
     : true; // Don't block while loading
 
   const needsBillingSetup = data
-    ? !data.hasCredits &&
-      !(data.hasFalKey && data.hasOpenRouterKey) &&
-      !data.hasAutoTopUp
+    ? !data.hasCredits && !hasByokCoverage(data, mode) && !data.hasAutoTopUp
     : false;
 
   const showGate = useCallback(() => setOpen(true), []);
@@ -66,32 +79,8 @@ export function useBillingGate() {
 }
 
 /**
- * Gate for image/motion generation (only needs fal.ai)
+ * Gate for image/motion generation (only needs fal.ai BYOK key to bypass credits)
  */
 export function useFalBillingGate() {
-  const query = useBillingGateQuery();
-  const [open, setOpen] = useState(false);
-
-  const data: BillingGateStatus | undefined = query.data;
-
-  const canGenerate = data
-    ? data.hasCredits || data.hasFalKey || data.hasAutoTopUp
-    : true;
-
-  const needsBillingSetup = data
-    ? !data.hasCredits && !data.hasFalKey && !data.hasAutoTopUp
-    : false;
-
-  const showGate = useCallback(() => setOpen(true), []);
-
-  return {
-    canGenerate,
-    needsBillingSetup,
-    hasFalKey: data?.hasFalKey ?? false,
-    hasCredits: data?.hasCredits ?? true,
-    hasAutoTopUp: data?.hasAutoTopUp ?? false,
-    showGate,
-    gateProps: { open, onOpenChange: setOpen },
-    isLoading: query.isLoading,
-  };
+  return useBillingGate('fal');
 }

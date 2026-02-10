@@ -14,7 +14,10 @@ import {
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import {
   buildLibraryTalentSheetPrompt,
   buildTalentHeadshotPrompt,
@@ -107,26 +110,17 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     });
 
     // Deduct credits for sheet generation (skip if team used own fal key)
-    const talentSheetCost =
-      typeof imageResult.metadata.cost === 'number'
-        ? imageResult.metadata.cost
-        : 0;
-    if (talentSheetCost > 0 && input.teamId && !apiKeys.falApiKey) {
-      await context.run('deduct-credits-sheet', async () => {
-        const canAfford = await hasEnoughCredits(input.teamId, talentSheetCost);
-        if (!canAfford) {
-          console.warn(
-            `[LibraryTalentSheetWorkflow] Insufficient credits for team ${input.teamId}, skipping deduction`
-          );
-          return;
-        }
-        await deductCredits(input.teamId, talentSheetCost, {
-          userId: input.userId,
-          description: `Talent sheet (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
-          metadata: { talentId: input.talentId, type: 'sheet' },
-        });
+    await context.run('deduct-credits-sheet', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Talent sheet (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
+        metadata: { talentId: input.talentId, type: 'sheet' },
+        workflowName: 'LibraryTalentSheetWorkflow',
       });
-    }
+    });
 
     const imageUrl = imageResult.imageUrls[0];
     if (!imageUrl) {
@@ -219,26 +213,17 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     );
 
     // Deduct credits for headshot generation (skip if team used own fal key)
-    const headshotCost =
-      typeof headshotResult.metadata.cost === 'number'
-        ? headshotResult.metadata.cost
-        : 0;
-    if (headshotCost > 0 && input.teamId && !apiKeys.falApiKey) {
-      await context.run('deduct-credits-headshot', async () => {
-        const canAfford = await hasEnoughCredits(input.teamId, headshotCost);
-        if (!canAfford) {
-          console.warn(
-            `[LibraryTalentSheetWorkflow] Insufficient credits for headshot, skipping deduction`
-          );
-          return;
-        }
-        await deductCredits(input.teamId, headshotCost, {
-          userId: input.userId,
-          description: `Talent headshot (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
-          metadata: { talentId: input.talentId, type: 'headshot' },
-        });
+    await context.run('deduct-credits-headshot', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(headshotResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Talent headshot (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
+        metadata: { talentId: input.talentId, type: 'headshot' },
+        workflowName: 'LibraryTalentSheetWorkflow',
       });
-    }
+    });
 
     const headshotUrl = headshotResult.imageUrls[0];
     if (!headshotUrl) {

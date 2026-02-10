@@ -13,7 +13,7 @@ import {
 import { getEnv } from '#env';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { getGenerationChannel } from '@/lib/realtime';
-import { deductCredits } from '@/lib/billing/credit-service';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 
 const BASE_DELAY = 5;
 
@@ -288,10 +288,13 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   }
 
   // Deduct LLM credits (skip if team used own OpenRouter key)
-  if (llmCostUsd > 0 && callContext.teamId && !callContext.openRouterApiKey) {
-    const teamIdForDeduction = callContext.teamId;
+  const teamIdForDeduction = callContext.teamId;
+  if (teamIdForDeduction) {
     await context.run(`deduct-llm-credits-${config.name}`, async () => {
-      await deductCredits(teamIdForDeduction, llmCostUsd, {
+      await deductWorkflowCredits({
+        teamId: teamIdForDeduction,
+        costUsd: llmCostUsd,
+        usedOwnKey: !!callContext.openRouterApiKey,
         userId: callContext.userId,
         description: `LLM analysis (${config.modelId})`,
         metadata: {

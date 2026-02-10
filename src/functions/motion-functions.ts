@@ -15,9 +15,7 @@ import {
   safeImageToVideoModel,
 } from '@/lib/ai/models';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
-import { hasEnoughCredits } from '@/lib/billing/credit-service';
-import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { requireCredits } from '@/lib/billing/preflight';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
@@ -65,19 +63,12 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
     );
 
     // Credit check before triggering workflow (skip if team has own fal key)
-    const teamHasFalKey = await apiKeyService.hasKey(teamId, 'fal');
-    if (!teamHasFalKey) {
-      const duration =
-        data.duration ??
-        IMAGE_TO_VIDEO_MODELS[modelToUse].capabilities.defaultDuration;
-      const estimatedCost = estimateVideoCost(modelToUse, duration);
-      const canAfford = await hasEnoughCredits(teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for motion generation'
-        );
-      }
-    }
+    const duration =
+      data.duration ??
+      IMAGE_TO_VIDEO_MODELS[modelToUse].capabilities.defaultDuration;
+    await requireCredits(teamId, estimateVideoCost(modelToUse, duration), {
+      errorMessage: 'Insufficient credits for motion generation',
+    });
 
     // Trigger motion generation workflow with deduplication
     const workflowInput: MotionWorkflowInput = {
@@ -156,21 +147,18 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     }
 
     // Credit check: sum costs for all frames before starting any (skip if team has own fal key)
-    const batchTeamHasFalKey = await apiKeyService.hasKey(teamId, 'fal');
-    if (!batchTeamHasFalKey) {
-      const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
-      const duration =
-        data.duration ??
-        IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
-      const totalCost =
-        estimateVideoCost(batchModel, duration) * framesWithThumbnails.length;
-      const canAfford = await hasEnoughCredits(teamId, totalCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`
-        );
+    const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
+    const batchDuration =
+      data.duration ??
+      IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
+    await requireCredits(
+      teamId,
+      estimateVideoCost(batchModel, batchDuration) *
+        framesWithThumbnails.length,
+      {
+        errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
       }
-    }
+    );
 
     // Generate motion for each frame using workflows
     const workflows: BatchMotionWorkflow[] = [];
@@ -270,16 +258,9 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
     }
 
     // Credit check before triggering merge (skip if team has own fal key)
-    const mergeTeamHasFalKey = await apiKeyService.hasKey(teamId, 'fal');
-    if (!mergeTeamHasFalKey) {
-      const MERGE_COST_USD = 0.01;
-      const canAffordMerge = await hasEnoughCredits(teamId, MERGE_COST_USD);
-      if (!canAffordMerge) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for video merge'
-        );
-      }
-    }
+    await requireCredits(teamId, 0.01, {
+      errorMessage: 'Insufficient credits for video merge',
+    });
 
     // Get video URLs in order
     const videoUrls = frames
