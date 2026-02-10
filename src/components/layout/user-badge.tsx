@@ -76,7 +76,7 @@ export function UserBadge() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to={sequencesRoute.fullPath}>
+          <Link to={sequencesRoute.to}>
             <User className="mr-2 h-4 w-4" />
             My Sequences
           </Link>

@@ -314,10 +314,10 @@ export interface FileRoutesByFullPath {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/locations': typeof ProtectedLocationsIndexRoute
-  '/sequences': typeof ProtectedSequencesIndexRoute
+  '/locations/': typeof ProtectedLocationsIndexRoute
+  '/sequences/': typeof ProtectedSequencesIndexRoute
   '/settings/': typeof ProtectedSettingsIndexRoute
-  '/talent': typeof ProtectedTalentIndexRoute
+  '/talent/': typeof ProtectedTalentIndexRoute
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
@@ -331,8 +331,8 @@ export interface FileRoutesByFullPath {
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
   '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
-  '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
+  '/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
+  '/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -450,10 +450,10 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/openrouter/callback'
     | '/api/workflows/$'
-    | '/locations'
-    | '/sequences'
+    | '/locations/'
+    | '/sequences/'
     | '/settings/'
-    | '/talent'
+    | '/talent/'
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/sequences/$id/theatre'
@@ -467,8 +467,8 @@ export interface FileRouteTypes {
     | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
-    | '/sequences/$id/cast'
-    | '/sequences/$id/locations'
+    | '/sequences/$id/cast/'
+    | '/sequences/$id/locations/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -584,14 +584,14 @@ declare module '@tanstack/react-router' {
     '/_protected': {
       id: '/_protected'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof ProtectedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
       id: '/_auth'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -661,7 +661,7 @@ declare module '@tanstack/react-router' {
     '/_protected/talent/': {
       id: '/_protected/talent/'
       path: '/talent'
-      fullPath: '/talent'
+      fullPath: '/talent/'
       preLoaderRoute: typeof ProtectedTalentIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
@@ -675,14 +675,14 @@ declare module '@tanstack/react-router' {
     '/_protected/sequences/': {
       id: '/_protected/sequences/'
       path: '/sequences'
-      fullPath: '/sequences'
+      fullPath: '/sequences/'
       preLoaderRoute: typeof ProtectedSequencesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/locations/': {
       id: '/_protected/locations/'
       path: '/locations'
-      fullPath: '/locations'
+      fullPath: '/locations/'
       preLoaderRoute: typeof ProtectedLocationsIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
@@ -850,14 +850,14 @@ declare module '@tanstack/react-router' {
     '/_protected/sequences/$id/locations/': {
       id: '/_protected/sequences/$id/locations/'
       path: '/sequences/$id/locations'
-      fullPath: '/sequences/$id/locations'
+      fullPath: '/sequences/$id/locations/'
       preLoaderRoute: typeof ProtectedSequencesIdLocationsIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/sequences/$id/cast/': {
       id: '/_protected/sequences/$id/cast/'
       path: '/sequences/$id/cast'
-      fullPath: '/sequences/$id/cast'
+      fullPath: '/sequences/$id/cast/'
       preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }

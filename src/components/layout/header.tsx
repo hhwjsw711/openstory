@@ -30,7 +30,7 @@ export function Header({ className }: HeaderProps) {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
-          <Link to={sequencesRoute.fullPath} className="flex items-center">
+          <Link to={sequencesRoute.to} className="flex items-center">
             <VelroLogo size="md" />
           </Link>
 
