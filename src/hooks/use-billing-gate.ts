@@ -18,7 +18,7 @@ type BillingGateStatus = {
   hasAutoTopUp: boolean;
 };
 
-function useBillingGateQuery() {
+export function useBillingGateQuery() {
   const { data: session } = useSession();
 
   return useQuery({
