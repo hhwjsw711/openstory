@@ -16,6 +16,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
@@ -109,6 +110,33 @@ export const locationSheetWorkflow = createWorkflow(
         });
       }
     );
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    const locSheetCost =
+      typeof imageResult.metadata.cost === 'number'
+        ? imageResult.metadata.cost
+        : 0;
+    const lsTeamId = input.teamId;
+    if (locSheetCost > 0 && lsTeamId && !apiKeys.falApiKey) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(lsTeamId, locSheetCost);
+        if (!canAfford) {
+          console.warn(
+            `[LocationSheetWorkflow] Insufficient credits for team ${lsTeamId} (cost: $${locSheetCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(lsTeamId, locSheetCost, {
+          userId: input.userId ?? null,
+          description: `Location sheet (${generationParams.model})`,
+          metadata: {
+            model: generationParams.model,
+            locationName: input.locationName,
+            locationDbId: input.locationDbId,
+          },
+        });
+      });
+    }
 
     let referenceImageUrl = imageResult.imageUrls[0];
     let referenceImagePath: string | undefined = undefined;

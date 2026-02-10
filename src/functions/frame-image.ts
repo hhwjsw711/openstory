@@ -12,9 +12,17 @@ import {
   generateVariantSchema,
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  safeTextToImageModel,
+  safeImageToVideoModel,
+} from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { estimateImageCost } from '@/lib/billing/cost-estimation';
+import {
+  estimateImageCost,
+  estimateStoryboardCost,
+} from '@/lib/billing/cost-estimation';
 import { hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
 import { apiKeyService } from '@/lib/services/api-key.service';
@@ -101,6 +109,34 @@ function getSceneLocationReferenceImages(
 export const generateFramesFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
+    // Pre-flight billing check (skip if team has both BYOK keys)
+    const { sequence } = context;
+    const [hasFalKey, hasOrKey] = await Promise.all([
+      apiKeyService.hasKey(sequence.teamId, 'fal'),
+      apiKeyService.hasKey(sequence.teamId, 'openrouter'),
+    ]);
+    if (!hasFalKey || !hasOrKey) {
+      const resolvedModel = safeTextToImageModel(
+        sequence.imageModel,
+        DEFAULT_IMAGE_MODEL
+      );
+      const resolvedVModel = safeImageToVideoModel(
+        sequence.videoModel,
+        DEFAULT_VIDEO_MODEL
+      );
+      const estimatedCost = estimateStoryboardCost({
+        imageModel: resolvedModel,
+        aspectRatio: sequence.aspectRatio,
+        videoModel: resolvedVModel,
+      });
+      const canAfford = await hasEnoughCredits(sequence.teamId, estimatedCost);
+      if (!canAfford) {
+        throw new InsufficientCreditsError(
+          'Insufficient credits to generate storyboard'
+        );
+      }
+    }
+
     const workflowInput: StoryboardWorkflowInput = {
       userId: context.user.id,
       teamId: context.sequence.teamId,
@@ -369,6 +405,24 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       videoGeneratedAt: null,
       videoError: null,
     });
+
+    // Credit check before triggering upscale (skip if team has own fal key)
+    const upscaleTeamHasFalKey = await apiKeyService.hasKey(
+      sequence.teamId,
+      'fal'
+    );
+    if (!upscaleTeamHasFalKey) {
+      const upscaleCost = estimateImageCost('nano_banana_pro', '16:9', 1);
+      const canAffordUpscale = await hasEnoughCredits(
+        sequence.teamId,
+        upscaleCost
+      );
+      if (!canAffordUpscale) {
+        throw new InsufficientCreditsError(
+          'Insufficient credits for variant upscale'
+        );
+      }
+    }
 
     // Phase 2: Trigger background upscale workflow
     const workflowInput: UpscaleVariantWorkflowInput = {

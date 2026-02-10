@@ -18,6 +18,11 @@ import {
   enhanceScript as enhanceScriptService,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
+import { authWithTeamMiddleware } from './middleware';
+import { estimateLLMCost } from '@/lib/billing/cost-estimation';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { InsufficientCreditsError } from '@/lib/errors';
+import { apiKeyService } from '@/lib/services/api-key.service';
 
 // Rate limiting utility (simple in-memory implementation)
 class RateLimiter {
@@ -99,8 +104,9 @@ const shortenPromptInputSchema = z.object({
  * @returns The shortened prompt with statistics
  */
 export const shortenPromptFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(shortenPromptInputSchema))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const clientIP = getClientIP();
 
     // Check rate limiting
@@ -119,6 +125,21 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       throw new Error('AI service not configured');
     }
 
+    // Pre-flight billing check (skip if team has own OpenRouter key)
+    const teamHasOrKey = await apiKeyService.hasKey(
+      context.teamId,
+      'openrouter'
+    );
+    if (!teamHasOrKey) {
+      const estimatedCost = estimateLLMCost(1);
+      const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
+      if (!canAfford) {
+        throw new InsufficientCreditsError(
+          'Insufficient credits for prompt shortening'
+        );
+      }
+    }
+
     // Call the AI service
     const completion = await callOpenRouter({
       model: RECOMMENDED_MODELS.fast,
@@ -129,6 +150,18 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       max_tokens: 500,
       temperature: 0.3,
     });
+
+    // Deduct actual cost from OpenRouter response (skip if team has own key)
+    if (!teamHasOrKey) {
+      const actualCost = completion.usage?.cost;
+      if (actualCost && actualCost > 0) {
+        await deductCredits(context.teamId, actualCost, {
+          userId: context.user.id,
+          description: `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
+          metadata: { model: RECOMMENDED_MODELS.fast },
+        });
+      }
+    }
 
     const shortenedPrompt = completion.choices[0]?.message?.content;
 
@@ -171,8 +204,9 @@ const enhanceScriptInputSchema = z.object({
  * @returns The enhanced script with recommendations
  */
 export const enhanceScriptFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(enhanceScriptInputSchema))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const clientIP = getClientIP();
 
     // Check rate limiting
@@ -182,6 +216,21 @@ export const enhanceScriptFn = createServerFn({ method: 'POST' })
       throw new Error(
         `Rate limit exceeded. Please try again in ${Math.ceil(remainingTimeMs / 1000)} seconds.`
       );
+    }
+
+    // Pre-flight billing check (skip if team has own OpenRouter key)
+    const teamHasOrKey = await apiKeyService.hasKey(
+      context.teamId,
+      'openrouter'
+    );
+    if (!teamHasOrKey) {
+      const estimatedCost = estimateLLMCost(1);
+      const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
+      if (!canAfford) {
+        throw new InsufficientCreditsError(
+          'Insufficient credits for script enhancement'
+        );
+      }
     }
 
     // Call the AI service
@@ -194,6 +243,17 @@ export const enhanceScriptFn = createServerFn({ method: 'POST' })
 
     if (!result.success || !result.data) {
       throw new Error(result.error || 'Failed to enhance script');
+    }
+
+    // Deduct estimated LLM cost (skip if team has own key)
+    if (!teamHasOrKey) {
+      const cost = estimateLLMCost(1);
+      if (cost > 0) {
+        await deductCredits(context.teamId, cost, {
+          userId: context.user.id,
+          description: 'Script enhancement',
+        });
+      }
     }
 
     return {

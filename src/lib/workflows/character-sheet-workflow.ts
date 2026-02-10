@@ -16,6 +16,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
@@ -105,6 +106,33 @@ export const characterSheetWorkflow = createWorkflow(
         falApiKey: apiKeys.falApiKey,
       });
     });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    const sheetCost =
+      typeof imageResult.metadata.cost === 'number'
+        ? imageResult.metadata.cost
+        : 0;
+    const csTeamId = input.teamId;
+    if (sheetCost > 0 && csTeamId && !apiKeys.falApiKey) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(csTeamId, sheetCost);
+        if (!canAfford) {
+          console.warn(
+            `[CharacterSheetWorkflow] Insufficient credits for team ${csTeamId} (cost: $${sheetCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(csTeamId, sheetCost, {
+          userId: input.userId ?? null,
+          description: `Character sheet (${generationParams.model})`,
+          metadata: {
+            model: generationParams.model,
+            characterName: input.characterName,
+            characterDbId: input.characterDbId,
+          },
+        });
+      });
+    }
 
     let sheetImageUrl = imageResult.imageUrls[0];
     let sheetImagePath: string | undefined = undefined;

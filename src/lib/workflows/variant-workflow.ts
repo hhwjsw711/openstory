@@ -6,6 +6,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   VariantWorkflowInput,
@@ -128,6 +129,36 @@ export const generateVariantWorkflow = createWorkflow(
         falApiKey: apiKeys.falApiKey,
       });
     });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    const variantImageCost =
+      typeof imageResult.metadata.cost === 'number'
+        ? imageResult.metadata.cost
+        : 0;
+    const variantTeamId = input.teamId;
+    if (variantImageCost > 0 && variantTeamId && !apiKeys.falApiKey) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(
+          variantTeamId,
+          variantImageCost
+        );
+        if (!canAfford) {
+          console.warn(
+            `[VariantWorkflow] Insufficient credits for team ${variantTeamId} (cost: $${variantImageCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(variantTeamId, variantImageCost, {
+          userId: input.userId,
+          description: `Variant image generation (${generationParams.model})`,
+          metadata: {
+            model: generationParams.model,
+            frameId: input.frameId,
+            sequenceId: input.sequenceId,
+          },
+        });
+      });
+    }
 
     let imageUrl: string = imageResult.imageUrls[0];
 

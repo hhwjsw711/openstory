@@ -269,6 +269,18 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
       );
     }
 
+    // Credit check before triggering merge (skip if team has own fal key)
+    const mergeTeamHasFalKey = await apiKeyService.hasKey(teamId, 'fal');
+    if (!mergeTeamHasFalKey) {
+      const MERGE_COST_USD = 0.01;
+      const canAffordMerge = await hasEnoughCredits(teamId, MERGE_COST_USD);
+      if (!canAffordMerge) {
+        throw new InsufficientCreditsError(
+          'Insufficient credits for video merge'
+        );
+      }
+    }
+
     // Get video URLs in order
     const videoUrls = frames
       .sort((a, b) => a.orderIndex - b.orderIndex)

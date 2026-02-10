@@ -5,6 +5,7 @@
 
 import { getDb } from '#db-client';
 import { sequences } from '@/lib/db/schema';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { mergeVideos } from '@/lib/motion/merge-videos';
 import {
   getExtensionFromUrl,
@@ -97,6 +98,25 @@ export const mergeVideoWorkflow = createWorkflow(
         apiKeys.falApiKey
       );
     });
+
+    // Deduct credits for video merge (skip if team used own fal key)
+    const MERGE_COST_USD = 0.01;
+    if (input.teamId && !apiKeys.falApiKey) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(input.teamId, MERGE_COST_USD);
+        if (!canAfford) {
+          console.warn(
+            `[MergeVideoWorkflow] Insufficient credits for team ${input.teamId}, skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(input.teamId, MERGE_COST_USD, {
+          userId: input.userId,
+          description: `Video merge (${input.videoUrls.length} clips)`,
+          metadata: { sequenceId: input.sequenceId },
+        });
+      });
+    }
 
     // Step 3: Upload merged video to R2 storage
     const storageResult = await context.run('upload-to-storage', async () => {

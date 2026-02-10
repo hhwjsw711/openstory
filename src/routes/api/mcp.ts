@@ -1,6 +1,9 @@
 /**
  * MCP Server Route Handler
  * Uses mcp-handler for Streamable HTTP transport (protocol 2025-06-18)
+ *
+ * TODO: Add billing to MCP tools (generate-image, generate-motion) once MCP auth is implemented.
+ * Currently MCP has no auth, so billing without auth is meaningless.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

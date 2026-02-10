@@ -12,6 +12,7 @@ import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterBibleWorkflowInput,
@@ -82,6 +83,22 @@ export const characterBibleWorkflow = createWorkflow(
             traceName: 'character-bible-image',
             falApiKey: apiKeys.falApiKey,
           });
+
+          // Deduct credits (skip if team used own fal key)
+          const bibleCost =
+            typeof imageResult.metadata.cost === 'number'
+              ? imageResult.metadata.cost
+              : 0;
+          if (bibleCost > 0 && input.teamId && !apiKeys.falApiKey) {
+            const canAfford = await hasEnoughCredits(input.teamId, bibleCost);
+            if (canAfford) {
+              await deductCredits(input.teamId, bibleCost, {
+                userId: input.userId,
+                description: `Character bible sheet (${model})`,
+                metadata: { model, characterId: character.characterId },
+              });
+            }
+          }
 
           const imageUrl = imageResult.imageUrls[0];
           if (!imageUrl) {
