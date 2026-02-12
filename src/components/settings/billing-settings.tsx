@@ -146,6 +146,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   } = useQuery({
     queryKey: ['billing-transactions'],
     queryFn: fetchTransactions,
+    staleTime: 5 * 60 * 1000,
   });
 
   const checkoutMutation = useMutation({

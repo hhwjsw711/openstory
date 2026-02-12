@@ -19,12 +19,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/use-user';
 import { authClient } from '@/lib/auth/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 export function UserBadge() {
   const { data: user, isLoading } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // Show loading state or no user data
   if (isLoading || !user) {
     return (
@@ -41,6 +43,7 @@ export function UserBadge() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
+    queryClient.removeQueries({ queryKey: ['session'] });
     // Sign out - this should clear the session cookie
     // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
     // where useSession doesn't update after server-side signOut until page refresh
