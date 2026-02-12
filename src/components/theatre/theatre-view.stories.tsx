@@ -25,6 +25,12 @@ const baseSequence: Sequence = {
   mergedVideoStatus: 'pending',
   mergedVideoGeneratedAt: null,
   mergedVideoError: null,
+  musicUrl: null,
+  musicPath: null,
+  musicStatus: 'pending',
+  musicGeneratedAt: null,
+  musicError: null,
+  musicModel: null,
 };
 
 const meta: Meta<typeof TheatreView> = {

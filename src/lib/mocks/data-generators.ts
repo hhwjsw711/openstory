@@ -70,6 +70,13 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     videoWorkflowRunId: faker.string.ulid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,
+    audioUrl: null,
+    audioPath: null,
+    audioStatus: 'pending',
+    audioWorkflowRunId: null,
+    audioGeneratedAt: null,
+    audioError: null,
+    audioModel: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     metadata: {

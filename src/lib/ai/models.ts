@@ -610,6 +610,155 @@ export function getCompatibleModel(
 }
 
 // ============================================================================
+// Audio/Music Generation Models
+// ============================================================================
+
+type AudioPricingUnit = 'seconds';
+
+type AudioModelPricing = {
+  pricePerSecond: number;
+  currency: 'USD';
+  unit: AudioPricingUnit;
+};
+
+/**
+ * Audio/music generation models
+ * Used for generating background music and sound effects per scene
+ */
+export const AUDIO_MODELS = {
+  ace_step: {
+    id: 'fal-ai/ace-step/prompt-to-audio' as const,
+    name: 'ACE-Step (Music)',
+    provider: 'ace-step',
+    type: 'music' as const,
+    capabilities: {
+      supportsPrompt: true,
+      supportsLyrics: true,
+      supportsInstrumental: true,
+      maxDuration: 240,
+      defaultDuration: 60,
+      supportedFormats: ['wav'],
+    },
+    pricing: {
+      pricePerSecond: 0.005,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 20,
+      quality: 'best',
+    },
+  },
+
+  ace_step_audio_to_audio: {
+    id: 'fal-ai/ace-step/audio-to-audio' as const,
+    name: 'ACE-Step (Remix)',
+    provider: 'ace-step',
+    type: 'music' as const,
+    capabilities: {
+      supportsPrompt: true,
+      supportsLyrics: true,
+      supportsInstrumental: true,
+      supportsAudioInput: true,
+      maxDuration: 240,
+      defaultDuration: 60,
+      supportedFormats: ['wav'],
+    },
+    pricing: {
+      pricePerSecond: 0.005,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 20,
+      quality: 'best',
+    },
+  },
+
+  mmaudio_v2: {
+    id: 'fal-ai/mmaudio-v2' as const,
+    name: 'MMAudio V2 (Video-to-Audio)',
+    provider: 'mmaudio',
+    type: 'sfx' as const,
+    capabilities: {
+      supportsPrompt: true,
+      supportsVideoInput: true,
+      maxDuration: 8,
+      defaultDuration: 8,
+      supportedFormats: ['wav'],
+    },
+    pricing: {
+      pricePerSecond: 0.001,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 10,
+      quality: 'good',
+    },
+  },
+
+  elevenlabs_sfx: {
+    id: 'fal-ai/elevenlabs/sound-effects' as const,
+    name: 'ElevenLabs Sound Effects',
+    provider: 'elevenlabs',
+    type: 'sfx' as const,
+    capabilities: {
+      supportsPrompt: true,
+      maxDuration: 22,
+      defaultDuration: 5,
+      supportedFormats: ['mp3'],
+    },
+    pricing: {
+      pricePerSecond: 0.002,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 5,
+      quality: 'good',
+    },
+  },
+} as const;
+
+// Audio model types
+export type AudioModel = keyof typeof AUDIO_MODELS;
+export type AudioModelConfig = (typeof AUDIO_MODELS)[AudioModel];
+type AudioModelId = AudioModelConfig['id'];
+
+export const DEFAULT_MUSIC_MODEL: AudioModel = 'ace_step';
+
+export const AUDIO_MODEL_KEYS = [
+  'ace_step',
+  'ace_step_audio_to_audio',
+  'mmaudio_v2',
+  'elevenlabs_sfx',
+] as const satisfies readonly AudioModel[];
+
+export function getAudioModelId(modelKey: AudioModel): AudioModelId {
+  return AUDIO_MODELS[modelKey].id;
+}
+
+export function isValidAudioModel(value: unknown): value is AudioModel {
+  return typeof value === 'string' && Object.keys(AUDIO_MODELS).includes(value);
+}
+
+export function safeAudioModel(
+  value: string | null | undefined,
+  fallback: AudioModel = DEFAULT_MUSIC_MODEL
+): AudioModel {
+  if (!value || !isValidAudioModel(value)) {
+    if (value) {
+      console.warn(
+        `[models] Invalid AudioModel "${value}", using fallback "${fallback}"`
+      );
+    }
+    return fallback;
+  }
+  return value;
+}
+
+// ============================================================================
 // Edit Endpoint Support (for reference image generation)
 // ============================================================================
 

@@ -5,6 +5,7 @@
 
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
@@ -38,6 +39,7 @@ import type {
   ImageWorkflowInput,
   LibraryLocationMatch,
   MotionWorkflowInput,
+  MusicWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -872,6 +874,62 @@ export const analyzeScriptWorkflow = createWorkflow(
           });
         })
       );
+    }
+
+    // ============================================================
+    // PHASE 8: Music Generation (per-scene, after audio design)
+    // ============================================================
+    // Generate music for scenes that have audioDesign.music with presence != "none"
+    if (sequenceId) {
+      const scenesWithMusic = completeScenes.filter(
+        (scene) =>
+          scene.audioDesign?.music?.presence &&
+          scene.audioDesign.music.presence !== 'none'
+      );
+
+      if (scenesWithMusic.length > 0) {
+        await context.run('start-music-generation', async () => {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.phase:start',
+            {
+              phase: 8,
+              phaseName: 'Music Generation',
+            }
+          );
+        });
+
+        await Promise.all(
+          scenesWithMusic.map(async (scene) => {
+            const frame = frameMapping.find((f) => f.sceneId === scene.sceneId);
+            if (!frame) return;
+
+            const music = scene.audioDesign?.music;
+            if (!music) return;
+
+            // Build a music prompt from audioDesign specs
+            const musicPrompt = [music.style, music.mood, scene.metadata?.title]
+              .filter(Boolean)
+              .join(', ');
+
+            const musicInput: MusicWorkflowInput = {
+              userId: input.userId,
+              teamId: input.teamId,
+              frameId: frame.frameId,
+              sequenceId,
+              prompt: musicPrompt,
+              tags: music.style,
+              duration: scene.metadata?.durationSeconds || 10,
+            };
+
+            await context.invoke('music', {
+              workflow: generateMusicWorkflow,
+              body: musicInput,
+              retries: 3,
+              retryDelay: 'pow(2, retried) * 1000',
+            });
+          })
+        );
+      }
     }
 
     // Record workflow trace as a durable step (only runs once at completion)

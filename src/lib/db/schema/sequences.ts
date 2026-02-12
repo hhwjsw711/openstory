@@ -35,6 +35,14 @@ const MERGED_VIDEO_STATUSES = [
 ] as const;
 export type MergedVideoStatus = (typeof MERGED_VIDEO_STATUSES)[number];
 
+const MUSIC_STATUSES = [
+  'pending',
+  'generating',
+  'completed',
+  'failed',
+] as const;
+export type MusicStatus = (typeof MUSIC_STATUSES)[number];
+
 /**
  * Sequences table
  * Main video sequence/project entity
@@ -93,6 +101,16 @@ export const sequences = sqliteTable(
       mode: 'timestamp',
     }),
     mergedVideoError: text('merged_video_error'),
+
+    // Music track fields (sequence-level background music)
+    musicUrl: text('music_url'),
+    musicPath: text('music_path'),
+    musicStatus: text('music_status').$type<MusicStatus>().default('pending'),
+    musicGeneratedAt: integer('music_generated_at', {
+      mode: 'timestamp',
+    }),
+    musicError: text('music_error'),
+    musicModel: text('music_model', { length: 100 }),
   },
   (table) => [
     index('idx_sequences_created_at').on(table.createdAt),

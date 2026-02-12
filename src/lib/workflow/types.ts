@@ -3,6 +3,7 @@
  */
 
 import type {
+  AUDIO_MODELS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
   ImageToVideoModel,
@@ -439,4 +440,25 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
   libraryLocationDescription?: string;
   /** Frame IDs to regenerate after sheet generation */
   affectedFrameIds: string[];
+}
+
+/**
+ * Music generation workflow input
+ * Generates background music for a single scene using audioDesign specs
+ */
+export interface MusicWorkflowInput extends Partial<SequenceWorkflowContext> {
+  frameId?: string;
+  /** Style/mood prompt derived from audioDesign.music */
+  prompt: string;
+  /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
+  tags?: string;
+  /** Duration in seconds */
+  duration?: number;
+  /** Audio model to use */
+  model?: keyof typeof AUDIO_MODELS;
+}
+
+export interface MusicWorkflowResult {
+  audioUrl: string;
+  duration?: number;
 }

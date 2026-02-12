@@ -12,6 +12,7 @@ import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { libraryLocationSheetWorkflow } from '@/lib/workflows/library-location-sheet-workflow';
 import { locationBibleWorkflow } from '@/lib/workflows/location-bible-workflow';
 import { locationSheetWorkflow } from '@/lib/workflows/location-sheet-workflow';
@@ -53,6 +54,7 @@ const handler = serveMany(
     'visual-prompt-scene': visualPromptSceneWorkflow,
     'motion-prompts': motionPromptWorkflow,
     'motion-prompt-scene': motionPromptSceneWorkflow,
+    music: generateMusicWorkflow,
   },
   {
     qstashClient: getQStashClient(), // This must be the QStash client

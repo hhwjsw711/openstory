@@ -27,6 +27,13 @@ const mockFrame = {
   videoError: null,
   motionPrompt: null,
   motionModel: 'veo3',
+  audioUrl: null,
+  audioPath: null,
+  audioStatus: 'pending',
+  audioWorkflowRunId: null,
+  audioGeneratedAt: null,
+  audioError: null,
+  audioModel: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,
