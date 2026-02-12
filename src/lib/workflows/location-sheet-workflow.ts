@@ -16,6 +16,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
@@ -23,6 +27,7 @@ import type {
   LocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -88,6 +93,11 @@ export const locationSheetWorkflow = createWorkflow(
       }
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the location reference image
     const imageResult = await context.run(
       'generate-reference-image',
@@ -97,9 +107,29 @@ export const locationSheetWorkflow = createWorkflow(
           `Generating reference for ${input.locationName} with model ${generationParams.model}`
         );
 
-        return await generateImageWithProvider(generationParams);
+        return await generateImageWithProvider({
+          ...generationParams,
+          falApiKey: apiKeys.falApiKey,
+        });
       }
     );
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId ?? null,
+        description: `Location sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          locationName: input.locationName,
+          locationDbId: input.locationDbId,
+        },
+        workflowName: 'LocationSheetWorkflow',
+      });
+    });
 
     let referenceImageUrl = imageResult.imageUrls[0];
     let referenceImagePath: string | undefined = undefined;

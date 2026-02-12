@@ -1,0 +1,61 @@
+/**
+ * Billing Balance API
+ * GET /api/billing/balance - Get team credit balance and billing settings
+ */
+
+import { createFileRoute } from '@tanstack/react-router';
+import { json } from '@tanstack/react-start';
+import { requireUser } from '@/lib/auth/action-utils';
+import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import {
+  getTeamBalance,
+  getBillingSettings,
+} from '@/lib/billing/credit-service';
+
+export const Route = createFileRoute('/api/billing/balance')({
+  server: {
+    handlers: {
+      GET: async () => {
+        try {
+          const user = await requireUser();
+          const team = await getUserDefaultTeam(user.id);
+          if (!team) throw new ValidationError('No team found');
+
+          const [balance, settings] = await Promise.all([
+            getTeamBalance(team.teamId),
+            getBillingSettings(team.teamId),
+          ]);
+
+          return json(
+            {
+              success: true,
+              data: {
+                balance,
+                autoTopUp: {
+                  enabled: settings.autoTopUpEnabled,
+                  thresholdUsd: settings.autoTopUpThresholdUsd,
+                  amountUsd: settings.autoTopUpAmountUsd,
+                },
+                hasPaymentMethod: !!settings.stripeCustomerId,
+              },
+              timestamp: new Date().toISOString(),
+            },
+            { status: 200 }
+          );
+        } catch (error) {
+          console.error('[GET /api/billing/balance] Error:', error);
+          const handledError = handleApiError(error);
+          return json(
+            {
+              success: false,
+              error: handledError.toJSON(),
+              timestamp: new Date().toISOString(),
+            },
+            { status: handledError.statusCode }
+          );
+        }
+      },
+    },
+  },
+});

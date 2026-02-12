@@ -12,8 +12,18 @@ import {
   generateVariantSchema,
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { DEFAULT_IMAGE_MODEL, safeTextToImageModel } from '@/lib/ai/models';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  safeTextToImageModel,
+  safeImageToVideoModel,
+} from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import {
+  estimateImageCost,
+  estimateStoryboardCost,
+} from '@/lib/billing/cost-estimation';
+import { requireCredits } from '@/lib/billing/preflight';
 import type {
   ImageWorkflowInput,
   StoryboardWorkflowInput,
@@ -97,6 +107,29 @@ function getSceneLocationReferenceImages(
 export const generateFramesFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
+    // Pre-flight billing check (skip if team has both BYOK keys)
+    const { sequence } = context;
+    const resolvedModel = safeTextToImageModel(
+      sequence.imageModel,
+      DEFAULT_IMAGE_MODEL
+    );
+    const resolvedVModel = safeImageToVideoModel(
+      sequence.videoModel,
+      DEFAULT_VIDEO_MODEL
+    );
+    await requireCredits(
+      sequence.teamId,
+      estimateStoryboardCost({
+        imageModel: resolvedModel,
+        aspectRatio: sequence.aspectRatio,
+        videoModel: resolvedVModel,
+      }),
+      {
+        providers: ['fal', 'openrouter'],
+        errorMessage: 'Insufficient credits to generate storyboard',
+      }
+    );
+
     const workflowInput: StoryboardWorkflowInput = {
       userId: context.user.id,
       teamId: context.sequence.teamId,
@@ -162,6 +195,13 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
     const modelToUse =
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
+    // Credit check before triggering workflow (skip if team has own fal key)
+    await requireCredits(
+      sequence.teamId,
+      estimateImageCost(modelToUse, sequence.aspectRatio, 1),
+      { errorMessage: 'Insufficient credits for image generation' }
+    );
+
     const workflowInput: ImageWorkflowInput = {
       userId: context.user.id,
       teamId: sequence.teamId,
@@ -225,6 +265,18 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       sceneLocation
     );
 
+    // Credit check before triggering workflow (skip if team has own fal key)
+    const numImages = data.numImages ?? 1;
+    await requireCredits(
+      sequence.teamId,
+      estimateImageCost(
+        data.model ?? DEFAULT_IMAGE_MODEL,
+        sequence.aspectRatio,
+        numImages
+      ),
+      { errorMessage: 'Insufficient credits for variant generation' }
+    );
+
     const workflowInput: VariantWorkflowInput = {
       userId: context.user.id,
       teamId: sequence.teamId,
@@ -233,7 +285,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       thumbnailUrl: frame.thumbnailUrl,
       model: data.model,
       imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
-      numImages: data.numImages ?? 1,
+      numImages,
       seed: data.seed,
       characterReferences,
       locationReferences,
@@ -328,6 +380,13 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       videoGeneratedAt: null,
       videoError: null,
     });
+
+    // Credit check before triggering upscale (skip if team has own fal key)
+    await requireCredits(
+      sequence.teamId,
+      estimateImageCost('nano_banana_pro', '16:9', 1),
+      { errorMessage: 'Insufficient credits for variant upscale' }
+    );
 
     // Phase 2: Trigger background upscale workflow
     const workflowInput: UpscaleVariantWorkflowInput = {

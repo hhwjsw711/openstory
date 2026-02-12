@@ -15,6 +15,10 @@ import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
+import {
   buildLibraryTalentSheetPrompt,
   buildTalentHeadshotPrompt,
 } from '@/lib/prompts/character-prompt';
@@ -24,6 +28,7 @@ import type {
   LibraryTalentSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -64,6 +69,11 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       });
     });
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the talent sheet image with references
     const imageResult = await context.run('generate-sheet-image', async () => {
       const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
@@ -88,6 +98,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           numImages: 1,
           resolution: '2K',
           traceName: 'talent-sheet-image',
+          falApiKey: apiKeys.falApiKey,
         };
 
       // Only include referenceImageUrls if provided
@@ -96,6 +107,19 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       }
 
       return await generateImageWithProvider(generationParams);
+    });
+
+    // Deduct credits for sheet generation (skip if team used own fal key)
+    await context.run('deduct-credits-sheet', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Talent sheet (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
+        metadata: { talentId: input.talentId, type: 'sheet' },
+        workflowName: 'LibraryTalentSheetWorkflow',
+      });
     });
 
     const imageUrl = imageResult.imageUrls[0];
@@ -176,6 +200,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'square_hd',
           numImages: 1,
           traceName: 'talent-headshot-image',
+          falApiKey: apiKeys.falApiKey,
         };
 
         // Only include referenceImageUrls if provided
@@ -186,6 +211,19 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         return await generateImageWithProvider(generationParams);
       }
     );
+
+    // Deduct credits for headshot generation (skip if team used own fal key)
+    await context.run('deduct-credits-headshot', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(headshotResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Talent headshot (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
+        metadata: { talentId: input.talentId, type: 'headshot' },
+        workflowName: 'LibraryTalentSheetWorkflow',
+      });
+    });
 
     const headshotUrl = headshotResult.imageUrls[0];
     if (!headshotUrl) {

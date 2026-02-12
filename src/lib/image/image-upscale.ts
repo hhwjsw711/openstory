@@ -3,13 +3,15 @@
  * Uses FAL.ai Nano Banana Pro Edit for upscaling
  */
 
-import { fal } from '@fal-ai/client';
+import { createFalClient } from '@fal-ai/client';
+import { getEnv } from '#env';
 
 type VariantResolution = '1K' | '2K' | '4K';
 
 type UpscaleResult = {
   imageUrl: string;
   requestId: string;
+  cost: number;
 };
 
 /**
@@ -50,8 +52,12 @@ OUTPUT
  */
 export async function upscaleWithNanoBanana(
   imageUrl: string,
-  resolution: VariantResolution = '2K'
+  resolution: VariantResolution = '2K',
+  falApiKey?: string
 ): Promise<UpscaleResult> {
+  const fal = createFalClient({
+    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
+  });
   const prompt = buildUpscalePrompt();
 
   try {
@@ -81,9 +87,23 @@ export async function upscaleWithNanoBanana(
       throw new Error('No image URL found in Nano Banana Pro Edit response');
     }
 
+    // fal returns cost in metadata but it's not in the typed response
+    let cost = 0;
+    if (
+      'metadata' in result &&
+      result.metadata &&
+      typeof result.metadata === 'object'
+    ) {
+      const meta = result.metadata;
+      if ('cost' in meta && typeof meta.cost === 'number') {
+        cost = meta.cost;
+      }
+    }
+
     return {
       imageUrl: images[0].url,
       requestId: result.requestId || '',
+      cost,
     };
   } catch (error) {
     console.error('[upscaleWithNanoBanana] Error details:', {

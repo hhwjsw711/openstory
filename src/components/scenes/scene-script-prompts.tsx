@@ -21,6 +21,9 @@ import {
   type AspectRatio,
   aspectRatioToImageSize,
 } from '@/lib/constants/aspect-ratios';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { useFalBillingGate } from '@/hooks/use-billing-gate';
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -41,6 +44,16 @@ export type TabValue =
   | 'scene-variants'
   | 'cast'
   | 'location';
+
+function isInsufficientCreditsError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return (
+      error.message.includes('INSUFFICIENT_CREDITS') ||
+      error.message.includes('Insufficient credits')
+    );
+  }
+  return false;
+}
 
 function isValidTabValue(value: string): value is TabValue {
   return (
@@ -159,6 +172,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
   const selectVariant = useSelectVariant();
+  const {
+    needsBillingSetup: falNeedsBillingSetup,
+    showGate: showFalGate,
+    gateProps: falGateProps,
+  } = useFalBillingGate();
 
   const handleCopy = useCallback(
     async (text: string | undefined, tabName: string) => {
@@ -265,6 +283,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     } catch (error) {
       console.error('Failed to regenerate image:', error);
 
+      if (isInsufficientCreditsError(error)) {
+        showFalGate();
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      }
+
       // Rollback on error - set status to failed
       await queryClient.invalidateQueries({
         queryKey: frameKeys.list(frame.sequenceId),
@@ -279,6 +304,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     editedImagePrompt,
     queryClient,
     onRegenerateStart,
+    showFalGate,
   ]);
 
   const handleRegenerateMotion = useCallback(async () => {
@@ -329,6 +355,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     } catch (error) {
       console.error('Failed to regenerate motion:', error);
 
+      if (isInsufficientCreditsError(error)) {
+        showFalGate();
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      }
+
       // Rollback on error
       await queryClient.invalidateQueries({
         queryKey: frameKeys.list(frame.sequenceId),
@@ -343,6 +376,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     editedMotionPrompt,
     queryClient,
     onRegenerateStart,
+    showFalGate,
   ]);
 
   const handleGenerateSceneVariants = useCallback(async () => {
@@ -531,7 +565,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleRegenerate()}
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleRegenerate();
+            }}
             disabled={isGenerating || !frame}
             className="w-full"
           >
@@ -601,7 +641,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleRegenerateMotion()}
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleRegenerateMotion();
+            }}
             disabled={isGenerating || isGeneratingMotion || !frame}
             className="w-full"
           >
@@ -670,7 +716,13 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Regenerate button */}
           <Button
-            onClick={() => void handleGenerateSceneVariants()}
+            onClick={() => {
+              if (falNeedsBillingSetup) {
+                showFalGate();
+                return;
+              }
+              void handleGenerateSceneVariants();
+            }}
             disabled={
               isGenerating ||
               isGeneratingSceneVariants ||
@@ -698,6 +750,8 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       <TabsContent value="location">
         <SceneLocationTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
+
+      <BillingGateDialog {...falGateProps} />
     </Tabs>
   );
 };

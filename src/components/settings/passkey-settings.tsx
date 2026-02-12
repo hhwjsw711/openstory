@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Fingerprint, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Fingerprint, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 type PasskeySettingsProps = {
@@ -41,6 +41,7 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
       }
       return result.data ?? [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const addPasskeyMutation = useMutation({
@@ -86,19 +87,8 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
     void navigate({ to: '/sequences' });
   };
 
-  return (
-    <div className="mx-auto max-w-2xl p-6">
-      {!isSetupFlow && (
-        <Button
-          variant="ghost"
-          className="mb-4"
-          onClick={() => void navigate({ to: '/sequences' })}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to sequences
-        </Button>
-      )}
-
+  const content = (
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -194,4 +184,11 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
       </Card>
     </div>
   );
+
+  // Only wrap with container when in setup flow (standalone page)
+  if (isSetupFlow) {
+    return <div className="mx-auto max-w-2xl p-6">{content}</div>;
+  }
+
+  return content;
 }

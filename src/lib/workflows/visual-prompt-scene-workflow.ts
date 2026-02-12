@@ -8,6 +8,7 @@
 import type { VisualPromptSceneWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { durableLLMCall } from './llm-call-helper';
 import {
   type VisualPromptWithContinuity,
@@ -33,6 +34,12 @@ export const visualPromptSceneWorkflow = createWorkflow(
       '[VisualPromptWorkflow] Starting visual prompt generation input:',
       input
     );
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
     // ============================================================
@@ -78,6 +85,8 @@ export const visualPromptSceneWorkflow = createWorkflow(
       },
       {
         // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
+        teamId: input.teamId,
+        openRouterApiKey: apiKeys.openRouterApiKey,
       }
     );
 

@@ -6,12 +6,14 @@
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -33,6 +35,11 @@ export const upscaleVariantWorkflow = createWorkflow(
       '[UpscaleVariantWorkflow]',
       `Starting upscale for frame ${input.frameId}`
     );
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
 
     // Step 1: Upscale the cropped tile using Nano Banana Pro Edit
     const upscaleResult = await context.run('upscale-image', async () => {
@@ -62,11 +69,16 @@ export const upscaleVariantWorkflow = createWorkflow(
         return null; // Signal to skip
       }
 
-      const result = await upscaleWithNanoBanana(input.croppedTileUrl, '2K');
+      const result = await upscaleWithNanoBanana(
+        input.croppedTileUrl,
+        '2K',
+        apiKeys.falApiKey
+      );
 
       return {
         imageUrl: result.imageUrl,
         requestId: result.requestId,
+        cost: result.cost,
       };
     });
 
@@ -74,6 +86,19 @@ export const upscaleVariantWorkflow = createWorkflow(
     if (!upscaleResult) {
       return { upscaledUrl: '', upscaledPath: '' };
     }
+
+    // Deduct credits for upscale (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: upscaleResult.cost,
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: 'Variant upscale (nano_banana_pro)',
+        metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
+        workflowName: 'UpscaleVariantWorkflow',
+      });
+    });
 
     // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {

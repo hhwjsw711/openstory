@@ -28,7 +28,15 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  safeTextToImageModel,
+  safeImageToVideoModel,
+} from '@/lib/ai/models';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
+import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import type { Sequence } from '@/lib/db/schema';
@@ -101,6 +109,21 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       suggestedTalentIds,
       suggestedLocationIds,
     } = data;
+
+    // Pre-flight billing check (skip if team has both BYOK keys)
+    await requireCredits(
+      teamId,
+      estimateStoryboardCost({
+        imageModel: safeTextToImageModel(imageModel, DEFAULT_IMAGE_MODEL),
+        aspectRatio,
+        autoGenerateMotion: autoGenerateMotion ?? false,
+        videoModel: safeImageToVideoModel(videoModel, DEFAULT_VIDEO_MODEL),
+      }),
+      {
+        providers: ['fal', 'openrouter'],
+        errorMessage: 'Insufficient credits to generate storyboard',
+      }
+    );
 
     // Create sequences in parallel for each selected model
     const sequences = await Promise.all(
@@ -183,6 +206,26 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
 
     // Trigger storyboard regeneration if needed
     if (needToRegenerateStoryboard) {
+      // Pre-flight billing check (skip if team has both BYOK keys)
+      await requireCredits(
+        context.teamId,
+        estimateStoryboardCost({
+          imageModel: safeTextToImageModel(
+            sequence.imageModel,
+            DEFAULT_IMAGE_MODEL
+          ),
+          aspectRatio: sequence.aspectRatio,
+          videoModel: safeImageToVideoModel(
+            sequence.videoModel,
+            DEFAULT_VIDEO_MODEL
+          ),
+        }),
+        {
+          providers: ['fal', 'openrouter'],
+          errorMessage: 'Insufficient credits to regenerate storyboard',
+        }
+      );
+
       const workflowInput: StoryboardWorkflowInput = {
         userId: context.user.id,
         teamId: context.teamId,

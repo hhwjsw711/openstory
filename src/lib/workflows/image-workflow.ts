@@ -6,12 +6,14 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { getFalFlowControl } from './constants';
 
 export const generateImageWorkflow = createWorkflow(
@@ -95,6 +97,11 @@ export const generateImageWorkflow = createWorkflow(
       };
     }
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
@@ -102,8 +109,38 @@ export const generateImageWorkflow = createWorkflow(
         `Generating image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
     });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    const imageCost =
+      typeof imageResult.metadata.cost === 'number'
+        ? imageResult.metadata.cost
+        : 0;
+    const { teamId } = input;
+    if (imageCost > 0 && teamId && !apiKeys.falApiKey) {
+      await context.run('deduct-credits', async () => {
+        const canAfford = await hasEnoughCredits(teamId, imageCost);
+        if (!canAfford) {
+          console.warn(
+            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${imageCost.toFixed(4)}), skipping deduction`
+          );
+          return;
+        }
+        await deductCredits(teamId, imageCost, {
+          userId: input.userId,
+          description: `Image generation (${generationParams.model})`,
+          metadata: {
+            model: generationParams.model,
+            frameId: input.frameId,
+            sequenceId: input.sequenceId,
+          },
+        });
+      });
+    }
 
     let imageUrl: string = imageResult.imageUrls[0];
 
@@ -117,7 +154,7 @@ export const generateImageWorkflow = createWorkflow(
         }
 
         const result = await uploadImageToStorage({
-          imageUrl: imageUrl,
+          imageUrl,
           teamId: input.teamId,
           sequenceId: input.sequenceId,
           frameId: input.frameId,
@@ -178,7 +215,7 @@ export const generateImageWorkflow = createWorkflow(
 
     // Return workflow result
     return {
-      imageUrl: imageUrl,
+      imageUrl,
       frameId: input.frameId,
       sequenceId: input.sequenceId,
     };

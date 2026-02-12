@@ -6,6 +6,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   VariantWorkflowInput,
@@ -19,6 +23,7 @@ import {
   buildReferenceImagePrompt,
   type ReferenceImageDescription,
 } from '@/lib/prompts/reference-image-prompt';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {
@@ -110,6 +115,11 @@ export const generateVariantWorkflow = createWorkflow(
       return { variantImageUrl: '' };
     }
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
@@ -117,7 +127,27 @@ export const generateVariantWorkflow = createWorkflow(
         `Generating variant image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
+    });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId,
+        description: `Variant image generation (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          frameId: input.frameId,
+          sequenceId: input.sequenceId,
+        },
+        workflowName: 'VariantWorkflow',
+      });
     });
 
     let imageUrl: string = imageResult.imageUrls[0];

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7b56d5d3-35ca-4b07-b3bf-7b5798aba5d0",
+  "id": "6924ab2b-0599-46a2-8cfd-c68de932243e",
   "prevId": "816fcd0b-91cc-4245-b442-2f8d144d959a",
   "tables": {
     "account": {
@@ -522,258 +522,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "dag_workflows": {
-      "name": "dag_workflows",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "snapshot_id": {
-          "name": "snapshot_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "input_entity_refs": {
-          "name": "input_entity_refs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "idx_dag_workflows_status": {
-          "name": "idx_dag_workflows_status",
-          "columns": ["status"],
-          "isUnique": false
-        },
-        "idx_dag_workflows_type": {
-          "name": "idx_dag_workflows_type",
-          "columns": ["type"],
-          "isUnique": false
-        },
-        "idx_dag_workflows_snapshot": {
-          "name": "idx_dag_workflows_snapshot",
-          "columns": ["snapshot_id"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "dag_workflows_snapshot_id_workflow_snapshots_id_fk": {
-          "name": "dag_workflows_snapshot_id_workflow_snapshots_id_fk",
-          "tableFrom": "dag_workflows",
-          "tableTo": "workflow_snapshots",
-          "columnsFrom": ["snapshot_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "dependencies": {
-      "name": "dependencies",
-      "columns": {
-        "dependent_id": {
-          "name": "dependent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "dependency_id": {
-          "name": "dependency_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "dependency_type": {
-          "name": "dependency_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "idx_deps_dependent": {
-          "name": "idx_deps_dependent",
-          "columns": ["dependent_id"],
-          "isUnique": false
-        },
-        "idx_deps_upstream": {
-          "name": "idx_deps_upstream",
-          "columns": ["dependency_id"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "entity_versions": {
-      "name": "entity_versions",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "branch_name": {
-          "name": "branch_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'main'"
-        },
-        "parent_version": {
-          "name": "parent_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "content_hash": {
-          "name": "content_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "data": {
-          "name": "data",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "lifecycle_state": {
-          "name": "lifecycle_state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'valid'"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "idx_entity_versions_lookup": {
-          "name": "idx_entity_versions_lookup",
-          "columns": ["entity_id", "branch_name", "version"],
-          "isUnique": false
-        },
-        "idx_entity_current": {
-          "name": "idx_entity_current",
-          "columns": ["entity_id", "branch_name"],
-          "isUnique": false
-        },
-        "idx_entity_content_hash": {
-          "name": "idx_entity_content_hash",
-          "columns": ["content_hash"],
-          "isUnique": false
-        },
-        "idx_entity_type": {
-          "name": "idx_entity_type",
-          "columns": ["entity_type"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "frame_characters": {
       "name": "frame_characters",
       "columns": {
@@ -1171,148 +919,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "generation_queue": {
-      "name": "generation_queue",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "priority": {
-          "name": "priority",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "input_hash": {
-          "name": "input_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "claimed_by": {
-          "name": "claimed_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claimed_at": {
-          "name": "claimed_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "idx_queue_pending": {
-          "name": "idx_queue_pending",
-          "columns": ["priority", "created_at"],
-          "isUnique": false
-        },
-        "idx_queue_entity": {
-          "name": "idx_queue_entity",
-          "columns": ["entity_id"],
-          "isUnique": false
-        },
-        "idx_queue_status": {
-          "name": "idx_queue_status",
-          "columns": ["status"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "generation_records": {
-      "name": "generation_records",
-      "columns": {
-        "entity_id": {
-          "name": "entity_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "input_hash": {
-          "name": "input_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "input_versions": {
-          "name": "input_versions",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "generator_version": {
-          "name": "generator_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "generated_at": {
-          "name": "generated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "output_artifact_url": {
-          "name": "output_artifact_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "idx_gen_records_input_hash": {
-          "name": "idx_gen_records_input_hash",
-          "columns": ["input_hash"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -2627,6 +2233,132 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "team_api_keys": {
+      "name": "team_api_keys",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "encrypted_key": {
+          "name": "encrypted_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_iv": {
+          "name": "key_iv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_tag": {
+          "name": "key_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_hint": {
+          "name": "key_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'manual'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_team_api_keys_team_provider": {
+          "name": "idx_team_api_keys_team_provider",
+          "columns": ["team_id", "provider"],
+          "isUnique": true
+        },
+        "idx_team_api_keys_team_id": {
+          "name": "idx_team_api_keys_team_id",
+          "columns": ["team_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "team_api_keys_team_id_teams_id_fk": {
+          "name": "team_api_keys_team_id_teams_id_fk",
+          "tableFrom": "team_api_keys",
+          "tableTo": "teams",
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_api_keys_added_by_user_id_fk": {
+          "name": "team_api_keys_added_by_user_id_fk",
+          "tableFrom": "team_api_keys",
+          "tableTo": "user",
+          "columnsFrom": ["added_by"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "team_invitations": {
       "name": "team_invitations",
       "columns": {
@@ -3134,55 +2866,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "workflow_snapshots": {
-      "name": "workflow_snapshots",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "content_hash": {
-          "name": "content_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "snapshot_data": {
-          "name": "snapshot_data",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "workflow_snapshots_content_hash_unique": {
-          "name": "workflow_snapshots_content_hash_unique",
-          "columns": ["content_hash"],
-          "isUnique": true
-        },
-        "idx_snapshot_content_hash": {
-          "name": "idx_snapshot_content_hash",
-          "columns": ["content_hash"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

@@ -14,11 +14,16 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import type {
   LibraryLocationSheetWorkflowInput,
   LibraryLocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -56,6 +61,11 @@ export const libraryLocationSheetWorkflow = createWorkflow(
       }
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the location sheet image
     const imageResult = await context.run('generate-sheet-image', async () => {
       console.log(
@@ -63,7 +73,26 @@ export const libraryLocationSheetWorkflow = createWorkflow(
         `Generating 3x3 grid sheet for ${input.locationName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
+    });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        description: `Library location sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          locationName: input.locationName,
+          locationDbId: input.locationDbId,
+        },
+        workflowName: 'LibraryLocationSheetWorkflow',
+      });
     });
 
     // Step 3: Upload to R2 storage

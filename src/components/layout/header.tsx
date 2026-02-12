@@ -5,12 +5,12 @@
 
 import { cn } from '@/lib/utils';
 import { VelroLogo } from '@/components/icons/velro-logo';
-import { Route as evalRoute } from '@/routes/_protected/eval';
 import { Route as locationsRoute } from '@/routes/_protected/locations/index';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
-import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
 import { Route as talentRoute } from '@/routes/_protected/talent/index';
+import { CreditBalancePill } from './credit-balance-pill';
 import { UserBadge } from './user-badge';
+import { useLowBalanceWarning } from '@/hooks/use-low-balance-warning';
 import { Link } from '@tanstack/react-router';
 
 interface HeaderProps {
@@ -18,6 +18,8 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
+  useLowBalanceWarning();
+
   return (
     <header
       className={cn(
@@ -28,7 +30,7 @@ export function Header({ className }: HeaderProps) {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
-          <Link to={sequencesRoute.fullPath} className="flex items-center">
+          <Link to={sequencesRoute.to} className="flex items-center">
             <VelroLogo size="md" />
           </Link>
 
@@ -39,12 +41,6 @@ export function Header({ className }: HeaderProps) {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Sequences
-            </Link>
-            <Link
-              to={sequencesNewRoute.to}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Create New
             </Link>
             <Link
               to={talentRoute.to}
@@ -58,17 +54,14 @@ export function Header({ className }: HeaderProps) {
             >
               Locations
             </Link>
-            <Link
-              to={evalRoute.to}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Eval
-            </Link>
           </nav>
         </div>
 
         {/* User badge */}
-        <UserBadge />
+        <div className="flex items-center gap-3">
+          <CreditBalancePill />
+          <UserBadge />
+        </div>
       </div>
     </header>
   );

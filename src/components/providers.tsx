@@ -1,23 +1,15 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Toaster } from '@/components/ui/sonner';
 import { RealtimeProvider } from '@upstash/realtime/client';
-import { useState } from 'react';
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000,
-            retry: 1,
-            // structuralSharing: true (default) - Preserves unchanged object references
-            // across query updates, which is critical for React.memo optimization in
-            // scene list components. This prevents unnecessary re-renders when polling.
-          },
-        },
-      })
-  );
+type ProvidersProps = {
+  children: React.ReactNode;
+  queryClient: QueryClient;
+};
+
+export function Providers({ children, queryClient }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <RealtimeProvider
@@ -27,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {children}
       </RealtimeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
+      <Toaster />
     </QueryClientProvider>
   );
 }

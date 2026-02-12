@@ -16,6 +16,10 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
@@ -23,6 +27,7 @@ import type {
   CharacterSheetWorkflowResult,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -87,6 +92,11 @@ export const characterSheetWorkflow = createWorkflow(
       }
     );
 
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
+    });
+
     // Step 2: Generate the character sheet image
     const imageResult = await context.run('generate-sheet-image', async () => {
       console.log(
@@ -94,7 +104,27 @@ export const characterSheetWorkflow = createWorkflow(
         `Generating sheet for ${input.characterName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider({
+        ...generationParams,
+        falApiKey: apiKeys.falApiKey,
+      });
+    });
+
+    // Deduct credits for image generation (skip if team used own fal key)
+    await context.run('deduct-credits', async () => {
+      await deductWorkflowCredits({
+        teamId: input.teamId,
+        costUsd: extractImageCost(imageResult.metadata),
+        usedOwnKey: !!apiKeys.falApiKey,
+        userId: input.userId ?? null,
+        description: `Character sheet (${generationParams.model})`,
+        metadata: {
+          model: generationParams.model,
+          characterName: input.characterName,
+          characterDbId: input.characterDbId,
+        },
+        workflowName: 'CharacterSheetWorkflow',
+      });
     });
 
     let sheetImageUrl = imageResult.imageUrls[0];

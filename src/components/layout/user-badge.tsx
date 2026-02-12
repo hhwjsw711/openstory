@@ -3,7 +3,7 @@
  * Displays user authentication state with login/logout actions
  */
 
-import { LogOut, Settings, User } from 'lucide-react';
+import { CreditCard, LogOut, Settings, User } from 'lucide-react';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -19,12 +19,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/use-user';
 import { authClient } from '@/lib/auth/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 export function UserBadge() {
   const { data: user, isLoading } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // Show loading state or no user data
   if (isLoading || !user) {
     return (
@@ -41,6 +43,7 @@ export function UserBadge() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
+    queryClient.removeQueries({ queryKey: ['session'] });
     // Sign out - this should clear the session cookie
     // Note: Better Auth has a known issue (github.com/better-auth/better-auth/issues/3608)
     // where useSession doesn't update after server-side signOut until page refresh
@@ -76,15 +79,21 @@ export function UserBadge() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to={sequencesRoute.fullPath}>
+          <Link to={sequencesRoute.to}>
             <User className="mr-2 h-4 w-4" />
             My Sequences
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/settings/passkeys">
+          <Link to="/settings">
             <Settings className="mr-2 h-4 w-4" />
             Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings/billing">
+            <CreditCard className="mr-2 h-4 w-4" />
+            Billing
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

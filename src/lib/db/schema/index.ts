@@ -78,11 +78,15 @@ import {
 import {
   credits,
   creditsRelations,
+  teamBillingSettings,
+  teamBillingSettingsRelations,
   transactions,
   transactionsRelations,
 } from './credits';
 
 import { scriptAnalysisAudit } from './audit';
+
+import { teamApiKeys, teamApiKeysRelations } from './team-api-keys';
 
 // DAG Dependency System
 import { entityVersions } from './entity-versions';
@@ -262,14 +266,28 @@ export type {
   NewLetzaiRequest,
 } from './tracking';
 
-// Credits and Transactions
+// Credits, Transactions, and Billing
+export { credits, transactions, teamBillingSettings };
+
 export type {
   Credit,
   NewCredit,
+  NewTeamBillingSetting,
   NewTransaction,
+  TeamBillingSetting,
   Transaction,
   TransactionType,
 } from './credits';
+
+// Team API Keys
+export { teamApiKeys };
+
+export type {
+  ApiKeyProvider,
+  ApiKeySource,
+  NewTeamApiKey,
+  TeamApiKey,
+} from './team-api-keys';
 
 // DAG Dependency System
 export {
@@ -388,14 +406,20 @@ export const schema = {
   falRequestsRelations,
   letzaiRequestsRelations,
 
-  // Credits
+  // Credits & Billing
   credits,
   transactions,
+  teamBillingSettings,
   creditsRelations,
   transactionsRelations,
+  teamBillingSettingsRelations,
 
   // Audit
   scriptAnalysisAudit,
+
+  // Team API Keys
+  teamApiKeys,
+  teamApiKeysRelations,
 
   // DAG Dependency System
   entityVersions,

@@ -12,11 +12,16 @@ import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateId } from '@/lib/db/id';
@@ -44,6 +49,11 @@ export const characterBibleWorkflow = createWorkflow(
           phaseName: 'Character Bible',
         }
       );
+    });
+
+    // Resolve team API keys (user-provided or platform fallback)
+    const apiKeys = await context.run('resolve-api-keys', async () => {
+      return resolveWorkflowApiKeys(input.teamId);
     });
 
     const seqCharacters: CharacterMinimal[] = await Promise.all(
@@ -74,6 +84,18 @@ export const characterBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'character-bible-image',
+            falApiKey: apiKeys.falApiKey,
+          });
+
+          // Deduct credits (skip if team used own fal key)
+          await deductWorkflowCredits({
+            teamId: input.teamId,
+            costUsd: extractImageCost(imageResult.metadata),
+            usedOwnKey: !!apiKeys.falApiKey,
+            userId: input.userId,
+            description: `Character bible sheet (${model})`,
+            metadata: { model, characterId: character.characterId },
+            workflowName: 'CharacterBibleWorkflow',
           });
 
           const imageUrl = imageResult.imageUrls[0];

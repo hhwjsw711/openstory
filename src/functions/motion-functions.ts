@@ -9,7 +9,13 @@ import { z } from 'zod';
 import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
+import {
+  DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODELS,
+  safeImageToVideoModel,
+} from '@/lib/ai/models';
+import { estimateVideoCost } from '@/lib/billing/cost-estimation';
+import { requireCredits } from '@/lib/billing/preflight';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
@@ -55,6 +61,14 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       data.model || frame.motionModel || sequence.videoModel,
       DEFAULT_VIDEO_MODEL
     );
+
+    // Credit check before triggering workflow (skip if team has own fal key)
+    const duration =
+      data.duration ??
+      IMAGE_TO_VIDEO_MODELS[modelToUse].capabilities.defaultDuration;
+    await requireCredits(teamId, estimateVideoCost(modelToUse, duration), {
+      errorMessage: 'Insufficient credits for motion generation',
+    });
 
     // Trigger motion generation workflow with deduplication
     const workflowInput: MotionWorkflowInput = {
@@ -131,6 +145,20 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     if (framesWithThumbnails.length === 0) {
       throw new Error('No frames with thumbnails found');
     }
+
+    // Credit check: sum costs for all frames before starting any (skip if team has own fal key)
+    const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
+    const batchDuration =
+      data.duration ??
+      IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
+    await requireCredits(
+      teamId,
+      estimateVideoCost(batchModel, batchDuration) *
+        framesWithThumbnails.length,
+      {
+        errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
+      }
+    );
 
     // Generate motion for each frame using workflows
     const workflows: BatchMotionWorkflow[] = [];
@@ -228,6 +256,11 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
         `${incompleteFrames.length} frame(s) do not have completed videos`
       );
     }
+
+    // Credit check before triggering merge (skip if team has own fal key)
+    await requireCredits(teamId, 0.01, {
+      errorMessage: 'Insufficient credits for video merge',
+    });
 
     // Get video URLs in order
     const videoUrls = frames
