@@ -36,6 +36,7 @@ export function ApiKeySettings(props: ApiKeySettingsProps) {
   const { data: profile } = useQuery({
     queryKey: ['currentUserProfile'],
     queryFn: () => getCurrentUserProfileFn(),
+    staleTime: 5 * 60 * 1000,
   });
 
   if (!profile?.teamId) {
@@ -71,11 +72,13 @@ function ApiKeySettingsContent({
   const { data: apiKeys, isLoading: keysLoading } = useQuery({
     queryKey: ['apiKeys', teamId],
     queryFn: () => listApiKeysFn({ data: { teamId } }),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: keyStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['apiKeyStatus', teamId],
     queryFn: () => checkApiKeyStatusFn({ data: { teamId } }),
+    staleTime: 5 * 60 * 1000,
   });
 
   const invalidateKeys = () => {

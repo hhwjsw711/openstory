@@ -4,6 +4,7 @@
     "cp $ROOT_WORKTREE_PATH/.env.development.local .env.development.local",
     "cp $ROOT_WORKTREE_PATH/.env.local .env.local",
     "cp $ROOT_WORKTREE_PATH/.claude/settings.local.json .claude/settings.local.json",
-    "cp $ROOT_WORKTREE_PATH/local.db local.db"
+    "cp $ROOT_WORKTREE_PATH/local.db local.db",
+    "doppler setup -p frontend -c dev --no-interactive"
   ]
 }

@@ -1,17 +1,22 @@
 import appCss from '@/styles/global.css?url';
 import {
   Outlet,
-  createRootRoute,
+  createRootRouteWithContext,
   HeadContent,
   Scripts,
   Link,
   useRouter,
 } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 
-export const Route = createRootRoute({
+type RouterContext = {
+  queryClient: QueryClient;
+};
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -44,13 +49,14 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
+  const { queryClient } = Route.useRouteContext();
   return (
     <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>
       <body>
-        <Providers>
+        <Providers queryClient={queryClient}>
           <Outlet />
         </Providers>
         <Scripts />

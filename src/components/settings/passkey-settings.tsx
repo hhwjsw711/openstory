@@ -41,6 +41,7 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
       }
       return result.data ?? [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const addPasskeyMutation = useMutation({

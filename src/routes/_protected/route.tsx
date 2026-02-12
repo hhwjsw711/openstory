@@ -1,12 +1,12 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
 import { redirect } from '@tanstack/react-router';
-import { getSessionFn } from '@/lib/auth/server';
+import { sessionQueryOptions } from '@/lib/auth/session-query';
 
 export const Route = createFileRoute('/_protected')({
   component: ProtectedLayout,
-  beforeLoad: async () => {
-    const session = await getSessionFn();
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const session = await queryClient.ensureQueryData(sessionQueryOptions);
     if (!session) {
       throw redirect({
         to: '/login',
