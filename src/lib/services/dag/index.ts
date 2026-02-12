@@ -10,12 +10,10 @@ export { computeContentHash, computeInputHash } from './content-hash';
 
 // Versioned entity CRUD
 export {
-  branchEntity,
   createEntity,
   getContentHash,
   getEntity,
   getHistory,
-  restoreEntity,
   updateEntity,
   updateLifecycleState,
 } from './versioned-entity-store';
@@ -33,27 +31,20 @@ export {
 } from './dependency-graph';
 
 // Generation provenance
-export {
-  getProvenance,
-  needsRegeneration,
-  recordGeneration,
-} from './generation-provenance';
+export { getProvenance, recordGeneration } from './generation-provenance';
 
-// Lazy invalidation
+// Lazy invalidation + staleness checks
 export {
   broadcastLifecycleChange,
   checkStaleness,
   clearStaleMarkers,
+  needsRegeneration,
   onEntityUpdate,
 } from './invalidation';
 
 // Entity lifecycle state machine
-export {
-  createLifecycleActor,
-  entityLifecycleMachine,
-  toUILifecycleState,
-} from './entity-lifecycle';
-export type { EntityUIState } from './entity-lifecycle';
+export { createLifecycleTracker, sendEvent } from './entity-lifecycle';
+export type { LifecycleTracker } from './entity-lifecycle';
 
 // Workflow snapshots
 export {
@@ -63,30 +54,9 @@ export {
   startWorkflow,
 } from './workflow-snapshot';
 
-// Generation queue
-export {
-  claimNext,
-  completeJob,
-  enqueue,
-  enqueueBatch,
-  failJob,
-  getQueueStatus,
-} from './generation-queue';
-
 // Collaborative editing
 export {
   applyTransaction,
   applyTransactionBatch,
 } from './collaborative-transaction';
 export type { Transaction } from './collaborative-transaction';
-
-// Realtime sync
-export {
-  cleanupWorkflowProgress,
-  getRealtimeSyncHub,
-  getWorkflowProgress,
-  publishEntityChanged,
-  publishLifecycleChanged,
-  publishWorkflowProgress,
-  RealtimeSyncHub,
-} from './realtime-sync';

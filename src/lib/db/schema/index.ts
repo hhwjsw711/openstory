@@ -96,7 +96,6 @@ import {
   workflowSnapshots,
   workflows as dagWorkflows,
 } from './workflow-snapshots';
-import { generationQueue } from './generation-queue';
 
 // ============================================================================
 // Relations defined here to avoid circular dependencies
@@ -294,7 +293,6 @@ export {
   dependencies,
   dagWorkflows,
   entityVersions,
-  generationQueue,
   generationRecords,
   workflowSnapshots,
 };
@@ -320,12 +318,6 @@ export type {
   WorkflowSnapshot,
   WorkflowStatus,
 } from './workflow-snapshots';
-
-export type {
-  GenerationQueueJob,
-  NewGenerationQueueJob,
-  QueueJobStatus,
-} from './generation-queue';
 
 /**
  * Complete schema object for Drizzle client initialization
@@ -427,5 +419,4 @@ export const schema = {
   generationRecords,
   workflowSnapshots,
   dagWorkflows,
-  generationQueue,
 };

@@ -20,57 +20,12 @@ import { computeContentHash } from './content-hash';
  * Versioned entity as returned to consumers.
  * Generic over the entity data type for type safety.
  */
-export type VersionedEntity<T> = {
-  id: string;
-  entityId: string;
-  version: number;
-  contentHash: string;
-  parentVersion: number | null;
-  branchName: string;
+export type VersionedEntity<T> = Omit<EntityVersion, 'data'> & {
   data: Readonly<T>;
-  entityType: EntityType;
-  lifecycleState: LifecycleState;
-  createdBy: string | null;
-  createdAt: Date;
 };
-
-/** Helper: convert EntityVersion row to typed VersionedEntity. */
-function toVersionedEntity<T>(row: EntityVersion): VersionedEntity<T> {
-  // row.data is stored as JSON text — Drizzle returns it as unknown.
-  // The caller is responsible for ensuring T matches the actual data shape.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
-  const data: T = row.data as never;
-  return {
-    id: row.id,
-    entityId: row.entityId,
-    version: row.version,
-    contentHash: row.contentHash,
-    parentVersion: row.parentVersion,
-    branchName: row.branchName,
-    data,
-    entityType: row.entityType,
-    lifecycleState: row.lifecycleState,
-    createdBy: row.createdBy,
-    createdAt: row.createdAt,
-  };
-}
-
-/** Helper: serialize entity data for the JSON text column. */
-function toJsonColumn(data: unknown): Record<string, unknown> {
-  // Drizzle's text({ mode: 'json' }) expects Record<string, unknown>
-  // but our generic T could be any shape. The JSON round-trip is safe.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- JSON round-trip produces correct shape
-  return JSON.parse(JSON.stringify(data)) as never;
-}
 
 /**
  * Create version 1 of a new entity.
- *
- * @param entityId - Unique entity identifier
- * @param entityType - Type of entity (script, scene, frame, etc.)
- * @param data - Entity data
- * @param createdBy - User ID who created this version
- * @returns The created versioned entity
  */
 export async function createEntity<T>(
   entityId: string,
@@ -88,7 +43,7 @@ export async function createEntity<T>(
       branchName: 'main',
       parentVersion: null,
       contentHash,
-      data: toJsonColumn(data),
+      data,
       entityType,
       lifecycleState: 'valid',
       createdBy: createdBy ?? null,
@@ -99,18 +54,14 @@ export async function createEntity<T>(
     throw new Error(`Failed to create entity version for ${entityId}`);
   }
 
-  return toVersionedEntity<T>(row);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+  return row as VersionedEntity<T>;
 }
 
 /**
  * Create a new version of an existing entity.
  * Computes a new content hash and increments the version number.
- *
- * @param entityId - Existing entity identifier
- * @param data - New entity data
- * @param createdBy - User ID who created this version
- * @param branch - Branch name (default: 'main')
- * @returns The new versioned entity
+ * Skips if content hasn't changed (returns current version).
  */
 export async function updateEntity<T>(
   entityId: string,
@@ -127,7 +78,8 @@ export async function updateEntity<T>(
 
   // Skip if content hasn't actually changed
   if (contentHash === current.contentHash) {
-    return toVersionedEntity<T>(current);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+    return current as VersionedEntity<T>;
   }
 
   const newVersion = current.version + 1;
@@ -140,7 +92,7 @@ export async function updateEntity<T>(
       branchName: branch,
       parentVersion: current.version,
       contentHash,
-      data: toJsonColumn(data),
+      data,
       entityType: current.entityType,
       lifecycleState: 'valid',
       createdBy: createdBy ?? null,
@@ -151,7 +103,8 @@ export async function updateEntity<T>(
     throw new Error(`Failed to create version ${newVersion} for ${entityId}`);
   }
 
-  return toVersionedEntity<T>(row);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+  return row as VersionedEntity<T>;
 }
 
 /**
@@ -171,12 +124,14 @@ export async function getEntity<T>(
         ne(entityVersions.lifecycleState, 'deleted')
       ),
     });
-    return row ? toVersionedEntity<T>(row) : null;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+    return (row as VersionedEntity<T>) ?? null;
   }
 
   const row = await getLatestVersion(entityId, branch);
   if (!row || row.lifecycleState === 'deleted') return null;
-  return toVersionedEntity<T>(row);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+  return row as VersionedEntity<T>;
 }
 
 /**
@@ -198,91 +153,8 @@ export async function getHistory<T>(
     )
     .orderBy(desc(entityVersions.version));
 
-  return rows.map((row) => toVersionedEntity<T>(row));
-}
-
-/**
- * Create a branch from a specific version.
- */
-export async function branchEntity<T>(
-  entityId: string,
-  fromVersion: number,
-  branchName: string
-): Promise<VersionedEntity<T>> {
-  const source = await getEntity<T>(entityId, fromVersion, 'main');
-  if (!source) {
-    throw new Error(`Entity ${entityId} version ${fromVersion} not found`);
-  }
-
-  const [row] = await getDb()
-    .insert(entityVersions)
-    .values({
-      entityId,
-      version: 1,
-      branchName,
-      parentVersion: fromVersion,
-      contentHash: source.contentHash,
-      data: toJsonColumn(source.data),
-      entityType: source.entityType,
-      lifecycleState: 'valid',
-      createdBy: source.createdBy,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error(`Failed to branch entity ${entityId} to ${branchName}`);
-  }
-
-  return toVersionedEntity<T>(row);
-}
-
-/**
- * Restore an entity to a previous version's data.
- * Creates a new version (doesn't rewrite history) with the old version's data.
- */
-export async function restoreEntity<T>(
-  entityId: string,
-  toVersion: number,
-  branch = 'main'
-): Promise<VersionedEntity<T>> {
-  const [source, current] = await Promise.all([
-    getEntity<T>(entityId, toVersion, branch),
-    getLatestVersion(entityId, branch),
-  ]);
-
-  if (!source) {
-    throw new Error(
-      `Entity ${entityId} version ${toVersion} not found on branch ${branch}`
-    );
-  }
-  if (!current) {
-    throw new Error(`Entity ${entityId} has no versions on branch ${branch}`);
-  }
-
-  const newVersion = current.version + 1;
-
-  const [row] = await getDb()
-    .insert(entityVersions)
-    .values({
-      entityId,
-      version: newVersion,
-      branchName: branch,
-      parentVersion: toVersion,
-      contentHash: source.contentHash,
-      data: toJsonColumn(source.data),
-      entityType: source.entityType,
-      lifecycleState: 'valid',
-      createdBy: source.createdBy,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error(
-      `Failed to restore entity ${entityId} to version ${toVersion}`
-    );
-  }
-
-  return toVersionedEntity<T>(row);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle JSON column returns unknown; caller guarantees T
+  return rows as VersionedEntity<T>[];
 }
 
 /**

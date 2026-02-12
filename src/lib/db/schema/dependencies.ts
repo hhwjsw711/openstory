@@ -6,7 +6,7 @@
  */
 
 import { type InferInsertModel, type InferSelectModel } from 'drizzle-orm';
-import { index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
  * Dependency type describes the relationship between entities.
@@ -37,8 +37,8 @@ export const dependencies = sqliteTable(
     dependencyType: text('dependency_type').$type<DependencyType>(),
   },
   (table) => [
-    // Find what an entity depends on (upstream)
-    index('idx_deps_dependent').on(table.dependentId),
+    // Unique edge constraint — required for onConflictDoNothing to work
+    uniqueIndex('idx_deps_edge').on(table.dependentId, table.dependencyId),
     // Find what depends on an entity (downstream)
     index('idx_deps_upstream').on(table.dependencyId),
   ]

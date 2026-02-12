@@ -1,8 +1,7 @@
 /**
  * Collaborative Transaction Handler
- * Property-level last-writer-wins with transaction-based sync.
- * Handles optimistic concurrency: checks baseVersion matches current version
- * before applying updates, returns conflicts for client rebase.
+ * Property-level last-writer-wins with optimistic concurrency.
+ * Checks baseVersion matches current version before applying updates.
  *
  * @module lib/services/dag/collaborative-transaction
  */
@@ -10,9 +9,6 @@
 import { getEntity, updateEntity } from './versioned-entity-store';
 import { onEntityUpdate } from './invalidation';
 
-/**
- * A transaction represents a single property update from a client.
- */
 export type Transaction = {
   type: 'update';
   entityId: string;
@@ -24,11 +20,7 @@ export type Transaction = {
 };
 
 type TransactionResult =
-  | {
-      status: 'applied';
-      newVersion: number;
-      contentHash: string;
-    }
+  | { status: 'applied'; newVersion: number; contentHash: string }
   | {
       status: 'conflict';
       currentVersion: number;
@@ -37,81 +29,18 @@ type TransactionResult =
     };
 
 /**
- * Apply a collaborative edit transaction.
- *
- * 1. Check baseVersion matches current version
- * 2. If not, return conflict with current state for client to rebase
- * 3. If yes, apply update, increment version, compute new hash, trigger invalidation
- *
- * @param transaction - The edit transaction from a client
- * @returns Applied result or conflict response
+ * Apply one or more collaborative edit transactions.
+ * All transactions must target the same entity and base version.
  */
 export async function applyTransaction(
-  transaction: Transaction
-): Promise<TransactionResult> {
-  const current = await getEntity(transaction.entityId);
-
-  if (!current) {
-    throw new Error(`Entity ${transaction.entityId} not found`);
-  }
-
-  // Optimistic concurrency check
-  if (current.version !== transaction.baseVersion) {
-    return {
-      status: 'conflict',
-      currentVersion: current.version,
-      currentData: current.data,
-      message: `Version conflict: expected ${transaction.baseVersion}, current is ${current.version}`,
-    };
-  }
-
-  // Apply the property-level update
-  const currentData = current.data as Record<string, unknown>;
-  const newData = {
-    ...currentData,
-    [transaction.property]: transaction.newValue,
-  };
-
-  // Create new version
-  const updated = await updateEntity(
-    transaction.entityId,
-    newData,
-    transaction.userId
-  );
-
-  // Trigger lazy invalidation
-  await onEntityUpdate(
-    transaction.entityId,
-    updated.version,
-    updated.contentHash
-  );
-
-  return {
-    status: 'applied',
-    newVersion: updated.version,
-    contentHash: updated.contentHash,
-  };
-}
-
-/**
- * Apply multiple transactions atomically.
- * All transactions must be for the same entity and same base version.
- * If any transaction conflicts, none are applied.
- *
- * @param transactions - Array of transactions to apply
- * @returns Applied result or conflict response
- */
-export async function applyTransactionBatch(
-  transactions: Transaction[]
+  ...transactions: Transaction[]
 ): Promise<TransactionResult> {
   if (transactions.length === 0) {
     throw new Error('No transactions to apply');
   }
 
-  const entityId = transactions[0].entityId;
-  const baseVersion = transactions[0].baseVersion;
+  const { entityId, baseVersion, userId } = transactions[0];
 
-  // All transactions must target the same entity and version
   for (const tx of transactions) {
     if (tx.entityId !== entityId || tx.baseVersion !== baseVersion) {
       throw new Error(
@@ -134,14 +63,12 @@ export async function applyTransactionBatch(
     };
   }
 
-  // Apply all property updates
-  let newData = { ...(current.data as Record<string, unknown>) };
-  for (const tx of transactions) {
-    newData = { ...newData, [tx.property]: tx.newValue };
-  }
+  const newData = {
+    ...(current.data as Record<string, unknown>),
+    ...Object.fromEntries(transactions.map((tx) => [tx.property, tx.newValue])),
+  };
 
-  const updated = await updateEntity(entityId, newData, transactions[0].userId);
-
+  const updated = await updateEntity(entityId, newData, userId);
   await onEntityUpdate(entityId, updated.version, updated.contentHash);
 
   return {
@@ -149,4 +76,13 @@ export async function applyTransactionBatch(
     newVersion: updated.version,
     contentHash: updated.contentHash,
   };
+}
+
+/**
+ * Apply multiple transactions atomically (alias for variadic applyTransaction).
+ */
+export async function applyTransactionBatch(
+  transactions: Transaction[]
+): Promise<TransactionResult> {
+  return applyTransaction(...transactions);
 }

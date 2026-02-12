@@ -20,7 +20,7 @@ CREATE TABLE `dependencies` (
 	`dependency_type` text
 );
 --> statement-breakpoint
-CREATE INDEX `idx_deps_dependent` ON `dependencies` (`dependent_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `idx_deps_edge` ON `dependencies` (`dependent_id`,`dependency_id`);--> statement-breakpoint
 CREATE INDEX `idx_deps_upstream` ON `dependencies` (`dependency_id`);--> statement-breakpoint
 CREATE TABLE `entity_versions` (
 	`id` text NOT NULL,
@@ -38,22 +38,7 @@ CREATE TABLE `entity_versions` (
 --> statement-breakpoint
 CREATE INDEX `idx_entity_versions_lookup` ON `entity_versions` (`entity_id`,`branch_name`,`version`);--> statement-breakpoint
 CREATE INDEX `idx_entity_current` ON `entity_versions` (`entity_id`,`branch_name`);--> statement-breakpoint
-CREATE INDEX `idx_entity_content_hash` ON `entity_versions` (`content_hash`);--> statement-breakpoint
 CREATE INDEX `idx_entity_type` ON `entity_versions` (`entity_type`);--> statement-breakpoint
-CREATE TABLE `generation_queue` (
-	`id` text PRIMARY KEY NOT NULL,
-	`entity_id` text NOT NULL,
-	`priority` integer DEFAULT 0 NOT NULL,
-	`input_hash` text NOT NULL,
-	`status` text DEFAULT 'pending' NOT NULL,
-	`claimed_by` text,
-	`claimed_at` integer,
-	`created_at` integer NOT NULL
-);
---> statement-breakpoint
-CREATE INDEX `idx_queue_pending` ON `generation_queue` (`priority`,`created_at`);--> statement-breakpoint
-CREATE INDEX `idx_queue_entity` ON `generation_queue` (`entity_id`);--> statement-breakpoint
-CREATE INDEX `idx_queue_status` ON `generation_queue` (`status`);--> statement-breakpoint
 CREATE TABLE `generation_records` (
 	`entity_id` text PRIMARY KEY NOT NULL,
 	`input_hash` text NOT NULL,
@@ -71,5 +56,4 @@ CREATE TABLE `workflow_snapshots` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `workflow_snapshots_content_hash_unique` ON `workflow_snapshots` (`content_hash`);--> statement-breakpoint
-CREATE INDEX `idx_snapshot_content_hash` ON `workflow_snapshots` (`content_hash`);
+CREATE UNIQUE INDEX `workflow_snapshots_content_hash_unique` ON `workflow_snapshots` (`content_hash`);

@@ -4,58 +4,43 @@
  * Uses sorted keys for consistent hashing regardless of property insertion order.
  */
 
-/**
- * Sort object keys recursively for deterministic JSON serialization.
- * Handles nested objects, arrays, and primitive values.
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
+/** Sort object keys recursively for deterministic JSON serialization. */
 function sortKeys(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (isRecord(value)) {
+  if (typeof value === 'object' && value !== null) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- narrowed by typeof+null check
+    const obj = value as Record<string, unknown>;
     const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
-      sorted[key] = sortKeys(value[key]);
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = sortKeys(obj[key]);
     }
     return sorted;
   }
   return value;
 }
 
+/** SHA-256 hex digest of an arbitrary string. */
+async function sha256(input: string): Promise<string> {
+  const buffer = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = new Uint8Array(hashBuffer);
+  return Array.from(hashArray, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /**
  * Compute SHA-256 content hash of entity data.
  * Uses sorted keys for deterministic hashing — identical data always produces identical hash.
- *
- * @param data - Entity data to hash
- * @returns Hex-encoded SHA-256 hash string
  */
 export async function computeContentHash(data: unknown): Promise<string> {
-  const sorted = sortKeys(data);
-  const json = JSON.stringify(sorted);
-  const encoder = new TextEncoder();
-  const buffer = encoder.encode(json);
-
-  // Use Web Crypto API (available in Bun, Cloudflare Workers, and browsers)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return sha256(JSON.stringify(sortKeys(data)));
 }
 
 /**
  * Compute input hash from a set of dependency content hashes.
  * Sorts hashes alphabetically and hashes the concatenation.
- *
- * @param depHashes - Array of content hashes from dependencies
- * @returns Hex-encoded SHA-256 hash of combined dependency hashes
+ * Does NOT mutate the input array.
  */
 export async function computeInputHash(depHashes: string[]): Promise<string> {
-  const combined = depHashes.sort().join('');
-  const encoder = new TextEncoder();
-  const buffer = encoder.encode(combined);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return sha256([...depHashes].sort().join(''));
 }

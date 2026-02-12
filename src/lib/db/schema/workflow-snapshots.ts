@@ -30,7 +30,8 @@ export const workflowSnapshots = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (table) => [index('idx_snapshot_content_hash').on(table.contentHash)]
+  // unique() on contentHash already creates an implicit index
+  () => []
 );
 
 export type WorkflowSnapshot = InferSelectModel<typeof workflowSnapshots>;

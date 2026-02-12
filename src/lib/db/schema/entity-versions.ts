@@ -72,8 +72,6 @@ export const entityVersions = sqliteTable(
     ),
     // Find current version for an entity on a branch (excluding deleted)
     index('idx_entity_current').on(table.entityId, table.branchName),
-    // Content-addressable lookup
-    index('idx_entity_content_hash').on(table.contentHash),
     // Type-based queries
     index('idx_entity_type').on(table.entityType),
   ]

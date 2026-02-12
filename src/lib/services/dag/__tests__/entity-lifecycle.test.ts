@@ -1,7 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test';
-import { createActor } from 'xstate';
 
-// Mock the side-effect modules that persistState calls
+// Mock side-effect modules
 mock.module('../versioned-entity-store', () => ({
   updateLifecycleState: mock().mockResolvedValue(undefined),
   getContentHash: mock().mockResolvedValue('hash'),
@@ -9,8 +8,6 @@ mock.module('../versioned-entity-store', () => ({
   createEntity: mock().mockResolvedValue({}),
   updateEntity: mock().mockResolvedValue({}),
   getHistory: mock().mockResolvedValue([]),
-  branchEntity: mock().mockResolvedValue({}),
-  restoreEntity: mock().mockResolvedValue({}),
 }));
 
 mock.module('../invalidation', () => ({
@@ -21,237 +18,182 @@ mock.module('../invalidation', () => ({
     changedDependencies: [],
   }),
   clearStaleMarkers: mock().mockResolvedValue(undefined),
+  needsRegeneration: mock().mockResolvedValue(false),
 }));
 
-const { entityLifecycleMachine } = await import('../entity-lifecycle');
+const { createLifecycleTracker, sendEvent } =
+  await import('../entity-lifecycle');
 
 describe('Entity Lifecycle State Machine', () => {
-  function createTestActor() {
-    return createActor(entityLifecycleMachine, {
-      input: { entityId: 'test_entity', branch: 'main' },
-    });
-  }
-
   describe('initial state', () => {
     it('should start in valid state', () => {
-      const actor = createTestActor();
-      actor.start();
-      expect(actor.getSnapshot().value).toBe('valid');
-      actor.stop();
+      const tracker = createLifecycleTracker('test_entity');
+      expect(tracker.state).toBe('valid');
     });
   });
 
   describe('valid → checking → stale flow', () => {
-    it('should transition to checking on DEPENDENCY_CHANGED', () => {
-      const actor = createTestActor();
-      actor.start();
-
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      expect(actor.getSnapshot().value).toBe('checking');
-
-      actor.stop();
+    it('should transition to checking on DEPENDENCY_CHANGED', async () => {
+      const tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      expect(tracker.state).toBe('checking');
     });
 
-    it('should transition to stale on CONFIRMED_STALE', () => {
-      const actor = createTestActor();
-      actor.start();
-
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      expect(actor.getSnapshot().value).toBe('stale');
-
-      actor.stop();
+    it('should transition to stale on CONFIRMED_STALE', async () => {
+      const tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      expect(tracker.state).toBe('stale');
     });
 
-    it('should return to valid on CONFIRMED_VALID', () => {
-      const actor = createTestActor();
-      actor.start();
-
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_VALID' });
-      expect(actor.getSnapshot().value).toBe('valid');
-
-      actor.stop();
+    it('should return to valid on CONFIRMED_VALID', async () => {
+      const tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_VALID');
+      expect(tracker.state).toBe('valid');
     });
   });
 
   describe('stale → queued → regenerating → valid flow', () => {
-    it('should complete the full regeneration lifecycle', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should complete the full regeneration lifecycle', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      expect(actor.getSnapshot().value).toBe('stale');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      expect(tracker.state).toBe('stale');
 
-      actor.send({ type: 'ENQUEUE' });
-      expect(actor.getSnapshot().value).toBe('queued');
+      await sendEvent(tracker, 'ENQUEUE');
+      expect(tracker.state).toBe('queued');
 
-      actor.send({ type: 'START_GENERATION' });
-      expect(actor.getSnapshot().value).toBe('regenerating');
+      await sendEvent(tracker, 'START_GENERATION');
+      expect(tracker.state).toBe('regenerating');
 
-      actor.send({ type: 'GENERATION_COMPLETE' });
-      expect(actor.getSnapshot().value).toBe('valid');
-
-      actor.stop();
+      await sendEvent(tracker, 'GENERATION_COMPLETE');
+      expect(tracker.state).toBe('valid');
     });
   });
 
   describe('edit during generation', () => {
-    it('should transition to stale after generation completes if dependency changed during regeneration', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should transition to stale after generation completes if dependency changed during regeneration', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
-      // Get to regenerating state
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'ENQUEUE' });
-      actor.send({ type: 'START_GENERATION' });
-      expect(actor.getSnapshot().value).toBe('regenerating');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      await sendEvent(tracker, 'ENQUEUE');
+      await sendEvent(tracker, 'START_GENERATION');
+      expect(tracker.state).toBe('regenerating');
 
       // Dependency changes during generation
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      // Should still be regenerating (not interrupted)
-      expect(actor.getSnapshot().value).toBe('regenerating');
-      expect(actor.getSnapshot().context.staleDuringGeneration).toBe(true);
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      expect(tracker.state).toBe('regenerating');
+      expect(tracker.staleDuringGeneration).toBe(true);
 
       // Generation completes — but should go to stale, not valid
-      actor.send({ type: 'GENERATION_COMPLETE' });
-      expect(actor.getSnapshot().value).toBe('stale');
-
-      actor.stop();
+      await sendEvent(tracker, 'GENERATION_COMPLETE');
+      expect(tracker.state).toBe('stale');
     });
   });
 
   describe('failure and retry', () => {
-    it('should transition to failed on GENERATION_FAILED', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should transition to failed on GENERATION_FAILED', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'ENQUEUE' });
-      actor.send({ type: 'START_GENERATION' });
-
-      actor.send({ type: 'GENERATION_FAILED', error: 'AI service timeout' });
-      expect(actor.getSnapshot().value).toBe('failed');
-
-      actor.stop();
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      await sendEvent(tracker, 'ENQUEUE');
+      await sendEvent(tracker, 'START_GENERATION');
+      await sendEvent(tracker, 'GENERATION_FAILED');
+      expect(tracker.state).toBe('failed');
     });
 
-    it('should allow retry from failed state', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should allow retry from failed state', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'ENQUEUE' });
-      actor.send({ type: 'START_GENERATION' });
-      actor.send({ type: 'GENERATION_FAILED', error: 'timeout' });
-      expect(actor.getSnapshot().value).toBe('failed');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      await sendEvent(tracker, 'ENQUEUE');
+      await sendEvent(tracker, 'START_GENERATION');
+      await sendEvent(tracker, 'GENERATION_FAILED');
+      expect(tracker.state).toBe('failed');
 
-      actor.send({ type: 'RETRY' });
-      expect(actor.getSnapshot().value).toBe('queued');
-
-      actor.stop();
+      await sendEvent(tracker, 'RETRY');
+      expect(tracker.state).toBe('queued');
     });
 
-    it('should track retry count', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should track retry count', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
-      // First failure + retry
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'ENQUEUE' });
-      actor.send({ type: 'START_GENERATION' });
-      actor.send({ type: 'GENERATION_FAILED', error: 'error 1' });
-      expect(actor.getSnapshot().context.retryCount).toBe(1);
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      await sendEvent(tracker, 'ENQUEUE');
+      await sendEvent(tracker, 'START_GENERATION');
+      await sendEvent(tracker, 'GENERATION_FAILED');
+      expect(tracker.retryCount).toBe(1);
 
-      actor.send({ type: 'RETRY' });
-      actor.send({ type: 'START_GENERATION' });
-      actor.send({ type: 'GENERATION_FAILED', error: 'error 2' });
-      expect(actor.getSnapshot().context.retryCount).toBe(2);
-
-      actor.stop();
+      await sendEvent(tracker, 'RETRY');
+      await sendEvent(tracker, 'START_GENERATION');
+      await sendEvent(tracker, 'GENERATION_FAILED');
+      expect(tracker.retryCount).toBe(2);
     });
 
-    it('should go to stale when max retries exceeded', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should go to stale when max retries exceeded', async () => {
+      const tracker = createLifecycleTracker('test_entity');
 
       // Exhaust all 3 retries
       for (let i = 0; i < 3; i++) {
-        actor.send({ type: 'DEPENDENCY_CHANGED' });
-        actor.send({ type: 'CONFIRMED_STALE' });
-        actor.send({ type: 'ENQUEUE' });
-        actor.send({ type: 'START_GENERATION' });
-        actor.send({ type: 'GENERATION_FAILED', error: `error ${i + 1}` });
+        await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+        await sendEvent(tracker, 'CONFIRMED_STALE');
+        await sendEvent(tracker, 'ENQUEUE');
+        await sendEvent(tracker, 'START_GENERATION');
+        await sendEvent(tracker, 'GENERATION_FAILED');
         if (i < 2) {
-          actor.send({ type: 'RETRY' });
+          await sendEvent(tracker, 'RETRY');
         }
       }
 
-      // After 3 failures, retry count is 3, which equals maxRetries
-      // The 4th failure should go to stale instead of failed
-      actor.send({ type: 'RETRY' });
-      actor.send({ type: 'START_GENERATION' });
-      actor.send({ type: 'GENERATION_FAILED', error: 'final error' });
-      expect(actor.getSnapshot().value).toBe('stale');
-
-      actor.stop();
-    });
-  });
-
-  describe('generation progress', () => {
-    it('should update progress without changing state', () => {
-      const actor = createTestActor();
-      actor.start();
-
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'ENQUEUE' });
-      actor.send({ type: 'START_GENERATION' });
-
-      actor.send({ type: 'GENERATION_PROGRESS', progress: 50 });
-      expect(actor.getSnapshot().value).toBe('regenerating');
-      expect(actor.getSnapshot().context.generationProgress).toBe(50);
-
-      actor.send({ type: 'GENERATION_PROGRESS', progress: 90 });
-      expect(actor.getSnapshot().context.generationProgress).toBe(90);
-
-      actor.stop();
+      // After 3 failures, retry count is 3 = maxRetries
+      // The 4th failure should go to stale
+      await sendEvent(tracker, 'RETRY');
+      await sendEvent(tracker, 'START_GENERATION');
+      await sendEvent(tracker, 'GENERATION_FAILED');
+      expect(tracker.state).toBe('stale');
     });
   });
 
   describe('deleted state', () => {
-    it('should be a final state', () => {
-      const actor = createTestActor();
-      actor.start();
+    it('should be a final state', async () => {
+      const tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'MARK_DELETED');
+      expect(tracker.state).toBe('deleted');
 
-      actor.send({ type: 'MARK_DELETED' });
-      expect(actor.getSnapshot().value).toBe('deleted');
-      expect(actor.getSnapshot().status).toBe('done');
-
-      actor.stop();
+      // No transitions from deleted
+      const result = await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      expect(result).toBeNull();
+      expect(tracker.state).toBe('deleted');
     });
 
-    it('should be reachable from any active state', () => {
+    it('should be reachable from any active state', async () => {
       // From valid
-      let actor = createTestActor();
-      actor.start();
-      actor.send({ type: 'MARK_DELETED' });
-      expect(actor.getSnapshot().value).toBe('deleted');
-      actor.stop();
+      let tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'MARK_DELETED');
+      expect(tracker.state).toBe('deleted');
 
       // From stale
-      actor = createTestActor();
-      actor.start();
-      actor.send({ type: 'DEPENDENCY_CHANGED' });
-      actor.send({ type: 'CONFIRMED_STALE' });
-      actor.send({ type: 'MARK_DELETED' });
-      expect(actor.getSnapshot().value).toBe('deleted');
-      actor.stop();
+      tracker = createLifecycleTracker('test_entity');
+      await sendEvent(tracker, 'DEPENDENCY_CHANGED');
+      await sendEvent(tracker, 'CONFIRMED_STALE');
+      await sendEvent(tracker, 'MARK_DELETED');
+      expect(tracker.state).toBe('deleted');
+    });
+  });
+
+  describe('invalid transitions', () => {
+    it('should return null for invalid transitions', async () => {
+      const tracker = createLifecycleTracker('test_entity');
+      // Can't ENQUEUE from valid state
+      const result = await sendEvent(tracker, 'ENQUEUE');
+      expect(result).toBeNull();
+      expect(tracker.state).toBe('valid');
     });
   });
 });
