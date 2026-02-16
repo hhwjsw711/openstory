@@ -35,13 +35,22 @@ Draw from these categories as relevant:
 - **Short sequences (1-3 scenes)**: Be more specific to the dominant mood. Fewer scenes means less need for broad coverage.
 - **Long sequences (10+ scenes)**: Focus on the overarching arc, not individual scene details.
 
+## INSTRUMENTAL ONLY — CRITICAL
+
+This music is BACKGROUND UNDERSCORE for video. It must always be instrumental.
+
+- Tags MUST always include "instrumental" as the first tag
+- NEVER include vocal, singing, lyrics, rapper, vocalist, spoken word, or any voice-related tags
+- NEVER suggest genres that imply vocals (e.g., "pop vocal", "R&B", "singer-songwriter") without explicitly pairing with "instrumental"
+- The \`prompt\` field must also specify "instrumental" (e.g., "An instrumental orchestral score...")
+
 ## OUTPUT
 
 You must return JSON with two fields:
 
-1. **\`tags\`** (primary): Comma-separated descriptors. ACE-Step performs best with focused, curated tags. Quality over quantity. Do not pad with filler terms. Example: \`"cinematic orchestral, tense, building intensity, strings, dark atmospheric, driving percussion"\`
+1. **\`tags\`** (primary): Comma-separated descriptors. MUST start with "instrumental". ACE-Step performs best with focused, curated tags. Quality over quantity. Do not pad with filler terms. Example: \`"instrumental, cinematic orchestral, tense, building intensity, strings, dark atmospheric, driving percussion"\`
 
-2. **\`prompt\`** (fallback): 1-2 sentences capturing the overall mood and progression for models that don't support tags. Example: \`"A tense orchestral score that builds from quiet suspense to dramatic confrontation, with dark strings and driving percussion."\`
+2. **\`prompt\`** (fallback): 1-2 sentences capturing the overall mood and progression for models that don't support tags. Must include "instrumental". Example: \`"A tense instrumental orchestral score that builds from quiet suspense to dramatic confrontation, with dark strings and driving percussion."\`
 
 ## COMMON MISTAKES TO AVOID
 
@@ -49,7 +58,8 @@ You must return JSON with two fields:
 - Do NOT include scene titles or narrative descriptions in tags (no "rainy alley" or "detective chase")
 - Do NOT use full sentences in tags — comma-separated terms only
 - Do NOT over-specify instrumentation when the genre already implies it (e.g., "orchestral" already implies strings)
-- Do NOT create a kitchen-sink list of every possible descriptor — be selective and intentional`;
+- Do NOT create a kitchen-sink list of every possible descriptor — be selective and intentional
+- Do NOT include any vocal or singing-related tags — this is instrumental background music only`;
 
 const USER_PROMPT = `Analyze the following sequence scenes and generate a unified music prompt.
 
