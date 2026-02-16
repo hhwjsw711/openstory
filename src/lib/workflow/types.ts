@@ -444,10 +444,9 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
 
 /**
  * Music generation workflow input
- * Generates background music for a single scene using audioDesign specs
+ * Generates background music for an entire sequence using audioDesign specs
  */
-export interface MusicWorkflowInput extends Partial<SequenceWorkflowContext> {
-  frameId?: string;
+export interface MusicWorkflowInput extends SequenceWorkflowContext {
   /** Style/mood prompt derived from audioDesign.music */
   prompt: string;
   /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
@@ -461,4 +460,20 @@ export interface MusicWorkflowInput extends Partial<SequenceWorkflowContext> {
 export interface MusicWorkflowResult {
   audioUrl: string;
   duration?: number;
+}
+
+/**
+ * Merge audio+video workflow input
+ * Muxes a music track onto the merged video to produce the final output
+ */
+export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
+  /** URL of the merged video (all frames stitched) */
+  mergedVideoUrl: string;
+  /** URL of the sequence-level music track */
+  musicUrl: string;
+}
+
+export interface MergeAudioVideoWorkflowResult {
+  mergedVideoUrl: string;
+  mergedVideoPath: string | null;
 }

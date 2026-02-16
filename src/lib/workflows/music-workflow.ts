@@ -1,10 +1,14 @@
 /**
  * Music generation workflow
- * Generates background music/audio for frames using audioDesign specifications
+ * Generates background music/audio for entire sequences
  */
 
-import { getFrameWithSequence, updateFrame } from '@/lib/db/helpers/frames';
-import type { MusicWorkflowInput } from '@/lib/workflow/types';
+import { getDb } from '#db-client';
+import { sequences } from '@/lib/db/schema';
+import type {
+  MergeAudioVideoWorkflowInput,
+  MusicWorkflowInput,
+} from '@/lib/workflow/types';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -14,7 +18,9 @@ import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import { getFalFlowControl } from './constants';
+import { eq } from 'drizzle-orm';
 
 export const generateMusicWorkflow = createWorkflow(
   async (context: WorkflowContext<MusicWorkflowInput>) => {
@@ -26,46 +32,24 @@ export const generateMusicWorkflow = createWorkflow(
       );
     }
 
+    const { sequenceId } = input;
+
     // Step 1: Set status to generating
-    const { frameDeleted } = await context.run(
-      'set-generating-status',
-      async () => {
-        if (input.frameId) {
-          const frame = await updateFrame(
-            input.frameId,
-            {
-              audioStatus: 'generating',
-              audioWorkflowRunId: context.workflowRunId,
-              audioModel: input.model || DEFAULT_MUSIC_MODEL,
-            },
-            { throwOnMissing: false }
-          );
+    await context.run('set-generating-status', async () => {
+      await getDb()
+        .update(sequences)
+        .set({
+          musicStatus: 'generating',
+          musicModel: input.model || DEFAULT_MUSIC_MODEL,
+          musicError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(sequences.id, sequenceId));
 
-          if (!frame) {
-            console.log(
-              '[MusicWorkflow]',
-              `Frame ${input.frameId} was deleted, skipping workflow`
-            );
-            return { frameDeleted: true };
-          }
-
-          if (input.sequenceId) {
-            await getGenerationChannel(input.sequenceId).emit(
-              'generation.audio:progress',
-              {
-                frameId: input.frameId,
-                status: 'generating',
-              }
-            );
-          }
-        }
-        return { frameDeleted: false };
-      }
-    );
-
-    if (frameDeleted) {
-      return { audioUrl: '', duration: 0 };
-    }
+      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
+        status: 'generating',
+      });
+    });
 
     // Resolve team API keys
     const apiKeys = await context.run('resolve-api-keys', async () => {
@@ -80,7 +64,7 @@ export const generateMusicWorkflow = createWorkflow(
         duration: input.duration,
         instrumental: true,
         model: input.model || DEFAULT_MUSIC_MODEL,
-        traceName: 'frame-music',
+        traceName: 'sequence-music',
         falApiKey: apiKeys.falApiKey,
       });
 
@@ -103,7 +87,7 @@ export const generateMusicWorkflow = createWorkflow(
         : 0;
     const model = input.model || DEFAULT_MUSIC_MODEL;
     const { teamId } = input;
-    if (musicCost > 0 && teamId && !apiKeys.falApiKey) {
+    if (musicCost > 0 && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, musicCost);
         if (!canAfford) {
@@ -117,7 +101,6 @@ export const generateMusicWorkflow = createWorkflow(
           description: `Music generation (${model})`,
           metadata: {
             model,
-            frameId: input.frameId,
             sequenceId: input.sequenceId,
             duration: audioResult.metadata?.duration,
           },
@@ -125,87 +108,79 @@ export const generateMusicWorkflow = createWorkflow(
       });
     }
 
-    let audioUrl: string = audioResult.audioUrl || '';
+    // Step 3: Upload to storage
+    const storageResult = await context.run('upload-to-storage', async () => {
+      if (!audioResult.audioUrl) {
+        throw new Error('Missing audio URL for storage upload');
+      }
 
-    if (input.frameId) {
-      // Step 3: Fetch frame data for human-readable filename
-      const frameData = await context.run('fetch-frame-data', async () => {
-        if (!input.frameId) throw new Error('Frame ID required');
-        const frame = await getFrameWithSequence(input.frameId);
-        if (!frame) throw new Error('Frame not found');
-        return {
-          sequenceTitle: frame.sequence.title,
-          sceneTitle: frame.metadata?.metadata?.title,
-        };
+      const result = await uploadAudioToStorage({
+        audioUrl: audioResult.audioUrl,
+        teamId: input.teamId,
+        sequenceId: input.sequenceId,
+        sequenceTitle: 'sequence',
+        sceneTitle: 'music',
       });
 
-      // Step 4: Upload audio to storage
-      const storageResult = await context.run('upload-to-storage', async () => {
-        if (
-          !audioResult.audioUrl ||
-          !input.teamId ||
-          !input.sequenceId ||
-          !input.frameId
-        ) {
-          throw new Error('Missing required IDs for storage upload');
-        }
+      if (!result.success || !result.path) {
+        throw new Error('Failed to upload audio');
+      }
 
-        const result = await uploadAudioToStorage({
-          audioUrl: audioResult.audioUrl,
-          teamId: input.teamId,
-          sequenceId: input.sequenceId,
-          frameId: input.frameId,
-          sequenceTitle: frameData.sequenceTitle,
-          sceneTitle: frameData.sceneTitle,
-        });
+      return { path: result.path, url: result.url };
+    });
 
-        if (!result.success || !result.path) {
-          throw new Error('Failed to upload audio');
-        }
+    const audioUrl = storageResult.url;
 
-        return { path: result.path, url: result.url };
+    // Step 4: Update sequence record
+    await context.run('update-sequence-music', async () => {
+      await getDb()
+        .update(sequences)
+        .set({
+          musicUrl: storageResult.url,
+          musicPath: storageResult.path,
+          musicStatus: 'completed',
+          musicGeneratedAt: new Date(),
+          musicError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(sequences.id, sequenceId));
+
+      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
+        status: 'completed',
+        audioUrl: storageResult.url,
       });
+    });
 
-      audioUrl = storageResult.url;
+    // Step 5: Check if merged video is also ready — trigger mux if so
+    await context.run('check-mux-trigger', async () => {
+      const [seq] = await getDb()
+        .select({
+          mergedVideoStatus: sequences.mergedVideoStatus,
+          mergedVideoUrl: sequences.mergedVideoUrl,
+        })
+        .from(sequences)
+        .where(eq(sequences.id, sequenceId));
 
-      // Step 5: Update frame with audio path, URL, and status
-      await context.run('update-frame', async () => {
-        if (!audioUrl || !input.frameId) {
-          throw new Error('Missing required data for frame update');
-        }
-
-        const updatedFrame = await updateFrame(
-          input.frameId,
-          {
-            audioPath: storageResult.path,
-            audioUrl: storageResult.url,
-            audioStatus: 'completed',
-            audioGeneratedAt: new Date(),
-            audioError: null,
-          },
-          { throwOnMissing: false }
+      if (
+        seq?.mergedVideoStatus === 'completed' &&
+        seq.mergedVideoUrl &&
+        audioUrl
+      ) {
+        console.log(
+          `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
         );
 
-        if (!updatedFrame) {
-          console.log(
-            '[MusicWorkflow]',
-            `Frame ${input.frameId} was deleted, skipping final update`
-          );
-          return;
-        }
+        const muxInput: MergeAudioVideoWorkflowInput = {
+          userId: input.userId,
+          teamId: input.teamId,
+          sequenceId: input.sequenceId,
+          mergedVideoUrl: seq.mergedVideoUrl,
+          musicUrl: audioUrl,
+        };
 
-        if (input.sequenceId) {
-          await getGenerationChannel(input.sequenceId).emit(
-            'generation.audio:progress',
-            {
-              frameId: input.frameId,
-              status: 'completed',
-              audioUrl: storageResult.url,
-            }
-          );
-        }
-      });
-    }
+        await triggerWorkflow('/merge-audio-video', muxInput);
+      }
+    });
 
     console.log('[MusicWorkflow]', 'Music generation workflow completed');
     return { audioUrl, duration: actualDuration };
@@ -216,37 +191,30 @@ export const generateMusicWorkflow = createWorkflow(
     flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
-      if (input.frameId) {
-        await updateFrame(
-          input.frameId,
-          {
-            audioStatus: 'failed',
-            audioError: failResponse,
-          },
-          { throwOnMissing: false }
-        );
-      }
 
-      if (input.sequenceId && input.frameId) {
-        try {
-          await getGenerationChannel(input.sequenceId).emit(
-            'generation.audio:progress',
-            {
-              frameId: input.frameId,
-              status: 'failed',
-            }
-          );
-        } catch {
-          // Ignore emit errors
-        }
+      await getDb()
+        .update(sequences)
+        .set({
+          musicStatus: 'failed',
+          musicError: String(failResponse),
+          updatedAt: new Date(),
+        })
+        .where(eq(sequences.id, input.sequenceId));
+
+      try {
+        await getGenerationChannel(input.sequenceId).emit(
+          'generation.audio:progress',
+          { status: 'failed' }
+        );
+      } catch {
+        // Ignore emit errors
       }
 
       console.error(
         '[MusicWorkflow]',
-        `Music generation failed for frame ${input.frameId}: ${failResponse}`
+        `Music generation failed for sequence ${input.sequenceId}: ${failResponse}`
       );
-
-      return `Music generation failed for frame ${input.frameId}`;
+      return `Music generation failed for sequence ${input.sequenceId}`;
     },
   }
 );

@@ -877,9 +877,9 @@ export const analyzeScriptWorkflow = createWorkflow(
     }
 
     // ============================================================
-    // PHASE 8: Music Generation (per-scene, after audio design)
+    // PHASE 8: Music Generation (single track for entire sequence)
     // ============================================================
-    // Generate music for scenes that have audioDesign.music with presence != "none"
+    // Combine all scene music styles/moods into one prompt and generate a single track
     if (sequenceId) {
       const scenesWithMusic = completeScenes.filter(
         (scene) =>
@@ -898,37 +898,50 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
         });
 
-        await Promise.all(
-          scenesWithMusic.map(async (scene) => {
-            const frame = frameMapping.find((f) => f.sceneId === scene.sceneId);
-            if (!frame) return;
+        // Build a combined prompt from all scenes' music specs
+        const musicStyles = new Set<string>();
+        const musicMoods = new Set<string>();
+        const sceneTitles: string[] = [];
+        let totalDuration = 0;
 
-            const music = scene.audioDesign?.music;
-            if (!music) return;
+        for (const scene of scenesWithMusic) {
+          const music = scene.audioDesign?.music;
+          if (!music) continue;
+          if (music.style) musicStyles.add(music.style);
+          if (music.mood) musicMoods.add(music.mood);
+          if (scene.metadata?.title) sceneTitles.push(scene.metadata.title);
+          totalDuration += scene.metadata?.durationSeconds || 10;
+        }
 
-            // Build a music prompt from audioDesign specs
-            const musicPrompt = [music.style, music.mood, scene.metadata?.title]
-              .filter(Boolean)
-              .join(', ');
+        const combinedPrompt = [
+          ...musicStyles,
+          ...musicMoods,
+          sceneTitles.length > 0
+            ? `Scenes: ${sceneTitles.join(', ')}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(', ');
 
-            const musicInput: MusicWorkflowInput = {
-              userId: input.userId,
-              teamId: input.teamId,
-              frameId: frame.frameId,
-              sequenceId,
-              prompt: musicPrompt,
-              tags: music.style,
-              duration: scene.metadata?.durationSeconds || 10,
-            };
+        if (!input.userId || !input.teamId) {
+          throw new Error('userId and teamId required for music generation');
+        }
 
-            await context.invoke('music', {
-              workflow: generateMusicWorkflow,
-              body: musicInput,
-              retries: 3,
-              retryDelay: 'pow(2, retried) * 1000',
-            });
-          })
-        );
+        const musicInput: MusicWorkflowInput = {
+          userId: input.userId,
+          teamId: input.teamId,
+          sequenceId,
+          prompt: combinedPrompt,
+          tags: [...musicStyles].join(', '),
+          duration: totalDuration,
+        };
+
+        await context.invoke('music', {
+          workflow: generateMusicWorkflow,
+          body: musicInput,
+          retries: 3,
+          retryDelay: 'pow(2, retried) * 1000',
+        });
       }
     }
 

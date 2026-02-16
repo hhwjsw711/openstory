@@ -12,7 +12,6 @@ export const Route = createFileRoute('/_protected/sequences/$id/theatre')({
 function TheatrePage() {
   const { id: sequenceId } = Route.useParams();
 
-  // Verify session
   useUser();
 
   const { data: sequence, isLoading } = useSequence(sequenceId);

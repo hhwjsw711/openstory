@@ -38,8 +38,16 @@ import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
+import type {
+  MergeAudioVideoWorkflowInput,
+  MusicWorkflowInput,
+  StoryboardWorkflowInput,
+} from '@/lib/workflow/types';
 import type { Sequence } from '@/lib/db/schema';
+import { sequences } from '@/lib/db/schema';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
+import { getDb } from '#db-client';
+import { eq } from 'drizzle-orm';
 
 // ============================================================================
 // List Sequences
@@ -272,6 +280,128 @@ export const deleteSequenceFn = createServerFn({ method: 'POST' })
 
     // Delete the sequence (frames will be cascade deleted)
     await deleteSequence(data.sequenceId);
+
+    return { success: true };
+  });
+
+// ============================================================================
+// Generate Music
+// ============================================================================
+
+const generateMusicInputSchema = z.object({
+  sequenceId: ulidSchema,
+});
+
+/**
+ * Trigger sequence-level music generation
+ * Builds a combined prompt from all frames' audioDesign.music specs
+ */
+export const generateMusicFn = createServerFn({ method: 'POST' })
+  .middleware([sequenceAccessMiddleware])
+  .inputValidator(zodValidator(generateMusicInputSchema))
+  .handler(async ({ data, context }) => {
+    const { sequence, user } = context;
+
+    // Build combined prompt from frame audioDesign metadata
+    const allFrames = await getSequenceFrames(data.sequenceId);
+
+    const musicStyles = new Set<string>();
+    const musicMoods = new Set<string>();
+    const sceneTitles: string[] = [];
+    let totalDuration = 0;
+
+    for (const frame of allFrames) {
+      const music = frame.metadata?.audioDesign?.music;
+      if (!music || music.presence === 'none') continue;
+      if (music.style) musicStyles.add(music.style);
+      if (music.mood) musicMoods.add(music.mood);
+      if (frame.metadata?.metadata?.title)
+        sceneTitles.push(frame.metadata.metadata.title);
+      totalDuration += frame.metadata?.metadata?.durationSeconds || 10;
+    }
+
+    // Fallback prompt if no audioDesign data
+    const combinedPrompt =
+      [...musicStyles, ...musicMoods].length > 0
+        ? [
+            ...musicStyles,
+            ...musicMoods,
+            sceneTitles.length > 0
+              ? `Scenes: ${sceneTitles.join(', ')}`
+              : undefined,
+          ]
+            .filter(Boolean)
+            .join(', ')
+        : 'cinematic background music';
+
+    // Set status to generating before triggering workflow so polls see it immediately
+    await getDb()
+      .update(sequences)
+      .set({
+        musicStatus: 'generating',
+        musicError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sequences.id, sequence.id));
+
+    const musicInput: MusicWorkflowInput = {
+      userId: user.id,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
+      prompt: combinedPrompt,
+      tags: [...musicStyles].join(', ') || 'cinematic',
+      duration: totalDuration || 30,
+    };
+
+    await triggerWorkflow('/music', musicInput);
+
+    return { success: true };
+  });
+
+// ============================================================================
+// Merge Audio + Video
+// ============================================================================
+
+const mergeAudioVideoInputSchema = z.object({
+  sequenceId: ulidSchema,
+});
+
+/**
+ * Trigger audio+video mux workflow
+ * Merges the sequence music track onto the merged video
+ */
+export const mergeAudioVideoFn = createServerFn({ method: 'POST' })
+  .middleware([sequenceAccessMiddleware])
+  .inputValidator(zodValidator(mergeAudioVideoInputSchema))
+  .handler(async ({ context }) => {
+    const { sequence, user } = context;
+
+    if (!sequence.mergedVideoUrl) {
+      throw new Error('Merged video must be completed before muxing audio');
+    }
+    if (!sequence.musicUrl) {
+      throw new Error('Music must be generated before muxing audio');
+    }
+
+    // Set status to merging before triggering workflow so polls see it immediately
+    await getDb()
+      .update(sequences)
+      .set({
+        mergedVideoStatus: 'merging',
+        mergedVideoError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sequences.id, sequence.id));
+
+    const input: MergeAudioVideoWorkflowInput = {
+      userId: user.id,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
+      mergedVideoUrl: sequence.mergedVideoUrl,
+      musicUrl: sequence.musicUrl,
+    };
+
+    await triggerWorkflow('/merge-audio-video', input);
 
     return { success: true };
   });

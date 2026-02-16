@@ -71,6 +71,11 @@ export function useSequence(
               return 2000; // 2 seconds
             }
 
+            // Poll while music is being generated
+            if (sequence?.musicStatus === 'generating') {
+              return 2000; // 2 seconds
+            }
+
             // Stop polling for completed/archived sequences
             return false;
           },
