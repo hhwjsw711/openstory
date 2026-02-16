@@ -5,6 +5,7 @@ import { defineConfig, devices } from 'playwright/test';
  * Uses separate test.db for isolation, mocks AI/workflow responses
  */
 export default defineConfig({
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e/tests',
   outputDir: './e2e/results',
 
