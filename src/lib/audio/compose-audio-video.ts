@@ -10,9 +10,6 @@ import { createFalClient } from '@fal-ai/client';
 
 const COMPOSE_MODEL_ID = 'fal-ai/ffmpeg-api/compose';
 
-/** Large fallback duration (10 min) — FFmpeg trims to actual media length */
-const MAX_DURATION_MS = 600_000;
-
 /** Compose API input/output types (not re-exported from @fal-ai/client) */
 type ComposeKeyframe = { url: string; timestamp: number; duration: number };
 type ComposeTrack = {
@@ -36,7 +33,7 @@ export type ComposeAudioVideoResult = {
 export async function composeAudioVideo(
   videoUrl: string,
   musicUrl: string,
-  durationMs?: number,
+  durationMs: number,
   falApiKey?: string
 ): Promise<ComposeAudioVideoResult> {
   console.log('[ComposeAudioVideo] Composing video with music track', {
@@ -49,7 +46,7 @@ export async function composeAudioVideo(
     credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
   });
 
-  const dur = durationMs ?? MAX_DURATION_MS;
+  const dur = durationMs;
 
   const input: ComposeInput = {
     tracks: [

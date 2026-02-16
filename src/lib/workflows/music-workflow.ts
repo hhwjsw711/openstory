@@ -206,7 +206,7 @@ export const generateMusicWorkflow = createWorkflow(
           sequenceId: input.sequenceId,
           mergedVideoUrl: seq.mergedVideoUrl,
           musicUrl: audioUrl,
-          durationMs: input.duration ? input.duration * 1000 : undefined,
+          durationMs: undefined,
         };
 
         await triggerWorkflow('/merge-audio-video', muxInput);

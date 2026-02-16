@@ -18,6 +18,7 @@ import type {
   MergeAudioVideoWorkflowInput,
   MergeAudioVideoWorkflowResult,
 } from '@/lib/workflow/types';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
@@ -60,12 +61,25 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       return resolveWorkflowApiKeys(input.teamId);
     });
 
-    // Step 2: Compose video (preserving native audio) with music track via Fal FFmpeg compose API
+    // Step 2: Compute actual video duration from frame data
+    const videoDurationMs = await context.run(
+      'compute-video-duration',
+      async () => {
+        const sequenceFrames = await getSequenceFrames(input.sequenceId);
+        const totalMs = sequenceFrames.reduce(
+          (sum, f) => sum + (f.durationMs ?? 3000),
+          0
+        );
+        return totalMs;
+      }
+    );
+
+    // Step 3: Compose video (preserving native audio) with music track via Fal FFmpeg compose API
     const muxResult = await context.run('compose-audio-video', async () => {
       return composeAudioVideo(
         input.mergedVideoUrl,
         input.musicUrl,
-        input.durationMs,
+        videoDurationMs,
         apiKeys.falApiKey
       );
     });

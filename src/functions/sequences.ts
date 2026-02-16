@@ -312,7 +312,10 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     for (const frame of allFrames) {
       const music = frame.metadata?.audioDesign?.music;
       const meta = frame.metadata?.metadata;
-      const durationSeconds = meta?.durationSeconds || 10;
+      // Prefer actual video duration over AI estimate
+      const durationSeconds = frame.durationMs
+        ? frame.durationMs / 1000
+        : meta?.durationSeconds || 10;
       totalDuration += durationSeconds;
 
       scenes.push({
