@@ -16,9 +16,9 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
-import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
 /**
  * Base workflow context that includes authentication

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Sequence } from '@/types/database';
-import { AlertCircle, Loader2, Music, Volume2, Film } from 'lucide-react';
+import { AlertCircle, Film, Loader2, Music, Volume2 } from 'lucide-react';
 
 type MusicViewProps = {
   sequence: Sequence;
