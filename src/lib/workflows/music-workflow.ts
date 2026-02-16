@@ -1,9 +1,11 @@
 /**
  * Music generation workflow
  * Generates background music/audio for entire sequences
+ * Uses AI to synthesize scene data into cohesive music prompts
  */
 
 import { getDb } from '#db-client';
+import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { sequences } from '@/lib/db/schema';
 import type {
   MergeAudioVideoWorkflowInput,
@@ -19,6 +21,8 @@ import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { durableLLMCall } from './llm-call-helper';
+import { musicPromptSchema } from './music-prompt.schema';
 import { getFalFlowControl } from './constants';
 import { eq } from 'drizzle-orm';
 
@@ -26,9 +30,9 @@ export const generateMusicWorkflow = createWorkflow(
   async (context: WorkflowContext<MusicWorkflowInput>) => {
     const input = context.requestPayload;
 
-    if (!input.prompt || input.prompt.trim().length === 0) {
+    if (!input.scenes || input.scenes.length === 0) {
       throw new WorkflowValidationError(
-        'Prompt is required for music generation'
+        'At least one scene is required for music generation'
       );
     }
 
@@ -56,11 +60,37 @@ export const generateMusicWorkflow = createWorkflow(
       return resolveWorkflowApiKeys(input.teamId);
     });
 
-    // Step 2: Generate music
+    // Step 2: AI-generate a cohesive music prompt from scene data
+    const musicPrompt = await durableLLMCall(
+      context,
+      {
+        name: 'music-prompt-generation',
+        phase: { number: 8, name: 'Music Prompt Generation' },
+        promptName: 'velro/phase/music-prompt-generation-chat',
+        promptVariables: {
+          scenes: JSON.stringify(input.scenes),
+        },
+        modelId: DEFAULT_ANALYSIS_MODEL,
+        responseSchema: musicPromptSchema,
+      },
+      {
+        sequenceId,
+        userId: input.userId,
+        teamId: input.teamId,
+        openRouterApiKey: apiKeys.openRouterApiKey,
+      }
+    );
+
+    // Reinforce instrumental — ACE-Step sometimes generates vocals despite [inst]
+    const reinforcedTags = musicPrompt.tags.includes('instrumental')
+      ? musicPrompt.tags
+      : `${musicPrompt.tags}, instrumental, no vocals`;
+
+    // Step 3: Generate music using AI-synthesized prompt
     const audioResult = await context.run('generate-music', async () => {
       const result = await generateMusicForScene({
-        prompt: input.prompt,
-        tags: input.tags,
+        prompt: musicPrompt.prompt,
+        tags: reinforcedTags,
         duration: input.duration,
         instrumental: true,
         model: input.model || DEFAULT_MUSIC_MODEL,
@@ -176,6 +206,7 @@ export const generateMusicWorkflow = createWorkflow(
           sequenceId: input.sequenceId,
           mergedVideoUrl: seq.mergedVideoUrl,
           musicUrl: audioUrl,
+          durationMs: input.duration ? input.duration * 1000 : undefined,
         };
 
         await triggerWorkflow('/merge-audio-video', muxInput);

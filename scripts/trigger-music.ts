@@ -11,16 +11,14 @@
  *   --team-id        Team ID for auth context
  *
  * Options:
- *   --prompt         Custom music prompt (default: auto-built from frame metadata)
- *   --duration       Duration in seconds (default: auto-summed from frames)
- *   --tags           Comma-separated genre tags
+ *   --duration       Duration in seconds (default: 30)
+ *   --prompt         Override music style (used as a single-scene summary)
  *
  * Example:
  *   bun scripts/trigger-music.ts \
  *     --sequence-id 01J... \
  *     --user-id 01J... \
  *     --team-id 01J... \
- *     --prompt "cinematic, orchestral, epic" \
  *     --duration 60
  */
 
@@ -39,9 +37,8 @@ Required:
   --team-id        Team ID for auth context
 
 Options:
-  --prompt         Custom music prompt (default: "cinematic background music")
+  --prompt         Override music style (creates a single-scene summary)
   --duration       Duration in seconds (default: 30)
-  --tags           Comma-separated genre tags (default: "cinematic")
 `);
 }
 
@@ -54,7 +51,6 @@ async function main() {
       'team-id': { type: 'string' },
       prompt: { type: 'string' },
       duration: { type: 'string' },
-      tags: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -76,16 +72,23 @@ async function main() {
     process.exit(1);
   }
 
-  const prompt = values.prompt || 'cinematic background music';
   const duration = values.duration ? parseInt(values.duration, 10) : 30;
-  const tags = values.tags || 'cinematic';
+  const prompt = values.prompt || 'cinematic background music';
 
   const musicInput: MusicWorkflowInput = {
     userId,
     teamId,
     sequenceId,
-    prompt,
-    tags,
+    scenes: [
+      {
+        title: 'Manual trigger',
+        storyBeat: prompt,
+        durationSeconds: duration,
+        musicStyle: prompt,
+        musicMood: '',
+        musicPresence: 'full',
+      },
+    ],
     duration,
   };
 
@@ -98,7 +101,6 @@ async function main() {
   console.log(`Music workflow triggered successfully!`);
   console.log(`  Workflow Run ID: ${workflowRunId}`);
   console.log(`  Sequence: ${sequenceId}`);
-  console.log(`  Prompt: ${prompt}`);
   console.log(`  Duration: ${duration}s`);
 }
 

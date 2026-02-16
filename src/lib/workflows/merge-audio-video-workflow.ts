@@ -5,7 +5,7 @@
 
 import { getDb } from '#db-client';
 import { sequences } from '@/lib/db/schema';
-import { mergeAudioVideo } from '@/lib/audio/merge-audio-video';
+import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import {
   getExtensionFromUrl,
@@ -60,11 +60,12 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       return resolveWorkflowApiKeys(input.teamId);
     });
 
-    // Step 2: Mux audio + video via Fal FFmpeg API
-    const muxResult = await context.run('merge-audio-video', async () => {
-      return mergeAudioVideo(
+    // Step 2: Compose video (preserving native audio) with music track via Fal FFmpeg compose API
+    const muxResult = await context.run('compose-audio-video', async () => {
+      return composeAudioVideo(
         input.mergedVideoUrl,
         input.musicUrl,
+        input.durationMs,
         apiKeys.falApiKey
       );
     });

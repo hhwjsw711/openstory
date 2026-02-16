@@ -39,7 +39,8 @@ import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
-  MergeAudioVideoWorkflowInput,
+  MergeVideoWorkflowInput,
+  MusicSceneSummary,
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
@@ -302,37 +303,29 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { sequence, user } = context;
 
-    // Build combined prompt from frame audioDesign metadata
+    // Extract compact scene summaries for AI prompt generation
     const allFrames = await getSequenceFrames(data.sequenceId);
 
-    const musicStyles = new Set<string>();
-    const musicMoods = new Set<string>();
-    const sceneTitles: string[] = [];
+    const scenes: MusicSceneSummary[] = [];
     let totalDuration = 0;
 
     for (const frame of allFrames) {
       const music = frame.metadata?.audioDesign?.music;
-      if (!music || music.presence === 'none') continue;
-      if (music.style) musicStyles.add(music.style);
-      if (music.mood) musicMoods.add(music.mood);
-      if (frame.metadata?.metadata?.title)
-        sceneTitles.push(frame.metadata.metadata.title);
-      totalDuration += frame.metadata?.metadata?.durationSeconds || 10;
-    }
+      const meta = frame.metadata?.metadata;
+      const durationSeconds = meta?.durationSeconds || 10;
+      totalDuration += durationSeconds;
 
-    // Fallback prompt if no audioDesign data
-    const combinedPrompt =
-      [...musicStyles, ...musicMoods].length > 0
-        ? [
-            ...musicStyles,
-            ...musicMoods,
-            sceneTitles.length > 0
-              ? `Scenes: ${sceneTitles.join(', ')}`
-              : undefined,
-          ]
-            .filter(Boolean)
-            .join(', ')
-        : 'cinematic background music';
+      scenes.push({
+        title: meta?.title || 'Untitled Scene',
+        storyBeat: meta?.storyBeat || '',
+        durationSeconds,
+        musicStyle: music?.style || '',
+        musicMood: music?.mood || '',
+        musicPresence: music?.presence || 'none',
+        atmosphere:
+          frame.metadata?.audioDesign?.ambient?.atmosphere || undefined,
+      });
+    }
 
     // Set status to generating before triggering workflow so polls see it immediately
     await getDb()
@@ -348,8 +341,7 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
       userId: user.id,
       teamId: sequence.teamId,
       sequenceId: sequence.id,
-      prompt: combinedPrompt,
-      tags: [...musicStyles].join(', ') || 'cinematic',
+      scenes,
       duration: totalDuration || 30,
     };
 
@@ -359,29 +351,47 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
   });
 
 // ============================================================================
-// Merge Audio + Video
+// Merge Video + Music (re-merge frames then auto-mux music)
 // ============================================================================
 
-const mergeAudioVideoInputSchema = z.object({
+const mergeVideoAndMusicInputSchema = z.object({
   sequenceId: ulidSchema,
 });
 
 /**
- * Trigger audio+video mux workflow
- * Merges the sequence music track onto the merged video
+ * Re-merge all frame videos, then auto-chain to audio mux.
+ * The merge-video workflow already triggers merge-audio-video when music is ready.
  */
-export const mergeAudioVideoFn = createServerFn({ method: 'POST' })
+export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
-  .inputValidator(zodValidator(mergeAudioVideoInputSchema))
+  .inputValidator(zodValidator(mergeVideoAndMusicInputSchema))
   .handler(async ({ context }) => {
-    const { sequence, user } = context;
+    const { sequence, user, teamId } = context;
 
-    if (!sequence.mergedVideoUrl) {
-      throw new Error('Merged video must be completed before muxing audio');
-    }
     if (!sequence.musicUrl) {
-      throw new Error('Music must be generated before muxing audio');
+      throw new Error('Music must be generated before merging');
     }
+
+    // Gather frame videos
+    const frames = await getSequenceFrames(sequence.id);
+
+    if (frames.length === 0) {
+      throw new Error('No frames found in sequence');
+    }
+
+    const incompleteFrames = frames.filter(
+      (f) => f.videoStatus !== 'completed' || !f.videoUrl
+    );
+
+    if (incompleteFrames.length > 0) {
+      throw new Error(
+        `${incompleteFrames.length} frame(s) do not have completed videos`
+      );
+    }
+
+    await requireCredits(teamId, 0.01, {
+      errorMessage: 'Insufficient credits for video merge',
+    });
 
     // Set status to merging before triggering workflow so polls see it immediately
     await getDb()
@@ -393,15 +403,20 @@ export const mergeAudioVideoFn = createServerFn({ method: 'POST' })
       })
       .where(eq(sequences.id, sequence.id));
 
-    const input: MergeAudioVideoWorkflowInput = {
+    const videoUrls = frames
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((f) => f.videoUrl)
+      .filter((url): url is string => Boolean(url));
+
+    const input: MergeVideoWorkflowInput = {
       userId: user.id,
-      teamId: sequence.teamId,
+      teamId,
       sequenceId: sequence.id,
-      mergedVideoUrl: sequence.mergedVideoUrl,
-      musicUrl: sequence.musicUrl,
+      videoUrls,
     };
 
-    await triggerWorkflow('/merge-audio-video', input);
+    // No deduplication ID — explicit user re-trigger should always work
+    await triggerWorkflow('/merge-video', input);
 
     return { success: true };
   });

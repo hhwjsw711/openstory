@@ -443,14 +443,25 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
 }
 
 /**
+ * Compact scene summary passed to the music workflow for AI prompt generation
+ */
+export type MusicSceneSummary = {
+  title: string;
+  storyBeat: string;
+  durationSeconds: number;
+  musicStyle: string;
+  musicMood: string;
+  musicPresence: string;
+  atmosphere?: string;
+};
+
+/**
  * Music generation workflow input
  * Generates background music for an entire sequence using audioDesign specs
  */
 export interface MusicWorkflowInput extends SequenceWorkflowContext {
-  /** Style/mood prompt derived from audioDesign.music */
-  prompt: string;
-  /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
-  tags?: string;
+  /** Compact scene summaries for AI prompt generation */
+  scenes: MusicSceneSummary[];
   /** Duration in seconds */
   duration?: number;
   /** Audio model to use */
@@ -471,6 +482,8 @@ export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
   mergedVideoUrl: string;
   /** URL of the sequence-level music track */
   musicUrl: string;
+  /** Total duration in milliseconds (for compose track timing) */
+  durationMs?: number;
 }
 
 export interface MergeAudioVideoWorkflowResult {

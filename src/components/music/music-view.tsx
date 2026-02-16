@@ -7,23 +7,23 @@ type MusicViewProps = {
   sequence: Sequence;
   onGenerateMusic: () => void;
   isGeneratingMusic: boolean;
-  onMergeAudioVideo: () => void;
-  isMergingAudioVideo: boolean;
+  onMergeVideoAndMusic: () => void;
+  isMergingVideoAndMusic: boolean;
 };
 
 export const MusicView: React.FC<MusicViewProps> = ({
   sequence,
   onGenerateMusic,
   isGeneratingMusic,
-  onMergeAudioVideo,
-  isMergingAudioVideo,
+  onMergeVideoAndMusic,
+  isMergingVideoAndMusic,
 }) => {
   const { musicStatus, musicUrl, musicError, musicModel } = sequence;
 
   // Completed — show audio player + merge button
   if (musicStatus === 'completed' && musicUrl) {
-    const canMerge =
-      sequence.mergedVideoStatus === 'completed' && sequence.mergedVideoUrl;
+    const isMerging =
+      isMergingVideoAndMusic || sequence.mergedVideoStatus === 'merging';
 
     return (
       <div className="flex flex-col items-center gap-6 py-12">
@@ -56,21 +56,19 @@ export const MusicView: React.FC<MusicViewProps> = ({
               'Regenerate Music'
             )}
           </Button>
-          {canMerge && (
-            <Button onClick={onMergeAudioVideo} disabled={isMergingAudioVideo}>
-              {isMergingAudioVideo ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Merging…
-                </>
-              ) : (
-                <>
-                  <Film className="mr-2 h-4 w-4" />
-                  Merge with Video
-                </>
-              )}
-            </Button>
-          )}
+          <Button onClick={onMergeVideoAndMusic} disabled={isMerging}>
+            {isMerging ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Merging…
+              </>
+            ) : (
+              <>
+                <Film className="mr-2 h-4 w-4" />
+                Merge with Video
+              </>
+            )}
+          </Button>
         </div>
       </div>
     );

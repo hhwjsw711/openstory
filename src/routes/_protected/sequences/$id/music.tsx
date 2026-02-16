@@ -1,6 +1,6 @@
 import { MusicView, MusicViewSkeleton } from '@/components/music/music-view';
 import { SequenceTabs } from '@/components/sequence/sequence-tabs';
-import { generateMusicFn, mergeAudioVideoFn } from '@/functions/sequences';
+import { generateMusicFn, mergeVideoAndMusicFn } from '@/functions/sequences';
 import { useSequence, sequenceKeys } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
@@ -33,8 +33,8 @@ function MusicPage() {
     },
   });
 
-  const mergeAudioVideo = useMutation({
-    mutationFn: () => mergeAudioVideoFn({ data: { sequenceId } }),
+  const mergeVideoAndMusic = useMutation({
+    mutationFn: () => mergeVideoAndMusicFn({ data: { sequenceId } }),
     onMutate: () => {
       queryClient.setQueryData<Sequence>(
         sequenceKeys.detail(sequenceId),
@@ -65,8 +65,8 @@ function MusicPage() {
             sequence={sequence}
             onGenerateMusic={() => generateMusic.mutate()}
             isGeneratingMusic={generateMusic.isPending}
-            onMergeAudioVideo={() => mergeAudioVideo.mutate()}
-            isMergingAudioVideo={mergeAudioVideo.isPending}
+            onMergeVideoAndMusic={() => mergeVideoAndMusic.mutate()}
+            isMergingVideoAndMusic={mergeVideoAndMusic.isPending}
           />
         </div>
       </div>

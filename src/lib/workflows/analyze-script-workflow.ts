@@ -898,30 +898,21 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
         });
 
-        // Build a combined prompt from all scenes' music specs
-        const musicStyles = new Set<string>();
-        const musicMoods = new Set<string>();
-        const sceneTitles: string[] = [];
+        // Extract compact scene summaries for AI prompt generation
         let totalDuration = 0;
-
-        for (const scene of scenesWithMusic) {
-          const music = scene.audioDesign?.music;
-          if (!music) continue;
-          if (music.style) musicStyles.add(music.style);
-          if (music.mood) musicMoods.add(music.mood);
-          if (scene.metadata?.title) sceneTitles.push(scene.metadata.title);
-          totalDuration += scene.metadata?.durationSeconds || 10;
-        }
-
-        const combinedPrompt = [
-          ...musicStyles,
-          ...musicMoods,
-          sceneTitles.length > 0
-            ? `Scenes: ${sceneTitles.join(', ')}`
-            : undefined,
-        ]
-          .filter(Boolean)
-          .join(', ');
+        const sceneSummaries = scenesWithMusic.map((scene) => {
+          const durationSeconds = scene.metadata?.durationSeconds || 10;
+          totalDuration += durationSeconds;
+          return {
+            title: scene.metadata?.title || 'Untitled Scene',
+            storyBeat: scene.metadata?.storyBeat || '',
+            durationSeconds,
+            musicStyle: scene.audioDesign?.music?.style || '',
+            musicMood: scene.audioDesign?.music?.mood || '',
+            musicPresence: scene.audioDesign?.music?.presence || 'none',
+            atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
+          };
+        });
 
         if (!input.userId || !input.teamId) {
           throw new Error('userId and teamId required for music generation');
@@ -931,8 +922,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           userId: input.userId,
           teamId: input.teamId,
           sequenceId,
-          prompt: combinedPrompt,
-          tags: [...musicStyles].join(', '),
+          scenes: sceneSummaries,
           duration: totalDuration,
         };
 
