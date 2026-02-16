@@ -6,7 +6,11 @@
  * since the work has already been completed at this point.
  */
 
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import {
+  deductCredits,
+  hasEnoughCredits,
+  checkAutoTopUp,
+} from '@/lib/billing/credit-service';
 
 type WorkflowDeductionOpts = {
   /** Team to deduct from. Skips deduction if undefined (e.g., anonymous workflows). */
@@ -40,6 +44,10 @@ export async function deductWorkflowCredits(
     console.warn(
       `${prefix} Insufficient credits for team ${opts.teamId} (cost: $${opts.costUsd.toFixed(4)}), skipping deduction`
     );
+    // Still attempt auto-top-up so balance can recover
+    void checkAutoTopUp(opts.teamId).catch((err) => {
+      console.error('[AutoTopUp] Failed:', err);
+    });
     return;
   }
 

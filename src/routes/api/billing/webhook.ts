@@ -64,16 +64,17 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 break;
               }
 
+              // Retrieve receipt URL + set default payment method (best-effort)
+              const customerId = session.customer
+                ? typeof session.customer === 'string'
+                  ? session.customer
+                  : session.customer.id
+                : undefined;
+
               // Save customer ID mapping if not already saved
-              if (session.customer) {
-                const customerId =
-                  typeof session.customer === 'string'
-                    ? session.customer
-                    : session.customer.id;
+              if (customerId) {
                 await saveStripeCustomerId(teamId, customerId);
               }
-
-              // Retrieve receipt URL from the charge (best-effort, don't block credit addition)
               let receiptUrl: string | undefined;
               try {
                 if (session.payment_intent) {
@@ -87,6 +88,17 @@ export const Route = createFileRoute('/api/billing/webhook')({
                   const charge = pi.latest_charge;
                   if (charge && typeof charge === 'object') {
                     receiptUrl = charge.receipt_url ?? undefined;
+                  }
+
+                  // Set as default payment method so auto-top-up can charge off-session
+                  if (pi.payment_method && customerId) {
+                    const pmId =
+                      typeof pi.payment_method === 'string'
+                        ? pi.payment_method
+                        : pi.payment_method.id;
+                    await stripe.customers.update(customerId, {
+                      invoice_settings: { default_payment_method: pmId },
+                    });
                   }
                 }
               } catch (err) {

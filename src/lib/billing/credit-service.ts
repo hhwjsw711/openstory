@@ -379,6 +379,12 @@ async function maybeAutoTopUp(
   }
 }
 
+/** Public entry point for triggering auto-top-up from outside this module. */
+export async function checkAutoTopUp(teamId: string): Promise<void> {
+  const balance = await getTeamBalance(teamId);
+  await maybeAutoTopUp(teamId, balance);
+}
+
 export async function saveStripeCustomerId(
   teamId: string,
   stripeCustomerId: string
