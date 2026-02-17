@@ -21,6 +21,7 @@ const createFrameSchema = createInsertSchema(frames, {
   videoStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
   variantImageStatus: () =>
     z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
+  audioStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
 }).omit({
   id: true,
   createdAt: true,
@@ -35,6 +36,7 @@ export const updateFrameSchema = createUpdateSchema(frames, {
   videoStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
   variantImageStatus: () =>
     z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
+  audioStatus: () => z.enum(FRAME_GENERATION_STATUSES).nullable().optional(),
 }).omit({
   id: true,
   sequenceId: true,

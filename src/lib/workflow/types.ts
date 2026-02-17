@@ -3,6 +3,7 @@
  */
 
 import type {
+  AUDIO_MODELS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
   ImageToVideoModel,
@@ -15,9 +16,9 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
 import type { Json } from '@/types/database';
-import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
 /**
  * Base workflow context that includes authentication
@@ -80,6 +81,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
     regenerateAll?: boolean;
   };
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -98,6 +101,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -439,4 +444,57 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
   libraryLocationDescription?: string;
   /** Frame IDs to regenerate after sheet generation */
   affectedFrameIds: string[];
+}
+
+/**
+ * Compact scene summary passed to the music workflow for AI prompt generation
+ */
+export type MusicSceneSummary = {
+  title: string;
+  storyBeat: string;
+  durationSeconds: number;
+  musicStyle: string;
+  musicMood: string;
+  musicPresence: string;
+  atmosphere?: string;
+};
+
+/**
+ * Music generation workflow input
+ * Generates background music for an entire sequence using audioDesign specs
+ */
+export interface MusicWorkflowInput extends SequenceWorkflowContext {
+  /** Compact scene summaries for AI prompt generation (legacy fallback) */
+  scenes?: MusicSceneSummary[];
+  /** Pre-generated prompt. If provided with tags, skip LLM step. */
+  prompt?: string;
+  /** Pre-generated tags. If provided with prompt, skip LLM step. */
+  tags?: string;
+  /** Duration in seconds */
+  duration?: number;
+  /** Audio model to use */
+  model?: keyof typeof AUDIO_MODELS;
+}
+
+export interface MusicWorkflowResult {
+  audioUrl: string;
+  duration?: number;
+}
+
+/**
+ * Merge audio+video workflow input
+ * Muxes a music track onto the merged video to produce the final output
+ */
+export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
+  /** URL of the merged video (all frames stitched) */
+  mergedVideoUrl: string;
+  /** URL of the sequence-level music track */
+  musicUrl: string;
+  /** Total duration in milliseconds (for compose track timing) */
+  durationMs?: number;
+}
+
+export interface MergeAudioVideoWorkflowResult {
+  mergedVideoUrl: string;
+  mergedVideoPath: string | null;
 }

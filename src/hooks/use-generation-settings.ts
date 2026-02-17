@@ -1,9 +1,12 @@
 import {
   DEFAULT_IMAGE_MODEL,
+  DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
   getCompatibleModel,
+  isValidAudioModel,
   isValidImageToVideoModel,
   isValidTextToImageModel,
+  type AudioModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
@@ -18,7 +21,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'velro:generation-settings:v1';
+const STORAGE_KEY = 'velro:generation-settings:v2';
 
 type GenerationSettings = {
   aspectRatio: AspectRatio;
@@ -26,6 +29,8 @@ type GenerationSettings = {
   imageModel: TextToImageModel;
   motionModel: ImageToVideoModel;
   autoGenerateMotion: boolean;
+  musicModel: AudioModel;
+  autoGenerateMusic: boolean;
 };
 
 const DEFAULT_SETTINGS: GenerationSettings = {
@@ -34,6 +39,8 @@ const DEFAULT_SETTINGS: GenerationSettings = {
   imageModel: DEFAULT_IMAGE_MODEL,
   motionModel: DEFAULT_VIDEO_MODEL,
   autoGenerateMotion: false,
+  musicModel: DEFAULT_MUSIC_MODEL,
+  autoGenerateMusic: false,
 };
 
 /**
@@ -75,15 +82,14 @@ function loadSettings(): GenerationSettings {
 
     const parsed: unknown = JSON.parse(stored);
 
-    // Validate structure
+    // Validate structure (only check core fields — new fields fall back gracefully)
     if (
       !parsed ||
       typeof parsed !== 'object' ||
       !('aspectRatio' in parsed) ||
       !('analysisModels' in parsed) ||
       !('imageModel' in parsed) ||
-      !('motionModel' in parsed) ||
-      !('autoGenerateMotion' in parsed)
+      !('motionModel' in parsed)
     ) {
       console.warn(
         '[useGenerationSettings] Invalid settings structure, using defaults'
@@ -112,8 +118,20 @@ function loadSettings(): GenerationSettings {
     const motionModel = getCompatibleModel(rawMotionModel, aspectRatio);
 
     const autoGenerateMotion =
+      'autoGenerateMotion' in parsed &&
       typeof parsed.autoGenerateMotion === 'boolean'
         ? parsed.autoGenerateMotion
+        : false;
+
+    const musicModel =
+      'musicModel' in parsed && isValidAudioModel(parsed.musicModel)
+        ? parsed.musicModel
+        : DEFAULT_MUSIC_MODEL;
+
+    const autoGenerateMusic =
+      'autoGenerateMusic' in parsed &&
+      typeof parsed.autoGenerateMusic === 'boolean'
+        ? parsed.autoGenerateMusic
         : false;
 
     return {
@@ -122,6 +140,8 @@ function loadSettings(): GenerationSettings {
       imageModel,
       motionModel,
       autoGenerateMotion,
+      musicModel,
+      autoGenerateMusic,
     };
   } catch (error) {
     console.warn(

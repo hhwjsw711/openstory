@@ -1,4 +1,5 @@
 import {
+  AUDIO_MODELS,
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
   IMAGE_MODELS,
@@ -26,6 +27,9 @@ const validImageModelKeys = Object.keys(
 const validVideoModelKeys = Object.keys(
   IMAGE_TO_VIDEO_MODELS
 ) satisfies readonly string[];
+const validAudioModelKeys = Object.keys(
+  AUDIO_MODELS
+) satisfies readonly string[];
 
 export const createSequenceSchema = createInsertSchema(sequences, {
   title: (schema) => schema.min(1).optional(), // Optional - defaults to 'Untitled Sequence' in hook
@@ -51,6 +55,15 @@ export const createSequenceSchema = createInsertSchema(sequences, {
     mergedVideoStatus: true,
     mergedVideoGeneratedAt: true,
     mergedVideoError: true,
+    // Music fields - managed by workflow, not user input
+    musicUrl: true,
+    musicPath: true,
+    musicStatus: true,
+    musicGeneratedAt: true,
+    musicError: true,
+    musicModel: true,
+    musicPrompt: true,
+    musicTags: true,
   })
   .extend({
     // Accept array of models for multi-model sequence creation
@@ -78,6 +91,15 @@ export const createSequenceSchema = createInsertSchema(sequences, {
       .default(DEFAULT_VIDEO_MODEL),
     // Auto-generate motion flag (UI-only, not stored in DB)
     autoGenerateMotion: z.boolean().default(false).optional(),
+    // Auto-generate music flag (UI-only, not stored in DB)
+    autoGenerateMusic: z.boolean().default(false).optional(),
+    // Music model selection (model key, not full ID)
+    musicModel: z
+      .string()
+      .refine((val) => validAudioModelKeys.includes(val), {
+        message: 'Invalid music model',
+      })
+      .optional(),
     // Suggested talent IDs for AI-assisted casting during generation
     suggestedTalentIds: z.array(z.string()).optional(),
     // Suggested location IDs for visual consistency during generation
@@ -115,6 +137,15 @@ export const updateSequenceSchema = createUpdateSchema(sequences, {
   mergedVideoStatus: true,
   mergedVideoGeneratedAt: true,
   mergedVideoError: true,
+  // Music fields - managed by workflow, not user input
+  musicUrl: true,
+  musicPath: true,
+  musicStatus: true,
+  musicGeneratedAt: true,
+  musicError: true,
+  musicModel: true,
+  musicPrompt: true,
+  musicTags: true,
 });
 
 export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

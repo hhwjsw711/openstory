@@ -241,6 +241,7 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.frame:updated',
       'generation.image:progress',
       'generation.video:progress',
+      'generation.audio:progress',
       'generation.variant-image:progress',
       'generation.talent:matched',
       'generation.talent:unmatched',

@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { Frame } from '@/types/database';
+import type { Frame, Sequence } from '@/types/database';
 import { frameKeys } from '@/hooks/use-frames';
 import { sequenceKeys } from '@/hooks/use-sequences';
 
@@ -161,6 +161,25 @@ export function updateQueryCacheFromEvent(
             : f
         )
       );
+      break;
+    }
+
+    case 'generation.audio:progress': {
+      const status = data.status;
+      const audioUrl = getOptionalString(data, 'audioUrl');
+      if (isValidFrameStatus(status)) {
+        queryClient.setQueryData<Sequence>(
+          sequenceKeys.detail(sequenceId),
+          (old) =>
+            old
+              ? {
+                  ...old,
+                  musicStatus: status,
+                  ...(audioUrl ? { musicUrl: audioUrl } : {}),
+                }
+              : old
+        );
+      }
       break;
     }
 
