@@ -5,9 +5,9 @@
 
 import { getEnv } from '#env';
 
-/** Whether billing/credits are enabled. Default: false (open-source mode). Server-only. */
+/** Whether billing/credits are enabled — derived from STRIPE_SECRET_KEY being set. Server-only. */
 export function isBillingEnabled(): boolean {
-  return getEnv().BILLING_ENABLED === 'true';
+  return !!getEnv().STRIPE_SECRET_KEY;
 }
 
 /** Markup percentage applied on top of provider costs (e.g., 0.05 = 5%) */

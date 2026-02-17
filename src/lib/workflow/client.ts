@@ -19,7 +19,7 @@ function getWorkflowClient(): WorkflowClient {
 
   if (!token) {
     throw new ConfigurationError(
-      'QSTASH_TOKEN environment variable is required'
+      'QStash is not configured. Run `bun setup` and enable workflows, or start the emulator with `bun qstash:dev`.'
     );
   }
 
@@ -48,7 +48,7 @@ export function getQStashClient(): QStashClient {
 
   if (!token) {
     throw new ConfigurationError(
-      'QSTASH_TOKEN environment variable is required'
+      'QStash is not configured. Run `bun setup` and enable workflows, or start the emulator with `bun qstash:dev`.'
     );
   }
 
