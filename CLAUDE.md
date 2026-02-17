@@ -38,7 +38,7 @@ teams
 
 ```bash
 bun install
-bun setup:env                      # Auto-configure local dev (SQLite + QStash)
+bun setup                          # Auto-configure local dev (SQLite + QStash)
 bun db:setup                       # Migrate + seed database
 bun scripts/setup-r2-buckets.sh    # Setup storage (follow prompts)
 ```
@@ -869,7 +869,7 @@ const appUrl = getAppUrl(); // Auto-resolves CF_PAGES_URL/VERCEL_URL/etc.
 **Environment variables:**
 
 - See `.env.example` for required vars
-- Run `bun setup:env` for local dev defaults
+- Run `bun setup` for local dev defaults
 - Production: Set via platform dashboard
 
 ---
