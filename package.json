@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "dev:all": "bun run --parallel dev stripe:dev qstash:dev",
+    "dev:db": "bun --bun --sequential db:migrate:local db:seed:local dev",
+    "dev:all": "bun run --parallel dev:db stripe:dev qstash:dev",
     "dev:e2e": "vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",
@@ -50,7 +51,7 @@
     "db:setup": "bun db:migrate && bun db:seed",
     "db:push:local": "bun --bun drizzle-kit push --config=drizzle.config.local.ts",
     "db:setup:local": "bun db:migrate:local && bun db:seed:local",
-    "stripe:dev": "stripe listen --forward-to localhost:3000/api/billing/webhook",
+    "stripe:dev": "source .env.local 2>/dev/null; stripe listen --forward-to localhost:3000/api/billing/webhook --api-key=${STRIPE_SECRET_KEY}",
     "qstash:dev": "docker run -p 8080:8080 public.ecr.aws/upstash/qstash:latest qstash dev",
     "qstash:dev:proxy": "docker run -p 8080:8080 -e HTTP_PROXY=http://host.docker.internal:9090 -e HTTPS_PROXY=http://host.docker.internal:9090 -e NO_PROXY=localhost,127.0.0.1,host.docker.internal -e NODE_TLS_REJECT_UNAUTHORIZED=1 public.ecr.aws/upstash/qstash:latest qstash dev",
     "setup": "npx tsx scripts/setup.ts",
