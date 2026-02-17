@@ -10,7 +10,8 @@ import {
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import { AlertCircle, VideoIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Check, Copy, VideoIcon } from 'lucide-react';
 import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { VideoPlayer } from './video-player';
@@ -38,6 +39,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   onEnded,
 }) => {
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const imageDimensions = aspectRatioToDimensions(aspectRatio);
   // Get current frame and next frame
@@ -63,6 +65,17 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           currentFrameIndex + 1
         )
       : undefined;
+
+  const handleCopyUrl = useCallback(async () => {
+    if (!currentFrame?.thumbnailUrl) return;
+    try {
+      await navigator.clipboard.writeText(currentFrame.thumbnailUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+    }
+  }, [currentFrame?.thumbnailUrl]);
 
   // Check video status
   const hasCompletedVideo =
@@ -138,6 +151,23 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             />
           )}
 
+          {/* Copy URL overlay */}
+          {currentFrame.thumbnailUrl && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+              onClick={() => void handleCopyUrl()}
+              aria-label="Copy image URL"
+            >
+              {copiedUrl ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+
           {/* Error overlay */}
           <div
             className={cn(
@@ -154,6 +184,22 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         </div>
       ) : (
         <div className={cn('relative flex flex-1', className)}>
+          {/* Copy URL overlay */}
+          {currentFrame.thumbnailUrl && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+              onClick={() => void handleCopyUrl()}
+              aria-label="Copy image URL"
+            >
+              {copiedUrl ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          )}
           <VideoPlayer
             key={currentFrame.videoUrl} // Force re-render when video changes
             src={
