@@ -10,6 +10,7 @@ import { LOW_BALANCE_THRESHOLD_USD } from '@/lib/billing/constants';
 export const BILLING_BALANCE_KEY = ['billing-balance'] as const;
 
 type BalanceData = {
+  billingEnabled?: boolean;
   balance: number;
   autoTopUp: {
     enabled: boolean;

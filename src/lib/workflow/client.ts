@@ -23,18 +23,16 @@ function getWorkflowClient(): WorkflowClient {
     );
   }
 
+  const bypassSecret = env.VERCEL_AUTOMATION_BYPASS_SECRET;
   return new WorkflowClient({
     token,
-    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    headers: bypassSecret
       ? {
-          'Upstash-Forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'x-vercel-protection-bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'upstash-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
+          'x-vercel-protection-bypass': bypassSecret,
+          'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
           'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+            bypassSecret,
         }
       : undefined,
   });
@@ -54,18 +52,16 @@ export function getQStashClient(): QStashClient {
     );
   }
 
+  const bypassSecret = env.VERCEL_AUTOMATION_BYPASS_SECRET;
   return new QStashClient({
     token,
-    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    headers: bypassSecret
       ? {
-          'Upstash-Forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'x-vercel-protection-bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'upstash-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
+          'x-vercel-protection-bypass': bypassSecret,
+          'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
           'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+            bypassSecret,
         }
       : undefined,
   });
@@ -110,7 +106,7 @@ export async function triggerWorkflow(
   console.log('[TriggerWorkflow] Body:', body);
   console.log('[TriggerWorkflow] Options:', options);
   // Skip workflow triggers in E2E tests - return mock ID
-  if (process.env.E2E_TEST === 'true') {
+  if (getEnv().E2E_TEST === 'true') {
     const mockId = options?.deduplicationId ?? `mock-${Date.now()}`;
     console.log(`[E2E] Skipping workflow trigger: ${url} (mock ID: ${mockId})`);
     return mockId;
@@ -127,18 +123,18 @@ export async function triggerWorkflow(
     // Use deduplicationId as workflowRunId to prevent duplicate runs
     // Each workflow run must have a unique ID - if the ID exists, no duplicate is created
     workflowRunId: options?.deduplicationId,
-    headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      ? {
-          'Upstash-Forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'upstash-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-        }
-      : undefined,
+    headers: (() => {
+      const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
+      return bypassSecret
+        ? {
+            'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
+            'X-Vercel-Protection-Bypass': bypassSecret,
+            'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
+            'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
+              bypassSecret,
+          }
+        : undefined;
+    })(),
   });
   console.log('[TriggerWorkflow] Response:', response);
   return response.workflowRunId;

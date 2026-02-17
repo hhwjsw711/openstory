@@ -19,6 +19,7 @@ import {
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
 import { authWithTeamMiddleware } from './middleware';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
@@ -125,12 +126,12 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       throw new Error('AI service not configured');
     }
 
-    // Pre-flight billing check (skip if team has own OpenRouter key)
+    // Pre-flight billing check (skip if team has own OpenRouter key or billing disabled)
     const teamHasOrKey = await apiKeyService.hasKey(
       context.teamId,
       'openrouter'
     );
-    if (!teamHasOrKey) {
+    if (isBillingEnabled() && !teamHasOrKey) {
       const estimatedCost = estimateLLMCost(1);
       const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
       if (!canAfford) {
@@ -151,8 +152,8 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       temperature: 0.3,
     });
 
-    // Deduct actual cost from OpenRouter response (skip if team has own key)
-    if (!teamHasOrKey) {
+    // Deduct actual cost from OpenRouter response (skip if team has own key or billing disabled)
+    if (isBillingEnabled() && !teamHasOrKey) {
       const actualCost = completion.usage?.cost;
       if (actualCost && actualCost > 0) {
         await deductCredits(context.teamId, actualCost, {
@@ -218,12 +219,12 @@ export const enhanceScriptFn = createServerFn({ method: 'POST' })
       );
     }
 
-    // Pre-flight billing check (skip if team has own OpenRouter key)
+    // Pre-flight billing check (skip if team has own OpenRouter key or billing disabled)
     const teamHasOrKey = await apiKeyService.hasKey(
       context.teamId,
       'openrouter'
     );
-    if (!teamHasOrKey) {
+    if (isBillingEnabled() && !teamHasOrKey) {
       const estimatedCost = estimateLLMCost(1);
       const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
       if (!canAfford) {
@@ -245,8 +246,8 @@ export const enhanceScriptFn = createServerFn({ method: 'POST' })
       throw new Error(result.error || 'Failed to enhance script');
     }
 
-    // Deduct estimated LLM cost (skip if team has own key)
-    if (!teamHasOrKey) {
+    // Deduct estimated LLM cost (skip if team has own key or billing disabled)
+    if (isBillingEnabled() && !teamHasOrKey) {
       const cost = estimateLLMCost(1);
       if (cost > 0) {
         await deductCredits(context.teamId, cost, {

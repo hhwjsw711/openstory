@@ -139,6 +139,20 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     error: balanceError,
   } = useBillingBalance();
 
+  // When billing is disabled server-side, show a simple message
+  if (!balanceLoading && balanceData?.billingEnabled === false) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing</CardTitle>
+          <CardDescription>
+            Billing is not enabled for this instance.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   const {
     data: txData,
     isLoading: txLoading,

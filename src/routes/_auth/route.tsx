@@ -1,6 +1,6 @@
 /**
  * Auth Layout
- * Layout for authentication pages (login, access code entry)
+ * Layout for authentication pages (login, verify)
  */
 
 import { createFileRoute, Outlet } from '@tanstack/react-router';

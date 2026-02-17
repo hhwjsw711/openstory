@@ -176,14 +176,15 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             },
           },
         },
-        headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-          ? {
-              'Upstash-Forward-X-Vercel-Protection-Bypass':
-                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-              'x-vercel-protection-bypass':
-                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-            }
-          : undefined,
+        headers: (() => {
+          const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
+          return bypassSecret
+            ? {
+                'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
+                'x-vercel-protection-bypass': bypassSecret,
+              }
+            : undefined;
+        })(),
       }
     );
     await context.run('log-generation', async () => {

@@ -6,6 +6,8 @@
  * where process.env is only populated at request time.
  */
 
+import { getEnv } from '#env';
+
 /**
  * Platform detection
  */
@@ -20,16 +22,17 @@ type DeploymentPlatform =
  * Detect which platform the app is running on
  */
 export function getDeploymentPlatform(): DeploymentPlatform {
-  if (process.env.CF_PAGES) {
+  const env = getEnv();
+  if (env.CF_PAGES) {
     return 'cloudflare';
   }
-  if (process.env.VERCEL) {
+  if (env.VERCEL) {
     return 'vercel';
   }
-  if (process.env.RAILWAY_ENVIRONMENT) {
+  if (env.RAILWAY_ENVIRONMENT) {
     return 'railway';
   }
-  if (process.env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === 'development') {
     return 'local';
   }
   return 'unknown';
@@ -47,33 +50,17 @@ export function getServerAppUrl(request: Request): string {
 
 /**
  * Get production deployment app URL
- * Used for OAuth redirects on preview branches
+ * Used for OAuth redirects on preview branches.
+ * If APP_URL env var is set, use that as the canonical production URL.
+ * Otherwise fall back to the request origin.
  */
 export function getProductionDeploymentAppUrl(request: Request): string {
-  const appUrl = getServerAppUrl(request);
-
-  if (
-    appUrl === 'https://app.velro.ai' ||
-    appUrl === 'https://r.velro.ai' ||
-    appUrl === 'https://v.velro.ai' ||
-    appUrl === 'https://cf.velro.ai'
-  ) {
-    return appUrl;
-  }
-  if (/https:\/\/.*\.velro.ai/.test(appUrl)) {
-    return 'https://app.velro.ai';
-  }
-  if (/https:\/\/.*\.velro.workers.dev/.test(appUrl)) {
-    return 'https://cf.velro.ai';
-  }
-  if (/https:\/\/velro.*\.vercel.app/.test(appUrl)) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (/https:\/\/.*\.railway.app/.test(appUrl)) {
-    return 'https://velro.up.railway.app';
+  const envAppUrl = getEnv().APP_URL;
+  if (envAppUrl) {
+    return envAppUrl.replace(/\/$/, '');
   }
 
-  return appUrl;
+  return getServerAppUrl(request);
 }
 
 export function isProductionDeployment(request: Request): boolean {
@@ -89,36 +76,31 @@ export function isPreviewDeployment(request: Request): boolean {
 
 /**
  * Check if a hostname is a preview deployment
- * Pure function that can be used on server or client
+ * Pure function that can be used on server or client.
+ * If APP_URL env var is set, a preview host is any host that doesn't match it.
+ * If no APP_URL, consider it non-preview.
  */
 export function isPreviewHost(host: string): boolean {
-  // Production domains - not preview
-  const productionHosts = [
-    'app.velro.ai',
-    'r.velro.ai',
-    'v.velro.ai',
-    'cf.velro.ai',
-    'velro.up.railway.app',
-  ];
-
-  if (productionHosts.includes(host) || host.startsWith('localhost')) {
+  if (host.startsWith('localhost')) {
     return false;
   }
 
-  // Preview patterns
-  const previewPatterns = [
-    /.*\.velro\.ai$/, // Cloudflare preview
-    /.*\.velro\.workers\.dev$/, // Cloudflare Workers preview
-    /velro.*\.vercel\.app$/, // Vercel preview
-    /.*\.railway\.app$/, // Railway preview
-  ];
+  const envAppUrl = getEnv().APP_URL;
+  if (!envAppUrl) {
+    return false;
+  }
 
-  return previewPatterns.some((pattern) => pattern.test(host));
+  try {
+    const productionHost = new URL(envAppUrl).host;
+    return host !== productionHost;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Check if we're running in local development environment
  */
 export function isLocalDevelopment(): boolean {
-  return process.env.NODE_ENV === 'development';
+  return getEnv().NODE_ENV === 'development';
 }

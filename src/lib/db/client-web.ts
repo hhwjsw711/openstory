@@ -44,7 +44,7 @@ export const getDb = (): Database => {
    */
   _db = drizzle(client, {
     schema,
-    logger: process.env.NODE_ENV === 'development',
+    logger: getEnv().NODE_ENV === 'development',
     casing: 'snake_case',
   });
 

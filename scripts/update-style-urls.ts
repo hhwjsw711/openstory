@@ -19,7 +19,7 @@ const SYSTEM_TEAM_SLUG = 'system-templates';
  * Falls back to staging if not set
  */
 function getPublicAssetsDomain(): string {
-  const domain = process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai';
+  const domain = process.env.R2_PUBLIC_ASSETS_DOMAIN ?? '';
   return domain;
 }
 

@@ -8,428 +8,418 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
-import { Route as AuthRouteRouteImport } from './routes/_auth/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
-import { Route as ApiMcpRouteImport } from './routes/api/mcp'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
-import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
-import { Route as AuthLoginRouteImport } from './routes/_auth/login'
-import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
-import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route'
-import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index'
-import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
-import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
-import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
-import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
-import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
-import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
-import { Route as ApiBillingTransactionsRouteImport } from './routes/api/billing/transactions'
-import { Route as ApiBillingCheckoutRouteImport } from './routes/api/billing/checkout'
-import { Route as ApiBillingBalanceRouteImport } from './routes/api/billing/balance'
-import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/auto-topup'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
-import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
-import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protected/settings/billing'
-import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
-import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
-import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
-import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
-import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
-import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts'
-import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters'
-import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design'
-import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
-import { Route as ProtectedSequencesIdTheatreRouteImport } from './routes/_protected/sequences/$id/theatre'
-import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
-import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
-import { Route as ProtectedSequencesIdLocationsIndexRouteImport } from './routes/_protected/sequences/$id/locations/index'
-import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
-import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
-import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
-import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId'
-import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as ProtectedRouteRouteImport } from './routes/_protected/route';
+import { Route as AuthRouteRouteImport } from './routes/_auth/route';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as ApiRealtimeRouteImport } from './routes/api/realtime';
+import { Route as ApiMcpRouteImport } from './routes/api/mcp';
+import { Route as ApiHealthRouteImport } from './routes/api/health';
+import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval';
+import { Route as AuthVerifyRouteImport } from './routes/_auth/verify';
+import { Route as AuthLoginRouteImport } from './routes/_auth/login';
+import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route';
+import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index';
+import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index';
+import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index';
+import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index';
+import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$';
+import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback';
+import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook';
+import { Route as ApiBillingTransactionsRouteImport } from './routes/api/billing/transactions';
+import { Route as ApiBillingCheckoutRouteImport } from './routes/api/billing/checkout';
+import { Route as ApiBillingBalanceRouteImport } from './routes/api/billing/balance';
+import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/auto-topup';
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$';
+import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id';
+import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys';
+import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protected/settings/billing';
+import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys';
+import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new';
+import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId';
+import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts';
+import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes';
+import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts';
+import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters';
+import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design';
+import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script';
+import { Route as ProtectedSequencesIdTheatreRouteImport } from './routes/_protected/sequences/$id/theatre';
+import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script';
+import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes';
+import { Route as ProtectedSequencesIdLocationsIndexRouteImport } from './routes/_protected/sequences/$id/locations/index';
+import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index';
+import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept';
+import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt';
+import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId';
+import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId';
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthRouteRoute = AuthRouteRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
   id: '/api/realtime',
   path: '/api/realtime',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
   path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
   id: '/eval',
   path: '/eval',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
   getParentRoute: () => AuthRouteRoute,
-} as any)
+} as any);
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => AuthRouteRoute,
-} as any)
-const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
-  id: '/invite-code',
-  path: '/invite-code',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
+} as any);
 const ProtectedSettingsRouteRoute = ProtectedSettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ProtectedTalentIndexRoute = ProtectedTalentIndexRouteImport.update({
   id: '/talent/',
   path: '/talent/',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedSettingsRouteRoute,
-} as any)
+} as any);
 const ProtectedSequencesIndexRoute = ProtectedSequencesIndexRouteImport.update({
   id: '/sequences/',
   path: '/sequences/',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ProtectedLocationsIndexRoute = ProtectedLocationsIndexRouteImport.update({
   id: '/locations/',
   path: '/locations/',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   id: '/api/workflows/$',
   path: '/api/workflows/$',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiOpenrouterCallbackRoute = ApiOpenrouterCallbackRouteImport.update({
   id: '/api/openrouter/callback',
   path: '/api/openrouter/callback',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
   id: '/api/billing/webhook',
   path: '/api/billing/webhook',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiBillingTransactionsRoute = ApiBillingTransactionsRouteImport.update({
   id: '/api/billing/transactions',
   path: '/api/billing/transactions',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiBillingCheckoutRoute = ApiBillingCheckoutRouteImport.update({
   id: '/api/billing/checkout',
   path: '/api/billing/checkout',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiBillingBalanceRoute = ApiBillingBalanceRouteImport.update({
   id: '/api/billing/balance',
   path: '/api/billing/balance',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiBillingAutoTopupRoute = ApiBillingAutoTopupRouteImport.update({
   id: '/api/billing/auto-topup',
   path: '/api/billing/auto-topup',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProtectedTalentIdRoute = ProtectedTalentIdRouteImport.update({
   id: '/talent/$id',
   path: '/talent/$id',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ProtectedSettingsPasskeysRoute =
   ProtectedSettingsPasskeysRouteImport.update({
     id: '/passkeys',
     path: '/passkeys',
     getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSettingsBillingRoute =
   ProtectedSettingsBillingRouteImport.update({
     id: '/billing',
     path: '/billing',
     getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSettingsApiKeysRoute =
   ProtectedSettingsApiKeysRouteImport.update({
     id: '/api-keys',
     path: '/api-keys',
     getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesNewRoute = ProtectedSequencesNewRouteImport.update({
   id: '/sequences/new',
   path: '/sequences/new',
   getParentRoute: () => ProtectedRouteRoute,
-} as any)
+} as any);
 const ProtectedLocationsLocationIdRoute =
   ProtectedLocationsLocationIdRouteImport.update({
     id: '/locations/$locationId',
     path: '/locations/$locationId',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ApiMcpStreamVisualPromptsRoute =
   ApiMcpStreamVisualPromptsRouteImport.update({
     id: '/stream/visual-prompts',
     path: '/stream/visual-prompts',
     getParentRoute: () => ApiMcpRoute,
-  } as any)
+  } as any);
 const ApiMcpStreamSplitScenesRoute = ApiMcpStreamSplitScenesRouteImport.update({
   id: '/stream/split-scenes',
   path: '/stream/split-scenes',
   getParentRoute: () => ApiMcpRoute,
-} as any)
+} as any);
 const ApiMcpStreamMotionPromptsRoute =
   ApiMcpStreamMotionPromptsRouteImport.update({
     id: '/stream/motion-prompts',
     path: '/stream/motion-prompts',
     getParentRoute: () => ApiMcpRoute,
-  } as any)
+  } as any);
 const ApiMcpStreamExtractCharactersRoute =
   ApiMcpStreamExtractCharactersRouteImport.update({
     id: '/stream/extract-characters',
     path: '/stream/extract-characters',
     getParentRoute: () => ApiMcpRoute,
-  } as any)
+  } as any);
 const ApiMcpStreamAudioDesignRoute = ApiMcpStreamAudioDesignRouteImport.update({
   id: '/stream/audio-design',
   path: '/stream/audio-design',
   getParentRoute: () => ApiMcpRoute,
-} as any)
+} as any);
 const ApiMcpStreamAnalyzeScriptRoute =
   ApiMcpStreamAnalyzeScriptRouteImport.update({
     id: '/stream/analyze-script',
     path: '/stream/analyze-script',
     getParentRoute: () => ApiMcpRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdTheatreRoute =
   ProtectedSequencesIdTheatreRouteImport.update({
     id: '/sequences/$id/theatre',
     path: '/sequences/$id/theatre',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdScriptRoute =
   ProtectedSequencesIdScriptRouteImport.update({
     id: '/sequences/$id/script',
     path: '/sequences/$id/script',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdScenesRoute =
   ProtectedSequencesIdScenesRouteImport.update({
     id: '/sequences/$id/scenes',
     path: '/sequences/$id/scenes',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdLocationsIndexRoute =
   ProtectedSequencesIdLocationsIndexRouteImport.update({
     id: '/sequences/$id/locations/',
     path: '/sequences/$id/locations/',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdCastIndexRoute =
   ProtectedSequencesIdCastIndexRouteImport.update({
     id: '/sequences/$id/cast/',
     path: '/sequences/$id/cast/',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ApiTeamsInvitationsInvitationIdAcceptRoute =
   ApiTeamsInvitationsInvitationIdAcceptRouteImport.update({
     id: '/api/teams/invitations/$invitationId/accept',
     path: '/api/teams/invitations/$invitationId/accept',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ApiSequencesSequenceIdChaptersVttRoute =
   ApiSequencesSequenceIdChaptersVttRouteImport.update({
     id: '/api/sequences/$sequenceId/chapters/vtt',
     path: '/api/sequences/$sequenceId/chapters/vtt',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ProtectedSequencesIdLocationsLocationIdRoute =
   ProtectedSequencesIdLocationsLocationIdRouteImport.update({
     id: '/sequences/$id/locations/$locationId',
     path: '/sequences/$id/locations/$locationId',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 const ProtectedSequencesIdCastCharacterIdRoute =
   ProtectedSequencesIdCastCharacterIdRouteImport.update({
     id: '/sequences/$id/cast/$characterId',
     path: '/sequences/$id/cast/$characterId',
     getParentRoute: () => ProtectedRouteRoute,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/invite-code': typeof AuthInviteCodeRoute
-  '/login': typeof AuthLoginRoute
-  '/verify': typeof AuthVerifyRoute
-  '/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
-  '/api/realtime': typeof ApiRealtimeRoute
-  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
-  '/sequences/new': typeof ProtectedSequencesNewRoute
-  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/talent/$id': typeof ProtectedTalentIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
-  '/api/billing/webhook': typeof ApiBillingWebhookRoute
-  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
-  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/locations/': typeof ProtectedLocationsIndexRoute
-  '/sequences/': typeof ProtectedSequencesIndexRoute
-  '/settings/': typeof ProtectedSettingsIndexRoute
-  '/talent/': typeof ProtectedTalentIndexRoute
-  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
-  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
-  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
-  '/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
+  '/': typeof IndexRoute;
+  '/settings': typeof ProtectedSettingsRouteRouteWithChildren;
+  '/login': typeof AuthLoginRoute;
+  '/verify': typeof AuthVerifyRoute;
+  '/eval': typeof ProtectedEvalRoute;
+  '/api/health': typeof ApiHealthRoute;
+  '/api/mcp': typeof ApiMcpRouteWithChildren;
+  '/api/realtime': typeof ApiRealtimeRoute;
+  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute;
+  '/sequences/new': typeof ProtectedSequencesNewRoute;
+  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute;
+  '/settings/billing': typeof ProtectedSettingsBillingRoute;
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute;
+  '/talent/$id': typeof ProtectedTalentIdRoute;
+  '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute;
+  '/api/billing/balance': typeof ApiBillingBalanceRoute;
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute;
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute;
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute;
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute;
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
+  '/locations/': typeof ProtectedLocationsIndexRoute;
+  '/sequences/': typeof ProtectedSequencesIndexRoute;
+  '/settings/': typeof ProtectedSettingsIndexRoute;
+  '/talent/': typeof ProtectedTalentIndexRoute;
+  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
+  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute;
+  '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute;
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute;
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute;
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute;
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute;
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute;
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute;
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute;
+  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute;
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute;
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute;
+  '/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute;
+  '/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/invite-code': typeof AuthInviteCodeRoute
-  '/login': typeof AuthLoginRoute
-  '/verify': typeof AuthVerifyRoute
-  '/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
-  '/api/realtime': typeof ApiRealtimeRoute
-  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
-  '/sequences/new': typeof ProtectedSequencesNewRoute
-  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/talent/$id': typeof ProtectedTalentIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
-  '/api/billing/webhook': typeof ApiBillingWebhookRoute
-  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
-  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/locations': typeof ProtectedLocationsIndexRoute
-  '/sequences': typeof ProtectedSequencesIndexRoute
-  '/settings': typeof ProtectedSettingsIndexRoute
-  '/talent': typeof ProtectedTalentIndexRoute
-  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
-  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
-  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
-  '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
+  '/': typeof IndexRoute;
+  '/login': typeof AuthLoginRoute;
+  '/verify': typeof AuthVerifyRoute;
+  '/eval': typeof ProtectedEvalRoute;
+  '/api/health': typeof ApiHealthRoute;
+  '/api/mcp': typeof ApiMcpRouteWithChildren;
+  '/api/realtime': typeof ApiRealtimeRoute;
+  '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute;
+  '/sequences/new': typeof ProtectedSequencesNewRoute;
+  '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute;
+  '/settings/billing': typeof ProtectedSettingsBillingRoute;
+  '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute;
+  '/talent/$id': typeof ProtectedTalentIdRoute;
+  '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute;
+  '/api/billing/balance': typeof ApiBillingBalanceRoute;
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute;
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute;
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute;
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute;
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
+  '/locations': typeof ProtectedLocationsIndexRoute;
+  '/sequences': typeof ProtectedSequencesIndexRoute;
+  '/settings': typeof ProtectedSettingsIndexRoute;
+  '/talent': typeof ProtectedTalentIndexRoute;
+  '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
+  '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute;
+  '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute;
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute;
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute;
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute;
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute;
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute;
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute;
+  '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute;
+  '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute;
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute;
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute;
+  '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute;
+  '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_auth': typeof AuthRouteRouteWithChildren
-  '/_protected': typeof ProtectedRouteRouteWithChildren
-  '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/_auth/invite-code': typeof AuthInviteCodeRoute
-  '/_auth/login': typeof AuthLoginRoute
-  '/_auth/verify': typeof AuthVerifyRoute
-  '/_protected/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
-  '/api/realtime': typeof ApiRealtimeRoute
-  '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
-  '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
-  '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/_protected/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/_protected/talent/$id': typeof ProtectedTalentIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
-  '/api/billing/webhook': typeof ApiBillingWebhookRoute
-  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
-  '/api/workflows/$': typeof ApiWorkflowsSplatRoute
-  '/_protected/locations/': typeof ProtectedLocationsIndexRoute
-  '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
-  '/_protected/settings/': typeof ProtectedSettingsIndexRoute
-  '/_protected/talent/': typeof ProtectedTalentIndexRoute
-  '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
-  '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
-  '/_protected/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
-  '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
-  '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
-  '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
-  '/_protected/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/_auth': typeof AuthRouteRouteWithChildren;
+  '/_protected': typeof ProtectedRouteRouteWithChildren;
+  '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren;
+  '/_auth/login': typeof AuthLoginRoute;
+  '/_auth/verify': typeof AuthVerifyRoute;
+  '/_protected/eval': typeof ProtectedEvalRoute;
+  '/api/health': typeof ApiHealthRoute;
+  '/api/mcp': typeof ApiMcpRouteWithChildren;
+  '/api/realtime': typeof ApiRealtimeRoute;
+  '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute;
+  '/_protected/sequences/new': typeof ProtectedSequencesNewRoute;
+  '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute;
+  '/_protected/settings/billing': typeof ProtectedSettingsBillingRoute;
+  '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute;
+  '/_protected/talent/$id': typeof ProtectedTalentIdRoute;
+  '/api/auth/$': typeof ApiAuthSplatRoute;
+  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute;
+  '/api/billing/balance': typeof ApiBillingBalanceRoute;
+  '/api/billing/checkout': typeof ApiBillingCheckoutRoute;
+  '/api/billing/transactions': typeof ApiBillingTransactionsRoute;
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute;
+  '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute;
+  '/api/workflows/$': typeof ApiWorkflowsSplatRoute;
+  '/_protected/locations/': typeof ProtectedLocationsIndexRoute;
+  '/_protected/sequences/': typeof ProtectedSequencesIndexRoute;
+  '/_protected/settings/': typeof ProtectedSettingsIndexRoute;
+  '/_protected/talent/': typeof ProtectedTalentIndexRoute;
+  '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute;
+  '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute;
+  '/_protected/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute;
+  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute;
+  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute;
+  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute;
+  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute;
+  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute;
+  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute;
+  '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute;
+  '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute;
+  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute;
+  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute;
+  '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute;
+  '/_protected/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/settings'
-    | '/invite-code'
     | '/login'
     | '/verify'
     | '/eval'
@@ -468,11 +458,10 @@ export interface FileRouteTypes {
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast/'
-    | '/sequences/$id/locations/'
-  fileRoutesByTo: FileRoutesByTo
+    | '/sequences/$id/locations/';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
-    | '/invite-code'
     | '/login'
     | '/verify'
     | '/eval'
@@ -511,14 +500,13 @@ export interface FileRouteTypes {
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast'
-    | '/sequences/$id/locations'
+    | '/sequences/$id/locations';
   id:
     | '__root__'
     | '/'
     | '/_auth'
     | '/_protected'
     | '/_protected/settings'
-    | '/_auth/invite-code'
     | '/_auth/login'
     | '/_auth/verify'
     | '/_protected/eval'
@@ -557,362 +545,353 @@ export interface FileRouteTypes {
     | '/api/sequences/$sequenceId/chapters/vtt'
     | '/api/teams/invitations/$invitationId/accept'
     | '/_protected/sequences/$id/cast/'
-    | '/_protected/sequences/$id/locations/'
-  fileRoutesById: FileRoutesById
+    | '/_protected/sequences/$id/locations/';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AuthRouteRoute: typeof AuthRouteRouteWithChildren
-  ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
-  ApiHealthRoute: typeof ApiHealthRoute
-  ApiMcpRoute: typeof ApiMcpRouteWithChildren
-  ApiRealtimeRoute: typeof ApiRealtimeRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
-  ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
-  ApiBillingCheckoutRoute: typeof ApiBillingCheckoutRoute
-  ApiBillingTransactionsRoute: typeof ApiBillingTransactionsRoute
-  ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
-  ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
-  ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
-  ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
-  ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
+  IndexRoute: typeof IndexRoute;
+  AuthRouteRoute: typeof AuthRouteRouteWithChildren;
+  ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren;
+  ApiHealthRoute: typeof ApiHealthRoute;
+  ApiMcpRoute: typeof ApiMcpRouteWithChildren;
+  ApiRealtimeRoute: typeof ApiRealtimeRoute;
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
+  ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute;
+  ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute;
+  ApiBillingCheckoutRoute: typeof ApiBillingCheckoutRoute;
+  ApiBillingTransactionsRoute: typeof ApiBillingTransactionsRoute;
+  ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute;
+  ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute;
+  ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute;
+  ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute;
+  ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/_protected': {
-      id: '/_protected'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof ProtectedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/_protected';
+      path: '';
+      fullPath: '/';
+      preLoaderRoute: typeof ProtectedRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/_auth';
+      path: '';
+      fullPath: '/';
+      preLoaderRoute: typeof AuthRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/realtime': {
-      id: '/api/realtime'
-      path: '/api/realtime'
-      fullPath: '/api/realtime'
-      preLoaderRoute: typeof ApiRealtimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/realtime';
+      path: '/api/realtime';
+      fullPath: '/api/realtime';
+      preLoaderRoute: typeof ApiRealtimeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/mcp': {
-      id: '/api/mcp'
-      path: '/api/mcp'
-      fullPath: '/api/mcp'
-      preLoaderRoute: typeof ApiMcpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/mcp';
+      path: '/api/mcp';
+      fullPath: '/api/mcp';
+      preLoaderRoute: typeof ApiMcpRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/health';
+      path: '/api/health';
+      fullPath: '/api/health';
+      preLoaderRoute: typeof ApiHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_protected/eval': {
-      id: '/_protected/eval'
-      path: '/eval'
-      fullPath: '/eval'
-      preLoaderRoute: typeof ProtectedEvalRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/eval';
+      path: '/eval';
+      fullPath: '/eval';
+      preLoaderRoute: typeof ProtectedEvalRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_auth/verify': {
-      id: '/_auth/verify'
-      path: '/verify'
-      fullPath: '/verify'
-      preLoaderRoute: typeof AuthVerifyRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
+      id: '/_auth/verify';
+      path: '/verify';
+      fullPath: '/verify';
+      preLoaderRoute: typeof AuthVerifyRouteImport;
+      parentRoute: typeof AuthRouteRoute;
+    };
     '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
-    '/_auth/invite-code': {
-      id: '/_auth/invite-code'
-      path: '/invite-code'
-      fullPath: '/invite-code'
-      preLoaderRoute: typeof AuthInviteCodeRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
+      id: '/_auth/login';
+      path: '/login';
+      fullPath: '/login';
+      preLoaderRoute: typeof AuthLoginRouteImport;
+      parentRoute: typeof AuthRouteRoute;
+    };
     '/_protected/settings': {
-      id: '/_protected/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof ProtectedSettingsRouteRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/settings';
+      path: '/settings';
+      fullPath: '/settings';
+      preLoaderRoute: typeof ProtectedSettingsRouteRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/talent/': {
-      id: '/_protected/talent/'
-      path: '/talent'
-      fullPath: '/talent/'
-      preLoaderRoute: typeof ProtectedTalentIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/talent/';
+      path: '/talent';
+      fullPath: '/talent/';
+      preLoaderRoute: typeof ProtectedTalentIndexRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/settings/': {
-      id: '/_protected/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
+      id: '/_protected/settings/';
+      path: '/';
+      fullPath: '/settings/';
+      preLoaderRoute: typeof ProtectedSettingsIndexRouteImport;
+      parentRoute: typeof ProtectedSettingsRouteRoute;
+    };
     '/_protected/sequences/': {
-      id: '/_protected/sequences/'
-      path: '/sequences'
-      fullPath: '/sequences/'
-      preLoaderRoute: typeof ProtectedSequencesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/';
+      path: '/sequences';
+      fullPath: '/sequences/';
+      preLoaderRoute: typeof ProtectedSequencesIndexRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/locations/': {
-      id: '/_protected/locations/'
-      path: '/locations'
-      fullPath: '/locations/'
-      preLoaderRoute: typeof ProtectedLocationsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/locations/';
+      path: '/locations';
+      fullPath: '/locations/';
+      preLoaderRoute: typeof ProtectedLocationsIndexRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/api/workflows/$': {
-      id: '/api/workflows/$'
-      path: '/api/workflows/$'
-      fullPath: '/api/workflows/$'
-      preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/workflows/$';
+      path: '/api/workflows/$';
+      fullPath: '/api/workflows/$';
+      preLoaderRoute: typeof ApiWorkflowsSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/openrouter/callback': {
-      id: '/api/openrouter/callback'
-      path: '/api/openrouter/callback'
-      fullPath: '/api/openrouter/callback'
-      preLoaderRoute: typeof ApiOpenrouterCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/openrouter/callback';
+      path: '/api/openrouter/callback';
+      fullPath: '/api/openrouter/callback';
+      preLoaderRoute: typeof ApiOpenrouterCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/billing/webhook': {
-      id: '/api/billing/webhook'
-      path: '/api/billing/webhook'
-      fullPath: '/api/billing/webhook'
-      preLoaderRoute: typeof ApiBillingWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/billing/webhook';
+      path: '/api/billing/webhook';
+      fullPath: '/api/billing/webhook';
+      preLoaderRoute: typeof ApiBillingWebhookRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/billing/transactions': {
-      id: '/api/billing/transactions'
-      path: '/api/billing/transactions'
-      fullPath: '/api/billing/transactions'
-      preLoaderRoute: typeof ApiBillingTransactionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/billing/transactions';
+      path: '/api/billing/transactions';
+      fullPath: '/api/billing/transactions';
+      preLoaderRoute: typeof ApiBillingTransactionsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/billing/checkout': {
-      id: '/api/billing/checkout'
-      path: '/api/billing/checkout'
-      fullPath: '/api/billing/checkout'
-      preLoaderRoute: typeof ApiBillingCheckoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/billing/checkout';
+      path: '/api/billing/checkout';
+      fullPath: '/api/billing/checkout';
+      preLoaderRoute: typeof ApiBillingCheckoutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/billing/balance': {
-      id: '/api/billing/balance'
-      path: '/api/billing/balance'
-      fullPath: '/api/billing/balance'
-      preLoaderRoute: typeof ApiBillingBalanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/billing/balance';
+      path: '/api/billing/balance';
+      fullPath: '/api/billing/balance';
+      preLoaderRoute: typeof ApiBillingBalanceRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/billing/auto-topup': {
-      id: '/api/billing/auto-topup'
-      path: '/api/billing/auto-topup'
-      fullPath: '/api/billing/auto-topup'
-      preLoaderRoute: typeof ApiBillingAutoTopupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/billing/auto-topup';
+      path: '/api/billing/auto-topup';
+      fullPath: '/api/billing/auto-topup';
+      preLoaderRoute: typeof ApiBillingAutoTopupRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/auth/$';
+      path: '/api/auth/$';
+      fullPath: '/api/auth/$';
+      preLoaderRoute: typeof ApiAuthSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_protected/talent/$id': {
-      id: '/_protected/talent/$id'
-      path: '/talent/$id'
-      fullPath: '/talent/$id'
-      preLoaderRoute: typeof ProtectedTalentIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/talent/$id';
+      path: '/talent/$id';
+      fullPath: '/talent/$id';
+      preLoaderRoute: typeof ProtectedTalentIdRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/settings/passkeys': {
-      id: '/_protected/settings/passkeys'
-      path: '/passkeys'
-      fullPath: '/settings/passkeys'
-      preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
+      id: '/_protected/settings/passkeys';
+      path: '/passkeys';
+      fullPath: '/settings/passkeys';
+      preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport;
+      parentRoute: typeof ProtectedSettingsRouteRoute;
+    };
     '/_protected/settings/billing': {
-      id: '/_protected/settings/billing'
-      path: '/billing'
-      fullPath: '/settings/billing'
-      preLoaderRoute: typeof ProtectedSettingsBillingRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
+      id: '/_protected/settings/billing';
+      path: '/billing';
+      fullPath: '/settings/billing';
+      preLoaderRoute: typeof ProtectedSettingsBillingRouteImport;
+      parentRoute: typeof ProtectedSettingsRouteRoute;
+    };
     '/_protected/settings/api-keys': {
-      id: '/_protected/settings/api-keys'
-      path: '/api-keys'
-      fullPath: '/settings/api-keys'
-      preLoaderRoute: typeof ProtectedSettingsApiKeysRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
+      id: '/_protected/settings/api-keys';
+      path: '/api-keys';
+      fullPath: '/settings/api-keys';
+      preLoaderRoute: typeof ProtectedSettingsApiKeysRouteImport;
+      parentRoute: typeof ProtectedSettingsRouteRoute;
+    };
     '/_protected/sequences/new': {
-      id: '/_protected/sequences/new'
-      path: '/sequences/new'
-      fullPath: '/sequences/new'
-      preLoaderRoute: typeof ProtectedSequencesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/new';
+      path: '/sequences/new';
+      fullPath: '/sequences/new';
+      preLoaderRoute: typeof ProtectedSequencesNewRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/locations/$locationId': {
-      id: '/_protected/locations/$locationId'
-      path: '/locations/$locationId'
-      fullPath: '/locations/$locationId'
-      preLoaderRoute: typeof ProtectedLocationsLocationIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/locations/$locationId';
+      path: '/locations/$locationId';
+      fullPath: '/locations/$locationId';
+      preLoaderRoute: typeof ProtectedLocationsLocationIdRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/api/mcp/stream/visual-prompts': {
-      id: '/api/mcp/stream/visual-prompts'
-      path: '/stream/visual-prompts'
-      fullPath: '/api/mcp/stream/visual-prompts'
-      preLoaderRoute: typeof ApiMcpStreamVisualPromptsRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/visual-prompts';
+      path: '/stream/visual-prompts';
+      fullPath: '/api/mcp/stream/visual-prompts';
+      preLoaderRoute: typeof ApiMcpStreamVisualPromptsRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/api/mcp/stream/split-scenes': {
-      id: '/api/mcp/stream/split-scenes'
-      path: '/stream/split-scenes'
-      fullPath: '/api/mcp/stream/split-scenes'
-      preLoaderRoute: typeof ApiMcpStreamSplitScenesRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/split-scenes';
+      path: '/stream/split-scenes';
+      fullPath: '/api/mcp/stream/split-scenes';
+      preLoaderRoute: typeof ApiMcpStreamSplitScenesRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/api/mcp/stream/motion-prompts': {
-      id: '/api/mcp/stream/motion-prompts'
-      path: '/stream/motion-prompts'
-      fullPath: '/api/mcp/stream/motion-prompts'
-      preLoaderRoute: typeof ApiMcpStreamMotionPromptsRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/motion-prompts';
+      path: '/stream/motion-prompts';
+      fullPath: '/api/mcp/stream/motion-prompts';
+      preLoaderRoute: typeof ApiMcpStreamMotionPromptsRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/api/mcp/stream/extract-characters': {
-      id: '/api/mcp/stream/extract-characters'
-      path: '/stream/extract-characters'
-      fullPath: '/api/mcp/stream/extract-characters'
-      preLoaderRoute: typeof ApiMcpStreamExtractCharactersRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/extract-characters';
+      path: '/stream/extract-characters';
+      fullPath: '/api/mcp/stream/extract-characters';
+      preLoaderRoute: typeof ApiMcpStreamExtractCharactersRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/api/mcp/stream/audio-design': {
-      id: '/api/mcp/stream/audio-design'
-      path: '/stream/audio-design'
-      fullPath: '/api/mcp/stream/audio-design'
-      preLoaderRoute: typeof ApiMcpStreamAudioDesignRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/audio-design';
+      path: '/stream/audio-design';
+      fullPath: '/api/mcp/stream/audio-design';
+      preLoaderRoute: typeof ApiMcpStreamAudioDesignRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/api/mcp/stream/analyze-script': {
-      id: '/api/mcp/stream/analyze-script'
-      path: '/stream/analyze-script'
-      fullPath: '/api/mcp/stream/analyze-script'
-      preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
+      id: '/api/mcp/stream/analyze-script';
+      path: '/stream/analyze-script';
+      fullPath: '/api/mcp/stream/analyze-script';
+      preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport;
+      parentRoute: typeof ApiMcpRoute;
+    };
     '/_protected/sequences/$id/theatre': {
-      id: '/_protected/sequences/$id/theatre'
-      path: '/sequences/$id/theatre'
-      fullPath: '/sequences/$id/theatre'
-      preLoaderRoute: typeof ProtectedSequencesIdTheatreRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/theatre';
+      path: '/sequences/$id/theatre';
+      fullPath: '/sequences/$id/theatre';
+      preLoaderRoute: typeof ProtectedSequencesIdTheatreRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/sequences/$id/script': {
-      id: '/_protected/sequences/$id/script'
-      path: '/sequences/$id/script'
-      fullPath: '/sequences/$id/script'
-      preLoaderRoute: typeof ProtectedSequencesIdScriptRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/script';
+      path: '/sequences/$id/script';
+      fullPath: '/sequences/$id/script';
+      preLoaderRoute: typeof ProtectedSequencesIdScriptRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/sequences/$id/scenes': {
-      id: '/_protected/sequences/$id/scenes'
-      path: '/sequences/$id/scenes'
-      fullPath: '/sequences/$id/scenes'
-      preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/scenes';
+      path: '/sequences/$id/scenes';
+      fullPath: '/sequences/$id/scenes';
+      preLoaderRoute: typeof ProtectedSequencesIdScenesRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/sequences/$id/locations/': {
-      id: '/_protected/sequences/$id/locations/'
-      path: '/sequences/$id/locations'
-      fullPath: '/sequences/$id/locations/'
-      preLoaderRoute: typeof ProtectedSequencesIdLocationsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/locations/';
+      path: '/sequences/$id/locations';
+      fullPath: '/sequences/$id/locations/';
+      preLoaderRoute: typeof ProtectedSequencesIdLocationsIndexRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/sequences/$id/cast/': {
-      id: '/_protected/sequences/$id/cast/'
-      path: '/sequences/$id/cast'
-      fullPath: '/sequences/$id/cast/'
-      preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/cast/';
+      path: '/sequences/$id/cast';
+      fullPath: '/sequences/$id/cast/';
+      preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/api/teams/invitations/$invitationId/accept': {
-      id: '/api/teams/invitations/$invitationId/accept'
-      path: '/api/teams/invitations/$invitationId/accept'
-      fullPath: '/api/teams/invitations/$invitationId/accept'
-      preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/teams/invitations/$invitationId/accept';
+      path: '/api/teams/invitations/$invitationId/accept';
+      fullPath: '/api/teams/invitations/$invitationId/accept';
+      preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/api/sequences/$sequenceId/chapters/vtt': {
-      id: '/api/sequences/$sequenceId/chapters/vtt'
-      path: '/api/sequences/$sequenceId/chapters/vtt'
-      fullPath: '/api/sequences/$sequenceId/chapters/vtt'
-      preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/api/sequences/$sequenceId/chapters/vtt';
+      path: '/api/sequences/$sequenceId/chapters/vtt';
+      fullPath: '/api/sequences/$sequenceId/chapters/vtt';
+      preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_protected/sequences/$id/locations/$locationId': {
-      id: '/_protected/sequences/$id/locations/$locationId'
-      path: '/sequences/$id/locations/$locationId'
-      fullPath: '/sequences/$id/locations/$locationId'
-      preLoaderRoute: typeof ProtectedSequencesIdLocationsLocationIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/locations/$locationId';
+      path: '/sequences/$id/locations/$locationId';
+      fullPath: '/sequences/$id/locations/$locationId';
+      preLoaderRoute: typeof ProtectedSequencesIdLocationsLocationIdRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
     '/_protected/sequences/$id/cast/$characterId': {
-      id: '/_protected/sequences/$id/cast/$characterId'
-      path: '/sequences/$id/cast/$characterId'
-      fullPath: '/sequences/$id/cast/$characterId'
-      preLoaderRoute: typeof ProtectedSequencesIdCastCharacterIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
+      id: '/_protected/sequences/$id/cast/$characterId';
+      path: '/sequences/$id/cast/$characterId';
+      fullPath: '/sequences/$id/cast/$characterId';
+      preLoaderRoute: typeof ProtectedSequencesIdCastCharacterIdRouteImport;
+      parentRoute: typeof ProtectedRouteRoute;
+    };
   }
 }
 
 interface AuthRouteRouteChildren {
-  AuthInviteCodeRoute: typeof AuthInviteCodeRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthVerifyRoute: typeof AuthVerifyRoute
+  AuthLoginRoute: typeof AuthLoginRoute;
+  AuthVerifyRoute: typeof AuthVerifyRoute;
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
-  AuthInviteCodeRoute: AuthInviteCodeRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthVerifyRoute: AuthVerifyRoute,
-}
+};
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
-  AuthRouteRouteChildren,
-)
+  AuthRouteRouteChildren
+);
 
 interface ProtectedSettingsRouteRouteChildren {
-  ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute
-  ProtectedSettingsBillingRoute: typeof ProtectedSettingsBillingRoute
-  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
-  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
+  ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute;
+  ProtectedSettingsBillingRoute: typeof ProtectedSettingsBillingRoute;
+  ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute;
+  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute;
 }
 
 const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
@@ -921,29 +900,29 @@ const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
     ProtectedSettingsBillingRoute: ProtectedSettingsBillingRoute,
     ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
     ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
-  }
+  };
 
 const ProtectedSettingsRouteRouteWithChildren =
   ProtectedSettingsRouteRoute._addFileChildren(
-    ProtectedSettingsRouteRouteChildren,
-  )
+    ProtectedSettingsRouteRouteChildren
+  );
 
 interface ProtectedRouteRouteChildren {
-  ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren
-  ProtectedEvalRoute: typeof ProtectedEvalRoute
-  ProtectedLocationsLocationIdRoute: typeof ProtectedLocationsLocationIdRoute
-  ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute
-  ProtectedTalentIdRoute: typeof ProtectedTalentIdRoute
-  ProtectedLocationsIndexRoute: typeof ProtectedLocationsIndexRoute
-  ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute
-  ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute
-  ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute
-  ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute
-  ProtectedSequencesIdTheatreRoute: typeof ProtectedSequencesIdTheatreRoute
-  ProtectedSequencesIdCastCharacterIdRoute: typeof ProtectedSequencesIdCastCharacterIdRoute
-  ProtectedSequencesIdLocationsLocationIdRoute: typeof ProtectedSequencesIdLocationsLocationIdRoute
-  ProtectedSequencesIdCastIndexRoute: typeof ProtectedSequencesIdCastIndexRoute
-  ProtectedSequencesIdLocationsIndexRoute: typeof ProtectedSequencesIdLocationsIndexRoute
+  ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren;
+  ProtectedEvalRoute: typeof ProtectedEvalRoute;
+  ProtectedLocationsLocationIdRoute: typeof ProtectedLocationsLocationIdRoute;
+  ProtectedSequencesNewRoute: typeof ProtectedSequencesNewRoute;
+  ProtectedTalentIdRoute: typeof ProtectedTalentIdRoute;
+  ProtectedLocationsIndexRoute: typeof ProtectedLocationsIndexRoute;
+  ProtectedSequencesIndexRoute: typeof ProtectedSequencesIndexRoute;
+  ProtectedTalentIndexRoute: typeof ProtectedTalentIndexRoute;
+  ProtectedSequencesIdScenesRoute: typeof ProtectedSequencesIdScenesRoute;
+  ProtectedSequencesIdScriptRoute: typeof ProtectedSequencesIdScriptRoute;
+  ProtectedSequencesIdTheatreRoute: typeof ProtectedSequencesIdTheatreRoute;
+  ProtectedSequencesIdCastCharacterIdRoute: typeof ProtectedSequencesIdCastCharacterIdRoute;
+  ProtectedSequencesIdLocationsLocationIdRoute: typeof ProtectedSequencesIdLocationsLocationIdRoute;
+  ProtectedSequencesIdCastIndexRoute: typeof ProtectedSequencesIdCastIndexRoute;
+  ProtectedSequencesIdLocationsIndexRoute: typeof ProtectedSequencesIdLocationsIndexRoute;
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
@@ -965,19 +944,19 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedSequencesIdCastIndexRoute: ProtectedSequencesIdCastIndexRoute,
   ProtectedSequencesIdLocationsIndexRoute:
     ProtectedSequencesIdLocationsIndexRoute,
-}
+};
 
 const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
-  ProtectedRouteRouteChildren,
-)
+  ProtectedRouteRouteChildren
+);
 
 interface ApiMcpRouteChildren {
-  ApiMcpStreamAnalyzeScriptRoute: typeof ApiMcpStreamAnalyzeScriptRoute
-  ApiMcpStreamAudioDesignRoute: typeof ApiMcpStreamAudioDesignRoute
-  ApiMcpStreamExtractCharactersRoute: typeof ApiMcpStreamExtractCharactersRoute
-  ApiMcpStreamMotionPromptsRoute: typeof ApiMcpStreamMotionPromptsRoute
-  ApiMcpStreamSplitScenesRoute: typeof ApiMcpStreamSplitScenesRoute
-  ApiMcpStreamVisualPromptsRoute: typeof ApiMcpStreamVisualPromptsRoute
+  ApiMcpStreamAnalyzeScriptRoute: typeof ApiMcpStreamAnalyzeScriptRoute;
+  ApiMcpStreamAudioDesignRoute: typeof ApiMcpStreamAudioDesignRoute;
+  ApiMcpStreamExtractCharactersRoute: typeof ApiMcpStreamExtractCharactersRoute;
+  ApiMcpStreamMotionPromptsRoute: typeof ApiMcpStreamMotionPromptsRoute;
+  ApiMcpStreamSplitScenesRoute: typeof ApiMcpStreamSplitScenesRoute;
+  ApiMcpStreamVisualPromptsRoute: typeof ApiMcpStreamVisualPromptsRoute;
 }
 
 const ApiMcpRouteChildren: ApiMcpRouteChildren = {
@@ -987,10 +966,10 @@ const ApiMcpRouteChildren: ApiMcpRouteChildren = {
   ApiMcpStreamMotionPromptsRoute: ApiMcpStreamMotionPromptsRoute,
   ApiMcpStreamSplitScenesRoute: ApiMcpStreamSplitScenesRoute,
   ApiMcpStreamVisualPromptsRoute: ApiMcpStreamVisualPromptsRoute,
-}
+};
 
 const ApiMcpRouteWithChildren =
-  ApiMcpRoute._addFileChildren(ApiMcpRouteChildren)
+  ApiMcpRoute._addFileChildren(ApiMcpRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1011,16 +990,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiSequencesSequenceIdChaptersVttRoute,
   ApiTeamsInvitationsInvitationIdAcceptRoute:
     ApiTeamsInvitationsInvitationIdAcceptRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
+  ._addFileTypes<FileRouteTypes>();

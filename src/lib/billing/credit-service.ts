@@ -19,7 +19,7 @@ import {
   MIN_TOPUP_AMOUNT_USD,
   AUTO_TOPUP_COOLDOWN_MS,
 } from './constants';
-import { getStripe } from './stripe';
+import { getStripeOrThrow } from './stripe';
 import { ValidationError } from '@/lib/errors';
 
 /** Check if a transaction with the given Stripe session ID already exists (for idempotency). */
@@ -332,7 +332,7 @@ async function maybeAutoTopUp(
     }
   }
 
-  const stripe = getStripe();
+  const stripe = getStripeOrThrow();
   const amountCents = Math.round(settings.autoTopUpAmountUsd * 100);
 
   // Get the customer's default payment method

@@ -1,12 +1,11 @@
+import { getEnv } from '#env';
 import type { Style } from '@/types/database';
 
 /**
  * Get the R2 public assets domain from environment
- * Falls back to staging if not set
  */
 function getPublicAssetsDomain(): string {
-  const domain = process.env.R2_PUBLIC_ASSETS_DOMAIN ?? 'assets.velro.ai';
-  return domain;
+  return getEnv().R2_PUBLIC_ASSETS_DOMAIN ?? '';
 }
 
 /**

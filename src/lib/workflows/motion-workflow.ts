@@ -13,6 +13,7 @@ import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -115,7 +116,7 @@ export const generateMotionWorkflow = createWorkflow(
         : 0;
     const model = input.model || DEFAULT_VIDEO_MODEL;
     const { teamId } = input;
-    if (motionCost > 0 && teamId && !apiKeys.falApiKey) {
+    if (isBillingEnabled() && motionCost > 0 && teamId && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCost);
         if (!canAfford) {

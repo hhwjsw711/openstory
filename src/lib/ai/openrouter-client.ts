@@ -199,8 +199,8 @@ export async function callOpenRouter(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://velro.ai',
-        'X-Title': 'Velro AI',
+        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
+        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
       },
       body: JSON.stringify({
         model: params.model,
@@ -314,8 +314,8 @@ export async function* callOpenRouterStream(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://velro.ai',
-        'X-Title': 'Velro AI',
+        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
+        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
       },
       body: JSON.stringify({
         model: params.model,

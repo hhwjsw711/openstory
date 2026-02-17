@@ -13,12 +13,9 @@ export const Route = createFileRoute('/_protected')({
       });
     }
 
-    if (
-      session.user.status === 'pending' ||
-      session.user.status === 'suspended'
-    ) {
+    if (session.user.status === 'suspended') {
       throw redirect({
-        to: '/invite-code',
+        to: '/login',
       });
     }
   },

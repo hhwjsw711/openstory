@@ -6,6 +6,7 @@
  * since the work has already been completed at this point.
  */
 
+import { isBillingEnabled } from '@/lib/billing/constants';
 import {
   deductCredits,
   hasEnoughCredits,
@@ -36,7 +37,13 @@ type WorkflowDeductionOpts = {
 export async function deductWorkflowCredits(
   opts: WorkflowDeductionOpts
 ): Promise<void> {
-  if (!opts.teamId || opts.costUsd <= 0 || opts.usedOwnKey) return;
+  if (
+    !isBillingEnabled() ||
+    !opts.teamId ||
+    opts.costUsd <= 0 ||
+    opts.usedOwnKey
+  )
+    return;
 
   const canAfford = await hasEnoughCredits(opts.teamId, opts.costUsd);
   if (!canAfford) {

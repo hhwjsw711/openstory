@@ -177,7 +177,7 @@ export async function uploadFile(
  * @example
  * ```ts
  * const url = getPublicUrl(STORAGE_BUCKETS.THUMBNAILS, 'team-id/frame.jpg');
- * // Returns: https://storage.velro.ai/thumbnails/team-id/frame.jpg
+ * // Returns: https://{R2_PUBLIC_STORAGE_DOMAIN}/thumbnails/team-id/frame.jpg
  * ```
  */
 export function getPublicUrl(bucket: StorageBucket, path: string): string {
@@ -201,7 +201,7 @@ export function getPublicUrl(bucket: StorageBucket, path: string): string {
  *
  * @example
  * ```ts
- * getPathFromUrl('https://storage.velro.ai/talent/team-id/temp/file.jpg', STORAGE_BUCKETS.TALENT);
+ * getPathFromUrl('https://{R2_PUBLIC_STORAGE_DOMAIN}/talent/team-id/temp/file.jpg', STORAGE_BUCKETS.TALENT);
  * // Returns: 'team-id/temp/file.jpg'
  * ```
  */

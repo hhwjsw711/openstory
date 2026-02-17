@@ -5,6 +5,7 @@
 
 import { createServerFn } from '@tanstack/react-start';
 import { authWithTeamMiddleware } from './middleware';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { apiKeyService } from '@/lib/services/api-key.service';
 import {
   getTeamBalance,
@@ -18,6 +19,16 @@ import {
 export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
+    if (!isBillingEnabled()) {
+      return {
+        hasCredits: true,
+        hasFalKey: true,
+        hasOpenRouterKey: true,
+        balance: Infinity,
+        hasAutoTopUp: false,
+      };
+    }
+
     const { teamId } = context;
 
     const [balance, hasFalKey, hasOpenRouterKey, billingSettings] =

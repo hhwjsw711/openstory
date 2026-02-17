@@ -3,7 +3,6 @@
  * Helpers for navigating to auth pages with redirect preservation
  */
 
-import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { Route as loginRoute } from '@/routes/_auth/login';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 
@@ -30,10 +29,7 @@ export function getRedirectFromParams(
     // Only allow relative URLs (starting with /)
     if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
       // Prevent redirecting back to auth pages
-      if (
-        !redirectTo.startsWith(loginRoute.fullPath) &&
-        !redirectTo.startsWith(inviteCodeRoute.fullPath)
-      ) {
+      if (!redirectTo.startsWith(loginRoute.fullPath)) {
         return redirectTo;
       }
     }

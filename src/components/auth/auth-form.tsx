@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useIsPreview } from '@/hooks/use-is-preview';
 import { authClient } from '@/lib/auth/client';
-import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -93,10 +92,6 @@ export function AuthForm({
       await authClient.signIn.social({
         provider: 'google',
         callbackURL: redirectTo,
-        newUserCallbackURL:
-          inviteCodeRoute.fullPath +
-          '?redirectTo=' +
-          encodeURIComponent(redirectTo),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);
