@@ -111,6 +111,8 @@ export const sequences = sqliteTable(
     }),
     musicError: text('music_error'),
     musicModel: text('music_model', { length: 100 }),
+    musicPrompt: text('music_prompt'),
+    musicTags: text('music_tags'),
   },
   (table) => [
     index('idx_sequences_created_at').on(table.createdAt),

@@ -10,6 +10,7 @@ import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   updateSequenceAnalysisDurationMs,
+  updateSequenceMusicPrompt,
   updateSequenceStatus,
   updateSequenceTitle,
   updateSequenceWorkflow,
@@ -54,6 +55,10 @@ import type {
 } from '@/lib/db/schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 import { durableLLMCall } from './llm-call-helper';
+import {
+  musicPromptSchema,
+  reinforceInstrumentalTags,
+} from './music-prompt.schema';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 // ------------------------------------------------------------
@@ -132,6 +137,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       imageModel,
       videoModel,
       autoGenerateMotion = false,
+      autoGenerateMusic = false,
+      musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
     } = input;
@@ -877,9 +884,11 @@ export const analyzeScriptWorkflow = createWorkflow(
     }
 
     // ============================================================
-    // PHASE 8: Music Generation (single track for entire sequence)
+    // PHASE 8: Music Prompt Generation + Optional Audio Generation
     // ============================================================
-    // Combine all scene music styles/moods into one prompt and generate a single track
+    // Step 8a: Always generate music prompt from scene data
+    // Step 8b: Store prompt/tags on the sequence
+    // Step 8c: If autoGenerateMusic, invoke music workflow with pre-generated prompt
     if (sequenceId) {
       const scenesWithMusic = completeScenes.filter(
         (scene) =>
@@ -888,12 +897,12 @@ export const analyzeScriptWorkflow = createWorkflow(
       );
 
       if (scenesWithMusic.length > 0) {
-        await context.run('start-music-generation', async () => {
+        await context.run('start-music-prompt-generation', async () => {
           await getGenerationChannel(sequenceId).emit(
             'generation.phase:start',
             {
               phase: 8,
-              phaseName: 'Music Generation',
+              phaseName: 'Music Prompt Generation',
             }
           );
         });
@@ -914,24 +923,56 @@ export const analyzeScriptWorkflow = createWorkflow(
           };
         });
 
-        if (!input.userId || !input.teamId) {
-          throw new Error('userId and teamId required for music generation');
-        }
+        // Step 8a: Generate music prompt via LLM
+        const musicPrompt = await durableLLMCall(
+          context,
+          {
+            name: 'music-prompt-generation',
+            phase: { number: 8, name: 'Music Prompt Generation' },
+            promptName: 'velro/phase/music-prompt-generation-chat',
+            promptVariables: {
+              scenes: JSON.stringify(sceneSummaries),
+            },
+            modelId: analysisModelId,
+            responseSchema: musicPromptSchema,
+          },
+          llmCallContext
+        );
 
-        const musicInput: MusicWorkflowInput = {
-          userId: input.userId,
-          teamId: input.teamId,
-          sequenceId,
-          scenes: sceneSummaries,
-          duration: totalDuration,
-        };
+        const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
 
-        await context.invoke('music', {
-          workflow: generateMusicWorkflow,
-          body: musicInput,
-          retries: 3,
-          retryDelay: 'pow(2, retried) * 1000',
+        // Step 8b: Store prompt/tags on the sequence
+        await context.run('store-music-prompt', async () => {
+          await updateSequenceMusicPrompt(
+            sequenceId,
+            musicPrompt.prompt,
+            reinforcedTags
+          );
         });
+
+        // Step 8c: If autoGenerateMusic, invoke music workflow with pre-generated prompt
+        if (autoGenerateMusic) {
+          if (!input.userId || !input.teamId) {
+            throw new Error('userId and teamId required for music generation');
+          }
+
+          const musicInput: MusicWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            sequenceId,
+            prompt: musicPrompt.prompt,
+            tags: reinforcedTags,
+            duration: totalDuration,
+            model: musicModel,
+          };
+
+          await context.invoke('music', {
+            workflow: generateMusicWorkflow,
+            body: musicInput,
+            retries: 3,
+            retryDelay: 'pow(2, retried) * 1000',
+          });
+        }
       }
     }
 

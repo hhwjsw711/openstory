@@ -22,6 +22,7 @@ import {
   deleteSequence,
   getSequencesByTeam,
   updateSequence,
+  updateSequenceMusicPrompt,
 } from '@/lib/db/helpers/sequences';
 import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import {
@@ -33,6 +34,7 @@ import {
   DEFAULT_VIDEO_MODEL,
   safeTextToImageModel,
   safeImageToVideoModel,
+  isValidAudioModel,
 } from '@/lib/ai/models';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
@@ -115,6 +117,8 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       imageModel,
       videoModel,
       autoGenerateMotion,
+      autoGenerateMusic,
+      musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
     } = data;
@@ -163,6 +167,11 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             regenerateAll: true,
           },
           autoGenerateMotion: autoGenerateMotion ?? false,
+          autoGenerateMusic: autoGenerateMusic ?? false,
+          musicModel:
+            musicModel && isValidAudioModel(musicModel)
+              ? musicModel
+              : undefined,
           suggestedTalentIds,
           suggestedLocationIds,
         };
@@ -291,6 +300,9 @@ export const deleteSequenceFn = createServerFn({ method: 'POST' })
 
 const generateMusicInputSchema = z.object({
   sequenceId: ulidSchema,
+  prompt: z.string().optional(),
+  tags: z.string().optional(),
+  model: z.string().optional(),
 });
 
 /**
@@ -303,31 +315,69 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { sequence, user } = context;
 
-    // Extract compact scene summaries for AI prompt generation
+    // Resolve effective prompt/tags: user overrides > stored on sequence > build from frames
+    const effectivePrompt = data.prompt ?? sequence.musicPrompt;
+    const effectiveTags = data.tags ?? sequence.musicTags;
+
+    // If user provided overrides, save them to DB
+    if (data.prompt || data.tags) {
+      await updateSequenceMusicPrompt(
+        sequence.id,
+        data.prompt ?? sequence.musicPrompt ?? '',
+        data.tags ?? sequence.musicTags ?? ''
+      );
+    }
+
+    // Fetch frames once (used in both branches)
     const allFrames = await getSequenceFrames(data.sequenceId);
 
-    const scenes: MusicSceneSummary[] = [];
-    let totalDuration = 0;
-
-    for (const frame of allFrames) {
-      const music = frame.metadata?.audioDesign?.music;
-      const meta = frame.metadata?.metadata;
-      // Prefer actual video duration over AI estimate
-      const durationSeconds = frame.durationMs
+    const totalDuration = allFrames.reduce((sum, frame) => {
+      const seconds = frame.durationMs
         ? frame.durationMs / 1000
-        : meta?.durationSeconds || 10;
-      totalDuration += durationSeconds;
+        : (frame.metadata?.metadata?.durationSeconds ?? 10);
+      return sum + seconds;
+    }, 0);
 
-      scenes.push({
-        title: meta?.title || 'Untitled Scene',
-        storyBeat: meta?.storyBeat || '',
-        durationSeconds,
-        musicStyle: music?.style || '',
-        musicMood: music?.mood || '',
-        musicPresence: music?.presence || 'none',
-        atmosphere:
-          frame.metadata?.audioDesign?.ambient?.atmosphere || undefined,
+    const baseInput = {
+      userId: user.id,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
+      duration: totalDuration || 30,
+      model:
+        data.model && isValidAudioModel(data.model) ? data.model : undefined,
+    };
+
+    let musicInput: MusicWorkflowInput;
+
+    if (effectivePrompt && effectiveTags) {
+      // Use pre-generated prompt (skip LLM in workflow)
+      musicInput = {
+        ...baseInput,
+        prompt: effectivePrompt,
+        tags: effectiveTags,
+      };
+    } else {
+      // Legacy fallback: build scenes from frames (no stored prompt)
+      const scenes: MusicSceneSummary[] = allFrames.map((frame) => {
+        const music = frame.metadata?.audioDesign?.music;
+        const meta = frame.metadata?.metadata;
+        const durationSeconds = frame.durationMs
+          ? frame.durationMs / 1000
+          : (meta?.durationSeconds ?? 10);
+
+        return {
+          title: meta?.title || 'Untitled Scene',
+          storyBeat: meta?.storyBeat || '',
+          durationSeconds,
+          musicStyle: music?.style || '',
+          musicMood: music?.mood || '',
+          musicPresence: music?.presence || 'none',
+          atmosphere:
+            frame.metadata?.audioDesign?.ambient?.atmosphere || undefined,
+        };
       });
+
+      musicInput = { ...baseInput, scenes };
     }
 
     // Set status to generating before triggering workflow so polls see it immediately
@@ -339,14 +389,6 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
         updatedAt: new Date(),
       })
       .where(eq(sequences.id, sequence.id));
-
-    const musicInput: MusicWorkflowInput = {
-      userId: user.id,
-      teamId: sequence.teamId,
-      sequenceId: sequence.id,
-      scenes,
-      duration: totalDuration || 30,
-    };
 
     await triggerWorkflow('/music', musicInput);
 

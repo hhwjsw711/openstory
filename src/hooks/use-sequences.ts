@@ -105,6 +105,8 @@ export function useCreateSequence() {
           imageModel: input.imageModel,
           videoModel: input.videoModel,
           autoGenerateMotion: input.autoGenerateMotion,
+          autoGenerateMusic: input.autoGenerateMusic,
+          musicModel: input.musicModel,
           suggestedTalentIds: input.suggestedTalentIds,
           suggestedLocationIds: input.suggestedLocationIds,
         },

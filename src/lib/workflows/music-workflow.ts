@@ -22,7 +22,10 @@ import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { durableLLMCall } from './llm-call-helper';
-import { musicPromptSchema } from './music-prompt.schema';
+import {
+  musicPromptSchema,
+  reinforceInstrumentalTags,
+} from './music-prompt.schema';
 import { getFalFlowControl } from './constants';
 import { eq } from 'drizzle-orm';
 
@@ -30,13 +33,17 @@ export const generateMusicWorkflow = createWorkflow(
   async (context: WorkflowContext<MusicWorkflowInput>) => {
     const input = context.requestPayload;
 
-    if (!input.scenes || input.scenes.length === 0) {
+    const hasPreGeneratedPrompt = !!input.prompt && !!input.tags;
+    const hasScenes = !!input.scenes && input.scenes.length > 0;
+
+    if (!hasPreGeneratedPrompt && !hasScenes) {
       throw new WorkflowValidationError(
-        'At least one scene is required for music generation'
+        'Either prompt+tags or scenes are required for music generation'
       );
     }
 
-    const { sequenceId } = input;
+    const { sequenceId, teamId } = input;
+    const model = input.model || DEFAULT_MUSIC_MODEL;
 
     // Step 1: Set status to generating
     await context.run('set-generating-status', async () => {
@@ -44,7 +51,7 @@ export const generateMusicWorkflow = createWorkflow(
         .update(sequences)
         .set({
           musicStatus: 'generating',
-          musicModel: input.model || DEFAULT_MUSIC_MODEL,
+          musicModel: model,
           musicError: null,
           updatedAt: new Date(),
         })
@@ -57,43 +64,50 @@ export const generateMusicWorkflow = createWorkflow(
 
     // Resolve team API keys
     const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
+      return resolveWorkflowApiKeys(teamId);
     });
 
-    // Step 2: AI-generate a cohesive music prompt from scene data
-    const musicPrompt = await durableLLMCall(
-      context,
-      {
-        name: 'music-prompt-generation',
-        phase: { number: 8, name: 'Music Prompt Generation' },
-        promptName: 'velro/phase/music-prompt-generation-chat',
-        promptVariables: {
-          scenes: JSON.stringify(input.scenes),
+    // Step 2: Use pre-generated prompt or fall back to LLM generation from scenes
+    let effectivePrompt: string;
+    let effectiveTags: string;
+
+    if (hasPreGeneratedPrompt && input.prompt && input.tags) {
+      effectivePrompt = input.prompt;
+      effectiveTags = input.tags;
+    } else {
+      // Legacy fallback: generate prompt from scenes
+      const musicPrompt = await durableLLMCall(
+        context,
+        {
+          name: 'music-prompt-generation',
+          phase: { number: 8, name: 'Music Prompt Generation' },
+          promptName: 'velro/phase/music-prompt-generation-chat',
+          promptVariables: {
+            scenes: JSON.stringify(input.scenes),
+          },
+          modelId: DEFAULT_ANALYSIS_MODEL,
+          responseSchema: musicPromptSchema,
         },
-        modelId: DEFAULT_ANALYSIS_MODEL,
-        responseSchema: musicPromptSchema,
-      },
-      {
-        sequenceId,
-        userId: input.userId,
-        teamId: input.teamId,
-        openRouterApiKey: apiKeys.openRouterApiKey,
-      }
-    );
+        {
+          sequenceId,
+          userId: input.userId,
+          teamId,
+          openRouterApiKey: apiKeys.openRouterApiKey,
+        }
+      );
+      effectivePrompt = musicPrompt.prompt;
+      // Reinforce instrumental -- ACE-Step sometimes generates vocals despite [inst]
+      effectiveTags = reinforceInstrumentalTags(musicPrompt.tags);
+    }
 
-    // Reinforce instrumental — ACE-Step sometimes generates vocals despite [inst]
-    const reinforcedTags = musicPrompt.tags.includes('instrumental')
-      ? musicPrompt.tags
-      : `${musicPrompt.tags}, instrumental, no vocals`;
-
-    // Step 3: Generate music using AI-synthesized prompt
+    // Step 3: Generate music using prompt
     const audioResult = await context.run('generate-music', async () => {
       const result = await generateMusicForScene({
-        prompt: musicPrompt.prompt,
-        tags: reinforcedTags,
+        prompt: effectivePrompt,
+        tags: effectiveTags,
         duration: input.duration,
         instrumental: true,
-        model: input.model || DEFAULT_MUSIC_MODEL,
+        model,
         traceName: 'sequence-music',
         falApiKey: apiKeys.falApiKey,
       });
@@ -115,8 +129,6 @@ export const generateMusicWorkflow = createWorkflow(
       typeof audioResult.metadata?.cost === 'number'
         ? audioResult.metadata.cost
         : 0;
-    const model = input.model || DEFAULT_MUSIC_MODEL;
-    const { teamId } = input;
     if (musicCost > 0 && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, musicCost);
@@ -131,14 +143,14 @@ export const generateMusicWorkflow = createWorkflow(
           description: `Music generation (${model})`,
           metadata: {
             model,
-            sequenceId: input.sequenceId,
+            sequenceId,
             duration: audioResult.metadata?.duration,
           },
         });
       });
     }
 
-    // Step 3: Upload to storage
+    // Step 4: Upload to storage
     const storageResult = await context.run('upload-to-storage', async () => {
       if (!audioResult.audioUrl) {
         throw new Error('Missing audio URL for storage upload');
@@ -146,8 +158,8 @@ export const generateMusicWorkflow = createWorkflow(
 
       const result = await uploadAudioToStorage({
         audioUrl: audioResult.audioUrl,
-        teamId: input.teamId,
-        sequenceId: input.sequenceId,
+        teamId,
+        sequenceId,
         sequenceTitle: 'sequence',
         sceneTitle: 'music',
       });
@@ -161,7 +173,7 @@ export const generateMusicWorkflow = createWorkflow(
 
     const audioUrl = storageResult.url;
 
-    // Step 4: Update sequence record
+    // Step 5: Update sequence record
     await context.run('update-sequence-music', async () => {
       await getDb()
         .update(sequences)
@@ -181,7 +193,7 @@ export const generateMusicWorkflow = createWorkflow(
       });
     });
 
-    // Step 5: Check if merged video is also ready — trigger mux if so
+    // Step 6: Check if merged video is also ready -- trigger mux if so
     await context.run('check-mux-trigger', async () => {
       const [seq] = await getDb()
         .select({
@@ -202,8 +214,8 @@ export const generateMusicWorkflow = createWorkflow(
 
         const muxInput: MergeAudioVideoWorkflowInput = {
           userId: input.userId,
-          teamId: input.teamId,
-          sequenceId: input.sequenceId,
+          teamId,
+          sequenceId,
           mergedVideoUrl: seq.mergedVideoUrl,
           musicUrl: audioUrl,
           durationMs: undefined,

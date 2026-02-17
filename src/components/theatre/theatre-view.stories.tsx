@@ -31,6 +31,8 @@ const baseSequence: Sequence = {
   musicGeneratedAt: null,
   musicError: null,
   musicModel: null,
+  musicPrompt: null,
+  musicTags: null,
 };
 
 const meta: Meta<typeof TheatreView> = {

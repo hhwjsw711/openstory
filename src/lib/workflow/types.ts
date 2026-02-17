@@ -81,6 +81,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
     regenerateAll?: boolean;
   };
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -99,6 +101,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -460,8 +464,12 @@ export type MusicSceneSummary = {
  * Generates background music for an entire sequence using audioDesign specs
  */
 export interface MusicWorkflowInput extends SequenceWorkflowContext {
-  /** Compact scene summaries for AI prompt generation */
-  scenes: MusicSceneSummary[];
+  /** Compact scene summaries for AI prompt generation (legacy fallback) */
+  scenes?: MusicSceneSummary[];
+  /** Pre-generated prompt. If provided with tags, skip LLM step. */
+  prompt?: string;
+  /** Pre-generated tags. If provided with prompt, skip LLM step. */
+  tags?: string;
   /** Duration in seconds */
   duration?: number;
   /** Audio model to use */

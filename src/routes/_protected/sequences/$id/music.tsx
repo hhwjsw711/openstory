@@ -24,7 +24,15 @@ function MusicPage() {
   useGenerationStream(sequenceId);
 
   const generateMusic = useMutation({
-    mutationFn: () => generateMusicFn({ data: { sequenceId } }),
+    mutationFn: (args?: { prompt?: string; tags?: string; model?: string }) =>
+      generateMusicFn({
+        data: {
+          sequenceId,
+          prompt: args?.prompt,
+          tags: args?.tags,
+          model: args?.model,
+        },
+      }),
     onMutate: () => {
       queryClient.setQueryData<Sequence>(
         sequenceKeys.detail(sequenceId),
@@ -63,7 +71,7 @@ function MusicPage() {
         <div className="max-w-4xl mx-auto">
           <MusicView
             sequence={sequence}
-            onGenerateMusic={() => generateMusic.mutate()}
+            onGenerateMusic={(args) => generateMusic.mutate(args)}
             isGeneratingMusic={generateMusic.isPending}
             onMergeVideoAndMusic={() => mergeVideoAndMusic.mutate()}
             isMergingVideoAndMusic={mergeVideoAndMusic.isPending}
