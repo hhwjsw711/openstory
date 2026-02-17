@@ -26,7 +26,7 @@ import { useFalBillingGate } from '@/hooks/use-billing-gate';
 import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
-import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
+import { CopyIcon, Download, Link, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   useGenerateVariants,
@@ -153,6 +153,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   aspectRatio,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
+  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isShortening, setIsShortening] = useState(false);
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenSuccess, setShortenSuccess] = useState<string | null>(null);
@@ -192,6 +193,28 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     },
     []
   );
+
+  const handleDownloadImage = useCallback(async () => {
+    if (!frame?.thumbnailUrl) return;
+    setIsDownloadingImage(true);
+    try {
+      const response = await fetch(frame.thumbnailUrl);
+      const blob = await response.blob();
+      const ext = frame.thumbnailUrl.split('.').pop()?.split('?')[0] || 'png';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scene-${frame.id}_velro.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+    } finally {
+      setIsDownloadingImage(false);
+    }
+  }, [frame?.id, frame?.thumbnailUrl]);
 
   // Get imagePrompt early so it can be used in handleShortenPrompt
   const scriptText = frame?.metadata?.originalScript?.extract;
@@ -602,6 +625,44 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               </span>
             )}
           </Button>
+
+          {/* Copy Image URL & Download Image */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                void handleCopy(frame?.thumbnailUrl ?? undefined, 'image-url')
+              }
+              disabled={!frame?.thumbnailUrl}
+              className="flex-1"
+            >
+              {copiedTab === 'image-url' ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-xs">✓</span> Copied
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Link className="h-4 w-4" /> Copy Image URL
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void handleDownloadImage()}
+              disabled={!frame?.thumbnailUrl || isDownloadingImage}
+              className="flex-1"
+            >
+              {isDownloadingImage ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Downloading…
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Download className="h-4 w-4" /> Download Image
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
       </TabsContent>
 
