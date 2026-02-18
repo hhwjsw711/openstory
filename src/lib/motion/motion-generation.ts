@@ -80,10 +80,21 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
       : modelConfig.capabilities.defaultDuration;
 
-    // Kling requires string duration: "5" or "10"
-    const klingDuration = validatedDuration <= 7 ? '5' : '10';
+    // v3 models support 3-15s continuous durations; older models only "5" or "10"
+    const supportedDurations = modelConfig.capabilities.supportedDurations;
+    let klingDuration: string;
+    if (supportedDurations && supportedDurations.length > 2) {
+      const snapped = supportedDurations.reduce((prev, curr) =>
+        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
+          ? curr
+          : prev
+      );
+      klingDuration = String(snapped);
+    } else {
+      klingDuration = validatedDuration <= 7 ? '5' : '10';
+    }
 
-    // Kling O1 uses start_image_url, other Kling models use image_url
+    // Kling O1/v3 uses start_image_url, other Kling models use image_url
     const imageUrlParamName =
       'imageUrlParamName' in modelConfig.capabilities
         ? modelConfig.capabilities.imageUrlParamName
@@ -185,6 +196,39 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
       duration: validatedDuration, // Integer enum: 4, 8, or 12
       aspect_ratio: options.aspectRatio || 'auto',
       resolution: '720p', // "auto" or "720p"
+    };
+  },
+
+  xai: (options, modelConfig) => {
+    const validatedDuration = options.duration
+      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+      : modelConfig.capabilities.defaultDuration;
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      duration: Math.round(validatedDuration),
+      resolution: '720p',
+      aspect_ratio: options.aspectRatio || '16:9',
+    };
+  },
+
+  wan: (options, modelConfig) => {
+    let validatedDuration =
+      options.duration || modelConfig.capabilities.defaultDuration;
+    const supported = modelConfig.capabilities.supportedDurations;
+    if (supported) {
+      validatedDuration = supported.reduce((prev, curr) =>
+        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
+          ? curr
+          : prev
+      );
+    }
+    return {
+      prompt: options.prompt,
+      image_url: options.imageUrl,
+      duration: validatedDuration,
+      resolution: '1080p',
+      enable_prompt_expansion: true,
     };
   },
 };

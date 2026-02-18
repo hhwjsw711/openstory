@@ -107,6 +107,32 @@ const AUDIO_PROVIDER_INPUT_BUILDERS: Record<string, AudioProviderInputBuilder> =
         num_steps: 25,
       };
     },
+
+    'elevenlabs-music': (options, modelConfig) => {
+      const duration = options.duration
+        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+        : modelConfig.capabilities.defaultDuration;
+      return {
+        prompt: options.prompt,
+        music_length_ms: duration * 1000,
+        force_instrumental: options.instrumental ?? true,
+      };
+    },
+
+    'minimax-music': (options, _modelConfig) => ({
+      prompt: options.tags ?? options.prompt,
+      lyrics_prompt: options.lyrics ?? '[Instrumental]',
+    }),
+
+    beatoven: (options, modelConfig) => {
+      const duration = options.duration
+        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
+        : modelConfig.capabilities.defaultDuration;
+      return {
+        prompt: options.prompt,
+        duration,
+      };
+    },
   };
 
 /**

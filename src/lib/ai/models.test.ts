@@ -33,7 +33,7 @@ describe('Model Validation', () => {
   describe('isValidImageToVideoModel', () => {
     it('returns true for valid model keys', () => {
       expect(isValidImageToVideoModel('kling_v2_5_turbo_pro')).toBe(true);
-      expect(isValidImageToVideoModel('kling_v2_6_pro')).toBe(true);
+      expect(isValidImageToVideoModel('kling_v3_pro')).toBe(true);
       expect(isValidImageToVideoModel('veo3_1')).toBe(true);
     });
 
@@ -81,7 +81,7 @@ describe('Model Validation', () => {
       expect(safeImageToVideoModel('kling_v2_5_turbo_pro')).toBe(
         'kling_v2_5_turbo_pro'
       );
-      expect(safeImageToVideoModel('kling_v2_6_pro')).toBe('kling_v2_6_pro');
+      expect(safeImageToVideoModel('kling_v3_pro')).toBe('kling_v3_pro');
     });
 
     it('returns default when invalid', () => {
@@ -116,7 +116,7 @@ describe('Model Validation', () => {
     });
 
     it('isValidImageToVideoModel acts as a type guard', () => {
-      const maybeModel: string = 'kling_v2_6_pro';
+      const maybeModel: string = 'kling_v3_pro';
       if (isValidImageToVideoModel(maybeModel)) {
         // TypeScript should infer maybeModel as ImageToVideoModel here
         const model = maybeModel;

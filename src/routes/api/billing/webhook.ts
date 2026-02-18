@@ -27,7 +27,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
             return json({ error: 'Missing signature' }, { status: 400 });
           }
 
-          const event = stripe.webhooks.constructEvent(
+          const event = await stripe.webhooks.constructEventAsync(
             body,
             signature,
             webhookSecret

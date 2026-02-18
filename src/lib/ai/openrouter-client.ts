@@ -108,13 +108,12 @@ const STRUCTURED_OUTPUT_MODELS = new Set([
   'openai/gpt-5-mini',
   'openai/gpt-5-nano',
   'google/gemini-3-flash-preview',
-  'z-ai/glm-4.7',
   // Premium tier
   'deepseek/deepseek-v3.2',
   'google/gemini-3-pro-preview',
   'openai/gpt-5.2',
-  'anthropic/claude-sonnet-4.5',
-  'anthropic/claude-opus-4.5',
+  'anthropic/claude-sonnet-4.6',
+  'anthropic/claude-opus-4.6',
 ]);
 
 /**
@@ -153,16 +152,16 @@ const DEFAULT_PROVIDER: OpenRouterProviderPreference = {
  */
 export const RECOMMENDED_MODELS = {
   // For creative writing and scene descriptions
-  creative: 'anthropic/claude-sonnet-4.5',
+  creative: 'anthropic/claude-sonnet-4.6',
 
   // For structured data extraction
-  structured: 'anthropic/claude-sonnet-4.5',
+  structured: 'anthropic/claude-sonnet-4.6',
 
   // For fast responses with good quality (supports structured outputs)
   fast: 'google/gemini-3-flash-preview',
 
   // For highest quality (more expensive)
-  premium: 'anthropic/claude-opus-4.5',
+  premium: 'anthropic/claude-sonnet-4.6',
 } as const;
 
 /**
