@@ -1,3 +1,4 @@
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { MotionModelSelector } from '@/components/model/motion-model-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,6 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { shortenPromptFn } from '@/functions/ai';
 import { generateFrameImageFn } from '@/functions/frame-image';
 import { generateFrameMotionFn } from '@/functions/motion-functions';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { useFalBillingGate } from '@/hooks/use-billing-gate';
+import {
+  frameKeys,
+  useGenerateVariants,
+  useSelectVariant,
+} from '@/hooks/use-frames';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -18,21 +26,13 @@ import {
   type TextToImageModel,
 } from '@/lib/ai/models';
 import {
-  type AspectRatio,
   aspectRatioToImageSize,
+  type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
-import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
-import { useFalBillingGate } from '@/hooks/use-billing-gate';
-import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  useGenerateVariants,
-  useSelectVariant,
-  frameKeys,
-} from '@/hooks/use-frames';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';

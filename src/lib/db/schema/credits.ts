@@ -77,7 +77,7 @@ export const teamBillingSettings = sqliteTable('team_billing_settings', {
     .references(() => teams.id, { onDelete: 'cascade' }),
   stripeCustomerId: text('stripe_customer_id'),
   autoTopUpEnabled: integer('auto_top_up_enabled', { mode: 'boolean' })
-    .default(false)
+    .default(true)
     .notNull(),
   autoTopUpThresholdUsd: real('auto_top_up_threshold_usd').default(5.0),
   autoTopUpAmountUsd: real('auto_top_up_amount_usd').default(25.0),

@@ -33,33 +33,36 @@ const SceneListComponent: React.FC<SceneListProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Calculate eligible frames for motion generation
-  // Include pending, failed, and generating frames that have completed thumbnails
-  // 'generating' is included to allow retrying stuck jobs
-  const eligibleFrames = useMemo(() => {
+  // Frames that need to be kicked off (not already generating)
+  const notStartedFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
       (f) =>
-        (f.videoStatus === 'pending' ||
-          f.videoStatus === 'failed' ||
-          f.videoStatus === 'generating') &&
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
         f.thumbnailStatus === 'completed'
     );
   }, [frames]);
 
+  const hasGeneratingFrames = useMemo(() => {
+    if (!frames) return false;
+    return frames.some(
+      (f) => f.videoStatus === 'generating' && f.thumbnailStatus === 'completed'
+    );
+  }, [frames]);
+
   const handleGenerateMotion = async () => {
-    if (!onBatchGenerateMotion || eligibleFrames.length === 0) return;
+    if (!onBatchGenerateMotion || notStartedFrames.length === 0) return;
 
     setIsGenerating(true);
     try {
-      await onBatchGenerateMotion(eligibleFrames.map((f) => f.id));
+      await onBatchGenerateMotion(notStartedFrames.map((f) => f.id));
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const hasEligibleFrames = eligibleFrames.length > 0;
-  const isMotionInProgress = regeneratingMotion.size > 0;
+  const isMotionInProgress = regeneratingMotion.size > 0 || hasGeneratingFrames;
+  const showButton = notStartedFrames.length > 0 || isMotionInProgress;
 
   return (
     <div className="flex h-full w-80 flex-col border-r bg-background">
@@ -104,24 +107,25 @@ const SceneListComponent: React.FC<SceneListProps> = ({
       </ScrollArea>
 
       {/* Sticky footer with Generate Motion button */}
-      {hasEligibleFrames && (
+      {showButton && (
         <div className="sticky bottom-0 border-t bg-background p-4">
           <Button
             variant="default"
             className="w-full"
             onClick={() => void handleGenerateMotion()}
-            disabled={isGenerating || isMotionInProgress}
+            disabled={isGenerating || notStartedFrames.length === 0}
           >
-            {isGenerating || isMotionInProgress ? (
+            {isGenerating ||
+            (notStartedFrames.length === 0 && isMotionInProgress) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                Generating…
               </>
             ) : (
               <>
                 <Video className="mr-2 h-4 w-4" />
-                Generate Motion ({eligibleFrames.length}{' '}
-                {eligibleFrames.length === 1 ? 'frame' : 'frames'})
+                Generate Motion ({notStartedFrames.length}{' '}
+                {notStartedFrames.length === 1 ? 'frame' : 'frames'})
               </>
             )}
           </Button>
