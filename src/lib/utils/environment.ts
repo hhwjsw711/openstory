@@ -72,8 +72,18 @@ export function isProductionDeployment(request: Request): boolean {
   );
 }
 
+/**
+ * Check if this is a preview deployment.
+ * Preview if: APP_URL is explicitly empty, or APP_URL doesn't match the request origin.
+ */
 export function isPreviewDeployment(request: Request): boolean {
-  return !isLocalDevelopment() && !isProductionDeployment(request);
+  if (isLocalDevelopment()) return false;
+
+  const envAppUrl = getEnv().APP_URL;
+  // APP_URL explicitly set to empty string = preview branch
+  if (envAppUrl === '') return true;
+
+  return !isProductionDeployment(request);
 }
 
 /**
