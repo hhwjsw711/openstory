@@ -847,29 +847,6 @@ export const AUDIO_MODELS = {
     },
   },
 
-  minimax_music_v2: {
-    id: 'fal-ai/minimax-music/v2' as const,
-    name: 'MiniMax Music v2',
-    provider: 'minimax-music',
-    type: 'music' as const,
-    capabilities: {
-      supportsPrompt: true,
-      supportsLyrics: true,
-      maxDuration: 240,
-      defaultDuration: 60,
-      supportedFormats: ['mp3'],
-    },
-    pricing: {
-      pricePerSecond: 0.0005,
-      currency: 'USD',
-      unit: 'seconds',
-    } as AudioModelPricing,
-    performance: {
-      estimatedGenerationTime: 20,
-      quality: 'good',
-    },
-  },
-
   beatoven_music: {
     id: 'beatoven/music-generation' as const,
     name: 'Beatoven Music',
@@ -906,7 +883,6 @@ export const AUDIO_MODEL_KEYS = [
   'beatoven_music',
   'elevenlabs_music',
   'elevenlabs_sfx',
-  'minimax_music_v2',
   'mmaudio_v2',
 ] as const satisfies readonly AudioModel[];
 
