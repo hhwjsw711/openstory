@@ -609,6 +609,139 @@ async function generateImageInternal(
       return resultByFal(params, resp.data);
     }
 
+    case 'kling_image_v3': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt,
+          aspect_ratio: imageSizeToAspectRatio(
+            params.imageSize ?? DEFAULT_IMAGE_SIZE
+          ),
+          resolution: params.resolution ?? '1K',
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            const progress = extractProgress(update);
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByFal(params, resp.data);
+    }
+
+    case 'flux_2_klein_4b': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt,
+          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+          num_inference_steps: params.numInferenceSteps ?? 4,
+          enable_safety_checker: true,
+          ...(params.seed !== undefined && { seed: params.seed }),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            const progress = extractProgress(update);
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByFal(params, resp.data);
+    }
+
+    case 'gpt_image_1_5': {
+      const sizeMap: Record<ImageSize, string> = {
+        square_hd: '1024x1024',
+        portrait_16_9: '1024x1536',
+        landscape_16_9: '1536x1024',
+      };
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt,
+          image_size: sizeMap[params.imageSize ?? DEFAULT_IMAGE_SIZE],
+          quality: 'high',
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            const progress = extractProgress(update);
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByFal(params, resp.data);
+    }
+
+    case 'grok_imagine_image': {
+      const resp = await fal.subscribe(modelId, {
+        input: {
+          prompt,
+          aspect_ratio: imageSizeToAspectRatio(
+            params.imageSize ?? DEFAULT_IMAGE_SIZE
+          ),
+          ...(params.numImages !== undefined && {
+            num_images: params.numImages,
+          }),
+          ...(params.outputFormat && { output_format: params.outputFormat }),
+          sync_mode: false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (params.onQueueUpdate) {
+            const progress = extractProgress(update);
+            params.onQueueUpdate({
+              status: update.status,
+              logs:
+                update.status === 'IN_PROGRESS'
+                  ? update.logs?.map((l) => l.message)
+                  : undefined,
+              progress,
+            });
+          }
+        },
+      });
+      if (!resp.data) throw new Error('No data returned from FAL');
+      return resultByFal(params, resp.data);
+    }
+
     case 'letzai': {
       // LetzAI uses custom provider with different API
       const presetDims = {

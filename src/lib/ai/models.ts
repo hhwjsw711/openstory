@@ -122,56 +122,6 @@ export const IMAGE_TO_VIDEO_MODELS = {
     },
   },
 
-  kling_v2_6_pro: {
-    id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
-    name: 'Kling v2.6 Pro (with Audio)',
-    provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: true, // Native audio generation (Chinese/English)
-      maxDuration: 10,
-      defaultDuration: 10,
-      fpsRange: { min: 24, max: 30, default: 30 },
-      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
-      requiresStringDuration: true, // API expects string, not number
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
-    },
-    pricing: {
-      pricePerSecond: 0.07,
-      currency: 'USD',
-      unit: 'seconds',
-    } as VideoModelPricing,
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'best',
-    },
-  },
-
-  kling_v2_6_pro_no_audio: {
-    id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
-    name: 'Kling v2.6 Pro (no Audio)',
-    provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false, // Audio generation disabled
-      maxDuration: 10,
-      defaultDuration: 10,
-      fpsRange: { min: 24, max: 30, default: 30 },
-      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
-      requiresStringDuration: true, // API expects string, not number
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
-    },
-    pricing: {
-      pricePerSecond: 0.07,
-      currency: 'USD',
-      unit: 'seconds',
-    } as VideoModelPricing,
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'best',
-    },
-  },
-
   sora_2: {
     id: 'fal-ai/sora-2/image-to-video',
     name: 'OpenAI Sora 2',
@@ -219,6 +169,106 @@ export const IMAGE_TO_VIDEO_MODELS = {
     performance: {
       estimatedGenerationTime: 15,
       quality: 'best',
+    },
+  },
+
+  kling_v3_pro: {
+    id: 'fal-ai/kling-video/v3/pro/image-to-video',
+    name: 'Kling v3 Pro',
+    provider: 'kling',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: true,
+      maxDuration: 15,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      requiresStringDuration: true,
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
+      imageUrlParamName: 'start_image_url' as const,
+    },
+    pricing: {
+      pricePerSecond: 0.336,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
+    performance: {
+      estimatedGenerationTime: 20,
+      quality: 'best',
+    },
+  },
+
+  kling_v3_pro_no_audio: {
+    id: 'fal-ai/kling-video/v3/pro/image-to-video',
+    name: 'Kling v3 Pro (no Audio)',
+    provider: 'kling',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 15,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      requiresStringDuration: true,
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
+      imageUrlParamName: 'start_image_url' as const,
+    },
+    pricing: {
+      pricePerSecond: 0.336,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
+    performance: {
+      estimatedGenerationTime: 20,
+      quality: 'best',
+    },
+  },
+
+  grok_imagine_video: {
+    id: 'xai/grok-imagine-video/image-to-video',
+    name: 'Grok Imagine Video',
+    provider: 'xai',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 15,
+      defaultDuration: 6,
+      fpsRange: { min: 24, max: 24, default: 24 },
+      supportedDurations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
+    },
+    pricing: {
+      pricePerSecond: 0.07,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
+    performance: {
+      estimatedGenerationTime: 20,
+      quality: 'best',
+    },
+  },
+
+  wan_v2_6_flash: {
+    id: 'wan/v2.6/image-to-video/flash',
+    name: 'Wan 2.6 Flash',
+    provider: 'wan',
+    capabilities: {
+      supportsPrompt: true,
+      supportsAudio: false,
+      maxDuration: 15,
+      defaultDuration: 5,
+      fpsRange: { min: 24, max: 30, default: 30 },
+      supportedDurations: [5, 10, 15],
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
+    },
+    pricing: {
+      pricePerSecond: 0.075,
+      currency: 'USD',
+      unit: 'seconds',
+    } as VideoModelPricing,
+    performance: {
+      estimatedGenerationTime: 15,
+      quality: 'good',
     },
   },
 } as const;
@@ -421,6 +471,58 @@ export const IMAGE_MODELS = {
       currency: 'USD',
     } as ImageModelPricing,
   },
+  kling_image_v3: {
+    id: 'fal-ai/kling-image/v3/text-to-image' as const,
+    name: 'Kling Image v3',
+    provider: 'Kling',
+    tier: 'balanced',
+    description: 'Fast high-quality with face/character control',
+    maxPromptLength: 2500,
+    pricing: {
+      price: 0.028,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
+  },
+  flux_2_klein_4b: {
+    id: 'fal-ai/flux-2/klein/4b' as const,
+    name: 'Flux 2 Klein 4B',
+    provider: 'Black Forest Labs',
+    tier: 'fast',
+    description: 'Ultra-fast lightweight Flux 2',
+    maxPromptLength: 2000,
+    pricing: {
+      price: 0.005,
+      unit: 'megapixels',
+      currency: 'USD',
+    } as ImageModelPricing,
+  },
+  gpt_image_1_5: {
+    id: 'fal-ai/gpt-image-1.5' as const,
+    name: 'GPT Image 1.5',
+    provider: 'OpenAI',
+    tier: 'premium',
+    description: 'OpenAI image generation with transparent backgrounds',
+    maxPromptLength: 4000,
+    pricing: {
+      price: 0.133,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
+  },
+  grok_imagine_image: {
+    id: 'xai/grok-imagine-image' as const,
+    name: 'Grok Imagine Image',
+    provider: 'xAI',
+    tier: 'balanced',
+    description: 'xAI image generation with prompt enhancement',
+    maxPromptLength: 4000,
+    pricing: {
+      price: 0.02,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
+  },
   letzai: {
     id: 'letzai/image' as const,
     name: 'LetzAI',
@@ -465,19 +567,21 @@ export type ImageToVideoModelConfig =
 // Type for the video model ID
 type ImageToVideoModelId = ImageToVideoModelConfig['id'];
 
-export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v2_6_pro';
+export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v3_pro';
 
 // Typed list of image-to-video model keys for Zod enum schemas
 // This is type-safe because we use satisfies to validate the tuple matches the type
 export const IMAGE_TO_VIDEO_MODEL_KEYS = [
+  'grok_imagine_video',
   'kling_o1',
   'kling_v2_5_turbo_pro',
-  'kling_v2_6_pro',
-  'kling_v2_6_pro_no_audio',
+  'kling_v3_pro',
+  'kling_v3_pro_no_audio',
   'seedance_v1_pro',
   'sora_2',
   'veo3',
   'veo3_1',
+  'wan_v2_6_flash',
 ] as const satisfies readonly ImageToVideoModel[];
 
 // Helper to get model ID from key (for backward compatibility)
@@ -719,6 +823,51 @@ export const AUDIO_MODELS = {
       quality: 'good',
     },
   },
+
+  elevenlabs_music: {
+    id: 'fal-ai/elevenlabs/music' as const,
+    name: 'ElevenLabs Music',
+    provider: 'elevenlabs-music',
+    type: 'music' as const,
+    capabilities: {
+      supportsPrompt: true,
+      supportsInstrumental: true,
+      maxDuration: 600,
+      defaultDuration: 60,
+      supportedFormats: ['mp3'],
+    },
+    pricing: {
+      pricePerSecond: 0.0133,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 30,
+      quality: 'best',
+    },
+  },
+
+  beatoven_music: {
+    id: 'beatoven/music-generation' as const,
+    name: 'Beatoven Music',
+    provider: 'beatoven',
+    type: 'music' as const,
+    capabilities: {
+      supportsPrompt: true,
+      maxDuration: 150,
+      defaultDuration: 90,
+      supportedFormats: ['wav'],
+    },
+    pricing: {
+      pricePerSecond: 0.0011,
+      currency: 'USD',
+      unit: 'seconds',
+    } as AudioModelPricing,
+    performance: {
+      estimatedGenerationTime: 25,
+      quality: 'good',
+    },
+  },
 } as const;
 
 // Audio model types
@@ -731,8 +880,10 @@ export const DEFAULT_MUSIC_MODEL: AudioModel = 'ace_step';
 export const AUDIO_MODEL_KEYS = [
   'ace_step',
   'ace_step_audio_to_audio',
-  'mmaudio_v2',
+  'beatoven_music',
+  'elevenlabs_music',
   'elevenlabs_sfx',
+  'mmaudio_v2',
 ] as const satisfies readonly AudioModel[];
 
 export function getAudioModelId(modelKey: AudioModel): AudioModelId {

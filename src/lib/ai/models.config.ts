@@ -55,14 +55,6 @@ export const SCRIPT_ANALYSIS_MODELS = [
     tier: 'fast',
     description: 'Fast multimodal model',
   },
-  {
-    id: 'z-ai/glm-4.7',
-    name: 'GLM 4.7',
-    provider: 'Z.ai',
-    tier: 'fast',
-    description: 'Strong reasoning with 200K context',
-  },
-
   // === PREMIUM TIER ===
   {
     id: 'deepseek/deepseek-v3.2',
@@ -86,18 +78,25 @@ export const SCRIPT_ANALYSIS_MODELS = [
     description: 'Latest GPT-5 series',
   },
   {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
+    id: 'anthropic/claude-sonnet-4.6',
+    name: 'Claude Sonnet 4.6',
     provider: 'Anthropic',
     tier: 'premium',
     description: 'State-of-the-art coding',
   },
   {
-    id: 'anthropic/claude-opus-4.5',
-    name: 'Claude Opus 4.5',
+    id: 'anthropic/claude-opus-4.6',
+    name: 'Claude Opus 4.6',
     provider: 'Anthropic',
     tier: 'premium',
-    description: 'Frontier reasoning',
+    description: 'Frontier reasoning and coding',
+  },
+  {
+    id: 'z-ai/glm-5',
+    name: 'GLM 5',
+    provider: 'Z.ai',
+    tier: 'premium',
+    description: 'Open-source 744B systems engineering',
   },
 ] as const;
 
@@ -137,7 +136,7 @@ export const ANALYSIS_MODEL_IDS = getAllModelIds();
  * Default model to use when none is specified
  */
 export const DEFAULT_ANALYSIS_MODEL: AnalysisModelId =
-  'anthropic/claude-sonnet-4.5';
+  'anthropic/claude-sonnet-4.6';
 
 /**
  * Image generation models are now in src/lib/ai/models.ts

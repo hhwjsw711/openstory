@@ -28,7 +28,7 @@ export type ComposeAudioVideoResult = {
 /**
  * Compose a video (with its native audio preserved) and a music track into a single output.
  * The video track keeps its original audio (SFX, ambient, dialogue) while the music
- * track is mixed on top. This is ideal for videos from audio-capable models (veo3, kling v2.6).
+ * track is mixed on top. This is ideal for videos from audio-capable models (veo3, kling v3).
  */
 export async function composeAudioVideo(
   videoUrl: string,
