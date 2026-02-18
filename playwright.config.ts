@@ -30,7 +30,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     baseURL: 'http://localhost:3001',
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
 

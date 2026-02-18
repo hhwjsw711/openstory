@@ -14,7 +14,7 @@ baseTest.describe('Route Protection', () => {
 
     // Should be redirected to login
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText('Sign In', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
   });
 
   baseTest('login page is accessible', async ({ page }) => {
@@ -22,7 +22,6 @@ baseTest.describe('Route Protection', () => {
 
     await expect(page).toHaveURL('/login');
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
-    await expect(page.getByText('Sign In', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Send code' })).toBeVisible();
   });
