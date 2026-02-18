@@ -21,6 +21,13 @@
   },
   "env": {
     "stg": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "velro-stg",
+          "database_id": "",
+        },
+      ],
       "r2_buckets": [
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
@@ -47,6 +54,13 @@
       },
     },
     "prd": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "velro-prd",
+          "database_id": "",
+        },
+      ],
       "r2_buckets": [
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",

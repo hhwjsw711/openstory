@@ -48,6 +48,9 @@
     "db:check-migrations:all": "bun --bun scripts/check-migrations.ts --all",
     "db:seed": "bun --bun scripts/seed.ts",
     "db:setup": "bun db:migrate && bun db:seed",
+    "db:migrate:d1": "bun --bun drizzle-kit migrate --config=drizzle.config.d1.ts",
+    "db:push:d1": "bun --bun drizzle-kit push --config=drizzle.config.d1.ts",
+    "db:studio:d1": "bun drizzle-kit studio --config=drizzle.config.d1.ts",
     "db:push:local": "bun --bun drizzle-kit push --config=drizzle.config.local.ts",
     "db:setup:local": "bun db:migrate:local && bun db:seed:local",
     "stripe:dev": "source .env.local 2>/dev/null; stripe listen --forward-to localhost:3000/api/billing/webhook --api-key=${STRIPE_SECRET_KEY}",
@@ -145,6 +148,7 @@
       "default": "./src/lib/db/redis.ts"
     },
     "#db-client": {
+      "workerd": "./src/lib/db/client-d1.ts",
       "development": "./src/lib/db/client-local.ts",
       "default": "./src/lib/db/client-web.ts"
     },
