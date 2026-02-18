@@ -14,14 +14,18 @@ baseTest.describe('Route Protection', () => {
 
     // Should be redirected to login
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Welcome to Velro' })
+    ).toBeVisible();
   });
 
   baseTest('login page is accessible', async ({ page }) => {
     await page.goto('/login');
 
     await expect(page).toHaveURL('/login');
-    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Welcome to Velro' })
+    ).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Send code' })).toBeVisible();
   });
