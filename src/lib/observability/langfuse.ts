@@ -15,6 +15,12 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 let processor: LangfuseSpanProcessor | null = null;
 let sdk: NodeSDK | null = null;
 
+/** Whether Langfuse is enabled — derived from both keys being set. */
+export function isLangfuseEnabled(): boolean {
+  const env = getEnv();
+  return !!env.LANGFUSE_PUBLIC_KEY && !!env.LANGFUSE_SECRET_KEY;
+}
+
 /**
  * Initialize Langfuse tracing.
  * Call once at module load before any traced operations.

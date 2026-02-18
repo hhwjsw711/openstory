@@ -4,7 +4,7 @@
  */
 
 import { getEnv } from '#env';
-import type { TextPromptClient } from '@langfuse/client';
+import type { PromptReference } from '@/lib/observability/langfuse';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
 // OpenRouter API configuration
@@ -81,7 +81,7 @@ type OpenRouterRequestParams = {
   stream?: boolean;
   provider?: OpenRouterProviderPreference;
   /** Langfuse prompt for trace linking */
-  prompt?: TextPromptClient;
+  prompt?: PromptReference;
   /** Custom observation name for Langfuse filtering (e.g., 'phase-1-scene-splitting') */
   observationName?: string;
   /** Tags for Langfuse filtering */
@@ -198,8 +198,8 @@ export async function callOpenRouter(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://velro.ai',
-        'X-Title': 'Velro AI',
+        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
+        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
       },
       body: JSON.stringify({
         model: params.model,
@@ -313,8 +313,8 @@ export async function* callOpenRouterStream(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://velro.ai',
-        'X-Title': 'Velro AI',
+        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
+        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
       },
       body: JSON.stringify({
         model: params.model,

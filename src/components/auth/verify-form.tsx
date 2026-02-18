@@ -18,7 +18,6 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { authClient } from '@/lib/auth/client';
-import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -65,25 +64,15 @@ export function VerifyForm({
           return;
         }
 
-        // Check if new user (needs invite code)
-        const user = result.data?.user;
-        if (user && 'status' in user && user.status === 'pending') {
-          setSuccess('Signed in! Please enter your invite code…');
+        setSuccess('Signed in!');
+        // Redirect to passkey setup if user hasn't skipped it
+        if (!hasSkippedPasskeyPrompt()) {
           await navigate({
-            to: inviteCodeRoute.fullPath,
-            search: { redirectTo },
+            to: '/settings/passkeys',
+            search: { setup: true },
           });
         } else {
-          setSuccess('Signed in!');
-          // Redirect to passkey setup if user hasn't skipped it
-          if (!hasSkippedPasskeyPrompt()) {
-            await navigate({
-              to: '/settings/passkeys',
-              search: { setup: true },
-            });
-          } else {
-            await navigate({ to: redirectTo });
-          }
+          await navigate({ to: redirectTo });
         }
       } catch (err) {
         console.error('[VerifyForm] Verify OTP error:', err);

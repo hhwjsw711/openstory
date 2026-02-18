@@ -30,7 +30,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     baseURL: 'http://localhost:3001',
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
 
@@ -60,12 +60,9 @@ export default defineConfig({
   ],
 
   // Run dev server on port 3001 with test.db
-  // Local: doppler provides secrets, we override DATABASE_URL and PORT
-  // CI: env vars set on the job step
+  // Secrets loaded from .env.local by Vite; we override DATABASE_URL and PORT
   webServer: {
-    command: process.env.CI
-      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e'
-      : 'doppler run -- env E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    command: 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

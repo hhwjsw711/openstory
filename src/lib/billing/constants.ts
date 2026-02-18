@@ -3,6 +3,13 @@
  * Central configuration for the credits/wallet billing system
  */
 
+import { getEnv } from '#env';
+
+/** Whether billing/credits are enabled — derived from STRIPE_SECRET_KEY being set. Server-only. */
+export function isBillingEnabled(): boolean {
+  return !!getEnv().STRIPE_SECRET_KEY;
+}
+
 /** Markup percentage applied on top of provider costs (e.g., 0.05 = 5%) */
 export const BILLING_MARKUP_PERCENT = 0.05;
 

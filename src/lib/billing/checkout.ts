@@ -3,7 +3,7 @@
  * Creates checkout sessions for credit top-ups
  */
 
-import { getStripe } from './stripe';
+import { getStripeOrThrow } from './stripe';
 import { getBillingSettings, saveStripeCustomerId } from './credit-service';
 import { MIN_TOPUP_AMOUNT_USD } from './constants';
 import { ValidationError } from '@/lib/errors';
@@ -29,7 +29,7 @@ export async function createCheckoutSession(
     );
   }
 
-  const stripe = getStripe();
+  const stripe = getStripeOrThrow();
   const settings = await getBillingSettings(teamId);
 
   // Reuse existing Stripe customer or create new one
@@ -59,7 +59,7 @@ export async function createCheckoutSession(
           currency: 'usd',
           unit_amount: amountCents,
           product_data: {
-            name: `Velro Credits — $${amountUsd.toFixed(2)}`,
+            name: `Credits — $${amountUsd.toFixed(2)}`,
             description: `Add $${amountUsd.toFixed(2)} to your team wallet`,
           },
         },

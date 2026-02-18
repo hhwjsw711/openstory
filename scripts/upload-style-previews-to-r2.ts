@@ -6,7 +6,7 @@
  * 1. Reads existing images from /public/assets/styles/
  * 2. Downsamples them to 512x512 square
  * 3. Uploads to R2 public bucket (environment-specific)
- * 4. Images are accessible at: https://storage[-env].velro.ai/styles/{style-name}/{scene-name}.jpg
+ * 4. Images are accessible at: https://{R2_PUBLIC_ASSETS_DOMAIN}/styles/{style-name}/{scene-name}.jpg
  *
  * Database URLs are handled by the seed script using deterministic URLs.
  *
@@ -37,14 +37,15 @@ const envIndex = process.argv.indexOf('--env');
 const environment = envIndex !== -1 ? process.argv[envIndex + 1] : 'dev';
 
 // Environment-specific configuration
+// Set via env vars: R2_PUBLIC_ASSETS_BUCKET and R2_PUBLIC_ASSETS_DOMAIN
 const ENV_CONFIG = {
   prd: {
-    bucket: 'velro-public-assets',
-    url: 'https://assets.velro.ai',
+    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
   },
   stg: {
-    bucket: 'velro-public-assets-stg',
-    url: 'https://assets-stg.velro.ai',
+    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets-stg',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
   },
 };
 

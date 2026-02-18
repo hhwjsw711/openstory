@@ -1,11 +1,16 @@
 /**
  * Auth Layout
- * Layout for authentication pages (login, access code entry)
+ * Layout for authentication pages (login, verify)
  */
 
+import { getIsPreviewFn } from '@/lib/utils/environment';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_auth')({
+  beforeLoad: async () => {
+    const isPreview = await getIsPreviewFn();
+    return { isPreview };
+  },
   component: AuthLayout,
 });
 

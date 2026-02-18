@@ -18,7 +18,6 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
-import { Route as AuthInviteCodeRouteImport } from './routes/_auth/invite-code'
 import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route'
 import { Route as ProtectedTalentIndexRouteImport } from './routes/_protected/talent/index'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
@@ -96,11 +95,6 @@ const AuthVerifyRoute = AuthVerifyRouteImport.update({
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
-const AuthInviteCodeRoute = AuthInviteCodeRouteImport.update({
-  id: '/invite-code',
-  path: '/invite-code',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const ProtectedSettingsRouteRoute = ProtectedSettingsRouteRouteImport.update({
@@ -300,7 +294,6 @@ const ProtectedSequencesIdCastCharacterIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
@@ -344,7 +337,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/invite-code': typeof AuthInviteCodeRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
@@ -392,7 +384,6 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/_auth/invite-code': typeof AuthInviteCodeRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/verify': typeof AuthVerifyRoute
   '/_protected/eval': typeof ProtectedEvalRoute
@@ -439,7 +430,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
-    | '/invite-code'
     | '/login'
     | '/verify'
     | '/eval'
@@ -483,7 +473,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/invite-code'
     | '/login'
     | '/verify'
     | '/eval'
@@ -530,7 +519,6 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_protected'
     | '/_protected/settings'
-    | '/_auth/invite-code'
     | '/_auth/login'
     | '/_auth/verify'
     | '/_protected/eval'
@@ -655,13 +643,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRouteRoute
-    }
-    '/_auth/invite-code': {
-      id: '/_auth/invite-code'
-      path: '/invite-code'
-      fullPath: '/invite-code'
-      preLoaderRoute: typeof AuthInviteCodeRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/_protected/settings': {
@@ -913,13 +894,11 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteRouteChildren {
-  AuthInviteCodeRoute: typeof AuthInviteCodeRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthVerifyRoute: typeof AuthVerifyRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
-  AuthInviteCodeRoute: AuthInviteCodeRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthVerifyRoute: AuthVerifyRoute,
 }

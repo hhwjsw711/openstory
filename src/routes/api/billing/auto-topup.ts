@@ -5,6 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import {
   getUserDefaultTeam,
@@ -20,6 +21,13 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return json(
+            { success: false, error: { message: 'Billing is not enabled' } },
+            { status: 404 }
+          );
+        }
+
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);

@@ -5,6 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError, ValidationError } from '@/lib/errors';
@@ -14,6 +15,14 @@ export const Route = createFileRoute('/api/billing/transactions')({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return json({
+            success: true,
+            data: { transactions: [], total: 0 },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);

@@ -148,20 +148,10 @@ export async function matchLocationsToLibrary(
     return [];
   }
 
-  // Try to get prompt from Langfuse, fall back to hardcoded system prompt
-  let systemPromptText =
-    'You are a location matching assistant. Match library locations to script locations based on semantic similarity.';
-  let prompt: Awaited<ReturnType<typeof getPrompt>>['prompt'] | undefined;
-
-  try {
-    const langfuseResult = await getPrompt('velro/phase/location-matching');
-    systemPromptText = langfuseResult.compiled;
-    prompt = langfuseResult.prompt;
-  } catch {
-    console.log(
-      '[LocationMatching] Using fallback prompt (Langfuse prompt not found)'
-    );
-  }
+  // Fetch prompt (Langfuse if enabled, otherwise local fallback)
+  const { prompt, compiled: systemPromptText } = await getPrompt(
+    'velro/phase/location-matching'
+  );
 
   let finalContent = '';
 

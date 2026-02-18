@@ -1,5 +1,5 @@
 /**
- * Email Service for Velro
+ * Email Service
  * Handles sending transactional emails via Resend
  */
 
@@ -19,19 +19,25 @@ function getResend(): Resend | undefined {
   return _resend;
 }
 
+function getAppName(): string {
+  return getEnv().APP_NAME || 'AI Video Studio';
+}
+
 function getEmailConfig(): {
   fromEmail: string;
   fromName: string;
 } {
-  const envEmail = getEnv().EMAIL_FROM;
-  const isDev = process.env.NODE_ENV === 'development';
+  const env = getEnv();
+  const envEmail = env.EMAIL_FROM;
+  const isDev = env.NODE_ENV === 'development';
+  const appName = getAppName();
 
   if (envEmail) {
-    return { fromEmail: envEmail, fromName: 'Velro' };
+    return { fromEmail: envEmail, fromName: appName };
   }
 
   if (isDev) {
-    return { fromEmail: 'onboarding@resend.dev', fromName: 'Velro' };
+    return { fromEmail: 'onboarding@resend.dev', fromName: appName };
   }
 
   throw new Error(
@@ -100,7 +106,7 @@ export async function sendPasswordResetEmail(
   email: string,
   resetUrl: string
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = 'Reset your Velro password';
+  const subject = 'Reset your password';
 
   const html = `
     <!DOCTYPE html>
@@ -194,12 +200,12 @@ export async function sendPasswordResetEmail(
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🎬 Velro</div>
+            <div class="logo">🎬 ${getAppName()}</div>
           </div>
           
           <div class="content">
             <h2>Reset Your Password</h2>
-            <p>We received a request to reset your password for your Velro account.</p>
+            <p>We received a request to reset your password for your account.</p>
             <p>Click the button below to choose a new password:</p>
             
             <div class="button-container">
@@ -219,7 +225,7 @@ export async function sendPasswordResetEmail(
               If the button doesn't work, copy and paste this link into your browser:<br>
               <a href="${resetUrl}" class="link-fallback">${resetUrl}</a>
             </p>
-            <p>© ${new Date().getFullYear()} Velro. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} ${getAppName()}. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -227,9 +233,9 @@ export async function sendPasswordResetEmail(
   `;
 
   const text = `
-Reset Your Velro Password
+Reset Your Password
 
-We received a request to reset your password for your Velro account.
+We received a request to reset your password for your account.
 
 Click this link to reset your password:
 ${resetUrl}
@@ -239,7 +245,7 @@ ${resetUrl}
 If you didn't request a password reset, you can safely ignore this email.
 
 ---
-© ${new Date().getFullYear()} Velro
+© ${new Date().getFullYear()} ${getAppName()}
   `;
 
   return sendEmail({
@@ -257,7 +263,7 @@ export async function sendOtpEmail(
   email: string,
   otp: string
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = 'Your Velro sign-in code';
+  const subject = 'Your sign-in code';
 
   const html = `
     <!DOCTYPE html>
@@ -341,12 +347,12 @@ export async function sendOtpEmail(
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">Velro</div>
+            <div class="logo">${getAppName()}</div>
           </div>
 
           <div class="content">
             <h2>Your Sign-In Code</h2>
-            <p>Enter this code to sign in to your Velro account:</p>
+            <p>Enter this code to sign in to your account:</p>
 
             <div class="otp-code">${otp}</div>
 
@@ -357,7 +363,7 @@ export async function sendOtpEmail(
           </div>
 
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Velro. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} ${getAppName()}. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -365,9 +371,9 @@ export async function sendOtpEmail(
   `;
 
   const text = `
-Your Velro Sign-In Code
+Your Sign-In Code
 
-Enter this code to sign in to your Velro account:
+Enter this code to sign in to your account:
 
 ${otp}
 
@@ -376,7 +382,7 @@ This code expires in 5 minutes.
 If you didn't request this code, you can safely ignore this email.
 
 ---
-© ${new Date().getFullYear()} Velro
+© ${new Date().getFullYear()} ${getAppName()}
   `;
 
   return sendEmail({

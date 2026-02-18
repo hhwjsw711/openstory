@@ -133,17 +133,19 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         );
       }
 
-      // Fetch prompt from Langfuse
+      // Fetch prompt (Langfuse if enabled, otherwise local fallback)
       const { prompt, messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference = {
-        name: prompt.name,
-        version: prompt.version,
-        isFallback: prompt.isFallback,
-      };
+      const promptReference: PromptReference | undefined = prompt
+        ? {
+            name: prompt.name,
+            version: prompt.version,
+            isFallback: prompt.isFallback,
+          }
+        : undefined;
 
       return {
         startTime: Date.now(),
@@ -176,14 +178,15 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             },
           },
         },
-        headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-          ? {
-              'Upstash-Forward-X-Vercel-Protection-Bypass':
-                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-              'x-vercel-protection-bypass':
-                process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-            }
-          : undefined,
+        headers: (() => {
+          const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
+          return bypassSecret
+            ? {
+                'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
+                'x-vercel-protection-bypass': bypassSecret,
+              }
+            : undefined;
+        })(),
       }
     );
     await context.run('log-generation', async () => {

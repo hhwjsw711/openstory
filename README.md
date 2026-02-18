@@ -16,7 +16,7 @@ AI-powered video sequence platform.
 
 ```bash
 bun install
-bun setup:env          # Configure local environment
+bun setup              # Configure local environment
 bun db:setup           # Migrate + seed database
 ```
 

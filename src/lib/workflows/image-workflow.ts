@@ -6,6 +6,7 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
@@ -121,7 +122,7 @@ export const generateImageWorkflow = createWorkflow(
         ? imageResult.metadata.cost
         : 0;
     const { teamId } = input;
-    if (imageCost > 0 && teamId && !apiKeys.falApiKey) {
+    if (isBillingEnabled() && imageCost > 0 && teamId && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, imageCost);
         if (!canAfford) {

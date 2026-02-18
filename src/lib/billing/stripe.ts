@@ -1,6 +1,7 @@
 /**
  * Stripe Client
- * Lazy-initialized Stripe instance for billing operations
+ * Lazy-initialized Stripe instance for billing operations.
+ * Returns null when STRIPE_SECRET_KEY is not configured (billing disabled).
  */
 
 import { getEnv } from '#env';
@@ -8,35 +9,46 @@ import { ConfigurationError } from '@/lib/errors';
 import Stripe from 'stripe';
 
 let stripeInstance: Stripe | null = null;
+let stripeChecked = false;
 
-export function getStripe(): Stripe {
-  if (stripeInstance) return stripeInstance;
+/**
+ * Get Stripe instance, or null if not configured.
+ * Use `getStripeOrThrow()` when Stripe is required (e.g. checkout).
+ */
+export function getStripe(): Stripe | null {
+  if (stripeChecked) return stripeInstance;
 
   const env = getEnv();
   const key = env.STRIPE_SECRET_KEY;
 
   if (!key) {
-    throw new ConfigurationError(
-      'STRIPE_SECRET_KEY environment variable is required'
-    );
+    stripeChecked = true;
+    return null;
   }
 
   stripeInstance = new Stripe(key, {
     typescript: true,
   });
+  stripeChecked = true;
 
   return stripeInstance;
 }
 
-export function getStripeWebhookSecret(): string {
-  const env = getEnv();
-  const secret = env.STRIPE_WEBHOOK_SECRET;
-
-  if (!secret) {
+/**
+ * Get Stripe instance or throw if not configured.
+ * Use this in billing routes that require Stripe.
+ */
+export function getStripeOrThrow(): Stripe {
+  const stripe = getStripe();
+  if (!stripe) {
     throw new ConfigurationError(
-      'STRIPE_WEBHOOK_SECRET environment variable is required'
+      'STRIPE_SECRET_KEY environment variable is required for billing'
     );
   }
+  return stripe;
+}
 
-  return secret;
+export function getStripeWebhookSecret(): string | null {
+  const env = getEnv();
+  return env.STRIPE_WEBHOOK_SECRET || null;
 }

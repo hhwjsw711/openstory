@@ -5,7 +5,8 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
-import { getStripe, getStripeWebhookSecret } from '@/lib/billing/stripe';
+import { isBillingEnabled } from '@/lib/billing/constants';
+import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import {
   addCredits,
   saveStripeCustomerId,
@@ -16,9 +17,20 @@ export const Route = createFileRoute('/api/billing/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return json({ received: true }, { status: 200 });
+        }
+
         try {
-          const stripe = getStripe();
+          const stripe = getStripeOrThrow();
           const webhookSecret = getStripeWebhookSecret();
+
+          if (!webhookSecret) {
+            return json(
+              { error: 'Webhook secret not configured' },
+              { status: 500 }
+            );
+          }
 
           const body = await request.text();
           const signature = request.headers.get('stripe-signature');

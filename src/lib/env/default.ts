@@ -1,3 +1,5 @@
-export const getEnv = () => {
+import { createServerOnlyFn } from '@tanstack/react-start';
+
+export const getEnv = createServerOnlyFn(() => {
   return process.env || import.meta.env;
-};
+});

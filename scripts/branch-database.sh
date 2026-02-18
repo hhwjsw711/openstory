@@ -63,7 +63,8 @@ fi
 # 2. Sanitize Branch Name for Turso
 # Lowercase, replace non-alnum with hyphens, remove leading/trailing hyphens, truncate to 32 chars
 SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//' | cut -c 1-32)
-DB_NAME="velro-preview-${SANITIZED_BRANCH}"
+DB_PREFIX="${DB_PREVIEW_PREFIX:-preview}"
+DB_NAME="${DB_PREFIX}-${SANITIZED_BRANCH}"
 
 echo -e "🗄️  Target Database: ${BLUE}$DB_NAME${NC}"
 
