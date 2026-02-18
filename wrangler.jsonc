@@ -1,9 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "./src/worker-entry.ts",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": ["nodejs_compat"],
+  // Cloudflare Workflows (prototype: image generation)
+  "workflows": [
+    {
+      "name": "cf-image-workflow",
+      "binding": "CF_IMAGE_WORKFLOW",
+      "class_name": "CfImageWorkflow",
+    },
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

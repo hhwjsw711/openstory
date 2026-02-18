@@ -31,6 +31,8 @@ import type {
   UpscaleVariantWorkflowInput,
 } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { triggerCfImageWorkflow } from '@/lib/workflow/cf-client';
+import { getEnv } from '#env';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';
@@ -214,9 +216,15 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       referenceImages,
     };
 
-    const workflowRunId = await triggerWorkflow('/image', workflowInput, {
-      deduplicationId: `image-${frame.id}`,
-    });
+    // Use Cloudflare Workflows when USE_CF_WORKFLOWS is enabled, otherwise Upstash
+    const useCfWorkflows = getEnv().USE_CF_WORKFLOWS === 'true';
+    const workflowRunId = useCfWorkflows
+      ? await triggerCfImageWorkflow(workflowInput, {
+          id: `image-${frame.id}`,
+        })
+      : await triggerWorkflow('/image', workflowInput, {
+          deduplicationId: `image-${frame.id}`,
+        });
 
     return {
       workflowRunId,
