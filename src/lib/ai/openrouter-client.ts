@@ -4,7 +4,7 @@
  */
 
 import { getEnv } from '#env';
-import type { TextPromptClient } from '@langfuse/client';
+import type { PromptReference } from '@/lib/observability/langfuse';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
 // OpenRouter API configuration
@@ -81,7 +81,7 @@ type OpenRouterRequestParams = {
   stream?: boolean;
   provider?: OpenRouterProviderPreference;
   /** Langfuse prompt for trace linking */
-  prompt?: TextPromptClient;
+  prompt?: PromptReference;
   /** Custom observation name for Langfuse filtering (e.g., 'phase-1-scene-splitting') */
   observationName?: string;
   /** Tags for Langfuse filtering */

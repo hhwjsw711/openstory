@@ -133,17 +133,19 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         );
       }
 
-      // Fetch prompt from Langfuse
+      // Fetch prompt (Langfuse if enabled, otherwise local fallback)
       const { prompt, messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference = {
-        name: prompt.name,
-        version: prompt.version,
-        isFallback: prompt.isFallback,
-      };
+      const promptReference: PromptReference | undefined = prompt
+        ? {
+            name: prompt.name,
+            version: prompt.version,
+            isFallback: prompt.isFallback,
+          }
+        : undefined;
 
       return {
         startTime: Date.now(),

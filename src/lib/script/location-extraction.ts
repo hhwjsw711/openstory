@@ -46,34 +46,10 @@ export async function extractLocationBible(
 ): Promise<LocationBibleEntry[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
-  // Fetch prompt from Langfuse (or use default if not configured)
-  let systemPrompt: string;
-  let prompt: Awaited<ReturnType<typeof getPrompt>>['prompt'] | undefined;
-
-  try {
-    const result = await getPrompt('velro/phase/location-extraction-chat');
-    prompt = result.prompt;
-    systemPrompt = result.compiled;
-  } catch {
-    // Fallback to default prompt if Langfuse prompt not configured
-    systemPrompt = `You are an expert script analyst and location designer for film and video production.
-Your task is to analyze scripts and identify all unique locations, building a comprehensive Location Bible.
-
-For each location:
-1. Extract the location name exactly as written (e.g., "INT. OFFICE - DAY")
-2. Determine if it's interior, exterior, or both
-3. Identify the typical time of day
-4. Provide detailed visual descriptions including:
-   - Architectural style and design aesthetic
-   - Key visual features that define the space
-   - Color palette and dominant colors
-   - Lighting characteristics
-   - Mood and ambiance
-5. Create a short consistency tag for image generation
-
-Focus on visual consistency - locations should be easily recognizable across multiple scenes.
-Output must be valid JSON matching the provided schema.`;
-  }
+  // Fetch prompt (Langfuse if enabled, otherwise local fallback)
+  const { prompt, compiled: systemPrompt } = await getPrompt(
+    'velro/phase/location-extraction-chat'
+  );
 
   // Build user prompt with scenes
   const scenesJson = JSON.stringify(scenes, null, 2);

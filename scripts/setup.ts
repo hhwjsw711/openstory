@@ -77,6 +77,10 @@ function writeEnvFile(vars: Map<string, string>) {
       keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
     },
     {
+      header: 'Observability (Langfuse)',
+      keys: ['LANGFUSE_PUBLIC_KEY', 'LANGFUSE_SECRET_KEY', 'LANGFUSE_BASE_URL'],
+    },
+    {
       header: 'Billing (Stripe)',
       keys: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
     },
@@ -420,6 +424,42 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Observability (Langfuse)
+  // -------------------------------------------------------------------------
+  const setupLangfuse = checkCancel(
+    await p.confirm({
+      message:
+        'Set up Langfuse for prompt management & LLM tracing? (optional)',
+      initialValue: false,
+    })
+  );
+
+  if (setupLangfuse) {
+    const publicKey = await promptForKey(
+      existing,
+      'LANGFUSE_PUBLIC_KEY',
+      'Langfuse Public Key',
+      'Get one at: https://cloud.langfuse.com/project/settings'
+    );
+    if (publicKey) vars.set('LANGFUSE_PUBLIC_KEY', publicKey);
+
+    const secretKey = await promptForKey(
+      existing,
+      'LANGFUSE_SECRET_KEY',
+      'Langfuse Secret Key'
+    );
+    if (secretKey) vars.set('LANGFUSE_SECRET_KEY', secretKey);
+
+    const baseUrl = await promptForKey(
+      existing,
+      'LANGFUSE_BASE_URL',
+      'Langfuse Base URL (leave empty for cloud)',
+      'Default: https://cloud.langfuse.com'
+    );
+    if (baseUrl) vars.set('LANGFUSE_BASE_URL', baseUrl);
+  }
+
+  // -------------------------------------------------------------------------
   // Billing (Stripe)
   // -------------------------------------------------------------------------
   const setupBilling = checkCancel(
@@ -469,6 +509,12 @@ async function main() {
     ['Workflows', vars.has('QSTASH_TOKEN') ? 'Configured' : 'Skipped'],
     ['Storage', vars.has('R2_ACCOUNT_ID') ? 'Configured' : 'Skipped'],
     ['Google OAuth', vars.has('GOOGLE_CLIENT_ID') ? 'Configured' : 'Skipped'],
+    [
+      'Langfuse',
+      vars.has('LANGFUSE_PUBLIC_KEY')
+        ? 'Configured'
+        : 'Skipped (using local prompts)',
+    ],
     ['Billing', vars.has('STRIPE_SECRET_KEY') ? 'Configured' : 'Skipped'],
   ];
 
