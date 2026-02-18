@@ -6,6 +6,8 @@
  * where process.env is only populated at request time.
  */
 
+import { createServerFn } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
 import { getEnv } from '#env';
 
 /**
@@ -104,3 +106,14 @@ export function isPreviewHost(host: string): boolean {
 export function isLocalDevelopment(): boolean {
   return getEnv().NODE_ENV === 'development';
 }
+
+/**
+ * Server function to check if the current request is from a preview deployment.
+ * Safe to call from client code (executes server-side via RPC).
+ */
+export const getIsPreviewFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const request = getRequest();
+    return isPreviewDeployment(request);
+  }
+);
