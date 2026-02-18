@@ -994,8 +994,6 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       const { sequenceId } = input;

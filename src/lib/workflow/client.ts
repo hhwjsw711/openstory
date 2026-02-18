@@ -119,7 +119,6 @@ export async function triggerWorkflow(
   const response = await qstash.trigger({
     url: `${baseUrl}${url}`,
     body: body,
-    keepTriggerConfig: true,
     // Use deduplicationId as workflowRunId to prevent duplicate runs
     // Each workflow run must have a unique ID - if the ID exists, no duplicate is created
     workflowRunId: options?.deduplicationId,

@@ -165,7 +165,6 @@ export const upscaleVariantWorkflow = createWorkflow(
     return result;
   },
   {
-    retries: 2,
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 

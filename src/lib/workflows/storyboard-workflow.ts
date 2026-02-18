@@ -147,9 +147,5 @@ export const generateStoryboardWorkflow = createWorkflow(
         sequenceId,
       });
     });
-  },
-  {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
   }
 );

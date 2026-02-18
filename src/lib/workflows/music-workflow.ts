@@ -26,7 +26,7 @@ import {
   musicPromptSchema,
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
-import { getFalFlowControl } from './constants';
+
 import { eq } from 'drizzle-orm';
 
 export const generateMusicWorkflow = createWorkflow(
@@ -229,9 +229,6 @@ export const generateMusicWorkflow = createWorkflow(
     return { audioUrl, duration: actualDuration };
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000',
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 

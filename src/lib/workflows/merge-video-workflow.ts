@@ -25,7 +25,6 @@ import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
-import { getFalFlowControl } from './constants';
 
 /**
  * Merge video workflow
@@ -225,9 +224,6 @@ export const mergeVideoWorkflow = createWorkflow(
     return result;
   },
   {
-    retries: 2,
-    retryDelay: 'pow(2, retried) * 2000', // 2s, 4s, 8s
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
