@@ -132,6 +132,8 @@ export const generateStoryboardWorkflow = createWorkflow(
         imageModel,
         videoModel,
         autoGenerateMotion: input.autoGenerateMotion ?? false,
+        autoGenerateMusic: input.autoGenerateMusic ?? false,
+        musicModel: input.musicModel,
         suggestedTalentIds: input.suggestedTalentIds,
         suggestedLocationIds: input.suggestedLocationIds,
       },

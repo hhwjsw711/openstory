@@ -16,8 +16,8 @@ describe('Motion Service', () => {
   });
 
   describe('generateMotionForFrame', () => {
-    it('should generate motion with Kling v2.6 Pro model', async () => {
-      const mockVideoUrl = 'https://example.com/kling-v26-video.mp4';
+    it('should generate motion with Kling v3 Pro model', async () => {
+      const mockVideoUrl = 'https://example.com/kling-v3-video.mp4';
 
       mockSubscribe.mockResolvedValue({
         data: {
@@ -25,32 +25,32 @@ describe('Motion Service', () => {
             url: mockVideoUrl,
           },
         },
-        requestId: 'test-kling-v26-request-id',
+        requestId: 'test-kling-v3-request-id',
       });
 
       const result = await generateMotionForFrame({
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'A person walking',
-        model: 'kling_v2_6_pro',
+        model: 'kling_v3_pro',
         duration: 5,
       });
 
       expect(result.success).toBe(true);
       expect(result.videoUrl).toBe(mockVideoUrl);
-      expect(result.requestId).toBe('test-kling-v26-request-id');
+      expect(result.requestId).toBe('test-kling-v3-request-id');
       expect(result.metadata?.model).toBe(
-        'fal-ai/kling-video/v2.6/pro/image-to-video'
+        'fal-ai/kling-video/v3/pro/image-to-video'
       );
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
       expect(result.metadata?.fps).toBe(30);
-      expect(result.metadata?.cost).toBeCloseTo(0.35, 2); // 0.07 * 5 seconds
+      expect(result.metadata?.cost).toBeCloseTo(1.68, 2); // 0.336 * 5 seconds
 
       expect(mockSubscribe).toHaveBeenCalledWith(
-        'fal-ai/kling-video/v2.6/pro/image-to-video',
+        'fal-ai/kling-video/v3/pro/image-to-video',
         expect.objectContaining({
           input: expect.objectContaining({
-            image_url: 'https://example.com/image.jpg',
+            start_image_url: 'https://example.com/image.jpg',
             prompt: 'A person walking',
             duration: '5',
             cfg_scale: 0.5,
@@ -110,7 +110,7 @@ describe('Motion Service', () => {
         await generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
-          model: 'kling_v2_6_pro',
+          model: 'kling_v3_pro',
         });
       } catch (e) {
         error = e instanceof Error ? e : new Error(String(e));
@@ -132,7 +132,7 @@ describe('Motion Service', () => {
         await generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
-          model: 'kling_v2_6_pro',
+          model: 'kling_v3_pro',
         });
       } catch (e) {
         error = e instanceof Error ? e : new Error(String(e));
@@ -188,24 +188,24 @@ describe('Motion Service', () => {
 
   describe('Model configurations', () => {
     it('should have correct model configurations', () => {
-      expect(IMAGE_TO_VIDEO_MODELS.kling_v2_6_pro).toMatchObject({
-        id: 'fal-ai/kling-video/v2.6/pro/image-to-video',
-        name: 'Kling v2.6 Pro (with Audio)',
+      expect(IMAGE_TO_VIDEO_MODELS.kling_v3_pro).toMatchObject({
+        id: 'fal-ai/kling-video/v3/pro/image-to-video',
+        name: 'Kling v3 Pro',
         provider: 'kling',
         capabilities: {
           supportsPrompt: true,
           supportsAudio: true,
-          maxDuration: 10,
-          defaultDuration: 10,
+          maxDuration: 15,
+          defaultDuration: 5,
           requiresStringDuration: true,
         },
         pricing: {
-          pricePerSecond: 0.07,
+          pricePerSecond: 0.336,
           currency: 'USD',
           unit: 'seconds',
         },
         performance: {
-          estimatedGenerationTime: 15,
+          estimatedGenerationTime: 20,
           quality: 'best',
         },
       });

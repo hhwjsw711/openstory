@@ -18,9 +18,12 @@ import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
+  DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
+  safeAudioModel,
   safeImageToVideoModel,
   safeTextToImageModel,
+  type AudioModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
@@ -101,6 +104,14 @@ export const ScriptView: FC<{
   const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(
     isEditing ? false : savedSettings.autoGenerateMotion
   );
+  const [musicModel, setMusicModel] = useState<AudioModel>(
+    isEditing && sequence?.musicModel
+      ? safeAudioModel(sequence.musicModel, DEFAULT_MUSIC_MODEL)
+      : savedSettings.musicModel
+  );
+  const [autoGenerateMusic, setAutoGenerateMusic] = useState<boolean>(
+    isEditing ? false : savedSettings.autoGenerateMusic
+  );
   const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
@@ -138,6 +149,8 @@ export const ScriptView: FC<{
       setImageModel(savedSettings.imageModel);
       setMotionModel(savedSettings.motionModel);
       setAutoGenerateMotion(savedSettings.autoGenerateMotion);
+      setMusicModel(savedSettings.musicModel);
+      setAutoGenerateMusic(savedSettings.autoGenerateMusic);
       hasSyncedRef.current = true;
     }
   }, [isEditing, settingsLoaded, savedSettings]);
@@ -152,6 +165,8 @@ export const ScriptView: FC<{
         imageModel,
         motionModel,
         autoGenerateMotion,
+        musicModel,
+        autoGenerateMusic,
       });
     }
   }, [
@@ -162,6 +177,8 @@ export const ScriptView: FC<{
     imageModel,
     motionModel,
     autoGenerateMotion,
+    musicModel,
+    autoGenerateMusic,
     saveSettings,
   ]);
 
@@ -169,11 +186,7 @@ export const ScriptView: FC<{
   const updateSequenceMutation = useUpdateSequence();
   const { needsBillingSetup, showGate, gateProps } = useBillingGate();
 
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    }
-  };
+  const handleCancel = onCancel;
 
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) {
@@ -214,6 +227,8 @@ export const ScriptView: FC<{
           imageModel,
           videoModel: motionModel,
           autoGenerateMotion,
+          autoGenerateMusic,
+          musicModel,
           suggestedTalentIds:
             selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
           suggestedLocationIds:
@@ -258,11 +273,15 @@ export const ScriptView: FC<{
             imageModel={imageModel}
             motionModel={motionModel}
             autoGenerateMotion={autoGenerateMotion}
+            musicModel={musicModel}
+            autoGenerateMusic={autoGenerateMusic}
             onAspectRatioChange={setAspectRatio}
             onAnalysisModelsChange={setAnalysisModels}
             onImageModelChange={setImageModel}
             onMotionModelChange={setMotionModel}
             onAutoGenerateMotionChange={setAutoGenerateMotion}
+            onMusicModelChange={setMusicModel}
+            onAutoGenerateMusicChange={setAutoGenerateMusic}
             disabled={loading}
             singleSelectAnalysis={!!sequence?.id}
           />

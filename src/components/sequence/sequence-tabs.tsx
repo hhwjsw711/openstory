@@ -1,6 +1,6 @@
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
-import { Film, Grid3X3, MapPin, Users } from 'lucide-react';
+import { Film, Grid3X3, MapPin, Music, Users } from 'lucide-react';
 
 type SequenceTabsProps = {
   sequenceId: string;
@@ -30,6 +30,11 @@ export const SequenceTabs: React.FC<SequenceTabsProps> = ({ sequenceId }) => {
       label: 'Locations',
       href: `/sequences/${sequenceId}/locations`,
       icon: <MapPin className="h-4 w-4" />,
+    },
+    {
+      label: 'Music',
+      href: `/sequences/${sequenceId}/music`,
+      icon: <Music className="h-4 w-4" />,
     },
     {
       label: 'Theatre',

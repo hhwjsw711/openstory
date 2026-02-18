@@ -76,6 +76,13 @@ export const realtimeSchema = {
       videoUrl: z.string().optional(),
     }),
 
+    // Audio/music generation progress (frameId optional for sequence-level music)
+    'audio:progress': z.object({
+      frameId: z.string().optional(),
+      status: z.enum(['pending', 'generating', 'completed', 'failed']),
+      audioUrl: z.string().optional(),
+    }),
+
     // Character sheet generation progress (during recasting)
     'character-sheet:progress': z.object({
       characterId: z.string(),

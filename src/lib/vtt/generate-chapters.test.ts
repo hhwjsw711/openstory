@@ -39,6 +39,13 @@ const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   videoError: null,
   motionModel: 'veo3',
   motionPrompt: null,
+  audioUrl: null,
+  audioPath: null,
+  audioStatus: 'pending',
+  audioWorkflowRunId: null,
+  audioGeneratedAt: null,
+  audioError: null,
+  audioModel: null,
   ...overrides,
 });
 

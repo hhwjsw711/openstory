@@ -172,6 +172,17 @@ export async function updateSequenceAnalysisDurationMs(
     .where(eq(sequences.id, sequenceId));
 }
 
+export async function updateSequenceMusicPrompt(
+  sequenceId: string,
+  musicPrompt: string,
+  musicTags: string
+) {
+  await getDb()
+    .update(sequences)
+    .set({ musicPrompt, musicTags, updatedAt: new Date() })
+    .where(eq(sequences.id, sequenceId));
+}
+
 export async function updateSequenceWorkflow(
   sequenceId: string,
   workflow: string

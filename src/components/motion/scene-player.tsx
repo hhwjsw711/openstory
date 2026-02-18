@@ -10,9 +10,17 @@ import {
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import { AlertCircle, VideoIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AlertCircle, Link, Share2, VideoIcon } from 'lucide-react';
 import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
 
@@ -63,6 +71,26 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           currentFrameIndex + 1
         )
       : undefined;
+
+  const handleCopyImageUrl = useCallback(async () => {
+    if (!currentFrame?.thumbnailUrl) return;
+    try {
+      await navigator.clipboard.writeText(currentFrame.thumbnailUrl);
+      toast.success('Image URL copied');
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  }, [currentFrame?.thumbnailUrl]);
+
+  const handleCopyVideoUrl = useCallback(async () => {
+    if (!currentFrame?.videoUrl) return;
+    try {
+      await navigator.clipboard.writeText(currentFrame.videoUrl);
+      toast.success('Video URL copied');
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  }, [currentFrame?.videoUrl]);
 
   // Check video status
   const hasCompletedVideo =
@@ -129,19 +157,48 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         >
           {/* Show thumbnail as background if available */}
           {currentFrame.thumbnailUrl && (
-            <Image
-              src={currentFrame.thumbnailUrl}
-              alt={title || 'Scene thumbnail'}
-              className="w-full h-full object-cover"
-              width={imageDimensions.width}
-              height={imageDimensions.height}
-            />
+            <a
+              href={currentFrame.thumbnailUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full h-full"
+            >
+              <Image
+                src={currentFrame.thumbnailUrl}
+                alt={title || 'Scene thumbnail'}
+                className="w-full h-full object-cover"
+                width={imageDimensions.width}
+                height={imageDimensions.height}
+              />
+            </a>
+          )}
+
+          {/* Share dropdown */}
+          {currentFrame.thumbnailUrl && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+                  aria-label="Share image"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
+                  <Link className="h-4 w-4" />
+                  Copy image URL
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Error overlay */}
           <div
             className={cn(
-              'absolute inset-0 flex items-center justify-center',
+              'absolute inset-0 flex items-center justify-center pointer-events-none',
               // Use semi-transparent overlay if thumbnail exists, solid bg if not
               currentFrame.thumbnailUrl ? 'bg-muted/80' : 'bg-transparent'
             )}
@@ -154,6 +211,46 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         </div>
       ) : (
         <div className={cn('relative flex flex-1', className)}>
+          {/* Share dropdown */}
+          {(currentFrame.thumbnailUrl || currentFrame.videoUrl) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+                  aria-label="Share"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {currentFrame.thumbnailUrl && (
+                  <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
+                    <Link className="h-4 w-4" />
+                    Copy image URL
+                  </DropdownMenuItem>
+                )}
+                {currentFrame.videoUrl && (
+                  <DropdownMenuItem onClick={() => void handleCopyVideoUrl()}>
+                    <VideoIcon className="h-4 w-4" />
+                    Copy video URL
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {/* Clickable overlay to open image in new tab when poster is showing */}
+          {currentFrame.thumbnailUrl &&
+            (selectedTab === 'image-prompt' || !currentFrame.videoUrl) && (
+              <a
+                href={currentFrame.thumbnailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute inset-0 z-[5] cursor-pointer"
+                aria-label="Open image in new tab"
+              />
+            )}
           <VideoPlayer
             key={currentFrame.videoUrl} // Force re-render when video changes
             src={

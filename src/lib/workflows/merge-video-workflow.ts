@@ -15,9 +15,11 @@ import {
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import type {
+  MergeAudioVideoWorkflowInput,
   MergeVideoWorkflowInput,
   MergeVideoWorkflowResult,
 } from '@/lib/workflow/types';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
@@ -64,6 +66,33 @@ export const mergeVideoWorkflow = createWorkflow(
             updatedAt: new Date(),
           })
           .where(eq(sequences.id, input.sequenceId));
+      });
+
+      // Check if music is ready for mux (single-video path)
+      await context.run('check-mux-trigger-single', async () => {
+        const [seq] = await getDb()
+          .select({
+            musicStatus: sequences.musicStatus,
+            musicUrl: sequences.musicUrl,
+          })
+          .from(sequences)
+          .where(eq(sequences.id, input.sequenceId));
+
+        if (seq?.musicStatus === 'completed' && seq.musicUrl) {
+          console.log(
+            `[MergeVideoWorkflow] Single video + music ready, triggering mux for sequence ${input.sequenceId}`
+          );
+
+          const muxInput: MergeAudioVideoWorkflowInput = {
+            userId: input.userId,
+            teamId: input.teamId,
+            sequenceId: input.sequenceId,
+            mergedVideoUrl: input.videoUrls[0],
+            musicUrl: seq.musicUrl,
+          };
+
+          await triggerWorkflow('/merge-audio-video', muxInput);
+        }
       });
 
       return {
@@ -151,6 +180,37 @@ export const mergeVideoWorkflow = createWorkflow(
           updatedAt: new Date(),
         })
         .where(eq(sequences.id, input.sequenceId));
+    });
+
+    // Step 5: Check if music is also ready — trigger mux if so
+    await context.run('check-mux-trigger', async () => {
+      const [seq] = await getDb()
+        .select({
+          musicStatus: sequences.musicStatus,
+          musicUrl: sequences.musicUrl,
+        })
+        .from(sequences)
+        .where(eq(sequences.id, input.sequenceId));
+
+      if (
+        seq?.musicStatus === 'completed' &&
+        seq.musicUrl &&
+        storageResult.url
+      ) {
+        console.log(
+          `[MergeVideoWorkflow] Merged video + music both ready, triggering mux for sequence ${input.sequenceId}`
+        );
+
+        const muxInput: MergeAudioVideoWorkflowInput = {
+          userId: input.userId,
+          teamId: input.teamId,
+          sequenceId: input.sequenceId,
+          mergedVideoUrl: storageResult.url,
+          musicUrl: seq.musicUrl,
+        };
+
+        await triggerWorkflow('/merge-audio-video', muxInput);
+      }
     });
 
     console.log(

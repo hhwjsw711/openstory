@@ -13,7 +13,7 @@ pre-commit:
       stage_fixed: true
     format:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,md,yml,yaml}'
-      exclude: 'routeTree.gen.ts'
+      exclude: 'routeTree.gen.ts|mockServiceWorker.js'
       run: bun run --bun oxfmt {staged_files}
       stage_fixed: true
     typecheck:
