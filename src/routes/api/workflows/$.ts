@@ -33,42 +33,47 @@ import { serveMany } from '@upstash/workflow/tanstack';
 // Initialize Langfuse tracing at module load
 initTracing();
 
-const handler = serveMany(
-  {
-    storyboard: generateStoryboardWorkflow,
-    image: generateImageWorkflow,
-    motion: generateMotionWorkflow,
-    'merge-audio-video': mergeAudioVideoWorkflow,
-    'merge-video': mergeVideoWorkflow,
-    'analyze-script': analyzeScriptWorkflow,
-    'character-sheet': characterSheetWorkflow,
-    'character-sheet-from-bible': characterBibleWorkflow,
-    'library-talent-sheet': libraryTalentSheetWorkflow,
-    'visual-prompts': visualPromptWorkflow,
-    'variant-image': generateVariantWorkflow,
-    'upscale-variant': upscaleVariantWorkflow,
-    'recast-character': recastCharacterWorkflow,
-    'recast-location': recastLocationWorkflow,
-    'location-sheet': locationSheetWorkflow,
-    'location-sheet-from-bible': locationBibleWorkflow,
-    'library-location-sheet': libraryLocationSheetWorkflow,
-    'regenerate-frames': regenerateFramesWorkflow,
-    'visual-prompt-scene': visualPromptSceneWorkflow,
-    'motion-prompts': motionPromptWorkflow,
-    'motion-prompt-scene': motionPromptSceneWorkflow,
-    music: generateMusicWorkflow,
-  },
-  {
-    // IMPORTANT: This is necessary for the Vercel preview to work
-    qstashClient: getQStashClient(),
+let _handler: ReturnType<typeof serveMany> | null = null;
+function getHandler() {
+  if (!_handler) {
+    _handler = serveMany(
+      {
+        storyboard: generateStoryboardWorkflow,
+        image: generateImageWorkflow,
+        motion: generateMotionWorkflow,
+        'merge-audio-video': mergeAudioVideoWorkflow,
+        'merge-video': mergeVideoWorkflow,
+        'analyze-script': analyzeScriptWorkflow,
+        'character-sheet': characterSheetWorkflow,
+        'character-sheet-from-bible': characterBibleWorkflow,
+        'library-talent-sheet': libraryTalentSheetWorkflow,
+        'visual-prompts': visualPromptWorkflow,
+        'variant-image': generateVariantWorkflow,
+        'upscale-variant': upscaleVariantWorkflow,
+        'recast-character': recastCharacterWorkflow,
+        'recast-location': recastLocationWorkflow,
+        'location-sheet': locationSheetWorkflow,
+        'location-sheet-from-bible': locationBibleWorkflow,
+        'library-location-sheet': libraryLocationSheetWorkflow,
+        'regenerate-frames': regenerateFramesWorkflow,
+        'visual-prompt-scene': visualPromptSceneWorkflow,
+        'motion-prompts': motionPromptWorkflow,
+        'motion-prompt-scene': motionPromptSceneWorkflow,
+        music: generateMusicWorkflow,
+      },
+      {
+        qstashClient: getQStashClient(),
+      }
+    );
   }
-);
+  return _handler;
+}
 
 export const Route = createFileRoute('/api/workflows/$')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const response = await handler.POST({ request });
+        const response = await getHandler().POST({ request });
         await flushTracing();
         return response;
       },
