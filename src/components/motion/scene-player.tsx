@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, ImageIcon, Link, Share2, VideoIcon } from 'lucide-react';
+import { AlertCircle, Link, Share2, VideoIcon } from 'lucide-react';
 import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -72,29 +72,25 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
         )
       : undefined;
 
-  const handleCopyLink = useCallback(async () => {
+  const handleCopyImageUrl = useCallback(async () => {
     if (!currentFrame?.thumbnailUrl) return;
     try {
       await navigator.clipboard.writeText(currentFrame.thumbnailUrl);
-      toast.success('Link copied');
+      toast.success('Image URL copied');
     } catch {
-      toast.error('Failed to copy link');
+      toast.error('Failed to copy URL');
     }
   }, [currentFrame?.thumbnailUrl]);
 
-  const handleCopyImage = useCallback(async () => {
-    if (!currentFrame?.thumbnailUrl) return;
+  const handleCopyVideoUrl = useCallback(async () => {
+    if (!currentFrame?.videoUrl) return;
     try {
-      const response = await fetch(currentFrame.thumbnailUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
-      toast.success('Image copied');
+      await navigator.clipboard.writeText(currentFrame.videoUrl);
+      toast.success('Video URL copied');
     } catch {
-      toast.error('Failed to copy image');
+      toast.error('Failed to copy URL');
     }
-  }, [currentFrame?.thumbnailUrl]);
+  }, [currentFrame?.videoUrl]);
 
   // Check video status
   const hasCompletedVideo =
@@ -191,13 +187,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => void handleCopyLink()}>
+                <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
                   <Link className="h-4 w-4" />
-                  Copy link
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void handleCopyImage()}>
-                  <ImageIcon className="h-4 w-4" />
-                  Copy image
+                  Copy image URL
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -220,27 +212,31 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       ) : (
         <div className={cn('relative flex flex-1', className)}>
           {/* Share dropdown */}
-          {currentFrame.thumbnailUrl && (
+          {(currentFrame.thumbnailUrl || currentFrame.videoUrl) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
-                  aria-label="Share image"
+                  aria-label="Share"
                 >
                   <Share2 className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => void handleCopyLink()}>
-                  <Link className="h-4 w-4" />
-                  Copy link
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void handleCopyImage()}>
-                  <ImageIcon className="h-4 w-4" />
-                  Copy image
-                </DropdownMenuItem>
+                {currentFrame.thumbnailUrl && (
+                  <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
+                    <Link className="h-4 w-4" />
+                    Copy image URL
+                  </DropdownMenuItem>
+                )}
+                {currentFrame.videoUrl && (
+                  <DropdownMenuItem onClick={() => void handleCopyVideoUrl()}>
+                    <VideoIcon className="h-4 w-4" />
+                    Copy video URL
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
