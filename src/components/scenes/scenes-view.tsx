@@ -24,8 +24,11 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
+import { retryStoryboardFn } from '@/functions/sequences';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -177,6 +180,46 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     handleRegenerateEnd,
   ]);
 
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const handleRetryStoryboard = useCallback(async () => {
+    if (!sequenceId) return;
+    setIsRetrying(true);
+    try {
+      await retryStoryboardFn({ data: { sequenceId } });
+      toast.success('Retrying storyboard generation…');
+      void queryClient.invalidateQueries({
+        queryKey: ['sequence', sequenceId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['frames', sequenceId] });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('INSUFFICIENT_CREDITS') ||
+          error.message.includes('Insufficient credits'))
+      ) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to retry storyboard generation.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/settings/billing';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      } else {
+        toast.error('Failed to retry', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [sequenceId, queryClient]);
+
   // Handler for batch motion generation
   const handleBatchMotionGeneration = useCallback(
     async (frameIds: string[]) => {
@@ -236,9 +279,22 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         <ModelBadge model={sequence?.analysisModel} />
         <ImageModelBadge model={sequence?.imageModel} />
         <VideoModelBadge model={sequence?.videoModel} />
-        {/* Show failure badge if sequence failed OR realtime reports failure */}
+        {/* Show failure badge with retry button */}
         {(sequence?.status === 'failed' || generationState.isFailed) && (
-          <SequenceStatusBadge status="failed" />
+          <>
+            <SequenceStatusBadge status="failed" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleRetryStoryboard()}
+              disabled={isRetrying}
+            >
+              <RotateCcw
+                className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
+              />
+              {isRetrying ? 'Retrying…' : 'Retry'}
+            </Button>
+          </>
         )}
         {!generationState.isComplete &&
           !generationState.isFailed &&
