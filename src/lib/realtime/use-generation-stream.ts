@@ -10,8 +10,12 @@ import { updateQueryCacheFromEvent } from './query-cache-updater';
 
 type GenerationEvent = {
   event: string;
-  data: Record<string, unknown>;
+  data: unknown;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
 
 // Type guard helpers for extracting typed values from event data
 function asString(value: unknown): string {
@@ -213,7 +217,9 @@ export function useGenerationStream(sequenceId?: string) {
   // Handle incoming events
   const handleEvent = useCallback(
     (event: GenerationEvent) => {
-      const { event: eventName, data } = event;
+      const { event: eventName, data: rawData } = event;
+      if (!isRecord(rawData)) return;
+      const data = rawData;
 
       // Update TanStack Query cache for data-related events
       if (sequenceId) {

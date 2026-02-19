@@ -3,17 +3,27 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { talentKeys } from './use-talent';
 
-type SheetProgressEvent = {
-  event: string;
-  data: {
-    talentId: string;
-    status: 'generating' | 'completed' | 'failed';
-    sheetId?: string;
-    sheetImageUrl?: string;
-    headshotImageUrl?: string;
-    error?: string;
-  };
+type SheetProgressData = {
+  talentId: string;
+  status: 'generating' | 'completed' | 'failed';
+  sheetId?: string;
+  sheetImageUrl?: string;
+  headshotImageUrl?: string;
+  error?: string;
 };
+
+function isSheetProgressData(data: unknown): data is SheetProgressData {
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    'talentId' in data &&
+    typeof data.talentId === 'string' &&
+    'status' in data &&
+    (data.status === 'generating' ||
+      data.status === 'completed' ||
+      data.status === 'failed')
+  );
+}
 
 /**
  * Hook for subscribing to real-time talent sheet generation events.
@@ -27,10 +37,11 @@ export function useTalentSheetRealtime(talentId?: string) {
   const [error, setError] = useState<string | null>(null);
 
   const handleEvent = useCallback(
-    (event: SheetProgressEvent) => {
+    (event: { event: string; data: unknown }) => {
       const { event: eventName, data } = event;
 
       if (eventName !== 'talent.sheet:progress') return;
+      if (!isSheetProgressData(data)) return;
       if (data.talentId !== talentId) return;
 
       switch (data.status) {

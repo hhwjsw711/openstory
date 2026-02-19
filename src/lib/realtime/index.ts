@@ -1,5 +1,3 @@
-import { getRedis } from '#redis';
-import { Realtime } from '@upstash/realtime';
 import { z } from 'zod';
 
 /**
@@ -176,33 +174,49 @@ export const realtimeSchema = {
   },
 };
 
-let realtimeInstance: ReturnType<typeof createRealtime> | null = null;
+// --- PartyKit HTTP POST transport ---
 
-function createRealtime() {
-  const redis = getRedis();
-  return new Realtime({ schema: realtimeSchema, redis });
+function getPartyKitConfig() {
+  const host = process.env.PARTYKIT_HOST;
+  const token = process.env.PARTY_AUTH_TOKEN;
+  return { host, token };
 }
 
-/**
- * Get the Realtime instance for emitting/subscribing to events.
- * Lazily initialized to avoid errors when Redis env vars are not set.
- */
-export function getRealtime() {
-  if (realtimeInstance) return realtimeInstance;
-  realtimeInstance = createRealtime();
-  return realtimeInstance;
+function createChannel(roomId: string) {
+  return {
+    async emit(event: string, data: Record<string, unknown>) {
+      const { host, token } = getPartyKitConfig();
+      if (!host) return; // No-op when PartyKit is not configured
+
+      const url = `http://${host}/parties/main/${encodeURIComponent(roomId)}`;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      try {
+        await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ event, data }),
+        });
+      } catch {
+        // Silently fail — same graceful degradation as before
+      }
+    },
+  };
 }
+
+const noopChannel = { emit: () => Promise.resolve() };
 
 /**
  * Get a channel for a specific sequence to emit/receive events.
  * @param sequenceId - The sequence ID to use as the channel identifier
  */
 export function getGenerationChannel(sequenceId?: string) {
-  return sequenceId
-    ? getRealtime().channel(sequenceId)
-    : {
-        emit: () => null,
-      };
+  return sequenceId ? createChannel(sequenceId) : noopChannel;
 }
 
 /**
@@ -210,9 +224,5 @@ export function getGenerationChannel(sequenceId?: string) {
  * @param talentId - The talent ID to use as the channel identifier
  */
 export function getTalentChannel(talentId?: string) {
-  return talentId
-    ? getRealtime().channel(`talent:${talentId}`)
-    : {
-        emit: () => null,
-      };
+  return talentId ? createChannel(`talent:${talentId}`) : noopChannel;
 }

@@ -79,6 +79,6 @@ export default defineConfig({
     viteReact(),
   ],
   ssr: {
-    noExternal: ['@upstash/realtime', '@vidstack/react'],
+    noExternal: ['@vidstack/react'],
   },
 });

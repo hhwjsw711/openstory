@@ -57,6 +57,7 @@
     "setup:prod": "npx tsx scripts/setup.ts --prod",
     "cert:setup": "bash ./scripts/setup-cert.sh",
     "cert:trust": "mkcert -install",
+    "party:dev": "npx partykit dev party/server.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "build:analyze": "DEBUG_VISUALIZER=1 vite build && open .output/stats-nitro.html",
@@ -110,7 +111,6 @@
     "@tanstack/zod-adapter": "^1.159.5",
     "@unpic/react": "^1.0.2",
     "@upstash/qstash": "^2.9.0",
-    "@upstash/realtime": "^1.0.2",
     "@upstash/redis": "^1.36.2",
     "@upstash/workflow": "^1.1.1",
     "@vidstack/react": "^1.12.13",
@@ -125,6 +125,7 @@
     "mcp-handler": "^1.0.7",
     "next-themes": "^0.4.6",
     "nitro": "^3.0.1-alpha.2",
+    "partysocket": "^1.1.13",
     "postcss": "^8.5.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -139,10 +140,6 @@
     "#env": {
       "workerd": "./src/lib/env/cloudflare.ts",
       "default": "./src/lib/env/default.ts"
-    },
-    "#redis": {
-      "workerd": "./src/lib/db/redis-cloudflare.ts",
-      "default": "./src/lib/db/redis.ts"
     },
     "#db-client": {
       "development": "./src/lib/db/client-local.ts",

@@ -81,8 +81,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // Hybrid polling: only poll when processing AND realtime has failed
   // - 'connecting' → wait for connection, don't poll
   // - 'connected' → use realtime, don't poll
-  // - 'disconnected'/'error' → poll as fallback
-  const realtimeFailed = realtimeStatus === 'error';
+  // - 'disconnected' → poll as fallback
+  const realtimeFailed = realtimeStatus === 'disconnected';
   const shouldPoll = isProcessing && realtimeFailed;
   const pollInterval = shouldPoll ? 2000 : false;
 
