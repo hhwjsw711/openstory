@@ -196,9 +196,9 @@ export async function bulkInsertFrames(
     .onConflictDoUpdate({
       target: [frames.sequenceId, frames.orderIndex],
       set: {
-        description: sql`excluded.${frames.description}`,
-        durationMs: sql`excluded.${frames.durationMs}`,
-        metadata: sql`excluded.${frames.metadata}`,
+        description: sql.raw(`excluded."description"`),
+        durationMs: sql.raw(`excluded."duration_ms"`),
+        metadata: sql.raw(`excluded."metadata"`),
         updatedAt: new Date(),
       },
     })
