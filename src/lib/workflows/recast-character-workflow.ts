@@ -15,6 +15,7 @@ import type {
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterSheetWorkflow } from './character-sheet-workflow';
+import { getFalFlowControl } from './constants';
 import { regenerateFramesWorkflow } from './regenerate-frames-workflow';
 
 export const recastCharacterWorkflow = createWorkflow(
@@ -45,6 +46,7 @@ export const recastCharacterWorkflow = createWorkflow(
       {
         workflow: characterSheetWorkflow,
         body: sheetInput,
+        flowControl: getFalFlowControl(),
       }
     );
 
@@ -75,6 +77,7 @@ export const recastCharacterWorkflow = createWorkflow(
         await context.invoke('regenerate-frames', {
           workflow: regenerateFramesWorkflow,
           body: regenerateInput,
+          flowControl: getFalFlowControl(),
         });
 
       if (regenerateFailed) {

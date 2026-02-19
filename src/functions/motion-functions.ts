@@ -21,6 +21,7 @@ import type {
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
 // ============================================================================
@@ -87,6 +88,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
       deduplicationId: `motion-${frame.id}`,
+      flowControl: getFalFlowControl(),
     });
 
     return { workflowRunId, frameId: frame.id };
@@ -192,6 +194,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
 
         const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
           deduplicationId: `motion-${frame.id}`,
+          flowControl: getFalFlowControl(),
         });
 
         workflows.push({
@@ -278,6 +281,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
       deduplicationId: `merge-${sequence.id}`,
+      flowControl: getFalFlowControl(),
     });
 
     return { workflowRunId, sequenceId: sequence.id };

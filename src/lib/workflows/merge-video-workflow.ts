@@ -22,6 +22,7 @@ import type {
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
@@ -90,7 +91,9 @@ export const mergeVideoWorkflow = createWorkflow(
             musicUrl: seq.musicUrl,
           };
 
-          await triggerWorkflow('/merge-audio-video', muxInput);
+          await triggerWorkflow('/merge-audio-video', muxInput, {
+            flowControl: getFalFlowControl(),
+          });
         }
       });
 
@@ -208,7 +211,9 @@ export const mergeVideoWorkflow = createWorkflow(
           musicUrl: seq.musicUrl,
         };
 
-        await triggerWorkflow('/merge-audio-video', muxInput);
+        await triggerWorkflow('/merge-audio-video', muxInput, {
+          flowControl: getFalFlowControl(),
+        });
       }
     });
 

@@ -40,6 +40,7 @@ import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import type {
   MergeVideoWorkflowInput,
   MusicSceneSummary,
@@ -390,7 +391,9 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
       })
       .where(eq(sequences.id, sequence.id));
 
-    await triggerWorkflow('/music', musicInput);
+    await triggerWorkflow('/music', musicInput, {
+      flowControl: getFalFlowControl(),
+    });
 
     return { success: true };
   });
@@ -461,7 +464,9 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
     };
 
     // No deduplication ID — explicit user re-trigger should always work
-    await triggerWorkflow('/merge-video', input);
+    await triggerWorkflow('/merge-video', input, {
+      flowControl: getFalFlowControl(),
+    });
 
     return { success: true };
   });

@@ -21,6 +21,7 @@ import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { durableLLMCall } from './llm-call-helper';
 import {
   musicPromptSchema,
@@ -221,7 +222,9 @@ export const generateMusicWorkflow = createWorkflow(
           durationMs: undefined,
         };
 
-        await triggerWorkflow('/merge-audio-video', muxInput);
+        await triggerWorkflow('/merge-audio-video', muxInput, {
+          flowControl: getFalFlowControl(),
+        });
       }
     });
 

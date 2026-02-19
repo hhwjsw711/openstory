@@ -13,6 +13,7 @@ import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -253,6 +254,7 @@ export const generateMotionWorkflow = createWorkflow(
 
             await triggerWorkflow('/merge-video', mergeInput, {
               deduplicationId: `merge-${input.sequenceId}`,
+              flowControl: getFalFlowControl(),
             });
           }
         }
