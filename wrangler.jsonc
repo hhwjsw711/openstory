@@ -25,7 +25,8 @@
         {
           "binding": "DB",
           "database_name": "velro-stg",
-          "database_id": "",
+          "database_id": "4801f81a-6769-4ce0-9675-b42b26611a8b",
+          "migrations_dir": "drizzle/migrations",
         },
       ],
       "r2_buckets": [
@@ -58,7 +59,8 @@
         {
           "binding": "DB",
           "database_name": "velro-prd",
-          "database_id": "",
+          "database_id": "00e78d1b-4684-4408-9fdc-c6d395ca3b13",
+          "migrations_dir": "drizzle/migrations",
         },
       ],
       "r2_buckets": [
