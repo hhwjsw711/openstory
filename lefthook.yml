@@ -8,7 +8,7 @@ pre-commit:
   commands:
     lint:
       glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
-      exclude: 'routeTree.gen.ts'
+      exclude: 'routeTree.gen.ts|mockServiceWorker.js'
       run: bun run --bun oxlint --type-aware --quiet {staged_files}
       stage_fixed: true
     format:
