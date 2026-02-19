@@ -60,11 +60,6 @@ type ScriptEnhancementResult = {
   success: boolean;
   data?: EnhancedScript;
   error?: string;
-  tokenUsage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
 };
 
 // Create user prompt with security boundaries
@@ -108,7 +103,7 @@ export async function enhanceScript(
     const userPrompt = createUserPrompt(validatedOptions.originalScript);
 
     // Make API call to OpenRouter with structured outputs
-    const completion = await callOpenRouter({
+    const response = await callOpenRouter({
       model: RECOMMENDED_MODELS.structured,
       messages: [systemMessage(compiled), userMessage(userPrompt)],
       max_tokens: 4000, // Increased for full script + JSON
@@ -118,8 +113,6 @@ export async function enhanceScript(
       responseSchema: EnhancedScriptSchema, // Enforce JSON schema at API level
       apiKey: openRouterKey,
     });
-
-    const response = completion.choices[0]?.message?.content;
 
     if (!response) {
       throw new Error('No response received from AI service');
@@ -131,19 +124,9 @@ export async function enhanceScript(
     // Parse JSON directly - structured outputs guarantees valid JSON
     const validatedResponse = EnhancedScriptSchema.parse(JSON.parse(response));
 
-    // Extract token usage information
-    const tokenUsage = completion.usage
-      ? {
-          promptTokens: completion.usage.prompt_tokens,
-          completionTokens: completion.usage.completion_tokens,
-          totalTokens: completion.usage.total_tokens,
-        }
-      : undefined;
-
     return {
       success: true,
       data: validatedResponse,
-      tokenUsage,
     };
   } catch (error) {
     console.error('Script enhancement error:', error);

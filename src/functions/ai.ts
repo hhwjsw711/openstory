@@ -141,8 +141,8 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // Call the AI service
-    const completion = await callOpenRouter({
+    // Call the AI service (returns text directly via TanStack AI adapter)
+    const shortenedPrompt = await callOpenRouter({
       model: RECOMMENDED_MODELS.fast,
       messages: [
         systemMessage(SHORTEN_PROMPT_SYSTEM_PROMPT),
@@ -152,19 +152,17 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       temperature: 0.3,
     });
 
-    // Deduct actual cost from OpenRouter response (skip if team has own key or billing disabled)
+    // Deduct estimated cost (skip if team has own key or billing disabled)
     if (isBillingEnabled() && !teamHasOrKey) {
-      const actualCost = completion.usage?.cost;
-      if (actualCost && actualCost > 0) {
-        await deductCredits(context.teamId, actualCost, {
+      const estimatedCost = estimateLLMCost(1);
+      if (estimatedCost > 0) {
+        await deductCredits(context.teamId, estimatedCost, {
           userId: context.user.id,
           description: `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
           metadata: { model: RECOMMENDED_MODELS.fast },
         });
       }
     }
-
-    const shortenedPrompt = completion.choices[0]?.message?.content;
 
     if (!shortenedPrompt) {
       throw new Error('No response received from AI service');

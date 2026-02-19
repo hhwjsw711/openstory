@@ -1,24 +1,30 @@
 /**
- * Mock for @fal-ai/client used in motion service tests
+ * Mock for @tanstack/ai and @tanstack/ai-fal used in motion service tests
  */
 import { mock } from 'bun:test';
 
-export const mockSubscribe = mock();
-export const mockFalClient = {
-  subscribe: mockSubscribe,
-  queue: {},
-  realtime: {},
-  storage: {},
-  streaming: {},
-  run: mock(),
-  stream: mock(),
-};
+export const mockGenerateVideo = mock();
+export const mockGetVideoJobStatus = mock();
+export const mockFalVideo = mock(() => ({
+  kind: 'video',
+  name: 'fal',
+  model: 'mock-model',
+}));
 
-export const mockCreateFalClient = mock(() => mockFalClient);
+// Mock the TanStack AI module
+void mock.module('@tanstack/ai', () => ({
+  generateVideo: mockGenerateVideo,
+  getVideoJobStatus: mockGetVideoJobStatus,
+}));
 
-// Mock the module
-void mock.module('@fal-ai/client', () => ({
-  createFalClient: mockCreateFalClient,
-  QueueStatus: {},
-  RequestLog: {},
+// Mock the TanStack AI fal adapter module
+void mock.module('@tanstack/ai-fal', () => ({
+  falVideo: mockFalVideo,
+  createFalVideo: mockFalVideo,
+  falImage: mock(() => ({ kind: 'image', name: 'fal', model: 'mock-model' })),
+  createFalImage: mock(() => ({
+    kind: 'image',
+    name: 'fal',
+    model: 'mock-model',
+  })),
 }));

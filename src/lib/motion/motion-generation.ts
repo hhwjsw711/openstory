@@ -22,8 +22,8 @@ import {
   type AspectRatio,
   aspectRatioSchema,
 } from '@/lib/constants/aspect-ratios';
-import type { QueueStatus } from '@fal-ai/client';
-import { createFalClient, isQueueStatus } from '@fal-ai/client';
+import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
+import { falVideo } from '@tanstack/ai-fal';
 import { z } from 'zod';
 
 export const generationMotionOptionsSchema = z.object({
@@ -58,11 +58,8 @@ export type MotionResult = {
   videoUrl?: string;
   metadata?: Record<string, unknown>;
   error?: string;
-  // Queue status tracking (when using fal.subscribe)
+  // Job tracking
   requestId?: string;
-  statusUrl?: string;
-  responseUrl?: string;
-  cancelUrl?: string;
 };
 
 /**
@@ -235,7 +232,7 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
 
 /**
  * Generate motion for a single frame using Fal.ai
- * Uses fal.subscribe() for queue-based generation with status tracking
+ * Uses @tanstack/ai-fal adapter for video generation with polling
  */
 export async function generateMotionForFrame(
   options: GenerateMotionOptions
@@ -296,7 +293,19 @@ export async function generateMotionForFrame(
 }
 
 /**
+ * Create a TanStack AI fal video adapter
+ */
+function createFalVideoAdapter(modelId: string, falApiKey?: string) {
+  const key = falApiKey ?? getEnv().FAL_KEY;
+  if (key) {
+    return falVideo(modelId, { apiKey: key });
+  }
+  return falVideo(modelId);
+}
+
+/**
  * Internal motion generation implementation
+ * Uses @tanstack/ai-fal adapters for video generation
  */
 async function generateMotionInternal(
   options: GenerateMotionOptions,
@@ -323,98 +332,58 @@ async function generateMotionInternal(
     }
   );
 
-  // Track queue status
-  let requestId: string | undefined;
-  let statusUrl: string | undefined;
-  let responseUrl: string | undefined;
-  let cancelUrl: string | undefined;
+  // Extract prompt from provider-specific input (all builders include it)
+  const prompt =
+    typeof input.prompt === 'string' ? input.prompt : options.prompt;
+  const { prompt: _prompt, ...modelOptions } = input;
 
-  // Configure fal client (supports user-provided keys)
-  const fal = createFalClient({
-    credentials: options.falApiKey ?? getEnv().FAL_KEY ?? '',
+  // Create TanStack AI fal video adapter
+  const adapter = createFalVideoAdapter(modelConfig.id, options.falApiKey);
+
+  // Submit video generation job
+  const job = await generateVideo({
+    adapter,
+    prompt,
+    modelOptions,
   });
 
-  // Call the Fal.ai model using subscribe for queue tracking
-  const result = await fal.subscribe(modelConfig.id, {
-    input,
-    logs: true,
-    pollInterval: 5000, // Poll every 5 seconds
-    onEnqueue: (reqId: string) => {
-      requestId = reqId;
-      console.log(`[Motion Service] Request enqueued: ${reqId}`);
-    },
-    onQueueUpdate: (update: QueueStatus) => {
-      // Capture URLs on first update
-      if (!statusUrl) {
-        statusUrl = update.status_url;
-        responseUrl = update.response_url;
-        cancelUrl = update.cancel_url;
+  const requestId = job.jobId;
+  console.log(`[Motion Service] Job submitted: ${requestId}`);
 
-        console.log(`[Motion Service] Queue URLs available:`, {
-          statusUrl: update.status_url,
-          responseUrl: update.response_url,
-          cancelUrl: update.cancel_url,
-        });
-      }
+  // Poll for completion
+  let videoUrl: string | undefined;
+  const pollInterval = 5000; // 5 seconds
+  const maxPollTime = 10 * 60 * 1000; // 10 minutes
+  const startTime = Date.now();
 
-      // Log queue position
-      if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
-        console.log(
-          `[Motion Service] Queue position: ${update.queue_position}`
-        );
-      }
+  while (Date.now() - startTime < maxPollTime) {
+    const status = await getVideoJobStatus({
+      adapter,
+      jobId: requestId,
+    });
 
-      // Log progress
-      if (update.status === 'IN_PROGRESS') {
-        console.log(`[Motion Service] Generation in progress...`);
-        if (update.logs && update.logs.length > 0) {
-          update.logs.forEach((log) => {
-            console.log(`[Motion Service] ${log.level}: ${log.message}`);
-          });
-        }
-      }
+    if (status.status === 'completed' && status.url) {
+      videoUrl = status.url;
+      console.log(`[Motion Service] Generation completed`);
+      break;
+    }
 
-      // Log completion
-      if (update.status === 'COMPLETED') {
-        console.log(
-          `[Motion Service] Generation completed in ${update.metrics?.inference_time || 'unknown'}s`
-        );
-      }
-    },
-  });
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Motion generation failed');
+    }
 
-  console.log('[Motion Service] Result:', JSON.stringify(result, null, 2));
+    // Log progress
+    if (status.progress !== undefined) {
+      console.log(`[Motion Service] Progress: ${status.progress}%`);
+    } else {
+      console.log(`[Motion Service] Status: ${status.status}`);
+    }
 
-  // Extract video URL from result (subscribe returns { data, requestId })
-  // Use type guards for safe extraction
-  const resultObj = result && typeof result === 'object' ? result : null;
-  const data =
-    resultObj && 'data' in resultObj && typeof resultObj.data === 'object'
-      ? resultObj.data
-      : null;
-  const videoUrl =
-    data &&
-    'video' in data &&
-    data.video &&
-    typeof data.video === 'object' &&
-    'url' in data.video &&
-    typeof data.video.url === 'string'
-      ? data.video.url
-      : undefined;
-
-  if (!videoUrl) {
-    console.error('[Motion Service] No video URL in result:', result);
-    throw new Error('No video URL returned from motion generation');
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
-  // Capture requestId from result if not already captured in onEnqueue
-  if (
-    !requestId &&
-    resultObj &&
-    'requestId' in resultObj &&
-    typeof resultObj.requestId === 'string'
-  ) {
-    requestId = resultObj.requestId;
+  if (!videoUrl) {
+    throw new Error('Motion generation timed out after 10 minutes');
   }
 
   const validatedDuration =
@@ -428,9 +397,6 @@ async function generateMotionInternal(
     success: true,
     videoUrl,
     requestId,
-    statusUrl,
-    responseUrl,
-    cancelUrl,
     metadata: {
       model: modelConfig.id,
       provider: modelConfig.provider,
@@ -445,13 +411,26 @@ async function generateMotionInternal(
 }
 
 /**
+ * Fal queue status shape returned by fal's queue API
+ */
+type FalQueueStatus = {
+  status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED';
+  queue_position?: number;
+  response_url?: string;
+  cancel_url?: string;
+  status_url?: string;
+  logs?: Array<{ level: string; message: string }>;
+  metrics?: { inference_time?: number };
+};
+
+/**
  * Check the status of a motion generation request
  * @param statusUrl The status URL from the MotionResult
  * @returns The current queue status
  */
 export async function checkMotionStatus(
   statusUrl: string
-): Promise<QueueStatus> {
+): Promise<FalQueueStatus> {
   const apiKey = getEnv().FAL_KEY;
 
   if (!apiKey) {
@@ -470,11 +449,7 @@ export async function checkMotionStatus(
     );
   }
 
-  const responseBody = await response.json();
-  if (!isQueueStatus(responseBody)) {
-    throw new Error('Invalid response body');
-  }
-  return responseBody;
+  return response.json();
 }
 
 /**

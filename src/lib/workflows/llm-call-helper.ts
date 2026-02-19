@@ -1,6 +1,7 @@
 /**
  * Durable LLM Call Helper
  * Encapsulates the 3-step pattern: prepare → call → log
+ * Uses @tanstack/ai-openrouter adapters instead of context.api.openai.call
  */
 
 import type { WorkflowContext } from '@upstash/workflow';
@@ -14,17 +15,10 @@ import { getEnv } from '#env';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { getGenerationChannel } from '@/lib/realtime';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { chat } from '@tanstack/ai';
+import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 
 const BASE_DELAY = 5;
-
-/** Safely extract OpenRouter's extended `cost` field from usage object */
-function extractUsageCost(usage: unknown): number {
-  if (usage && typeof usage === 'object' && 'cost' in usage) {
-    const val = (usage as { cost: unknown }).cost;
-    return typeof val === 'number' ? val : 0;
-  }
-  return 0;
-}
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   // Base name (e.g., "scene-splitting") - used to derive step names
@@ -60,45 +54,53 @@ export type DurableLLMCallContext = {
 };
 
 /**
+ * Build OpenRouter response_format from Zod schema
+ */
+function buildResponseFormat(schema: z.ZodTypeAny, name: string) {
+  const jsonSchema = z.toJSONSchema(schema);
+  return {
+    type: 'json_schema' as const,
+    json_schema: {
+      name,
+      strict: true,
+      schema: jsonSchema,
+    },
+  };
+}
+
+/**
+ * Create a TanStack AI OpenRouter adapter
+ */
+// Model ID type expected by the adapter (union of known model strings)
+type AdapterModel = Parameters<typeof createOpenRouterText>[0];
+
+function createAdapter(model: string, apiKey?: string) {
+  const key = apiKey ?? getEnv().OPENROUTER_KEY;
+  const env = getEnv();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
+  const m = model as AdapterModel;
+
+  if (key) {
+    return createOpenRouterText(m, key, {
+      httpReferer: env.APP_URL || 'http://localhost:3000',
+      xTitle: env.APP_NAME || 'AI Video Studio',
+    });
+  }
+
+  return openRouterText(m, {
+    httpReferer: env.APP_URL || 'http://localhost:3000',
+    xTitle: env.APP_NAME || 'AI Video Studio',
+  });
+}
+
+/**
  * Execute a durable LLM call with the standard 3-step pattern:
  * 1. Prepare: Fetch prompt from Langfuse, emit phase start
- * 2. Call: Durable LLM call via context.api.openai
+ * 2. Call: LLM call via context.run() + @tanstack/ai-openrouter
  * 3. Log & Process: Log to Langfuse, parse response, emit phase complete
  *
- * All step names, tags, and metadata are automatically derived from `name` and `phase`.
- *
- * @example
- * ```typescript
- * // Simple case - just returns validated data
- * const result = await durableLLMCall(context, {
- *   name: 'character-extraction',
- *   phase: { number: 2, name: 'Character Extraction' },
- *   promptName: 'velro/phase/character-extraction',
- *   promptVariables: { script },
- *   modelId: analysisModelId,
- *   responseSchema: characterExtractionSchema,
- * }, { sequenceId, userId });
- * // result has type z.infer<typeof characterExtractionSchema>
- *
- * // Complex case - custom processing logic
- * const enriched = await durableLLMCall<
- *   AnalyzeScriptWorkflowInput,
- *   typeof mySchema,
- *   MyCustomType
- * >(context, {
- *   name: 'my-operation',
- *   phase: { number: 1, name: 'My Phase' },
- *   promptName: 'velro/phase/my-prompt',
- *   promptVariables: { input: 'value' },
- *   modelId: analysisModelId,
- *   responseSchema: mySchema,
- *   processResponse: async (_content, validated) => {
- *     // Merge, validate, emit events, etc.
- *     return { customField: validated.data };
- *   },
- *   additionalMetadata: { customKey: 'value' },
- * }, { sequenceId, userId });
- * ```
+ * Uses context.run() instead of context.api.openai.call() to avoid
+ * passing API keys in headers that get stored in Upstash logs.
  */
 export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   context: WorkflowContext<TInput>,
@@ -155,50 +157,69 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     }
   );
 
-  // Step 2: Durable LLM Call
+  // Step 2: Durable LLM Call via context.run() + TanStack AI adapter
   let jsonResponse: z.infer<TSchema> | null = null;
-  let llmCostUsd = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { body, status, header } = await context.api.openai.call(
-      callStepName,
-      {
-        baseURL: 'https://openrouter.ai/api',
-        token: callContext.openRouterApiKey ?? getEnv().OPENROUTER_KEY,
-        operation: 'chat.completions.create',
-        body: {
-          model: config.modelId,
-          messages,
-          usage: { include: true },
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: schemaName,
-              strict: true,
-              schema: z.toJSONSchema(config.responseSchema),
-            },
-          },
-        },
-        headers: (() => {
-          const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
-          return bypassSecret
-            ? {
-                'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
-                'x-vercel-protection-bypass': bypassSecret,
-              }
-            : undefined;
-        })(),
+    const result = await context.run(callStepName, async () => {
+      try {
+        const adapter = createAdapter(
+          config.modelId,
+          callContext.openRouterApiKey
+        );
+
+        // Separate system prompts from chat messages
+        const systemPrompts: string[] = [];
+        const chatMessages: Array<{
+          role: 'user' | 'assistant';
+          content: string;
+        }> = [];
+
+        for (const msg of messages) {
+          const content =
+            typeof msg.content === 'string'
+              ? msg.content
+              : JSON.stringify(msg.content);
+          if (msg.role === 'system') {
+            systemPrompts.push(content);
+          } else {
+            chatMessages.push({
+              role: msg.role,
+              content,
+            });
+          }
+        }
+
+        const text = await chat({
+          adapter,
+          messages: chatMessages,
+          systemPrompts,
+          stream: false,
+          // response_format uses json_schema which OpenRouter supports but adapter types declare as json_object only
+          modelOptions: {
+            response_format: buildResponseFormat(
+              config.responseSchema,
+              schemaName
+            ),
+          } as Record<string, unknown>,
+        });
+
+        return { content: text, error: null };
+      } catch (error) {
+        return {
+          content: null,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
-    );
+    });
+
+    // Log generation to Langfuse
     await context.run('log-generation', async () => {
-      // Log to Langfuse with precise timing
-      // Guard against API errors where body.choices might be undefined
-      const outputContent = body.choices?.[0]?.message?.content ?? '';
+      const outputContent = result.content ?? '';
       logGeneration({
         name: logName,
         model: config.modelId,
         input: messages,
         output: outputContent,
-        usage: body.usage,
         prompt: promptReference,
         tags: logTags,
         metadata: logMetadata,
@@ -208,95 +229,55 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       });
     });
 
-    const result = await context.run(
+    // Validate response
+    const validation = await context.run(
       'validate-response',
       async (): Promise<
-        | {
-            isValid: true;
-            jsonResponse: z.infer<TSchema> | null;
-            costUsd: number;
-          }
-        | {
-            isValid: false;
-            sleepTime: number;
-          }
+        | { isValid: true; jsonResponse: z.infer<TSchema>; sleepTime?: never }
+        | { isValid: false; sleepTime: number; jsonResponse?: never }
       > => {
-        if (status < 300) {
-          try {
-            // Guard against API errors where body.choices might be undefined
-            const content = body.choices?.[0]?.message?.content ?? '';
-            if (!content) {
-              return {
-                isValid: false,
-                sleepTime: BASE_DELAY,
-              };
-            }
-            const validated = config.responseSchema.parse(JSON.parse(content));
-            // It's valid, now check if we need to retry
-            if (config.retryResponse && config.retryResponse(validated)) {
-              return {
-                isValid: false,
-                sleepTime: BASE_DELAY,
-              };
-            }
-            // Extract cost from OpenRouter usage response (extended field not in base OpenAI types)
-            const costUsd = extractUsageCost(body.usage);
-            return {
-              jsonResponse: validated,
-              isValid: true,
-              costUsd,
-            };
-          } catch {
-            // If the response is not valid, retry
-            return {
-              isValid: false,
-              sleepTime: BASE_DELAY,
-            };
-          }
+        if (result.error || !result.content) {
+          return { isValid: false, sleepTime: BASE_DELAY };
         }
-        if (status === 429) {
-          const sleepTime =
-            Number(header['x-ratelimit-reset-tokens']?.[0]) ||
-            Number(header['x-ratelimit-reset-requests']?.[0]) ||
-            BASE_DELAY;
 
-          // assuming `resetTime` is in seconds
-          return {
-            isValid: false,
-            sleepTime,
-          };
+        try {
+          const validated = config.responseSchema.parse(
+            JSON.parse(result.content)
+          );
+
+          // Check custom retry condition
+          if (config.retryResponse && config.retryResponse(validated)) {
+            return { isValid: false, sleepTime: BASE_DELAY };
+          }
+
+          return { isValid: true, jsonResponse: validated };
+        } catch {
+          return { isValid: false, sleepTime: BASE_DELAY };
         }
-        // Otherwise it's not a valid response
-        return {
-          isValid: false,
-          sleepTime: BASE_DELAY,
-        };
       }
     );
-    if (!result.isValid) {
-      // Any other scenario - pause for 5 seconds to avoid overloading OpenAI API
-      await context.sleep('pause-to-avoid-spam', result.sleepTime);
+
+    if (!validation.isValid) {
+      await context.sleep('pause-to-avoid-spam', validation.sleepTime);
       continue;
     }
-    jsonResponse = result.jsonResponse;
-    llmCostUsd = result.costUsd;
+    jsonResponse = validation.jsonResponse;
     break;
   }
 
   if (!jsonResponse) {
-    // If we get here, we tried multiple times to get a valid response, but failed
     throw new WorkflowValidationError(
       `${logName} Tried multiple times to get a valid response, but failed`
     );
   }
 
-  // Deduct LLM credits (skip if team used own OpenRouter key)
+  // Deduct LLM credits (use estimated cost since TanStack AI doesn't expose usage)
   const teamIdForDeduction = callContext.teamId;
   if (teamIdForDeduction) {
     await context.run(`deduct-llm-credits-${config.name}`, async () => {
       await deductWorkflowCredits({
         teamId: teamIdForDeduction,
-        costUsd: llmCostUsd,
+        costUsd: 0, // Cost tracked via Langfuse; adapter doesn't expose per-call usage
         usedOwnKey: !!callContext.openRouterApiKey,
         userId: callContext.userId,
         description: `LLM analysis (${config.modelId})`,

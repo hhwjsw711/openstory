@@ -12,11 +12,8 @@ import {
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 import { startObservation } from '@langfuse/tracing';
 
-import {
-  type QueueStatus,
-  createFalClient,
-  isQueueStatus,
-} from '@fal-ai/client';
+import { generateImage } from '@tanstack/ai';
+import { falImage } from '@tanstack/ai-fal';
 import { getEnv } from '#env';
 
 /**
@@ -111,26 +108,14 @@ function imageSizeToAspectRatio(imageSize: ImageSize): string {
 }
 
 /**
- * Extract progress percentage from Fal.ai queue update
- * Checks for progress in update object or logs
+ * Create a TanStack AI fal adapter for image generation
  */
-function extractProgress(update: QueueStatus): number | undefined {
-  // Try to extract progress from logs (e.g., "Progress: 45%")
-  if (isQueueStatus(update) && update.status === 'IN_PROGRESS') {
-    for (const log of update.logs) {
-      const message = log.message || '';
-      // Look for patterns like "45%", "Progress: 45%", "45% complete"
-      const progressMatch = message.match(/(\d+)%/);
-      if (progressMatch) {
-        const percent = parseInt(progressMatch[1], 10);
-        if (percent >= 0 && percent <= 100) {
-          return percent;
-        }
-      }
-    }
+function createFalAdapter(modelId: string, falApiKey?: string) {
+  const key = falApiKey ?? getEnv().FAL_KEY;
+  if (key) {
+    return falImage(modelId, { apiKey: key });
   }
-
-  return undefined;
+  return falImage(modelId);
 }
 
 /**
@@ -212,467 +197,274 @@ export async function generateImageWithProvider(
 
 /**
  * Internal image generation implementation
+ * Uses @tanstack/ai-fal adapters for fal.ai models
  */
 async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
 ): Promise<ImageGenerationResult> {
-  // Create a per-request fal client (supports user-provided keys)
-  const fal = createFalClient({
-    credentials: params.falApiKey ?? getEnv().FAL_KEY ?? '',
-  });
-
   // Truncate prompt to model's max length
   const prompt = truncatePromptForModel(params.prompt, params.model);
+  const startTime = Date.now();
 
+  // LetzAI uses a completely different API - handle separately
+  if (params.model === 'letzai') {
+    return generateLetzaiImage(params, prompt);
+  }
+
+  // Build model-specific options for fal.ai models
+  const modelOptions = buildFalModelOptions(params, prompt, modelId);
+
+  // Determine the actual endpoint (may differ from modelId for edit endpoints)
+  const endpoint = resolveEndpoint(params, modelId);
+
+  // Create adapter and generate
+  const adapter = createFalAdapter(endpoint, params.falApiKey);
+  const result = await generateImage({
+    adapter,
+    prompt,
+    modelOptions,
+  });
+
+  // Map TanStack AI result to our format
+  const imageUrls = result.images
+    .map((img) => img.url)
+    .filter((url): url is string => !!url);
+
+  if (imageUrls.length === 0) {
+    throw new Error('No images returned from generation');
+  }
+
+  const processingTimeMs = Date.now() - startTime;
+  const numImages = imageUrls.length || params.numImages || 1;
+
+  return {
+    imageUrls,
+    parameters: params,
+    generatedAt: new Date().toISOString(),
+    processingTimeMs,
+    provider: 'fal',
+    metadata: {
+      prompt: params.prompt,
+      model: params.model,
+      dimensions: imageUrls.map(() => ({ width: 0, height: 0 })), // Not available from adapter
+      file_sizes: imageUrls.map(() => 0),
+      seed: params.seed,
+      has_nsfw_concepts: undefined,
+      cost: calculateImageCost(
+        params.model,
+        numImages,
+        imageUrls.map(() => ({ width: 1024, height: 1024 })), // Estimate for cost calc
+        processingTimeMs
+      ),
+    },
+  };
+}
+
+/**
+ * Resolve the actual fal endpoint (handles edit endpoint switching)
+ */
+function resolveEndpoint(
+  params: ImageGenerationParams,
+  modelId: string
+): string {
+  if (params.model === 'nano_banana_pro') {
+    const hasReferences =
+      params.referenceImageUrls && params.referenceImageUrls.length > 0;
+    const editEndpoint = getEditEndpoint(params.model);
+    if (hasReferences && editEndpoint) return editEndpoint;
+  }
+  return modelId;
+}
+
+/**
+ * Build model-specific options for fal.ai image generation
+ * Each model has different API requirements
+ */
+function buildFalModelOptions(
+  params: ImageGenerationParams,
+  _prompt: string,
+  _modelId: string
+): Record<string, unknown> {
   switch (params.model) {
     case 'flux_pro':
     case 'flux_dev':
     case 'flux_schnell':
     case 'flux_krea_lora':
     case 'flux_pro_v1_1_ultra': {
-      // FLUX family - shared parameters with model-specific variations
       const isUltra = params.model === 'flux_pro_v1_1_ultra';
       const defaultSteps = params.model === 'flux_schnell' ? 4 : 28;
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          // Sizing: Ultra uses aspect_ratio, others use image_size
-          ...(isUltra
-            ? {
-                aspect_ratio: imageSizeToAspectRatio(
-                  params.imageSize ?? DEFAULT_IMAGE_SIZE
-                ),
-              }
-            : { image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE }),
-          // Inference steps/guidance (not for Ultra)
-          ...(!isUltra && {
-            num_inference_steps: params.numInferenceSteps ?? defaultSteps,
-            guidance_scale: params.guidanceScale ?? 3.5,
+      return {
+        ...(isUltra
+          ? {
+              aspect_ratio: imageSizeToAspectRatio(
+                params.imageSize ?? DEFAULT_IMAGE_SIZE
+              ),
+            }
+          : { image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE }),
+        ...(!isUltra && {
+          num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+          guidance_scale: params.guidanceScale ?? 3.5,
+        }),
+        ...(params.model !== 'flux_pro' && { enable_safety_checker: true }),
+        ...(isUltra && { raw: false }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...((params.model === 'flux_pro' || isUltra) &&
+          params.safetyTolerance !== undefined && {
+            safety_tolerance: params.safetyTolerance.toString(),
           }),
-          // Model-specific features
-          ...(params.model !== 'flux_pro' && { enable_safety_checker: true }),
-          ...(isUltra && { raw: false }),
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
+        ...((params.model === 'flux_pro' || isUltra) &&
+          params.enhancePrompt !== undefined && {
+            enhance_prompt: params.enhancePrompt,
           }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          // FLUX Pro/Ultra specific
-          ...((params.model === 'flux_pro' || isUltra) &&
-            params.safetyTolerance !== undefined && {
-              safety_tolerance: params.safetyTolerance.toString(),
-            }),
-          ...((params.model === 'flux_pro' || isUltra) &&
-            params.enhancePrompt !== undefined && {
-              enhance_prompt: params.enhancePrompt,
-            }),
-          // FLUX Dev/Schnell specific
-          ...((params.model === 'flux_dev' ||
-            params.model === 'flux_schnell') &&
-            params.acceleration && { acceleration: params.acceleration }),
-          // FLUX Krea specific
-          ...(params.model === 'flux_krea_lora' &&
-            params.loras && { loras: params.loras }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
+        ...((params.model === 'flux_dev' || params.model === 'flux_schnell') &&
+          params.acceleration && { acceleration: params.acceleration }),
+        ...(params.model === 'flux_krea_lora' &&
+          params.loras && { loras: params.loras }),
+        sync_mode: false,
+      };
     }
 
-    case 'flux_2': {
-      // FLUX 2 - Enhanced realism, crisper text, native editing
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-          num_inference_steps: params.numInferenceSteps ?? 28,
-          guidance_scale: params.guidanceScale ?? 2.5,
-          enable_safety_checker: true,
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          ...(params.acceleration && { acceleration: params.acceleration }),
-          ...(params.enablePromptExpansion !== undefined && {
-            enable_prompt_expansion: params.enablePromptExpansion,
-          }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'flux_2':
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? 28,
+        guidance_scale: params.guidanceScale ?? 2.5,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.acceleration && { acceleration: params.acceleration }),
+        ...(params.enablePromptExpansion !== undefined && {
+          enable_prompt_expansion: params.enablePromptExpansion,
+        }),
+        sync_mode: false,
+      };
 
     case 'sdxl':
     case 'sdxl_lightning': {
-      // SDXL family - shared parameters with model-specific variations
       const defaultSteps = params.model === 'sdxl_lightning' ? 4 : 25;
       const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-          num_inference_steps: params.numInferenceSteps ?? defaultSteps,
-          enable_safety_checker: true,
-          // SDXL specific
-          ...(params.model === 'sdxl' &&
-            params.guidanceScale !== undefined && {
-              guidance_scale: params.guidanceScale,
-            }),
-          ...(params.model === 'sdxl' &&
-            defaultGuidance !== undefined &&
-            params.guidanceScale === undefined && {
-              guidance_scale: defaultGuidance,
-            }),
-          ...(params.model === 'sdxl' &&
-            params.negativePrompt && {
-              negative_prompt: params.negativePrompt,
-            }),
-          ...(params.model === 'sdxl' &&
-            params.loras && { loras: params.loras }),
-          // Common optional params
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+        enable_safety_checker: true,
+        ...(params.model === 'sdxl' &&
+          params.guidanceScale !== undefined && {
+            guidance_scale: params.guidanceScale,
           }),
-          ...(params.outputFormat && { format: params.outputFormat }), // Note: 'format' not 'output_format'
-          ...(params.embeddings && { embeddings: params.embeddings }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update: QueueStatus) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
-
-    case 'imagen4_preview_ultra': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          aspect_ratio: imageSizeToAspectRatio(
-            params.imageSize ?? DEFAULT_IMAGE_SIZE
-          ),
-          resolution: params.resolution ?? '1K',
-          num_images: 1, // Imagen4 only supports 1 image
-          ...(params.negativePrompt && {
+        ...(params.model === 'sdxl' &&
+          defaultGuidance !== undefined &&
+          params.guidanceScale === undefined && {
+            guidance_scale: defaultGuidance,
+          }),
+        ...(params.model === 'sdxl' &&
+          params.negativePrompt && {
             negative_prompt: params.negativePrompt,
           }),
-          ...(params.seed !== undefined && { seed: params.seed }),
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
+        ...(params.model === 'sdxl' && params.loras && { loras: params.loras }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { format: params.outputFormat }),
+        ...(params.embeddings && { embeddings: params.embeddings }),
+        sync_mode: false,
+      };
     }
 
-    case 'nano_banana': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          aspect_ratio: imageSizeToAspectRatio(
-            params.imageSize ?? DEFAULT_IMAGE_SIZE
-          ),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
+    case 'imagen4_preview_ultra':
+      return {
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        resolution: params.resolution ?? '1K',
+        num_images: 1,
+        ...(params.negativePrompt && {
+          negative_prompt: params.negativePrompt,
+        }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+      };
 
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'nano_banana':
+      return {
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
 
     case 'nano_banana_pro': {
-      // Auto-switch to edit endpoint when reference images are provided
       const hasReferences =
         params.referenceImageUrls && params.referenceImageUrls.length > 0;
-      const editEndpoint = getEditEndpoint(params.model);
-      const endpoint = hasReferences && editEndpoint ? editEndpoint : modelId;
-
-      const resp = await fal.subscribe(endpoint, {
-        input: {
-          prompt,
-          aspect_ratio: imageSizeToAspectRatio(
-            params.imageSize ?? DEFAULT_IMAGE_SIZE
-          ),
-          resolution: params.resolution ?? '2K',
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          // Pass reference images when using edit endpoint
-          ...(hasReferences && { image_urls: params.referenceImageUrls }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
+      return {
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        resolution: params.resolution ?? '2K',
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(hasReferences && { image_urls: params.referenceImageUrls }),
+        sync_mode: false,
+      };
     }
 
-    case 'recraft_v3': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-          style: params.style ?? 'realistic_image',
-          enable_safety_checker: false, // Default false for Recraft
-          ...(params.colors &&
-            params.colors.length > 0 && { colors: params.colors }),
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
+    case 'recraft_v3':
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        style: params.style ?? 'realistic_image',
+        enable_safety_checker: false,
+        ...(params.colors &&
+          params.colors.length > 0 && { colors: params.colors }),
+      };
 
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'hidream_i1_full':
+      return {
+        image_size: { width: 1024, height: 1024 },
+        num_inference_steps: params.numInferenceSteps ?? 50,
+        guidance_scale: params.guidanceScale ?? 5,
+        enable_safety_checker: true,
+        ...(params.negativePrompt && {
+          negative_prompt: params.negativePrompt,
+        }),
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.loras && { loras: params.loras }),
+        sync_mode: false,
+      };
 
-    case 'hidream_i1_full': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: { width: 1024, height: 1024 }, // HiDream uses object
-          num_inference_steps: params.numInferenceSteps ?? 50,
-          guidance_scale: params.guidanceScale ?? 5,
-          enable_safety_checker: true,
-          ...(params.negativePrompt && {
-            negative_prompt: params.negativePrompt,
-          }),
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          ...(params.loras && { loras: params.loras }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            // Extract progress before mapping logs (needs full log objects)
-            const progress = extractProgress(update);
+    case 'seedream_v4_5':
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        sync_mode: false,
+      };
 
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'kling_image_v3':
+      return {
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        resolution: params.resolution ?? '1K',
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+      };
 
-    case 'seedream_v4_5': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-          enable_safety_checker: true,
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
-
-    case 'kling_image_v3': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          aspect_ratio: imageSizeToAspectRatio(
-            params.imageSize ?? DEFAULT_IMAGE_SIZE
-          ),
-          resolution: params.resolution ?? '1K',
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
-
-    case 'flux_2_klein_4b': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-          num_inference_steps: params.numInferenceSteps ?? 4,
-          enable_safety_checker: true,
-          ...(params.seed !== undefined && { seed: params.seed }),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'flux_2_klein_4b':
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? 4,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
 
     case 'gpt_image_1_5': {
       const sizeMap: Record<ImageSize, string> = {
@@ -680,123 +472,84 @@ async function generateImageInternal(
         portrait_16_9: '1024x1536',
         landscape_16_9: '1536x1024',
       };
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          image_size: sizeMap[params.imageSize ?? DEFAULT_IMAGE_SIZE],
-          quality: 'high',
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
+      return {
+        image_size: sizeMap[params.imageSize ?? DEFAULT_IMAGE_SIZE],
+        quality: 'high',
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
     }
 
-    case 'grok_imagine_image': {
-      const resp = await fal.subscribe(modelId, {
-        input: {
-          prompt,
-          aspect_ratio: imageSizeToAspectRatio(
-            params.imageSize ?? DEFAULT_IMAGE_SIZE
-          ),
-          ...(params.numImages !== undefined && {
-            num_images: params.numImages,
-          }),
-          ...(params.outputFormat && { output_format: params.outputFormat }),
-          sync_mode: false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (params.onQueueUpdate) {
-            const progress = extractProgress(update);
-            params.onQueueUpdate({
-              status: update.status,
-              logs:
-                update.status === 'IN_PROGRESS'
-                  ? update.logs?.map((l) => l.message)
-                  : undefined,
-              progress,
-            });
-          }
-        },
-      });
-      if (!resp.data) throw new Error('No data returned from FAL');
-      return resultByFal(params, resp.data);
-    }
+    case 'grok_imagine_image':
+      return {
+        aspect_ratio: imageSizeToAspectRatio(
+          params.imageSize ?? DEFAULT_IMAGE_SIZE
+        ),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
 
-    case 'letzai': {
-      // LetzAI uses custom provider with different API
-      const presetDims = {
-        square_hd: { width: 1024, height: 1024 },
-        portrait_16_9: { width: 576, height: 1024 },
-        landscape_16_9: { width: 1600, height: 900 },
-      }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
-
-      // TODO: This needs to be updated to use the new SDK
-      const resp = await imagesCreate({
-        // @ts-expect-error - webhookUrl is not required for imagesCreate
-        body: {
-          prompt,
-          width: presetDims.width,
-          height: presetDims.height,
-          quality: params.quality ?? 5,
-          creativity: params.creativity ?? 2,
-          hasWatermark: params.hasWatermark ?? false,
-          systemVersion: params.systemVersion ?? 3,
-          mode: params.mode ?? 'default',
-          hideFromUserProfile: false,
-        },
-      });
-      // @TODO Tom 21 Nov 2025: This is kinda hacky, but it's the best we can do for now
-
-      if (!resp.data) throw new Error('No data returned from LetzAI');
-      let imageDto: ImageDto = resp.data;
-      do {
-        // Now we have to poll the task status until it is completed
-        const imageStatusResp = await imagesGet({ path: { id: resp.data.id } });
-        if (!imageStatusResp.data)
-          throw new Error('No data returned from LetzAI');
-
-        imageDto = imageStatusResp.data;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-      } while (
-        imageDto.status !== 'ready' &&
-        imageDto.status !== 'failed' &&
-        imageDto.status !== 'interrupted'
-      );
-      if (imageDto.status === 'failed') {
-        throw new Error('Image generation failed');
-      }
-      if (imageDto.status === 'interrupted') {
-        throw new Error('Image generation interrupted');
-      }
-      return resultByLetzai(params, imageDto);
-    }
+    case 'letzai':
+      // Handled separately in generateLetzaiImage
+      return {};
 
     default: {
-      // TypeScript exhaustiveness check
       const _exhaustive: never = params.model;
       throw new Error(`Unsupported model: ${String(_exhaustive)}`);
     }
   }
+}
+
+/**
+ * Generate image via LetzAI (non-fal provider)
+ */
+async function generateLetzaiImage(
+  params: ImageGenerationParams,
+  prompt: string
+): Promise<ImageGenerationResult> {
+  const presetDims = {
+    square_hd: { width: 1024, height: 1024 },
+    portrait_16_9: { width: 576, height: 1024 },
+    landscape_16_9: { width: 1600, height: 900 },
+  }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
+
+  const resp = await imagesCreate({
+    // @ts-expect-error - webhookUrl is not required for imagesCreate
+    body: {
+      prompt,
+      width: presetDims.width,
+      height: presetDims.height,
+      quality: params.quality ?? 5,
+      creativity: params.creativity ?? 2,
+      hasWatermark: params.hasWatermark ?? false,
+      systemVersion: params.systemVersion ?? 3,
+      mode: params.mode ?? 'default',
+      hideFromUserProfile: false,
+    },
+  });
+
+  if (!resp.data) throw new Error('No data returned from LetzAI');
+  let imageDto: ImageDto = resp.data;
+  do {
+    const imageStatusResp = await imagesGet({ path: { id: resp.data.id } });
+    if (!imageStatusResp.data) throw new Error('No data returned from LetzAI');
+
+    imageDto = imageStatusResp.data;
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  } while (
+    imageDto.status !== 'ready' &&
+    imageDto.status !== 'failed' &&
+    imageDto.status !== 'interrupted'
+  );
+  if (imageDto.status === 'failed') {
+    throw new Error('Image generation failed');
+  }
+  if (imageDto.status === 'interrupted') {
+    throw new Error('Image generation interrupted');
+  }
+  return resultByLetzai(params, imageDto);
 }
 
 /**
@@ -870,75 +623,6 @@ function resultByLetzai(
       has_nsfw_concepts: undefined,
       cost: calculateImageCost(params.model, 1, dimensions, 0),
       requestId: undefined,
-    },
-  };
-
-  return result;
-}
-
-/**
- * Response type for Fal.ai image generation
- */
-type FalImageResponse = {
-  images?: Array<{
-    url: string;
-    width?: number;
-    height?: number;
-    file_size?: number;
-  }>;
-  timings?: { inference?: number };
-  seed?: number;
-  has_nsfw_concepts?: boolean[];
-  prompt?: string;
-  requestId?: string;
-  latencyMs?: number;
-};
-
-/**
- * Parse result for Fal.ai provider
- */
-function resultByFal(
-  params: ImageGenerationParams,
-  resp: FalImageResponse
-): ImageGenerationResult {
-  const images = resp.images;
-  const timings = resp.timings;
-  const latencyMs = resp.latencyMs;
-
-  const imageUrls = Array.isArray(images) ? images.map((img) => img.url) : [];
-  const processingTimeMs = timings?.inference || latencyMs || 0;
-  const dimensions = Array.isArray(images)
-    ? images.map((img) => ({
-        width: img.width ?? 0,
-        height: img.height ?? 0,
-      }))
-    : [];
-  const file_sizes = Array.isArray(images)
-    ? images.map((img) => img.file_size ?? 0)
-    : [];
-
-  const numImages = imageUrls.length || params.numImages || 1;
-
-  const result: ImageGenerationResult = {
-    imageUrls,
-    parameters: params,
-    generatedAt: new Date().toISOString(),
-    processingTimeMs,
-    provider: 'fal',
-    metadata: {
-      prompt: resp.prompt || params.prompt,
-      model: params.model,
-      dimensions,
-      file_sizes,
-      seed: resp.seed,
-      has_nsfw_concepts: resp.has_nsfw_concepts,
-      cost: calculateImageCost(
-        params.model,
-        numImages,
-        dimensions,
-        processingTimeMs
-      ),
-      requestId: resp.requestId,
     },
   };
 

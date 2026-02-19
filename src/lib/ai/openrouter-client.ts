@@ -1,41 +1,14 @@
 /**
  * OpenRouter API client for AI services
- * Provides a unified interface to multiple AI models
+ * Uses @tanstack/ai-openrouter adapters for unified AI integration
  */
 
 import { getEnv } from '#env';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { startObservation } from '@langfuse/tracing';
+import { chat } from '@tanstack/ai';
+import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 import { z } from 'zod';
-// OpenRouter API configuration
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-// Response schema for OpenRouter API
-const openRouterResponseSchema = z.object({
-  id: z.string(),
-  choices: z.array(
-    z.object({
-      message: z.object({
-        role: z.string(),
-        content: z.string(),
-      }),
-      finish_reason: z.string().nullable(),
-    })
-  ),
-  usage: z
-    .object({
-      prompt_tokens: z.number(),
-      completion_tokens: z.number(),
-      total_tokens: z.number(),
-      cost: z.number().optional(),
-    })
-    .optional(),
-  model: z.string(),
-});
-
-export type OpenRouterResponse = z.infer<typeof openRouterResponseSchema>;
-
-export { openRouterResponseSchema };
 
 type StreamChunk = {
   delta: string; // Text chunk
@@ -70,7 +43,7 @@ type OpenRouterProviderPreference = {
   allow_fallbacks?: boolean;
 };
 
-type OpenRouterRequestParams = {
+export type OpenRouterRequestParams = {
   model: string;
   messages: OpenRouterMessage[];
   temperature?: number;
@@ -119,7 +92,7 @@ const STRUCTURED_OUTPUT_MODELS = new Set([
 /**
  * Check if a model supports structured outputs
  */
-function modelSupportsStructuredOutputs(model: string): boolean {
+export function modelSupportsStructuredOutputs(model: string): boolean {
   return STRUCTURED_OUTPUT_MODELS.has(model);
 }
 
@@ -165,13 +138,93 @@ export const RECOMMENDED_MODELS = {
 } as const;
 
 /**
- * Make a request to OpenRouter API
+ * Extract text content from an OpenRouterMessageContent value
+ */
+function extractTextContent(content: OpenRouterMessageContent): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((c) => c.type === 'text')
+      .map((c) => ('text' in c ? c.text : ''))
+      .join('');
+  }
+  return content.type === 'text' ? content.text : '';
+}
+
+/**
+ * Convert our message format to TanStack AI format
+ */
+function convertMessages(messages: OpenRouterMessage[]) {
+  const systemPrompts: string[] = [];
+  const chatMessages: Array<{ role: 'user' | 'assistant'; content: string }> =
+    [];
+
+  for (const msg of messages) {
+    const text = extractTextContent(msg.content);
+    if (msg.role === 'system') {
+      systemPrompts.push(text);
+    } else {
+      chatMessages.push({ role: msg.role, content: text });
+    }
+  }
+
+  return { systemPrompts, messages: chatMessages };
+}
+
+/**
+ * Create a TanStack AI OpenRouter adapter with appropriate config
+ */
+// Model ID type expected by the adapter (union of known model strings)
+type AdapterModel = Parameters<typeof createOpenRouterText>[0];
+
+function createAdapter(model: string, apiKey?: string) {
+  const key = apiKey ?? getEnv().OPENROUTER_KEY;
+  const env = getEnv();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
+  const m = model as AdapterModel;
+
+  if (key) {
+    return createOpenRouterText(m, key, {
+      httpReferer: env.APP_URL || 'http://localhost:3000',
+      xTitle: env.APP_NAME || 'AI Video Studio',
+    });
+  }
+
+  // Fall back to env-based adapter (reads OPENROUTER_API_KEY)
+  return openRouterText(m, {
+    httpReferer: env.APP_URL || 'http://localhost:3000',
+    xTitle: env.APP_NAME || 'AI Video Studio',
+  });
+}
+
+/**
+ * Build model-specific options passed to the OpenRouter adapter
+ */
+function buildModelOptions(params: OpenRouterRequestParams) {
+  return {
+    provider: params.provider ?? DEFAULT_PROVIDER,
+    ...(params.frequency_penalty !== undefined && {
+      frequency_penalty: params.frequency_penalty,
+    }),
+    ...(params.presence_penalty !== undefined && {
+      presence_penalty: params.presence_penalty,
+    }),
+    ...(params.responseSchema && {
+      response_format: buildResponseFormat(
+        params.responseSchema,
+        params.observationName ?? 'response'
+      ),
+    }),
+  };
+}
+
+/**
+ * Make a non-streaming request to OpenRouter API
+ * Returns the text content of the response
  */
 export async function callOpenRouter(
   params: OpenRouterRequestParams
-): Promise<OpenRouterResponse> {
-  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
-
+): Promise<string> {
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
     throw new Error(
@@ -193,74 +246,22 @@ export async function callOpenRouter(
   );
 
   try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
-        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
-      },
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        ...(params.temperature !== undefined && {
-          temperature: params.temperature,
-        }),
-        ...(params.max_tokens !== undefined && {
-          max_tokens: params.max_tokens,
-        }),
-        ...(params.top_p !== undefined && { top_p: params.top_p }),
-        ...(params.frequency_penalty !== undefined && {
-          frequency_penalty: params.frequency_penalty,
-        }),
-        ...(params.presence_penalty !== undefined && {
-          presence_penalty: params.presence_penalty,
-        }),
-        ...(params.stream !== undefined && { stream: params.stream }),
-        provider: params.provider ?? DEFAULT_PROVIDER,
-        usage: { include: true },
-        // Structured outputs - enforce JSON schema at API level
-        ...(params.responseSchema && {
-          response_format: buildResponseFormat(
-            params.responseSchema,
-            params.observationName ?? 'response'
-          ),
-        }),
-      }),
+    const adapter = createAdapter(params.model, params.apiKey);
+    const { systemPrompts, messages } = convertMessages(params.messages);
+
+    const result = await chat({
+      adapter,
+      messages,
+      systemPrompts,
+      stream: false,
+      maxTokens: params.max_tokens,
+      temperature: params.temperature,
+      topP: params.top_p,
+      modelOptions: buildModelOptions(params),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[OpenRouter] API error:', error);
-      generation
-        .update({
-          level: 'ERROR',
-          statusMessage: `API error: ${response.status} ${error}`,
-        })
-        .end();
-      throw new Error(`OpenRouter API error: ${response.status} ${error}`);
-    }
-
-    const data = await response.json();
-    const validated = openRouterResponseSchema.parse(data);
-
-    generation
-      .update({
-        output: validated.choices[0]?.message?.content,
-        usageDetails: validated.usage
-          ? {
-              input: validated.usage.prompt_tokens,
-              output: validated.usage.completion_tokens,
-            }
-          : undefined,
-        costDetails: validated.usage?.cost
-          ? { total: validated.usage.cost }
-          : undefined,
-      })
-      .end();
-
-    return validated;
+    generation.update({ output: result }).end();
+    return result;
   } catch (error) {
     generation
       .update({
@@ -268,19 +269,17 @@ export async function callOpenRouter(
         statusMessage: error instanceof Error ? error.message : String(error),
       })
       .end();
-    console.error('[OpenRouter] Request failed:', error);
     throw error;
   }
 }
 
 /**
  * Stream OpenRouter responses chunk by chunk
+ * Yields StreamChunk objects compatible with existing callers
  */
 export async function* callOpenRouterStream(
   params: OpenRouterRequestParams
 ): AsyncGenerator<StreamChunk> {
-  const apiKey = params.apiKey ?? getEnv().OPENROUTER_KEY;
-
   // Validate model supports structured outputs if schema is provided
   if (params.responseSchema && !modelSupportsStructuredOutputs(params.model)) {
     throw new Error(
@@ -303,153 +302,46 @@ export async function* callOpenRouterStream(
 
   let accumulated = '';
   let hasError = false;
-  let usage:
-    | { prompt_tokens: number; completion_tokens: number; cost?: number }
-    | undefined;
 
   try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': getEnv().APP_URL || 'http://localhost:3000',
-        'X-Title': getEnv().APP_NAME || 'AI Video Studio',
+    const adapter = createAdapter(params.model, params.apiKey);
+    const { systemPrompts, messages } = convertMessages(params.messages);
+
+    const stream = chat({
+      adapter,
+      messages,
+      systemPrompts,
+      maxTokens: params.max_tokens,
+      temperature: params.temperature,
+      topP: params.top_p,
+      modelOptions: {
+        ...buildModelOptions(params),
+        stream_options: { include_usage: true },
       },
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        ...(params.temperature !== undefined && {
-          temperature: params.temperature,
-        }),
-        ...(params.max_tokens !== undefined && {
-          max_tokens: params.max_tokens,
-        }),
-        ...(params.top_p !== undefined && { top_p: params.top_p }),
-        ...(params.frequency_penalty !== undefined && {
-          frequency_penalty: params.frequency_penalty,
-        }),
-        ...(params.presence_penalty !== undefined && {
-          presence_penalty: params.presence_penalty,
-        }),
-        provider: params.provider ?? DEFAULT_PROVIDER,
-        stream: true, // Force streaming
-        stream_options: { include_usage: true }, // Request usage in final chunk
-        usage: { include: true }, // Request cost in response
-        // Structured outputs - enforce JSON schema at API level
-        ...(params.responseSchema && {
-          response_format: buildResponseFormat(
-            params.responseSchema,
-            params.observationName ?? 'response'
-          ),
-        }),
-      }),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[OpenRouter] API error:', error);
-      hasError = true;
-      generation
-        .update({
-          level: 'ERROR',
-          statusMessage: `API error: ${response.status} ${error}`,
-        })
-        .end();
-      throw new Error(`OpenRouter API error: ${response.status} ${error}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      hasError = true;
-      generation
-        .update({
-          level: 'ERROR',
-          statusMessage: 'No response body reader available',
-        })
-        .end();
-      throw new Error('No response body reader available');
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          if (buffer.trim()) {
-            const line = buffer.trim();
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data !== '[DONE]') {
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || '';
-                  if (delta) accumulated += delta;
-                  // Capture usage from final chunk if available
-                  if (parsed.usage) {
-                    usage = {
-                      prompt_tokens: parsed.usage.prompt_tokens,
-                      completion_tokens: parsed.usage.completion_tokens,
-                      cost: parsed.usage.cost,
-                    };
-                  }
-                } catch (e) {
-                  console.warn('[OpenRouter] Failed to parse final chunk:', e);
-                }
-              }
-            }
-          }
-          yield { delta: '', accumulated, done: true };
-          break;
-        }
-
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
-
-          if (trimmedLine.startsWith('data: ')) {
-            const data = trimmedLine.slice(6);
-
-            if (data === '[DONE]') {
-              yield { delta: '', accumulated, done: true };
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content || '';
-
-              // Capture usage from final chunk if available
-              if (parsed.usage) {
-                usage = {
-                  prompt_tokens: parsed.usage.prompt_tokens,
-                  completion_tokens: parsed.usage.completion_tokens,
-                  cost: parsed.usage.cost,
-                };
-              }
-
-              if (delta) {
-                accumulated += delta;
-                yield { delta, accumulated, done: false };
-              }
-            } catch {
-              // Skip invalid JSON chunks (wait for more data)
-              continue;
-            }
-          }
-        }
+    for await (const event of stream) {
+      if (event.type === 'TEXT_MESSAGE_CONTENT') {
+        accumulated += event.delta;
+        yield { delta: event.delta, accumulated, done: false };
       }
-    } finally {
-      reader.releaseLock();
+      if (event.type === 'RUN_ERROR') {
+        hasError = true;
+        const errorMsg =
+          'error' in event && event.error
+            ? String(
+                typeof event.error === 'object' && 'message' in event.error
+                  ? event.error.message
+                  : event.error
+              )
+            : 'Unknown stream error';
+        generation.update({ level: 'ERROR', statusMessage: errorMsg }).end();
+        throw new Error(`OpenRouter stream error: ${errorMsg}`);
+      }
     }
+
+    // Stream ended normally
+    yield { delta: '', accumulated, done: true };
   } catch (error) {
     if (!hasError) {
       generation
@@ -462,18 +354,7 @@ export async function* callOpenRouterStream(
     throw error;
   } finally {
     if (!hasError) {
-      generation
-        .update({
-          output: accumulated,
-          usageDetails: usage
-            ? {
-                input: usage.prompt_tokens,
-                output: usage.completion_tokens,
-              }
-            : undefined,
-          costDetails: usage?.cost ? { total: usage.cost } : undefined,
-        })
-        .end();
+      generation.update({ output: accumulated }).end();
     }
   }
 }
