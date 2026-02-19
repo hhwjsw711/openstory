@@ -71,6 +71,7 @@
     "cf:typegen:prd": "wrangler types --env=prd",
     "cf:build:prd": "bun --bun run cf:typegen:prd && BUILD_CLOUDFLARE=1 bun --bun run build",
     "cf:build:stg": "bun --bun run cf:typegen:stg && BUILD_CLOUDFLARE=1 bun --bun run build",
+    "cf:dev": "BUILD_CLOUDFLARE=1 wrangler dev",
     "cf:preview": "BUILD_CLOUDFLARE=1 vite preview",
     "cf:deploy:prd": "bun --bun run cf:build:prd && wrangler deploy --env=prd --name=frontend-prd",
     "cf:deploy:stg": "bun --bun run cf:build:stg && wrangler deploy --env=stg --name=frontend-stg",
