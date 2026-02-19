@@ -6,6 +6,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: cf-deploy-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
