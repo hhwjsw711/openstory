@@ -10,6 +10,7 @@ import {
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import {
   createImageMedia,
   createVideoMedia,
@@ -17,11 +18,11 @@ import {
 
 // Re-export for tests
 import { getEnv } from '#env';
-import { startObservation } from '@langfuse/tracing';
 import {
   type AspectRatio,
   aspectRatioSchema,
 } from '@/lib/constants/aspect-ratios';
+import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 import { z } from 'zod';
@@ -293,17 +294,6 @@ export async function generateMotionForFrame(
 }
 
 /**
- * Create a TanStack AI fal video adapter
- */
-function createFalVideoAdapter(modelId: string, falApiKey?: string) {
-  const key = falApiKey ?? getEnv().FAL_KEY;
-  if (key) {
-    return falVideo(modelId, { apiKey: key });
-  }
-  return falVideo(modelId);
-}
-
-/**
  * Internal motion generation implementation
  * Uses @tanstack/ai-fal adapters for video generation
  */
@@ -338,7 +328,10 @@ async function generateMotionInternal(
   const { prompt: _prompt, ...modelOptions } = input;
 
   // Create TanStack AI fal video adapter
-  const adapter = createFalVideoAdapter(modelConfig.id, options.falApiKey);
+  // Make sure to pass the proper modelConfig.id instead of a string to preserve type safety
+  const adapter = falVideo(modelConfig.id, {
+    apiKey: options.falApiKey ?? getEnv().FAL_KEY,
+  });
 
   // Submit video generation job
   const job = await generateVideo({
@@ -349,6 +342,10 @@ async function generateMotionInternal(
 
   const requestId = job.jobId;
   console.log(`[Motion Service] Job submitted: ${requestId}`);
+
+  // TB Feb 2026: This bit is not a great a piece of code!
+  // It holds the thread while the job is in progress, and it's not a great user experience.
+  // Fal supports webhooks, I will look at updating the Fal adapter to use webhooks
 
   // Poll for completion
   let videoUrl: string | undefined;
@@ -390,8 +387,12 @@ async function generateMotionInternal(
     options.duration || modelConfig.capabilities.defaultDuration;
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  // Calculate cost based on duration and per-second pricing
-  const estimatedCost = modelConfig.pricing.pricePerSecond * validatedDuration;
+  // Calculate cost using live pricing from fal's Platform API
+  const cost = await calculateFalCost(
+    modelConfig.id,
+    validatedDuration,
+    options.falApiKey
+  );
 
   return {
     success: true,
@@ -404,7 +405,7 @@ async function generateMotionInternal(
       fps: validatedFps,
       motionBucket: options.motionBucket,
       totalFrames: Math.round(validatedDuration * validatedFps),
-      cost: estimatedCost,
+      cost,
       generatedAt: new Date().toISOString(),
     },
   };

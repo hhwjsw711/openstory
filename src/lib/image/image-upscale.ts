@@ -4,6 +4,7 @@
  */
 
 import { createFalClient } from '@fal-ai/client';
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import { getEnv } from '#env';
 
 type VariantResolution = '1K' | '2K' | '4K';
@@ -87,18 +88,13 @@ export async function upscaleWithNanoBanana(
       throw new Error('No image URL found in Nano Banana Pro Edit response');
     }
 
-    // fal returns cost in metadata but it's not in the typed response
-    let cost = 0;
-    if (
-      'metadata' in result &&
-      result.metadata &&
-      typeof result.metadata === 'object'
-    ) {
-      const meta = result.metadata;
-      if ('cost' in meta && typeof meta.cost === 'number') {
-        cost = meta.cost;
-      }
-    }
+    // Calculate cost using live pricing from fal's Platform API
+    // Upscale is billed per image (1 image per request)
+    const cost = await calculateFalCost(
+      'fal-ai/nano-banana-pro/edit',
+      1,
+      falApiKey
+    );
 
     return {
       imageUrl: images[0].url,

@@ -4,6 +4,7 @@ import {
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
@@ -238,6 +239,18 @@ async function generateImageInternal(
   const processingTimeMs = Date.now() - startTime;
   const numImages = imageUrls.length || params.numImages || 1;
 
+  // Calculate cost using live pricing from fal's Platform API
+  const quantity = computeImageBillableQuantity(
+    params.model,
+    numImages,
+    params.imageSize ?? DEFAULT_IMAGE_SIZE,
+    processingTimeMs
+  );
+  const cost =
+    quantity !== undefined
+      ? await calculateFalCost(endpoint, quantity, params.falApiKey)
+      : undefined;
+
   return {
     imageUrls,
     parameters: params,
@@ -251,12 +264,7 @@ async function generateImageInternal(
       file_sizes: imageUrls.map(() => 0),
       seed: params.seed,
       has_nsfw_concepts: undefined,
-      cost: calculateImageCost(
-        params.model,
-        numImages,
-        imageUrls.map(() => ({ width: 1024, height: 1024 })), // Estimate for cost calc
-        processingTimeMs
-      ),
+      cost,
     },
   };
 }
@@ -553,38 +561,44 @@ async function generateLetzaiImage(
 }
 
 /**
- * Calculate estimated cost based on model pricing and output
+ * Image size presets to pixel dimensions for megapixel cost calculation
  */
-function calculateImageCost(
+const IMAGE_SIZE_DIMENSIONS: Record<
+  ImageSize,
+  { width: number; height: number }
+> = {
+  square_hd: { width: 1024, height: 1024 },
+  portrait_16_9: { width: 576, height: 1024 },
+  landscape_16_9: { width: 1344, height: 768 },
+};
+
+/**
+ * Compute the billable quantity for an image generation based on its pricing unit.
+ * Returns undefined for models without fal pricing (e.g. LetzAI).
+ */
+function computeImageBillableQuantity(
   model: TextToImageModel,
   numImages: number,
-  dimensions: { width: number; height: number }[],
+  imageSize: ImageSize,
   processingTimeMs: number
 ): number | undefined {
   const modelConfig = IMAGE_MODELS[model];
   if (!modelConfig.pricing) return undefined;
 
-  const { price, unit } = modelConfig.pricing;
+  const { unit } = modelConfig.pricing;
 
   switch (unit) {
     case 'images':
-      // Flat rate per image
-      return price * numImages;
+      return numImages;
 
     case 'megapixels': {
-      // Calculate total megapixels across all images
-      const totalMegapixels = dimensions.reduce((sum, dim) => {
-        const megapixels = (dim.width * dim.height) / 1_000_000;
-        return sum + megapixels;
-      }, 0);
-      return price * totalMegapixels;
+      const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
+      const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
+      return megapixelsPerImage * numImages;
     }
 
-    case 'compute_seconds': {
-      // Cost based on compute time
-      const seconds = processingTimeMs / 1000;
-      return price * seconds;
-    }
+    case 'compute_seconds':
+      return processingTimeMs / 1000;
 
     default:
       return undefined;
@@ -621,7 +635,7 @@ function resultByLetzai(
       file_sizes: [],
       seed: undefined,
       has_nsfw_concepts: undefined,
-      cost: calculateImageCost(params.model, 1, dimensions, 0),
+      cost: undefined, // LetzAI pricing is not tracked via fal
       requestId: undefined,
     },
   };

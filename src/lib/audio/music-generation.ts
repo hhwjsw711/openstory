@@ -10,6 +10,7 @@ import {
   type AudioModel,
   type AudioModelConfig,
 } from '@/lib/ai/models';
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import { getEnv } from '#env';
 import { startObservation } from '@langfuse/tracing';
 import { createFalClient } from '@fal-ai/client';
@@ -287,7 +288,13 @@ async function generateMusicInternal(
 
   const validatedDuration =
     options.duration || modelConfig.capabilities.defaultDuration;
-  const estimatedCost = modelConfig.pricing.pricePerSecond * validatedDuration;
+
+  // Calculate cost using live pricing from fal's Platform API
+  const cost = await calculateFalCost(
+    modelConfig.id,
+    validatedDuration,
+    options.falApiKey
+  );
 
   return {
     success: true,
@@ -297,7 +304,7 @@ async function generateMusicInternal(
       model: modelConfig.id,
       provider: modelConfig.provider,
       duration: validatedDuration,
-      cost: estimatedCost,
+      cost,
       generatedAt: new Date().toISOString(),
     },
   };

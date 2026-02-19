@@ -1,18 +1,22 @@
 /**
  * Merge Videos Service
  * Handles stitching multiple video segments into a single video using fal.ai's ffmpeg API
+ * Uses @tanstack/ai-fal adapter for queue management and polling
  */
 
 import { getEnv } from '#env';
-import type { QueueStatus } from '@fal-ai/client';
-import { createFalClient } from '@fal-ai/client';
+import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
+import { falVideo } from '@tanstack/ai-fal';
 
 // Model ID for the fal.ai ffmpeg merge endpoint
-const MERGE_VIDEOS_MODEL_ID = 'fal-ai/ffmpeg-api/merge-videos';
+// Typed as string to use the adapter's generic fallback — the merge endpoint
+// isn't a video generation model so its fal types lack aspect_ratio/prompt fields
+const MERGE_VIDEOS_MODEL_ID: string = 'fal-ai/ffmpeg-api/merge-videos';
 
 export type MergeVideosResult = {
   videoUrl: string;
   requestId?: string;
+  // ffmpeg merge cost is negligible — adapter doesn't expose raw fal metadata
   cost: number;
   metadata: {
     inputCount: number;
@@ -45,71 +49,60 @@ export async function mergeVideos(
     resolution,
   });
 
-  // Build input for fal.ai API
-  const input = {
-    video_urls: videoUrls,
-    ...(targetFps && { target_fps: targetFps }),
-    ...(resolution && { resolution }),
-  };
-
-  // Track request ID from enqueue callback
-  let requestId: string | undefined;
-
-  // Configure fal client (supports user-provided keys)
-  const fal = createFalClient({
-    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
+  const adapter = falVideo(MERGE_VIDEOS_MODEL_ID, {
+    apiKey: falApiKey ?? getEnv().FAL_KEY ?? '',
   });
 
-  // Call the Fal.ai merge endpoint
-  const result = await fal.subscribe(MERGE_VIDEOS_MODEL_ID, {
-    input,
-    logs: true,
-    pollInterval: 5000,
-    onEnqueue: (reqId: string) => {
-      requestId = reqId;
-      console.log(`[Merge Videos] Request enqueued: ${reqId}`);
-    },
-    onQueueUpdate: (update: QueueStatus) => {
-      if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
-        console.log(`[Merge Videos] Queue position: ${update.queue_position}`);
-      }
-      if (update.status === 'COMPLETED') {
-        console.log(
-          `[Merge Videos] Completed in ${update.metrics?.inference_time || 'unknown'}s`
-        );
-      }
+  // Submit merge job — prompt is unused by the ffmpeg endpoint,
+  // actual parameters go through modelOptions
+  const job = await generateVideo({
+    adapter,
+    prompt: '',
+    modelOptions: {
+      video_urls: videoUrls,
+      ...(targetFps && { target_fps: targetFps }),
+      ...(resolution && { resolution }),
     },
   });
 
-  // The fal client returns typed data for this endpoint
-  const videoUrl = result.data.video.url;
+  const requestId = job.jobId;
+  console.log(`[Merge Videos] Job submitted: ${requestId}`);
 
-  if (!videoUrl) {
-    throw new Error('No video URL returned from merge operation');
-  }
+  // Poll for completion
+  const pollInterval = 5000;
+  const maxPollTime = 10 * 60 * 1000; // 10 minutes
+  const startTime = Date.now();
 
-  // fal returns cost in metadata but it's not in the typed response
-  let cost = 0;
-  if (
-    'metadata' in result &&
-    result.metadata &&
-    typeof result.metadata === 'object'
-  ) {
-    const meta = result.metadata;
-    if ('cost' in meta && typeof meta.cost === 'number') {
-      cost = meta.cost;
+  while (Date.now() - startTime < maxPollTime) {
+    const status = await getVideoJobStatus({ adapter, jobId: requestId });
+
+    if (status.status === 'completed' && status.url) {
+      console.log(`[Merge Videos] Completed`);
+      return {
+        videoUrl: status.url,
+        requestId,
+        cost: 0,
+        metadata: {
+          inputCount: videoUrls.length,
+          targetFps,
+          resolution,
+          generatedAt: new Date().toISOString(),
+        },
+      };
     }
+
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Video merge failed');
+    }
+
+    if (status.progress !== undefined) {
+      console.log(`[Merge Videos] Progress: ${status.progress}%`);
+    } else {
+      console.log(`[Merge Videos] Status: ${status.status}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
-  return {
-    videoUrl,
-    requestId: requestId ?? result.requestId,
-    cost,
-    metadata: {
-      inputCount: videoUrls.length,
-      targetFps,
-      resolution,
-      generatedAt: new Date().toISOString(),
-    },
-  };
+  throw new Error('Video merge timed out after 10 minutes');
 }
