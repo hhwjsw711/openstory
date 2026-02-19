@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Run D1 migrations (production)
-        run: bun db:migrate:d1
+      - name: Push schema to D1 (production)
+        run: bun --bun drizzle-kit push --config=drizzle.config.d1.ts --force
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,8 +116,8 @@ jobs:
             echo "database-id=$uuid" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run D1 migrations (preview)
-        run: bun db:migrate:d1
+      - name: Push schema to D1 (preview)
+        run: bun --bun drizzle-kit push --config=drizzle.config.d1.ts --force
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
