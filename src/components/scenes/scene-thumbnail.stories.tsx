@@ -19,16 +19,16 @@ const meta: Meta<typeof SceneThumbnail> = {
 export default meta;
 type Story = StoryObj<typeof SceneThumbnail>;
 
-export const Pending: Story = {
+export const Idle: Story = {
   args: {
-    thumbnailStatus: 'pending',
+    isGenerating: false,
     alt: 'Scene 1',
   },
 };
 
 export const Generating: Story = {
   args: {
-    thumbnailStatus: 'generating',
+    isGenerating: true,
     alt: 'Scene 1',
   },
 };
@@ -36,14 +36,7 @@ export const Generating: Story = {
 export const Completed: Story = {
   args: {
     thumbnailUrl: 'https://picsum.photos/seed/scene1/320/180',
-    thumbnailStatus: 'completed',
-    alt: 'Scene 1',
-  },
-};
-
-export const Failed: Story = {
-  args: {
-    thumbnailStatus: 'failed',
+    isGenerating: false,
     alt: 'Scene 1',
   },
 };
@@ -51,7 +44,7 @@ export const Failed: Story = {
 export const CompletedWithDifferentImage: Story = {
   args: {
     thumbnailUrl: 'https://picsum.photos/seed/scene2/320/180',
-    thumbnailStatus: 'completed',
+    isGenerating: false,
     alt: 'Scene 2 - Different composition',
   },
 };

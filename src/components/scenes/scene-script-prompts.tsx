@@ -238,35 +238,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
     onRegenerateStart(frame.id, 'image');
 
-    // Optimistic update for frame list query
-    queryClient.setQueryData<Frame[]>(
-      frameKeys.list(frame.sequenceId),
-      (oldFrames) => {
-        if (!oldFrames) return oldFrames;
-        return oldFrames.map((f) =>
-          f.id === frame.id
-            ? {
-                ...f,
-                thumbnailStatus: 'generating' as const,
-                imagePrompt: editedImagePrompt || f.imagePrompt,
-                imageModel: selectedImageModel || f.imageModel,
-              }
-            : f
-        );
-      }
-    );
-
-    // Optimistic update for individual frame query
-    queryClient.setQueryData<Frame>(frameKeys.detail(frame.id), (oldFrame) => {
-      if (!oldFrame) return oldFrame;
-      return {
-        ...oldFrame,
-        thumbnailStatus: 'generating' as const,
-        imagePrompt: editedImagePrompt || oldFrame.imagePrompt,
-        imageModel: selectedImageModel || oldFrame.imageModel,
-      };
-    });
-
     try {
       await generateFrameImageFn({
         data: {
@@ -311,35 +282,6 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     if (!frame?.id || !frame?.sequenceId) return;
 
     onRegenerateStart(frame.id, 'motion');
-
-    // Optimistic update for frame list query
-    queryClient.setQueryData<Frame[]>(
-      frameKeys.list(frame.sequenceId),
-      (oldFrames) => {
-        if (!oldFrames) return oldFrames;
-        return oldFrames.map((f) =>
-          f.id === frame.id
-            ? {
-                ...f,
-                videoStatus: 'generating' as const,
-                motionPrompt: editedMotionPrompt || f.motionPrompt,
-                motionModel: selectedMotionModel || f.motionModel,
-              }
-            : f
-        );
-      }
-    );
-
-    // Optimistic update for individual frame query
-    queryClient.setQueryData<Frame>(frameKeys.detail(frame.id), (oldFrame) => {
-      if (!oldFrame) return oldFrame;
-      return {
-        ...oldFrame,
-        videoStatus: 'generating' as const,
-        motionPrompt: editedMotionPrompt || oldFrame.motionPrompt,
-        motionModel: selectedMotionModel || oldFrame.motionModel,
-      };
-    });
 
     try {
       await generateFrameMotionFn({
@@ -457,19 +399,14 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setSelectedMotionModel(compatibleModel);
   }, [frame?.motionModel, aspectRatio]);
 
-  // Check if image is currently generating
-  const isGenerating =
-    frame?.thumbnailStatus === 'generating' ||
-    (frame?.id ? regeneratingImages.has(frame.id) : false);
-
-  // Check if motion is currently generating
-  const isGeneratingMotion =
-    frame?.videoStatus === 'generating' ||
-    (frame?.id ? regeneratingMotion.has(frame.id) : false);
-
-  const isGeneratingSceneVariants =
-    frame?.variantImageStatus === 'generating' ||
-    (frame?.id ? regeneratingSceneVariants.has(frame.id) : false);
+  // Check if workflows are active (live from QStash, not DB status)
+  const isGenerating = frame?.id ? regeneratingImages.has(frame.id) : false;
+  const isGeneratingMotion = frame?.id
+    ? regeneratingMotion.has(frame.id)
+    : false;
+  const isGeneratingSceneVariants = frame?.id
+    ? regeneratingSceneVariants.has(frame.id)
+    : false;
 
   return (
     <Tabs

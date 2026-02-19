@@ -91,7 +91,7 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
         >
           <SceneThumbnail
             thumbnailUrl={frame?.thumbnailUrl}
-            thumbnailStatus={frame?.thumbnailStatus || undefined}
+            isGenerating={isRegeneratingImage}
             alt={title ?? 'Scene thumbnail'}
             aspectRatio={aspectRatio}
             className={cn(
@@ -163,18 +163,12 @@ const areEqual = (
   }
 
   // Check thumbnail-related fields
-  if (
-    prevFrame.thumbnailUrl !== nextFrame.thumbnailUrl ||
-    prevFrame.thumbnailStatus !== nextFrame.thumbnailStatus
-  ) {
+  if (prevFrame.thumbnailUrl !== nextFrame.thumbnailUrl) {
     return false;
   }
 
-  // Check video-related fields (for skeleton/completion state)
-  if (
-    prevFrame.videoUrl !== nextFrame.videoUrl ||
-    prevFrame.videoStatus !== nextFrame.videoStatus
-  ) {
+  // Check video-related fields
+  if (prevFrame.videoUrl !== nextFrame.videoUrl) {
     return false;
   }
 

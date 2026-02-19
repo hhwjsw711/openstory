@@ -13,7 +13,7 @@ import { getRequest } from '@tanstack/react-start/server';
  * Gets the QStash Workflow client for direct API operations
  * Most workflow operations should use the serve() function in route files
  */
-function getWorkflowClient(): WorkflowClient {
+export function getWorkflowClient(): WorkflowClient {
   const env = getEnv();
   const token = env.QSTASH_TOKEN;
 

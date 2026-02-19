@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { Frame, Sequence } from '@/types/database';
 import { frameKeys } from '@/hooks/use-frames';
 import { sequenceKeys } from '@/hooks/use-sequences';
+import { workflowStatusKeys } from '@/hooks/use-workflow-status';
 
 /**
  * Helper to safely extract typed values from event data.
@@ -60,22 +61,27 @@ function debouncedInvalidate(
 }
 
 /**
- * Validates if a status value is a valid Frame status.
+ * Invalidate the workflow status query so the hook re-polls QStash.
+ * Called when realtime events indicate a workflow completed or failed,
+ * so the UI reflects the change immediately instead of waiting for the next poll.
  */
-function isValidFrameStatus(
-  status: unknown
-): status is Frame['thumbnailStatus'] {
-  return (
-    status === 'pending' ||
-    status === 'generating' ||
-    status === 'completed' ||
-    status === 'failed'
+function invalidateWorkflowStatus(
+  queryClient: QueryClient,
+  sequenceId: string
+) {
+  debouncedInvalidate(
+    queryClient,
+    workflowStatusKeys.sequence(sequenceId),
+    `workflow-status:${sequenceId}`
   );
 }
 
 /**
  * Updates TanStack Query cache based on realtime generation events.
  * This enables instant UI updates without polling.
+ *
+ * For content (URLs): updates frame cache directly.
+ * For status changes: invalidates workflow status query to re-poll QStash.
  */
 export function updateQueryCacheFromEvent(
   queryClient: QueryClient,
@@ -97,7 +103,6 @@ export function updateQueryCacheFromEvent(
 
     case 'generation.frame:updated': {
       // Update frame metadata with prompts
-      // The metadata is validated by the realtime schema before reaching here
       const metadata = data.metadata;
       if (isSceneMetadata(metadata)) {
         queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
@@ -108,78 +113,49 @@ export function updateQueryCacheFromEvent(
     }
 
     case 'generation.image:progress': {
+      // Update URL in frame cache (content), invalidate workflow status
       const thumbnailUrl = getOptionalString(data, 'thumbnailUrl');
-      const status = data.status;
-      queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
-        old?.map((f) =>
-          f.id === frameId
-            ? {
-                ...f,
-                thumbnailUrl: thumbnailUrl ?? f.thumbnailUrl,
-                thumbnailStatus: isValidFrameStatus(status)
-                  ? status
-                  : f.thumbnailStatus,
-              }
-            : f
-        )
-      );
+      if (thumbnailUrl) {
+        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+          old?.map((f) => (f.id === frameId ? { ...f, thumbnailUrl } : f))
+        );
+      }
+      // Workflow completed/failed — re-check QStash for updated status
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
     }
 
     case 'generation.video:progress': {
       const videoUrl = getOptionalString(data, 'videoUrl');
-      const status = data.status;
-      queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
-        old?.map((f) =>
-          f.id === frameId
-            ? {
-                ...f,
-                videoUrl: videoUrl ?? f.videoUrl,
-                videoStatus: isValidFrameStatus(status)
-                  ? status
-                  : f.videoStatus,
-              }
-            : f
-        )
-      );
+      if (videoUrl) {
+        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+          old?.map((f) => (f.id === frameId ? { ...f, videoUrl } : f))
+        );
+      }
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
     }
 
     case 'generation.variant-image:progress': {
       const variantImageUrl = getOptionalString(data, 'variantImageUrl');
-      const status = data.status;
-      queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
-        old?.map((f) =>
-          f.id === frameId
-            ? {
-                ...f,
-                variantImageUrl: variantImageUrl ?? f.variantImageUrl,
-                variantImageStatus: isValidFrameStatus(status)
-                  ? status
-                  : f.variantImageStatus,
-              }
-            : f
-        )
-      );
+      if (variantImageUrl) {
+        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+          old?.map((f) => (f.id === frameId ? { ...f, variantImageUrl } : f))
+        );
+      }
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
     }
 
     case 'generation.audio:progress': {
-      const status = data.status;
       const audioUrl = getOptionalString(data, 'audioUrl');
-      if (isValidFrameStatus(status)) {
+      if (audioUrl) {
         queryClient.setQueryData<Sequence>(
           sequenceKeys.detail(sequenceId),
-          (old) =>
-            old
-              ? {
-                  ...old,
-                  musicStatus: status,
-                  ...(audioUrl ? { musicUrl: audioUrl } : {}),
-                }
-              : old
+          (old) => (old ? { ...old, musicUrl: audioUrl } : old)
         );
       }
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
     }
 
@@ -190,19 +166,13 @@ export function updateQueryCacheFromEvent(
       void queryClient.invalidateQueries({
         queryKey: sequenceKeys.detail(sequenceId),
       });
+      // Also refresh workflow status
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
 
     case 'generation.error':
-      // Update frame status if frameId present
-      if (frameId) {
-        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
-          old?.map((f) =>
-            f.id === frameId
-              ? { ...f, thumbnailStatus: 'failed', videoStatus: 'failed' }
-              : f
-          )
-        );
-      }
+      // Invalidate workflow status — the workflow may have failed
+      invalidateWorkflowStatus(queryClient, sequenceId);
       break;
 
     // Phase events don't need cache updates (UI-only via reducer state)

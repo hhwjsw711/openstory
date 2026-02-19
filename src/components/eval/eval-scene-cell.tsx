@@ -1,5 +1,4 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { Frame } from '@/types/database';
 import { Image } from '@unpic/react';
 import type React from 'react';
@@ -72,13 +71,9 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
     if (!frame.thumbnailUrl) {
       return (
         <div className="border-b p-2 h-full flex items-center justify-center">
-          {frame.thumbnailStatus === 'generating' ? (
-            <Skeleton className="w-full h-full" />
-          ) : (
-            <div className="text-xs text-muted-foreground text-center">
-              No image
-            </div>
-          )}
+          <div className="text-xs text-muted-foreground text-center">
+            No image
+          </div>
         </div>
       );
     }

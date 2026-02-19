@@ -86,38 +86,10 @@ export function useFramesBySequence(
       const data = await getFramesFn({ data: { sequenceId } });
       return data;
     },
-    staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
-    // If refetchInterval is explicitly passed, use it; otherwise use smart polling
-    refetchInterval:
-      options?.refetchInterval !== undefined
-        ? options.refetchInterval
-        : (query) => {
-            if (!query.state.data) return 1000;
-
-            const frames = query.state.data;
-
-            // Phase-aware polling using frame status fields:
-            // - Phase 6 (Images): Any frame.thumbnailStatus === 'generating'
-            // - Phase 7 (Videos): Any frame.videoStatus === 'generating'
-            const isGeneratingImages = frames.some(
-              (f: Frame) => f.thumbnailStatus === 'generating'
-            );
-            const isGeneratingVideos = frames.some(
-              (f: Frame) => f.videoStatus === 'generating'
-            );
-
-            // Phases 6-7: Image/video generation (rapid parallel updates)
-            // Poll faster for snappier UI updates as thumbnails/videos complete
-            if (
-              frames.length > 0 &&
-              !isGeneratingImages &&
-              !isGeneratingVideos
-            ) {
-              return false;
-            }
-
-            return 2000;
-          },
+    staleTime: options?.staleTime ?? 1000,
+    // Workflow status is now checked via useWorkflowStatus (live QStash lookup),
+    // so frame polling is only needed when explicitly requested (e.g., realtime fallback).
+    refetchInterval: options?.refetchInterval ?? false,
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
     refetchOnWindowFocus: true, // Refetch when window regains focus
     enabled: !!sequenceId,
@@ -442,30 +414,6 @@ export function useGenerateVariants() {
       return { workflowRunId: result.workflowRunId };
     },
     onSuccess: async (_, { sequenceId, frameId }) => {
-      // Optimistically update frame status to 'generating'
-      queryClient.setQueryData<Frame>(frameKeys.detail(frameId), (oldFrame) => {
-        if (!oldFrame) return oldFrame;
-        return {
-          ...oldFrame,
-          variantImageStatus: 'generating' as const,
-        };
-      });
-
-      queryClient.setQueryData<Frame[]>(
-        frameKeys.list(sequenceId),
-        (oldFrames) => {
-          if (!oldFrames) return oldFrames;
-          return oldFrames.map((f) =>
-            f.id === frameId
-              ? {
-                  ...f,
-                  variantImageStatus: 'generating' as const,
-                }
-              : f
-          );
-        }
-      );
-
       // Invalidate queries to pick up server updates
       await queryClient.invalidateQueries({
         queryKey: frameKeys.detail(frameId),
@@ -505,14 +453,10 @@ export function useSelectVariant() {
       };
     },
     onSuccess: async (data, { sequenceId, frameId }) => {
-      // Update frame queries with new thumbnail
+      // Update frame queries with new thumbnail URL
       queryClient.setQueryData<Frame>(frameKeys.detail(frameId), (oldFrame) => {
         if (!oldFrame) return oldFrame;
-        return {
-          ...oldFrame,
-          thumbnailUrl: data.thumbnailUrl,
-          thumbnailStatus: 'generating' as const, // Upscale is running
-        };
+        return { ...oldFrame, thumbnailUrl: data.thumbnailUrl };
       });
 
       queryClient.setQueryData<Frame[]>(
@@ -520,13 +464,7 @@ export function useSelectVariant() {
         (oldFrames) => {
           if (!oldFrames) return oldFrames;
           return oldFrames.map((f) =>
-            f.id === frameId
-              ? {
-                  ...f,
-                  thumbnailUrl: data.thumbnailUrl,
-                  thumbnailStatus: 'generating' as const,
-                }
-              : f
+            f.id === frameId ? { ...f, thumbnailUrl: data.thumbnailUrl } : f
           );
         }
       );

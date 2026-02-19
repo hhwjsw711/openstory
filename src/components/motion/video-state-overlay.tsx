@@ -1,26 +1,20 @@
 import { PlatesLoader } from '@/components/ui/plates-loader';
 import { cn } from '@/lib/utils';
-import { AlertCircle } from 'lucide-react';
-
-type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed' | null;
 
 type VideoStateOverlayProps = {
   thumbnailUrl?: string | null;
-  videoStatus: FrameStatus;
+  /** Whether a workflow is currently generating this frame (from live QStash status) */
+  isGenerating?: boolean;
   className?: string;
 };
 
 export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
   thumbnailUrl,
-  videoStatus,
+  isGenerating = false,
   className,
 }) => {
-  // Only show loader when there's no thumbnail image yet
-  const hasNoThumbnail = !thumbnailUrl;
-  const hasFailed = videoStatus === 'failed';
-
-  // Don't show overlay if we have a thumbnail (even if regenerating)
-  if (!hasNoThumbnail && !hasFailed) {
+  // Only show overlay when there's no thumbnail and we're generating
+  if (thumbnailUrl || !isGenerating) {
     return null;
   }
 
@@ -31,27 +25,13 @@ export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
         className
       )}
       style={{
-        background: hasFailed
-          ? 'rgba(0, 0, 0, 0.5)'
-          : 'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.15), transparent 70%), #09090b',
+        background:
+          'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.15), transparent 70%), #09090b',
       }}
     >
       <div className="flex flex-col items-center gap-4">
-        {hasNoThumbnail && !hasFailed && (
-          <>
-            <PlatesLoader size="lg" />
-            <p className="text-sm font-medium">Generating frame…</p>
-          </>
-        )}
-
-        {hasFailed && (
-          <>
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <p className="text-sm font-medium text-destructive">
-              Generation failed
-            </p>
-          </>
-        )}
+        <PlatesLoader size="lg" />
+        <p className="text-sm font-medium">Generating frame…</p>
       </div>
     </div>
   );
