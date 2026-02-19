@@ -66,6 +66,7 @@ jobs:
       needs.check-secrets.outputs.has-cf-token == 'true'
       && github.event_name == 'pull_request'
       && github.event.action != 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: preview
     steps:
@@ -181,31 +182,36 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
+          SECRET_APP_NAME: ${{ secrets.APP_NAME }}
           SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
+          SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          SECRET_EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SECRET_FAL_CONCURRENCY_LIMIT: ${{ secrets.FAL_CONCURRENCY_LIMIT }}
+          SECRET_FAL_KEY: ${{ secrets.FAL_KEY }}
+          SECRET_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          SECRET_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SECRET_LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          SECRET_LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          SECRET_LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SECRET_LANGFUSE_TRACING_ENVIRONMENT: ${{ secrets.LANGFUSE_TRACING_ENVIRONMENT }}
+          SECRET_LETZAI_API_KEY: ${{ secrets.LETZAI_API_KEY }}
+          SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
           SECRET_QSTASH_CURRENT_SIGNING_KEY: ${{ secrets.QSTASH_CURRENT_SIGNING_KEY }}
           SECRET_QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
           SECRET_QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
-          SECRET_FAL_KEY: ${{ secrets.FAL_KEY }}
-          SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
-          SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          SECRET_LETZAI_API_KEY: ${{ secrets.LETZAI_API_KEY }}
           SECRET_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SECRET_R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          SECRET_R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          SECRET_R2_PUBLIC_ASSETS_BUCKET: ${{ secrets.R2_PUBLIC_ASSETS_BUCKET }}
+          SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ secrets.R2_PUBLIC_ASSETS_DOMAIN }}
+          SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           SECRET_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          SECRET_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          SECRET_R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-          SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          SECRET_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          SECRET_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          SECRET_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          SECRET_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
-          SECRET_LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          SECRET_LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          SECRET_LANGFUSE_BASEURL: ${{ secrets.LANGFUSE_BASEURL }}
+          SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values
           jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \
@@ -243,6 +249,7 @@ jobs:
       needs.check-secrets.outputs.has-cf-token == 'true'
       && github.event_name == 'pull_request'
       && github.event.action == 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Delete worker
