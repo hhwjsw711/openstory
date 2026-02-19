@@ -132,29 +132,41 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
         run: |
-          # Patch wrangler.jsonc stg env with PR-specific D1 database (not committed)
+          # Rewrite wrangler.jsonc with PR-specific name and D1 binding at top level
+          # so wrangler deploy (without --env) picks up the bindings correctly.
           node -e "
             const fs = require('fs');
             let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
-            // Strip JSONC comments
             cfg = cfg.replace(/\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '\$1');
             const obj = JSON.parse(cfg);
-            obj.env.stg.d1_databases[0].database_name = 'velro-pr-${PR_NUMBER}';
-            obj.env.stg.d1_databases[0].database_id = '${D1_DATABASE_ID}';
+            obj.name = 'frontend-pr-${PR_NUMBER}';
+            obj.d1_databases = [{
+              binding: 'DB',
+              database_name: 'velro-pr-${PR_NUMBER}',
+              database_id: '${D1_DATABASE_ID}'
+            }];
+            obj.r2_buckets = obj.env.stg.r2_buckets;
+            delete obj.env;
             fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
           "
+          echo "Patched wrangler.jsonc:"
+          cat wrangler.jsonc | head -30
 
       - name: Build
-        run: bun cf:build:stg
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          bunx wrangler types
+          BUILD_CLOUDFLARE=1 bun --bun run build
 
       - name: Deploy preview
         id: deploy
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          output=$(bunx wrangler deploy --env=stg --name="frontend-pr-${PR_NUMBER}" 2>&1) || true
+          output=$(bunx wrangler deploy 2>&1) || true
           echo "$output"
           url=$(echo "$output" | grep -oP 'https://[^\s]+\.workers\.dev' | tail -1)
           if [ -z "$url" ]; then
