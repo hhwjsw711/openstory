@@ -64,7 +64,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   const nextFrame =
     frames && currentFrameIndex < frames.length - 1
       ? frames.find(
-          (frame, index) => frame.videoUrl && index > currentFrameIndex,
+          (frame, index) =>
+            frame.videoStatus === 'completed' &&
+            frame.videoUrl &&
+            index > currentFrameIndex,
           currentFrameIndex + 1
         )
       : undefined;
@@ -89,9 +92,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     }
   }, [currentFrame?.videoUrl]);
 
-  // Check if frame has a video (URL present = completed)
-  const hasCompletedVideo = currentFrame && currentFrame.videoUrl;
-  const hasFailedVideo = false; // Failures now detected via live QStash status, not DB
+  // Check video status
+  const hasCompletedVideo =
+    currentFrame &&
+    currentFrame.videoStatus === 'completed' &&
+    currentFrame.videoUrl;
+  const hasFailedVideo = currentFrame && currentFrame.videoStatus === 'failed';
 
   // Fetch signed download URL with Content-Disposition header (forces browser download)
   const { data: downloadData } = useFrameDownloadUrl(
@@ -263,12 +269,15 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             onPause={handlePause}
             onEnded={handleEnded}
           />
-          {/* Show overlay when generating and no thumbnail yet */}
-          <VideoStateOverlay thumbnailUrl={currentFrame.thumbnailUrl} />
+          {/* Show overlay for image/video generation states */}
+          <VideoStateOverlay
+            thumbnailUrl={currentFrame.thumbnailUrl}
+            videoStatus={currentFrame.videoStatus ?? null}
+          />
         </div>
       )}
-      {/* Preload next video in background */}
-      {nextFrame?.videoUrl && (
+      {/* Preload next video in background if it's completed */}
+      {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">
           <MediaPlayer
             key={nextFrame.videoUrl}

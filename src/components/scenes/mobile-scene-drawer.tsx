@@ -26,7 +26,9 @@ type MobileSceneDrawerProps = {
 };
 
 const isCompleted = (frame: Frame) => {
-  return !!frame.thumbnailUrl && !!frame.videoUrl;
+  return (
+    frame.thumbnailStatus === 'completed' && frame.videoStatus === 'completed'
+  );
 };
 
 export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
@@ -47,13 +49,18 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
     [frames, selectedFrameId]
   );
 
-  // Frames with an image but no video and not currently generating motion
+  // Calculate eligible frames for motion generation
+  // Include 'generating' status to allow retrying stuck jobs
   const eligibleFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
-      (f) => !!f.thumbnailUrl && !f.videoUrl && !regeneratingMotion.has(f.id)
+      (f) =>
+        (f.videoStatus === 'pending' ||
+          f.videoStatus === 'failed' ||
+          f.videoStatus === 'generating') &&
+        f.thumbnailStatus === 'completed'
     );
-  }, [frames, regeneratingMotion]);
+  }, [frames]);
 
   const handleSelectFrame = (frameId: string) => {
     onSelectFrame(frameId);
@@ -95,9 +102,7 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
       >
         <SceneThumbnail
           thumbnailUrl={selectedFrame?.thumbnailUrl}
-          isGenerating={
-            selectedFrame ? regeneratingImages.has(selectedFrame.id) : false
-          }
+          thumbnailStatus={selectedFrame?.thumbnailStatus || undefined}
           alt={sceneTitle}
           aspectRatio={aspectRatio}
           className="h-10 w-10 shrink-0 rounded object-cover"

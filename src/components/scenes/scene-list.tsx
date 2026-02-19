@@ -17,7 +17,9 @@ type SceneListProps = {
 };
 
 const isCompleted = (frame: Frame) => {
-  return !!frame.thumbnailUrl && !!frame.videoUrl;
+  const isFullyGenerated =
+    frame.thumbnailStatus === 'completed' && frame.videoStatus === 'completed';
+  return isFullyGenerated;
 };
 
 const SceneListComponent: React.FC<SceneListProps> = ({
@@ -31,13 +33,22 @@ const SceneListComponent: React.FC<SceneListProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Frames that have an image but no video and aren't currently generating motion
+  // Frames that need to be kicked off (not already generating)
   const notStartedFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
-      (f) => !!f.thumbnailUrl && !f.videoUrl && !regeneratingMotion.has(f.id)
+      (f) =>
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
+        f.thumbnailStatus === 'completed'
     );
-  }, [frames, regeneratingMotion]);
+  }, [frames]);
+
+  const hasGeneratingFrames = useMemo(() => {
+    if (!frames) return false;
+    return frames.some(
+      (f) => f.videoStatus === 'generating' && f.thumbnailStatus === 'completed'
+    );
+  }, [frames]);
 
   const handleGenerateMotion = async () => {
     if (!onBatchGenerateMotion || notStartedFrames.length === 0) return;
@@ -50,7 +61,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
     }
   };
 
-  const isMotionInProgress = regeneratingMotion.size > 0;
+  const isMotionInProgress = regeneratingMotion.size > 0 || hasGeneratingFrames;
   const showButton = notStartedFrames.length > 0 || isMotionInProgress;
 
   return (

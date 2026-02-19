@@ -28,13 +28,13 @@ type Story = StoryObj<typeof meta>;
 export const GeneratingFrame: Story = {
   args: {
     thumbnailUrl: null,
-    isGenerating: true,
+    videoStatus: 'pending',
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Shows when the frame (thumbnail) is still being generated. Loader overlay visible.',
+          'Shows when the frame (thumbnail) is still being generated. Video generation will start after frame is ready.',
       },
     },
   },
@@ -43,7 +43,7 @@ export const GeneratingFrame: Story = {
 export const HasThumbnail: Story = {
   args: {
     thumbnailUrl: 'https://example.com/image.jpg',
-    isGenerating: true,
+    videoStatus: 'generating',
   },
   parameters: {
     docs: {
@@ -55,15 +55,15 @@ export const HasThumbnail: Story = {
   },
 };
 
-export const Idle: Story = {
+export const Failed: Story = {
   args: {
-    thumbnailUrl: null,
-    isGenerating: false,
+    thumbnailUrl: 'https://example.com/image.jpg',
+    videoStatus: 'failed',
   },
   parameters: {
     docs: {
       description: {
-        story: 'No overlay when not generating (idle state).',
+        story: 'Shows error state when video generation failed.',
       },
     },
   },
@@ -72,13 +72,13 @@ export const Idle: Story = {
 export const Completed: Story = {
   args: {
     thumbnailUrl: 'https://example.com/image.jpg',
-    isGenerating: false,
+    videoStatus: 'completed',
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Completed state shows no overlay (returns null). Video will play normally.',
+          'Completed status shows no overlay (returns null). Video will play normally.',
       },
     },
   },

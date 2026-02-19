@@ -17,7 +17,6 @@ import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
-import { useWorkflowStatus } from '@/hooks/use-workflow-status';
 import { useSequence } from '@/hooks/use-sequences';
 import {
   DEFAULT_ASPECT_RATIO,
@@ -28,8 +27,7 @@ import { batchGenerateMotionFn } from '@/functions/motion-functions';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-import type { FrameWorkflowType } from '@/lib/workflow/status';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string;
@@ -48,14 +46,6 @@ const getPlayerMaxClassNameByAspectRatio = (
   return classMap[aspectRatio] || classMap['16:9'];
 };
 
-/** Map UI type names to workflow type identifiers */
-function toWorkflowType(
-  type: 'image' | 'motion' | 'scene-variants'
-): FrameWorkflowType {
-  if (type === 'scene-variants') return 'variant';
-  return type;
-}
-
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const queryClient = useQueryClient();
 
@@ -64,6 +54,18 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     undefined
   );
   const [selectedTab, setSelectedTab] = useState<TabValue>('script');
+
+  // Track which frames are currently regenerating (UI state)
+  const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
+    new Set()
+  );
+  const [regeneratingMotion, setRegeneratingMotion] = useState<Set<string>>(
+    new Set()
+  );
+
+  const [regeneratingSceneVariants, setRegeneratingSceneVariants] = useState<
+    Set<string>
+  >(new Set());
 
   // Initial fetch to determine sequence status - disable default polling
   const { data: sequence } = useSequence(sequenceId, {
@@ -77,23 +79,17 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     useGenerationStream(sequenceId);
 
   // Hybrid polling: only poll when processing AND realtime has failed
+  // - 'connecting' → wait for connection, don't poll
+  // - 'connected' → use realtime, don't poll
+  // - 'disconnected'/'error' → poll as fallback
   const realtimeFailed = realtimeStatus === 'error';
   const shouldPoll = isProcessing && realtimeFailed;
   const pollInterval = shouldPoll ? 2000 : false;
 
-  // Fetch frames
+  // Fetch sequence and frames with hybrid polling
   const { data: frames } = useFramesBySequence(sequenceId, {
     refetchInterval: pollInterval,
   });
-
-  // Live workflow status from QStash (replaces DB status fields)
-  const frameIds = useMemo(() => frames?.map((f) => f.id) ?? [], [frames]);
-  const {
-    generatingImages: regeneratingImages,
-    generatingMotion: regeneratingMotion,
-    generatingVariants: regeneratingSceneVariants,
-    markGenerating,
-  } = useWorkflowStatus(sequenceId, frameIds);
 
   // Use the most recent sequence data
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
@@ -102,30 +98,112 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     [frames, curSelectedFrameId]
   );
 
-  // Optimistically mark a workflow as active when the user triggers generation
+  // Helper functions to manage regeneration state
   const handleRegenerateStart = useCallback(
     (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
-      markGenerating(frameId, toWorkflowType(type));
+      if (type === 'image') {
+        setRegeneratingImages((prev) => new Set(prev).add(frameId));
+      } else if (type === 'motion') {
+        setRegeneratingMotion((prev) => new Set(prev).add(frameId));
+      } else if (type === 'scene-variants') {
+        setRegeneratingSceneVariants((prev) => new Set(prev).add(frameId));
+      }
     },
-    [markGenerating]
+    []
   );
+
+  const handleRegenerateEnd = useCallback(
+    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
+      if (type === 'image') {
+        setRegeneratingImages((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else if (type === 'motion') {
+        setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      } else if (type === 'scene-variants') {
+        setRegeneratingSceneVariants((prev) => {
+          const next = new Set(prev);
+          next.delete(frameId);
+          return next;
+        });
+      }
+    },
+    []
+  );
+
+  // Auto-remove frames from regenerating Sets when generation completes or fails
+  // Keep frames in Set while status is 'generating' to maintain UI feedback
+  useEffect(() => {
+    if (!frames) return;
+
+    frames.forEach((frame) => {
+      // Remove from image regenerating set only when generation completes or fails
+      if (
+        regeneratingImages.has(frame.id) &&
+        (frame.thumbnailStatus === 'completed' ||
+          frame.thumbnailStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'image');
+      }
+
+      // Remove from motion regenerating set only when generation completes or fails
+      if (
+        regeneratingMotion.has(frame.id) &&
+        (frame.videoStatus === 'completed' || frame.videoStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'motion');
+      }
+
+      // Remove from scene variants regenerating set only when generation completes or fails
+      if (
+        regeneratingSceneVariants.has(frame.id) &&
+        (frame.variantImageStatus === 'completed' ||
+          frame.variantImageStatus === 'failed')
+      ) {
+        handleRegenerateEnd(frame.id, 'scene-variants');
+      }
+    });
+  }, [
+    frames,
+    regeneratingImages,
+    regeneratingMotion,
+    regeneratingSceneVariants,
+    handleRegenerateEnd,
+  ]);
 
   // Handler for batch motion generation
   const handleBatchMotionGeneration = useCallback(
-    async (batchFrameIds: string[]) => {
-      if (!sequenceId || batchFrameIds.length === 0) return;
+    async (frameIds: string[]) => {
+      if (!sequenceId || frameIds.length === 0) return;
 
-      // Optimistically mark all frames as generating motion
-      batchFrameIds.forEach((id) => markGenerating(id, 'motion'));
+      // Mark all frames as regenerating
+      setRegeneratingMotion((prev) => {
+        const next = new Set(prev);
+        frameIds.forEach((id) => next.add(id));
+        return next;
+      });
 
       try {
         await batchGenerateMotionFn({
           data: {
             sequenceId,
-            frameIds: batchFrameIds,
+            frameIds,
           },
         });
       } catch (error) {
+        // On error, remove from regenerating set
+        setRegeneratingMotion((prev) => {
+          const next = new Set(prev);
+          frameIds.forEach((id) => next.delete(id));
+          return next;
+        });
+
         if (
           error instanceof Error &&
           (error.message.includes('INSUFFICIENT_CREDITS') ||
@@ -148,7 +226,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         }
       }
     },
-    [sequenceId, markGenerating, queryClient]
+    [sequenceId]
   );
 
   return (

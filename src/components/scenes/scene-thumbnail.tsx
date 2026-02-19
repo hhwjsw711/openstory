@@ -5,13 +5,13 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
 import { Image } from '@unpic/react';
 import { memo } from 'react';
 
 type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
-  /** Whether an image workflow is currently active (from QStash live status) */
-  isGenerating?: boolean;
+  thumbnailStatus?: 'pending' | 'generating' | 'completed' | 'failed';
   alt: string;
   aspectRatio: AspectRatio;
   className?: string;
@@ -19,15 +19,17 @@ type SceneThumbnailProps = {
 
 const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
-  isGenerating = false,
+  thumbnailStatus,
   alt,
   aspectRatio,
   className,
 }) => {
-  // Show loader when generating and no image yet
-  const showLoader = !thumbnailUrl && isGenerating;
-  // Show skeleton when no image and not generating
-  const showSkeleton = !thumbnailUrl && !isGenerating;
+  // Only show loader when there's no image
+  const showLoader =
+    !thumbnailUrl && !!thumbnailStatus && thumbnailStatus !== 'failed';
+
+  const showSkeleton = !thumbnailUrl || !thumbnailStatus;
+  const isFailed = thumbnailStatus === 'failed' && !thumbnailUrl;
 
   return (
     <div
@@ -53,18 +55,28 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
           height={180}
         />
       )}
+
+      {isFailed && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <AlertCircle className="h-6 w-6" />
+            <span className="text-xs">Failed to generate</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// Custom equality check to prevent unnecessary re-renders
+// Custom equality check to prevent unnecessary re-renders during polling
+// Only re-render when thumbnail-related fields actually change
 const areEqual = (
   prevProps: SceneThumbnailProps,
   nextProps: SceneThumbnailProps
 ): boolean => {
   return (
     prevProps.thumbnailUrl === nextProps.thumbnailUrl &&
-    prevProps.isGenerating === nextProps.isGenerating &&
+    prevProps.thumbnailStatus === nextProps.thumbnailStatus &&
     prevProps.alt === nextProps.alt &&
     prevProps.aspectRatio === nextProps.aspectRatio &&
     prevProps.className === nextProps.className
