@@ -166,9 +166,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          output=$(bunx wrangler deploy --config wrangler-preview.toml 2>&1)
+          output=$(bunx wrangler deploy --config wrangler-preview.toml 2>&1) || true
           echo "$output"
           url=$(echo "$output" | grep -oP 'https://[^\s]+\.workers\.dev' | tail -1)
+          if [ -z "$url" ]; then
+            echo "::error::Wrangler deploy failed — no URL found in output"
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Find existing PR comment
