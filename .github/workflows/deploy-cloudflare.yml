@@ -175,6 +175,41 @@ jobs:
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
+      - name: Push secrets to preview worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
+          SECRET_QSTASH_CURRENT_SIGNING_KEY: ${{ secrets.QSTASH_CURRENT_SIGNING_KEY }}
+          SECRET_QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
+          SECRET_QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
+          SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
+          SECRET_FAL_KEY: ${{ secrets.FAL_KEY }}
+          SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
+          SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          SECRET_LETZAI_API_KEY: ${{ secrets.LETZAI_API_KEY }}
+          SECRET_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SECRET_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SECRET_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          SECRET_R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          SECRET_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          SECRET_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SECRET_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          SECRET_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
+          SECRET_LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SECRET_LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          SECRET_LANGFUSE_BASEURL: ${{ secrets.LANGFUSE_BASEURL }}
+        run: |
+          # Build JSON from SECRET_* env vars, stripping empty values
+          jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \
+            | bunx wrangler secret bulk --name "frontend-pr-${PR_NUMBER}"
+
       - name: Find existing PR comment
         uses: peter-evans/find-comment@v3
         id: find-comment
