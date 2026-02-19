@@ -31,6 +31,7 @@ import type {
   UpscaleVariantWorkflowInput,
 } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { updateFrame } from '@/lib/db/helpers/frames';
@@ -216,6 +217,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
       deduplicationId: `image-${frame.id}`,
+      flowControl: getFalFlowControl(),
     });
 
     return {
@@ -296,6 +298,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `variant-${frame.id}`,
+        flowControl: getFalFlowControl(),
       }
     );
 
@@ -403,6 +406,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `upscale-variant-${frame.id}-${Date.now()}`,
+        flowControl: getFalFlowControl(),
       }
     );
 

@@ -6,6 +6,7 @@ import { getEnv } from '#env';
 import { ConfigurationError } from '@/lib/errors';
 import { Client as WorkflowClient } from '@upstash/workflow';
 import { Client as QStashClient } from '@upstash/qstash';
+import type { FlowControl } from '@upstash/qstash';
 
 import { getServerAppUrl } from '../utils/environment';
 import { getRequest } from '@tanstack/react-start/server';
@@ -100,6 +101,9 @@ export async function triggerWorkflow(
   body: object,
   options?: {
     deduplicationId?: string;
+    flowControl?: FlowControl;
+    retries?: number;
+    retryDelay?: string;
   }
 ) {
   console.log('[TriggerWorkflow] URL:', url);
@@ -119,10 +123,12 @@ export async function triggerWorkflow(
   const response = await qstash.trigger({
     url: `${baseUrl}${url}`,
     body: body,
-    keepTriggerConfig: true,
     // Use deduplicationId as workflowRunId to prevent duplicate runs
     // Each workflow run must have a unique ID - if the ID exists, no duplicate is created
     workflowRunId: options?.deduplicationId,
+    flowControl: options?.flowControl,
+    retries: options?.retries,
+    retryDelay: options?.retryDelay,
     headers: (() => {
       const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
       return bypassSecret

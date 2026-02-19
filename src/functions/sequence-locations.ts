@@ -12,6 +12,7 @@ import {
 import { sequenceLocations } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import type { RecastLocationWorkflowInput } from '@/lib/workflow/types';
 import { getDb } from '#db-client';
 import { createServerFn } from '@tanstack/react-start';
@@ -153,7 +154,8 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow(
       '/recast-location',
-      workflowInput
+      workflowInput,
+      { flowControl: getFalFlowControl() }
     );
 
     return {

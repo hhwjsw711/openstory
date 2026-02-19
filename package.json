@@ -112,7 +112,7 @@
     "@upstash/qstash": "^2.9.0",
     "@upstash/realtime": "^1.0.2",
     "@upstash/redis": "^1.36.2",
-    "@upstash/workflow": "^0.2.23",
+    "@upstash/workflow": "^1.1.1",
     "@vidstack/react": "^1.12.13",
     "better-auth": "^1.4.18",
     "class-variance-authority": "^0.7.1",

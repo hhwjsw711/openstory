@@ -60,6 +60,7 @@ import {
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 // ------------------------------------------------------------
 // Process scenes in batches for phases 3-5
@@ -526,6 +527,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           characterBible,
           talentMatches: talentCharacterMatches,
         },
+        flowControl: getFalFlowControl(),
       }),
       context.invoke('location-sheet-from-bible', {
         workflow: locationBibleWorkflow,
@@ -536,6 +538,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           locationBible,
           libraryLocationMatches,
         },
+        flowControl: getFalFlowControl(),
       }),
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
@@ -653,6 +656,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: imageInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: getFalFlowControl(),
           });
 
           if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
@@ -878,6 +882,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: motionInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            flowControl: getFalFlowControl(),
           });
         })
       );
@@ -971,6 +976,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             body: musicInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000',
+            flowControl: getFalFlowControl(),
           });
         }
       }
@@ -994,8 +1000,6 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       const { sequenceId } = input;

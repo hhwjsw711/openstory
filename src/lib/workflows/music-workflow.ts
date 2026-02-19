@@ -21,12 +21,13 @@ import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { durableLLMCall } from './llm-call-helper';
 import {
   musicPromptSchema,
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
-import { getFalFlowControl } from './constants';
+
 import { eq } from 'drizzle-orm';
 
 export const generateMusicWorkflow = createWorkflow(
@@ -221,7 +222,9 @@ export const generateMusicWorkflow = createWorkflow(
           durationMs: undefined,
         };
 
-        await triggerWorkflow('/merge-audio-video', muxInput);
+        await triggerWorkflow('/merge-audio-video', muxInput, {
+          flowControl: getFalFlowControl(),
+        });
       }
     });
 
@@ -229,9 +232,6 @@ export const generateMusicWorkflow = createWorkflow(
     return { audioUrl, duration: actualDuration };
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000',
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
