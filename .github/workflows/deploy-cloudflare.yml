@@ -123,50 +123,34 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
 
-      - name: Generate preview wrangler config
+      - name: Patch wrangler config for preview
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
         run: |
-          cat > wrangler-preview.toml <<EOF
-          name = "frontend-pr-${PR_NUMBER}"
-          main = "@tanstack/react-start/server-entry"
-          compatibility_date = "2025-11-18"
-          compatibility_flags = ["nodejs_compat"]
-
-          [[d1_databases]]
-          binding = "DB"
-          database_name = "velro-pr-${PR_NUMBER}"
-          database_id = "${D1_DATABASE_ID}"
-
-          [[r2_buckets]]
-          binding = "NEXT_INC_CACHE_R2_BUCKET"
-          bucket_name = "cache-dev"
-
-          [[r2_buckets]]
-          binding = "R2_PUBLIC_ASSETS_BUCKET"
-          bucket_name = "velro-public-assets-stg"
-
-          [observability]
-          enabled = true
-          EOF
-
-      - name: Generate types
-        run: bunx wrangler types --config wrangler-preview.toml
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Patch wrangler.jsonc stg env with PR-specific D1 database (not committed)
+          node -e "
+            const fs = require('fs');
+            let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
+            // Strip JSONC comments
+            cfg = cfg.replace(/\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '\$1');
+            const obj = JSON.parse(cfg);
+            obj.env.stg.d1_databases[0].database_name = 'velro-pr-${PR_NUMBER}';
+            obj.env.stg.d1_databases[0].database_id = '${D1_DATABASE_ID}';
+            fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
+          "
 
       - name: Build
-        run: BUILD_CLOUDFLARE=1 bun --bun run build
+        run: bun cf:build:stg
 
       - name: Deploy preview
         id: deploy
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          output=$(bunx wrangler deploy --config wrangler-preview.toml 2>&1) || true
+          output=$(bunx wrangler deploy --env=stg --name="frontend-pr-${PR_NUMBER}" 2>&1) || true
           echo "$output"
           url=$(echo "$output" | grep -oP 'https://[^\s]+\.workers\.dev' | tail -1)
           if [ -z "$url" ]; then
