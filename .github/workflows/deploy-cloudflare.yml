@@ -1,0 +1,260 @@
+name: Deploy Cloudflare
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: cf-deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-cf-token: ${{ steps.check.outputs.has-cf-token }}
+    steps:
+      - id: check
+        run: echo "has-cf-token=${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}" >> "$GITHUB_OUTPUT"
+
+  # ── Production deploy (push to main) ──────────────────────────────
+  deploy-production:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run D1 migrations (production)
+        run: bun db:migrate:d1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: 00e78d1b-4684-4408-9fdc-c6d395ca3b13
+
+      - name: Deploy to production
+        run: bun cf:deploy:prd
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+  # ── PR preview deploy ─────────────────────────────────────────────
+  deploy-preview:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'pull_request'
+      && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Create or find D1 database
+        id: d1
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          DB_NAME="velro-pr-${PR_NUMBER}"
+
+          # Check if database already exists
+          existing=$(curl -sf \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?name=$DB_NAME" \
+            | jq -r '.result[0].uuid // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Found existing D1 database: $existing"
+            echo "database-id=$existing" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating new D1 database: $DB_NAME"
+            result=$(curl -sf \
+              -X POST \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"$DB_NAME\"}" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database")
+
+            uuid=$(echo "$result" | jq -r '.result.uuid')
+            if [ -z "$uuid" ] || [ "$uuid" = "null" ]; then
+              echo "::error::Failed to create D1 database: $result"
+              exit 1
+            fi
+            echo "Created D1 database: $uuid"
+            echo "database-id=$uuid" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run D1 migrations (preview)
+        run: bun db:migrate:d1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
+
+      - name: Generate preview wrangler config
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
+        run: |
+          cat > wrangler-preview.toml <<EOF
+          name = "frontend-pr-${PR_NUMBER}"
+          main = "@tanstack/react-start/server-entry"
+          compatibility_date = "2025-11-18"
+          compatibility_flags = ["nodejs_compat"]
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "velro-pr-${PR_NUMBER}"
+          database_id = "${D1_DATABASE_ID}"
+
+          [[r2_buckets]]
+          binding = "NEXT_INC_CACHE_R2_BUCKET"
+          bucket_name = "cache-dev"
+
+          [[r2_buckets]]
+          binding = "R2_PUBLIC_ASSETS_BUCKET"
+          bucket_name = "velro-public-assets-stg"
+
+          [observability]
+          enabled = true
+          EOF
+
+      - name: Generate types
+        run: wrangler types --config wrangler-preview.toml
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Build
+        run: BUILD_CLOUDFLARE=1 bun --bun run build
+
+      - name: Deploy preview
+        id: deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          output=$(wrangler deploy --config wrangler-preview.toml 2>&1)
+          echo "$output"
+          url=$(echo "$output" | grep -oP 'https://[^\s]+\.workers\.dev' | tail -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- cf-preview -->'
+
+      - name: Comment on PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- cf-preview -->
+            **Cloudflare Preview** deployed successfully
+
+            | | |
+            |---|---|
+            | URL | ${{ steps.deploy.outputs.url }} |
+            | Worker | `frontend-pr-${{ github.event.pull_request.number }}` |
+            | D1 Database | `velro-pr-${{ github.event.pull_request.number }}` |
+            | Commit | ${{ github.sha }} |
+
+  # ── Cleanup on PR close ───────────────────────────────────────────
+  cleanup-preview:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'pull_request'
+      && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete worker
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WORKER_NAME="frontend-pr-${PR_NUMBER}"
+          status=$(curl -sw '%{http_code}' -o /dev/null \
+            -X DELETE \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$WORKER_NAME")
+          echo "Delete worker $WORKER_NAME response: $status"
+
+      - name: Delete D1 database
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          DB_NAME="velro-pr-${PR_NUMBER}"
+
+          # Find database ID by name
+          uuid=$(curl -sf \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?name=$DB_NAME" \
+            | jq -r '.result[0].uuid // empty')
+
+          if [ -n "$uuid" ]; then
+            status=$(curl -sw '%{http_code}' -o /dev/null \
+              -X DELETE \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database/$uuid")
+            echo "Delete D1 database $DB_NAME ($uuid) response: $status"
+          else
+            echo "D1 database $DB_NAME not found (already deleted?)"
+          fi
+
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- cf-preview -->'
+
+      - name: Update PR comment
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            <!-- cf-preview -->
+            **Cloudflare Preview** torn down
+
+            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `velro-pr-${{ github.event.pull_request.number }}` have been deleted.
