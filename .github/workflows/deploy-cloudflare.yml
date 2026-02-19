@@ -67,6 +67,7 @@ jobs:
       && github.event_name == 'pull_request'
       && github.event.action != 'closed'
     runs-on: ubuntu-latest
+    environment: preview
     steps:
       - uses: actions/checkout@v5
 
