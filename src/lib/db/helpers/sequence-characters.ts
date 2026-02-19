@@ -133,15 +133,13 @@ export async function createSequenceCharacter(
 }
 
 /**
- * Create multiple sequence characters in a transaction
+ * Create multiple sequence characters in a single insert
  */
 export async function createSequenceCharactersBulk(
   data: NewCharacter[]
 ): Promise<Character[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(characters).values(data).returning();
-  });
+  return await getDb().insert(characters).values(data).returning();
 }
 
 /**

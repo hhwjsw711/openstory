@@ -57,57 +57,50 @@ export async function ensureUserAndTeam(authUser: {
       }
     }
 
-    // User doesn't exist or has no team - create both in a transaction
-    const result = await getDb().transaction(async (tx) => {
-      // Create user record if it doesn't exist (upsert)
-      await tx
-        .insert(user)
-        .values({
-          id: authUser.id,
-          name: authUser.name || 'Anonymous',
-          email: authUser.email || `${authUser.id}@anonymous.local`,
-        })
-        .onConflictDoNothing();
+    // User doesn't exist or has no team - create both
+    const db = getDb();
 
-      // Create default team for user
-      const teamName = authUser.name
-        ? `${authUser.name}'s Team`
-        : `Anonymous Team ${authUser.id.slice(0, 8)}`;
-      const teamSlug = `team-${authUser.id.slice(0, 8)}`;
+    // Create user record if it doesn't exist (upsert)
+    await db
+      .insert(user)
+      .values({
+        id: authUser.id,
+        name: authUser.name || 'Anonymous',
+        email: authUser.email || `${authUser.id}@anonymous.local`,
+      })
+      .onConflictDoNothing();
 
-      const [team] = await tx
-        .insert(teams)
-        .values({
-          name: teamName,
-          slug: teamSlug,
-        })
-        .returning();
+    // Create default team for user
+    const teamName = authUser.name
+      ? `${authUser.name}'s Team`
+      : `Anonymous Team ${authUser.id.slice(0, 8)}`;
+    const teamSlug = `team-${authUser.id.slice(0, 8)}`;
 
-      if (!team) {
-        throw new Error('Failed to create team');
-      }
+    const [team] = await db
+      .insert(teams)
+      .values({ name: teamName, slug: teamSlug })
+      .returning();
 
-      // Create team membership
-      await tx.insert(teamMembers).values({
-        teamId: team.id,
-        userId: authUser.id,
-        role: 'owner',
-      });
+    if (!team) {
+      throw new Error('Failed to create team');
+    }
 
-      // Return the created user with team membership
-      const createdUser = await tx.query.user.findFirst({
-        where: eq(user.id, authUser.id),
-      });
-
-      if (!createdUser) {
-        throw new Error('Failed to retrieve created user');
-      }
-
-      return {
-        user: createdUser,
-        teamId: team.id,
-      };
+    // Create team membership
+    await db.insert(teamMembers).values({
+      teamId: team.id,
+      userId: authUser.id,
+      role: 'owner',
     });
+
+    const createdUser = await db.query.user.findFirst({
+      where: eq(user.id, authUser.id),
+    });
+
+    if (!createdUser) {
+      throw new Error('Failed to retrieve created user');
+    }
+
+    const result = { user: createdUser, teamId: team.id };
 
     return {
       success: true,
