@@ -10,6 +10,7 @@
  */
 
 import { createD1HttpClient } from '@/lib/db/client-d1-http';
+import { generateId } from '@/lib/db/id';
 import { styles, teams } from '@/lib/db/schema';
 import { DEFAULT_SYSTEM_STYLES } from '@/lib/style/style-templates';
 import { createClient } from '@libsql/client';
@@ -90,16 +91,15 @@ async function seed() {
 
     if (!systemTeam) {
       console.log('System team not found, creating...');
-      const [newTeam] = await db
-        .insert(teams)
-        .values({
-          name: 'System Templates',
-          slug: SYSTEM_TEAM_SLUG,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning({ id: teams.id });
-      systemTeam = newTeam;
+      const teamId = generateId();
+      await db.insert(teams).values({
+        id: teamId,
+        name: 'System Templates',
+        slug: SYSTEM_TEAM_SLUG,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      systemTeam = { id: teamId };
       console.log(`✅ System team created with ID: ${systemTeam.id}\n`);
     } else {
       console.log(`✅ System team found with ID: ${systemTeam.id}\n`);
@@ -125,17 +125,17 @@ async function seed() {
     if (templatesToInsert.length === 0) {
       console.log('✅ All templates already exist - nothing to add\n');
     } else {
-      // 3. Insert only new template styles
+      // 3. Insert new template styles one at a time (D1 has a 100-variable limit)
       console.log(
         `Inserting ${templatesToInsert.length} new template style(s)...`
       );
-      await db.insert(styles).values(
-        templatesToInsert.map((style) => ({
+      for (const style of templatesToInsert) {
+        await db.insert(styles).values({
           ...style,
-          teamId: systemTeam.id, // Add system team ID
-          createdBy: null, // No user for system templates
-        })) as Array<typeof styles.$inferInsert>
-      );
+          teamId: systemTeam.id,
+          createdBy: null,
+        } as typeof styles.$inferInsert);
+      }
 
       console.log(
         `✅ Inserted ${templatesToInsert.length} new template style(s):`
