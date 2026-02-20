@@ -293,6 +293,7 @@ async function generateMusicInternal(
   const cost = await calculateFalCost(
     modelConfig.id,
     validatedDuration,
+    'seconds',
     options.falApiKey
   );
 

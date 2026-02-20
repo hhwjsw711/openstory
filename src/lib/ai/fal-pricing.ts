@@ -64,3 +64,45 @@ export async function getFalUnitPrice(
 
   return { unitPrice: entry.unit_price, unit: entry.unit };
 }
+
+/**
+ * Get the estimated cost for a single API call using fal's historical pricing.
+ * Used for models with opaque billing units (e.g. "1m tokens") where we can't
+ * compute cost from unit_price × quantity on our side.
+ *
+ * POST https://api.fal.ai/v1/models/pricing/estimate
+ */
+export async function getFalHistoricalCostPerCall(
+  endpointId: string,
+  falApiKey?: string
+): Promise<number> {
+  const apiKey = falApiKey ?? getEnv().FAL_KEY;
+  if (!apiKey) {
+    throw new Error('FAL_KEY is required to fetch pricing estimate');
+  }
+
+  const response = await fetch(
+    'https://api.fal.ai/v1/models/pricing/estimate',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        estimate_type: 'historical_api_price',
+        endpoints: { [endpointId]: { call_quantity: 1 } },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch fal cost estimate for ${endpointId}: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data: { total_cost: number; currency: string } = await response.json();
+
+  return data.total_cost;
+}

@@ -391,6 +391,7 @@ async function generateMotionInternal(
   const cost = await calculateFalCost(
     modelConfig.id,
     validatedDuration,
+    'seconds',
     options.falApiKey
   );
 

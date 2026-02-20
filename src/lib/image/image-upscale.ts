@@ -93,6 +93,7 @@ export async function upscaleWithNanoBanana(
     const cost = await calculateFalCost(
       'fal-ai/nano-banana-pro/edit',
       1,
+      'images',
       falApiKey
     );
 

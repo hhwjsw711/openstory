@@ -4,7 +4,7 @@ import {
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import { calculateFalCost } from '@/lib/ai/fal-cost';
+import { calculateFalCost, calculateFalCostPerCall } from '@/lib/ai/fal-cost';
 import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
@@ -240,16 +240,21 @@ async function generateImageInternal(
   const numImages = imageUrls.length || params.numImages || 1;
 
   // Calculate cost using live pricing from fal's Platform API
-  const quantity = computeImageBillableQuantity(
+  const billable = computeImageBillableQuantity(
     params.model,
     numImages,
-    params.imageSize ?? DEFAULT_IMAGE_SIZE,
-    processingTimeMs
+    params.imageSize ?? DEFAULT_IMAGE_SIZE
   );
-  const cost =
-    quantity !== undefined
-      ? await calculateFalCost(endpoint, quantity, params.falApiKey)
-      : undefined;
+  // For models with computable quantities (images, megapixels): unit_price × quantity
+  // For others (compute_seconds, LetzAI): falls back to historical per-call estimate
+  const cost = billable
+    ? await calculateFalCost(
+        endpoint,
+        billable.quantity,
+        billable.callerUnit,
+        params.falApiKey
+      )
+    : await calculateFalCostPerCall(endpoint, params.falApiKey);
 
   return {
     imageUrls,
@@ -573,15 +578,20 @@ const IMAGE_SIZE_DIMENSIONS: Record<
 };
 
 /**
- * Compute the billable quantity for an image generation based on its pricing unit.
- * Returns undefined for models without fal pricing (e.g. LetzAI).
+ * Compute the billable quantity and its unit for an image generation.
+ * Returns undefined for models we can't compute locally (LetzAI, compute_seconds-priced),
+ * which triggers the historical estimate fallback.
  */
 function computeImageBillableQuantity(
   model: TextToImageModel,
   numImages: number,
-  imageSize: ImageSize,
-  processingTimeMs: number
-): number | undefined {
+  imageSize: ImageSize
+):
+  | {
+      quantity: number;
+      callerUnit: 'images' | 'megapixels';
+    }
+  | undefined {
   const modelConfig = IMAGE_MODELS[model];
   if (!modelConfig.pricing) return undefined;
 
@@ -589,16 +599,22 @@ function computeImageBillableQuantity(
 
   switch (unit) {
     case 'images':
-      return numImages;
+      return { quantity: numImages, callerUnit: 'images' };
 
     case 'megapixels': {
       const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
       const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
-      return megapixelsPerImage * numImages;
+      return {
+        quantity: megapixelsPerImage * numImages,
+        callerUnit: 'megapixels',
+      };
     }
 
     case 'compute_seconds':
-      return processingTimeMs / 1000;
+      // compute_seconds = actual GPU inference time, which we don't have
+      // (processingTimeMs is wall-clock time including queue/network).
+      // Falls through to undefined → historical estimate fallback.
+      return undefined;
 
     default:
       return undefined;

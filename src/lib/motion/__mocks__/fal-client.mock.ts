@@ -33,7 +33,11 @@ void mock.module('@tanstack/ai-fal', () => ({
 // Mock fal cost calculation — uses the hardcoded model prices so existing test assertions hold
 void mock.module('@/lib/ai/fal-cost', () => ({
   calculateFalCost: mock(
-    async (endpointId: string, quantity: number): Promise<number> => {
+    async (
+      endpointId: string,
+      quantity: number,
+      _callerUnit: string
+    ): Promise<number> => {
       // Look up the model's hardcoded price to match test expectations
       const model = Object.values(IMAGE_TO_VIDEO_MODELS).find(
         (m) => m.id === endpointId
