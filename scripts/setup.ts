@@ -91,6 +91,10 @@ function writeEnvFile(vars: Map<string, string>) {
       keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
     },
     {
+      header: 'Email (Resend)',
+      keys: ['RESEND_API_KEY', 'EMAIL_FROM'],
+    },
+    {
       header: 'Observability (Langfuse)',
       keys: ['LANGFUSE_PUBLIC_KEY', 'LANGFUSE_SECRET_KEY', 'LANGFUSE_BASE_URL'],
     },
@@ -489,6 +493,29 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Email (Resend)
+  // -------------------------------------------------------------------------
+  const setupEmail = checkCancel(
+    await p.confirm({
+      message: 'Set up transactional email? (Resend)',
+      initialValue: false,
+    })
+  );
+
+  if (setupEmail) {
+    await promptForKey(
+      'RESEND_API_KEY',
+      'Resend API Key',
+      'Get one at: https://resend.com/api-keys'
+    );
+    await promptForKey(
+      'EMAIL_FROM',
+      'Sender email address',
+      'Must be a verified sender in Resend (e.g. hello@yourdomain.com)'
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Observability (Langfuse)
   // -------------------------------------------------------------------------
   const setupLangfuse = checkCancel(
@@ -565,6 +592,7 @@ async function main() {
     ['Workflows', vars.has('QSTASH_TOKEN') ? 'Configured' : 'Skipped'],
     ['Storage', vars.has('R2_ACCOUNT_ID') ? 'Configured' : 'Skipped'],
     ['Google OAuth', vars.has('GOOGLE_CLIENT_ID') ? 'Configured' : 'Skipped'],
+    ['Email', vars.has('RESEND_API_KEY') ? 'Configured' : 'Skipped'],
     [
       'Langfuse',
       vars.has('LANGFUSE_PUBLIC_KEY')

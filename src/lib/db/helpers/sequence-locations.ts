@@ -109,15 +109,13 @@ export async function createSequenceLocation(
 }
 
 /**
- * Create multiple sequence locations in a transaction
+ * Create multiple sequence locations in a single insert
  */
 export async function createSequenceLocationsBulk(
   data: NewSequenceLocation[]
 ): Promise<SequenceLocation[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(sequenceLocations).values(data).returning();
-  });
+  return await getDb().insert(sequenceLocations).values(data).returning();
 }
 
 /**

@@ -21,6 +21,14 @@
   },
   "env": {
     "stg": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "velro-stg",
+          "database_id": "38506473-18a4-4c4e-9776-ebfa5e581de1",
+          "migrations_dir": "drizzle/migrations-d1",
+        },
+      ],
       "r2_buckets": [
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
@@ -47,6 +55,14 @@
       },
     },
     "prd": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "velro-prd",
+          "database_id": "d6a35f64-abb0-4a34-a092-dc20b29f5812",
+          "migrations_dir": "drizzle/migrations-d1",
+        },
+      ],
       "r2_buckets": [
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
