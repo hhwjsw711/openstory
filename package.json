@@ -44,6 +44,7 @@
     "db:studio:test": "bun drizzle-kit studio --config=drizzle.config.test.ts",
     "db:seed:local": "bun --bun scripts/seed.ts --local",
     "db:seed:test": "bun --bun scripts/seed.ts --test",
+    "db:seed:d1": "bun --bun scripts/seed.ts --d1",
     "db:check": "bun --bun drizzle-kit check",
     "db:check-migrations": "bun --bun scripts/check-migrations.ts",
     "db:check-migrations:all": "bun --bun scripts/check-migrations.ts --all",
