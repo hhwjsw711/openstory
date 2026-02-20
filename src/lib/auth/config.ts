@@ -15,6 +15,7 @@ import { getDb } from '#db-client';
 import { getEnv } from '#env';
 import { sendOtpEmail } from '@/lib/services/email-service';
 import { passkey as passkeyPlugin } from '@better-auth/passkey';
+import { teams, teamMembers } from '@/lib/db/schema';
 
 // Singleton auth instance cache
 let _authInstance: ReturnType<typeof createAuth> | undefined;
@@ -102,6 +103,32 @@ function createAuth() {
           type: 'string',
           required: false,
           defaultValue: 'active' as const,
+        },
+      },
+    },
+
+    // Create a default team when a new user signs up
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            const db = getDb();
+            const teamName = user.name
+              ? `${user.name}'s Team`
+              : `Team ${user.id.slice(0, 8)}`;
+            const teamSlug = `team-${user.id.slice(0, 8)}`;
+
+            const [team] = await db
+              .insert(teams)
+              .values({ name: teamName, slug: teamSlug })
+              .returning();
+
+            await db.insert(teamMembers).values({
+              teamId: team.id,
+              userId: user.id,
+              role: 'owner',
+            });
+          },
         },
       },
     },

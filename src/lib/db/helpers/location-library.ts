@@ -88,15 +88,13 @@ export async function createLibraryLocation(
 }
 
 /**
- * Create multiple library locations in a transaction
+ * Create multiple library locations in a single insert
  */
 export async function createLibraryLocationsBulk(
   data: NewLibraryLocation[]
 ): Promise<LibraryLocation[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(locationLibrary).values(data).returning();
-  });
+  return await getDb().insert(locationLibrary).values(data).returning();
 }
 
 /**

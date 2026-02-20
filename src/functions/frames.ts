@@ -24,6 +24,7 @@ import {
 } from '@/lib/db/helpers/frames';
 import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import type { NewFrame } from '@/lib/db/schema';
+import { reconcileStaleFrameStatuses } from '@/lib/workflow/reconcile';
 
 // ============================================================================
 // List Frames
@@ -35,7 +36,12 @@ import type { NewFrame } from '@/lib/db/schema';
 export const getFramesFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    return getSequenceFrames(context.sequence.id);
+    const frames = await getSequenceFrames(context.sequence.id);
+
+    // Fire-and-forget: reconcile stale statuses in background
+    reconcileStaleFrameStatuses(frames).catch(console.error);
+
+    return frames;
   });
 
 // ============================================================================

@@ -1,0 +1,29 @@
+import { defineConfig } from 'drizzle-kit';
+
+/**
+ * Cloudflare D1 Drizzle configuration
+ * Uses a separate migrations directory from Turso — D1 is vanilla SQLite
+ * and doesn't support the extended ALTER TABLE syntax Turso uses.
+ *
+ * D1-specific commands:
+ *   bun db:generate:d1  # Generate D1-compatible migrations
+ *   bun db:migrate:d1   # Apply migrations to remote D1 via HTTP API
+ *   bun db:push:d1      # Push schema directly to remote D1
+ *   bun db:studio:d1    # Open Drizzle Studio connected to D1
+ *
+ * Requires env vars: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, CLOUDFLARE_API_TOKEN
+ */
+export default defineConfig({
+  schema: './src/lib/db/schema/index.ts',
+  out: './drizzle/migrations-d1',
+  dialect: 'sqlite',
+  driver: 'd1-http',
+  dbCredentials: {
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
+    databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID ?? '',
+    token: process.env.CLOUDFLARE_API_TOKEN ?? '',
+  },
+  verbose: true,
+  strict: true,
+  casing: 'snake_case',
+});

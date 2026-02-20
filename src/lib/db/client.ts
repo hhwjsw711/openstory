@@ -1,15 +1,16 @@
 /**
  * Drizzle Database Client
- * Centralized database client using libSQL (Turso) or Bun SQLite
+ * Centralized database client with platform-specific drivers.
  *
  * Automatically selects the appropriate driver based on build environment via package.json imports:
- * - development: Uses Bun's native sqlite (local development)
- * - default: Uses libSQL web client (production, works everywhere including Cloudflare Workers)
+ * - workerd:      Uses Cloudflare D1 (native serverless SQLite on Cloudflare)
+ * - development:  Uses Bun's native sqlite (local development)
+ * - default:      Uses libSQL web client (Turso - production fallback for non-Cloudflare platforms)
  *
  * This approach:
  * - Uses conditional exports in package.json to swap implementations at build time
- * - Completely excludes Bun-specific code from production builds
- * - Works on all platforms (Bun, Node.js, Cloudflare Workers, Vercel)
+ * - Completely excludes platform-specific code from other builds
+ * - Cloudflare deployments use D1 natively; other platforms use Turso
  */
 
 import { getDb } from '#db-client';

@@ -40,6 +40,7 @@ import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import type {
   MergeVideoWorkflowInput,
   MusicSceneSummary,
@@ -264,6 +265,72 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
   });
 
 // ============================================================================
+// Retry Failed Storyboard
+// ============================================================================
+
+const retryStoryboardInputSchema = z.object({
+  sequenceId: ulidSchema,
+});
+
+/**
+ * Retry a failed storyboard workflow.
+ * Re-triggers the full analyze-script pipeline for the sequence.
+ */
+export const retryStoryboardFn = createServerFn({ method: 'POST' })
+  .middleware([sequenceAccessMiddleware])
+  .inputValidator(zodValidator(retryStoryboardInputSchema))
+  .handler(async ({ context }) => {
+    const { sequence, user, teamId } = context;
+
+    if (sequence.status !== 'failed') {
+      throw new Error('Only failed sequences can be retried');
+    }
+
+    await requireCredits(
+      teamId,
+      estimateStoryboardCost({
+        imageModel: safeTextToImageModel(
+          sequence.imageModel,
+          DEFAULT_IMAGE_MODEL
+        ),
+        aspectRatio: sequence.aspectRatio,
+        videoModel: safeImageToVideoModel(
+          sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        ),
+      }),
+      {
+        providers: ['fal', 'openrouter'],
+        errorMessage: 'Insufficient credits to retry storyboard',
+      }
+    );
+
+    // Reset status to processing before triggering
+    await getDb()
+      .update(sequences)
+      .set({ status: 'processing', updatedAt: new Date() })
+      .where(eq(sequences.id, sequence.id));
+
+    const workflowInput: StoryboardWorkflowInput = {
+      userId: user.id,
+      teamId,
+      sequenceId: sequence.id,
+      options: {
+        framesPerScene: 3,
+        generateThumbnails: true,
+        generateDescriptions: true,
+        aiProvider: 'openrouter',
+        regenerateAll: true,
+      },
+    };
+
+    // No deduplication ID — explicit user retry should always run
+    await triggerWorkflow('/storyboard', workflowInput);
+
+    return { success: true };
+  });
+
+// ============================================================================
 // Delete Sequence
 // ============================================================================
 
@@ -390,7 +457,9 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
       })
       .where(eq(sequences.id, sequence.id));
 
-    await triggerWorkflow('/music', musicInput);
+    await triggerWorkflow('/music', musicInput, {
+      flowControl: getFalFlowControl(),
+    });
 
     return { success: true };
   });
@@ -461,7 +530,9 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
     };
 
     // No deduplication ID — explicit user re-trigger should always work
-    await triggerWorkflow('/merge-video', input);
+    await triggerWorkflow('/merge-video', input, {
+      flowControl: getFalFlowControl(),
+    });
 
     return { success: true };
   });

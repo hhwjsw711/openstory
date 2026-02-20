@@ -22,6 +22,7 @@ import {
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
 import {
   createLibraryLocation,
@@ -156,7 +157,9 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
         sequenceId: 'library', // Placeholder for storage path
       };
 
-      await triggerWorkflow('/library-location-sheet', workflowInput);
+      await triggerWorkflow('/library-location-sheet', workflowInput, {
+        flowControl: getFalFlowControl(),
+      });
     }
 
     return {
@@ -393,7 +396,8 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
 
       const workflowRunId = await triggerWorkflow(
         '/library-location-sheet',
-        workflowInput
+        workflowInput,
+        { flowControl: getFalFlowControl() }
       );
 
       return { sheets: newSheets, workflowRunId };

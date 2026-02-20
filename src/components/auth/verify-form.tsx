@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/input-otp';
 import { authClient } from '@/lib/auth/client';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 function hasSkippedPasskeyPrompt(): boolean {
   if (typeof window === 'undefined') return false;
@@ -37,91 +37,87 @@ export function VerifyForm({
 }: VerifyFormProps) {
   const navigate = useNavigate();
   const [otp, setOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const isVerifyingRef = useRef(false);
 
   const verifyOtp = useCallback(
-    async (otpValue: string) => {
-      if (isVerifyingRef.current || isLoading) return;
-      isVerifyingRef.current = true;
+    (otpValue: string) => {
+      if (isPending) return;
 
       setError(null);
       setSuccess(null);
-      setIsLoading(true);
 
-      try {
-        const result = await authClient.signIn.emailOtp({
-          email,
-          otp: otpValue,
-        });
-
-        if (result.error) {
-          setError(result.error.message || 'Invalid code');
-          setIsLoading(false);
-          isVerifyingRef.current = false;
-          return;
-        }
-
-        setSuccess('Signed in!');
-        // Redirect to passkey setup if user hasn't skipped it
-        if (!hasSkippedPasskeyPrompt()) {
-          await navigate({
-            to: '/settings/passkeys',
-            search: { setup: true },
+      startTransition(async () => {
+        try {
+          const result = await authClient.signIn.emailOtp({
+            email,
+            otp: otpValue,
           });
-        } else {
-          await navigate({ to: redirectTo });
+
+          if (result.error) {
+            setError(result.error.message || 'Invalid code');
+            setOtp('');
+            return;
+          }
+
+          setSuccess('Signed in!');
+          // Redirect to passkey setup if user hasn't skipped it
+          if (!hasSkippedPasskeyPrompt()) {
+            await navigate({
+              to: '/settings/passkeys',
+              search: { setup: true },
+            });
+          } else {
+            await navigate({ to: redirectTo });
+          }
+        } catch (err) {
+          console.error('[VerifyForm] Verify OTP error:', err);
+          setError(err instanceof Error ? err.message : 'Verification failed');
+          setOtp('');
         }
-      } catch (err) {
-        console.error('[VerifyForm] Verify OTP error:', err);
-        setError(err instanceof Error ? err.message : 'Verification failed');
-        setIsLoading(false);
-        isVerifyingRef.current = false;
-      }
+      });
     },
-    [email, navigate, redirectTo, isLoading]
+    [email, navigate, redirectTo, isPending]
   );
 
   // Auto-verify when OTP is complete (6 digits)
   useEffect(() => {
     if (otp.length === 6) {
-      void verifyOtp(otp);
+      verifyOtp(otp);
     }
   }, [otp, verifyOtp]);
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    void verifyOtp(otp);
+    verifyOtp(otp);
   };
 
-  const handleResendOtp = async () => {
+  const handleResendOtp = () => {
+    if (isPending) return;
+
     setError(null);
     setSuccess(null);
-    setIsLoading(true);
 
-    try {
-      const result = await authClient.emailOtp.sendVerificationOtp({
-        email,
-        type: 'sign-in',
-      });
+    startTransition(async () => {
+      try {
+        const result = await authClient.emailOtp.sendVerificationOtp({
+          email,
+          type: 'sign-in',
+        });
 
-      if (result.error) {
-        setError(result.error.message || 'Failed to resend code');
-        setIsLoading(false);
-        return;
+        if (result.error) {
+          setError(result.error.message || 'Failed to resend code');
+          return;
+        }
+
+        setSuccess('New code sent!');
+        setOtp('');
+      } catch (err) {
+        console.error('[VerifyForm] Resend OTP error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to resend code');
       }
-
-      setSuccess('New code sent!');
-      setOtp('');
-      setIsLoading(false);
-      isVerifyingRef.current = false;
-    } catch (err) {
-      console.error('[VerifyForm] Resend OTP error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to resend code');
-      setIsLoading(false);
-    }
+    });
   };
 
   return (
@@ -149,7 +145,7 @@ export function VerifyForm({
               maxLength={6}
               value={otp}
               onChange={setOtp}
-              disabled={isLoading}
+              disabled={isPending}
               autoFocus
             >
               <InputOTPGroup>
@@ -166,9 +162,9 @@ export function VerifyForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading || otp.length !== 6}
+            disabled={isPending || otp.length !== 6}
           >
-            {isLoading ? 'Verifying…' : 'Verify'}
+            {isPending ? 'Verifying…' : 'Verify'}
           </Button>
         </form>
 
@@ -182,9 +178,9 @@ export function VerifyForm({
           </Link>
           <button
             type="button"
-            onClick={() => void handleResendOtp()}
+            onClick={() => handleResendOtp()}
             className="text-primary hover:underline"
-            disabled={isLoading}
+            disabled={isPending}
           >
             Resend code
           </button>

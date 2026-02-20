@@ -14,6 +14,7 @@ import type {
 } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+import { getFalFlowControl } from './constants';
 import { locationSheetWorkflow } from './location-sheet-workflow';
 import { regenerateFramesWorkflow } from './regenerate-frames-workflow';
 
@@ -44,6 +45,7 @@ export const recastLocationWorkflow = createWorkflow(
       {
         workflow: locationSheetWorkflow,
         body: sheetInput,
+        flowControl: getFalFlowControl(),
       }
     );
 
@@ -74,6 +76,7 @@ export const recastLocationWorkflow = createWorkflow(
         await context.invoke('regenerate-frames', {
           workflow: regenerateFramesWorkflow,
           body: regenerateInput,
+          flowControl: getFalFlowControl(),
         });
 
       if (regenerateFailed) {

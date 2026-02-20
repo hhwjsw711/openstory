@@ -23,6 +23,7 @@ import type {
   RegenerateFramesWorkflowInput,
 } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateImageWorkflow } from './image-workflow';
@@ -170,6 +171,7 @@ export const regenerateFramesWorkflow = createWorkflow(
           body: imageInput,
           retries: 3,
           retryDelay: 'pow(2, retried) * 1000',
+          flowControl: getFalFlowControl(),
         });
 
         if (isFailed || isCanceled || !body?.imageUrl) {

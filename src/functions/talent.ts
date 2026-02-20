@@ -43,6 +43,7 @@ import {
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { getFalFlowControl } from '@/lib/workflows/constants';
 import type { TalentWithSheets } from '@/lib/db/schema';
 
 // ============================================================================
@@ -153,15 +154,15 @@ export const createTalentFn = createServerFn({ method: 'POST' })
     };
 
     // Trigger workflow asynchronously (don't wait for completion)
-    void triggerWorkflow('/library-talent-sheet', workflowInput).catch(
-      (error) => {
-        console.error(
-          '[createTalentFn]',
-          'Failed to trigger talent sheet workflow:',
-          error
-        );
-      }
-    );
+    void triggerWorkflow('/library-talent-sheet', workflowInput, {
+      flowControl: getFalFlowControl(),
+    }).catch((error) => {
+      console.error(
+        '[createTalentFn]',
+        'Failed to trigger talent sheet workflow:',
+        error
+      );
+    });
 
     return newTalent;
   });
@@ -535,7 +536,13 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
       sheetName: data.sheetName,
     };
 
-    const runId = await triggerWorkflow('/library-talent-sheet', workflowInput);
+    const runId = await triggerWorkflow(
+      '/library-talent-sheet',
+      workflowInput,
+      {
+        flowControl: getFalFlowControl(),
+      }
+    );
 
     return { runId };
   });
