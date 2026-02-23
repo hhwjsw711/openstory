@@ -1,22 +1,14 @@
-/**
- * Merge Videos Service
- * Handles stitching multiple video segments into a single video using fal.ai's ffmpeg API
- * Uses @tanstack/ai-fal adapter for queue management and polling
- */
-
 import { getEnv } from '#env';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 
-// Model ID for the fal.ai ffmpeg merge endpoint
-// Typed as string to use the adapter's generic fallback — the merge endpoint
-// isn't a video generation model so its fal types lack aspect_ratio/prompt fields
+// Typed as `string` so the adapter uses its generic fallback -- the merge
+// endpoint isn't a video generation model, so fal types lack aspect_ratio/prompt
 const MERGE_VIDEOS_MODEL_ID: string = 'fal-ai/ffmpeg-api/merge-videos';
 
 export type MergeVideosResult = {
   videoUrl: string;
   requestId?: string;
-  // ffmpeg merge cost is negligible — adapter doesn't expose raw fal metadata
   cost: number;
   metadata: {
     inputCount: number;
@@ -26,14 +18,7 @@ export type MergeVideosResult = {
   };
 };
 
-/**
- * Merge multiple video segments into a single video using fal.ai's ffmpeg API
- * Videos are concatenated in the order provided
- *
- * @param videoUrls - Array of video URLs to merge (in order)
- * @param targetFps - Target frames per second (1-60, defaults to lowest of inputs)
- * @param resolution - Target resolution (512-2048 per dimension)
- */
+/** Merge multiple video segments into a single video via fal.ai ffmpeg API */
 export async function mergeVideos(
   videoUrls: string[],
   targetFps?: number,
@@ -53,8 +38,7 @@ export async function mergeVideos(
     apiKey: falApiKey ?? getEnv().FAL_KEY ?? '',
   });
 
-  // Submit merge job — prompt is unused by the ffmpeg endpoint,
-  // actual parameters go through modelOptions
+  // prompt is unused by the ffmpeg endpoint; parameters go via modelOptions
   const job = await generateVideo({
     adapter,
     prompt: '',

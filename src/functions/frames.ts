@@ -1,8 +1,3 @@
-/**
- * Frame Server Functions
- * CRUD operations for frames
- */
-
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -26,13 +21,11 @@ import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import type { NewFrame } from '@/lib/db/schema';
 import { reconcileStaleFrameStatuses } from '@/lib/workflow/reconcile';
 
-// ============================================================================
-// List Frames
-// ============================================================================
+const frameIdInputSchema = z.object({
+  sequenceId: ulidSchema,
+  frameId: ulidSchema,
+});
 
-/**
- * Get all frames for a sequence
- */
 export const getFramesFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
@@ -44,52 +37,31 @@ export const getFramesFn = createServerFn({ method: 'GET' })
     return frames;
   });
 
-// ============================================================================
-// Get Single Frame
-// ============================================================================
-
-/**
- * Get a single frame by ID
- */
 export const getFrameFn = createServerFn({ method: 'GET' })
   .middleware([frameAccessMiddleware])
   .handler(async ({ context }) => {
     return context.frame;
   });
 
-// ============================================================================
-// Create Frame
-// ============================================================================
-
-const createFrameInputSchema = singleFrameSchema.extend({
-  sequenceId: ulidSchema,
-});
-
-/**
- * Create a single frame
- */
 export const createFrameFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
-  .inputValidator(zodValidator(createFrameInputSchema))
+  .inputValidator(
+    zodValidator(singleFrameSchema.extend({ sequenceId: ulidSchema }))
+  )
   .handler(async ({ data }) => {
     return createFrame(data);
   });
 
-// ============================================================================
-// Bulk Create Frames
-// ============================================================================
-
-const bulkCreateFramesInputSchema = z.object({
-  sequenceId: ulidSchema,
-  frames: bulkFrameSchema.shape.frames,
-});
-
-/**
- * Create multiple frames at once
- */
 export const createFramesBulkFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
-  .inputValidator(zodValidator(bulkCreateFramesInputSchema))
+  .inputValidator(
+    zodValidator(
+      z.object({
+        sequenceId: ulidSchema,
+        frames: bulkFrameSchema.shape.frames,
+      })
+    )
+  )
   .handler(async ({ data }) => {
     const frameInserts: NewFrame[] = data.frames.map((frame) => ({
       sequenceId: data.sequenceId,
@@ -98,53 +70,26 @@ export const createFramesBulkFn = createServerFn({ method: 'POST' })
     return bulkInsertFrames(frameInserts);
   });
 
-// ============================================================================
-// Update Frame
-// ============================================================================
-
-const updateFrameInputSchema = updateFrameSchema.extend({
-  sequenceId: ulidSchema,
-  frameId: ulidSchema,
-});
-
-/**
- * Update a frame
- */
 export const updateFrameFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
-  .inputValidator(zodValidator(updateFrameInputSchema))
+  .inputValidator(
+    zodValidator(
+      updateFrameSchema.extend({ sequenceId: ulidSchema, frameId: ulidSchema })
+    )
+  )
   .handler(async ({ data }) => {
     const { sequenceId: _, frameId, ...updateData } = data;
     return updateFrame(frameId, updateData);
   });
 
-// ============================================================================
-// Delete Frame
-// ============================================================================
-
-const deleteFrameInputSchema = z.object({
-  sequenceId: ulidSchema,
-  frameId: ulidSchema,
-});
-
-/**
- * Delete a frame
- */
 export const deleteFrameFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
-  .inputValidator(zodValidator(deleteFrameInputSchema))
+  .inputValidator(zodValidator(frameIdInputSchema))
   .handler(async ({ data }) => {
     await deleteFrame(data.frameId);
     return { success: true, sequenceId: data.sequenceId };
   });
 
-// ============================================================================
-// Delete All Frames by Sequence
-// ============================================================================
-
-/**
- * Delete all frames for a sequence
- */
 export const deleteFramesBySequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
@@ -152,30 +97,19 @@ export const deleteFramesBySequenceFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
-// Reorder Frames
-// ============================================================================
-
-const reorderFramesInputSchema = z.object({
-  sequenceId: ulidSchema,
-  frameOrders: z
-    .array(
-      z.object({
-        id: ulidSchema,
-        orderIndex: z.number().int(),
-      })
-    )
-    .min(1),
-});
-
-/**
- * Reorder frames in a sequence
- */
 export const reorderFramesFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
-  .inputValidator(zodValidator(reorderFramesInputSchema))
+  .inputValidator(
+    zodValidator(
+      z.object({
+        sequenceId: ulidSchema,
+        frameOrders: z
+          .array(z.object({ id: ulidSchema, orderIndex: z.number().int() }))
+          .min(1),
+      })
+    )
+  )
   .handler(async ({ data }) => {
-    // Map to db helper format (order_index vs orderIndex)
     const frameOrders = data.frameOrders.map((f) => ({
       id: f.id,
       order_index: f.orderIndex,
@@ -184,23 +118,13 @@ export const reorderFramesFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
-// Get Frame Download URL
-// ============================================================================
-
-const getFrameDownloadUrlInputSchema = z.object({
-  sequenceId: ulidSchema,
-  frameId: ulidSchema,
-});
-
 /**
- * Get a signed download URL for a frame's video
- * Uses Content-Disposition header to force browser download
- * @returns Download URL and filename for the video
+ * Get a signed download URL for a frame's video.
+ * Uses Content-Disposition: attachment to force browser download.
  */
 export const getFrameDownloadUrlFn = createServerFn({ method: 'GET' })
   .middleware([frameAccessMiddleware])
-  .inputValidator(zodValidator(getFrameDownloadUrlInputSchema))
+  .inputValidator(zodValidator(frameIdInputSchema))
   .handler(async ({ context }) => {
     const { frame } = context;
 
@@ -208,11 +132,9 @@ export const getFrameDownloadUrlFn = createServerFn({ method: 'GET' })
       throw new Error('Frame does not have a video');
     }
 
-    // Extract filename from the stored path (already has human-readable name)
     const filename =
       frame.videoPath.split('/').pop() || `scene-${frame.id}_velro.mp4`;
 
-    // Generate signed URL with Content-Disposition: attachment (forces download)
     const downloadUrl = await getVideoDownloadUrl(
       frame.videoPath,
       filename,

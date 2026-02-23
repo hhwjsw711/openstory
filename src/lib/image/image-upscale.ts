@@ -15,11 +15,7 @@ type UpscaleResult = {
   cost: number;
 };
 
-/**
- * Build the prompt for upscaling a single image
- */
-function buildUpscalePrompt(): string {
-  return `Upscale this image to a clean, high-resolution frame suitable for animation.
+const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
 
 RENDERING RULES
 - Keep the original scene, pose, framing and camera angle IDENTICAL.
@@ -43,13 +39,9 @@ OUTPUT
 - Aspect ratio: match the original exactly.
 - Resolution: upscale to animation-ready quality.
 - No text overlays, borders, watermarks, or new graphics added by the model.`;
-}
 
 /**
  * Upscale a single image using Nano Banana Pro Edit
- * @param imageUrl - URL of the image to upscale
- * @param resolution - Target resolution ('1K', '2K', '4K')
- * @returns Promise resolving to upscaled image URL
  */
 export async function upscaleWithNanoBanana(
   imageUrl: string,
@@ -59,58 +51,34 @@ export async function upscaleWithNanoBanana(
   const fal = createFalClient({
     credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
   });
-  const prompt = buildUpscalePrompt();
 
-  try {
-    const result = await fal.subscribe('fal-ai/nano-banana-pro/edit', {
-      input: {
-        prompt,
-        image_urls: [imageUrl],
-        num_images: 1,
-        aspect_ratio: 'auto',
-        resolution,
-        output_format: 'png',
-      },
-      logs: true,
-    });
-
-    if (!result.data) {
-      console.error('[upscaleWithNanoBanana] No data in response:', result);
-      throw new Error('No data returned from Nano Banana Pro Edit');
-    }
-
-    const images = result.data.images;
-    if (!images || images.length === 0 || !images[0].url) {
-      console.error(
-        '[upscaleWithNanoBanana] Unexpected response structure:',
-        result.data
-      );
-      throw new Error('No image URL found in Nano Banana Pro Edit response');
-    }
-
-    // Calculate cost using live pricing from fal's Platform API
-    // Upscale is billed per image (1 image per request)
-    const cost = await calculateFalCost(
-      'fal-ai/nano-banana-pro/edit',
-      1,
-      'images',
-      falApiKey
-    );
-
-    return {
-      imageUrl: images[0].url,
-      requestId: result.requestId || '',
-      cost,
-    };
-  } catch (error) {
-    console.error('[upscaleWithNanoBanana] Error details:', {
-      error,
-      imageUrl,
+  const result = await fal.subscribe('fal-ai/nano-banana-pro/edit', {
+    input: {
+      prompt: UPSCALE_PROMPT,
+      image_urls: [imageUrl],
+      num_images: 1,
+      aspect_ratio: 'auto',
       resolution,
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-    });
-    throw new Error(
-      `Failed to upscale image: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+      output_format: 'png',
+    },
+    logs: true,
+  });
+
+  const outputUrl = result.data?.images?.[0]?.url;
+  if (!outputUrl) {
+    throw new Error('No image URL found in Nano Banana Pro Edit response');
   }
+
+  const cost = await calculateFalCost(
+    'fal-ai/nano-banana-pro/edit',
+    1,
+    'images',
+    falApiKey
+  );
+
+  return {
+    imageUrl: outputUrl,
+    requestId: result.requestId ?? '',
+    cost,
+  };
 }

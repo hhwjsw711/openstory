@@ -1,11 +1,10 @@
 /**
  * Fal.ai Pricing API Client
- * Fetches live unit prices from fal's Platform API.
  *
- * No caching — runs serverless so in-memory state doesn't persist.
+ * Fetches live unit prices from fal's Platform API.
+ * No caching -- runs serverless so in-memory state doesn't persist.
  * The ~100ms fetch is negligible vs generation times (5-60s+).
  *
- * API: GET https://api.fal.ai/v1/models/pricing?endpoint_id=...
  * Docs: https://docs.fal.ai/platform-apis/v1/models/pricing
  */
 
@@ -24,36 +23,51 @@ type FalPricingResponse = {
   has_more: boolean;
 };
 
+type FalEstimateResponse = {
+  total_cost: number;
+  currency: string;
+};
+
+function resolveApiKey(override?: string): string {
+  const apiKey = override ?? getEnv().FAL_KEY;
+  if (!apiKey) {
+    throw new Error('FAL_KEY is required to fetch fal.ai pricing');
+  }
+  return apiKey;
+}
+
+async function falFetch<T>(
+  url: string | URL,
+  apiKey: string,
+  init?: RequestInit
+): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: { Authorization: `Key ${apiKey}`, ...init?.headers },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Fal pricing API error: ${response.status} ${response.statusText} (${url})`
+    );
+  }
+
+  return response.json();
+}
+
 /**
  * Fetch unit price for a fal.ai endpoint from the Platform Pricing API.
- *
- * @param endpointId - The fal model endpoint (e.g. "fal-ai/flux/dev")
- * @param falApiKey - Optional override API key
- * @returns The unit price in USD
  */
 export async function getFalUnitPrice(
   endpointId: string,
   falApiKey?: string
 ): Promise<{ unitPrice: number; unit: string }> {
-  const apiKey = falApiKey ?? getEnv().FAL_KEY;
-  if (!apiKey) {
-    throw new Error('FAL_KEY is required to fetch pricing');
-  }
+  const apiKey = resolveApiKey(falApiKey);
 
   const url = new URL('https://api.fal.ai/v1/models/pricing');
   url.searchParams.set('endpoint_id', endpointId);
 
-  const response = await fetch(url.toString(), {
-    headers: { Authorization: `Key ${apiKey}` },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch fal pricing for ${endpointId}: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const data: FalPricingResponse = await response.json();
+  const data = await falFetch<FalPricingResponse>(url, apiKey);
   const entry = data.prices.find((p) => p.endpoint_id === endpointId);
 
   if (!entry) {
@@ -68,41 +82,26 @@ export async function getFalUnitPrice(
 /**
  * Get the estimated cost for a single API call using fal's historical pricing.
  * Used for models with opaque billing units (e.g. "1m tokens") where we can't
- * compute cost from unit_price × quantity on our side.
- *
- * POST https://api.fal.ai/v1/models/pricing/estimate
+ * compute cost from unit_price x quantity on our side.
  */
 export async function getFalHistoricalCostPerCall(
   endpointId: string,
   falApiKey?: string
 ): Promise<number> {
-  const apiKey = falApiKey ?? getEnv().FAL_KEY;
-  if (!apiKey) {
-    throw new Error('FAL_KEY is required to fetch pricing estimate');
-  }
+  const apiKey = resolveApiKey(falApiKey);
 
-  const response = await fetch(
+  const data = await falFetch<FalEstimateResponse>(
     'https://api.fal.ai/v1/models/pricing/estimate',
+    apiKey,
     {
       method: 'POST',
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         estimate_type: 'historical_api_price',
         endpoints: { [endpointId]: { call_quantity: 1 } },
       }),
     }
   );
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch fal cost estimate for ${endpointId}: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const data: { total_cost: number; currency: string } = await response.json();
 
   return data.total_cost;
 }

@@ -1,8 +1,3 @@
-/**
- * Music Generation Service
- * Handles text-to-music generation using Fal.ai audio models (ACE-Step)
- */
-
 import {
   AUDIO_MODEL_KEYS,
   AUDIO_MODELS,
@@ -31,19 +26,16 @@ export type GenerateMusicOptions = {
   prompt: string;
   /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
   tags?: string;
-  /** Lyrics to sing. Use [inst] for instrumental. Supports [verse], [chorus], [bridge] structure. */
+  /** Lyrics with [verse], [chorus], [bridge] structure. Use [inst] for instrumental. */
   lyrics?: string;
   /** Duration in seconds (1-240, default: 60) */
   duration?: number;
   /** Generate instrumental only (default: true) */
   instrumental?: boolean;
-  /** Audio model to use */
   model?: AudioModel;
   /** Number of diffusion steps (default: 27) */
   steps?: number;
-  /** Langfuse trace name */
   traceName?: string;
-  /** Override Fal.ai API key */
   falApiKey?: string;
 };
 
@@ -55,85 +47,85 @@ export type MusicResult = {
   requestId?: string;
 };
 
+function clampDuration(
+  requested: number | undefined,
+  config: AudioModelConfig
+): number {
+  if (!requested) return config.capabilities.defaultDuration;
+  return Math.min(requested, config.capabilities.maxDuration);
+}
+
+const AUDIO_PROVIDER_INPUT_BUILDERS: Record<
+  string,
+  (
+    options: GenerateMusicOptions,
+    config: AudioModelConfig
+  ) => Record<string, unknown>
+> = {
+  'ace-step': (options, config) => {
+    const lyrics =
+      options.instrumental && !options.lyrics
+        ? '[inst]'
+        : (options.lyrics ?? '[inst]');
+
+    return {
+      prompt: options.tags ?? options.prompt,
+      lyrics,
+      duration: clampDuration(options.duration, config),
+      steps: options.steps ?? 27,
+      scheduler: 'euler',
+      cfg_type: 'apg',
+    };
+  },
+
+  elevenlabs: (options, config) => ({
+    text: options.prompt,
+    duration_seconds: clampDuration(options.duration, config),
+  }),
+
+  mmaudio: (options, config) => ({
+    prompt: options.prompt,
+    duration: clampDuration(options.duration, config),
+    num_steps: 25,
+  }),
+
+  'elevenlabs-music': (options, config) => ({
+    prompt: options.prompt,
+    music_length_ms: clampDuration(options.duration, config) * 1000,
+    force_instrumental: options.instrumental ?? true,
+  }),
+
+  beatoven: (options, config) => ({
+    prompt: options.prompt,
+    duration: clampDuration(options.duration, config),
+  }),
+};
+
 /**
- * Provider-specific input builders for audio models
+ * Extract audio URL from fal.ai response data.
+ * Models return audio in different shapes: `audio_file.url` or `audio.url`.
  */
-type AudioProviderInputBuilder = (
-  options: GenerateMusicOptions,
-  modelConfig: AudioModelConfig
-) => Record<string, unknown>;
+function hasKey<K extends string>(
+  obj: object,
+  key: K
+): obj is Record<K, unknown> {
+  return key in obj;
+}
 
-const AUDIO_PROVIDER_INPUT_BUILDERS: Record<string, AudioProviderInputBuilder> =
-  {
-    'ace-step': (options, modelConfig) => {
-      const duration = options.duration
-        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-        : modelConfig.capabilities.defaultDuration;
-
-      // ACE-Step uses [inst] marker for instrumental
-      const lyrics =
-        options.instrumental && !options.lyrics
-          ? '[inst]'
-          : (options.lyrics ?? '[inst]');
-
-      return {
-        prompt: options.tags ?? options.prompt,
-        lyrics,
-        duration,
-        steps: options.steps ?? 27,
-        scheduler: 'euler',
-        cfg_type: 'apg',
-      };
-    },
-
-    elevenlabs: (options, modelConfig) => {
-      const duration = options.duration
-        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-        : modelConfig.capabilities.defaultDuration;
-
-      return {
-        text: options.prompt,
-        duration_seconds: duration,
-      };
-    },
-
-    mmaudio: (options, modelConfig) => {
-      const duration = options.duration
-        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-        : modelConfig.capabilities.defaultDuration;
-
-      return {
-        prompt: options.prompt,
-        duration: duration,
-        num_steps: 25,
-      };
-    },
-
-    'elevenlabs-music': (options, modelConfig) => {
-      const duration = options.duration
-        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-        : modelConfig.capabilities.defaultDuration;
-      return {
-        prompt: options.prompt,
-        music_length_ms: duration * 1000,
-        force_instrumental: options.instrumental ?? true,
-      };
-    },
-
-    beatoven: (options, modelConfig) => {
-      const duration = options.duration
-        ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-        : modelConfig.capabilities.defaultDuration;
-      return {
-        prompt: options.prompt,
-        duration,
-      };
-    },
-  };
+function extractAudioUrl(data: unknown): string | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  for (const key of ['audio_file', 'audio'] as const) {
+    if (!hasKey(data, key)) continue;
+    const field = data[key];
+    if (typeof field === 'object' && field !== null && hasKey(field, 'url')) {
+      if (typeof field.url === 'string') return field.url;
+    }
+  }
+  return undefined;
+}
 
 /**
- * Generate music/audio using Fal.ai
- * Uses fal.subscribe() for queue-based generation with status tracking
+ * Generate music/audio using Fal.ai with queue-based status tracking.
  */
 export async function generateMusicForScene(
   options: GenerateMusicOptions
@@ -160,19 +152,18 @@ export async function generateMusicForScene(
   );
 
   try {
-    const result = await generateMusicInternal(options, modelConfig);
+    const result = await callFalAudio(options, modelConfig);
 
     span
       .update({
-        output: {
-          audioUrl: result.audioUrl,
-        },
+        output: { audioUrl: result.audioUrl },
         costDetails:
           typeof result.metadata?.cost === 'number'
             ? { total: result.metadata.cost }
             : undefined,
       })
       .end();
+
     return result;
   } catch (error) {
     span
@@ -185,18 +176,14 @@ export async function generateMusicForScene(
   }
 }
 
-/**
- * Internal music generation implementation
- */
-async function generateMusicInternal(
+async function callFalAudio(
   options: GenerateMusicOptions,
   modelConfig: AudioModelConfig
 ): Promise<MusicResult> {
   const inputBuilder = AUDIO_PROVIDER_INPUT_BUILDERS[modelConfig.provider];
-
   if (!inputBuilder) {
     throw new Error(
-      `No input builder found for audio provider: ${modelConfig.provider}`
+      `No input builder for audio provider: ${modelConfig.provider}`
     );
   }
 
@@ -206,12 +193,10 @@ async function generateMusicInternal(
     `[Music Service] Generating music with model: ${modelConfig.id}`,
     {
       provider: modelConfig.provider,
-      promptLength: options.prompt?.length,
+      promptLength: options.prompt.length,
       duration: input.duration,
     }
   );
-
-  let requestId: string | undefined;
 
   const fal = createFalClient({
     credentials: options.falApiKey ?? getEnv().FAL_KEY ?? '',
@@ -222,77 +207,32 @@ async function generateMusicInternal(
     logs: true,
     pollInterval: 5000,
     onEnqueue: (reqId: string) => {
-      requestId = reqId;
       console.log(`[Music Service] Request enqueued: ${reqId}`);
     },
     onQueueUpdate: (update) => {
       if (update.status === 'IN_QUEUE' && 'queue_position' in update) {
         console.log(`[Music Service] Queue position: ${update.queue_position}`);
-      }
-      if (update.status === 'IN_PROGRESS') {
+      } else if (update.status === 'IN_PROGRESS') {
         console.log(`[Music Service] Generation in progress...`);
-      }
-      if (update.status === 'COMPLETED') {
+      } else if (update.status === 'COMPLETED') {
         console.log(
-          `[Music Service] Generation completed in ${update.metrics?.inference_time || 'unknown'}s`
+          `[Music Service] Completed in ${update.metrics?.inference_time || 'unknown'}s`
         );
       }
     },
   });
 
-  console.log('[Music Service] Result:', JSON.stringify(result, null, 2));
-
-  // Extract audio URL from result
-  // ACE-Step returns { audio_file: { url, content_type, file_name, file_size } }
-  const resultObj = result && typeof result === 'object' ? result : null;
-  const data =
-    resultObj && 'data' in resultObj && typeof resultObj.data === 'object'
-      ? resultObj.data
-      : null;
-
-  // Try multiple response shapes: audio_file.url, audio.url
-  let audioUrl: string | undefined;
-  if (data) {
-    if (
-      'audio_file' in data &&
-      data.audio_file &&
-      typeof data.audio_file === 'object' &&
-      'url' in data.audio_file &&
-      typeof data.audio_file.url === 'string'
-    ) {
-      audioUrl = data.audio_file.url;
-    } else if (
-      'audio' in data &&
-      data.audio &&
-      typeof data.audio === 'object' &&
-      'url' in data.audio &&
-      typeof data.audio.url === 'string'
-    ) {
-      audioUrl = data.audio.url;
-    }
-  }
+  const audioUrl = extractAudioUrl(result.data);
 
   if (!audioUrl) {
     console.error('[Music Service] No audio URL in result:', result);
     throw new Error('No audio URL returned from music generation');
   }
 
-  if (
-    !requestId &&
-    resultObj &&
-    'requestId' in resultObj &&
-    typeof resultObj.requestId === 'string'
-  ) {
-    requestId = resultObj.requestId;
-  }
-
-  const validatedDuration =
-    options.duration || modelConfig.capabilities.defaultDuration;
-
-  // Calculate cost using live pricing from fal's Platform API
+  const duration = options.duration ?? modelConfig.capabilities.defaultDuration;
   const cost = await calculateFalCost(
     modelConfig.id,
-    validatedDuration,
+    duration,
     'seconds',
     options.falApiKey
   );
@@ -300,11 +240,11 @@ async function generateMusicInternal(
   return {
     success: true,
     audioUrl,
-    requestId,
+    requestId: result.requestId,
     metadata: {
       model: modelConfig.id,
       provider: modelConfig.provider,
-      duration: validatedDuration,
+      duration,
       cost,
       generatedAt: new Date().toISOString(),
     },

@@ -4,7 +4,8 @@ import {
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import { calculateFalCost, calculateFalCostPerCall } from '@/lib/ai/fal-cost';
+import { calculateFalCost } from '@/lib/ai/fal-cost';
+import { getFalHistoricalCostPerCall } from '@/lib/ai/fal-pricing';
 import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
@@ -17,67 +18,45 @@ import { generateImage } from '@tanstack/ai';
 import { falImage } from '@tanstack/ai-fal';
 import { getEnv } from '#env';
 
-/**
- * Extended parameters for image generation
- * Supports all parameters across different model families
- */
 export type ImageGenerationParams = {
-  // Core parameters (all models)
   model: TextToImageModel;
   prompt: string;
-
-  // Sizing - automatically converted to aspect_ratio for models that need it
   imageSize?: ImageSize;
-
-  // Common optional parameters
   numImages?: number;
   seed?: number;
   outputFormat?: 'jpeg' | 'png' | 'webp';
-
-  // Quality control parameters
   numInferenceSteps?: number;
   guidanceScale?: number;
   negativePrompt?: string;
-
-  // Advanced features
   loras?: Array<{ path: string; scale: number }>;
   embeddings?: Array<{ path: string; tokens: string[] }>;
 
-  // LetzAI-specific parameters
+  // LetzAI-specific
   quality?: number;
   creativity?: number;
   hasWatermark?: boolean;
   systemVersion?: number;
   mode?: 'default' | 'sigma';
-  // Generic callbacks
+
   onQueueUpdate?: (update: {
     status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
     logs?: string[];
-    progress?: number; // Progress percentage (0-100)
+    progress?: number;
   }) => void;
 
-  // Model-specific features
-  style?: string; // Recraft
-  colors?: Array<{ r: number; g: number; b: number }>; // Recraft
-  resolution?: '1K' | '2K' | '4K'; // Imagen4, Nano Banana Pro
-  enhancePrompt?: boolean; // FLUX Pro
-  safetyTolerance?: number; // FLUX Pro
-  acceleration?: 'none' | 'regular' | 'high'; // FLUX Dev/Schnell/Flux 2
-  enablePromptExpansion?: boolean; // FLUX 2
-
-  // Reference images for character consistency (auto-switches to edit endpoint)
+  // Model-specific
+  style?: string;
+  colors?: Array<{ r: number; g: number; b: number }>;
+  resolution?: '1K' | '2K' | '4K';
+  enhancePrompt?: boolean;
+  safetyTolerance?: number;
+  acceleration?: 'none' | 'regular' | 'high';
+  enablePromptExpansion?: boolean;
   referenceImageUrls?: string[];
-
-  // Langfuse trace name (defaults to 'fal-image')
   traceName?: string;
-
-  // Override Fal.ai API key (e.g., user-provided key). Falls back to platform env key.
   falApiKey?: string;
 };
 
-/**
- * Result from image generation
- */
 export type ImageGenerationResult = {
   imageUrls: string[];
   parameters: ImageGenerationParams;
@@ -96,54 +75,41 @@ export type ImageGenerationResult = {
   };
 };
 
-/**
- * Helper to convert ImageSize to aspect ratio string
- */
-function imageSizeToAspectRatio(imageSize: ImageSize): string {
-  const mapping: Record<ImageSize, string> = {
-    square_hd: '1:1',
-    portrait_16_9: '9:16',
-    landscape_16_9: '16:9',
+const ASPECT_RATIO_MAP: Record<ImageSize, string> = {
+  square_hd: '1:1',
+  portrait_16_9: '9:16',
+  landscape_16_9: '16:9',
+};
+
+const LETZAI_DIMENSIONS: Record<ImageSize, { width: number; height: number }> =
+  {
+    square_hd: { width: 1024, height: 1024 },
+    portrait_16_9: { width: 576, height: 1024 },
+    landscape_16_9: { width: 1600, height: 900 },
   };
-  return mapping[imageSize] ?? '16:9';
+
+function imageSizeToAspectRatio(imageSize: ImageSize): string {
+  return ASPECT_RATIO_MAP[imageSize];
 }
 
-/**
- * Create a TanStack AI fal adapter for image generation
- */
 function createFalAdapter(modelId: string, falApiKey?: string) {
   const key = falApiKey ?? getEnv().FAL_KEY;
-  if (key) {
-    return falImage(modelId, { apiKey: key });
-  }
-  return falImage(modelId);
+  return key ? falImage(modelId, { apiKey: key }) : falImage(modelId);
 }
 
-/**
- * Truncate prompt to model's maximum length
- * Returns original prompt if under limit or if model has no limit
- */
 function truncatePromptForModel(
   prompt: string,
   model: TextToImageModel
 ): string {
   const maxLength = IMAGE_MODELS[model].maxPromptLength;
-  if (!maxLength || prompt.length <= maxLength) {
-    return prompt;
-  }
+  if (!maxLength || prompt.length <= maxLength) return prompt;
 
-  // Leave room for ellipsis indicator
-  const truncated = prompt.slice(0, maxLength - 3) + '...';
   console.warn(
     `[Image Generation] Prompt truncated from ${prompt.length} to ${maxLength} chars for ${model}`
   );
-  return truncated;
+  return prompt.slice(0, maxLength - 3) + '...';
 }
 
-/**
- * Generate image using a switch statement to determine parameters by model type
- * Pure switch-statement approach with fully inlined fal.subscribe calls
- */
 export async function generateImageWithProvider(
   params: ImageGenerationParams
 ): Promise<ImageGenerationResult> {
@@ -156,10 +122,9 @@ export async function generateImageWithProvider(
       input: {
         prompt: params.prompt,
         imageSize: params.imageSize,
-        ...(params.referenceImageUrls &&
-          params.referenceImageUrls.length > 0 && {
-            referenceImageUrls: params.referenceImageUrls,
-          }),
+        ...(params.referenceImageUrls?.length && {
+          referenceImageUrls: params.referenceImageUrls,
+        }),
       },
     },
     { asType: 'generation' }
@@ -196,38 +161,28 @@ export async function generateImageWithProvider(
   }
 }
 
-/**
- * Internal image generation implementation
- * Uses @tanstack/ai-fal adapters for fal.ai models
- */
 async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
 ): Promise<ImageGenerationResult> {
-  // Truncate prompt to model's max length
   const prompt = truncatePromptForModel(params.prompt, params.model);
   const startTime = Date.now();
 
-  // LetzAI uses a completely different API - handle separately
   if (params.model === 'letzai') {
     return generateLetzaiImage(params, prompt);
   }
 
-  // Build model-specific options for fal.ai models
-  const modelOptions = buildFalModelOptions(params, prompt, modelId);
+  const modelOptions = buildFalModelOptions(params);
 
-  // Determine the actual endpoint (may differ from modelId for edit endpoints)
-  const endpoint = resolveEndpoint(params, modelId);
+  // Switch to edit endpoint for nano_banana_pro with reference images
+  let endpoint = modelId;
+  if (params.model === 'nano_banana_pro' && params.referenceImageUrls?.length) {
+    endpoint = getEditEndpoint(params.model) ?? modelId;
+  }
 
-  // Create adapter and generate
   const adapter = createFalAdapter(endpoint, params.falApiKey);
-  const result = await generateImage({
-    adapter,
-    prompt,
-    modelOptions,
-  });
+  const result = await generateImage({ adapter, prompt, modelOptions });
 
-  // Map TanStack AI result to our format
   const imageUrls = result.images
     .map((img) => img.url)
     .filter((url): url is string => !!url);
@@ -237,16 +192,14 @@ async function generateImageInternal(
   }
 
   const processingTimeMs = Date.now() - startTime;
-  const numImages = imageUrls.length || params.numImages || 1;
 
-  // Calculate cost using live pricing from fal's Platform API
+  // Computable quantities (images, megapixels) use unit pricing;
+  // opaque billing (compute_seconds, LetzAI) falls back to historical estimate
   const billable = computeImageBillableQuantity(
     params.model,
-    numImages,
+    imageUrls.length,
     params.imageSize ?? DEFAULT_IMAGE_SIZE
   );
-  // For models with computable quantities (images, megapixels): unit_price × quantity
-  // For others (compute_seconds, LetzAI): falls back to historical per-call estimate
   const cost = billable
     ? await calculateFalCost(
         endpoint,
@@ -254,7 +207,7 @@ async function generateImageInternal(
         billable.callerUnit,
         params.falApiKey
       )
-    : await calculateFalCostPerCall(endpoint, params.falApiKey);
+    : await getFalHistoricalCostPerCall(endpoint, params.falApiKey);
 
   return {
     imageUrls,
@@ -265,39 +218,16 @@ async function generateImageInternal(
     metadata: {
       prompt: params.prompt,
       model: params.model,
-      dimensions: imageUrls.map(() => ({ width: 0, height: 0 })), // Not available from adapter
+      dimensions: imageUrls.map(() => ({ width: 0, height: 0 })),
       file_sizes: imageUrls.map(() => 0),
       seed: params.seed,
-      has_nsfw_concepts: undefined,
       cost,
     },
   };
 }
 
-/**
- * Resolve the actual fal endpoint (handles edit endpoint switching)
- */
-function resolveEndpoint(
-  params: ImageGenerationParams,
-  modelId: string
-): string {
-  if (params.model === 'nano_banana_pro') {
-    const hasReferences =
-      params.referenceImageUrls && params.referenceImageUrls.length > 0;
-    const editEndpoint = getEditEndpoint(params.model);
-    if (hasReferences && editEndpoint) return editEndpoint;
-  }
-  return modelId;
-}
-
-/**
- * Build model-specific options for fal.ai image generation
- * Each model has different API requirements
- */
 function buildFalModelOptions(
-  params: ImageGenerationParams,
-  _prompt: string,
-  _modelId: string
+  params: ImageGenerationParams
 ): Record<string, unknown> {
   switch (params.model) {
     case 'flux_pro':
@@ -358,26 +288,19 @@ function buildFalModelOptions(
 
     case 'sdxl':
     case 'sdxl_lightning': {
-      const defaultSteps = params.model === 'sdxl_lightning' ? 4 : 25;
-      const defaultGuidance = params.model === 'sdxl' ? 7.5 : undefined;
+      const isSDXL = params.model === 'sdxl';
       return {
         image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
-        num_inference_steps: params.numInferenceSteps ?? defaultSteps,
+        num_inference_steps: params.numInferenceSteps ?? (isSDXL ? 25 : 4),
         enable_safety_checker: true,
-        ...(params.model === 'sdxl' &&
-          params.guidanceScale !== undefined && {
-            guidance_scale: params.guidanceScale,
-          }),
-        ...(params.model === 'sdxl' &&
-          defaultGuidance !== undefined &&
-          params.guidanceScale === undefined && {
-            guidance_scale: defaultGuidance,
-          }),
-        ...(params.model === 'sdxl' &&
+        ...(isSDXL && {
+          guidance_scale: params.guidanceScale ?? 7.5,
+        }),
+        ...(isSDXL &&
           params.negativePrompt && {
             negative_prompt: params.negativePrompt,
           }),
-        ...(params.model === 'sdxl' && params.loras && { loras: params.loras }),
+        ...(isSDXL && params.loras && { loras: params.loras }),
         ...(params.seed !== undefined && { seed: params.seed }),
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { format: params.outputFormat }),
@@ -409,9 +332,7 @@ function buildFalModelOptions(
         sync_mode: false,
       };
 
-    case 'nano_banana_pro': {
-      const hasReferences =
-        params.referenceImageUrls && params.referenceImageUrls.length > 0;
+    case 'nano_banana_pro':
       return {
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
@@ -419,18 +340,18 @@ function buildFalModelOptions(
         resolution: params.resolution ?? '2K',
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
-        ...(hasReferences && { image_urls: params.referenceImageUrls }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
-    }
 
     case 'recraft_v3':
       return {
         image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
         style: params.style ?? 'realistic_image',
         enable_safety_checker: false,
-        ...(params.colors &&
-          params.colors.length > 0 && { colors: params.colors }),
+        ...(params.colors?.length && { colors: params.colors }),
       };
 
     case 'hidream_i1_full':
@@ -505,8 +426,7 @@ function buildFalModelOptions(
       };
 
     case 'letzai':
-      // Handled separately in generateLetzaiImage
-      return {};
+      return {}; // Handled before this switch in generateImageInternal
 
     default: {
       const _exhaustive: never = params.model;
@@ -515,25 +435,18 @@ function buildFalModelOptions(
   }
 }
 
-/**
- * Generate image via LetzAI (non-fal provider)
- */
 async function generateLetzaiImage(
   params: ImageGenerationParams,
   prompt: string
 ): Promise<ImageGenerationResult> {
-  const presetDims = {
-    square_hd: { width: 1024, height: 1024 },
-    portrait_16_9: { width: 576, height: 1024 },
-    landscape_16_9: { width: 1600, height: 900 },
-  }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
+  const dims = LETZAI_DIMENSIONS[params.imageSize ?? DEFAULT_IMAGE_SIZE];
 
   const resp = await imagesCreate({
     // @ts-expect-error - webhookUrl is not required for imagesCreate
     body: {
       prompt,
-      width: presetDims.width,
-      height: presetDims.height,
+      width: dims.width,
+      height: dims.height,
       quality: params.quality ?? 5,
       creativity: params.creativity ?? 2,
       hasWatermark: params.hasWatermark ?? false,
@@ -562,12 +475,24 @@ async function generateLetzaiImage(
   if (imageDto.status === 'interrupted') {
     throw new Error('Image generation interrupted');
   }
-  return resultByLetzai(params, imageDto);
+
+  const originalUrl = imageDto.imageVersions?.original;
+  return {
+    imageUrls: typeof originalUrl === 'string' ? [originalUrl] : [],
+    parameters: params,
+    generatedAt: new Date().toISOString(),
+    processingTimeMs: 0,
+    provider: 'letzai',
+    metadata: {
+      prompt: params.prompt,
+      model: params.model,
+      dimensions: [dims],
+      file_sizes: [],
+    },
+  };
 }
 
-/**
- * Image size presets to pixel dimensions for megapixel cost calculation
- */
+/** Pixel dimensions for megapixel-based cost calculation */
 const IMAGE_SIZE_DIMENSIONS: Record<
   ImageSize,
   { width: number; height: number }
@@ -578,20 +503,14 @@ const IMAGE_SIZE_DIMENSIONS: Record<
 };
 
 /**
- * Compute the billable quantity and its unit for an image generation.
- * Returns undefined for models we can't compute locally (LetzAI, compute_seconds-priced),
- * which triggers the historical estimate fallback.
+ * Returns billable quantity and unit, or undefined for models with opaque billing
+ * (compute_seconds, LetzAI) which fall back to historical per-call estimates.
  */
 function computeImageBillableQuantity(
   model: TextToImageModel,
   numImages: number,
   imageSize: ImageSize
-):
-  | {
-      quantity: number;
-      callerUnit: 'images' | 'megapixels';
-    }
-  | undefined {
+): { quantity: number; callerUnit: 'images' | 'megapixels' } | undefined {
   const modelConfig = IMAGE_MODELS[model];
   if (!modelConfig.pricing) return undefined;
 
@@ -611,50 +530,7 @@ function computeImageBillableQuantity(
     }
 
     case 'compute_seconds':
-      // compute_seconds = actual GPU inference time, which we don't have
-      // (processingTimeMs is wall-clock time including queue/network).
-      // Falls through to undefined → historical estimate fallback.
-      return undefined;
-
     default:
       return undefined;
   }
-}
-
-/**
- * Parse result for LetzAI provider
- */
-function resultByLetzai(
-  params: ImageGenerationParams,
-  resp: ImageDto
-): ImageGenerationResult {
-  // Get dimensions from model config preset (LetzAI response doesn't include dimensions)
-  const presetDims = {
-    square_hd: { width: 1024, height: 1024 },
-    portrait_16_9: { width: 576, height: 1024 },
-    landscape_16_9: { width: 1600, height: 900 },
-  }[params.imageSize ?? DEFAULT_IMAGE_SIZE];
-
-  const originalUrl = resp.imageVersions?.original;
-  const dimensions = [{ width: presetDims.width, height: presetDims.height }];
-
-  const result: ImageGenerationResult = {
-    imageUrls: typeof originalUrl === 'string' ? [originalUrl] : [],
-    parameters: params,
-    generatedAt: new Date().toISOString(),
-    processingTimeMs: 0, // LetzAI response doesn't include timing info
-    provider: 'letzai',
-    metadata: {
-      prompt: params.prompt,
-      model: params.model,
-      dimensions,
-      file_sizes: [],
-      seed: undefined,
-      has_nsfw_concepts: undefined,
-      cost: undefined, // LetzAI pricing is not tracked via fal
-      requestId: undefined,
-    },
-  };
-
-  return result;
 }

@@ -7,15 +7,10 @@
  */
 
 import { getGenerationChannel } from '@/lib/realtime';
-import type {
-  CharacterSheetWorkflowInput,
-  RecastCharacterWorkflowInput,
-  RegenerateFramesWorkflowInput,
-} from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
+import type { RecastCharacterWorkflowInput } from '@/lib/workflow/types';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { characterSheetWorkflow } from './character-sheet-workflow';
-import { getFalFlowControl } from './constants';
 import { regenerateFramesWorkflow } from './regenerate-frames-workflow';
 
 export const recastCharacterWorkflow = createWorkflow(
@@ -28,30 +23,26 @@ export const recastCharacterWorkflow = createWorkflow(
     );
 
     // Step 1: Generate new character sheet with talent appearance
-    const sheetInput: CharacterSheetWorkflowInput = {
-      characterDbId: input.characterDbId,
-      characterName: input.characterName,
-      characterMetadata: input.characterMetadata,
-      sequenceId: input.sequenceId,
-      teamId: input.teamId,
-      userId: input.userId,
-      imageModel: input.imageModel,
-      referenceImageUrl: input.referenceImageUrl,
-      talentMetadata: input.talentMetadata,
-      talentDescription: input.talentDescription,
-    };
-
     const { body: sheetResult, isFailed: sheetFailed } = await context.invoke(
       'character-sheet',
       {
         workflow: characterSheetWorkflow,
-        body: sheetInput,
-        flowControl: getFalFlowControl(),
+        body: {
+          characterDbId: input.characterDbId,
+          characterName: input.characterName,
+          characterMetadata: input.characterMetadata,
+          sequenceId: input.sequenceId,
+          teamId: input.teamId,
+          userId: input.userId,
+          imageModel: input.imageModel,
+          referenceImageUrl: input.referenceImageUrl,
+          talentMetadata: input.talentMetadata,
+          talentDescription: input.talentDescription,
+        },
       }
     );
 
     if (sheetFailed || !sheetResult?.sheetImageUrl) {
-      // Retry if the character sheet generation failed
       throw new Error(
         `Character sheet generation failed for ${input.characterName}`
       );
@@ -63,21 +54,21 @@ export const recastCharacterWorkflow = createWorkflow(
     );
 
     // Step 2: Regenerate frames if there are any affected
-    if (input.affectedFrameIds.length > 0) {
-      const regenerateInput: RegenerateFramesWorkflowInput = {
-        sequenceId: input.sequenceId,
-        userId: input.userId,
-        teamId: input.teamId,
-        frameIds: input.affectedFrameIds,
-        triggeringCharacterId: input.characterDbId,
-        imageModel: input.imageModel,
-      };
+    let framesRegenerated = 0;
+    let framesFailed = 0;
 
+    if (input.affectedFrameIds.length > 0) {
       const { body: regenerateResult, isFailed: regenerateFailed } =
         await context.invoke('regenerate-frames', {
           workflow: regenerateFramesWorkflow,
-          body: regenerateInput,
-          flowControl: getFalFlowControl(),
+          body: {
+            sequenceId: input.sequenceId,
+            userId: input.userId,
+            teamId: input.teamId,
+            frameIds: input.affectedFrameIds,
+            triggeringCharacterId: input.characterDbId,
+            imageModel: input.imageModel,
+          },
         });
 
       if (regenerateFailed) {
@@ -85,25 +76,20 @@ export const recastCharacterWorkflow = createWorkflow(
           '[RecastCharacterWorkflow]',
           `Frame regeneration failed for ${input.characterName}`
         );
-        // Don't throw - sheet was generated successfully
       } else {
+        framesRegenerated = regenerateResult?.successCount ?? 0;
+        framesFailed = regenerateResult?.failedFrames?.length ?? 0;
         console.log(
           '[RecastCharacterWorkflow]',
-          `Regenerated ${regenerateResult?.successCount ?? 0} frames for ${input.characterName}`
+          `Regenerated ${framesRegenerated} frames for ${input.characterName}`
         );
       }
-
-      return {
-        sheetImageUrl: sheetResult.sheetImageUrl,
-        framesRegenerated: regenerateResult?.successCount ?? 0,
-        framesFailed: regenerateResult?.failedFrames?.length ?? 0,
-      };
     }
 
     return {
       sheetImageUrl: sheetResult.sheetImageUrl,
-      framesRegenerated: 0,
-      framesFailed: 0,
+      framesRegenerated,
+      framesFailed,
     };
   },
   {

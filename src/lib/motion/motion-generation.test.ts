@@ -1,9 +1,3 @@
-/**
- * Tests for motion generation service
- *
- * Run with: bun test --preload ./__mocks__/fal-client.mock.ts motion-generation.test.ts
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import {
@@ -105,17 +99,13 @@ describe('Motion Service', () => {
     it('should handle generation failure', async () => {
       mockGenerateVideo.mockRejectedValue(new Error('API error'));
 
-      let error: Error | undefined;
-      try {
-        await generateMotionForFrame({
+      expect(
+        generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
           model: 'kling_v3_pro',
-        });
-      } catch (e) {
-        error = e instanceof Error ? e : new Error(String(e));
-      }
-      expect(error?.message).toBe('API error');
+        })
+      ).rejects.toThrow('API error');
     });
 
     it('should handle failed video job status', async () => {
@@ -129,17 +119,13 @@ describe('Motion Service', () => {
         error: 'Generation failed on provider side',
       });
 
-      let error: Error | undefined;
-      try {
-        await generateMotionForFrame({
+      expect(
+        generateMotionForFrame({
           imageUrl: 'https://example.com/image.jpg',
           prompt: 'Test prompt',
           model: 'kling_v3_pro',
-        });
-      } catch (e) {
-        error = e instanceof Error ? e : new Error(String(e));
-      }
-      expect(error?.message).toBe('Generation failed on provider side');
+        })
+      ).rejects.toThrow('Generation failed on provider side');
     });
 
     it('should generate motion with Kling O1 model', async () => {

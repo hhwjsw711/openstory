@@ -1,153 +1,96 @@
-/**
- * QStash Workflow client configuration
- */
-
 import { getEnv } from '#env';
 import { ConfigurationError } from '@/lib/errors';
-import { Client as WorkflowClient } from '@upstash/workflow';
-import { Client as QStashClient } from '@upstash/qstash';
-import type { FlowControl } from '@upstash/qstash';
-
-import { getServerAppUrl } from '../utils/environment';
+import { getServerAppUrl } from '@/lib/utils/environment';
 import { getRequest } from '@tanstack/react-start/server';
-/**
- * Gets the QStash Workflow client for direct API operations
- * Most workflow operations should use the serve() function in route files
- */
-export function getWorkflowClient(): WorkflowClient {
-  const env = getEnv();
-  const token = env.QSTASH_TOKEN;
+import { Client as QStashClient } from '@upstash/qstash';
+import { Client as WorkflowClient } from '@upstash/workflow';
 
-  if (!token) {
+function getVercelBypassHeaders(): Record<string, string> | undefined {
+  const secret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (!secret) return undefined;
+
+  return {
+    'Upstash-Forward-X-Vercel-Protection-Bypass': secret,
+    'X-Vercel-Protection-Bypass': secret,
+    'upstash-callback-forward-X-Vercel-Protection-Bypass': secret,
+    'upstash-failure-callback-forward-X-Vercel-Protection-Bypass': secret,
+  };
+}
+
+function requireQStashToken(): string {
+  const token = getEnv().QSTASH_TOKEN;
+  if (!token)
     throw new ConfigurationError(
       'QStash is not configured. Run `bun setup` and enable workflows, or start the emulator with `bun qstash:dev`.'
     );
-  }
-
-  const bypassSecret = env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  return new WorkflowClient({
-    token,
-    headers: bypassSecret
-      ? {
-          'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
-          'x-vercel-protection-bypass': bypassSecret,
-          'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
-          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-            bypassSecret,
-        }
-      : undefined,
-  });
+  return token;
 }
 
-/**
- * Gets the QStash Workflow client for direct API operations
- * Most workflow operations should use the serve() function in route files
- */
+/** QStash client for serve() handler signature verification */
 export function getQStashClient(): QStashClient {
-  const env = getEnv();
-  const token = env.QSTASH_TOKEN;
-
-  if (!token) {
-    throw new ConfigurationError(
-      'QStash is not configured. Run `bun setup` and enable workflows, or start the emulator with `bun qstash:dev`.'
-    );
-  }
-
-  const bypassSecret = env.VERCEL_AUTOMATION_BYPASS_SECRET;
   return new QStashClient({
-    token,
-    headers: bypassSecret
-      ? {
-          'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
-          'x-vercel-protection-bypass': bypassSecret,
-          'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
-          'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-            bypassSecret,
-        }
-      : undefined,
+    token: requireQStashToken(),
+    headers: getVercelBypassHeaders(),
   });
 }
+
 /**
- * Get the URL for QStash webhooks
- * In production, QStash needs a publicly accessible URL
- * In local development, we use a local QStash server that can reach localhost
+ * Resolve the webhook URL QStash will call back to.
+ * In local dev, rewrites localhost to host.docker.internal so
+ * the QStash Docker container can reach the app.
  */
 function getQStashWebhookUrl(request: Request): string {
-  // Use centralized APP_URL, but convert localhost to host.docker.internal
-  // for QStash running in Docker to reach the Next.js app
   const serverAppUrl = getServerAppUrl(request);
-  if (
-    serverAppUrl.includes('localhost') ||
-    serverAppUrl.includes('127.0.0.1')
-  ) {
-    const appUrl = new URL(serverAppUrl);
-    return `http://host.docker.internal${appUrl.port ? `:${appUrl.port}` : ''}`;
+  const url = new URL(serverAppUrl);
+
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    url.protocol = 'http:';
+    url.hostname = 'host.docker.internal';
+    return url.origin;
   }
 
   return serverAppUrl;
 }
 
-/**
- * Gets the external webhook base URL for workflow endpoints
- * Used by QStash to call back to workflows
- */
-function getWorkflowBaseUrl(request: Request): string {
-  const apiUrl = getQStashWebhookUrl(request);
-  return `${apiUrl}/api/workflows`;
+/** WorkflowClient for checking workflow run status (e.g. reconciliation) */
+export function getWorkflowClient(): WorkflowClient {
+  return new WorkflowClient({
+    token: requireQStashToken(),
+    headers: getVercelBypassHeaders(),
+  });
 }
 
 export async function triggerWorkflow(
-  url: string,
+  urlPath: string,
   body: object,
   options?: {
     deduplicationId?: string;
-    flowControl?: FlowControl;
-    retries?: number;
-    retryDelay?: string;
   }
-) {
-  console.log('[TriggerWorkflow] URL:', url);
-  console.log('[TriggerWorkflow] Body:', body);
-  console.log('[TriggerWorkflow] Options:', options);
-  // Skip workflow triggers in E2E tests - return mock ID
+): Promise<string> {
+  console.log('[TriggerWorkflow]', { url: urlPath, body, options });
+
   if (getEnv().E2E_TEST === 'true') {
     const mockId = options?.deduplicationId ?? `mock-${Date.now()}`;
-    console.log(`[E2E] Skipping workflow trigger: ${url} (mock ID: ${mockId})`);
+    console.log(
+      `[E2E] Skipping workflow trigger: ${urlPath} (mock ID: ${mockId})`
+    );
     return mockId;
   }
 
-  const qstash = getWorkflowClient();
-  const request = getRequest();
-  const baseUrl = getWorkflowBaseUrl(request);
-
-  const response = await qstash.trigger({
-    url: `${baseUrl}${url}`,
-    body: body,
-    // Use deduplicationId as workflowRunId to prevent duplicate runs
-    // Each workflow run must have a unique ID - if the ID exists, no duplicate is created
-    workflowRunId: options?.deduplicationId,
-    flowControl: options?.flowControl,
-    retries: options?.retries,
-    retryDelay: options?.retryDelay,
-    headers: (() => {
-      const bypassSecret = getEnv().VERCEL_AUTOMATION_BYPASS_SECRET;
-      return bypassSecret
-        ? {
-            'Upstash-Forward-X-Vercel-Protection-Bypass': bypassSecret,
-            'X-Vercel-Protection-Bypass': bypassSecret,
-            'upstash-callback-forward-X-Vercel-Protection-Bypass': bypassSecret,
-            'upstash-failure-callback-forward-X-Vercel-Protection-Bypass':
-              bypassSecret,
-          }
-        : undefined;
-    })(),
+  const client = new WorkflowClient({
+    token: requireQStashToken(),
+    headers: getVercelBypassHeaders(),
   });
+  const baseUrl = `${getQStashWebhookUrl(getRequest())}/api/workflows`;
+
+  const response = await client.trigger({
+    url: `${baseUrl}${urlPath}`,
+    body,
+    keepTriggerConfig: true,
+    workflowRunId: options?.deduplicationId,
+    headers: getVercelBypassHeaders(),
+  });
+
   console.log('[TriggerWorkflow] Response:', response);
   return response.workflowRunId;
-}
-
-export async function cancelWorkflow(workflowId: string) {
-  const qstash = getWorkflowClient();
-  const response = await qstash.cancel({ ids: [workflowId] });
-  return response.cancelled;
 }

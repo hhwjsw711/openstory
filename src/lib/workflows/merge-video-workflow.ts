@@ -17,29 +17,52 @@ import { generateId } from '@/lib/db/id';
 import type {
   MergeAudioVideoWorkflowInput,
   MergeVideoWorkflowInput,
-  MergeVideoWorkflowResult,
 } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { getFalFlowControl } from '@/lib/workflows/constants';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
+import { getFalFlowControl } from './constants';
 
-/**
- * Merge video workflow
- * Stitches all completed frame videos into a single merged video
- */
+/** If music is already completed, trigger the audio+video mux workflow. */
+async function triggerMuxIfMusicReady(
+  input: MergeVideoWorkflowInput,
+  mergedVideoUrl: string
+): Promise<void> {
+  const [seq] = await getDb()
+    .select({
+      musicStatus: sequences.musicStatus,
+      musicUrl: sequences.musicUrl,
+    })
+    .from(sequences)
+    .where(eq(sequences.id, input.sequenceId));
+
+  if (seq?.musicStatus !== 'completed' || !seq.musicUrl) return;
+
+  console.log(
+    `[MergeVideoWorkflow] Video + music both ready, triggering mux for sequence ${input.sequenceId}`
+  );
+
+  const muxInput: MergeAudioVideoWorkflowInput = {
+    userId: input.userId,
+    teamId: input.teamId,
+    sequenceId: input.sequenceId,
+    mergedVideoUrl,
+    musicUrl: seq.musicUrl,
+  };
+
+  await triggerWorkflow('/merge-audio-video', muxInput);
+}
+
 export const mergeVideoWorkflow = createWorkflow(
   async (context: WorkflowContext<MergeVideoWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Validate required fields
     if (!input.sequenceId) {
       throw new WorkflowValidationError('Sequence ID is required');
     }
-
     if (!input.videoUrls || input.videoUrls.length === 0) {
       throw new WorkflowValidationError('At least one video URL is required');
     }
@@ -48,17 +71,15 @@ export const mergeVideoWorkflow = createWorkflow(
       `[MergeVideoWorkflow] Starting merge for sequence ${input.sequenceId} with ${input.videoUrls.length} videos`
     );
 
-    // Single video optimization: skip merge and use existing video directly
+    // Single video: skip merge, use existing video directly
     if (input.videoUrls.length === 1) {
-      console.log(
-        `[MergeVideoWorkflow] Single video - skipping merge for sequence ${input.sequenceId}`
-      );
+      const singleUrl = input.videoUrls[0];
 
       await context.run('update-sequence-single', async () => {
         await getDb()
           .update(sequences)
           .set({
-            mergedVideoUrl: input.videoUrls[0],
+            mergedVideoUrl: singleUrl,
             mergedVideoPath: null,
             mergedVideoStatus: 'completed',
             mergedVideoGeneratedAt: new Date(),
@@ -68,42 +89,13 @@ export const mergeVideoWorkflow = createWorkflow(
           .where(eq(sequences.id, input.sequenceId));
       });
 
-      // Check if music is ready for mux (single-video path)
       await context.run('check-mux-trigger-single', async () => {
-        const [seq] = await getDb()
-          .select({
-            musicStatus: sequences.musicStatus,
-            musicUrl: sequences.musicUrl,
-          })
-          .from(sequences)
-          .where(eq(sequences.id, input.sequenceId));
-
-        if (seq?.musicStatus === 'completed' && seq.musicUrl) {
-          console.log(
-            `[MergeVideoWorkflow] Single video + music ready, triggering mux for sequence ${input.sequenceId}`
-          );
-
-          const muxInput: MergeAudioVideoWorkflowInput = {
-            userId: input.userId,
-            teamId: input.teamId,
-            sequenceId: input.sequenceId,
-            mergedVideoUrl: input.videoUrls[0],
-            musicUrl: seq.musicUrl,
-          };
-
-          await triggerWorkflow('/merge-audio-video', muxInput, {
-            flowControl: getFalFlowControl(),
-          });
-        }
+        await triggerMuxIfMusicReady(input, singleUrl);
       });
 
-      return {
-        mergedVideoUrl: input.videoUrls[0],
-        mergedVideoPath: null,
-      };
+      return { mergedVideoUrl: singleUrl, mergedVideoPath: null };
     }
 
-    // Step 1: Set status to merging
     await context.run('set-merging-status', async () => {
       await getDb()
         .update(sequences)
@@ -115,12 +107,10 @@ export const mergeVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
-    // Resolve team API keys (user-provided or platform fallback)
     const apiKeys = await context.run('resolve-api-keys', async () => {
       return resolveWorkflowApiKeys(input.teamId);
     });
 
-    // Step 2: Merge videos using fal.ai
     const mergeResult = await context.run('merge-videos', async () => {
       return mergeVideos(
         input.videoUrls,
@@ -130,7 +120,6 @@ export const mergeVideoWorkflow = createWorkflow(
       );
     });
 
-    // Deduct credits for video merge (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
@@ -143,9 +132,7 @@ export const mergeVideoWorkflow = createWorkflow(
       });
     });
 
-    // Step 3: Upload merged video to R2 storage
     const storageResult = await context.run('upload-to-storage', async () => {
-      // Download the merged video
       const response = await fetch(mergeResult.videoUrl);
       if (!response.ok) {
         throw new Error(
@@ -157,8 +144,6 @@ export const mergeVideoWorkflow = createWorkflow(
       const extension = getExtensionFromUrl(mergeResult.videoUrl) || 'mp4';
       const contentType = getMimeTypeFromExtension(extension);
       const shortHash = generateId().slice(-8);
-
-      // Store in: teams/{teamId}/sequences/{sequenceId}/merged/{hash}_velro.{ext}
       const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_velro.${extension}`;
 
       const result = await uploadFile(STORAGE_BUCKETS.VIDEOS, path, videoBlob, {
@@ -169,7 +154,6 @@ export const mergeVideoWorkflow = createWorkflow(
       return { path, url: result.publicUrl };
     });
 
-    // Step 4: Update sequence with merged video
     await context.run('update-sequence', async () => {
       await getDb()
         .update(sequences)
@@ -184,55 +168,26 @@ export const mergeVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
-    // Step 5: Check if music is also ready — trigger mux if so
     await context.run('check-mux-trigger', async () => {
-      const [seq] = await getDb()
-        .select({
-          musicStatus: sequences.musicStatus,
-          musicUrl: sequences.musicUrl,
-        })
-        .from(sequences)
-        .where(eq(sequences.id, input.sequenceId));
-
-      if (
-        seq?.musicStatus === 'completed' &&
-        seq.musicUrl &&
-        storageResult.url
-      ) {
-        console.log(
-          `[MergeVideoWorkflow] Merged video + music both ready, triggering mux for sequence ${input.sequenceId}`
-        );
-
-        const muxInput: MergeAudioVideoWorkflowInput = {
-          userId: input.userId,
-          teamId: input.teamId,
-          sequenceId: input.sequenceId,
-          mergedVideoUrl: storageResult.url,
-          musicUrl: seq.musicUrl,
-        };
-
-        await triggerWorkflow('/merge-audio-video', muxInput, {
-          flowControl: getFalFlowControl(),
-        });
-      }
+      await triggerMuxIfMusicReady(input, storageResult.url);
     });
 
     console.log(
       `[MergeVideoWorkflow] Completed merge for sequence ${input.sequenceId}`
     );
 
-    const result: MergeVideoWorkflowResult = {
+    return {
       mergedVideoUrl: storageResult.url,
       mergedVideoPath: storageResult.path,
     };
-
-    return result;
   },
   {
+    retries: 2,
+    retryDelay: 'pow(2, retried) * 2000',
+    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
-      // Update sequence with failure status
       await getDb()
         .update(sequences)
         .set({

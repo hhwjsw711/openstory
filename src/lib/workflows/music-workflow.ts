@@ -1,9 +1,3 @@
-/**
- * Music generation workflow
- * Generates background music/audio for entire sequences
- * Uses AI to synthesize scene data into cohesive music prompts
- */
-
 import { getDb } from '#db-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { sequences } from '@/lib/db/schema';
@@ -14,14 +8,13 @@ import type {
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import { getFalFlowControl } from '@/lib/workflows/constants';
 import { durableLLMCall } from './llm-call-helper';
 import {
   musicPromptSchema,
@@ -34,10 +27,7 @@ export const generateMusicWorkflow = createWorkflow(
   async (context: WorkflowContext<MusicWorkflowInput>) => {
     const input = context.requestPayload;
 
-    const hasPreGeneratedPrompt = !!input.prompt && !!input.tags;
-    const hasScenes = !!input.scenes && input.scenes.length > 0;
-
-    if (!hasPreGeneratedPrompt && !hasScenes) {
+    if (!input.prompt && !input.tags && !input.scenes?.length) {
       throw new WorkflowValidationError(
         'Either prompt+tags or scenes are required for music generation'
       );
@@ -46,7 +36,6 @@ export const generateMusicWorkflow = createWorkflow(
     const { sequenceId, teamId } = input;
     const model = input.model || DEFAULT_MUSIC_MODEL;
 
-    // Step 1: Set status to generating
     await context.run('set-generating-status', async () => {
       await getDb()
         .update(sequences)
@@ -63,20 +52,18 @@ export const generateMusicWorkflow = createWorkflow(
       });
     });
 
-    // Resolve team API keys
     const apiKeys = await context.run('resolve-api-keys', async () => {
       return resolveWorkflowApiKeys(teamId);
     });
 
-    // Step 2: Use pre-generated prompt or fall back to LLM generation from scenes
+    // Use pre-generated prompt or generate from scenes via LLM
     let effectivePrompt: string;
     let effectiveTags: string;
 
-    if (hasPreGeneratedPrompt && input.prompt && input.tags) {
+    if (input.prompt && input.tags) {
       effectivePrompt = input.prompt;
       effectiveTags = input.tags;
     } else {
-      // Legacy fallback: generate prompt from scenes
       const musicPrompt = await durableLLMCall(
         context,
         {
@@ -101,7 +88,6 @@ export const generateMusicWorkflow = createWorkflow(
       effectiveTags = reinforceInstrumentalTags(musicPrompt.tags);
     }
 
-    // Step 3: Generate music using prompt
     const audioResult = await context.run('generate-music', async () => {
       const result = await generateMusicForScene({
         prompt: effectivePrompt,
@@ -151,14 +137,14 @@ export const generateMusicWorkflow = createWorkflow(
       });
     }
 
-    // Step 4: Upload to storage
-    const storageResult = await context.run('upload-to-storage', async () => {
-      if (!audioResult.audioUrl) {
-        throw new Error('Missing audio URL for storage upload');
-      }
+    if (!audioResult.audioUrl) {
+      throw new Error('Audio URL missing from generation result');
+    }
+    const audioUrl = audioResult.audioUrl;
 
+    const storageResult = await context.run('upload-to-storage', async () => {
       const result = await uploadAudioToStorage({
-        audioUrl: audioResult.audioUrl,
+        audioUrl,
         teamId,
         sequenceId,
         sequenceTitle: 'sequence',
@@ -172,9 +158,6 @@ export const generateMusicWorkflow = createWorkflow(
       return { path: result.path, url: result.url };
     });
 
-    const audioUrl = storageResult.url;
-
-    // Step 5: Update sequence record
     await context.run('update-sequence-music', async () => {
       await getDb()
         .update(sequences)
@@ -194,7 +177,7 @@ export const generateMusicWorkflow = createWorkflow(
       });
     });
 
-    // Step 6: Check if merged video is also ready -- trigger mux if so
+    // Check if merged video is also ready -- trigger mux if so
     await context.run('check-mux-trigger', async () => {
       const [seq] = await getDb()
         .select({
@@ -204,11 +187,7 @@ export const generateMusicWorkflow = createWorkflow(
         .from(sequences)
         .where(eq(sequences.id, sequenceId));
 
-      if (
-        seq?.mergedVideoStatus === 'completed' &&
-        seq.mergedVideoUrl &&
-        audioUrl
-      ) {
+      if (seq?.mergedVideoStatus === 'completed' && seq.mergedVideoUrl) {
         console.log(
           `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
         );
@@ -218,18 +197,15 @@ export const generateMusicWorkflow = createWorkflow(
           teamId,
           sequenceId,
           mergedVideoUrl: seq.mergedVideoUrl,
-          musicUrl: audioUrl,
-          durationMs: undefined,
+          musicUrl: storageResult.url,
         };
 
-        await triggerWorkflow('/merge-audio-video', muxInput, {
-          flowControl: getFalFlowControl(),
-        });
+        await triggerWorkflow('/merge-audio-video', muxInput);
       }
     });
 
     console.log('[MusicWorkflow]', 'Music generation workflow completed');
-    return { audioUrl, duration: actualDuration };
+    return { audioUrl: storageResult.url, duration: actualDuration };
   },
   {
     failureFunction: async ({ context, failResponse }) => {

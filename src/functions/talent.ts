@@ -1,8 +1,3 @@
-/**
- * Talent Library Server Functions
- * End-to-end type-safe functions for talent library operations
- */
-
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -43,17 +38,37 @@ import {
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import { getFalFlowControl } from '@/lib/workflows/constants';
-import type { TalentWithSheets } from '@/lib/db/schema';
+import type { Talent, TalentWithSheets } from '@/lib/db/schema';
 
-// ============================================================================
-// List Talent
-// ============================================================================
+const talentIdSchema = z.object({ talentId: ulidSchema });
+const sheetIdSchema = z.object({ sheetId: ulidSchema });
+const mediaIdSchema = z.object({ mediaId: ulidSchema });
+const characterIdSchema = z.object({ characterId: ulidSchema });
 
 /**
- * Get all talent for the user's team
- * Optionally filter by favorites
+ * Verify a talent record belongs to the given team, throwing if not found.
  */
+async function requireTalentOwnership(
+  talentId: string,
+  teamId: string
+): Promise<Talent> {
+  const record = await getTalentById(talentId);
+  if (!record || record.teamId !== teamId) {
+    throw new Error('Talent not found');
+  }
+  return record;
+}
+
+/**
+ * Decode a base64 data URL or raw base64 string into a Blob.
+ */
+function decodeBase64ToBlob(base64Data: string): Blob {
+  const raw = base64Data.split(',')[1] ?? base64Data;
+  return new Blob([Buffer.from(raw, 'base64')]);
+}
+
+// List Talent
+
 export const getTalentFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(listTalentFilterSchema.optional()))
@@ -63,43 +78,23 @@ export const getTalentFn = createServerFn({ method: 'GET' })
     });
   });
 
-// ============================================================================
 // Get Single Talent
-// ============================================================================
 
-const getTalentInputSchema = z.object({
-  talentId: ulidSchema,
-});
-
-/**
- * Get a single talent with all sheets and media
- */
 export const getTalentByIdFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(getTalentInputSchema))
+  .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
     const talentRecord = await getTalentWithRelations(data.talentId);
 
-    if (!talentRecord) {
-      throw new Error('Talent not found');
-    }
-
-    // Verify team ownership
-    if (talentRecord.teamId !== context.teamId) {
+    if (!talentRecord || talentRecord.teamId !== context.teamId) {
       throw new Error('Talent not found');
     }
 
     return talentRecord;
   });
 
-// ============================================================================
 // Create Talent
-// ============================================================================
 
-/**
- * Create a new talent in the team library
- * Automatically triggers talent sheet generation workflow
- */
 export const createTalentFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createTalentSchema))
@@ -118,22 +113,16 @@ export const createTalentFn = createServerFn({ method: 'POST' })
     const permanentUrls: string[] = [];
 
     for (const tempUrl of tempUrls) {
-      // Extract temp path from URL
       const tempPath = getPathFromUrl(tempUrl, STORAGE_BUCKETS.TALENT);
-
-      // Generate new path under the talent folder
       const ext = getExtensionFromUrl(tempUrl);
       const mediaId = generateId();
       const permanentPath = `${context.teamId}/${newTalent.id}/${mediaId}.${ext}`;
 
-      // Move file from temp to permanent location
       await moveFile(STORAGE_BUCKETS.TALENT, tempPath, permanentPath);
 
-      // Get new public URL
       const permanentUrl = getPublicUrl(STORAGE_BUCKETS.TALENT, permanentPath);
       permanentUrls.push(permanentUrl);
 
-      // Create media record with permanent URL
       await createTalentMediaRecord({
         talentId: newTalent.id,
         type: 'image',
@@ -142,7 +131,7 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       });
     }
 
-    // Automatically trigger talent sheet generation workflow
+    // Trigger talent sheet generation workflow asynchronously
     const workflowInput: LibraryTalentSheetWorkflowInput = {
       userId: context.user.id,
       teamId: context.teamId,
@@ -153,31 +142,25 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       sheetName: 'Default Sheet',
     };
 
-    // Trigger workflow asynchronously (don't wait for completion)
-    void triggerWorkflow('/library-talent-sheet', workflowInput, {
-      flowControl: getFalFlowControl(),
-    }).catch((error) => {
-      console.error(
-        '[createTalentFn]',
-        'Failed to trigger talent sheet workflow:',
-        error
-      );
-    });
+    void triggerWorkflow('/library-talent-sheet', workflowInput).catch(
+      (error) => {
+        console.error(
+          '[createTalentFn]',
+          'Failed to trigger talent sheet workflow:',
+          error
+        );
+      }
+    );
 
     return newTalent;
   });
 
-// ============================================================================
 // Update Talent
-// ============================================================================
 
 const updateTalentInputSchema = updateTalentSchema.extend({
   talentId: ulidSchema,
 });
 
-/**
- * Update a talent
- */
 export const updateTalentFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(updateTalentInputSchema))
@@ -193,32 +176,20 @@ export const updateTalentFn = createServerFn({ method: 'POST' })
     return updated;
   });
 
-// ============================================================================
-// Delete Talent
-// ============================================================================
+// Delete Talent (requires admin/owner role)
 
-const deleteTalentInputSchema = z.object({
-  talentId: ulidSchema,
-});
-
-/**
- * Delete a talent (requires admin/owner role)
- */
 export const deleteTalentFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(deleteTalentInputSchema))
+  .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
     const talentRecord = await getTalentById(data.talentId);
-
     if (!talentRecord) {
       throw new Error('Talent not found');
     }
 
-    // Check if user has admin/owner role for this team
     await requireTeamManagement(context.user.id, talentRecord.teamId);
 
     const deleted = await deleteTalent(data.talentId, talentRecord.teamId);
-
     if (!deleted) {
       throw new Error('Failed to delete talent');
     }
@@ -226,20 +197,11 @@ export const deleteTalentFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
 // Toggle Favorite
-// ============================================================================
 
-const toggleFavoriteInputSchema = z.object({
-  talentId: ulidSchema,
-});
-
-/**
- * Toggle talent favorite status
- */
 export const toggleTalentFavoriteFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(toggleFavoriteInputSchema))
+  .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
     const updated = await toggleTalentFavorite(data.talentId, context.teamId);
 
@@ -250,25 +212,13 @@ export const toggleTalentFavoriteFn = createServerFn({ method: 'POST' })
     return updated;
   });
 
-// ============================================================================
-// Talent Sheet Operations
-// ============================================================================
-const safeTalentSheetSource = z
-  .enum(['manual_upload', 'ai_generated'])
-  .default('manual_upload');
-/**
- * Create a talent sheet
- */
+// Create Talent Sheet
+
 export const createTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createTalentSheetSchema))
   .handler(async ({ context, data }) => {
-    // Verify talent belongs to team
-    const talentRecord = await getTalentById(data.talentId);
-
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
-      throw new Error('Talent not found');
-    }
+    await requireTalentOwnership(data.talentId, context.teamId);
 
     return createTalentSheet({
       talentId: data.talentId,
@@ -277,36 +227,29 @@ export const createTalentSheetFn = createServerFn({ method: 'POST' })
       imagePath: data.imagePath,
       metadata: data.metadata,
       isDefault: data.isDefault ?? false,
-      source: safeTalentSheetSource.parse(data.source),
+      source:
+        data.source === 'ai_generated' ||
+        data.source === 'manual_upload' ||
+        data.source === 'script_analysis'
+          ? data.source
+          : 'manual_upload',
     });
   });
 
-const deleteSheetInputSchema = z.object({
-  sheetId: ulidSchema,
-});
+// Delete Talent Sheet
 
-/**
- * Delete a talent sheet
- */
 export const deleteTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(deleteSheetInputSchema))
+  .inputValidator(zodValidator(sheetIdSchema))
   .handler(async ({ context, data }) => {
-    // Get sheet with talent to verify team ownership
     const sheet = await getTalentSheetById(data.sheetId);
-
     if (!sheet) {
       throw new Error('Sheet not found');
     }
 
-    const talentRecord = await getTalentById(sheet.talentId);
-
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
-      throw new Error('Sheet not found');
-    }
+    await requireTalentOwnership(sheet.talentId, context.teamId);
 
     const deleted = await deleteTalentSheet(data.sheetId);
-
     if (!deleted) {
       throw new Error('Failed to delete sheet');
     }
@@ -314,36 +257,20 @@ export const deleteTalentSheetFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
 // Set Default Sheet
-// ============================================================================
 
-const setDefaultSheetInputSchema = z.object({
-  sheetId: ulidSchema,
-});
-
-/**
- * Set a talent sheet as the default
- */
 export const setDefaultSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(setDefaultSheetInputSchema))
+  .inputValidator(zodValidator(sheetIdSchema))
   .handler(async ({ context, data }) => {
-    // Get sheet with talent to verify team ownership
     const sheet = await getTalentSheetById(data.sheetId);
-
     if (!sheet) {
       throw new Error('Sheet not found');
     }
 
-    const talentRecord = await getTalentById(sheet.talentId);
-
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
-      throw new Error('Sheet not found');
-    }
+    await requireTalentOwnership(sheet.talentId, context.teamId);
 
     const updated = await updateTalentSheet(data.sheetId, { isDefault: true });
-
     if (!updated) {
       throw new Error('Failed to update sheet');
     }
@@ -351,9 +278,7 @@ export const setDefaultSheetFn = createServerFn({ method: 'POST' })
     return updated;
   });
 
-// ============================================================================
-// Talent Media Operations
-// ============================================================================
+// Upload Talent Media
 
 const uploadMediaInputSchema = z.object({
   talentId: ulidSchema,
@@ -362,46 +287,31 @@ const uploadMediaInputSchema = z.object({
   filename: z.string(),
 });
 
-/**
- * Upload talent reference media
- */
 export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(uploadMediaInputSchema))
   .handler(async ({ context, data }) => {
-    // Verify talent belongs to team
-    const talentRecord = await getTalentById(data.talentId);
+    await requireTalentOwnership(data.talentId, context.teamId);
 
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
-      throw new Error('Talent not found');
-    }
-
-    // Decode base64 data
-    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
-    const buffer = Buffer.from(base64Content, 'base64');
-    const blob = new Blob([buffer]);
-
-    // Generate storage path
+    const blob = decodeBase64ToBlob(data.base64Data);
     const ext = getExtensionFromUrl(data.filename);
     const mediaId = generateId();
     const storagePath = `${context.teamId}/${data.talentId}/${mediaId}.${ext}`;
 
-    // Upload to R2
     const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
       contentType: getMimeTypeFromExtension(ext),
     });
 
-    // Create database record
-    const media = await createTalentMediaRecord({
+    return createTalentMediaRecord({
       id: mediaId,
       talentId: data.talentId,
       type: data.type,
       url: result.publicUrl,
       path: result.path,
     });
-
-    return media;
   });
+
+// Upload Temp Media (before talent creation)
 
 const uploadTempMediaInputSchema = z.object({
   base64Data: z.string(),
@@ -409,18 +319,11 @@ const uploadTempMediaInputSchema = z.object({
   type: z.enum(['image', 'video']),
 });
 
-/**
- * Upload media to temporary storage (no talent association required)
- * Used for uploading reference media before talent creation
- */
 export const uploadTempMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(uploadTempMediaInputSchema))
   .handler(async ({ context, data }) => {
-    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
-    const buffer = Buffer.from(base64Content, 'base64');
-    const blob = new Blob([buffer]);
-
+    const blob = decodeBase64ToBlob(data.base64Data);
     const ext = getExtensionFromUrl(data.filename);
     const uploadId = generateId();
     const storagePath = `${context.teamId}/temp/${uploadId}.${ext}`;
@@ -432,18 +335,12 @@ export const uploadTempMediaFn = createServerFn({ method: 'POST' })
     return { url: result.publicUrl, path: result.path };
   });
 
-const deleteMediaInputSchema = z.object({
-  mediaId: ulidSchema,
-});
+// Delete Talent Media
 
-/**
- * Delete talent reference media
- */
 export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(deleteMediaInputSchema))
+  .inputValidator(zodValidator(mediaIdSchema))
   .handler(async ({ context, data }) => {
-    // Get media record via direct query
     const { getDb } = await import('#db-client');
     const { talentMedia } = await import('@/lib/db/schema');
     const { eq } = await import('drizzle-orm');
@@ -456,14 +353,8 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
       throw new Error('Media not found');
     }
 
-    // Verify talent belongs to team
-    const talentRecord = await getTalentById(media.talentId);
+    await requireTalentOwnership(media.talentId, context.teamId);
 
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
-      throw new Error('Media not found');
-    }
-
-    // Delete from storage if path exists
     if (media.path) {
       try {
         await deleteFile(
@@ -471,13 +362,11 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
           media.path.replace('talent/', '')
         );
       } catch {
-        // Ignore storage deletion errors
+        // Storage deletion is best-effort
       }
     }
 
-    // Delete database record
     const deleted = await deleteTalentMediaRecord(data.mediaId);
-
     if (!deleted) {
       throw new Error('Failed to delete media');
     }
@@ -485,35 +374,23 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
 // Generate Talent Sheet
-// ============================================================================
 
 const generateSheetInputSchema = z.object({
   talentId: ulidSchema,
   sheetName: z.string().optional(),
 });
 
-/**
- * Generate a talent sheet from reference media
- * Triggers the library-talent-sheet workflow
- */
 export const generateTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(generateSheetInputSchema))
   .handler(async ({ context, data }) => {
-    // Get talent with relations to check for media
     const talentRecord = await getTalentWithRelations(data.talentId);
 
-    if (!talentRecord) {
+    if (!talentRecord || talentRecord.teamId !== context.teamId) {
       throw new Error('Talent not found');
     }
 
-    if (talentRecord.teamId !== context.teamId) {
-      throw new Error('Talent not found');
-    }
-
-    // Check that talent has reference media
     const imageMedia =
       talentRecord.media?.filter((m) => m.type === 'image') ?? [];
     if (imageMedia.length === 0) {
@@ -522,52 +399,28 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
       );
     }
 
-    // Get reference image URLs
-    const referenceImageUrls = imageMedia.map((m) => m.url);
-
-    // Trigger the workflow
     const workflowInput: LibraryTalentSheetWorkflowInput = {
       userId: context.user.id,
       teamId: context.teamId,
       talentId: talentRecord.id,
       talentName: talentRecord.name,
       talentDescription: talentRecord.description ?? undefined,
-      referenceImageUrls,
+      referenceImageUrls: imageMedia.map((m) => m.url),
       sheetName: data.sheetName,
     };
 
-    const runId = await triggerWorkflow(
-      '/library-talent-sheet',
-      workflowInput,
-      {
-        flowControl: getFalFlowControl(),
-      }
-    );
-
+    const runId = await triggerWorkflow('/library-talent-sheet', workflowInput);
     return { runId };
   });
 
-// ============================================================================
-// Add Character to Library
-// ============================================================================
-
-const addCharacterToLibraryInputSchema = z.object({
-  characterId: ulidSchema,
-});
-
-/**
- * Add a sequence character to the team's talent library
- * Copies character data to create a new talent entry with optional sheet
- */
 export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(addCharacterToLibraryInputSchema))
+  .inputValidator(zodValidator(characterIdSchema))
   .handler(async ({ context, data }) => {
     const { getDb } = await import('#db-client');
     const { characters, sequences } = await import('@/lib/db/schema');
     const { eq } = await import('drizzle-orm');
 
-    // Get the character with its sequence
     const character = await getDb().query.characters.findFirst({
       where: eq(characters.id, data.characterId),
     });
@@ -576,7 +429,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
       throw new Error('Character not found');
     }
 
-    // Verify team access via sequence
     const sequence = await getDb().query.sequences.findFirst({
       where: eq(sequences.id, character.sequenceId),
     });
@@ -585,7 +437,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
       throw new Error('Character not found');
     }
 
-    // Create talent entry
     const newTalent = await createTalent({
       teamId: context.teamId,
       name: character.name,
@@ -598,7 +449,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
       createdBy: context.user.id,
     });
 
-    // If character has a sheet image, create a talent sheet
     if (character.sheetImageUrl) {
       await createTalentSheet({
         talentId: newTalent.id,

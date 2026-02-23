@@ -1,8 +1,3 @@
-/**
- * Motion Generation Service
- * Handles image-to-video generation using various AI models
- */
-
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODEL_KEYS,
@@ -16,7 +11,6 @@ import {
   createVideoMedia,
 } from '@/lib/observability/langfuse-media';
 
-// Re-export for tests
 import { getEnv } from '#env';
 import {
   type AspectRatio,
@@ -59,56 +53,58 @@ export type MotionResult = {
   videoUrl?: string;
   metadata?: Record<string, unknown>;
   error?: string;
-  // Job tracking
   requestId?: string;
 };
 
 /**
- * Provider-specific input builders
- * Each provider has different API requirements
+ * Snap a requested duration to the nearest supported value for a model.
+ * Falls back to capping at maxDuration if no discrete durations are defined.
  */
-type ProviderInputBuilder = (
-  options: GenerateMotionOptions,
-  modelConfig: ImageToVideoModelConfig
-) => Record<string, unknown>;
+function snapDuration(
+  requested: number | undefined,
+  capabilities: ImageToVideoModelConfig['capabilities']
+): number {
+  const duration = requested ?? capabilities.defaultDuration;
+  const supported =
+    'supportedDurations' in capabilities
+      ? capabilities.supportedDurations
+      : undefined;
 
-const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
+  if (supported && supported.length > 0) {
+    return supported.reduce((prev, curr) =>
+      Math.abs(curr - duration) < Math.abs(prev - duration) ? curr : prev
+    );
+  }
+
+  return Math.min(duration, capabilities.maxDuration);
+}
+
+/** Provider-specific input builders -- each provider has different API requirements */
+const PROVIDER_INPUT_BUILDERS: Record<
+  string,
+  (
+    options: GenerateMotionOptions,
+    modelConfig: ImageToVideoModelConfig
+  ) => Record<string, unknown>
+> = {
   kling: (options, modelConfig) => {
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
-
-    // v3 models support 3-15s continuous durations; older models only "5" or "10"
-    const supportedDurations = modelConfig.capabilities.supportedDurations;
-    let klingDuration: string;
-    if (supportedDurations && supportedDurations.length > 2) {
-      const snapped = supportedDurations.reduce((prev, curr) =>
-        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
-          ? curr
-          : prev
-      );
-      klingDuration = String(snapped);
-    } else {
-      klingDuration = validatedDuration <= 7 ? '5' : '10';
-    }
-
-    // Kling O1/v3 uses start_image_url, other Kling models use image_url
-    const imageUrlParamName =
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
+    const imageUrlParam =
       'imageUrlParamName' in modelConfig.capabilities
         ? modelConfig.capabilities.imageUrlParamName
         : 'image_url';
 
     return {
       prompt: options.prompt,
-      [imageUrlParamName]: options.imageUrl,
-      duration: klingDuration, // Must be string enum
-      cfg_scale: 0.5, // Default CFG scale
+      [imageUrlParam]: options.imageUrl,
+      duration: String(duration),
+      cfg_scale: 0.5,
       negative_prompt: 'blur, distort, and low quality',
-      generate_audio: modelConfig.capabilities.supportsAudio, // Control audio generation
+      generate_audio: modelConfig.capabilities.supportsAudio,
     };
   },
 
-  luma: (options, _modelConfig) => ({
+  luma: (options) => ({
     prompt: options.prompt,
     image_url: options.imageUrl,
     aspect_ratio: options.aspectRatio || '16:9',
@@ -116,50 +112,25 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   }),
 
   google: (options, modelConfig) => {
-    let validatedDuration =
-      options.duration || modelConfig.capabilities.defaultDuration;
-
-    // If model has discrete supported durations, snap to nearest
-    const capabilities = modelConfig.capabilities;
-    if (
-      'supportedDurations' in capabilities &&
-      capabilities.supportedDurations
-    ) {
-      const supportedDurations = capabilities.supportedDurations;
-      validatedDuration = supportedDurations.reduce((prev, curr) =>
-        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
-          ? curr
-          : prev
-      );
-    } else {
-      // Otherwise just cap to max
-      validatedDuration = Math.min(validatedDuration, capabilities.maxDuration);
-    }
-
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
       aspect_ratio: options.aspectRatio || 'auto',
-      duration: `${validatedDuration}s`,
+      duration: `${duration}s`,
       generate_audio: true,
       resolution: '1080p',
     };
   },
 
   seedance: (options, modelConfig) => {
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
-
-    // Duration must be integer string enum
-    const duration = String(Math.round(validatedDuration));
-
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
       aspect_ratio: options.aspectRatio || 'auto',
       resolution: '1080p',
-      duration,
+      duration: String(Math.round(duration)),
       camera_fixed: false,
       seed: Math.floor(Math.random() * 1000000),
       enable_safety_checker: true,
@@ -167,74 +138,40 @@ const PROVIDER_INPUT_BUILDERS: Record<string, ProviderInputBuilder> = {
   },
 
   openai: (options, modelConfig) => {
-    let validatedDuration =
-      options.duration || modelConfig.capabilities.defaultDuration;
-
-    // If model has discrete supported durations, snap to nearest
-    const capabilities = modelConfig.capabilities;
-    if (
-      'supportedDurations' in capabilities &&
-      capabilities.supportedDurations
-    ) {
-      const supportedDurations = capabilities.supportedDurations;
-      validatedDuration = supportedDurations.reduce((prev, curr) =>
-        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
-          ? curr
-          : prev
-      );
-    } else {
-      // Otherwise just cap to max
-      validatedDuration = Math.min(validatedDuration, capabilities.maxDuration);
-    }
-
-    // Sora 2 API parameters (no fps or seed support)
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      duration: validatedDuration, // Integer enum: 4, 8, or 12
+      duration,
       aspect_ratio: options.aspectRatio || 'auto',
-      resolution: '720p', // "auto" or "720p"
+      resolution: '720p',
     };
   },
 
   xai: (options, modelConfig) => {
-    const validatedDuration = options.duration
-      ? Math.min(options.duration, modelConfig.capabilities.maxDuration)
-      : modelConfig.capabilities.defaultDuration;
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      duration: Math.round(validatedDuration),
+      duration: Math.round(duration),
       resolution: '720p',
       aspect_ratio: options.aspectRatio || '16:9',
     };
   },
 
   wan: (options, modelConfig) => {
-    let validatedDuration =
-      options.duration || modelConfig.capabilities.defaultDuration;
-    const supported = modelConfig.capabilities.supportedDurations;
-    if (supported) {
-      validatedDuration = supported.reduce((prev, curr) =>
-        Math.abs(curr - validatedDuration) < Math.abs(prev - validatedDuration)
-          ? curr
-          : prev
-      );
-    }
+    const duration = snapDuration(options.duration, modelConfig.capabilities);
     return {
       prompt: options.prompt,
       image_url: options.imageUrl,
-      duration: validatedDuration,
+      duration,
       resolution: '1080p',
       enable_prompt_expansion: true,
     };
   },
 };
 
-/**
- * Generate motion for a single frame using Fal.ai
- * Uses @tanstack/ai-fal adapter for video generation with polling
- */
+/** Generate motion for a single frame using Fal.ai with Langfuse tracing */
 export async function generateMotionForFrame(
   options: GenerateMotionOptions
 ): Promise<MotionResult> {
@@ -293,15 +230,10 @@ export async function generateMotionForFrame(
   }
 }
 
-/**
- * Internal motion generation implementation
- * Uses @tanstack/ai-fal adapters for video generation
- */
 async function generateMotionInternal(
   options: GenerateMotionOptions,
   modelConfig: ImageToVideoModelConfig
 ): Promise<MotionResult> {
-  // Get the provider-specific input builder
   const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
   if (!inputBuilder) {
@@ -310,33 +242,27 @@ async function generateMotionInternal(
     );
   }
 
-  // Build provider-specific input
-  const input = inputBuilder(options, modelConfig);
+  const { prompt: _prompt, ...modelOptions } = inputBuilder(
+    options,
+    modelConfig
+  );
 
   console.log(
     `[Motion Service] Generating motion with model: ${modelConfig.id}`,
     {
       provider: modelConfig.provider,
       promptLength: options.prompt?.length,
-      input,
+      modelOptions,
     }
   );
 
-  // Extract prompt from provider-specific input (all builders include it)
-  const prompt =
-    typeof input.prompt === 'string' ? input.prompt : options.prompt;
-  const { prompt: _prompt, ...modelOptions } = input;
-
-  // Create TanStack AI fal video adapter
-  // Make sure to pass the proper modelConfig.id instead of a string to preserve type safety
   const adapter = falVideo(modelConfig.id, {
     apiKey: options.falApiKey ?? getEnv().FAL_KEY,
   });
 
-  // Submit video generation job
   const job = await generateVideo({
     adapter,
-    prompt,
+    prompt: options.prompt,
     modelOptions,
   });
 
@@ -383,11 +309,12 @@ async function generateMotionInternal(
     throw new Error('Motion generation timed out after 10 minutes');
   }
 
-  const validatedDuration =
-    options.duration || modelConfig.capabilities.defaultDuration;
+  const validatedDuration = snapDuration(
+    options.duration,
+    modelConfig.capabilities
+  );
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  // Calculate cost using live pricing from fal's Platform API
   const cost = await calculateFalCost(
     modelConfig.id,
     validatedDuration,
@@ -412,9 +339,6 @@ async function generateMotionInternal(
   };
 }
 
-/**
- * Fal queue status shape returned by fal's queue API
- */
 type FalQueueStatus = {
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED';
   queue_position?: number;
@@ -425,85 +349,42 @@ type FalQueueStatus = {
   metrics?: { inference_time?: number };
 };
 
-/**
- * Check the status of a motion generation request
- * @param statusUrl The status URL from the MotionResult
- * @returns The current queue status
- */
+/** Authenticated fetch against the fal queue API */
+async function falQueueFetch(
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  const apiKey = getEnv().FAL_KEY;
+  if (!apiKey) {
+    throw new Error('FAL_KEY environment variable is required');
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    headers: { Authorization: `Key ${apiKey}`, ...init?.headers },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Fal API error: ${response.status} ${response.statusText}`);
+  }
+
+  return response;
+}
+
 export async function checkMotionStatus(
   statusUrl: string
 ): Promise<FalQueueStatus> {
-  const apiKey = getEnv().FAL_KEY;
-
-  if (!apiKey) {
-    throw new Error('FAL_KEY environment variable is required');
-  }
-
-  const response = await fetch(statusUrl, {
-    headers: {
-      Authorization: `Key ${apiKey}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to check status: ${response.status} ${response.statusText}`
-    );
-  }
-
+  const response = await falQueueFetch(statusUrl);
   return response.json();
 }
 
-/**
- * Get the final result of a motion generation request
- * @param responseUrl The response URL from the MotionResult
- * @returns The completed video result
- */
 export async function getMotionResult(
   responseUrl: string
 ): Promise<{ video: { url: string } }> {
-  const apiKey = getEnv().FAL_KEY;
-
-  if (!apiKey) {
-    throw new Error('FAL_KEY environment variable is required');
-  }
-
-  const response = await fetch(responseUrl, {
-    headers: {
-      Authorization: `Key ${apiKey}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to get result: ${response.status} ${response.statusText}`
-    );
-  }
-
+  const response = await falQueueFetch(responseUrl);
   return response.json();
 }
 
-/**
- * Cancel a motion generation request
- * @param cancelUrl The cancel URL from the MotionResult
- */
 export async function cancelMotionGeneration(cancelUrl: string): Promise<void> {
-  const apiKey = getEnv().FAL_KEY;
-
-  if (!apiKey) {
-    throw new Error('FAL_KEY environment variable is required');
-  }
-
-  const response = await fetch(cancelUrl, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Key ${apiKey}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to cancel: ${response.status} ${response.statusText}`
-    );
-  }
+  await falQueueFetch(cancelUrl, { method: 'PUT' });
 }

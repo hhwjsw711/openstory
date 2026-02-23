@@ -1,8 +1,3 @@
-/**
- * Upscale variant workflow
- * Upscales a cropped variant tile to higher resolution in the background
- */
-
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
@@ -12,44 +7,27 @@ import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
 export const upscaleVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
     const input = context.requestPayload;
 
-    // Validate required fields
-    if (!input.croppedTileUrl) {
-      throw new WorkflowValidationError(
-        'Cropped tile URL is required for upscaling'
-      );
-    }
-    if (!input.frameId) {
-      throw new WorkflowValidationError('Frame ID is required for upscaling');
-    }
-
     console.log(
       '[UpscaleVariantWorkflow]',
       `Starting upscale for frame ${input.frameId}`
     );
 
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
+    const apiKeys = await context.run('resolve-api-keys', () =>
+      resolveWorkflowApiKeys(input.teamId)
+    );
 
-    // Step 1: Upscale the cropped tile using Nano Banana Pro Edit
     const upscaleResult = await context.run('upscale-image', async () => {
-      // Emit realtime progress
-      await getGenerationChannel(input.sequenceId)?.emit(
+      await getGenerationChannel(input.sequenceId).emit(
         'generation.image:progress',
-        {
-          frameId: input.frameId,
-          status: 'generating',
-        }
+        { frameId: input.frameId, status: 'generating' }
       );
 
       const frame = await updateFrame(
@@ -66,28 +44,20 @@ export const upscaleVariantWorkflow = createWorkflow(
           '[UpscaleVariantWorkflow]',
           `Frame ${input.frameId} was deleted, skipping workflow`
         );
-        return null; // Signal to skip
+        return null;
       }
 
-      const result = await upscaleWithNanoBanana(
+      return upscaleWithNanoBanana(
         input.croppedTileUrl,
         '2K',
         apiKeys.falApiKey
       );
-
-      return {
-        imageUrl: result.imageUrl,
-        requestId: result.requestId,
-        cost: result.cost,
-      };
     });
 
-    // Early exit if frame was deleted
     if (!upscaleResult) {
       return { upscaledUrl: '', upscaledPath: '' };
     }
 
-    // Deduct credits for upscale (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
@@ -100,7 +70,6 @@ export const upscaleVariantWorkflow = createWorkflow(
       });
     });
 
-    // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {
       const result = await uploadImageToStorage({
         imageUrl: upscaleResult.imageUrl,
@@ -116,7 +85,6 @@ export const upscaleVariantWorkflow = createWorkflow(
       return { url: result.url, path: result.path };
     });
 
-    // Step 3: Update frame with upscaled thumbnail
     await context.run('update-frame', async () => {
       const updatedFrame = await updateFrame(
         input.frameId,
@@ -137,19 +105,14 @@ export const upscaleVariantWorkflow = createWorkflow(
         return;
       }
 
-      // Emit completion event
-      const channel = getGenerationChannel(input.sequenceId);
-      if (channel) {
-        try {
-          await channel.emit('generation.image:progress', {
-            frameId: input.frameId,
-            status: 'completed',
-            thumbnailUrl: storageResult.url,
-          });
-        } catch {
-          // Ignore emit errors
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.image:progress',
+        {
+          frameId: input.frameId,
+          status: 'completed',
+          thumbnailUrl: storageResult.url,
         }
-      }
+      );
 
       console.log(
         '[UpscaleVariantWorkflow]',
@@ -157,12 +120,10 @@ export const upscaleVariantWorkflow = createWorkflow(
       );
     });
 
-    const result: UpscaleVariantWorkflowResult = {
+    return {
       upscaledUrl: storageResult.url,
       upscaledPath: storageResult.path || '',
-    };
-
-    return result;
+    } satisfies UpscaleVariantWorkflowResult;
   },
   {
     failureFunction: async ({ context, failResponse }) => {
@@ -173,7 +134,6 @@ export const upscaleVariantWorkflow = createWorkflow(
         `Upscale failed for frame ${input.frameId}: ${failResponse}`
       );
 
-      // Set status to completed - the cropped tile is still usable
       await updateFrame(
         input.frameId,
         {
@@ -183,20 +143,10 @@ export const upscaleVariantWorkflow = createWorkflow(
         { throwOnMissing: false }
       );
 
-      // Emit completion event for UI feedback
-      if (input.sequenceId) {
-        try {
-          const channel = getGenerationChannel(input.sequenceId);
-          if (channel) {
-            await channel.emit('generation.image:progress', {
-              frameId: input.frameId,
-              status: 'completed',
-            });
-          }
-        } catch {
-          // Ignore emit errors
-        }
-      }
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.image:progress',
+        { frameId: input.frameId, status: 'completed' }
+      );
 
       return `Upscale failed for frame ${input.frameId}`;
     },

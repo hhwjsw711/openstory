@@ -3,34 +3,34 @@
  * Generates video motion from static frame thumbnails (image-to-video)
  */
 
+import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import { isBillingEnabled } from '@/lib/billing/constants';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import {
   getFrameWithSequence,
   getSequenceFrames,
   updateFrame,
 } from '@/lib/db/helpers/frames';
+import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+import { uploadVideoToStorage } from '@/lib/motion/video-storage';
+import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import { getFalFlowControl } from '@/lib/workflows/constants';
-import { isBillingEnabled } from '@/lib/billing/constants';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { getGenerationChannel } from '@/lib/realtime';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { generateMotionForFrame } from '@/lib/motion/motion-generation';
-import { uploadVideoToStorage } from '@/lib/motion/video-storage';
-import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import { getFalFlowControl } from './constants';
 
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
+    const model = input.model || DEFAULT_VIDEO_MODEL;
 
-    // Validate required fields
-    if (!input.imageUrl || input.imageUrl.trim().length === 0) {
+    if (!input.imageUrl?.trim()) {
       throw new WorkflowValidationError(
         'Thumbnail Path is required for motion generation'
       );
@@ -40,35 +40,30 @@ export const generateMotionWorkflow = createWorkflow(
     const { frameDeleted } = await context.run(
       'set-generating-status',
       async () => {
-        if (input.frameId) {
-          const frame = await updateFrame(
-            input.frameId,
-            {
-              videoStatus: 'generating',
-              videoWorkflowRunId: context.workflowRunId,
-              motionModel: input.model || DEFAULT_VIDEO_MODEL,
-              motionPrompt: input.prompt,
-            },
-            { throwOnMissing: false }
-          );
+        if (!input.frameId) return { frameDeleted: false };
 
-          if (!frame) {
-            console.log(
-              '[MotionWorkflow]',
-              `Frame ${input.frameId} was deleted, skipping workflow`
-            );
-            return { frameDeleted: true };
-          }
+        const frame = await updateFrame(
+          input.frameId,
+          {
+            videoStatus: 'generating',
+            videoWorkflowRunId: context.workflowRunId,
+            motionModel: model,
+            motionPrompt: input.prompt,
+          },
+          { throwOnMissing: false }
+        );
 
-          // Emit realtime progress
-          await getGenerationChannel(input.sequenceId).emit(
-            'generation.video:progress',
-            {
-              frameId: input.frameId,
-              status: 'generating',
-            }
+        if (!frame) {
+          console.log(
+            `[MotionWorkflow] Frame ${input.frameId} was deleted, skipping workflow`
           );
+          return { frameDeleted: true };
         }
+
+        void getGenerationChannel(input.sequenceId).emit(
+          'generation.video:progress',
+          { frameId: input.frameId, status: 'generating' }
+        );
         return { frameDeleted: false };
       }
     );
@@ -77,17 +72,16 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
+    const apiKeys = await context.run('resolve-api-keys', () =>
+      resolveWorkflowApiKeys(input.teamId)
+    );
 
     // Step 2: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       const result = await generateMotionForFrame({
         imageUrl: input.imageUrl,
         prompt: input.prompt,
-        model: input.model || DEFAULT_VIDEO_MODEL,
+        model,
         duration: input.duration,
         fps: input.fps,
         motionBucket: input.motionBucket,
@@ -103,18 +97,16 @@ export const generateMotionWorkflow = createWorkflow(
       return result;
     });
 
-    // Resolve duration once from metadata or input defaults
     const actualDuration =
       typeof videoResult.metadata?.duration === 'number'
         ? videoResult.metadata.duration
         : (input.duration ?? 2);
 
-    // Deduct credits for motion generation (skip if team used own fal key)
+    // Deduct credits (skip if team used own fal key)
     const motionCost =
       typeof videoResult.metadata?.cost === 'number'
         ? videoResult.metadata.cost
         : 0;
-    const model = input.model || DEFAULT_VIDEO_MODEL;
     const { teamId } = input;
     if (isBillingEnabled() && motionCost > 0 && teamId && !apiKeys.falApiKey) {
       await context.run('deduct-credits', async () => {
@@ -138,13 +130,17 @@ export const generateMotionWorkflow = createWorkflow(
       });
     }
 
-    let videoUrl: string = videoResult.videoUrl || '';
+    if (!videoResult.videoUrl) {
+      throw new Error('Video URL missing from generation result');
+    }
+    let videoUrl = videoResult.videoUrl;
 
     if (input.frameId) {
+      const { frameId } = input;
+
       // Step 3: Fetch frame and sequence data for human-readable filename
       const frameData = await context.run('fetch-frame-data', async () => {
-        if (!input.frameId) throw new Error('Frame ID required');
-        const frame = await getFrameWithSequence(input.frameId);
+        const frame = await getFrameWithSequence(frameId);
         if (!frame) throw new Error('Frame not found');
         return {
           sequenceTitle: frame.sequence.title,
@@ -152,29 +148,22 @@ export const generateMotionWorkflow = createWorkflow(
         };
       });
 
-      // Step 4: Upload video to storage with human-readable filename
+      // Step 4: Upload video to storage
       const storageResult = await context.run('upload-to-storage', async () => {
-        if (
-          !videoResult.videoUrl ||
-          !input.teamId ||
-          !input.sequenceId ||
-          !input.frameId
-        ) {
-          throw new Error('Missing required IDs for storage upload', {
-            cause: JSON.stringify(videoResult),
-          });
+        if (!input.teamId || !input.sequenceId) {
+          throw new Error('Missing teamId or sequenceId for storage upload');
         }
 
         const result = await uploadVideoToStorage({
-          videoUrl: videoResult.videoUrl,
+          videoUrl,
           teamId: input.teamId,
           sequenceId: input.sequenceId,
-          frameId: input.frameId,
+          frameId,
           sequenceTitle: frameData.sequenceTitle,
           sceneTitle: frameData.sceneTitle,
         });
 
-        if (!result.success || !result.path) {
+        if (!result.success) {
           throw new Error('Failed to upload video');
         }
 
@@ -182,19 +171,14 @@ export const generateMotionWorkflow = createWorkflow(
       });
 
       videoUrl = storageResult.url;
+
       // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
-        if (!videoUrl || !input.teamId || !input.sequenceId || !input.frameId) {
-          throw new Error('Missing required IDs for storage upload', {
-            cause: JSON.stringify(videoResult),
-          });
-        }
-
         const updatedFrame = await updateFrame(
-          input.frameId,
+          frameId,
           {
-            videoPath: storageResult.path, // Store R2 path (permanent)
-            videoUrl: storageResult.url, // Store public URL (permanent, not signed)
+            videoPath: storageResult.path,
+            videoUrl: storageResult.url,
             durationMs: actualDuration * 1000,
             videoStatus: 'completed',
             videoGeneratedAt: new Date(),
@@ -205,20 +189,14 @@ export const generateMotionWorkflow = createWorkflow(
 
         if (!updatedFrame) {
           console.log(
-            '[MotionWorkflow]',
-            `Frame ${input.frameId} was deleted, skipping final update`
+            `[MotionWorkflow] Frame ${frameId} was deleted, skipping final update`
           );
           return;
         }
 
-        // Emit completion progress
-        await getGenerationChannel(input.sequenceId).emit(
+        void getGenerationChannel(input.sequenceId).emit(
           'generation.video:progress',
-          {
-            frameId: input.frameId,
-            status: 'completed',
-            videoUrl: storageResult.url,
-          }
+          { frameId, status: 'completed', videoUrl: storageResult.url }
         );
       });
 
@@ -230,41 +208,40 @@ export const generateMotionWorkflow = createWorkflow(
         if (!input.sequenceId || !input.teamId || !input.userId) return;
 
         const allFrames = await getSequenceFrames(input.sequenceId);
-        const allComplete = allFrames.every(
-          (f) => f.videoStatus === 'completed'
+        if (allFrames.length === 0) return;
+        if (!allFrames.every((f) => f.videoStatus === 'completed')) return;
+
+        const videoUrls = allFrames
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((f) => f.videoUrl)
+          .filter((url): url is string => Boolean(url));
+
+        if (videoUrls.length !== allFrames.length) return;
+
+        console.log(
+          `[MotionWorkflow] All ${allFrames.length} frames complete, triggering merge workflow`
         );
 
-        if (allComplete && allFrames.length > 0) {
-          const videoUrls = allFrames
-            .sort((a, b) => a.orderIndex - b.orderIndex)
-            .map((f) => f.videoUrl)
-            .filter((url): url is string => Boolean(url));
+        const mergeInput: MergeVideoWorkflowInput = {
+          userId: input.userId,
+          teamId: input.teamId,
+          sequenceId: input.sequenceId,
+          videoUrls,
+        };
 
-          if (videoUrls.length === allFrames.length) {
-            console.log(
-              `[MotionWorkflow] All ${allFrames.length} frames complete, triggering merge workflow`
-            );
-
-            const mergeInput: MergeVideoWorkflowInput = {
-              userId: input.userId,
-              teamId: input.teamId,
-              sequenceId: input.sequenceId,
-              videoUrls,
-            };
-
-            await triggerWorkflow('/merge-video', mergeInput, {
-              deduplicationId: `merge-${input.sequenceId}`,
-              flowControl: getFalFlowControl(),
-            });
-          }
-        }
+        await triggerWorkflow('/merge-video', mergeInput, {
+          deduplicationId: `merge-${input.sequenceId}`,
+        });
       });
     }
-    console.log('[MotionWorkflow]', 'Motion generation workflow completed');
 
+    console.log('[MotionWorkflow] Motion generation workflow completed');
     return { videoUrl, duration: actualDuration };
   },
   {
+    retries: 3,
+    retryDelay: 'pow(2, retried) * 1000',
+    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       if (input.frameId) {
@@ -278,24 +255,19 @@ export const generateMotionWorkflow = createWorkflow(
         );
       }
 
-      // Emit failure progress
       if (input.sequenceId && input.frameId) {
         try {
-          await getGenerationChannel(input.sequenceId).emit(
+          void getGenerationChannel(input.sequenceId).emit(
             'generation.video:progress',
-            {
-              frameId: input.frameId,
-              status: 'failed',
-            }
+            { frameId: input.frameId, status: 'failed' }
           );
         } catch {
-          // Ignore emit errors
+          // Ignore emit errors in failure handler
         }
       }
 
       console.error(
-        '[MotionWorkflow]',
-        `Motion generation failed for frame ${input.frameId}: ${failResponse}`
+        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${failResponse}`
       );
 
       return `Motion generation failed for frame ${input.frameId}`;
