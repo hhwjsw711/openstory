@@ -5,6 +5,7 @@
  * Includes music, sound effects, dialogue, and ambient sound design.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -50,7 +51,7 @@ export async function generateAudioDesignForScenes(
   scenes: Scene[],
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

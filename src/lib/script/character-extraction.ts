@@ -5,6 +5,7 @@
  * Identifies all characters and their first appearances.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -44,7 +45,7 @@ export async function extractCharacterBible(
   scenes: Scene[],
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<CharacterBibleEntry[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

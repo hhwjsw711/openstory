@@ -5,6 +5,7 @@
  * Builds on visual prompts to add temporal dimension.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -74,7 +75,7 @@ export async function generateMotionPromptsForScenes(
   scenes: Scene[],
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

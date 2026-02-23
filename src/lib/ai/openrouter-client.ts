@@ -4,6 +4,7 @@
  */
 
 import { getEnv } from '#env';
+import type { TextModel } from '@/lib/ai/models';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { startObservation } from '@langfuse/tracing';
 import { chat } from '@tanstack/ai';
@@ -44,7 +45,7 @@ type OpenRouterProviderPreference = {
 };
 
 export type OpenRouterRequestParams = {
-  model: string;
+  model: TextModel;
   messages: OpenRouterMessage[];
   temperature?: number;
   max_tokens?: number;
@@ -137,22 +138,20 @@ function convertMessages(messages: OpenRouterMessage[]): {
   return { systemPrompts, messages: chatMessages };
 }
 
-/** Model ID literal type expected by the TanStack AI adapter */
-type AdapterModel = Parameters<typeof createOpenRouterText>[0];
-
-function createAdapter(model: string, apiKey?: string) {
+function createAdapter(model: TextModel, apiKey?: string) {
   const env = getEnv();
   const key = apiKey ?? env.OPENROUTER_KEY;
+  // Adapter type list lags behind OpenRouter's catalog — cast at the boundary
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
-  const modelId = model as AdapterModel;
+  const adapterModel = model as Parameters<typeof createOpenRouterText>[0];
   const config = {
     httpReferer: env.APP_URL || 'http://localhost:3000',
     xTitle: env.APP_NAME || 'AI Video Studio',
   };
 
   return key
-    ? createOpenRouterText(modelId, key, config)
-    : openRouterText(modelId, config);
+    ? createOpenRouterText(adapterModel, key, config)
+    : openRouterText(adapterModel, config);
 }
 
 function buildModelOptions(params: OpenRouterRequestParams) {

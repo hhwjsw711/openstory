@@ -4,32 +4,30 @@
  * Uses @tanstack/ai-openrouter adapters instead of context.api.openai.call
  */
 
-import type { WorkflowContext } from '@upstash/workflow';
-import { z } from 'zod';
-import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
+import { getEnv } from '#env';
+import type { TextModel } from '@/lib/ai/models';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import {
   type PromptReference,
   logGeneration,
 } from '@/lib/observability/langfuse';
-import { getEnv } from '#env';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
 import { getGenerationChannel } from '@/lib/realtime';
-import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';
 import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
+import type { WorkflowContext } from '@upstash/workflow';
+import { z } from 'zod';
 
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_SECONDS = 5;
-
-/** Model ID type accepted by the OpenRouter adapter */
-type OpenRouterModel = Parameters<typeof createOpenRouterText>[0];
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   name: string;
   phase: { number: number; name: string };
   promptName: string;
   promptVariables?: Record<string, string>;
-  modelId: string;
+  modelId: TextModel;
   responseSchema: TSchema;
   additionalMetadata?: Record<string, unknown>;
   retryResponse?: (response: z.infer<TSchema>) => boolean;
@@ -43,19 +41,20 @@ export type DurableLLMCallContext = {
   openRouterApiKey?: string;
 };
 
-function createAdapter(model: string, apiKey?: string) {
+function createAdapter(model: TextModel, apiKey?: string) {
   const env = getEnv();
   const key = apiKey ?? env.OPENROUTER_KEY;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model ID is dynamic from config but always a valid OpenRouter model
-  const modelId = model as OpenRouterModel;
+  // Adapter type list lags behind OpenRouter's catalog — cast at the boundary
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
+  const adapterModel = model as Parameters<typeof createOpenRouterText>[0];
   const config = {
     httpReferer: env.APP_URL || 'http://localhost:3000',
     xTitle: env.APP_NAME || 'AI Video Studio',
   };
 
   return key
-    ? createOpenRouterText(modelId, key, config)
-    : openRouterText(modelId, config);
+    ? createOpenRouterText(adapterModel, key, config)
+    : openRouterText(adapterModel, config);
 }
 
 /**

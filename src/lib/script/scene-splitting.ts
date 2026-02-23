@@ -5,6 +5,7 @@
  * Does NOT generate prompts, characters, or audio - just identifies scene boundaries.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -64,7 +65,7 @@ export async function splitScriptIntoScenes(
   aspectRatio: AspectRatio,
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<{ projectMetadata: ProjectMetadata; scenes: Scene[] }> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

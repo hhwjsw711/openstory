@@ -5,6 +5,7 @@
  * Identifies all locations and their first appearances.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -41,7 +42,7 @@ export async function extractLocationBible(
   scenes: Scene[],
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<LocationBibleEntry[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

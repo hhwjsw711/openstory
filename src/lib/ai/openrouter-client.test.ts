@@ -7,6 +7,7 @@ import {
   beforeEach,
   afterAll,
 } from 'bun:test';
+import type { TextModel } from '@/lib/ai/models';
 import { callOpenRouterStream } from './openrouter-client';
 
 // Mock environment variables
@@ -73,7 +74,7 @@ describe('openrouter-client', () => {
       );
 
       const generator = callOpenRouterStream({
-        model: 'test-model',
+        model: 'test-model' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -119,7 +120,7 @@ describe('openrouter-client', () => {
       );
 
       const generator = callOpenRouterStream({
-        model: 'test-model',
+        model: 'test-model' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
 

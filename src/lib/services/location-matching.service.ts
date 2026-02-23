@@ -5,6 +5,7 @@
  * based on name, description, and visual characteristics.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   RECOMMENDED_MODELS,
@@ -131,7 +132,7 @@ Respond with up to ${expectedMatches} matches, only including high-confidence ma
 export async function matchLocationsToLibrary(
   locations: LocationBibleEntry[],
   libraryLocations: LibraryLocation[],
-  options?: { model?: string }
+  options?: { model?: TextModel }
 ): Promise<LibraryLocationMatch[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 

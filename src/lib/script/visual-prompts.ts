@@ -5,6 +5,7 @@
  * Uses Character Bible for consistency across all scenes.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   type ProgressCallback,
@@ -70,7 +71,7 @@ export async function generateVisualPromptsForScenes(
   styleConfig: DirectorDnaConfig,
   onProgress?: ProgressCallback,
   options?: {
-    model?: string;
+    model?: TextModel;
   }
 ): Promise<Scene[]> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};

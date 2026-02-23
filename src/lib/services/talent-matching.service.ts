@@ -5,6 +5,7 @@
  * based on physical descriptions, age, gender, and appearance.
  */
 
+import type { TextModel } from '@/lib/ai/models';
 import {
   callOpenRouterStream,
   RECOMMENDED_MODELS,
@@ -127,7 +128,7 @@ Respond with exactly ${expectedMatches} matches.`;
 export async function matchTalentToCharacters(
   characters: CharacterBibleEntry[],
   talentList: TalentWithSheets[],
-  options?: { model?: string }
+  options?: { model?: TextModel }
 ): Promise<TalentMatchResult> {
   const { model = RECOMMENDED_MODELS.fast } = options ?? {};
 
