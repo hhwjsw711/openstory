@@ -3,7 +3,7 @@
  *
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
- *   bun setup:prod     — production (prompts for Turso, QStash, APP_URL → .env.production)
+ *   bun setup:prod     — production (hosting platform, database, email, services → .env.production)
  */
 
 import * as p from '@clack/prompts';
@@ -58,10 +58,18 @@ function writeEnvFile(vars: Map<string, string>) {
       keys: [
         'APP_URL',
         'APP_NAME',
+        'DEPLOY_PLATFORM',
         'BETTER_AUTH_SECRET',
         'TURSO_DATABASE_URL',
         'TURSO_AUTH_TOKEN',
+        'CLOUDFLARE_ACCOUNT_ID',
+        'CLOUDFLARE_D1_DATABASE_ID',
+        'CLOUDFLARE_API_TOKEN',
       ],
+    },
+    {
+      header: 'Email (Resend)',
+      keys: ['RESEND_API_KEY', 'EMAIL_FROM'],
     },
     {
       header: 'Workflows (QStash)',
@@ -89,10 +97,6 @@ function writeEnvFile(vars: Map<string, string>) {
     {
       header: 'Google OAuth',
       keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
-    },
-    {
-      header: 'Email (Resend)',
-      keys: ['RESEND_API_KEY', 'EMAIL_FROM'],
     },
     {
       header: 'Observability (Langfuse)',
@@ -271,6 +275,98 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Email (Resend)
+  // -------------------------------------------------------------------------
+  if (isProd) {
+    p.log.step(chalk.bold('Email Setup'));
+    await promptForKey(
+      'RESEND_API_KEY',
+      'Enter your Resend API key',
+      'Required for production email delivery. Get one at: https://resend.com/api-keys'
+    );
+    if (!vars.has('RESEND_API_KEY')) {
+      p.log.error('RESEND_API_KEY is required for production.');
+      process.exit(1);
+    }
+
+    if (!vars.has('EMAIL_FROM')) {
+      const emailFrom = checkCancel(
+        await p.text({
+          message: 'Enter sender email address',
+          placeholder: 'noreply@example.com',
+          validate: (v) =>
+            !v ? 'Sender email is required for production' : undefined,
+        })
+      );
+      if (emailFrom) {
+        vars.set('EMAIL_FROM', emailFrom);
+        saveProgress();
+      }
+    } else {
+      p.log.success('EMAIL_FROM — already configured');
+    }
+  } else {
+    const setupEmail = checkCancel(
+      await p.confirm({
+        message: 'Set up email delivery? (Resend)',
+        initialValue: !existing.has('RESEND_API_KEY'),
+      })
+    );
+
+    if (setupEmail) {
+      await promptForKey(
+        'RESEND_API_KEY',
+        'Enter your Resend API key',
+        'Get one at: https://resend.com/api-keys'
+      );
+      if (vars.has('RESEND_API_KEY') && !vars.has('EMAIL_FROM')) {
+        const emailFrom = checkCancel(
+          await p.text({
+            message: 'Enter sender email address',
+            placeholder: 'noreply@example.com',
+          })
+        );
+        if (emailFrom) {
+          vars.set('EMAIL_FROM', emailFrom);
+          saveProgress();
+        }
+      }
+    } else {
+      p.log.info('Skipped — OTP codes will be logged to the console.');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Hosting Platform (prod only)
+  // -------------------------------------------------------------------------
+  if (isProd) {
+    p.log.step(chalk.bold('Hosting Platform'));
+
+    if (vars.has('DEPLOY_PLATFORM')) {
+      p.log.success(
+        `DEPLOY_PLATFORM — already configured (${vars.get('DEPLOY_PLATFORM')})`
+      );
+    } else {
+      const platform = checkCancel(
+        await p.select({
+          message: 'Where will you host this app?',
+          options: [
+            {
+              value: 'cloudflare',
+              label: 'Cloudflare Pages',
+              hint: 'recommended',
+            },
+            { value: 'vercel', label: 'Vercel' },
+            { value: 'railway', label: 'Railway' },
+          ],
+        })
+      );
+      vars.set('DEPLOY_PLATFORM', platform);
+      saveProgress();
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Core
   // -------------------------------------------------------------------------
   p.log.step(chalk.bold('Core Setup'));
@@ -281,16 +377,41 @@ async function main() {
       'Enter your production URL',
       'e.g. https://app.example.com'
     );
-    await promptForKey(
-      'TURSO_DATABASE_URL',
-      'Enter your Turso database URL',
-      'e.g. libsql://your-db-name-org.turso.io'
-    );
-    await promptForKey(
-      'TURSO_AUTH_TOKEN',
-      'Enter your Turso auth token',
-      'Get one at: https://turso.tech/app'
-    );
+
+    // Branch database setup by hosting platform
+    const platform = vars.get('DEPLOY_PLATFORM');
+
+    if (platform === 'cloudflare') {
+      p.log.step(chalk.bold('Database (Cloudflare D1)'));
+      await promptForKey(
+        'CLOUDFLARE_ACCOUNT_ID',
+        'Enter your Cloudflare Account ID',
+        'Find in Cloudflare Dashboard → Overview → Account ID'
+      );
+      await promptForKey(
+        'CLOUDFLARE_D1_DATABASE_ID',
+        'Enter your D1 Database ID',
+        'Find in Cloudflare Dashboard → D1 → your database'
+      );
+      await promptForKey(
+        'CLOUDFLARE_API_TOKEN',
+        'Enter your Cloudflare API token',
+        'Create at: https://dash.cloudflare.com/profile/api-tokens (needs D1 edit permission)'
+      );
+    } else {
+      // Vercel / Railway → Turso
+      p.log.step(chalk.bold('Database (Turso)'));
+      await promptForKey(
+        'TURSO_DATABASE_URL',
+        'Enter your Turso database URL',
+        'e.g. libsql://your-db-name-org.turso.io'
+      );
+      await promptForKey(
+        'TURSO_AUTH_TOKEN',
+        'Enter your Turso auth token',
+        'Get one at: https://turso.tech/app'
+      );
+    }
   } else {
     if (!vars.has('APP_URL')) vars.set('APP_URL', 'http://localhost:3000');
     if (!vars.has('TURSO_DATABASE_URL'))
@@ -307,7 +428,13 @@ async function main() {
     p.log.success('Auth secret — already configured');
   }
 
-  p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
+  if (vars.has('TURSO_DATABASE_URL')) {
+    p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
+  } else if (vars.has('CLOUDFLARE_D1_DATABASE_ID')) {
+    p.log.success(
+      `Database: Cloudflare D1 (${vars.get('CLOUDFLARE_D1_DATABASE_ID')})`
+    );
+  }
   p.log.success(`App URL: ${vars.get('APP_URL')}`);
   saveProgress();
 
@@ -493,29 +620,6 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // Email (Resend)
-  // -------------------------------------------------------------------------
-  const setupEmail = checkCancel(
-    await p.confirm({
-      message: 'Set up transactional email? (Resend)',
-      initialValue: false,
-    })
-  );
-
-  if (setupEmail) {
-    await promptForKey(
-      'RESEND_API_KEY',
-      'Resend API Key',
-      'Get one at: https://resend.com/api-keys'
-    );
-    await promptForKey(
-      'EMAIL_FROM',
-      'Sender email address',
-      'Must be a verified sender in Resend (e.g. hello@yourdomain.com)'
-    );
-  }
-
-  // -------------------------------------------------------------------------
   // Observability (Langfuse)
   // -------------------------------------------------------------------------
   const setupLangfuse = checkCancel(
@@ -577,22 +681,36 @@ async function main() {
   // -------------------------------------------------------------------------
   // Summary
   // -------------------------------------------------------------------------
+  const platformLabels: Record<string, string> = {
+    cloudflare: 'Cloudflare Pages',
+    vercel: 'Vercel',
+    railway: 'Railway',
+  };
+
   const features = [
+    [
+      'Hosting',
+      isProd
+        ? (platformLabels[vars.get('DEPLOY_PLATFORM') ?? ''] ?? 'Unknown')
+        : 'Local',
+    ],
     [
       'Database',
       isProd
-        ? vars.has('TURSO_DATABASE_URL')
-          ? 'Turso'
-          : 'Skipped'
+        ? vars.has('CLOUDFLARE_D1_DATABASE_ID')
+          ? 'Cloudflare D1'
+          : vars.has('TURSO_DATABASE_URL')
+            ? 'Turso'
+            : 'Skipped'
         : 'SQLite (local.db)',
     ],
     ['Auth', 'Better Auth (secret generated)'],
+    ['Email', vars.has('RESEND_API_KEY') ? 'Configured' : 'Skipped'],
     ['AI Generation', vars.has('FAL_KEY') ? 'Configured' : 'Skipped'],
     ['Script Analysis', vars.has('OPENROUTER_KEY') ? 'Configured' : 'Skipped'],
     ['Workflows', vars.has('QSTASH_TOKEN') ? 'Configured' : 'Skipped'],
     ['Storage', vars.has('R2_ACCOUNT_ID') ? 'Configured' : 'Skipped'],
     ['Google OAuth', vars.has('GOOGLE_CLIENT_ID') ? 'Configured' : 'Skipped'],
-    ['Email', vars.has('RESEND_API_KEY') ? 'Configured' : 'Skipped'],
     [
       'Langfuse',
       vars.has('LANGFUSE_PUBLIC_KEY')
@@ -612,14 +730,27 @@ async function main() {
   p.note(summaryLines, 'Configuration Summary');
 
   if (isProd) {
-    p.note(
-      [
-        `1. Upload secrets:  ${chalk.bold('bun scripts/setup-cloudflare-secrets.sh --production')}`,
-        `2. Run migrations:  ${chalk.bold('bun db:migrate')}`,
-        `3. Deploy:          ${chalk.bold('bun cf:deploy:prd')}`,
-      ].join('\n'),
-      'Next Steps'
-    );
+    const platform = vars.get('DEPLOY_PLATFORM');
+    const nextSteps =
+      platform === 'cloudflare'
+        ? [
+            `1. Upload secrets:  ${chalk.bold('bun scripts/setup-cloudflare-secrets.sh --production')}`,
+            `2. Run migrations:  ${chalk.bold('bun db:migrate:d1')}`,
+            `3. Deploy:          ${chalk.bold('bun cf:deploy:prd')}`,
+          ]
+        : platform === 'vercel'
+          ? [
+              `1. Set env vars in Vercel dashboard (copy from ${chalk.bold(ENV_FILENAME)})`,
+              `2. Run migrations:  ${chalk.bold('bun db:migrate')}`,
+              `3. Deploy:          ${chalk.bold('vercel deploy --prod')}`,
+            ]
+          : [
+              `1. Set env vars in Railway dashboard (copy from ${chalk.bold(ENV_FILENAME)})`,
+              `2. Run migrations:  ${chalk.bold('bun db:migrate')}`,
+              `3. Deploy:          ${chalk.bold('railway up')}`,
+            ];
+
+    p.note(nextSteps.join('\n'), 'Next Steps');
   }
 
   p.outro(
