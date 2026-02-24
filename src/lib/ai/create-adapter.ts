@@ -5,7 +5,7 @@
 
 import { getEnv } from '#env';
 import type { TextModel } from '@/lib/ai/models';
-import { openRouterText } from '@tanstack/ai-openrouter';
+import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 
 export function createAdapter(model: TextModel, apiKey?: string) {
   const env = getEnv();
@@ -16,8 +16,9 @@ export function createAdapter(model: TextModel, apiKey?: string) {
   const config = {
     httpReferer: env.APP_URL || 'http://localhost:3000',
     xTitle: env.APP_NAME || 'AI Video Studio',
-    apiKey: key,
   };
 
-  return openRouterText(adapterModel, config);
+  return apiKey
+    ? createOpenRouterText(adapterModel, key, config)
+    : openRouterText(adapterModel, config);
 }

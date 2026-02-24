@@ -3,7 +3,18 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
+import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
+import {
+  audioDesignGenerationResultSchema,
+  characterExtractionResultSchema,
+  locationExtractionResultSchema,
+  locationMatchResponseSchema,
+  sceneSplittingResultSchema,
+  talentMatchResponseSchema,
+} from '@/lib/ai/response-schemas';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
+import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
 import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
@@ -24,21 +35,7 @@ import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
-import {
-  audioDesignGenerationResultSchema,
-  characterExtractionResultSchema,
-  locationExtractionResultSchema,
-  sceneSplittingResultSchema,
-} from '@/lib/ai/response-schemas';
-import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
-import {
-  locationMatchResponseSchema,
-  talentMatchResponseSchema,
-} from '@/lib/ai/response-schemas';
-import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
@@ -151,15 +148,10 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     const startTime = await context.run('start-time', () => Date.now());
 
-    const apiKeys = await context.run('resolve-api-keys', () =>
-      resolveWorkflowApiKeys(input.teamId)
-    );
-
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
       teamId: input.teamId,
-      openRouterApiKey: apiKeys.openRouterApiKey,
     };
 
     const {

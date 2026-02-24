@@ -11,13 +11,20 @@ import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
+type ImageWorkflowResult = {
+  imageUrl: string;
+  frameId?: string;
+  sequenceId?: string;
+};
+
 export const generateImageWorkflow = createWorkflow(
-  async (context: WorkflowContext<ImageWorkflowInput>) => {
+  async (
+    context: WorkflowContext<ImageWorkflowInput>
+  ): Promise<ImageWorkflowResult> => {
     const input = context.requestPayload;
 
     const generationParams = await context.run(
@@ -74,6 +81,7 @@ export const generateImageWorkflow = createWorkflow(
           referenceImageUrls:
             input.referenceImages?.map((ref) => ref.referenceImageUrl) ?? [],
           traceName: 'frame-image',
+          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -83,12 +91,8 @@ export const generateImageWorkflow = createWorkflow(
         imageUrl: '',
         frameId: input.frameId,
         sequenceId: input.sequenceId,
-      };
+      } satisfies ImageWorkflowResult;
     }
-
-    const apiKeys = await context.run('resolve-api-keys', () =>
-      resolveWorkflowApiKeys(input.teamId)
-    );
 
     const imageResult = await context.run('generate-image', async () => {
       console.log(
@@ -97,13 +101,17 @@ export const generateImageWorkflow = createWorkflow(
       );
       return generateImageWithProvider({
         ...generationParams,
-        falApiKey: apiKeys.falApiKey,
       });
     });
 
     const imageCost = imageResult.metadata.cost ?? 0;
     const { teamId, frameId, sequenceId } = input;
-    if (isBillingEnabled() && imageCost > 0 && teamId && !apiKeys.falApiKey) {
+    if (
+      isBillingEnabled() &&
+      imageCost > 0 &&
+      teamId &&
+      !imageResult.metadata.usedOwnKey
+    ) {
       await context.run('deduct-credits', async () => {
         if (!(await hasEnoughCredits(teamId, imageCost))) {
           console.warn(

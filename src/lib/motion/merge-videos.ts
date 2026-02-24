@@ -1,6 +1,6 @@
-import { getEnv } from '#env';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
+import { apiKeyService } from '../byok/api-key.service';
 
 // Typed as `string` so the adapter uses its generic fallback -- the merge
 // endpoint isn't a video generation model, so fal types lack aspect_ratio/prompt
@@ -15,16 +15,22 @@ export type MergeVideosResult = {
     targetFps?: number;
     resolution?: { width: number; height: number };
     generatedAt: string;
+    usedOwnKey: boolean;
   };
 };
 
 /** Merge multiple video segments into a single video via fal.ai ffmpeg API */
-export async function mergeVideos(
-  videoUrls: string[],
-  targetFps?: number,
-  resolution?: { width: number; height: number },
-  falApiKey?: string
-): Promise<MergeVideosResult> {
+export async function mergeVideos({
+  teamId,
+  videoUrls,
+  targetFps,
+  resolution,
+}: {
+  teamId?: string; // required to resolve the API key for the merge videos with BYOK
+  videoUrls: string[];
+  targetFps?: number;
+  resolution?: { width: number; height: number };
+}): Promise<MergeVideosResult> {
   if (videoUrls.length === 0) {
     throw new Error('At least one video URL is required');
   }
@@ -34,8 +40,10 @@ export async function mergeVideos(
     resolution,
   });
 
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const falApiKey = falApiKeyInfo.key;
   const adapter = falVideo(MERGE_VIDEOS_MODEL_ID, {
-    apiKey: falApiKey ?? getEnv().FAL_KEY ?? '',
+    apiKey: falApiKey,
   });
 
   // prompt is unused by the ffmpeg endpoint; parameters go via modelOptions
@@ -71,6 +79,7 @@ export async function mergeVideos(
           targetFps,
           resolution,
           generatedAt: new Date().toISOString(),
+          usedOwnKey: falApiKeyInfo.source === 'team',
         },
       };
     }

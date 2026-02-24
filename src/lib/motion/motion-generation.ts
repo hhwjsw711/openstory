@@ -1,3 +1,4 @@
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODEL_KEYS,
@@ -5,7 +6,6 @@ import {
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
-import { calculateFalCost } from '@/lib/ai/fal-cost';
 import {
   createImageMedia,
   createVideoMedia,
@@ -20,6 +20,7 @@ import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 import { z } from 'zod';
+import { apiKeyService } from '../byok/api-key.service';
 
 export const generationMotionOptionsSchema = z.object({
   imageUrl: z.url(),
@@ -35,6 +36,7 @@ export const generationMotionOptionsSchema = z.object({
 });
 
 export type GenerateMotionOptions = {
+  teamId?: string; // required to resolve the API key for the motion generation with BYOK
   imageUrl: string;
   prompt: string;
   model?: ImageToVideoModel;
@@ -44,14 +46,22 @@ export type GenerateMotionOptions = {
   aspectRatio?: AspectRatio;
   // Langfuse trace name (defaults to 'fal-motion')
   traceName?: string;
-  // Override Fal.ai API key (e.g., user-provided key). Falls back to platform env key.
-  falApiKey?: string;
 };
 
 export type MotionResult = {
   success: boolean;
   videoUrl?: string;
-  metadata?: Record<string, unknown>;
+  metadata: {
+    model: string;
+    provider: string;
+    duration: number;
+    fps: number;
+    motionBucket?: number;
+    totalFrames: number;
+    cost: number;
+    generatedAt: string;
+    usedOwnKey: boolean;
+  };
   error?: string;
   requestId?: string;
 };
@@ -256,8 +266,9 @@ async function generateMotionInternal(
     }
   );
 
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
   const adapter = falVideo(modelConfig.id, {
-    apiKey: options.falApiKey ?? getEnv().FAL_KEY,
+    apiKey: falApiKeyInfo.key,
   });
 
   const job = await generateVideo({
@@ -319,7 +330,7 @@ async function generateMotionInternal(
     modelConfig.id,
     validatedDuration,
     'seconds',
-    options.falApiKey
+    falApiKeyInfo.key
   );
 
   return {
@@ -335,6 +346,7 @@ async function generateMotionInternal(
       totalFrames: Math.round(validatedDuration * validatedFps),
       cost,
       generatedAt: new Date().toISOString(),
+      usedOwnKey: falApiKeyInfo.source === 'team',
     },
   };
 }

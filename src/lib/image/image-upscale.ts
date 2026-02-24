@@ -3,9 +3,9 @@
  * Uses FAL.ai Nano Banana Pro Edit for upscaling
  */
 
-import { createFalClient } from '@fal-ai/client';
 import { calculateFalCost } from '@/lib/ai/fal-cost';
-import { getEnv } from '#env';
+import { createFalClient } from '@fal-ai/client';
+import { apiKeyService } from '../byok/api-key.service';
 
 type VariantResolution = '1K' | '2K' | '4K';
 
@@ -13,6 +13,7 @@ type UpscaleResult = {
   imageUrl: string;
   requestId: string;
   cost: number;
+  usedOwnKey: boolean;
 };
 
 const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
@@ -46,10 +47,12 @@ OUTPUT
 export async function upscaleWithNanoBanana(
   imageUrl: string,
   resolution: VariantResolution = '2K',
-  falApiKey?: string
+  teamId: string
 ): Promise<UpscaleResult> {
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const falApiKey = falApiKeyInfo.key;
   const fal = createFalClient({
-    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
+    credentials: falApiKey,
   });
 
   const result = await fal.subscribe('fal-ai/nano-banana-pro/edit', {
@@ -80,5 +83,6 @@ export async function upscaleWithNanoBanana(
     imageUrl: outputUrl,
     requestId: result.requestId ?? '',
     cost,
+    usedOwnKey: falApiKeyInfo.source === 'team',
   };
 }

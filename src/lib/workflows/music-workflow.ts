@@ -1,20 +1,19 @@
 import { getDb } from '#db-client';
+import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
+import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
+import { generateMusicForScene } from '@/lib/audio/music-generation';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { sequences } from '@/lib/db/schema';
+import { getGenerationChannel } from '@/lib/realtime';
+import { triggerWorkflow } from '@/lib/workflow/client';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   MergeAudioVideoWorkflowInput,
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { getGenerationChannel } from '@/lib/realtime';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { generateMusicForScene } from '@/lib/audio/music-generation';
-import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
-import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { triggerWorkflow } from '@/lib/workflow/client';
 import { durableLLMCall } from './llm-call-helper';
 import {
   musicPromptSchema,
@@ -52,10 +51,6 @@ export const generateMusicWorkflow = createWorkflow(
       });
     });
 
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(teamId);
-    });
-
     // Use pre-generated prompt or generate from scenes via LLM
     let effectivePrompt: string;
     let effectiveTags: string;
@@ -80,7 +75,6 @@ export const generateMusicWorkflow = createWorkflow(
           sequenceId,
           userId: input.userId,
           teamId,
-          openRouterApiKey: apiKeys.openRouterApiKey,
         }
       );
       effectivePrompt = musicPrompt.prompt;
@@ -96,7 +90,7 @@ export const generateMusicWorkflow = createWorkflow(
         instrumental: true,
         model,
         traceName: 'sequence-music',
-        falApiKey: apiKeys.falApiKey,
+        teamId,
       });
 
       if (!result.success || !result.audioUrl) {
@@ -116,7 +110,7 @@ export const generateMusicWorkflow = createWorkflow(
       typeof audioResult.metadata?.cost === 'number'
         ? audioResult.metadata.cost
         : 0;
-    if (musicCost > 0 && !apiKeys.falApiKey) {
+    if (musicCost > 0 && !audioResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, musicCost);
         if (!canAfford) {

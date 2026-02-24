@@ -1,24 +1,26 @@
+import { calculateFalCost } from '@/lib/ai/fal-cost';
+import { getFalHistoricalCostPerCall } from '@/lib/ai/fal-pricing';
 import {
   getEditEndpoint,
   getTextToImageModelId,
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import { calculateFalCost } from '@/lib/ai/fal-cost';
-import { getFalHistoricalCostPerCall } from '@/lib/ai/fal-pricing';
-import { createImageMedia } from '@/lib/observability/langfuse-media';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
+import { createImageMedia } from '@/lib/observability/langfuse-media';
 import { startObservation } from '@langfuse/tracing';
 
+import { getEnv } from '#env';
 import { generateImage } from '@tanstack/ai';
 import { falImage } from '@tanstack/ai-fal';
-import { getEnv } from '#env';
+import { apiKeyService } from '../byok/api-key.service';
 
 export type ImageGenerationParams = {
+  teamId?: string; // teamId is used to resolve the API key for the image generation with BYOK
   model: TextToImageModel;
   prompt: string;
   imageSize?: ImageSize;
@@ -54,7 +56,6 @@ export type ImageGenerationParams = {
   enablePromptExpansion?: boolean;
   referenceImageUrls?: string[];
   traceName?: string;
-  falApiKey?: string;
 };
 
 export type ImageGenerationResult = {
@@ -72,6 +73,7 @@ export type ImageGenerationResult = {
     has_nsfw_concepts?: boolean[];
     cost?: number;
     requestId?: string;
+    usedOwnKey: boolean;
   };
 };
 
@@ -171,6 +173,8 @@ async function generateImageInternal(
   if (params.model === 'letzai') {
     return generateLetzaiImage(params, prompt);
   }
+  // Get the fal API key - byok or global
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', params.teamId);
 
   const modelOptions = buildFalModelOptions(params);
 
@@ -180,7 +184,7 @@ async function generateImageInternal(
     endpoint = getEditEndpoint(params.model) ?? modelId;
   }
 
-  const adapter = createFalAdapter(endpoint, params.falApiKey);
+  const adapter = createFalAdapter(endpoint, falApiKeyInfo.key);
   const result = await generateImage({ adapter, prompt, modelOptions });
 
   const imageUrls = result.images
@@ -205,9 +209,9 @@ async function generateImageInternal(
         endpoint,
         billable.quantity,
         billable.callerUnit,
-        params.falApiKey
+        falApiKeyInfo.key
       )
-    : await getFalHistoricalCostPerCall(endpoint, params.falApiKey);
+    : await getFalHistoricalCostPerCall(endpoint, falApiKeyInfo.key);
 
   return {
     imageUrls,
@@ -222,6 +226,7 @@ async function generateImageInternal(
       file_sizes: imageUrls.map(() => 0),
       seed: params.seed,
       cost,
+      usedOwnKey: falApiKeyInfo.source === 'team',
     },
   };
 }
@@ -488,6 +493,7 @@ async function generateLetzaiImage(
       model: params.model,
       dimensions: [dims],
       file_sizes: [],
+      usedOwnKey: false,
     },
   };
 }

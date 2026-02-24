@@ -4,9 +4,9 @@
  * Unlike merge-audio-video which replaces video audio, compose mixes both audio sources together.
  */
 
-import { getEnv } from '#env';
-import type { QueueStatus } from '@fal-ai/client';
 import { createFalClient } from '@fal-ai/client';
+import type { QueueStatus } from '@fal-ai/client';
+import { apiKeyService } from '../byok/api-key.service';
 
 const COMPOSE_MODEL_ID = 'fal-ai/ffmpeg-api/compose';
 
@@ -23,6 +23,7 @@ export type ComposeAudioVideoResult = {
   videoUrl: string;
   requestId?: string;
   cost: number;
+  usedOwnKey: boolean;
 };
 
 /**
@@ -30,20 +31,26 @@ export type ComposeAudioVideoResult = {
  * The video track keeps its original audio (SFX, ambient, dialogue) while the music
  * track is mixed on top. This is ideal for videos from audio-capable models (veo3, kling v3).
  */
-export async function composeAudioVideo(
-  videoUrl: string,
-  musicUrl: string,
-  durationMs: number,
-  falApiKey?: string
-): Promise<ComposeAudioVideoResult> {
+export async function composeAudioVideo({
+  videoUrl,
+  musicUrl,
+  durationMs,
+  teamId,
+}: {
+  videoUrl: string;
+  musicUrl: string;
+  durationMs: number;
+  teamId?: string; // required to resolve the API key for the compose audio video with BYOK
+}): Promise<ComposeAudioVideoResult> {
   console.log('[ComposeAudioVideo] Composing video with music track', {
     videoUrl: videoUrl.slice(0, 80),
     musicUrl: musicUrl.slice(0, 80),
     durationMs,
   });
 
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
   const fal = createFalClient({
-    credentials: falApiKey ?? getEnv().FAL_KEY ?? '',
+    credentials: falApiKeyInfo.key,
   });
 
   const dur = durationMs;
@@ -117,5 +124,6 @@ export async function composeAudioVideo(
     videoUrl: outputUrl,
     requestId: requestId ?? result.requestId,
     cost,
+    usedOwnKey: falApiKeyInfo.source === 'team',
   };
 }

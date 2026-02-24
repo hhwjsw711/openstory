@@ -6,9 +6,10 @@
 
 import { createAdapter } from '@/lib/ai/create-adapter';
 import type { TextModel } from '@/lib/ai/models';
-import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/ai/prompts';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { apiKeyService } from '@/lib/byok/api-key.service';
+import type { PromptReference } from '@/lib/observability/langfuse';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';
@@ -88,13 +89,18 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     }
   );
 
-  // Step 2: Durable LLM call with retry loop
+  // Step 2: Durable LLM call (context.run retries on failure automatically)
   let jsonResponse: z.infer<TSchema> | null = null;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const result = await context.run(name, async () => {
-      try {
-        const adapter = createAdapter(modelId, callContext.openRouterApiKey);
+    const data = await context.run(
+      attempt === 0 ? name : `${name}-retry-${attempt}`,
+      async () => {
+        const openRouterApiKeyInfo = await apiKeyService.resolveKey(
+          'openrouter',
+          callContext.teamId
+        );
+        const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
 
         const systemPrompts: string[] = [];
         const chatMessages: Array<{
@@ -110,7 +116,8 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
           }
         }
 
-        const text = await chat({
+        // chat() with outputSchema returns a parsed object, not a string
+        return await chat({
           adapter,
           messages: chatMessages,
           systemPrompts,
@@ -123,50 +130,18 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             sessionId: callContext.sequenceId,
             userId: callContext.userId,
           },
-          // response_format uses json_schema which OpenRouter supports but adapter types declare as json_object only
-          modelOptions: {
-            response_format: {
-              type: 'json_schema' as const,
-              json_schema: {
-                name,
-                strict: true,
-                schema: z.toJSONSchema(config.responseSchema),
-              },
-            },
-          } as Record<string, unknown>,
+          outputSchema: config.responseSchema,
         });
-
-        return { content: text, error: null };
-      } catch (error) {
-        return {
-          content: null,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    });
-
-    const validated = await context.run(
-      'validate-response',
-      async (): Promise<z.infer<TSchema> | null> => {
-        if (result.error || !result.content) return null;
-
-        try {
-          const parsed = config.responseSchema.parse(
-            JSON.parse(result.content)
-          );
-          if (config.retryResponse?.(parsed)) return null;
-          return parsed;
-        } catch {
-          return null;
-        }
       }
     );
 
-    if (validated === null) {
-      await context.sleep('pause-to-avoid-spam', RETRY_DELAY_SECONDS);
+    // retryResponse is a business logic check (e.g., empty results)
+    if (config.retryResponse?.(data)) {
+      await context.sleep(`retry-pause-${attempt}`, RETRY_DELAY_SECONDS);
       continue;
     }
-    jsonResponse = validated;
+
+    jsonResponse = data;
     break;
   }
 

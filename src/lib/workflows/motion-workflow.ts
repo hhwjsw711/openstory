@@ -16,7 +16,6 @@ import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
@@ -71,10 +70,6 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    const apiKeys = await context.run('resolve-api-keys', () =>
-      resolveWorkflowApiKeys(input.teamId)
-    );
-
     // Step 2: Generate motion/video
     const videoResult = await context.run('generate-motion', async () => {
       const result = await generateMotionForFrame({
@@ -86,7 +81,7 @@ export const generateMotionWorkflow = createWorkflow(
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
         traceName: 'frame-motion',
-        falApiKey: apiKeys.falApiKey,
+        teamId: input.teamId,
       });
 
       if (!result.success || !result.videoUrl) {
@@ -107,7 +102,12 @@ export const generateMotionWorkflow = createWorkflow(
         ? videoResult.metadata.cost
         : 0;
     const { teamId } = input;
-    if (isBillingEnabled() && motionCost > 0 && teamId && !apiKeys.falApiKey) {
+    if (
+      isBillingEnabled() &&
+      motionCost > 0 &&
+      teamId &&
+      !videoResult.metadata.usedOwnKey
+    ) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCost);
         if (!canAfford) {

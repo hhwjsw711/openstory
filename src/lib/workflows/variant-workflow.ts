@@ -1,4 +1,8 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
@@ -7,23 +11,18 @@ import {
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import {
-  deductWorkflowCredits,
-  extractImageCost,
-} from '@/lib/billing/workflow-deduction';
+  buildReferenceImagePrompt,
+  type ReferenceImageDescription,
+} from '@/lib/prompts/reference-image-prompt';
+import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 import { getGenerationChannel } from '@/lib/realtime';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
-import {
-  buildReferenceImagePrompt,
-  type ReferenceImageDescription,
-} from '@/lib/prompts/reference-image-prompt';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 
 export const generateVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<VariantWorkflowInput>) => {
@@ -106,7 +105,8 @@ export const generateVariantWorkflow = createWorkflow(
           seed: input.seed,
           referenceImageUrls: referenceUrls,
           traceName: 'variant-image',
-        };
+          teamId: input.teamId,
+        } satisfies ImageGenerationParams;
       }
     );
 
@@ -114,11 +114,6 @@ export const generateVariantWorkflow = createWorkflow(
     if (!generationParams) {
       return { variantImageUrl: '' };
     }
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
 
     // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
@@ -129,7 +124,6 @@ export const generateVariantWorkflow = createWorkflow(
 
       return await generateImageWithProvider({
         ...generationParams,
-        falApiKey: apiKeys.falApiKey,
       });
     });
 
@@ -138,7 +132,7 @@ export const generateVariantWorkflow = createWorkflow(
       await deductWorkflowCredits({
         teamId: input.teamId,
         costUsd: extractImageCost(imageResult.metadata),
-        usedOwnKey: !!apiKeys.falApiKey,
+        usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Variant image generation (${generationParams.model})`,
         metadata: {

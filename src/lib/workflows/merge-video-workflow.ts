@@ -16,7 +16,6 @@ import { sequences } from '@/lib/db/schema';
 import { mergeVideos } from '@/lib/motion/merge-videos';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {
   MergeAudioVideoWorkflowInput,
   MergeVideoWorkflowInput,
@@ -106,24 +105,15 @@ export const mergeVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
     const mergeResult = await context.run('merge-videos', async () => {
-      return mergeVideos(
-        input.videoUrls,
-        input.targetFps,
-        input.resolution,
-        apiKeys.falApiKey
-      );
+      return mergeVideos(input);
     });
 
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
         costUsd: mergeResult.cost,
-        usedOwnKey: !!apiKeys.falApiKey,
+        usedOwnKey: mergeResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Video merge (${input.videoUrls.length} clips)`,
         metadata: { sequenceId: input.sequenceId },

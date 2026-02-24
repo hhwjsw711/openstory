@@ -1,3 +1,4 @@
+import { calculateFalCost } from '@/lib/ai/fal-cost';
 import {
   AUDIO_MODEL_KEYS,
   AUDIO_MODELS,
@@ -5,11 +6,10 @@ import {
   type AudioModel,
   type AudioModelConfig,
 } from '@/lib/ai/models';
-import { calculateFalCost } from '@/lib/ai/fal-cost';
-import { getEnv } from '#env';
-import { startObservation } from '@langfuse/tracing';
 import { createFalClient } from '@fal-ai/client';
+import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
+import { apiKeyService } from '../byok/api-key.service';
 
 export const generateMusicOptionsSchema = z.object({
   prompt: z.string().min(1),
@@ -22,6 +22,7 @@ export const generateMusicOptionsSchema = z.object({
 });
 
 export type GenerateMusicOptions = {
+  teamId: string;
   /** Style/mood prompt for the music (e.g., "tense orchestral, dark atmosphere") */
   prompt: string;
   /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
@@ -36,13 +37,19 @@ export type GenerateMusicOptions = {
   /** Number of diffusion steps (default: 27) */
   steps?: number;
   traceName?: string;
-  falApiKey?: string;
 };
 
 export type MusicResult = {
   success: boolean;
   audioUrl?: string;
-  metadata?: Record<string, unknown>;
+  metadata: {
+    model: string;
+    provider: string;
+    duration: number;
+    cost: number;
+    generatedAt: string;
+    usedOwnKey: boolean;
+  };
   error?: string;
   requestId?: string;
 };
@@ -198,8 +205,9 @@ async function callFalAudio(
     }
   );
 
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
   const fal = createFalClient({
-    credentials: options.falApiKey ?? getEnv().FAL_KEY ?? '',
+    credentials: falApiKeyInfo.key,
   });
 
   const result = await fal.subscribe(modelConfig.id, {
@@ -234,7 +242,7 @@ async function callFalAudio(
     modelConfig.id,
     duration,
     'seconds',
-    options.falApiKey
+    falApiKeyInfo.key
   );
 
   return {
@@ -247,6 +255,7 @@ async function callFalAudio(
       duration,
       cost,
       generatedAt: new Date().toISOString(),
+      usedOwnKey: falApiKeyInfo.source === 'team',
     },
   };
 }

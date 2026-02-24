@@ -4,20 +4,19 @@
  */
 
 import { getDb } from '#db-client';
-import { sequences } from '@/lib/db/schema';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  uploadFile,
   STORAGE_BUCKETS,
+  uploadFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
-import type { MergeAudioVideoWorkflowInput } from '@/lib/workflow/types';
+import { sequences } from '@/lib/db/schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import type { MergeAudioVideoWorkflowInput } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
@@ -51,10 +50,6 @@ export const mergeAudioVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
     const videoDurationMs = await context.run(
       'compute-video-duration',
       async () => {
@@ -64,19 +59,19 @@ export const mergeAudioVideoWorkflow = createWorkflow(
     );
 
     const muxResult = await context.run('compose-audio-video', async () => {
-      return composeAudioVideo(
-        input.mergedVideoUrl,
-        input.musicUrl,
-        videoDurationMs,
-        apiKeys.falApiKey
-      );
+      return composeAudioVideo({
+        videoUrl: input.mergedVideoUrl,
+        musicUrl: input.musicUrl,
+        durationMs: videoDurationMs,
+        teamId: input.teamId,
+      });
     });
 
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
         costUsd: muxResult.cost,
-        usedOwnKey: !!apiKeys.falApiKey,
+        usedOwnKey: muxResult.usedOwnKey,
         userId: input.userId,
         description: 'Audio+video mux',
         metadata: { sequenceId: input.sequenceId },

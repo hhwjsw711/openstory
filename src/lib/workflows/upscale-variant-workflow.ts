@@ -1,13 +1,12 @@
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
-import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -18,10 +17,6 @@ export const upscaleVariantWorkflow = createWorkflow(
     console.log(
       '[UpscaleVariantWorkflow]',
       `Starting upscale for frame ${input.frameId}`
-    );
-
-    const apiKeys = await context.run('resolve-api-keys', () =>
-      resolveWorkflowApiKeys(input.teamId)
     );
 
     const upscaleResult = await context.run('upscale-image', async () => {
@@ -47,11 +42,7 @@ export const upscaleVariantWorkflow = createWorkflow(
         return null;
       }
 
-      return upscaleWithNanoBanana(
-        input.croppedTileUrl,
-        '2K',
-        apiKeys.falApiKey
-      );
+      return upscaleWithNanoBanana(input.croppedTileUrl, '2K', input.teamId);
     });
 
     if (!upscaleResult) {
@@ -62,7 +53,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       await deductWorkflowCredits({
         teamId: input.teamId,
         costUsd: upscaleResult.cost,
-        usedOwnKey: !!apiKeys.falApiKey,
+        usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
         description: 'Variant upscale (nano_banana_pro)',
         metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
