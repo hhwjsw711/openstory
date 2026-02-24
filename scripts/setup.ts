@@ -3,7 +3,7 @@
  *
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
- *   bun setup:prod     — production (prompts for Turso, QStash, APP_URL → .env.production)
+ *   bun setup:prod     — production (hosting platform, database, email, services → .env)
  */
 
 import * as p from '@clack/prompts';
@@ -14,22 +14,20 @@ import { resolve } from 'path';
 
 const MIN_BUN_VERSION = '1.3.9';
 
-const isProd = process.argv.includes('--prod');
-const ENV_FILE = resolve(
-  process.cwd(),
-  isProd ? '.env.production' : '.env.local'
-);
-const ENV_FILENAME = isProd ? '.env.production' : '.env.local';
+const isDeploy = process.argv.includes('--deploy');
+const isProd = isDeploy || process.argv.includes('--prod');
+const ENV_FILE = resolve(process.cwd(), isProd ? '.env' : '.env.local');
+const ENV_FILENAME = isProd ? '.env' : '.env.local';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function loadExistingEnv(): Map<string, string> {
+function parseEnvFile(path: string): Map<string, string> {
   const env = new Map<string, string>();
-  if (!existsSync(ENV_FILE)) return env;
+  if (!existsSync(path)) return env;
 
-  for (const line of readFileSync(ENV_FILE, 'utf-8').split('\n')) {
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eqIdx = trimmed.indexOf('=');
@@ -38,6 +36,21 @@ function loadExistingEnv(): Map<string, string> {
     const value = trimmed.slice(eqIdx + 1).trim();
     if (key && value) env.set(key, value);
   }
+  return env;
+}
+
+function loadExistingEnv(): Map<string, string> {
+  const env = parseEnvFile(ENV_FILE);
+
+  // For prod, also read .env.production so existing keys are skipped
+  if (isProd) {
+    const legacyFile = resolve(process.cwd(), '.env.production');
+    const legacy = parseEnvFile(legacyFile);
+    legacy.forEach((value, key) => {
+      if (!env.has(key)) env.set(key, value);
+    });
+  }
+
   return env;
 }
 
@@ -58,10 +71,17 @@ function writeEnvFile(vars: Map<string, string>) {
       keys: [
         'APP_URL',
         'APP_NAME',
+        'DEPLOY_PLATFORM',
         'BETTER_AUTH_SECRET',
         'TURSO_DATABASE_URL',
         'TURSO_AUTH_TOKEN',
+        'CLOUDFLARE_ACCOUNT_ID',
+        'CLOUDFLARE_API_TOKEN',
       ],
+    },
+    {
+      header: 'Email (Resend)',
+      keys: ['RESEND_API_KEY', 'EMAIL_FROM'],
     },
     {
       header: 'Workflows (QStash)',
@@ -89,10 +109,6 @@ function writeEnvFile(vars: Map<string, string>) {
     {
       header: 'Google OAuth',
       keys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
-    },
-    {
-      header: 'Email (Resend)',
-      keys: ['RESEND_API_KEY', 'EMAIL_FROM'],
     },
     {
       header: 'Observability (Langfuse)',
@@ -161,14 +177,403 @@ function generateSecret(): string {
 // checkCancel and promptForKey are defined inside main() to capture `vars` for incremental saving
 
 // ---------------------------------------------------------------------------
+// Deploy Setup
+// ---------------------------------------------------------------------------
+
+const cliConfig: Record<
+  string,
+  {
+    cmd: string;
+    install: string;
+    loginArgs: string[];
+    whoamiArgs: string[];
+  }
+> = {
+  cloudflare: {
+    cmd: 'wrangler',
+    install: 'bun add -g wrangler',
+    loginArgs: ['login'],
+    whoamiArgs: ['whoami'],
+  },
+  vercel: {
+    cmd: 'vercel',
+    install: 'bun add -g vercel',
+    loginArgs: ['login'],
+    whoamiArgs: ['whoami'],
+  },
+  railway: {
+    cmd: 'railway',
+    install: 'npm i -g @railway/cli',
+    loginArgs: ['login'],
+    whoamiArgs: ['whoami'],
+  },
+};
+
+const platformLabels: Record<string, string> = {
+  cloudflare: 'Cloudflare Workers',
+  vercel: 'Vercel',
+  railway: 'Railway',
+};
+
+async function deploySetup(
+  vars: Map<string, string>,
+  checkCancel: <T>(value: T | symbol) => T,
+  _saveProgress: () => void
+) {
+  const platform = vars.get('DEPLOY_PLATFORM');
+  if (!platform || !(platform in cliConfig)) {
+    p.log.error(
+      `Unknown or missing DEPLOY_PLATFORM: ${platform ?? '(not set)'}. Run ${chalk.bold('bun setup:prod')} first.`
+    );
+    return;
+  }
+
+  const config = cliConfig[platform];
+  const label = platformLabels[platform] ?? platform;
+
+  p.log.step(chalk.bold(`Deploy Setup — ${label}`));
+
+  // 1. Check CLI installed
+  if (!commandExists(config.cmd)) {
+    const shouldInstall = checkCancel(
+      await p.confirm({
+        message: `${config.cmd} is not installed. Install it now?`,
+        initialValue: true,
+      })
+    );
+
+    if (shouldInstall) {
+      const installSpinner = p.spinner();
+      installSpinner.start(`Installing ${config.cmd}`);
+      try {
+        const [cmd, ...args] = config.install.split(' ');
+        execFileSync(cmd, args, { stdio: 'pipe' });
+        installSpinner.stop(`${config.cmd} installed`);
+      } catch (error) {
+        installSpinner.stop(`Failed to install ${config.cmd}`);
+        p.log.error(
+          `Install error: ${error instanceof Error ? error.message : String(error)}`
+        );
+        p.log.info(`Run manually: ${chalk.bold(config.install)}`);
+        return;
+      }
+    } else {
+      p.log.info(`Install manually: ${chalk.bold(config.install)}`);
+      return;
+    }
+  } else {
+    p.log.success(`${config.cmd} installed`);
+  }
+
+  // 2. Check auth
+  let isAuthed = false;
+  try {
+    execFileSync(config.cmd, config.whoamiArgs, { stdio: 'pipe' });
+    isAuthed = true;
+  } catch {
+    isAuthed = false;
+  }
+
+  if (!isAuthed) {
+    const shouldLogin = checkCancel(
+      await p.confirm({
+        message: `Not logged in to ${config.cmd}. Log in now?`,
+        initialValue: true,
+      })
+    );
+
+    if (shouldLogin) {
+      p.log.info('Opening browser for authentication…');
+      try {
+        execFileSync(config.cmd, config.loginArgs, { stdio: 'inherit' });
+      } catch (error) {
+        p.log.error(
+          `Login failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return;
+      }
+
+      // Re-check
+      try {
+        execFileSync(config.cmd, config.whoamiArgs, { stdio: 'pipe' });
+        p.log.success(`Logged in to ${config.cmd}`);
+      } catch {
+        p.log.error(
+          `Still not authenticated. Run ${chalk.bold(`${config.cmd} login`)} manually.`
+        );
+        return;
+      }
+    } else {
+      p.log.info(`Run ${chalk.bold(`${config.cmd} login`)} when ready.`);
+      return;
+    }
+  } else {
+    p.log.success(`Authenticated with ${config.cmd}`);
+  }
+
+  // 3. Link project (Vercel + Railway only)
+  if (platform === 'vercel' || platform === 'railway') {
+    const shouldLink = checkCancel(
+      await p.confirm({
+        message: `Link this directory to your ${label} project?`,
+        initialValue: true,
+      })
+    );
+
+    if (shouldLink) {
+      p.log.info(`Follow the prompts to link your ${label} project…`);
+      if (platform === 'vercel') {
+        p.log.info(
+          chalk.dim(
+            'Decline "pull environment variables" — we push them in the next step.'
+          )
+        );
+      }
+      try {
+        execFileSync(config.cmd, ['link'], { stdio: 'inherit' });
+        p.log.success(`Linked to ${label} project`);
+      } catch (error) {
+        p.log.error(
+          `Link failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return;
+      }
+    }
+  }
+
+  // 4. Push secrets
+  if (platform === 'cloudflare') {
+    const shouldPushSecrets = checkCancel(
+      await p.confirm({
+        message: 'Push secrets to Cloudflare Workers?',
+        initialValue: true,
+      })
+    );
+
+    if (shouldPushSecrets) {
+      const secretsSpinner = p.spinner();
+      secretsSpinner.start('Pushing secrets to Cloudflare');
+      try {
+        execFileSync('wrangler', ['secret', 'bulk', '--env=prd', ENV_FILE], {
+          stdio: 'pipe',
+        });
+        secretsSpinner.stop('Secrets pushed to Cloudflare');
+      } catch (error) {
+        secretsSpinner.stop('Failed to push secrets');
+        p.log.error(
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        );
+        p.log.info(
+          `Run manually: ${chalk.bold(`wrangler secret bulk --env=prd ${ENV_FILENAME}`)}`
+        );
+      }
+    }
+  } else if (platform === 'vercel') {
+    const shouldPushSecrets = checkCancel(
+      await p.confirm({
+        message: 'Push environment variables to Vercel?',
+        initialValue: true,
+      })
+    );
+
+    if (shouldPushSecrets) {
+      // Push production vars to production + preview
+      const secretsSpinner = p.spinner();
+      secretsSpinner.start(
+        `Pushing ${vars.size} env vars to Vercel (production + preview)`
+      );
+
+      let pushed = 0;
+      let failed = 0;
+
+      for (const [key, value] of vars) {
+        // Preview gets all vars except TURSO_DATABASE_URL (each preview branch should have its own DB)
+        const envs =
+          key === 'TURSO_DATABASE_URL'
+            ? ['production']
+            : ['production', 'preview'];
+
+        try {
+          execFileSync('vercel', ['env', 'add', key, ...envs, '--force'], {
+            input: value,
+            stdio: ['pipe', 'pipe', 'pipe'],
+          });
+          pushed++;
+        } catch {
+          failed++;
+        }
+      }
+
+      if (failed > 0) {
+        secretsSpinner.stop(
+          `Pushed ${pushed} env vars to Vercel (${failed} failed)`
+        );
+      } else {
+        secretsSpinner.stop(
+          `Pushed ${vars.size} env vars to Vercel (production + preview)`
+        );
+      }
+
+      // Optionally push .env.local as development environment
+      const localEnvFile = resolve(process.cwd(), '.env.local');
+      const localVars = parseEnvFile(localEnvFile);
+
+      if (localVars.size > 0) {
+        const shouldPushDev = checkCancel(
+          await p.confirm({
+            message: `Found .env.local with ${localVars.size} values. Push to Vercel development environment?`,
+            initialValue: true,
+          })
+        );
+
+        if (shouldPushDev) {
+          const devSpinner = p.spinner();
+          devSpinner.start(
+            `Pushing ${localVars.size} env vars to Vercel (development)`
+          );
+
+          let devPushed = 0;
+          let devFailed = 0;
+
+          for (const [key, value] of localVars) {
+            try {
+              execFileSync(
+                'vercel',
+                ['env', 'add', key, 'development', '--force'],
+                {
+                  input: value,
+                  stdio: ['pipe', 'pipe', 'pipe'],
+                }
+              );
+              devPushed++;
+            } catch {
+              devFailed++;
+            }
+          }
+
+          if (devFailed > 0) {
+            devSpinner.stop(
+              `Pushed ${devPushed} dev env vars to Vercel (${devFailed} failed)`
+            );
+          } else {
+            devSpinner.stop(
+              `Pushed ${localVars.size} env vars to Vercel (development)`
+            );
+          }
+        }
+      } else {
+        p.log.info(
+          `No .env.local found — skipping Vercel development environment. Run ${chalk.bold('bun setup')} first to create one.`
+        );
+      }
+    }
+  } else {
+    // Railway — no bulk env push via CLI without specifying service
+    p.log.info(
+      `Copy environment variables from ${chalk.bold(ENV_FILENAME)} to your ${label} dashboard.`
+    );
+  }
+
+  // 5. Deploy
+  const shouldDeploy = checkCancel(
+    await p.confirm({
+      message: `Deploy to ${label} now?`,
+      initialValue: true,
+    })
+  );
+
+  if (!shouldDeploy) {
+    p.log.info('Skipping deploy. You can deploy later manually.');
+    return;
+  }
+
+  if (platform === 'cloudflare') {
+    // Migrate D1
+    const migrateSpinner = p.spinner();
+    migrateSpinner.start('Running D1 migrations');
+    try {
+      execFileSync('bun', ['db:migrate:d1'], {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+      });
+      migrateSpinner.stop('D1 migrations applied');
+    } catch (error) {
+      migrateSpinner.stop('D1 migration failed');
+      p.log.error(
+        `Migration error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      p.log.info(`Run manually: ${chalk.bold('bun db:migrate:d1')}`);
+      return;
+    }
+
+    // Seed D1
+    const seedSpinner = p.spinner();
+    seedSpinner.start('Seeding D1 database');
+    try {
+      execFileSync('bun', ['db:seed:d1'], {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+      });
+      seedSpinner.stop('D1 database seeded');
+    } catch (error) {
+      seedSpinner.stop('D1 seed failed');
+      p.log.error(
+        `Seed error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      p.log.info(`Run manually: ${chalk.bold('bun db:seed:d1')}`);
+      return;
+    }
+
+    // Deploy
+    p.log.info('Building and deploying to Cloudflare Workers…');
+    try {
+      execFileSync('bun', ['cf:deploy:prd'], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+      });
+      p.log.success('Deployed to Cloudflare Workers');
+    } catch (error) {
+      p.log.error(
+        `Deploy failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      p.log.info(`Run manually: ${chalk.bold('bun cf:deploy:prd')}`);
+    }
+  } else if (platform === 'vercel') {
+    p.log.info('Deploying to Vercel…');
+    try {
+      execFileSync('vercel', ['deploy', '--prod'], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+      });
+      p.log.success('Deployed to Vercel');
+    } catch (error) {
+      p.log.error(
+        `Deploy failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      p.log.info(`Run manually: ${chalk.bold('vercel deploy --prod')}`);
+    }
+  } else if (platform === 'railway') {
+    p.log.info('Deploying to Railway…');
+    try {
+      execFileSync('railway', ['up'], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+      });
+      p.log.success('Deployed to Railway');
+    } catch (error) {
+      p.log.error(
+        `Deploy failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      p.log.info(`Run manually: ${chalk.bold('railway up')}`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
-  p.intro(
-    chalk.bold(isProd ? 'Velro Production Setup' : 'Welcome to Velro Setup')
-  );
-
   const existing = loadExistingEnv();
   const vars = new Map(existing);
 
@@ -190,6 +595,48 @@ async function main() {
     }
     return value;
   }
+
+  // --deploy: skip env var prompts, jump straight to deploy phase
+  if (isDeploy) {
+    p.intro(chalk.bold('Velro Deploy Setup'));
+
+    if (existing.size === 0) {
+      p.log.error(
+        `No ${ENV_FILENAME} found. Run ${chalk.bold('bun setup:prod')} first to configure environment variables.`
+      );
+      process.exit(1);
+    }
+
+    p.log.info(`Loaded ${existing.size} values from ${ENV_FILENAME}`);
+
+    // Prompt for platform if missing
+    if (!vars.has('DEPLOY_PLATFORM')) {
+      const platform = checkCancel(
+        await p.select({
+          message: 'Where will you deploy?',
+          options: [
+            {
+              value: 'cloudflare',
+              label: 'Cloudflare Workers',
+              hint: 'recommended',
+            },
+            { value: 'vercel', label: 'Vercel' },
+            { value: 'railway', label: 'Railway' },
+          ],
+        })
+      );
+      vars.set('DEPLOY_PLATFORM', platform);
+      saveProgress();
+    }
+
+    await deploySetup(vars, checkCancel, saveProgress);
+    p.outro('Deploy setup complete.');
+    return;
+  }
+
+  p.intro(
+    chalk.bold(isProd ? 'Velro Production Setup' : 'Welcome to Velro Setup')
+  );
 
   async function promptForKey(
     key: string,
@@ -271,6 +718,98 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Email (Resend)
+  // -------------------------------------------------------------------------
+  if (isProd) {
+    p.log.step(chalk.bold('Email Setup'));
+    await promptForKey(
+      'RESEND_API_KEY',
+      'Enter your Resend API key',
+      'Required for production email delivery. Get one at: https://resend.com/api-keys'
+    );
+    if (!vars.has('RESEND_API_KEY')) {
+      p.log.error('RESEND_API_KEY is required for production.');
+      process.exit(1);
+    }
+
+    if (!vars.has('EMAIL_FROM')) {
+      const emailFrom = checkCancel(
+        await p.text({
+          message: 'Enter sender email address',
+          placeholder: 'noreply@example.com',
+          validate: (v) =>
+            !v ? 'Sender email is required for production' : undefined,
+        })
+      );
+      if (emailFrom) {
+        vars.set('EMAIL_FROM', emailFrom);
+        saveProgress();
+      }
+    } else {
+      p.log.success('EMAIL_FROM — already configured');
+    }
+  } else {
+    const setupEmail = checkCancel(
+      await p.confirm({
+        message: 'Set up email delivery? (Resend)',
+        initialValue: !existing.has('RESEND_API_KEY'),
+      })
+    );
+
+    if (setupEmail) {
+      await promptForKey(
+        'RESEND_API_KEY',
+        'Enter your Resend API key',
+        'Get one at: https://resend.com/api-keys'
+      );
+      if (vars.has('RESEND_API_KEY') && !vars.has('EMAIL_FROM')) {
+        const emailFrom = checkCancel(
+          await p.text({
+            message: 'Enter sender email address',
+            placeholder: 'noreply@example.com',
+          })
+        );
+        if (emailFrom) {
+          vars.set('EMAIL_FROM', emailFrom);
+          saveProgress();
+        }
+      }
+    } else {
+      p.log.info('Skipped — OTP codes will be logged to the console.');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Hosting Platform (prod only)
+  // -------------------------------------------------------------------------
+  if (isProd) {
+    p.log.step(chalk.bold('Hosting Platform'));
+
+    if (vars.has('DEPLOY_PLATFORM')) {
+      p.log.success(
+        `DEPLOY_PLATFORM — already configured (${vars.get('DEPLOY_PLATFORM')})`
+      );
+    } else {
+      const platform = checkCancel(
+        await p.select({
+          message: 'Where will you host this app?',
+          options: [
+            {
+              value: 'cloudflare',
+              label: 'Cloudflare Workers',
+              hint: 'recommended',
+            },
+            { value: 'vercel', label: 'Vercel' },
+            { value: 'railway', label: 'Railway' },
+          ],
+        })
+      );
+      vars.set('DEPLOY_PLATFORM', platform);
+      saveProgress();
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Core
   // -------------------------------------------------------------------------
   p.log.step(chalk.bold('Core Setup'));
@@ -281,16 +820,39 @@ async function main() {
       'Enter your production URL',
       'e.g. https://app.example.com'
     );
-    await promptForKey(
-      'TURSO_DATABASE_URL',
-      'Enter your Turso database URL',
-      'e.g. libsql://your-db-name-org.turso.io'
-    );
-    await promptForKey(
-      'TURSO_AUTH_TOKEN',
-      'Enter your Turso auth token',
-      'Get one at: https://turso.tech/app'
-    );
+
+    // Branch database setup by hosting platform
+    const platform = vars.get('DEPLOY_PLATFORM');
+
+    if (platform === 'cloudflare') {
+      p.log.step(chalk.bold('Cloudflare'));
+      await promptForKey(
+        'CLOUDFLARE_ACCOUNT_ID',
+        'Enter your Cloudflare Account ID',
+        'Find in Cloudflare console → Compute → Workers & Pages → Account ID (sidebar)'
+      );
+      await promptForKey(
+        'CLOUDFLARE_API_TOKEN',
+        'Enter your Cloudflare API token',
+        'Create at: https://dash.cloudflare.com/profile/api-tokens (needs D1 + Workers edit permissions)'
+      );
+      p.log.info(
+        'D1 database is configured in wrangler.jsonc — deploy handles migrations automatically.'
+      );
+    } else {
+      // Vercel / Railway → Turso
+      p.log.step(chalk.bold('Database (Turso)'));
+      await promptForKey(
+        'TURSO_DATABASE_URL',
+        'Enter your Turso database URL',
+        'e.g. libsql://your-db-name-org.turso.io'
+      );
+      await promptForKey(
+        'TURSO_AUTH_TOKEN',
+        'Enter your Turso auth token',
+        'Get one at: https://turso.tech/app'
+      );
+    }
   } else {
     if (!vars.has('APP_URL')) vars.set('APP_URL', 'http://localhost:3000');
     if (!vars.has('TURSO_DATABASE_URL'))
@@ -307,7 +869,11 @@ async function main() {
     p.log.success('Auth secret — already configured');
   }
 
-  p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
+  if (vars.get('DEPLOY_PLATFORM') === 'cloudflare') {
+    p.log.success('Database: Cloudflare D1 (via wrangler.jsonc)');
+  } else if (vars.has('TURSO_DATABASE_URL')) {
+    p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
+  }
   p.log.success(`App URL: ${vars.get('APP_URL')}`);
   saveProgress();
 
@@ -493,29 +1059,6 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // Email (Resend)
-  // -------------------------------------------------------------------------
-  const setupEmail = checkCancel(
-    await p.confirm({
-      message: 'Set up transactional email? (Resend)',
-      initialValue: false,
-    })
-  );
-
-  if (setupEmail) {
-    await promptForKey(
-      'RESEND_API_KEY',
-      'Resend API Key',
-      'Get one at: https://resend.com/api-keys'
-    );
-    await promptForKey(
-      'EMAIL_FROM',
-      'Sender email address',
-      'Must be a verified sender in Resend (e.g. hello@yourdomain.com)'
-    );
-  }
-
-  // -------------------------------------------------------------------------
   // Observability (Langfuse)
   // -------------------------------------------------------------------------
   const setupLangfuse = checkCancel(
@@ -579,20 +1122,28 @@ async function main() {
   // -------------------------------------------------------------------------
   const features = [
     [
+      'Hosting',
+      isProd
+        ? (platformLabels[vars.get('DEPLOY_PLATFORM') ?? ''] ?? 'Unknown')
+        : 'Local',
+    ],
+    [
       'Database',
       isProd
-        ? vars.has('TURSO_DATABASE_URL')
-          ? 'Turso'
-          : 'Skipped'
+        ? vars.get('DEPLOY_PLATFORM') === 'cloudflare'
+          ? 'Cloudflare D1'
+          : vars.has('TURSO_DATABASE_URL')
+            ? 'Turso'
+            : 'Skipped'
         : 'SQLite (local.db)',
     ],
     ['Auth', 'Better Auth (secret generated)'],
+    ['Email', vars.has('RESEND_API_KEY') ? 'Configured' : 'Skipped'],
     ['AI Generation', vars.has('FAL_KEY') ? 'Configured' : 'Skipped'],
     ['Script Analysis', vars.has('OPENROUTER_KEY') ? 'Configured' : 'Skipped'],
     ['Workflows', vars.has('QSTASH_TOKEN') ? 'Configured' : 'Skipped'],
     ['Storage', vars.has('R2_ACCOUNT_ID') ? 'Configured' : 'Skipped'],
     ['Google OAuth', vars.has('GOOGLE_CLIENT_ID') ? 'Configured' : 'Skipped'],
-    ['Email', vars.has('RESEND_API_KEY') ? 'Configured' : 'Skipped'],
     [
       'Langfuse',
       vars.has('LANGFUSE_PUBLIC_KEY')
@@ -612,21 +1163,13 @@ async function main() {
   p.note(summaryLines, 'Configuration Summary');
 
   if (isProd) {
-    p.note(
-      [
-        `1. Upload secrets:  ${chalk.bold('bun scripts/setup-cloudflare-secrets.sh --production')}`,
-        `2. Run migrations:  ${chalk.bold('bun db:migrate')}`,
-        `3. Deploy:          ${chalk.bold('bun cf:deploy:prd')}`,
-      ].join('\n'),
-      'Next Steps'
+    await deploySetup(vars, checkCancel, saveProgress);
+    p.outro(`Production config written to ${chalk.bold(ENV_FILENAME)}`);
+  } else {
+    p.outro(
+      `Run ${chalk.bold('bun dev')} to start the development server.\nTo set up production deployment, run: ${chalk.bold('bun setup:prod')}`
     );
   }
-
-  p.outro(
-    isProd
-      ? `Production config written to ${chalk.bold(ENV_FILENAME)}`
-      : `Run ${chalk.bold('bun dev')} to start the development server.`
-  );
 }
 
 main().catch((error) => {
