@@ -5,8 +5,6 @@
 
 import { getEnv } from '#env';
 import type { TextModel } from '@/lib/ai/models';
-import type { PromptReference } from '@/lib/observability/langfuse';
-import { startObservation } from '@langfuse/tracing';
 import { chat } from '@tanstack/ai';
 import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 import { z } from 'zod';
@@ -54,9 +52,13 @@ export type OpenRouterRequestParams = {
   presence_penalty?: number;
   stream?: boolean;
   provider?: OpenRouterProviderPreference;
-  prompt?: PromptReference;
+  /** Observation name for Langfuse (forwarded via AI event bridge) */
   observationName?: string;
+  /** Prompt reference for Langfuse trace linking */
+  prompt?: { name: string; version: number; isFallback: boolean };
+  /** Tags for Langfuse filtering */
   tags?: string[];
+  /** Additional metadata for Langfuse */
   metadata?: Record<string, unknown>;
   responseSchema?: z.ZodTypeAny;
   apiKey?: string;
@@ -177,31 +179,13 @@ function validateStructuredOutputSupport(model: string): void {
   }
 }
 
-function startGeneration(params: OpenRouterRequestParams, suffix: string) {
-  const attrs = {
-    model: params.model,
-    input: params.messages,
+function buildChatMetadata(params: OpenRouterRequestParams) {
+  return {
+    observationName: params.observationName,
     prompt: params.prompt,
     tags: params.tags,
     metadata: params.metadata,
   };
-  return startObservation(
-    params.observationName ?? `openrouter-${suffix}`,
-    attrs,
-    { asType: 'generation' }
-  );
-}
-
-function endGenerationWithError(
-  generation: ReturnType<typeof startObservation>,
-  error: unknown
-): void {
-  generation
-    .update({
-      level: 'ERROR',
-      statusMessage: error instanceof Error ? error.message : String(error),
-    })
-    .end();
 }
 
 function baseChatOptions(params: OpenRouterRequestParams) {
@@ -222,16 +206,11 @@ export async function callOpenRouter(
 ): Promise<string> {
   if (params.responseSchema) validateStructuredOutputSupport(params.model);
 
-  const generation = startGeneration(params, 'call');
-
-  try {
-    const result = await chat({ ...baseChatOptions(params), stream: false });
-    generation.update({ output: result }).end();
-    return result;
-  } catch (error) {
-    endGenerationWithError(generation, error);
-    throw error;
-  }
+  return chat({
+    ...baseChatOptions(params),
+    stream: false,
+    metadata: buildChatMetadata(params),
+  });
 }
 
 export async function* callOpenRouterStream(
@@ -239,43 +218,28 @@ export async function* callOpenRouterStream(
 ): AsyncGenerator<StreamChunk> {
   if (params.responseSchema) validateStructuredOutputSupport(params.model);
 
-  const generation = startGeneration(params, 'stream');
   let accumulated = '';
-  let hasError = false;
 
-  try {
-    const stream = chat({
-      ...baseChatOptions(params),
-      modelOptions: {
-        ...buildModelOptions(params),
-        stream_options: { include_usage: true },
-      },
-    });
+  const stream = chat({
+    ...baseChatOptions(params),
+    metadata: buildChatMetadata(params),
+    modelOptions: {
+      ...buildModelOptions(params),
+      stream_options: { include_usage: true },
+    },
+  });
 
-    for await (const event of stream) {
-      if (event.type === 'TEXT_MESSAGE_CONTENT') {
-        accumulated += event.delta;
-        yield { delta: event.delta, accumulated, done: false };
-      }
-      if (event.type === 'RUN_ERROR') {
-        hasError = true;
-        generation
-          .update({ level: 'ERROR', statusMessage: event.error.message })
-          .end();
-        throw new Error(`OpenRouter stream error: ${event.error.message}`);
-      }
+  for await (const event of stream) {
+    if (event.type === 'TEXT_MESSAGE_CONTENT') {
+      accumulated += event.delta;
+      yield { delta: event.delta, accumulated, done: false };
     }
-
-    yield { delta: '', accumulated, done: true };
-  } catch (error) {
-    if (!hasError) {
-      hasError = true;
-      endGenerationWithError(generation, error);
+    if (event.type === 'RUN_ERROR') {
+      throw new Error(`OpenRouter stream error: ${event.error.message}`);
     }
-    throw error;
-  } finally {
-    if (!hasError) generation.update({ output: accumulated }).end();
   }
+
+  yield { delta: '', accumulated, done: true };
 }
 
 export function systemMessage(content: string): OpenRouterMessage {

@@ -4,27 +4,26 @@
  */
 
 import { getDb } from '#db-client';
-import { sequences } from '@/lib/db/schema';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { mergeVideos } from '@/lib/motion/merge-videos';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  uploadFile,
   STORAGE_BUCKETS,
+  uploadFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
+import { sequences } from '@/lib/db/schema';
+import { mergeVideos } from '@/lib/motion/merge-videos';
+import { triggerWorkflow } from '@/lib/workflow/client';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {
   MergeAudioVideoWorkflowInput,
   MergeVideoWorkflowInput,
 } from '@/lib/workflow/types';
-import { triggerWorkflow } from '@/lib/workflow/client';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
-import { getFalFlowControl } from './constants';
 
 /** If music is already completed, trigger the audio+video mux workflow. */
 async function triggerMuxIfMusicReady(
@@ -182,9 +181,6 @@ export const mergeVideoWorkflow = createWorkflow(
     };
   },
   {
-    retries: 2,
-    retryDelay: 'pow(2, retried) * 2000',
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 

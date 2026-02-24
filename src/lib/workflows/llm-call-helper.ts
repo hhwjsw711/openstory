@@ -7,10 +7,7 @@
 import { getEnv } from '#env';
 import type { TextModel } from '@/lib/ai/models';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import {
-  type PromptReference,
-  logGeneration,
-} from '@/lib/observability/langfuse';
+import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -81,7 +78,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   };
 
   // Step 1: Prepare -- fetch prompt and emit phase start
-  const { startTime, messages, promptReference } = await context.run(
+  const { messages, promptReference } = await context.run(
     `prepare-${name}`,
     async () => {
       if (callContext.sequenceId) {
@@ -104,7 +101,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
           }
         : undefined;
 
-      return { startTime: Date.now(), messages, promptReference };
+      return { messages, promptReference };
     }
   );
 
@@ -135,6 +132,14 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
           messages: chatMessages,
           systemPrompts,
           stream: false,
+          metadata: {
+            observationName: logName,
+            prompt: promptReference,
+            tags: logTags,
+            metadata: logMetadata,
+            sessionId: callContext.sequenceId,
+            userId: callContext.userId,
+          },
           // response_format uses json_schema which OpenRouter supports but adapter types declare as json_object only
           modelOptions: {
             response_format: {
@@ -155,21 +160,6 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
           error: error instanceof Error ? error.message : String(error),
         };
       }
-    });
-
-    await context.run('log-generation', async () => {
-      logGeneration({
-        name: logName,
-        model: modelId,
-        input: messages,
-        output: result.content ?? '',
-        prompt: promptReference,
-        tags: logTags,
-        metadata: logMetadata,
-        startTime: new Date(startTime),
-        sequenceId: callContext.sequenceId,
-        userId: callContext.userId,
-      });
     });
 
     const validated = await context.run(

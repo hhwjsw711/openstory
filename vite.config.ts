@@ -1,14 +1,15 @@
 // vite.config.ts
-import path from 'path';
-import { defineConfig } from 'vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
-import { cloudflare } from '@cloudflare/vite-plugin';
+import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { defineConfig } from 'vite';
 
+import tailwindcss from '@tailwindcss/vite';
+import { devtools } from '@tanstack/devtools-vite';
 import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import tailwindcss from '@tailwindcss/vite';
 
 // Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
 const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
@@ -46,6 +47,7 @@ export default defineConfig({
       : undefined,
   },
   plugins: [
+    devtools(),
     tsconfigPaths(),
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE

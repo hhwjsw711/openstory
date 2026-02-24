@@ -50,19 +50,19 @@ import type {
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
+import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
+import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import { locationBibleWorkflow } from './location-bible-workflow';
+import { getFalFlowControl } from './constants';
 import { durableLLMCall } from './llm-call-helper';
+import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 import {
   musicPromptSchema,
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
-import { getFalFlowControl } from './constants';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
-import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
-import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 
 /**
  * Match characters to a scene by their continuity tags.
@@ -876,8 +876,6 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000',
     failureFunction: async ({ context, failResponse }) => {
       const { sequenceId } = context.requestPayload;
       if (!sequenceId) return;

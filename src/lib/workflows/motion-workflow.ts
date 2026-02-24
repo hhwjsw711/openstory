@@ -23,7 +23,6 @@ import type {
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { getFalFlowControl } from './constants';
 
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
@@ -239,9 +238,6 @@ export const generateMotionWorkflow = createWorkflow(
     return { videoUrl, duration: actualDuration };
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000',
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       if (input.frameId) {

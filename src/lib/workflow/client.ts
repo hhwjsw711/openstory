@@ -86,7 +86,6 @@ export async function triggerWorkflow(
   const response = await client.trigger({
     url: `${baseUrl}${urlPath}`,
     body,
-    keepTriggerConfig: true,
     workflowRunId: options?.deduplicationId,
     headers: getVercelBypassHeaders(),
   });
