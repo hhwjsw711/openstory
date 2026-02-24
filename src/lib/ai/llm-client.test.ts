@@ -8,7 +8,7 @@ import {
   afterAll,
 } from 'bun:test';
 import type { TextModel } from '@/lib/ai/models';
-import { callOpenRouterStream } from './openrouter-client';
+import { callLLMStream } from './llm-client';
 
 // Mock environment variables
 mock.module('#env', () => ({
@@ -17,7 +17,7 @@ mock.module('#env', () => ({
   }),
 }));
 
-describe('openrouter-client', () => {
+describe('llm-client', () => {
   const originalFetch = global.fetch;
 
   // Reset fetch mock after each test
@@ -29,7 +29,7 @@ describe('openrouter-client', () => {
     global.fetch = originalFetch;
   });
 
-  describe('callOpenRouterStream', () => {
+  describe('callLLMStream', () => {
     it('handles split chunks correctly', async () => {
       // Create a stream that simulates split chunks
       const stream = new ReadableStream({
@@ -73,7 +73,7 @@ describe('openrouter-client', () => {
         })
       );
 
-      const generator = callOpenRouterStream({
+      const generator = callLLMStream({
         model: 'test-model' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
@@ -119,7 +119,7 @@ describe('openrouter-client', () => {
         })
       );
 
-      const generator = callOpenRouterStream({
+      const generator = callLLMStream({
         model: 'test-model' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });

@@ -1,10 +1,5 @@
 import { getEnv } from '#env';
-import {
-  callOpenRouter,
-  RECOMMENDED_MODELS,
-  systemMessage,
-  userMessage,
-} from '@/lib/ai/openrouter-client';
+import { callLLM, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
 import {
   checkForInjectionAttempts,
   sanitizeScriptContent,
@@ -74,9 +69,12 @@ export async function enhanceScript(
   const { prompt, compiled } = await getPrompt('velro/script/enhance');
   const userPrompt = createUserPrompt(validatedOptions.originalScript);
 
-  const response = await callOpenRouter({
+  const response = await callLLM({
     model: RECOMMENDED_MODELS.structured,
-    messages: [systemMessage(compiled), userMessage(userPrompt)],
+    messages: [
+      { role: 'system' as const, content: compiled },
+      { role: 'user' as const, content: userPrompt },
+    ],
     max_tokens: 4000,
     temperature: 0.7,
     prompt,

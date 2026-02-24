@@ -8,12 +8,7 @@ import { getRequest } from '@tanstack/react-start/server';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { getEnv } from '#env';
-import {
-  callOpenRouter,
-  RECOMMENDED_MODELS,
-  systemMessage,
-  userMessage,
-} from '@/lib/ai/openrouter-client';
+import { callLLM, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
 import {
   enhanceScript as enhanceScriptService,
   RateLimiter,
@@ -112,11 +107,11 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
       { model: RECOMMENDED_MODELS.fast }
     );
 
-    const shortenedPrompt = await callOpenRouter({
+    const shortenedPrompt = await callLLM({
       model: RECOMMENDED_MODELS.fast,
       messages: [
-        systemMessage(SHORTEN_PROMPT_SYSTEM),
-        userMessage(data.prompt),
+        { role: 'system' as const, content: SHORTEN_PROMPT_SYSTEM },
+        { role: 'user' as const, content: data.prompt },
       ],
       max_tokens: 500,
       temperature: 0.3,

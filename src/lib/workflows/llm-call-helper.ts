@@ -4,7 +4,7 @@
  * Uses @tanstack/ai-openrouter adapters instead of context.api.openai.call
  */
 
-import { getEnv } from '#env';
+import { createAdapter } from '@/lib/ai/create-adapter';
 import type { TextModel } from '@/lib/ai/models';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import type { PromptReference } from '@/lib/observability/langfuse';
@@ -12,7 +12,6 @@ import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';
-import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 import type { WorkflowContext } from '@upstash/workflow';
 import { z } from 'zod';
 
@@ -37,22 +36,6 @@ export type DurableLLMCallContext = {
   /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
   openRouterApiKey?: string;
 };
-
-function createAdapter(model: TextModel, apiKey?: string) {
-  const env = getEnv();
-  const key = apiKey ?? env.OPENROUTER_KEY;
-  // Adapter type list lags behind OpenRouter's catalog — cast at the boundary
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
-  const adapterModel = model as Parameters<typeof createOpenRouterText>[0];
-  const config = {
-    httpReferer: env.APP_URL || 'http://localhost:3000',
-    xTitle: env.APP_NAME || 'AI Video Studio',
-  };
-
-  return key
-    ? createOpenRouterText(adapterModel, key, config)
-    : openRouterText(adapterModel, config);
-}
 
 /**
  * Execute a durable LLM call with the standard 3-step pattern:

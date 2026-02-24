@@ -1,13 +1,13 @@
 /**
- * OpenRouter API client for AI services
+ * LLM client for AI services
  * Uses @tanstack/ai-openrouter adapters for unified AI integration
  */
 
-import { getEnv } from '#env';
 import type { TextModel } from '@/lib/ai/models';
+import type { ChatMessage } from '@/lib/observability/langfuse-prompts';
 import { chat } from '@tanstack/ai';
-import { createOpenRouterText, openRouterText } from '@tanstack/ai-openrouter';
 import { z } from 'zod';
+import { createAdapter } from './create-adapter';
 
 type StreamChunk = {
   delta: string;
@@ -21,37 +21,23 @@ export type ProgressCallback = (progress: {
   parsed?: unknown;
 }) => void;
 
-type OpenRouterMessageContent =
-  | string
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } }
-  | Array<
-      | { type: 'text'; text: string }
-      | { type: 'image_url'; image_url: { url: string } }
-    >;
-
-type OpenRouterMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: OpenRouterMessageContent;
-};
-
-type OpenRouterProviderPreference = {
+type ProviderPreference = {
   order?: string[];
   only?: string[];
   ignore?: string[];
   allow_fallbacks?: boolean;
 };
 
-export type OpenRouterRequestParams = {
+export type LLMRequestParams = {
   model: TextModel;
-  messages: OpenRouterMessage[];
+  messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
   top_p?: number;
   frequency_penalty?: number;
   presence_penalty?: number;
   stream?: boolean;
-  provider?: OpenRouterProviderPreference;
+  provider?: ProviderPreference;
   /** Observation name for Langfuse (forwarded via AI event bridge) */
   observationName?: string;
   /** Prompt reference for Langfuse trace linking */
@@ -98,7 +84,7 @@ function buildResponseFormat(schema: z.ZodTypeAny, name: string) {
   };
 }
 
-const DEFAULT_PROVIDER: OpenRouterProviderPreference = {
+const DEFAULT_PROVIDER: ProviderPreference = {
   order: ['Cerebras'],
 };
 
@@ -109,18 +95,7 @@ export const RECOMMENDED_MODELS = {
   premium: 'anthropic/claude-sonnet-4.6',
 } as const;
 
-function extractTextContent(content: OpenRouterMessageContent): string {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .filter((c) => c.type === 'text')
-      .map((c) => c.text)
-      .join('');
-  }
-  return content.type === 'text' ? content.text : '';
-}
-
-function convertMessages(messages: OpenRouterMessage[]): {
+function convertMessages(messages: ChatMessage[]): {
   systemPrompts: string[];
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
 } {
@@ -129,34 +104,17 @@ function convertMessages(messages: OpenRouterMessage[]): {
     [];
 
   for (const msg of messages) {
-    const text = extractTextContent(msg.content);
     if (msg.role === 'system') {
-      systemPrompts.push(text);
+      systemPrompts.push(msg.content);
     } else {
-      chatMessages.push({ role: msg.role, content: text });
+      chatMessages.push({ role: msg.role, content: msg.content });
     }
   }
 
   return { systemPrompts, messages: chatMessages };
 }
 
-function createAdapter(model: TextModel, apiKey?: string) {
-  const env = getEnv();
-  const key = apiKey ?? env.OPENROUTER_KEY;
-  // Adapter type list lags behind OpenRouter's catalog — cast at the boundary
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
-  const adapterModel = model as Parameters<typeof createOpenRouterText>[0];
-  const config = {
-    httpReferer: env.APP_URL || 'http://localhost:3000',
-    xTitle: env.APP_NAME || 'AI Video Studio',
-  };
-
-  return key
-    ? createOpenRouterText(adapterModel, key, config)
-    : openRouterText(adapterModel, config);
-}
-
-function buildModelOptions(params: OpenRouterRequestParams) {
+function buildModelOptions(params: LLMRequestParams) {
   return {
     provider: params.provider ?? DEFAULT_PROVIDER,
     frequency_penalty: params.frequency_penalty,
@@ -179,7 +137,7 @@ function validateStructuredOutputSupport(model: string): void {
   }
 }
 
-function buildChatMetadata(params: OpenRouterRequestParams) {
+function buildChatMetadata(params: LLMRequestParams) {
   return {
     observationName: params.observationName,
     prompt: params.prompt,
@@ -188,7 +146,7 @@ function buildChatMetadata(params: OpenRouterRequestParams) {
   };
 }
 
-function baseChatOptions(params: OpenRouterRequestParams) {
+function baseChatOptions(params: LLMRequestParams) {
   const { systemPrompts, messages } = convertMessages(params.messages);
   return {
     adapter: createAdapter(params.model, params.apiKey),
@@ -201,9 +159,7 @@ function baseChatOptions(params: OpenRouterRequestParams) {
   };
 }
 
-export async function callOpenRouter(
-  params: OpenRouterRequestParams
-): Promise<string> {
+export async function callLLM(params: LLMRequestParams): Promise<string> {
   if (params.responseSchema) validateStructuredOutputSupport(params.model);
 
   return chat({
@@ -213,8 +169,8 @@ export async function callOpenRouter(
   });
 }
 
-export async function* callOpenRouterStream(
-  params: OpenRouterRequestParams
+export async function* callLLMStream(
+  params: LLMRequestParams
 ): AsyncGenerator<StreamChunk> {
   if (params.responseSchema) validateStructuredOutputSupport(params.model);
 
@@ -235,21 +191,9 @@ export async function* callOpenRouterStream(
       yield { delta: event.delta, accumulated, done: false };
     }
     if (event.type === 'RUN_ERROR') {
-      throw new Error(`OpenRouter stream error: ${event.error.message}`);
+      throw new Error(`LLM stream error: ${event.error.message}`);
     }
   }
 
   yield { delta: '', accumulated, done: true };
-}
-
-export function systemMessage(content: string): OpenRouterMessage {
-  return { role: 'system', content };
-}
-
-export function userMessage(content: string): OpenRouterMessage {
-  return { role: 'user', content };
-}
-
-export function assistantMessage(content: string): OpenRouterMessage {
-  return { role: 'assistant', content };
 }

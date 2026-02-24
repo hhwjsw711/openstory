@@ -13,7 +13,6 @@ import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
-import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
@@ -37,12 +36,6 @@ import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protecte
 import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
-import { Route as ApiMcpStreamVisualPromptsRouteImport } from './routes/api/mcp/stream/visual-prompts'
-import { Route as ApiMcpStreamSplitScenesRouteImport } from './routes/api/mcp/stream/split-scenes'
-import { Route as ApiMcpStreamMotionPromptsRouteImport } from './routes/api/mcp/stream/motion-prompts'
-import { Route as ApiMcpStreamExtractCharactersRouteImport } from './routes/api/mcp/stream/extract-characters'
-import { Route as ApiMcpStreamAudioDesignRouteImport } from './routes/api/mcp/stream/audio-design'
-import { Route as ApiMcpStreamAnalyzeScriptRouteImport } from './routes/api/mcp/stream/analyze-script'
 import { Route as ProtectedSequencesIdTheatreRouteImport } from './routes/_protected/sequences/$id/theatre'
 import { Route as ProtectedSequencesIdScriptRouteImport } from './routes/_protected/sequences/$id/script'
 import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protected/sequences/$id/scenes'
@@ -70,11 +63,6 @@ const IndexRoute = IndexRouteImport.update({
 const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
   id: '/api/realtime',
   path: '/api/realtime',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMcpRoute = ApiMcpRouteImport.update({
-  id: '/api/mcp',
-  path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -196,40 +184,6 @@ const ProtectedLocationsLocationIdRoute =
     path: '/locations/$locationId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ApiMcpStreamVisualPromptsRoute =
-  ApiMcpStreamVisualPromptsRouteImport.update({
-    id: '/stream/visual-prompts',
-    path: '/stream/visual-prompts',
-    getParentRoute: () => ApiMcpRoute,
-  } as any)
-const ApiMcpStreamSplitScenesRoute = ApiMcpStreamSplitScenesRouteImport.update({
-  id: '/stream/split-scenes',
-  path: '/stream/split-scenes',
-  getParentRoute: () => ApiMcpRoute,
-} as any)
-const ApiMcpStreamMotionPromptsRoute =
-  ApiMcpStreamMotionPromptsRouteImport.update({
-    id: '/stream/motion-prompts',
-    path: '/stream/motion-prompts',
-    getParentRoute: () => ApiMcpRoute,
-  } as any)
-const ApiMcpStreamExtractCharactersRoute =
-  ApiMcpStreamExtractCharactersRouteImport.update({
-    id: '/stream/extract-characters',
-    path: '/stream/extract-characters',
-    getParentRoute: () => ApiMcpRoute,
-  } as any)
-const ApiMcpStreamAudioDesignRoute = ApiMcpStreamAudioDesignRouteImport.update({
-  id: '/stream/audio-design',
-  path: '/stream/audio-design',
-  getParentRoute: () => ApiMcpRoute,
-} as any)
-const ApiMcpStreamAnalyzeScriptRoute =
-  ApiMcpStreamAnalyzeScriptRouteImport.update({
-    id: '/stream/analyze-script',
-    path: '/stream/analyze-script',
-    getParentRoute: () => ApiMcpRoute,
-  } as any)
 const ProtectedSequencesIdTheatreRoute =
   ProtectedSequencesIdTheatreRouteImport.update({
     id: '/sequences/$id/theatre',
@@ -298,7 +252,6 @@ export interface FileRoutesByFullPath {
   '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -322,12 +275,6 @@ export interface FileRoutesByFullPath {
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -341,7 +288,6 @@ export interface FileRoutesByTo {
   '/verify': typeof AuthVerifyRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -365,12 +311,6 @@ export interface FileRoutesByTo {
   '/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -388,7 +328,6 @@ export interface FileRoutesById {
   '/_auth/verify': typeof AuthVerifyRoute
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/api/realtime': typeof ApiRealtimeRoute
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
@@ -412,12 +351,6 @@ export interface FileRoutesById {
   '/_protected/sequences/$id/scenes': typeof ProtectedSequencesIdScenesRoute
   '/_protected/sequences/$id/script': typeof ProtectedSequencesIdScriptRoute
   '/_protected/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
-  '/api/mcp/stream/analyze-script': typeof ApiMcpStreamAnalyzeScriptRoute
-  '/api/mcp/stream/audio-design': typeof ApiMcpStreamAudioDesignRoute
-  '/api/mcp/stream/extract-characters': typeof ApiMcpStreamExtractCharactersRoute
-  '/api/mcp/stream/motion-prompts': typeof ApiMcpStreamMotionPromptsRoute
-  '/api/mcp/stream/split-scenes': typeof ApiMcpStreamSplitScenesRoute
-  '/api/mcp/stream/visual-prompts': typeof ApiMcpStreamVisualPromptsRoute
   '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
   '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
@@ -434,7 +367,6 @@ export interface FileRouteTypes {
     | '/verify'
     | '/eval'
     | '/api/health'
-    | '/api/mcp'
     | '/api/realtime'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -458,12 +390,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/sequences/$id/theatre'
-    | '/api/mcp/stream/analyze-script'
-    | '/api/mcp/stream/audio-design'
-    | '/api/mcp/stream/extract-characters'
-    | '/api/mcp/stream/motion-prompts'
-    | '/api/mcp/stream/split-scenes'
-    | '/api/mcp/stream/visual-prompts'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -477,7 +403,6 @@ export interface FileRouteTypes {
     | '/verify'
     | '/eval'
     | '/api/health'
-    | '/api/mcp'
     | '/api/realtime'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -501,12 +426,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/scenes'
     | '/sequences/$id/script'
     | '/sequences/$id/theatre'
-    | '/api/mcp/stream/analyze-script'
-    | '/api/mcp/stream/audio-design'
-    | '/api/mcp/stream/extract-characters'
-    | '/api/mcp/stream/motion-prompts'
-    | '/api/mcp/stream/split-scenes'
-    | '/api/mcp/stream/visual-prompts'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -523,7 +442,6 @@ export interface FileRouteTypes {
     | '/_auth/verify'
     | '/_protected/eval'
     | '/api/health'
-    | '/api/mcp'
     | '/api/realtime'
     | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
@@ -547,12 +465,6 @@ export interface FileRouteTypes {
     | '/_protected/sequences/$id/scenes'
     | '/_protected/sequences/$id/script'
     | '/_protected/sequences/$id/theatre'
-    | '/api/mcp/stream/analyze-script'
-    | '/api/mcp/stream/audio-design'
-    | '/api/mcp/stream/extract-characters'
-    | '/api/mcp/stream/motion-prompts'
-    | '/api/mcp/stream/split-scenes'
-    | '/api/mcp/stream/visual-prompts'
     | '/_protected/sequences/$id/cast/$characterId'
     | '/_protected/sequences/$id/locations/$locationId'
     | '/api/sequences/$sequenceId/chapters/vtt'
@@ -566,7 +478,6 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiMcpRoute: typeof ApiMcpRouteWithChildren
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
@@ -608,13 +519,6 @@ declare module '@tanstack/react-router' {
       path: '/api/realtime'
       fullPath: '/api/realtime'
       preLoaderRoute: typeof ApiRealtimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp': {
-      id: '/api/mcp'
-      path: '/api/mcp'
-      fullPath: '/api/mcp'
-      preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -778,48 +682,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedLocationsLocationIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/api/mcp/stream/visual-prompts': {
-      id: '/api/mcp/stream/visual-prompts'
-      path: '/stream/visual-prompts'
-      fullPath: '/api/mcp/stream/visual-prompts'
-      preLoaderRoute: typeof ApiMcpStreamVisualPromptsRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
-    '/api/mcp/stream/split-scenes': {
-      id: '/api/mcp/stream/split-scenes'
-      path: '/stream/split-scenes'
-      fullPath: '/api/mcp/stream/split-scenes'
-      preLoaderRoute: typeof ApiMcpStreamSplitScenesRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
-    '/api/mcp/stream/motion-prompts': {
-      id: '/api/mcp/stream/motion-prompts'
-      path: '/stream/motion-prompts'
-      fullPath: '/api/mcp/stream/motion-prompts'
-      preLoaderRoute: typeof ApiMcpStreamMotionPromptsRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
-    '/api/mcp/stream/extract-characters': {
-      id: '/api/mcp/stream/extract-characters'
-      path: '/stream/extract-characters'
-      fullPath: '/api/mcp/stream/extract-characters'
-      preLoaderRoute: typeof ApiMcpStreamExtractCharactersRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
-    '/api/mcp/stream/audio-design': {
-      id: '/api/mcp/stream/audio-design'
-      path: '/stream/audio-design'
-      fullPath: '/api/mcp/stream/audio-design'
-      preLoaderRoute: typeof ApiMcpStreamAudioDesignRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
-    '/api/mcp/stream/analyze-script': {
-      id: '/api/mcp/stream/analyze-script'
-      path: '/stream/analyze-script'
-      fullPath: '/api/mcp/stream/analyze-script'
-      preLoaderRoute: typeof ApiMcpStreamAnalyzeScriptRouteImport
-      parentRoute: typeof ApiMcpRoute
-    }
     '/_protected/sequences/$id/theatre': {
       id: '/_protected/sequences/$id/theatre'
       path: '/sequences/$id/theatre'
@@ -972,33 +834,11 @@ const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
   ProtectedRouteRouteChildren,
 )
 
-interface ApiMcpRouteChildren {
-  ApiMcpStreamAnalyzeScriptRoute: typeof ApiMcpStreamAnalyzeScriptRoute
-  ApiMcpStreamAudioDesignRoute: typeof ApiMcpStreamAudioDesignRoute
-  ApiMcpStreamExtractCharactersRoute: typeof ApiMcpStreamExtractCharactersRoute
-  ApiMcpStreamMotionPromptsRoute: typeof ApiMcpStreamMotionPromptsRoute
-  ApiMcpStreamSplitScenesRoute: typeof ApiMcpStreamSplitScenesRoute
-  ApiMcpStreamVisualPromptsRoute: typeof ApiMcpStreamVisualPromptsRoute
-}
-
-const ApiMcpRouteChildren: ApiMcpRouteChildren = {
-  ApiMcpStreamAnalyzeScriptRoute: ApiMcpStreamAnalyzeScriptRoute,
-  ApiMcpStreamAudioDesignRoute: ApiMcpStreamAudioDesignRoute,
-  ApiMcpStreamExtractCharactersRoute: ApiMcpStreamExtractCharactersRoute,
-  ApiMcpStreamMotionPromptsRoute: ApiMcpStreamMotionPromptsRoute,
-  ApiMcpStreamSplitScenesRoute: ApiMcpStreamSplitScenesRoute,
-  ApiMcpStreamVisualPromptsRoute: ApiMcpStreamVisualPromptsRoute,
-}
-
-const ApiMcpRouteWithChildren =
-  ApiMcpRoute._addFileChildren(ApiMcpRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
-  ApiMcpRoute: ApiMcpRouteWithChildren,
   ApiRealtimeRoute: ApiRealtimeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,

@@ -6,12 +6,7 @@
  */
 
 import type { TextModel } from '@/lib/ai/models';
-import {
-  callOpenRouterStream,
-  RECOMMENDED_MODELS,
-  systemMessage,
-  userMessage,
-} from '@/lib/ai/openrouter-client';
+import { callLLMStream, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
 import { getPrompt } from '@/lib/observability/langfuse-prompts';
 import type { LocationBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import type { LibraryLocation } from '@/lib/db/schema';
@@ -157,11 +152,14 @@ export async function matchLocationsToLibrary(
   let finalContent = '';
 
   // Stream the response with structured outputs
-  for await (const chunk of callOpenRouterStream({
+  for await (const chunk of callLLMStream({
     model,
     messages: [
-      systemMessage(systemPromptText),
-      userMessage(buildLocationMatchingPrompt(locations, libraryWithImages)),
+      { role: 'system' as const, content: systemPromptText },
+      {
+        role: 'user' as const,
+        content: buildLocationMatchingPrompt(locations, libraryWithImages),
+      },
     ],
     prompt, // Link to Langfuse trace if available
     observationName: 'location-matching',
