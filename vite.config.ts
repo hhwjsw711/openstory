@@ -14,6 +14,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
 const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
+const isDev = process.env.NODE_ENV !== 'production';
 
 const vidstackPath = path.resolve('node_modules/@vidstack/react');
 export default defineConfig({
@@ -47,7 +48,7 @@ export default defineConfig({
       : undefined,
   },
   plugins: [
-    devtools(),
+    isDev && devtools(),
     tsconfigPaths(),
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE
