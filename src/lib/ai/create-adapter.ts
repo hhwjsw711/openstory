@@ -18,7 +18,7 @@ export function createAdapter(model: TextModel, apiKey?: string) {
     xTitle: env.APP_NAME || 'AI Video Studio',
   };
 
-  return apiKey
+  return key
     ? createOpenRouterText(adapterModel, key, config)
     : openRouterText(adapterModel, config);
 }

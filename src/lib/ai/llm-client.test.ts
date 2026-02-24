@@ -1,76 +1,41 @@
-import {
-  describe,
-  expect,
-  it,
-  spyOn,
-  mock,
-  beforeEach,
-  afterAll,
-} from 'bun:test';
 import type { TextModel } from '@/lib/ai/models';
-import { callLLMStream } from './llm-client';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
-// Mock environment variables
+// Mock environment
 mock.module('#env', () => ({
   getEnv: () => ({
     OPENROUTER_KEY: 'test-key',
+    APP_URL: 'http://localhost:3000',
+    APP_NAME: 'Test',
   }),
 }));
 
+// Mock @tanstack/ai — chat() is the only function callLLMStream uses
+const mockChat = mock();
+mock.module('@tanstack/ai', () => ({
+  chat: mockChat,
+}));
+
+// Mock create-adapter to avoid real adapter creation
+mock.module('./create-adapter', () => ({
+  createAdapter: () => ({ kind: 'text', name: 'mock' }),
+}));
+
+import { callLLMStream } from './llm-client';
+
 describe('llm-client', () => {
-  const originalFetch = global.fetch;
-
-  // Reset fetch mock after each test
   beforeEach(() => {
-    global.fetch = originalFetch;
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
+    mockChat.mockClear();
   });
 
   describe('callLLMStream', () => {
     it('handles split chunks correctly', async () => {
-      // Create a stream that simulates split chunks
-      const stream = new ReadableStream({
-        start(controller) {
-          const encoder = new TextEncoder();
-
-          // Chunk 1: Complete message
-          controller.enqueue(
-            encoder.encode(
-              'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'
-            )
-          );
-
-          // Chunk 2: Start of message (split)
-          controller.enqueue(
-            encoder.encode('data: {"choices":[{"delta":{"content":" "')
-          );
-
-          // Chunk 3: End of message (split)
-          controller.enqueue(encoder.encode('}}]}\n\n'));
-
-          // Chunk 4: Another complete message
-          controller.enqueue(
-            encoder.encode(
-              'data: {"choices":[{"delta":{"content":"World"}}]}\n\n'
-            )
-          );
-
-          // Chunk 5: Done signal
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-
-          controller.close();
-        },
-      });
-
-      // Mock fetch using spyOn as requested
-      spyOn(global, 'fetch').mockResolvedValue(
-        new Response(stream, {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        })
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'Hello' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: ' ' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'World' };
+        })()
       );
 
       const generator = callLLMStream({
@@ -93,30 +58,11 @@ describe('llm-client', () => {
     });
 
     it('handles multiple lines in a single chunk', async () => {
-      // Create a stream that simulates multiple messages in one chunk
-      const stream = new ReadableStream({
-        start(controller) {
-          const encoder = new TextEncoder();
-
-          // Multiple messages in one chunk
-          controller.enqueue(
-            encoder.encode(
-              'data: {"choices":[{"delta":{"content":"A"}}]}\n\n' +
-                'data: {"choices":[{"delta":{"content":"B"}}]}\n\n'
-            )
-          );
-
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-
-          controller.close();
-        },
-      });
-
-      spyOn(global, 'fetch').mockResolvedValue(
-        new Response(stream, {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        })
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'A' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'B' };
+        })()
       );
 
       const generator = callLLMStream({
@@ -136,6 +82,29 @@ describe('llm-client', () => {
 
       expect(fullText).toBe('AB');
       expect(chunks).toEqual(['A', 'B']);
+    });
+
+    it('handles stream errors', async () => {
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'partial' };
+          yield {
+            type: 'RUN_ERROR',
+            error: { message: 'Connection lost' },
+          };
+        })()
+      );
+
+      const generator = callLLMStream({
+        model: 'test-model' as TextModel,
+        messages: [{ role: 'user', content: 'test' }],
+      });
+
+      expect(async () => {
+        for await (const _chunk of generator) {
+          // iterate until error
+        }
+      }).toThrow('LLM stream error: Connection lost');
     });
   });
 });

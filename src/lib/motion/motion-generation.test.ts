@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
+import { apiKeyService } from '../byok/api-key.service';
 import {
   mockGenerateVideo,
   mockGetVideoJobStatus,
@@ -7,9 +8,21 @@ import {
 import { generateMotionForFrame } from './motion-generation';
 
 describe('Motion Service', () => {
+  let resolveKeySpy: ReturnType<typeof spyOn>;
+
   beforeEach(() => {
     mockGenerateVideo.mockClear();
     mockGetVideoJobStatus.mockClear();
+
+    // Mock resolveKey to avoid DB/env lookups in tests
+    resolveKeySpy = spyOn(apiKeyService, 'resolveKey').mockResolvedValue({
+      key: 'test-fal-key',
+      source: 'platform',
+    });
+  });
+
+  afterEach(() => {
+    resolveKeySpy.mockRestore();
   });
 
   describe('generateMotionForFrame', () => {
