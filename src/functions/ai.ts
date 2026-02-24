@@ -18,7 +18,7 @@ import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 import { authWithTeamMiddleware } from './middleware';
 
 const promptShorteningRateLimiter = new RateLimiter(10, 60_000);

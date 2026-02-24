@@ -6,7 +6,7 @@
  * then pass them through to AI client calls.
  */
 
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 
 export type ResolvedApiKeys = {
   /** Team's own OpenRouter key, or undefined to use platform key */
