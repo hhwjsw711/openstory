@@ -16,9 +16,8 @@ import {
 } from '@/lib/ai/models.config';
 import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { sequences, styles } from '@/lib/db/schema';
+import { sequences, StyleConfigSchema, styles } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
@@ -83,7 +82,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         sequenceId: sequence.id,
         script: sequence.script,
         aspectRatio: sequence.aspectRatio,
-        styleConfig: DirectorDnaConfigSchema.parse(style.config),
+        styleConfig: StyleConfigSchema.parse(style.config),
         analysisModelId:
           getAnalysisModelById(sequence.analysisModel)?.id ??
           DEFAULT_ANALYSIS_MODEL,
