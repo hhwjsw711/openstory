@@ -7,7 +7,7 @@
 
 import type { TextModel } from '@/lib/ai/models';
 import { callLLMStream, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
-import { getPrompt } from '@/lib/observability/langfuse-prompts';
+import { getPrompt } from '@/lib/ai/prompts';
 import type { LocationBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import type { LibraryLocation } from '@/lib/db/schema';
 import type { LibraryLocationMatch } from '@/lib/workflow/types';

@@ -7,7 +7,7 @@
 
 import type { TextModel } from '@/lib/ai/models';
 import { callLLMStream, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
-import { getPrompt } from '@/lib/observability/langfuse-prompts';
+import { getPrompt } from '@/lib/ai/prompts';
 import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import type {

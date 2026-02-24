@@ -8,7 +8,7 @@ import { createAdapter } from '@/lib/ai/create-adapter';
 import type { TextModel } from '@/lib/ai/models';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import type { PromptReference } from '@/lib/observability/langfuse';
-import { getChatPrompt } from '@/lib/observability/langfuse-prompts';
+import { getChatPrompt } from '@/lib/ai/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';

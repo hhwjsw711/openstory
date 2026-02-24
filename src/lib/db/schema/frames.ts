@@ -4,7 +4,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import type { Scene } from '@/lib/script/types';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
   type InferInsertModel,
   type InferSelectModel,

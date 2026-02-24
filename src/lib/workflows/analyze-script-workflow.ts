@@ -24,11 +24,13 @@ import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
-import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
-import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
-import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
-import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
-import type { Scene } from '@/lib/script/types';
+import {
+  audioDesignGenerationResultSchema,
+  characterExtractionResultSchema,
+  locationExtractionResultSchema,
+  sceneSplittingResultSchema,
+} from '@/lib/ai/response-schemas';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
   buildLocationMatchingPromptVariables,
   locationMatchResponseSchema,

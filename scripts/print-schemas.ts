@@ -19,14 +19,16 @@ import { z } from 'zod';
 // Import canonical schemas from the codebase
 import { sceneAnalysisSchema } from '@/lib/ai/scene-analysis.schema';
 
-// Import result schemas from their source files
-import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
-import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
-import { visualPromptGenerationResultSchema } from '@/lib/script/visual-prompts';
-import { motionPromptGenerationResultSchema } from '@/lib/script/motion-prompts';
-import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
+// Import result schemas
+import {
+  audioDesignGenerationResultSchema,
+  characterExtractionResultSchema,
+  locationExtractionResultSchema,
+  motionPromptGenerationResultSchema,
+  sceneSplittingResultSchema,
+  visualPromptGenerationResultSchema,
+} from '@/lib/ai/response-schemas';
 import { talentMatchResponseSchema } from '@/lib/services/talent-matching.service';
-import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
 import { locationMatchResponseSchema } from '@/lib/services/location-matching.service';
 
 const SCHEMA_OUTPUT_DIR = join(import.meta.dir, 'schemas');

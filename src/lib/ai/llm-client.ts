@@ -4,7 +4,7 @@
  */
 
 import type { TextModel } from '@/lib/ai/models';
-import type { ChatMessage } from '@/lib/observability/langfuse-prompts';
+import type { ChatMessage } from './prompts';
 import { chat } from '@tanstack/ai';
 import { z } from 'zod';
 import { createAdapter } from './create-adapter';

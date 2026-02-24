@@ -11,10 +11,7 @@ import { LangfuseClient } from '@langfuse/client';
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 
-const OUTPUT_PATH = resolve(
-  import.meta.dir,
-  '../src/lib/observability/local-prompts.ts'
-);
+const OUTPUT_PATH = resolve(import.meta.dir, '../src/lib/ai/prompts-local.ts');
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
