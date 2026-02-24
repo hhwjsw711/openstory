@@ -78,8 +78,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
       const uniqueName = `E2E Test Location ${Date.now()}`;
 
       await page.goto('/locations');
-      await page.waitForLoadState('networkidle');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await waitForLocationsPageLoad(page);
 
       // Click Add Location button (header or empty state - use first available)
       const addButton = page
@@ -118,8 +117,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
       const uniqueName = `E2E Test Location With Media ${Date.now()}`;
 
       await page.goto('/locations');
-      await page.waitForLoadState('networkidle');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await waitForLocationsPageLoad(page);
 
       const addButton = page
         .getByRole('button', { name: 'Add Location' })
@@ -166,8 +164,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
 
   testWithUser('can cancel Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
     const addButton = page
       .getByRole('button', { name: 'Add Location' })

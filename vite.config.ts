@@ -25,6 +25,9 @@ export default defineConfig({
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
+    watch: {
+      ignored: ['**/e2e/results/**', '**/playwright-report/**'],
+    },
   },
   preview: {
     port: 3000, // Preview server port (for cf:preview)
