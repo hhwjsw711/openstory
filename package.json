@@ -60,6 +60,7 @@
     "qstash:dev:proxy": "docker run -p 8080:8080 -e HTTP_PROXY=http://host.docker.internal:9090 -e HTTPS_PROXY=http://host.docker.internal:9090 -e NO_PROXY=localhost,127.0.0.1,host.docker.internal -e NODE_TLS_REJECT_UNAUTHORIZED=1 public.ecr.aws/upstash/qstash:latest qstash dev",
     "setup": "npx tsx scripts/setup.ts",
     "setup:prod": "npx tsx scripts/setup.ts --prod",
+    "setup:deploy": "npx tsx scripts/setup.ts --deploy",
     "cert:setup": "bash ./scripts/setup-cert.sh",
     "cert:trust": "mkcert -install",
     "storybook": "storybook dev -p 6006",
