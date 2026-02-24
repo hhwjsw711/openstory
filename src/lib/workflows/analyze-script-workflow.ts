@@ -31,14 +31,12 @@ import {
   sceneSplittingResultSchema,
 } from '@/lib/ai/response-schemas';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
+import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import {
-  buildLocationMatchingPromptVariables,
   locationMatchResponseSchema,
-} from '@/lib/services/location-matching.service';
-import {
-  buildMatchingPromptVariables,
   talentMatchResponseSchema,
-} from '@/lib/services/talent-matching.service';
+} from '@/lib/ai/response-schemas';
+import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import type {

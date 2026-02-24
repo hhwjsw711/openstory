@@ -28,8 +28,10 @@ import {
   sceneSplittingResultSchema,
   visualPromptGenerationResultSchema,
 } from '@/lib/ai/response-schemas';
-import { talentMatchResponseSchema } from '@/lib/services/talent-matching.service';
-import { locationMatchResponseSchema } from '@/lib/services/location-matching.service';
+import {
+  locationMatchResponseSchema,
+  talentMatchResponseSchema,
+} from '@/lib/ai/response-schemas';
 
 const SCHEMA_OUTPUT_DIR = join(import.meta.dir, 'schemas');
 
