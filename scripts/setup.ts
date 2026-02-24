@@ -3,7 +3,7 @@
  *
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
- *   bun setup:prod     — production (hosting platform, database, email, services → .env.production)
+ *   bun setup:prod     — production (hosting platform, database, email, services → .env)
  */
 
 import * as p from '@clack/prompts';
@@ -15,21 +15,18 @@ import { resolve } from 'path';
 const MIN_BUN_VERSION = '1.3.9';
 
 const isProd = process.argv.includes('--prod');
-const ENV_FILE = resolve(
-  process.cwd(),
-  isProd ? '.env.production' : '.env.local'
-);
-const ENV_FILENAME = isProd ? '.env.production' : '.env.local';
+const ENV_FILE = resolve(process.cwd(), isProd ? '.env' : '.env.local');
+const ENV_FILENAME = isProd ? '.env' : '.env.local';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function loadExistingEnv(): Map<string, string> {
+function parseEnvFile(path: string): Map<string, string> {
   const env = new Map<string, string>();
-  if (!existsSync(ENV_FILE)) return env;
+  if (!existsSync(path)) return env;
 
-  for (const line of readFileSync(ENV_FILE, 'utf-8').split('\n')) {
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eqIdx = trimmed.indexOf('=');
@@ -38,6 +35,21 @@ function loadExistingEnv(): Map<string, string> {
     const value = trimmed.slice(eqIdx + 1).trim();
     if (key && value) env.set(key, value);
   }
+  return env;
+}
+
+function loadExistingEnv(): Map<string, string> {
+  const env = parseEnvFile(ENV_FILE);
+
+  // For prod, also read .env.production so existing keys are skipped
+  if (isProd) {
+    const legacyFile = resolve(process.cwd(), '.env.production');
+    const legacy = parseEnvFile(legacyFile);
+    legacy.forEach((value, key) => {
+      if (!env.has(key)) env.set(key, value);
+    });
+  }
+
   return env;
 }
 
@@ -63,7 +75,6 @@ function writeEnvFile(vars: Map<string, string>) {
         'TURSO_DATABASE_URL',
         'TURSO_AUTH_TOKEN',
         'CLOUDFLARE_ACCOUNT_ID',
-        'CLOUDFLARE_D1_DATABASE_ID',
         'CLOUDFLARE_API_TOKEN',
       ],
     },
@@ -353,7 +364,7 @@ async function main() {
           options: [
             {
               value: 'cloudflare',
-              label: 'Cloudflare Pages',
+              label: 'Cloudflare Workers',
               hint: 'recommended',
             },
             { value: 'vercel', label: 'Vercel' },
@@ -382,21 +393,19 @@ async function main() {
     const platform = vars.get('DEPLOY_PLATFORM');
 
     if (platform === 'cloudflare') {
-      p.log.step(chalk.bold('Database (Cloudflare D1)'));
+      p.log.step(chalk.bold('Cloudflare'));
       await promptForKey(
         'CLOUDFLARE_ACCOUNT_ID',
         'Enter your Cloudflare Account ID',
-        'Find in Cloudflare Dashboard → Overview → Account ID'
-      );
-      await promptForKey(
-        'CLOUDFLARE_D1_DATABASE_ID',
-        'Enter your D1 Database ID',
-        'Find in Cloudflare Dashboard → D1 → your database'
+        'Find in Cloudflare console → Compute → Workers & Pages → Account ID (sidebar)'
       );
       await promptForKey(
         'CLOUDFLARE_API_TOKEN',
         'Enter your Cloudflare API token',
-        'Create at: https://dash.cloudflare.com/profile/api-tokens (needs D1 edit permission)'
+        'Create at: https://dash.cloudflare.com/profile/api-tokens (needs D1 + Workers edit permissions)'
+      );
+      p.log.info(
+        'D1 database is configured in wrangler.jsonc — deploy handles migrations automatically.'
       );
     } else {
       // Vercel / Railway → Turso
@@ -428,12 +437,10 @@ async function main() {
     p.log.success('Auth secret — already configured');
   }
 
-  if (vars.has('TURSO_DATABASE_URL')) {
+  if (vars.get('DEPLOY_PLATFORM') === 'cloudflare') {
+    p.log.success('Database: Cloudflare D1 (via wrangler.jsonc)');
+  } else if (vars.has('TURSO_DATABASE_URL')) {
     p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
-  } else if (vars.has('CLOUDFLARE_D1_DATABASE_ID')) {
-    p.log.success(
-      `Database: Cloudflare D1 (${vars.get('CLOUDFLARE_D1_DATABASE_ID')})`
-    );
   }
   p.log.success(`App URL: ${vars.get('APP_URL')}`);
   saveProgress();
@@ -682,7 +689,7 @@ async function main() {
   // Summary
   // -------------------------------------------------------------------------
   const platformLabels: Record<string, string> = {
-    cloudflare: 'Cloudflare Pages',
+    cloudflare: 'Cloudflare Workers',
     vercel: 'Vercel',
     railway: 'Railway',
   };
@@ -697,7 +704,7 @@ async function main() {
     [
       'Database',
       isProd
-        ? vars.has('CLOUDFLARE_D1_DATABASE_ID')
+        ? vars.get('DEPLOY_PLATFORM') === 'cloudflare'
           ? 'Cloudflare D1'
           : vars.has('TURSO_DATABASE_URL')
             ? 'Turso'
