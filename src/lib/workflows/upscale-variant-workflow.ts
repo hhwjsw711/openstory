@@ -1,7 +1,7 @@
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
+import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
-import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
@@ -9,6 +9,31 @@ import type {
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+
+const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
+
+RENDERING RULES
+- Keep the original scene, pose, framing and camera angle IDENTICAL.
+- Preserve the identity of all real people:
+  - Do NOT change their faces, expressions, hairstyles, or clothing.
+  - Do NOT add new people or remove existing people.
+- Faces:
+  - Make faces sharp and detailed.
+  - Clear eyes, natural skin texture, no plastic or over-smoothed look.
+- Text & logos:
+  - Preserve all printed text, signage, and logos exactly as they appear.
+  - Re-render text cleanly at higher resolution.
+  - Do NOT invent new words, change names, or move signs.
+- Style:
+  - Realistic photographic look.
+  - Keep original colours, lighting and depth of field.
+  - No extra filters, bokeh, vignettes, film grain, or stylistic changes unless they already exist.
+
+OUTPUT
+- A SINGLE high-resolution image.
+- Aspect ratio: match the original exactly.
+- Resolution: upscale to animation-ready quality.
+- No text overlays, borders, watermarks, or new graphics added by the model.`;
 
 export const upscaleVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
@@ -42,7 +67,19 @@ export const upscaleVariantWorkflow = createWorkflow(
         return null;
       }
 
-      return upscaleWithNanoBanana(input.croppedTileUrl, '2K', input.teamId);
+      const result = await generateImageWithProvider({
+        model: 'nano_banana_pro',
+        prompt: UPSCALE_PROMPT,
+        referenceImageUrls: [input.croppedTileUrl],
+        numImages: 1,
+        outputFormat: 'png',
+        teamId: input.teamId,
+      });
+      return {
+        imageUrl: result.imageUrls[0],
+        cost: result.metadata.cost ?? 0,
+        usedOwnKey: result.metadata.usedOwnKey,
+      };
     });
 
     if (!upscaleResult) {
