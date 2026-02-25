@@ -1,0 +1,110 @@
+import type { TextModel } from '@/lib/ai/models';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
+
+// Mock environment
+mock.module('#env', () => ({
+  getEnv: () => ({
+    OPENROUTER_KEY: 'test-key',
+    APP_URL: 'http://localhost:3000',
+    APP_NAME: 'Test',
+  }),
+}));
+
+// Mock @tanstack/ai — chat() is the only function callLLMStream uses
+const mockChat = mock();
+mock.module('@tanstack/ai', () => ({
+  chat: mockChat,
+}));
+
+// Mock create-adapter to avoid real adapter creation
+mock.module('./create-adapter', () => ({
+  createAdapter: () => ({ kind: 'text', name: 'mock' }),
+}));
+
+import { callLLMStream } from './llm-client';
+
+describe('llm-client', () => {
+  beforeEach(() => {
+    mockChat.mockClear();
+  });
+
+  describe('callLLMStream', () => {
+    it('handles split chunks correctly', async () => {
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'Hello' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: ' ' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'World' };
+        })()
+      );
+
+      const generator = callLLMStream({
+        model: 'test-model' as TextModel,
+        messages: [{ role: 'user', content: 'test' }],
+      });
+
+      let fullText = '';
+      const chunks = [];
+
+      for await (const chunk of generator) {
+        if (!chunk.done) {
+          fullText = chunk.accumulated;
+          chunks.push(chunk.delta);
+        }
+      }
+
+      expect(fullText).toBe('Hello World');
+      expect(chunks).toEqual(['Hello', ' ', 'World']);
+    });
+
+    it('handles multiple lines in a single chunk', async () => {
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'A' };
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'B' };
+        })()
+      );
+
+      const generator = callLLMStream({
+        model: 'test-model' as TextModel,
+        messages: [{ role: 'user', content: 'test' }],
+      });
+
+      let fullText = '';
+      const chunks = [];
+
+      for await (const chunk of generator) {
+        if (!chunk.done) {
+          fullText = chunk.accumulated;
+          chunks.push(chunk.delta);
+        }
+      }
+
+      expect(fullText).toBe('AB');
+      expect(chunks).toEqual(['A', 'B']);
+    });
+
+    it('handles stream errors', async () => {
+      mockChat.mockReturnValue(
+        (async function* () {
+          yield { type: 'TEXT_MESSAGE_CONTENT', delta: 'partial' };
+          yield {
+            type: 'RUN_ERROR',
+            error: { message: 'Connection lost' },
+          };
+        })()
+      );
+
+      const generator = callLLMStream({
+        model: 'test-model' as TextModel,
+        messages: [{ role: 'user', content: 'test' }],
+      });
+
+      expect(async () => {
+        for await (const _chunk of generator) {
+          // iterate until error
+        }
+      }).toThrow('LLM stream error: Connection lost');
+    });
+  });
+});

@@ -60,7 +60,7 @@ export default defineConfig({
   ],
 
   // Run dev server on port 3001 with test.db
-  // Secrets loaded from .env.local by Vite; we override DATABASE_URL and PORT
+  // server.warmup in vite.config.ts pre-compiles SSR routes to avoid race conditions
   webServer: {
     command: 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',

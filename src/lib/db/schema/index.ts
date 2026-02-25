@@ -60,6 +60,7 @@ import {
 import {
   audio,
   audioRelations,
+  StyleConfigSchema,
   styleAdaptations,
   styleAdaptationsRelations,
   styles,
@@ -233,7 +234,7 @@ export type {
 } from './talent';
 
 // Library Resources
-export { audio, styles, vfx };
+export { audio, StyleConfigSchema, styles, vfx };
 
 export type {
   Audio,
@@ -243,6 +244,7 @@ export type {
   NewVfx,
   Style,
   StyleAdaptation,
+  StyleConfig,
   Vfx,
 } from './libraries';
 

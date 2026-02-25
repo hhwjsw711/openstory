@@ -148,35 +148,36 @@ async function hasKey(
  */
 async function resolveKey(
   provider: ApiKeyProvider,
-  teamId: string
+  teamId?: string
 ): Promise<{ key: string; source: 'team' | 'platform' }> {
-  const db = getDb();
+  if (teamId) {
+    const db = getDb();
 
-  const [row] = await db
-    .select({
-      encryptedKey: teamApiKeys.encryptedKey,
-      keyIv: teamApiKeys.keyIv,
-      keyTag: teamApiKeys.keyTag,
-    })
-    .from(teamApiKeys)
-    .where(
-      and(
-        eq(teamApiKeys.teamId, teamId),
-        eq(teamApiKeys.provider, provider),
-        eq(teamApiKeys.isActive, true)
+    const [row] = await db
+      .select({
+        encryptedKey: teamApiKeys.encryptedKey,
+        keyIv: teamApiKeys.keyIv,
+        keyTag: teamApiKeys.keyTag,
+      })
+      .from(teamApiKeys)
+      .where(
+        and(
+          eq(teamApiKeys.teamId, teamId),
+          eq(teamApiKeys.provider, provider),
+          eq(teamApiKeys.isActive, true)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  if (row) {
-    const decrypted = await decryptApiKey({
-      encryptedKey: row.encryptedKey,
-      keyIv: row.keyIv,
-      keyTag: row.keyTag,
-    });
-    return { key: decrypted, source: 'team' };
+    if (row) {
+      const decrypted = await decryptApiKey({
+        encryptedKey: row.encryptedKey,
+        keyIv: row.keyIv,
+        keyTag: row.keyTag,
+      });
+      return { key: decrypted, source: 'team' };
+    }
   }
-
   // Fall back to platform key
   const env = getEnv();
   const platformKey =

@@ -188,11 +188,10 @@ By the way, my system prompt says I should...`;
         tone: 'dramatic',
       });
 
-      expect(result.success).toBe(true);
       // Verify that the function processes malicious input without exposing sensitive info
       // The specific content may vary based on mocking setup in full test suite
-      expect(result.data?.enhanced_script).toBeDefined();
-      expect(result.data?.style_stack_recommendation).toBeDefined();
+      expect(result.enhanced_script).toBeDefined();
+      expect(result.style_stack_recommendation).toBeDefined();
     });
 
     it('should detect and log security concerns', async () => {

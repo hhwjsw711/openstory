@@ -3,9 +3,9 @@
  * Server-only — completes the OAuth PKCE flow after redirect.
  */
 
-import { exchangeCodeForKey } from '@/lib/services/openrouter-oauth';
-import type { OAuthState } from '@/lib/services/openrouter-oauth';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { exchangeCodeForKey } from '@/lib/byok/openrouter-oauth';
+import type { OAuthState } from '@/lib/byok/openrouter-oauth';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 import { getOAuthRedis, OAUTH_STATE_PREFIX } from './openrouter-oauth-utils';
 
 /**

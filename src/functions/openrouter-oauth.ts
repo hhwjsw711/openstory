@@ -10,7 +10,7 @@ import { getRequest } from '@tanstack/react-start/server';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { teamAdminAccessMiddleware } from './middleware';
-import { buildAuthorizationUrl } from '@/lib/services/openrouter-oauth';
+import { buildAuthorizationUrl } from '@/lib/byok/openrouter-oauth';
 import { getServerAppUrl } from '@/lib/utils/environment';
 import {
   getOAuthRedis,

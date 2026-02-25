@@ -17,7 +17,7 @@ import type {
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
-import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
+import type { StyleConfig } from '@/lib/db/schema';
 import type { Json } from '@/types/database';
 
 /**
@@ -96,7 +96,7 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   // Required inputs
   script: string;
   aspectRatio: AspectRatio;
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
@@ -226,7 +226,7 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
   locationBible: LocationBibleEntry[];
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
 }
@@ -239,7 +239,7 @@ export interface MotionPromptWorkflowInput extends Partial<SequenceWorkflowConte
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   videoModel?: ImageToVideoModel;
 }

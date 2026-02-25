@@ -7,7 +7,7 @@
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 
 type Provider = 'fal' | 'openrouter';
 

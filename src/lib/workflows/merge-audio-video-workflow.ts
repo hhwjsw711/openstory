@@ -4,24 +4,20 @@
  */
 
 import { getDb } from '#db-client';
-import { sequences } from '@/lib/db/schema';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  uploadFile,
   STORAGE_BUCKETS,
+  uploadFile,
 } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
-import type {
-  MergeAudioVideoWorkflowInput,
-  MergeAudioVideoWorkflowResult,
-} from '@/lib/workflow/types';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
+import { sequences } from '@/lib/db/schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { WorkflowContext } from '@upstash/workflow';
+import type { MergeAudioVideoWorkflowInput } from '@/lib/workflow/types';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
 
@@ -43,7 +39,6 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       `[MergeAudioVideoWorkflow] Starting mux for sequence ${input.sequenceId}`
     );
 
-    // Step 1: Set status to merging (reuse mergedVideoStatus to trigger UI polling)
     await context.run('set-merging-status', async () => {
       await getDb()
         .update(sequences)
@@ -55,40 +50,28 @@ export const mergeAudioVideoWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
     });
 
-    // Resolve team API keys
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
-    // Step 2: Compute actual video duration from frame data
     const videoDurationMs = await context.run(
       'compute-video-duration',
       async () => {
-        const sequenceFrames = await getSequenceFrames(input.sequenceId);
-        const totalMs = sequenceFrames.reduce(
-          (sum, f) => sum + (f.durationMs ?? 3000),
-          0
-        );
-        return totalMs;
+        const frames = await getSequenceFrames(input.sequenceId);
+        return frames.reduce((sum, f) => sum + (f.durationMs ?? 3000), 0);
       }
     );
 
-    // Step 3: Compose video (preserving native audio) with music track via Fal FFmpeg compose API
     const muxResult = await context.run('compose-audio-video', async () => {
-      return composeAudioVideo(
-        input.mergedVideoUrl,
-        input.musicUrl,
-        videoDurationMs,
-        apiKeys.falApiKey
-      );
+      return composeAudioVideo({
+        videoUrl: input.mergedVideoUrl,
+        musicUrl: input.musicUrl,
+        durationMs: videoDurationMs,
+        teamId: input.teamId,
+      });
     });
 
-    // Deduct credits
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
         costUsd: muxResult.cost,
-        usedOwnKey: !!apiKeys.falApiKey,
+        usedOwnKey: muxResult.usedOwnKey,
         userId: input.userId,
         description: 'Audio+video mux',
         metadata: { sequenceId: input.sequenceId },
@@ -96,7 +79,6 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       });
     });
 
-    // Step 3: Upload muxed video to R2 storage
     const storageResult = await context.run('upload-to-storage', async () => {
       const response = await fetch(muxResult.videoUrl);
       if (!response.ok) {
@@ -109,7 +91,6 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       const extension = getExtensionFromUrl(muxResult.videoUrl) || 'mp4';
       const contentType = getMimeTypeFromExtension(extension);
       const shortHash = generateId().slice(-8);
-
       const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_velro.${extension}`;
 
       const result = await uploadFile(STORAGE_BUCKETS.VIDEOS, path, videoBlob, {
@@ -120,7 +101,6 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       return { path, url: result.publicUrl };
     });
 
-    // Step 4: Update sequence with muxed video (overwrites the video-only merge)
     await context.run('update-sequence', async () => {
       await getDb()
         .update(sequences)
@@ -139,12 +119,10 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       `[MergeAudioVideoWorkflow] Completed mux for sequence ${input.sequenceId}`
     );
 
-    const result: MergeAudioVideoWorkflowResult = {
+    return {
       mergedVideoUrl: storageResult.url,
       mergedVideoPath: storageResult.path,
     };
-
-    return result;
   },
   {
     failureFunction: async ({ context, failResponse }) => {

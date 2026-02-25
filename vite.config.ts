@@ -1,18 +1,20 @@
 // vite.config.ts
-import path from 'path';
-import { defineConfig } from 'vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
-import { cloudflare } from '@cloudflare/vite-plugin';
+import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { defineConfig } from 'vite';
 
+import tailwindcss from '@tailwindcss/vite';
+import { devtools } from '@tanstack/devtools-vite';
 import viteReact from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import tailwindcss from '@tailwindcss/vite';
 
 // Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
 const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
+const isDev = process.env.NODE_ENV !== 'production';
 
 const vidstackPath = path.resolve('node_modules/@vidstack/react');
 export default defineConfig({
@@ -23,6 +25,18 @@ export default defineConfig({
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
+    watch: {
+      ignored: [
+        '**/e2e/results/**',
+        '**/playwright-report/**',
+        '**/test.db',
+        '**/local.db',
+        '**/test-results/**',
+      ],
+    },
+    warmup: {
+      ssrFiles: ['./src/routes/api/**/*.ts'],
+    },
   },
   preview: {
     port: 3000, // Preview server port (for cf:preview)
@@ -46,6 +60,7 @@ export default defineConfig({
       : undefined,
   },
   plugins: [
+    isDev && devtools(),
     tsconfigPaths(),
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE

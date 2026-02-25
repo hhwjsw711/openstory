@@ -9,21 +9,22 @@ import {
   relations,
 } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import z from 'zod';
 import { generateId } from '../id';
 import { user } from './auth';
 import { teams } from './teams';
 
-type ColorString = string;
+export const StyleConfigSchema = z.object({
+  mood: z.string().min(3).max(500),
+  artStyle: z.string().min(3).max(500),
+  lighting: z.string().min(3).max(500),
+  colorPalette: z.array(z.string().min(1)).min(1).max(20),
+  cameraWork: z.string().min(3).max(500),
+  referenceFilms: z.array(z.string().min(1)).max(50),
+  colorGrading: z.string().min(3).max(300),
+});
 
-export type StyleConfig = {
-  artStyle: string; // 'Neo-noir with stark contrasts and neon accents',
-  colorPalette: ColorString[];
-  lighting: string; // 'High contrast with venetian blind shadows and neon highlights',
-  cameraWork: string; // 'Dutch angles and voyeuristic framing',
-  mood: string; // 'Tense and mysterious';
-  referenceFilms: string[]; // ['Blade Runner', 'Sin City', 'Drive'],
-  colorGrading: string; // 'Desaturated with selective color pops',
-};
+export type StyleConfig = z.infer<typeof StyleConfigSchema>;
 
 /**
  * Styles library

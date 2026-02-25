@@ -11,8 +11,8 @@ import {
   type ChatPromptClient,
   type TextPromptClient,
 } from '@langfuse/client';
-import { isLangfuseEnabled } from './langfuse';
-import { LOCAL_CHAT_PROMPTS, LOCAL_TEXT_PROMPTS } from './local-prompts';
+import { isLangfuseEnabled } from '@/lib/observability/langfuse';
+import { LOCAL_CHAT_PROMPTS, LOCAL_TEXT_PROMPTS } from './prompts-local';
 
 let client: LangfuseClient | null = null;
 

@@ -6,7 +6,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { authWithTeamMiddleware } from './middleware';
 import { isBillingEnabled } from '@/lib/billing/constants';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 import {
   getTeamBalance,
   getBillingSettings,

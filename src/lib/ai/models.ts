@@ -3,7 +3,19 @@
  * Separated to avoid circular dependencies between service and client modules
  */
 
+import type { AnalysisModelId } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+
+// ============================================================================
+// Text (Chat/LLM) Models — OpenRouter
+// ============================================================================
+
+/**
+ * Valid text model IDs for OpenRouter chat/LLM calls.
+ * Derived from our curated SCRIPT_ANALYSIS_MODELS list in models.config.ts.
+ * (The @tanstack/ai-openrouter adapter's built-in model list is stale.)
+ */
+export type TextModel = AnalysisModelId;
 
 /**
  * Image-to-video models (for motion generation)

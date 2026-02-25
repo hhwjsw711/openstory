@@ -36,39 +36,56 @@ type ScenesViewProps = {
   sequenceId?: string;
 };
 
-const getPlayerMaxClassNameByAspectRatio = (
-  aspectRatio: AspectRatio
-): string => {
-  // Use Tailwind arbitrary values - map each aspect ratio to its specific classes
-  // Tailwind JIT needs to see the full class names at build time
-  const classMap: Record<AspectRatio, string> = {
-    '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
-    '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
-    '1:1': 'max-h-[50vh] max-w-[50vh]',
-  };
-  return classMap[aspectRatio] || classMap['16:9'];
+// Full class names required for Tailwind JIT to detect at build time
+const PLAYER_MAX_CLASS_BY_RATIO: Record<AspectRatio, string> = {
+  '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
+  '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
+  '1:1': 'max-h-[50vh] max-w-[50vh]',
 };
+
+type RegenerationType = 'image' | 'motion' | 'scene-variants';
+
+function addToSet(prev: Set<string>, id: string): Set<string> {
+  return new Set(prev).add(id);
+}
+
+function removeFromSet(prev: Set<string>, id: string): Set<string> {
+  const next = new Set(prev);
+  next.delete(id);
+  return next;
+}
+
+function addAllToSet(prev: Set<string>, ids: string[]): Set<string> {
+  const next = new Set(prev);
+  for (const id of ids) next.add(id);
+  return next;
+}
+
+function removeAllFromSet(prev: Set<string>, ids: string[]): Set<string> {
+  const next = new Set(prev);
+  for (const id of ids) next.delete(id);
+  return next;
+}
+
+function isTerminalStatus(status: string | null): boolean {
+  return status === 'completed' || status === 'failed';
+}
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const queryClient = useQueryClient();
 
-  // State management
-  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
-    undefined
-  );
+  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [selectedTab, setSelectedTab] = useState<TabValue>('script');
 
-  // Track which frames are currently regenerating (UI state)
   const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
   const [regeneratingMotion, setRegeneratingMotion] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
-
   const [regeneratingSceneVariants, setRegeneratingSceneVariants] = useState<
     Set<string>
-  >(new Set());
+  >(() => new Set());
 
   // Initial fetch to determine sequence status - disable default polling
   const { data: sequence } = useSequence(sequenceId, {
@@ -94,84 +111,58 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     refetchInterval: pollInterval,
   });
 
-  // Use the most recent sequence data
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
     () => frames?.find((frame) => frame.id === curSelectedFrameId),
     [frames, curSelectedFrameId]
   );
 
-  // Helper functions to manage regeneration state
+  const setterForType = useCallback((type: RegenerationType) => {
+    switch (type) {
+      case 'image':
+        return setRegeneratingImages;
+      case 'motion':
+        return setRegeneratingMotion;
+      case 'scene-variants':
+        return setRegeneratingSceneVariants;
+    }
+  }, []);
+
   const handleRegenerateStart = useCallback(
-    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
-      if (type === 'image') {
-        setRegeneratingImages((prev) => new Set(prev).add(frameId));
-      } else if (type === 'motion') {
-        setRegeneratingMotion((prev) => new Set(prev).add(frameId));
-      } else if (type === 'scene-variants') {
-        setRegeneratingSceneVariants((prev) => new Set(prev).add(frameId));
-      }
+    (frameId: string, type: RegenerationType) => {
+      setterForType(type)((prev) => addToSet(prev, frameId));
     },
-    []
+    [setterForType]
   );
 
   const handleRegenerateEnd = useCallback(
-    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
-      if (type === 'image') {
-        setRegeneratingImages((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      } else if (type === 'motion') {
-        setRegeneratingMotion((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      } else if (type === 'scene-variants') {
-        setRegeneratingSceneVariants((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      }
+    (frameId: string, type: RegenerationType) => {
+      setterForType(type)((prev) => removeFromSet(prev, frameId));
     },
-    []
+    [setterForType]
   );
 
-  // Auto-remove frames from regenerating Sets when generation completes or fails
-  // Keep frames in Set while status is 'generating' to maintain UI feedback
+  // Auto-remove frames from regenerating sets when generation completes or fails
   useEffect(() => {
     if (!frames) return;
 
-    frames.forEach((frame) => {
-      // Remove from image regenerating set only when generation completes or fails
+    for (const frame of frames) {
       if (
         regeneratingImages.has(frame.id) &&
-        (frame.thumbnailStatus === 'completed' ||
-          frame.thumbnailStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.thumbnailStatus)
+      )
         handleRegenerateEnd(frame.id, 'image');
-      }
-
-      // Remove from motion regenerating set only when generation completes or fails
       if (
         regeneratingMotion.has(frame.id) &&
-        (frame.videoStatus === 'completed' || frame.videoStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.videoStatus)
+      )
         handleRegenerateEnd(frame.id, 'motion');
-      }
-
-      // Remove from scene variants regenerating set only when generation completes or fails
       if (
         regeneratingSceneVariants.has(frame.id) &&
-        (frame.variantImageStatus === 'completed' ||
-          frame.variantImageStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.variantImageStatus)
+      )
         handleRegenerateEnd(frame.id, 'scene-variants');
-      }
-    });
+    }
   }, [
     frames,
     regeneratingImages,
@@ -225,27 +216,12 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     async (frameIds: string[]) => {
       if (!sequenceId || frameIds.length === 0) return;
 
-      // Mark all frames as regenerating
-      setRegeneratingMotion((prev) => {
-        const next = new Set(prev);
-        frameIds.forEach((id) => next.add(id));
-        return next;
-      });
+      setRegeneratingMotion((prev) => addAllToSet(prev, frameIds));
 
       try {
-        await batchGenerateMotionFn({
-          data: {
-            sequenceId,
-            frameIds,
-          },
-        });
+        await batchGenerateMotionFn({ data: { sequenceId, frameIds } });
       } catch (error) {
-        // On error, remove from regenerating set
-        setRegeneratingMotion((prev) => {
-          const next = new Set(prev);
-          frameIds.forEach((id) => next.delete(id));
-          return next;
-        });
+        setRegeneratingMotion((prev) => removeAllFromSet(prev, frameIds));
 
         if (
           error instanceof Error &&
@@ -269,7 +245,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         }
       }
     },
-    [sequenceId]
+    [sequenceId, queryClient]
   );
 
   return (
@@ -340,7 +316,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
               selectedTab={selectedTab}
-              className={getPlayerMaxClassNameByAspectRatio(aspectRatio)}
+              className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
             />
           </div>
           <SceneScriptPrompts

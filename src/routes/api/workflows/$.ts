@@ -3,6 +3,7 @@
  * Serves all QStash workflows for async AI task processing
  */
 
+import { initAIEventBridge } from '@/lib/observability/ai-event-bridge';
 import { flushTracing, initTracing } from '@/lib/observability/langfuse';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
@@ -30,12 +31,13 @@ import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
 import { createFileRoute } from '@tanstack/react-router';
 import { serveMany } from '@upstash/workflow/tanstack';
 
-// Initialize Langfuse tracing at module load
-initTracing();
-
 let _handler: ReturnType<typeof serveMany> | null = null;
 function getHandler() {
   if (!_handler) {
+    // Initialize Langfuse tracing and AI event bridge at load
+    initTracing();
+    initAIEventBridge();
+
     _handler = serveMany(
       {
         storyboard: generateStoryboardWorkflow,
