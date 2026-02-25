@@ -26,7 +26,16 @@ export default defineConfig({
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
     watch: {
-      ignored: ['**/e2e/results/**', '**/playwright-report/**'],
+      ignored: [
+        '**/e2e/results/**',
+        '**/playwright-report/**',
+        '**/test.db',
+        '**/local.db',
+        '**/test-results/**',
+      ],
+    },
+    warmup: {
+      ssrFiles: ['./src/routes/**/*.ts', './src/routes/**/*.tsx'],
     },
   },
   preview: {

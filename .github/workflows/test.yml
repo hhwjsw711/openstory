@@ -66,6 +66,7 @@ jobs:
       - name: Run E2E tests
         run: bun test:e2e
         env:
+          BETTER_AUTH_URL: http://localhost:3001
           # Skip workflow triggers in E2E tests
           E2E_TEST: 'true'
           # QStash - local Docker service
