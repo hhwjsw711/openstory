@@ -1,4 +1,4 @@
-# Velro.ai Product Requirements Document
+# OpenStory Product Requirements Document
 
 **Version:** 1.0  
 **Date:** August 28, 2025  
@@ -19,7 +19,7 @@ Put cinematic power in the hands of anyone with a story to tell by blending AI w
 
 ### 1.3 Unique Value Proposition
 
-Velro.ai is the first platform to solve the "consistency problem" in AI content generation through Style Stacks - intelligent, reusable presets that ensure artistic vision remains intact across all models and generations.
+OpenStory is the first platform to solve the "consistency problem" in AI content generation through Style Stacks - intelligent, reusable presets that ensure artistic vision remains intact across all models and generations.
 
 ---
 
@@ -53,7 +53,7 @@ Style Stacks are dynamic JSON-based presets that capture and maintain consistent
 
 ### 2.3 Competitive Positioning
 
-| Feature             | Velro.ai         | Runway     | Pika       | Krea.ai    |
+| Feature             | OpenStory        | Runway     | Pika       | Krea.ai    |
 | ------------------- | ---------------- | ---------- | ---------- | ---------- |
 | Style Consistency   | ✅ Style Stacks  | ❌ Manual  | ❌ Manual  | ❌ Manual  |
 | Multi-Model Support | ✅ 19+ models    | ⚠️ Limited | ❌ Single  | ⚠️ Limited |
@@ -508,7 +508,7 @@ CREATE TABLE marketplace_transactions (
 
 ```typescript
 // Core API Endpoints
-interface VelroAPI {
+interface OpenStoryAPI {
   // Style Stack Operations
   '/stacks': {
     POST: CreateStack;
@@ -839,7 +839,7 @@ const KPIs = {
 
 ### 9.3 Phase 3 (Months 5-6) - Scale & Innovation
 
-- [ ] VELRO proprietary model
+- [ ] OpenStory proprietary model
 - [ ] ComfyUI self-hosted integration
 - [ ] Enterprise features (SSO, SLA)
 - [ ] API for developers

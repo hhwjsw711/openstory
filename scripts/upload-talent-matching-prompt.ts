@@ -6,7 +6,7 @@
 
 import { LangfuseClient } from '@langfuse/client';
 
-const PROMPT_NAME = 'velro/phase/talent-matching';
+const PROMPT_NAME = 'openstory/phase/talent-matching';
 
 const PROMPT_CONTENT = `You are a casting director AI. Your job is to match available talent (actors) to character roles.
 

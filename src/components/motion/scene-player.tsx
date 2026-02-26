@@ -262,7 +262,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             autoPlay={shouldAutoPlay}
             enableDownload={!!currentFrame.videoUrl}
             downloadFilename={
-              downloadData?.filename || `scene-${currentFrame.id}_velro.mp4`
+              downloadData?.filename || `scene-${currentFrame.id}_openstory.mp4`
             }
             downloadUrl={downloadData?.downloadUrl}
             onTimeUpdate={onTimeUpdate}

@@ -10,7 +10,7 @@
  *
  * The S3 SDK provides cross-platform compatibility at the cost of larger bundle size.
  * For Cloudflare-specific optimization, consider using native R2 bindings via:
- * getEnv().VELRO_STORAGE (configured in wrangler.toml as [[r2_buckets]])
+ * getEnv().OPENSTORY_STORAGE (configured in wrangler.toml as [[r2_buckets]])
  */
 
 import { getEnv } from '#env';
@@ -320,7 +320,7 @@ export async function getSignedUrl(
  *
  * @param bucket - The storage bucket name
  * @param path - The file path within the bucket
- * @param filename - The filename to use for download (e.g., 'my-video_velro.mp4')
+ * @param filename - The filename to use for download (e.g., 'my-video_openstory.mp4')
  * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
  * @returns Signed URL with Content-Disposition header for download
  * @throws Error if signing fails
@@ -330,7 +330,7 @@ export async function getSignedUrl(
  * const url = await getSignedUrlWithDownload(
  *   STORAGE_BUCKETS.VIDEOS,
  *   'teams/123/video.mp4',
- *   'desert-scene_velro.mp4',
+ *   'desert-scene_openstory.mp4',
  *   7200
  * );
  * ```

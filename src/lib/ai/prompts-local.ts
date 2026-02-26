@@ -16,7 +16,7 @@ export type ChatMessage = {
  * Text prompts (used via getPrompt → system message for streaming calls)
  */
 export const LOCAL_TEXT_PROMPTS: Record<string, string> = {
-  'velro/character/base-sheet': `A professional four-panel photographic character reference grid, maintaining absolute anatomical and stylistic consistency.
+  'openstory/character/base-sheet': `A professional four-panel photographic character reference grid, maintaining absolute anatomical and stylistic consistency.
 
 [LAYOUT]:
 The grid comprises four distinct, technical views arranged horizontally:
@@ -41,7 +41,7 @@ Neutral, even, high-key studio lighting. Diffused illumination from large softbo
 [MATERIALITY]:
 Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-details. Consistent texture rendering across all four angles without beautification or alteration.`,
 
-  'velro/character/headshot': `Professional headshot portrait of {{name}}, photorealistic, studio lighting.
+  'openstory/character/headshot': `Professional headshot portrait of {{name}}, photorealistic, studio lighting.
 
 {{referenceSection}}
 
@@ -59,7 +59,7 @@ Style: Professional portrait photography, headshot for actor/model portfolio.
 Aspect ratio: Square 1:1 format.
 {{consistencyNote}}`,
 
-  'velro/character/talent-sheet': `A professional four-panel photographic character reference grid, maintaining absolute anatomical and stylistic consistency.
+  'openstory/character/talent-sheet': `A professional four-panel photographic character reference grid, maintaining absolute anatomical and stylistic consistency.
 
 [LAYOUT]:
 The grid comprises four distinct, technical views arranged horizontally:
@@ -91,7 +91,7 @@ Neutral, even, high-key studio lighting. Diffused illumination from large softbo
 [MATERIALITY]:
 Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-details. Consistent texture rendering across all four angles without beautification or alteration.`,
 
-  'velro/phase/audio-design': `You are a Cinematic Audio Designer. Output pure JSON only - no markdown, no explanation.
+  'openstory/phase/audio-design': `You are a Cinematic Audio Designer. Output pure JSON only - no markdown, no explanation.
 
 ## Core Rules
 
@@ -172,7 +172,7 @@ Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-deta
   }]
 }`,
 
-  'velro/phase/character-extraction': `You are a Character Bible Generator. Output pure JSON only - no markdown, no explanation.
+  'openstory/phase/character-extraction': `You are a Character Bible Generator. Output pure JSON only - no markdown, no explanation.
 
 ## Core Rules
 
@@ -214,7 +214,7 @@ For each character determine:
   }]
 }`,
 
-  'velro/phase/motion-prompt-generation': `You are a Cinematic Motion Prompt Generator. Output pure JSON only - no markdown, no explanation.
+  'openstory/phase/motion-prompt-generation': `You are a Cinematic Motion Prompt Generator. Output pure JSON only - no markdown, no explanation.
 
 ## Core Rules
 
@@ -285,7 +285,7 @@ Motion prompts (100-150 words) must include:
  * Chat prompts (used via getChatPrompt → durable workflow calls)
  */
 export const LOCAL_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
-  'velro/phase/audio-design-chat': [
+  'openstory/phase/audio-design-chat': [
     {
       role: 'system',
       content: `You are a Cinematic Audio Designer. Output pure JSON only - no markdown, no explanation.
@@ -370,7 +370,7 @@ Respond with ONLY valid JSON matching the schema.`,
     },
   ],
 
-  'velro/phase/character-extraction-chat': [
+  'openstory/phase/character-extraction-chat': [
     {
       role: 'system',
       content: `You are a Character Bible Generator. Output pure JSON only - no markdown, no explanation.
@@ -417,7 +417,7 @@ Respond with ONLY valid JSON matching the schema.`,
     },
   ],
 
-  'velro/phase/location-extraction-chat': [
+  'openstory/phase/location-extraction-chat': [
     {
       role: 'system',
       content: `You are an expert script analyst and location designer for film and video production.
@@ -463,7 +463,7 @@ Respond with ONLY valid JSON matching the schema.`,
     },
   ],
 
-  'velro/phase/location-matching-chat': [
+  'openstory/phase/location-matching-chat': [
     {
       role: 'system',
       content: `You are a location matching specialist for film production. Your expertise is pairing pre-existing visual references (library locations) with script-described settings to ensure visual consistency throughout a production.

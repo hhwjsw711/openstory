@@ -1,5 +1,5 @@
 /**
- * BetterAuth configuration for Velro
+ * BetterAuth configuration for OpenStory
  * Replaces Supabase Auth with anonymous users and email/password login
  */
 

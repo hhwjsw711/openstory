@@ -6,12 +6,12 @@ import {
   handleApiError,
   StorageError,
   ValidationError,
-  VelroError,
+  OpenStoryError,
 } from './errors';
 
-describe('VelroError', () => {
+describe('OpenStoryError', () => {
   it('should create an error with all properties', () => {
-    const error = new VelroError('Test error', 'TEST_CODE', 400, {
+    const error = new OpenStoryError('Test error', 'TEST_CODE', 400, {
       extra: 'data',
     });
 
@@ -19,22 +19,22 @@ describe('VelroError', () => {
     expect(error.code).toBe('TEST_CODE');
     expect(error.statusCode).toBe(400);
     expect(error.details).toEqual({ extra: 'data' });
-    expect(error.name).toBe('VelroError');
+    expect(error.name).toBe('OpenStoryError');
   });
 
   it('should use default status code of 500', () => {
-    const error = new VelroError('Test error', 'TEST_CODE');
+    const error = new OpenStoryError('Test error', 'TEST_CODE');
     expect(error.statusCode).toBe(500);
   });
 
   it('should serialize to JSON correctly', () => {
-    const error = new VelroError('Test error', 'TEST_CODE', 400, {
+    const error = new OpenStoryError('Test error', 'TEST_CODE', 400, {
       extra: 'data',
     });
 
     const json = error.toJSON();
     expect(json).toEqual({
-      name: 'VelroError',
+      name: 'OpenStoryError',
       message: 'Test error',
       code: 'TEST_CODE',
       statusCode: 400,
@@ -116,17 +116,17 @@ describe('Custom Error Classes', () => {
 });
 
 describe('handleApiError', () => {
-  it('should return VelroError instance as is', () => {
-    const velroError = new DatabaseError('Test error');
-    const result = handleApiError(velroError);
-    expect(result).toBe(velroError);
+  it('should return OpenStoryError instance as is', () => {
+    const openStoryError = new DatabaseError('Test error');
+    const result = handleApiError(openStoryError);
+    expect(result).toBe(openStoryError);
   });
 
-  it('should convert standard Error to VelroError', () => {
+  it('should convert standard Error to OpenStoryError', () => {
     const standardError = new Error('Standard error');
     const result = handleApiError(standardError);
 
-    expect(result).toBeInstanceOf(VelroError);
+    expect(result).toBeInstanceOf(OpenStoryError);
     expect(result.message).toBe('Standard error');
     expect(result.code).toBe('INTERNAL_ERROR');
     expect(result.statusCode).toBe(500);
@@ -137,7 +137,7 @@ describe('handleApiError', () => {
     const unknownError = { weird: 'object' };
     const result = handleApiError(unknownError);
 
-    expect(result).toBeInstanceOf(VelroError);
+    expect(result).toBeInstanceOf(OpenStoryError);
     expect(result.message).toBe('An unknown error occurred');
     expect(result.code).toBe('UNKNOWN_ERROR');
     expect(result.statusCode).toBe(500);

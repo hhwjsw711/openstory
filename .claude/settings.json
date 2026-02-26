@@ -22,13 +22,16 @@
       "Bash(cat:*)",
       "Bash(bun storybook:*)",
       "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(git mv:*)",
       "mcp__chrome-devtools__navigate_page",
       "mcp__chrome-devtools__wait_for",
       "mcp__chrome-devtools__list_console_messages",
       "mcp__chrome-devtools__take_screenshot",
       "mcp__context7__get-library-docs",
       "mcp__context7__resolve-library-id",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "mcp__plugin_context7_context7__query-docs"
     ],
     "deny": [],
     "ask": [
@@ -46,6 +49,8 @@
       "Bash(bunx drizzle-kit:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["shadcn", "tanstack"],
   "hooks": {
     "PreToolUse": [
       {

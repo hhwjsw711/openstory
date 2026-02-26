@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 
 function hasSkippedPasskeyPrompt(): boolean {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('velro-passkey-skip') === 'true';
+  return localStorage.getItem('openstory-passkey-skip') === 'true';
 }
 
 type VerifyFormProps = {

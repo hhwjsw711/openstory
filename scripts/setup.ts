@@ -1,5 +1,5 @@
 /**
- * Interactive setup script for Velro
+ * Interactive setup script for OpenStory
  *
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
@@ -598,7 +598,7 @@ async function main() {
 
   // --deploy: skip env var prompts, jump straight to deploy phase
   if (isDeploy) {
-    p.intro(chalk.bold('Velro Deploy Setup'));
+    p.intro(chalk.bold('OpenStory Deploy Setup'));
 
     if (existing.size === 0) {
       p.log.error(
@@ -635,7 +635,9 @@ async function main() {
   }
 
   p.intro(
-    chalk.bold(isProd ? 'Velro Production Setup' : 'Welcome to Velro Setup')
+    chalk.bold(
+      isProd ? 'OpenStory Production Setup' : 'Welcome to OpenStory Setup'
+    )
   );
 
   async function promptForKey(
@@ -859,7 +861,7 @@ async function main() {
       vars.set('TURSO_DATABASE_URL', 'file:local.db');
   }
 
-  if (!vars.has('APP_NAME')) vars.set('APP_NAME', 'Velro');
+  if (!vars.has('APP_NAME')) vars.set('APP_NAME', 'OpenStory');
 
   if (!vars.has('BETTER_AUTH_SECRET')) {
     const secret = generateSecret();

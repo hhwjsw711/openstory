@@ -21,7 +21,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'velro:generation-settings:v2';
+const STORAGE_KEY = 'openstory:generation-settings:v2';
 
 type GenerationSettings = {
   aspectRatio: AspectRatio;

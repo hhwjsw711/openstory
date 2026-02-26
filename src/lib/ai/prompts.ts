@@ -52,7 +52,7 @@ export type ChatMessage = {
 /**
  * Fetch a text prompt. Tries Langfuse if enabled, falls back to local prompts.
  *
- * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
+ * @param name - Prompt name (e.g., 'openstory/phase/scene-splitting')
  * @param variables - Optional variables to compile into the prompt
  * @returns The prompt reference (for trace linking, undefined when local) and compiled text
  */
@@ -91,7 +91,7 @@ export async function getPrompt(
 /**
  * Fetch a chat prompt. Tries Langfuse if enabled, falls back to local prompts.
  *
- * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
+ * @param name - Prompt name (e.g., 'openstory/phase/scene-splitting')
  * @param variables - Variables to compile into the prompt messages
  * @returns The prompt reference (for trace linking, undefined when local) and compiled messages
  */

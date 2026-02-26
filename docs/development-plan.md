@@ -1,8 +1,8 @@
-# Velro.ai Development Plan
+# OpenStory Development Plan
 
 ## Executive Summary
 
-This development plan outlines the technical implementation roadmap for Velro.ai, a video sequence creation platform that transforms scripts into consistent, AI-generated videos using Style Stacks technology. The plan is structured in three major milestones spanning 6 months, with clear dependencies, team assignments, and priority levels.
+This development plan outlines the technical implementation roadmap for OpenStory, a video sequence creation platform that transforms scripts into consistent, AI-generated videos using Style Stacks technology. The plan is structured in three major milestones spanning 6 months, with clear dependencies, team assignments, and priority levels.
 
 ## Team Structure & Responsibilities
 
@@ -419,7 +419,7 @@ This development plan outlines the technical implementation roadmap for Velro.ai
 **Issues to create:** 41. **Research DaVinci plugin architecture** - API documentation review - Plugin framework setup - Authentication method - **Complexity**: High (8 points)
 
 42. **Implement plugin core**
-    - Velro API client
+    - OpenStory API client
     - Asset synchronization
     - Timeline integration
     - **Complexity**: High (13 points)
@@ -432,7 +432,7 @@ This development plan outlines the technical implementation roadmap for Velro.ai
 
 44. **Create round-trip workflow**
     - Export from DaVinci
-    - Process in Velro
+    - Process in OpenStory
     - Import back
     - **Complexity**: High (13 points)
 
@@ -705,7 +705,7 @@ P3-Low: Cosmetic issue
 
 ## Conclusion
 
-This development plan provides a comprehensive roadmap for building Velro.ai from MVP to scale. The plan prioritizes:
+This development plan provides a comprehensive roadmap for building OpenStory from MVP to scale. The plan prioritizes:
 
 1. Core functionality first (script-to-video pipeline)
 2. Monetization early (credit system in MVP)

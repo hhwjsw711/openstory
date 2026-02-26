@@ -29,7 +29,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content:
           'Transform scripts into consistent, styled video productions using multiple AI models.',
       },
-      { title: 'AI Video Studio' },
+      { title: 'OpenStory' },
     ],
     links: [
       {

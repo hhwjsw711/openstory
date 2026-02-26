@@ -133,7 +133,7 @@ export const getFrameDownloadUrlFn = createServerFn({ method: 'GET' })
     }
 
     const filename =
-      frame.videoPath.split('/').pop() || `scene-${frame.id}_velro.mp4`;
+      frame.videoPath.split('/').pop() || `scene-${frame.id}_openstory.mp4`;
 
     const downloadUrl = await getVideoDownloadUrl(
       frame.videoPath,

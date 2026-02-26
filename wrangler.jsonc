@@ -24,7 +24,7 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "velro-stg",
+          "database_name": "openstory-stg",
           "database_id": "38506473-18a4-4c4e-9776-ebfa5e581de1",
           "migrations_dir": "drizzle/migrations-d1",
         },
@@ -35,7 +35,7 @@
           "bucket_name": "cache-dev",
         },
         {
-          "bucket_name": "velro-public-assets-stg",
+          "bucket_name": "openstory-public-assets-stg",
           "binding": "R2_PUBLIC_ASSETS_BUCKET",
           "remote": true,
         },
@@ -58,7 +58,7 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "velro-prd",
+          "database_name": "openstory-prd",
           "database_id": "d6a35f64-abb0-4a34-a092-dc20b29f5812",
           "migrations_dir": "drizzle/migrations-d1",
         },
@@ -69,7 +69,7 @@
           "bucket_name": "cache",
         },
         {
-          "bucket_name": "velro-public-assets",
+          "bucket_name": "openstory-public-assets",
           "binding": "R2_PUBLIC_ASSETS_BUCKET",
           "remote": true,
         },

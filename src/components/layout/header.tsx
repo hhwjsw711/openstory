@@ -4,7 +4,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import { VelroLogo } from '@/components/icons/velro-logo';
+import { OpenStoryLogo } from '@/components/icons/openstory-logo';
 import { Route as locationsRoute } from '@/routes/_protected/locations/index';
 import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 import { Route as talentRoute } from '@/routes/_protected/talent/index';
@@ -31,7 +31,7 @@ export function Header({ className }: HeaderProps) {
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
           <Link to={sequencesRoute.to} className="flex items-center">
-            <VelroLogo size="md" />
+            <OpenStoryLogo size="md" />
           </Link>
 
           {/* Main navigation */}

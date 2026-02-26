@@ -1,8 +1,8 @@
-# Velro Technical Architecture
+# OpenStory Technical Architecture
 
 ## Overview
 
-Velro is a video sequence creation platform using AI models to transform scripts into consistent, styled video productions. Built on Next.js, Supabase, and QStash with a focus on simplicity and minimal architecture.
+OpenStory is a video sequence creation platform using AI models to transform scripts into consistent, styled video productions. Built on Next.js, Supabase, and QStash with a focus on simplicity and minimal architecture.
 
 ## Core Principles
 

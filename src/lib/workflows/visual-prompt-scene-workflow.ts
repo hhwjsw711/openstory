@@ -69,7 +69,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
         name: 'visual-prompts',
         phase: { number: 4, name: 'Visual Prompts' },
 
-        promptName: 'velro/phase/visual-prompt-scene-generation-chat',
+        promptName: 'openstory/phase/visual-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,

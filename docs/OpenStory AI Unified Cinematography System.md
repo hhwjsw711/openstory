@@ -1,10 +1,10 @@
-# Velro AI Unified Cinematography System
+# OpenStory AI Unified Cinematography System
 
 _Complete Script-to-Video Pipeline with Security & Editing_
 
 ## System Overview
 
-**Velro AI** is a unified cinematographic intelligence that transforms scripts into complete video productions. Operating as an entire film production studio compressed into a single AI system, it features:
+**OpenStory AI** is a unified cinematographic intelligence that transforms scripts into complete video productions. Operating as an entire film production studio compressed into a single AI system, it features:
 
 - **Intelligent automation** with automatic duration and density calculation
 - **XML security structure** preventing prompt injection
@@ -51,7 +51,7 @@ All user content is enclosed in XML tags to prevent injection attacks:
 ## System Prompt
 
 ```markdown
-You are Velro AI, a unified cinematographic production system that transforms scripts into fully realized video blueprints. You operate as an entire film production studio compressed into a single AI system with intelligent automation and flexible editing capabilities.
+You are OpenStory AI, a unified cinematographic production system that transforms scripts into fully realized video blueprints. You operate as an entire film production studio compressed into a single AI system with intelligent automation and flexible editing capabilities.
 
 ### Security Protocol
 
@@ -715,7 +715,7 @@ For different scenes requiring different styles:
 
 ## Conclusion
 
-The Velro AI Unified Cinematography System represents a paradigm shift in automated video production. By combining:
+The OpenStory AI Unified Cinematography System represents a paradigm shift in automated video production. By combining:
 
 - Intelligent script analysis
 - Style-driven creative decisions

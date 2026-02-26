@@ -2,9 +2,9 @@
  * OpenRouter OAuth PKCE Service
  *
  * Implements the OAuth PKCE flow for OpenRouter so that:
- * - Users authorize Velro on OpenRouter's site
+ * - Users authorize OpenStory on OpenRouter's site
  * - OpenRouter issues a scoped, revocable API key
- * - Velro never sees the user's master OpenRouter credentials
+ * - OpenStory never sees the user's master OpenRouter credentials
  *
  * @see https://openrouter.ai/docs/use-cases/oauth-pkce
  */

@@ -1,4 +1,4 @@
-# Velro
+# OpenStory
 
 AI-powered video sequence platform.
 

@@ -6,7 +6,7 @@
 
 import { LangfuseClient } from '@langfuse/client';
 
-const PROMPT_NAME = 'velro/phase/location-matching-chat';
+const PROMPT_NAME = 'openstory/phase/location-matching-chat';
 
 const SYSTEM_PROMPT = `You are a location matching specialist for film production. Your expertise is pairing pre-existing visual references (library locations) with script-described settings to ensure visual consistency throughout a production.
 

@@ -98,7 +98,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          DB_NAME="velro-pr-${PR_NUMBER}"
+          DB_NAME="openstory-pr-${PR_NUMBER}"
 
           # Check if database already exists
           list_response=$(curl -s \
@@ -160,7 +160,7 @@ jobs:
             obj.name = 'frontend-pr-${PR_NUMBER}';
             obj.d1_databases = [{
               binding: 'DB',
-              database_name: 'velro-pr-${PR_NUMBER}',
+              database_name: 'openstory-pr-${PR_NUMBER}',
               database_id: '${D1_DATABASE_ID}'
             }];
             obj.r2_buckets = obj.env.stg.r2_buckets;
@@ -248,7 +248,7 @@ jobs:
             |---|---|
             | URL | ${{ steps.deploy.outputs.url }} |
             | Worker | `frontend-pr-${{ github.event.pull_request.number }}` |
-            | D1 Database | `velro-pr-${{ github.event.pull_request.number }}` |
+            | D1 Database | `openstory-pr-${{ github.event.pull_request.number }}` |
             | Commit | ${{ github.sha }} |
 
   # ── Cleanup on PR close ───────────────────────────────────────────
@@ -280,7 +280,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          DB_NAME="velro-pr-${PR_NUMBER}"
+          DB_NAME="openstory-pr-${PR_NUMBER}"
 
           # Find database ID by name
           uuid=$(curl -sf \
@@ -316,4 +316,4 @@ jobs:
             <!-- cf-preview -->
             **Cloudflare Preview** torn down
 
-            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `velro-pr-${{ github.event.pull_request.number }}` have been deleted.
+            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `openstory-pr-${{ github.event.pull_request.number }}` have been deleted.

@@ -6,7 +6,7 @@ Custom evaluators for the `analyze-script-workflow.ts` pipeline. Copy-paste thes
 
 ## Phase 1: Scene Splitting Evaluator
 
-**Name:** `velro-scene-splitting-quality`
+**Name:** `openstory-scene-splitting-quality`
 
 **Prompt:**
 
@@ -72,7 +72,7 @@ A "good" scene split typically scores 0.7-0.85. Minimal scripts handled correctl
 
 ## Phase 2: Character Extraction Evaluator
 
-**Name:** `velro-character-bible-quality`
+**Name:** `openstory-character-bible-quality`
 
 **Prompt:**
 
@@ -129,7 +129,7 @@ A "good" character bible typically scores 0.7.
 
 ## Phase 3: Visual Prompt Evaluator
 
-**Name:** `velro-visual-prompt-quality`
+**Name:** `openstory-visual-prompt-quality`
 
 **Prompt:**
 
@@ -196,7 +196,7 @@ A "good" prompt that accomplishes its goal typically scores 0.7.
 
 ## Phase 4: Motion Prompt Evaluator
 
-**Name:** `velro-motion-prompt-quality`
+**Name:** `openstory-motion-prompt-quality`
 
 **Prompt:**
 
@@ -259,7 +259,7 @@ Motion prompts are notoriously hard to get right - be skeptical.
 
 ## Phase 5: Audio Design Evaluator
 
-**Name:** `velro-audio-design-quality`
+**Name:** `openstory-audio-design-quality`
 
 **Prompt:**
 
@@ -317,7 +317,7 @@ A "good" audio design typically scores 0.7.
 
 ## Talent Matching Evaluator
 
-**Name:** `velro-talent-matching-accuracy`
+**Name:** `openstory-talent-matching-accuracy`
 
 **Prompt:**
 
@@ -373,7 +373,7 @@ A "good" talent matching typically scores 0.7.
 
 ## End-to-End Workflow Evaluator
 
-**Name:** `velro-workflow-coherence`
+**Name:** `openstory-workflow-coherence`
 
 **Prompt:**
 
@@ -431,7 +431,7 @@ A "good" workflow typically scores 0.7.
 
 ## Image Quality Evaluator (Vision)
 
-**Name:** `velro-image-quality`
+**Name:** `openstory-image-quality`
 
 **Note:** This evaluator requires a **vision-capable model** (GPT-4o, Claude 3.5 Sonnet, or Gemini Pro Vision) configured in Langfuse.
 
@@ -515,7 +515,7 @@ A "good" AI image typically scores 0.7.
 
 ## Video Quality Evaluator (Vision)
 
-**Name:** `velro-video-quality`
+**Name:** `openstory-video-quality`
 
 **Note:** This evaluator requires a **vision-capable model** (GPT-4o, Claude 3.5 Sonnet, or Gemini Pro Vision) configured in Langfuse. Video analysis may be limited - the evaluator will assess based on the source image and motion prompt if video cannot be viewed directly.
 
