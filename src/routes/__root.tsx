@@ -32,15 +32,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { title: 'OpenStory' },
     ],
     links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icon-192.png' },
+      { rel: 'icon', href: '/favicon.ico' },
       {
-        rel: 'stylesheet',
-        href: appCss,
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
       },
-      {
-        rel: 'icon',
-        type: 'image/svg+xml',
-        href: '/icon.svg',
-      },
+      { rel: 'manifest', href: '/manifest.json' },
     ],
   }),
   component: RootLayout,
