@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import fs from 'node:fs';
 import path from 'node:path';
-import { testDb } from './db-client';
+import { testDb, ensureDbInit } from './db-client';
 import {
   user,
   session,
@@ -50,6 +50,7 @@ function getStoredUserInfo(): TestUser {
  * Create a test user with team directly in the database
  */
 async function createTestUser(): Promise<TestUser> {
+  await ensureDbInit();
   const userId = ulid();
   const teamId = ulid();
   const now = new Date();

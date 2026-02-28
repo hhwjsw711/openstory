@@ -10,7 +10,8 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import {
   createTalentSheet,
   getTalentById,

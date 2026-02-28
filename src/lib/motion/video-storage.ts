@@ -3,16 +3,18 @@
  * Handles uploading and managing videos in R2 Storage
  */
 
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import {
   deleteFile,
-  getExtensionFromUrl,
-  getMimeTypeFromExtension,
   getSignedUrl,
   getSignedUrlWithDownload,
   listFiles,
-  STORAGE_BUCKETS,
   uploadFile,
-} from '@/lib/db/helpers/storage';
+} from '#storage';
+import {
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 
 type UploadVideoOptions = {

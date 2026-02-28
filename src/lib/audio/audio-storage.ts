@@ -3,12 +3,12 @@
  * Handles uploading and managing audio files in R2 Storage
  */
 
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  STORAGE_BUCKETS,
-  uploadFile,
-} from '@/lib/db/helpers/storage';
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 
 type UploadAudioOptions = {

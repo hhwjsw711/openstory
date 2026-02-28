@@ -39,6 +39,10 @@
           "binding": "R2_PUBLIC_ASSETS_BUCKET",
           "remote": true,
         },
+        {
+          "binding": "R2_STORAGE_BUCKET",
+          "bucket_name": "velro-storage-stg",
+        },
       ],
       "observability": {
         "logs": {
@@ -72,6 +76,10 @@
           "bucket_name": "openstory-public-assets",
           "binding": "R2_PUBLIC_ASSETS_BUCKET",
           "remote": true,
+        },
+        {
+          "binding": "R2_STORAGE_BUCKET",
+          "bucket_name": "velro-storage",
         },
       ],
       "observability": {
