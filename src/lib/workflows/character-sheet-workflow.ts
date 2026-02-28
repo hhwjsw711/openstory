@@ -5,6 +5,7 @@
  * These sheets are later used as reference images when generating scene images.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -14,8 +15,6 @@ import {
   updateCharacterSheet,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -23,6 +22,7 @@ import {
 } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   CharacterSheetWorkflowInput,
@@ -38,7 +38,7 @@ export const characterSheetWorkflow = createWorkflow(
     // Emit realtime event that generation has started
     await context.run('emit-start-event', async () => {
       if (input.sequenceId && input.characterDbId) {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.character-sheet:progress',
           {
             characterId: input.characterDbId,
@@ -186,7 +186,7 @@ export const characterSheetWorkflow = createWorkflow(
     // Emit realtime event that generation is complete
     await context.run('emit-complete-event', async () => {
       if (input.sequenceId && input.characterDbId) {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.character-sheet:progress',
           {
             characterId: input.characterDbId,
@@ -224,7 +224,7 @@ export const characterSheetWorkflow = createWorkflow(
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {
-          await getGenerationChannel(input.sequenceId).emit(
+          getGenerationChannel(input.sequenceId).emit(
             'generation.character-sheet:progress',
             {
               characterId: input.characterDbId,

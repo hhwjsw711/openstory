@@ -8,19 +8,19 @@
  * to maintain consistency with the cast.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
 import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
@@ -42,13 +42,10 @@ export const characterBibleWorkflow = createWorkflow(
 
     // Emit Phase 3 start
     await context.run('character-bible-start', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:start',
-        {
-          phase: 3,
-          phaseName: 'Character Bible',
-        }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.phase:start', {
+        phase: 3,
+        phaseName: 'Character Bible',
+      });
     });
 
     const seqCharacters: CharacterMinimal[] = await Promise.all(
@@ -171,10 +168,9 @@ export const characterBibleWorkflow = createWorkflow(
 
     // Emit Phase 3 complete
     await context.run('character-bible-complete', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: 3 }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.phase:complete', {
+        phase: 3,
+      });
     });
     return seqCharacters;
   },

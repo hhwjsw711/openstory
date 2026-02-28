@@ -39,7 +39,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -66,7 +66,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -96,7 +96,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6' as TextModel,
         messages: [{ role: 'user', content: 'test' }],
       });
 

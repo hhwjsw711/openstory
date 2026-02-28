@@ -58,7 +58,7 @@ export const generateMotionWorkflow = createWorkflow(
           return { frameDeleted: true };
         }
 
-        void getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.video:progress',
           { frameId: input.frameId, status: 'generating' }
         );
@@ -193,7 +193,7 @@ export const generateMotionWorkflow = createWorkflow(
           return;
         }
 
-        void getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.video:progress',
           { frameId, status: 'completed', videoUrl: storageResult.url }
         );
@@ -253,7 +253,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       if (input.sequenceId && input.frameId) {
         try {
-          void getGenerationChannel(input.sequenceId).emit(
+          getGenerationChannel(input.sequenceId).emit(
             'generation.video:progress',
             { frameId: input.frameId, status: 'failed' }
           );

@@ -178,7 +178,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const frameMapping: { sceneId: string; frameId: string }[] =
       await context.run('update-title-and-create-frames', async () => {
         for (const scene of scenes) {
-          await getGenerationChannel(sequenceId).emit('generation.scene:new', {
+          getGenerationChannel(sequenceId).emit('generation.scene:new', {
             sceneId: scene.sceneId,
             sceneNumber: scene.sceneNumber,
             title: scene.metadata?.title || 'Untitled Scene',
@@ -190,7 +190,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         if (!sequenceId) return [];
 
         await updateSequenceTitle(sequenceId, title);
-        await getGenerationChannel(sequenceId).emit('generation.updated', {
+        getGenerationChannel(sequenceId).emit('generation.updated', {
           title,
         });
         await updateSequenceWorkflow(
@@ -223,14 +223,11 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         for (const { sceneId, frameId } of mapping) {
           const scene = scenes.find((s) => s.sceneId === sceneId);
-          await getGenerationChannel(sequenceId).emit(
-            'generation.frame:created',
-            {
-              frameId,
-              sceneId,
-              orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
-            }
-          );
+          getGenerationChannel(sequenceId).emit('generation.frame:created', {
+            frameId,
+            sceneId,
+            orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+          });
         }
 
         return mapping;
@@ -341,22 +338,19 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
 
         if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.talent:matched',
-            {
-              matches: matches.map((m) => {
-                const char = characterBible.find(
-                  (c) => c.characterId === m.characterId
-                );
-                return {
-                  characterId: m.characterId,
-                  characterName: char?.name ?? m.characterId,
-                  talentId: m.talentId,
-                  talentName: m.talentName,
-                };
-              }),
-            }
-          );
+          getGenerationChannel(sequenceId).emit('generation.talent:matched', {
+            matches: matches.map((m) => {
+              const char = characterBible.find(
+                (c) => c.characterId === m.characterId
+              );
+              return {
+                characterId: m.characterId,
+                characterName: char?.name ?? m.characterId,
+                talentId: m.talentId,
+                talentName: m.talentName,
+              };
+            }),
+          });
         }
 
         return matches;
@@ -434,24 +428,21 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
 
         if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.location:matched',
-            {
-              matches: matches.map((m) => {
-                const loc = locationBible.find(
-                  (l) => l.locationId === m.locationId
-                );
-                return {
-                  locationId: m.locationId,
-                  locationName: loc?.name ?? m.locationId,
-                  libraryLocationId: m.libraryLocationId,
-                  libraryLocationName: m.libraryLocationName,
-                  referenceImageUrl: m.referenceImageUrl,
-                  description: m.description ?? undefined,
-                };
-              }),
-            }
-          );
+          getGenerationChannel(sequenceId).emit('generation.location:matched', {
+            matches: matches.map((m) => {
+              const loc = locationBible.find(
+                (l) => l.locationId === m.locationId
+              );
+              return {
+                locationId: m.locationId,
+                locationName: loc?.name ?? m.locationId,
+                libraryLocationId: m.libraryLocationId,
+                libraryLocationName: m.libraryLocationName,
+                referenceImageUrl: m.referenceImageUrl,
+                description: m.description ?? undefined,
+              };
+            }),
+          });
         }
 
         return matches;
@@ -540,7 +531,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             Date.now() - startTime
           );
         }
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 5,
           phaseName: 'Generate Images',
         });
@@ -596,7 +587,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     }
 
     await context.run('frame-images-complete', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
+      getGenerationChannel(sequenceId).emit('generation.phase:complete', {
         phase: 5,
       });
     });
@@ -651,14 +642,11 @@ export const analyzeScriptWorkflow = createWorkflow(
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
             });
-            await getGenerationChannel(sequenceId).emit(
-              'generation.frame:updated',
-              {
-                frameId: matched.frameId,
-                updateType: 'motion-prompt',
-                metadata: scene,
-              }
-            );
+            getGenerationChannel(sequenceId).emit('generation.frame:updated', {
+              frameId: matched.frameId,
+              updateType: 'motion-prompt',
+              metadata: scene,
+            });
           })
         );
       });
@@ -714,14 +702,11 @@ export const analyzeScriptWorkflow = createWorkflow(
             );
             if (!matched) return;
             await updateFrame(matched.frameId, { metadata: scene });
-            await getGenerationChannel(sequenceId).emit(
-              'generation.frame:updated',
-              {
-                frameId: matched.frameId,
-                updateType: 'audio-design',
-                metadata: scene,
-              }
-            );
+            getGenerationChannel(sequenceId).emit('generation.frame:updated', {
+              frameId: matched.frameId,
+              updateType: 'audio-design',
+              metadata: scene,
+            });
           })
         );
       });
@@ -729,7 +714,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
       await context.run('start-motion-generation', async () => {
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 7,
           phaseName: 'Motion Generation',
         });
@@ -778,13 +763,10 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       if (scenesWithMusic.length > 0) {
         await context.run('start-music-prompt-generation', async () => {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.phase:start',
-            {
-              phase: 8,
-              phaseName: 'Music Prompt Generation',
-            }
-          );
+          getGenerationChannel(sequenceId).emit('generation.phase:start', {
+            phase: 8,
+            phaseName: 'Music Prompt Generation',
+          });
         });
 
         let totalDuration = 0;
@@ -874,7 +856,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
       await updateSequenceStatus(sequenceId, 'failed');
-      await getGenerationChannel(sequenceId).emit('generation.failed', {
+      getGenerationChannel(sequenceId).emit('generation.failed', {
         message: String(failResponse),
       });
 

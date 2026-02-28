@@ -45,10 +45,10 @@ export const upscaleVariantWorkflow = createWorkflow(
     );
 
     const upscaleResult = await context.run('upscale-image', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'generating' }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.image:progress', {
+        frameId: input.frameId,
+        status: 'generating',
+      });
 
       const frame = await updateFrame(
         input.frameId,
@@ -133,14 +133,11 @@ export const upscaleVariantWorkflow = createWorkflow(
         return;
       }
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        {
-          frameId: input.frameId,
-          status: 'completed',
-          thumbnailUrl: storageResult.url,
-        }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.image:progress', {
+        frameId: input.frameId,
+        status: 'completed',
+        thumbnailUrl: storageResult.url,
+      });
 
       console.log(
         '[UpscaleVariantWorkflow]',
@@ -171,10 +168,10 @@ export const upscaleVariantWorkflow = createWorkflow(
         { throwOnMissing: false }
       );
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'completed' }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.image:progress', {
+        frameId: input.frameId,
+        status: 'completed',
+      });
 
       return `Upscale failed for frame ${input.frameId}`;
     },

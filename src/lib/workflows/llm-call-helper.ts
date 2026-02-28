@@ -66,7 +66,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     `prepare-${name}`,
     async () => {
       if (callContext.sequenceId) {
-        await getGenerationChannel(callContext.sequenceId).emit(
+        getGenerationChannel(callContext.sequenceId).emit(
           'generation.phase:start',
           { phase: phase.number, phaseName: phase.name }
         );
@@ -174,7 +174,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   // Step 3: Emit phase complete
   await context.run(`log-${name}`, async () => {
     if (callContext.sequenceId) {
-      await getGenerationChannel(callContext.sequenceId).emit(
+      getGenerationChannel(callContext.sequenceId).emit(
         'generation.phase:complete',
         { phase: phase.number }
       );

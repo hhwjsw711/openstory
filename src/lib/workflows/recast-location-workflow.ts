@@ -95,7 +95,7 @@ export const recastLocationWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
-      await getGenerationChannel(input.sequenceId).emit(
+      getGenerationChannel(input.sequenceId).emit(
         'generation.recast-location:failed',
         {
           locationId: input.locationDbId,

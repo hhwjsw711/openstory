@@ -10,6 +10,7 @@
  * 3. Updates database with reference image URLs
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -19,8 +20,6 @@ import {
   createSequenceLocationsBulk,
   updateLocationReference,
 } from '@/lib/db/helpers/sequence-locations';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type {
   NewSequenceLocation,
@@ -29,6 +28,7 @@ import type {
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import type {
   LibraryLocationMatch,
   LocationBibleWorkflowInput,
@@ -50,13 +50,10 @@ export const locationBibleWorkflow = createWorkflow(
 
     // Phase start event
     await context.run('location-bible-start', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:start',
-        {
-          phase: 4,
-          phaseName: 'Location Bible',
-        }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.phase:start', {
+        phase: 4,
+        phaseName: 'Location Bible',
+      });
     });
 
     // Step 1: Insert locations into database
@@ -207,10 +204,9 @@ export const locationBibleWorkflow = createWorkflow(
 
     // Phase complete event
     await context.run('location-bible-complete', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: 4 }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.phase:complete', {
+        phase: 4,
+      });
     });
 
     return seqLocations;
@@ -221,7 +217,7 @@ export const locationBibleWorkflow = createWorkflow(
 
       // Emit failure event for phase completion
       if (input.sequenceId) {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.phase:complete',
           { phase: 4 }
         );

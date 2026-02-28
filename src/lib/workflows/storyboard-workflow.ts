@@ -121,7 +121,7 @@ export const generateStoryboardWorkflow = createWorkflow(
     });
 
     await context.run('emit-complete', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.complete', {
+      getGenerationChannel(sequenceId).emit('generation.complete', {
         sequenceId,
       });
     });

@@ -96,13 +96,10 @@ export const recastCharacterWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.recast:failed',
-        {
-          characterId: input.characterDbId,
-          error: String(failResponse),
-        }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.recast:failed', {
+        characterId: input.characterDbId,
+        error: String(failResponse),
+      });
 
       console.error(
         '[RecastCharacterWorkflow]',

@@ -371,9 +371,12 @@ async function falQueueFetch(
     throw new Error('FAL_KEY environment variable is required');
   }
 
+  const headers = new Headers(init?.headers);
+  headers.set('Authorization', `Key ${apiKey}`);
+
   const response = await fetch(url, {
     ...init,
-    headers: { Authorization: `Key ${apiKey}`, ...init?.headers },
+    headers,
   });
 
   if (!response.ok) {

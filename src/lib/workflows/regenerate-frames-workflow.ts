@@ -103,7 +103,7 @@ export const regenerateFramesWorkflow = createWorkflow(
     }
 
     await context.run('emit-start', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.recast:start', {
+      getGenerationChannel(sequenceId).emit('generation.recast:start', {
         characterId: triggeringCharacterId,
         frameCount: framesToRegenerate.length,
       });
@@ -172,14 +172,11 @@ export const regenerateFramesWorkflow = createWorkflow(
     const successCount = imageResults.length - failedFrames.length;
 
     await context.run('emit-complete', async () => {
-      await getGenerationChannel(sequenceId).emit(
-        'generation.recast:complete',
-        {
-          characterId: triggeringCharacterId,
-          successCount,
-          failedCount: failedFrames.length,
-        }
-      );
+      getGenerationChannel(sequenceId).emit('generation.recast:complete', {
+        characterId: triggeringCharacterId,
+        successCount,
+        failedCount: failedFrames.length,
+      });
     });
 
     console.log(
@@ -197,13 +194,10 @@ export const regenerateFramesWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.recast:failed',
-        {
-          characterId: input.triggeringCharacterId,
-          error: String(failResponse),
-        }
-      );
+      getGenerationChannel(input.sequenceId).emit('generation.recast:failed', {
+        characterId: input.triggeringCharacterId,
+        error: String(failResponse),
+      });
 
       console.error(
         '[RegenerateFramesWorkflow]',

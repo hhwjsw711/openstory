@@ -5,13 +5,12 @@
  * Uses the reference images to create a consistent talent sheet.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import {
   createTalentSheet,
   getTalentById,
@@ -27,6 +26,7 @@ import {
   buildTalentHeadshotPrompt,
 } from '@/lib/prompts/character-prompt';
 import { getTalentChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   LibraryTalentSheetWorkflowInput,
@@ -66,7 +66,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       );
 
       // Emit generating status
-      await getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
+      getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
         talentId: input.talentId,
         status: 'generating',
       });
@@ -280,7 +280,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         `Talent sheet workflow completed for ${input.talentName}`
       );
 
-      await getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
+      getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
         talentId: input.talentId,
         status: 'completed',
         sheetId: sheet.id,
@@ -307,7 +307,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       );
 
       // Emit failed status
-      await getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
+      getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
         talentId: input.talentId,
         status: 'failed',
         error: `Sheet generation failed: ${failResponse}`,

@@ -46,7 +46,7 @@ export const generateMusicWorkflow = createWorkflow(
         })
         .where(eq(sequences.id, sequenceId));
 
-      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
+      getGenerationChannel(sequenceId).emit('generation.audio:progress', {
         status: 'generating',
       });
     });
@@ -165,7 +165,7 @@ export const generateMusicWorkflow = createWorkflow(
         })
         .where(eq(sequences.id, sequenceId));
 
-      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
+      getGenerationChannel(sequenceId).emit('generation.audio:progress', {
         status: 'completed',
         audioUrl: storageResult.url,
       });
@@ -215,7 +215,7 @@ export const generateMusicWorkflow = createWorkflow(
         .where(eq(sequences.id, input.sequenceId));
 
       try {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.audio:progress',
           { status: 'failed' }
         );

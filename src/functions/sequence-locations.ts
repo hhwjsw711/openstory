@@ -97,7 +97,7 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
 
     await updateReferenceStatus(data.locationId, 'generating');
 
-    await getGenerationChannel(location.sequenceId).emit(
+    getGenerationChannel(location.sequenceId).emit(
       'generation.location-sheet:progress',
       { locationId: data.locationId, status: 'generating' }
     );

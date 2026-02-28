@@ -41,9 +41,12 @@ async function falFetch<T>(
   apiKey: string,
   init?: RequestInit
 ): Promise<T> {
+  const headers = new Headers(init?.headers);
+  headers.set('Authorization', `Key ${apiKey}`);
+
   const response = await fetch(url, {
     ...init,
-    headers: { Authorization: `Key ${apiKey}`, ...init?.headers },
+    headers,
   });
 
   if (!response.ok) {

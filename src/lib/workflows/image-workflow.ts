@@ -63,7 +63,7 @@ export const generateImageWorkflow = createWorkflow(
             return null;
           }
 
-          await getGenerationChannel(input.sequenceId)?.emit(
+          getGenerationChannel(input.sequenceId)?.emit(
             'generation.image:progress',
             { frameId: input.frameId, status: 'generating' }
           );
@@ -172,10 +172,11 @@ export const generateImageWorkflow = createWorkflow(
           return;
         }
 
-        await getGenerationChannel(sequenceId)?.emit(
-          'generation.image:progress',
-          { frameId, status: 'completed', thumbnailUrl: result.url }
-        );
+        getGenerationChannel(sequenceId)?.emit('generation.image:progress', {
+          frameId,
+          status: 'completed',
+          thumbnailUrl: result.url,
+        });
 
         console.log('[ImageWorkflow]', `Uploaded to storage: ${result.path}`);
 
@@ -201,7 +202,7 @@ export const generateImageWorkflow = createWorkflow(
 
         if (input.sequenceId) {
           try {
-            await getGenerationChannel(input.sequenceId)?.emit(
+            getGenerationChannel(input.sequenceId)?.emit(
               'generation.image:progress',
               { frameId: input.frameId, status: 'failed' }
             );

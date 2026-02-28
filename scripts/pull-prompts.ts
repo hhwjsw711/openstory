@@ -60,7 +60,7 @@ async function main() {
         chatPrompts[name] = messages;
         console.log(`  [chat] ${name} (${messages.length} messages)`);
       } else {
-        console.log(`  [skip] ${name} (unknown type: ${type})`);
+        console.log(`  [skip] ${name} (unknown type: ${type as string})`);
       }
     } catch (error) {
       console.error(

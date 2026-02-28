@@ -63,7 +63,7 @@ export function useRealtime({
       eventSource.close();
       setStatus('disconnected');
     };
-  }, [enabled, channelsKey, eventsKey]);
+  }, [enabled, channelsKey, eventsKey, channels.length]);
 
   return { status };
 }

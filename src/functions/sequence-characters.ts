@@ -80,7 +80,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
 
     await updateSheetStatus(data.characterId, 'generating');
 
-    await getGenerationChannel(character.sequenceId).emit(
+    getGenerationChannel(character.sequenceId).emit(
       'generation.character-sheet:progress',
       { characterId: data.characterId, status: 'generating' }
     );

@@ -5,6 +5,7 @@
  * These images are later used as reference images when generating scene images.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -14,8 +15,6 @@ import {
   updateLocationReference,
   updateReferenceStatus,
 } from '@/lib/db/helpers/sequence-locations';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -23,6 +22,7 @@ import {
 } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   LocationSheetWorkflowInput,
@@ -38,7 +38,7 @@ export const locationSheetWorkflow = createWorkflow(
     // Emit realtime event that generation has started
     await context.run('emit-start-event', async () => {
       if (input.sequenceId && input.locationDbId) {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.location-sheet:progress',
           {
             locationId: input.locationDbId,
@@ -191,7 +191,7 @@ export const locationSheetWorkflow = createWorkflow(
     // Emit realtime event that generation is complete
     await context.run('emit-complete-event', async () => {
       if (input.sequenceId && input.locationDbId) {
-        await getGenerationChannel(input.sequenceId).emit(
+        getGenerationChannel(input.sequenceId).emit(
           'generation.location-sheet:progress',
           {
             locationId: input.locationDbId,
@@ -229,7 +229,7 @@ export const locationSheetWorkflow = createWorkflow(
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {
-          await getGenerationChannel(input.sequenceId).emit(
+          getGenerationChannel(input.sequenceId).emit(
             'generation.location-sheet:progress',
             {
               locationId: input.locationDbId,

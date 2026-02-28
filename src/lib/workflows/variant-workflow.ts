@@ -73,7 +73,7 @@ export const generateVariantWorkflow = createWorkflow(
           }
 
           // Emit realtime progress
-          await getGenerationChannel(input.sequenceId)?.emit(
+          getGenerationChannel(input.sequenceId)?.emit(
             'generation.variant-image:progress',
             {
               frameId: input.frameId,
@@ -190,7 +190,7 @@ export const generateVariantWorkflow = createWorkflow(
         }
 
         // Emit completion progress
-        await getGenerationChannel(input.sequenceId)?.emit(
+        getGenerationChannel(input.sequenceId)?.emit(
           'generation.variant-image:progress',
           {
             frameId: input.frameId,
@@ -234,7 +234,7 @@ export const generateVariantWorkflow = createWorkflow(
         // Emit failure progress
         if (input.sequenceId) {
           try {
-            await getGenerationChannel(input.sequenceId)?.emit(
+            getGenerationChannel(input.sequenceId)?.emit(
               'generation.variant-image:progress',
               {
                 frameId: input.frameId,
