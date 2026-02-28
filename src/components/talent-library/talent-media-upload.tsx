@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   FileUpload,
@@ -51,16 +51,22 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
   onComplete,
   disabled = false,
 }) => {
-  const [, setUploadedUrls] = useState<Map<string, string>>(new Map());
+  const [uploadedUrlsMap, setUploadedUrlsMap] = useState<Map<string, string>>(
+    new Map()
+  );
   const uploadTempMedia = useUploadTempMedia();
   const uploadTalentMedia = useUploadTalentMedia();
+
+  useEffect(() => {
+    onUploadedUrlsChange?.(Array.from(uploadedUrlsMap.values()));
+  }, [uploadedUrlsMap, onUploadedUrlsChange]);
 
   const handleValueChange = useCallback(
     (newFiles: File[]) => {
       onFilesChange(newFiles);
       // Clean up URLs for removed files
       const currentKeys = new Set(newFiles.map(getFileKey));
-      setUploadedUrls((prev) => {
+      setUploadedUrlsMap((prev) => {
         const next = new Map(prev);
         let changed = false;
         for (const key of next.keys()) {
@@ -69,13 +75,10 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
             changed = true;
           }
         }
-        if (changed) {
-          onUploadedUrlsChange?.(Array.from(next.values()));
-        }
         return changed ? next : prev;
       });
     },
-    [onFilesChange, onUploadedUrlsChange]
+    [onFilesChange]
   );
 
   const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
@@ -105,11 +108,9 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
               type,
             });
 
-            setUploadedUrls((prev) => {
-              const next = new Map(prev).set(getFileKey(file), result.url);
-              onUploadedUrlsChange?.(Array.from(next.values()));
-              return next;
-            });
+            setUploadedUrlsMap((prev) =>
+              new Map(prev).set(getFileKey(file), result.url)
+            );
           }
 
           onProgress(file, 100);
@@ -127,13 +128,7 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
         onComplete?.();
       }
     },
-    [
-      talentId,
-      uploadTempMedia,
-      uploadTalentMedia,
-      onUploadedUrlsChange,
-      onComplete,
-    ]
+    [talentId, uploadTempMedia, uploadTalentMedia, onComplete]
   );
 
   const isUploading = uploadTempMedia.isPending || uploadTalentMedia.isPending;
