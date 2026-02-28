@@ -16,35 +16,49 @@ const MIN_BUN_VERSION = '1.3.9';
 
 const isDeploy = process.argv.includes('--deploy');
 const isProd = isDeploy || process.argv.includes('--prod');
-const ENV_FILE = resolve(process.cwd(), isProd ? '.env' : '.env.local');
-const ENV_FILENAME = isProd ? '.env' : '.env.local';
+const ENV_FILE = resolve(
+  process.cwd(),
+  isProd ? '.env.production' : '.env.local'
+);
+const ENV_FILENAME = isProd ? '.env.production' : '.env.local';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function parseEnvFile(path: string): Map<string, string> {
+function parseEnvString(text: string): Map<string, string> {
   const env = new Map<string, string>();
-  if (!existsSync(path)) return env;
-
-  for (const line of readFileSync(path, 'utf-8').split('\n')) {
+  for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    const value = trimmed.slice(eqIdx + 1).trim();
+    let value = trimmed.slice(eqIdx + 1).trim();
+    // Strip surrounding quotes (Upstash dashboard uses QSTASH_TOKEN="value")
+    if (
+      value.length >= 2 &&
+      ((value[0] === '"' && value.at(-1) === '"') ||
+        (value[0] === "'" && value.at(-1) === "'"))
+    ) {
+      value = value.slice(1, -1);
+    }
     if (key && value) env.set(key, value);
   }
   return env;
 }
 
+function parseEnvFile(path: string): Map<string, string> {
+  if (!existsSync(path)) return new Map();
+  return parseEnvString(readFileSync(path, 'utf-8'));
+}
+
 function loadExistingEnv(): Map<string, string> {
   const env = parseEnvFile(ENV_FILE);
 
-  // For prod, also read .env.production so existing keys are skipped
+  // For prod, also read legacy .env so existing keys are migrated
   if (isProd) {
-    const legacyFile = resolve(process.cwd(), '.env.production');
+    const legacyFile = resolve(process.cwd(), '.env');
     const legacy = parseEnvFile(legacyFile);
     legacy.forEach((value, key) => {
       if (!env.has(key)) env.set(key, value);
@@ -648,17 +662,45 @@ async function main() {
       return;
     }
 
-    const value = checkCancel(
+    const raw = checkCancel(
       await p.text({
         message: hint ? `${message}\n${chalk.dim(hint)}` : message,
         placeholder: `Paste your ${key} here…`,
       })
     );
 
-    if (value) {
-      vars.set(key, value);
-      saveProgress();
+    if (!raw || !raw.trim()) return;
+
+    // Try parsing as KEY=VALUE (stores under the parsed key, not the expected key,
+    // so pasting KEY=VALUE into any prompt works correctly)
+    const parsed = parseEnvString(raw);
+    const envPairs = new Map<string, string>();
+    for (const [k, v] of parsed) {
+      if (/^[A-Z_][A-Z0-9_]*$/.test(k)) {
+        envPairs.set(k, v);
+      }
     }
+
+    if (envPairs.size > 0) {
+      for (const [k, v] of envPairs) {
+        vars.set(k, v);
+      }
+      saveProgress();
+      return;
+    }
+
+    // Raw value without KEY= prefix — store under expected key, strip quotes
+    let value = raw.trim();
+    if (
+      value.length >= 2 &&
+      ((value[0] === '"' && value.at(-1) === '"') ||
+        (value[0] === "'" && value.at(-1) === "'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    vars.set(key, value);
+    saveProgress();
   }
 
   // -------------------------------------------------------------------------
@@ -916,64 +958,107 @@ async function main() {
   // -------------------------------------------------------------------------
   // AI Generation (FAL_KEY)
   // -------------------------------------------------------------------------
-  const setupAI = checkCancel(
-    await p.confirm({
-      message: 'Set up AI image & video generation?',
-      initialValue: !existing.has('FAL_KEY'),
-    })
-  );
-
-  if (setupAI) {
-    await promptForKey(
-      'FAL_KEY',
-      'Enter your Fal.ai API key',
-      'Get one at: https://fal.ai/dashboard/keys'
+  if (vars.has('FAL_KEY')) {
+    p.log.success('FAL_KEY — already configured');
+  } else {
+    const setupAI = checkCancel(
+      await p.confirm({
+        message: 'Set up AI image & video generation?',
+        initialValue: true,
+      })
     );
+
+    if (setupAI) {
+      await promptForKey(
+        'FAL_KEY',
+        'Enter your Fal.ai API key',
+        'Get one at: https://fal.ai/dashboard/keys'
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
   // Script Analysis (OPENROUTER_KEY)
   // -------------------------------------------------------------------------
-  const setupLLM = checkCancel(
-    await p.confirm({
-      message: 'Set up LLM-powered script analysis?',
-      initialValue: !existing.has('OPENROUTER_KEY'),
-    })
-  );
-
-  if (setupLLM) {
-    await promptForKey(
-      'OPENROUTER_KEY',
-      'Enter your OpenRouter API key',
-      'Get one at: https://openrouter.ai/settings/keys'
+  if (vars.has('OPENROUTER_KEY')) {
+    p.log.success('OPENROUTER_KEY — already configured');
+  } else {
+    const setupLLM = checkCancel(
+      await p.confirm({
+        message: 'Set up LLM-powered script analysis?',
+        initialValue: true,
+      })
     );
+
+    if (setupLLM) {
+      await promptForKey(
+        'OPENROUTER_KEY',
+        'Enter your OpenRouter API key',
+        'Get one at: https://openrouter.ai/settings/keys'
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
   // Workflows (QStash)
   // -------------------------------------------------------------------------
   if (isProd) {
-    const setupWorkflows = checkCancel(
-      await p.confirm({
-        message: 'Set up async workflows? (Upstash QStash)',
-        initialValue: !existing.has('QSTASH_TOKEN'),
-      })
-    );
+    const qstashKeys = [
+      'QSTASH_URL',
+      'QSTASH_TOKEN',
+      'QSTASH_CURRENT_SIGNING_KEY',
+      'QSTASH_NEXT_SIGNING_KEY',
+    ] as const;
 
-    if (setupWorkflows) {
-      await promptForKey(
-        'QSTASH_TOKEN',
-        'Enter your QStash token',
-        'Get one at: https://console.upstash.com/qstash'
+    if (qstashKeys.every((k) => vars.has(k))) {
+      p.log.success('QStash — already configured');
+    } else {
+      const setupWorkflows = checkCancel(
+        await p.confirm({
+          message: 'Set up async workflows? (Upstash QStash)',
+          initialValue: true,
+        })
       );
-      await promptForKey(
-        'QSTASH_CURRENT_SIGNING_KEY',
-        'Enter your QStash current signing key'
-      );
-      await promptForKey(
-        'QSTASH_NEXT_SIGNING_KEY',
-        'Enter your QStash next signing key'
-      );
+
+      if (setupWorkflows) {
+        // Write placeholder keys so the user can paste values directly into the file
+        for (const k of qstashKeys) {
+          if (!vars.has(k)) vars.set(k, '');
+        }
+        saveProgress();
+
+        p.log.info(
+          `Paste your QStash credentials from the Upstash dashboard\n` +
+            `into ${chalk.bold(ENV_FILENAME)}, then press Enter to continue.\n` +
+            chalk.dim('https://console.upstash.com/qstash')
+        );
+
+        checkCancel(
+          await p.text({
+            message: `Press Enter after editing ${ENV_FILENAME}`,
+            placeholder: 'Enter to continue…',
+          })
+        );
+
+        // Re-read the file to pick up pasted values
+        const refreshed = parseEnvFile(ENV_FILE);
+        for (const k of qstashKeys) {
+          const v = refreshed.get(k);
+          if (v) vars.set(k, v);
+        }
+        saveProgress();
+
+        const filled = qstashKeys.filter((k) => vars.get(k));
+        const missing = qstashKeys.filter((k) => !vars.get(k));
+        for (const k of filled) {
+          p.log.success(`${k} — configured`);
+        }
+        if (missing.length > 0) {
+          p.log.warn(
+            `Missing: ${missing.join(', ')}. Add them to ${ENV_FILENAME} before deploying.`
+          );
+        }
+      }
     }
   } else if (hasDocker) {
     const setupWorkflows = checkCancel(
@@ -1011,55 +1096,49 @@ async function main() {
   // -------------------------------------------------------------------------
   // Storage (R2)
   // -------------------------------------------------------------------------
-  const setupStorage = checkCancel(
-    await p.confirm({
-      message: 'Set up cloud storage for media? (Cloudflare R2)',
-      initialValue: false,
-    })
-  );
+  if (vars.get('DEPLOY_PLATFORM') === 'cloudflare') {
+    p.log.info(
+      'R2 storage is handled by native bindings configured in wrangler.jsonc.\n' +
+        'S3 credentials (for signed URLs) and R2_PUBLIC_STORAGE_DOMAIN can be\n' +
+        'added to .env and deployed via `bun setup-cloudflare-secrets.sh`.'
+    );
+  } else {
+    const setupStorage = checkCancel(
+      await p.confirm({
+        message: 'Set up cloud storage for media? (Cloudflare R2)',
+        initialValue: false,
+      })
+    );
 
-  if (setupStorage) {
-    const isCloudflare = vars.get('DEPLOY_PLATFORM') === 'cloudflare';
+    if (setupStorage) {
+      const r2Keys: Array<{
+        key: string;
+        message: string;
+        hint?: string;
+      }> = [
+        {
+          key: 'R2_ACCOUNT_ID',
+          message: 'Cloudflare Account ID',
+          hint: 'Find in Cloudflare Dashboard > R2 > Overview',
+        },
+        {
+          key: 'R2_ACCESS_KEY_ID',
+          message: 'R2 Access Key ID',
+        },
+        {
+          key: 'R2_SECRET_ACCESS_KEY',
+          message: 'R2 Secret Access Key',
+        },
+        { key: 'R2_BUCKET_NAME', message: 'R2 Bucket Name' },
+        {
+          key: 'R2_PUBLIC_STORAGE_DOMAIN',
+          message: 'R2 Public Domain (e.g. storage.example.com)',
+        },
+      ];
 
-    if (isCloudflare) {
-      p.log.info(
-        'On Cloudflare, most storage operations use native R2 bindings (no credentials needed).\n' +
-          'S3 credentials are only required for generating presigned/download URLs.'
-      );
-    }
-
-    const r2Keys: Array<{
-      key: string;
-      message: string;
-      hint?: string;
-      optional?: boolean;
-    }> = [
-      {
-        key: 'R2_ACCOUNT_ID',
-        message: 'Cloudflare Account ID',
-        hint: 'Find in Cloudflare Dashboard > R2 > Overview',
-      },
-      {
-        key: 'R2_ACCESS_KEY_ID',
-        message: 'R2 Access Key ID',
-        hint: isCloudflare ? 'Only needed for signed URLs' : undefined,
-        optional: isCloudflare,
-      },
-      {
-        key: 'R2_SECRET_ACCESS_KEY',
-        message: 'R2 Secret Access Key',
-        hint: isCloudflare ? 'Only needed for signed URLs' : undefined,
-        optional: isCloudflare,
-      },
-      { key: 'R2_BUCKET_NAME', message: 'R2 Bucket Name' },
-      {
-        key: 'R2_PUBLIC_STORAGE_DOMAIN',
-        message: 'R2 Public Domain (e.g. storage.example.com)',
-      },
-    ];
-
-    for (const { key, message, hint } of r2Keys) {
-      await promptForKey(key, message, hint);
+      for (const { key, message, hint } of r2Keys) {
+        await promptForKey(key, message, hint);
+      }
     }
   }
 
