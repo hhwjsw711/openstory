@@ -16,8 +16,8 @@ Set up DNS records before anything else. Other services need the domain to exist
 
 - [ ] Register/verify `openstory.so` with your DNS provider
 - [ ] Set up these subdomains (can point to placeholder/parking for now):
-  - `app.openstory.so` (or root) — production app
-  - `local.openstory.so` — local dev (127.0.0.1 in /etc/hosts or DNS)
+  - `app.openstory.so` — production app
+  - `local.openstory.so` — local dev (via Cloudflare Tunnel / `cloudflared`)
   - `notifications.openstory.so` — email sending domain (for Resend DKIM/SPF)
   - `assets.openstory.so` — R2 public assets (production)
   - `assets-stg.openstory.so` — R2 public assets (staging)
@@ -45,9 +45,9 @@ Depends on: Step 2 (repo rename) for the GitHub integration link.
 - [ ] Go to Vercel dashboard → Project Settings → General
 - [ ] Rename project from current name → `openstory`
 - [ ] Update the GitHub repo connection to point to the renamed repo/org
-- [ ] Update production domain: remove old domain, add `openstory.so` (or `app.openstory.so`)
+- [ ] Update production domain: remove old domain, add `app.openstory.so`
 - [ ] Update environment variables in Vercel dashboard:
-  - `APP_URL` → `https://openstory.so` (or `https://app.openstory.so`)
+  - `APP_URL` → `https://app.openstory.so`
   - `EMAIL_FROM` → `noreply@notifications.openstory.so`
   - `R2_PUBLIC_ASSETS_DOMAIN` → `assets.openstory.so`
   - `R2_PUBLIC_STORAGE_DOMAIN` → `storage.openstory.so`
@@ -61,7 +61,7 @@ Depends on: Step 1 (DNS), Step 2 (repo).
 **Pages project:**
 
 - [ ] Update Cloudflare Pages project to point to renamed GitHub repo
-- [ ] Update custom domain to `openstory.so` (or subdomain)
+- [ ] Update custom domain to `app.openstory.so`
 - [ ] Update environment variables (same as Vercel list above)
 
 **R2 buckets:**
@@ -113,7 +113,7 @@ Depends on: Step 3/4 (hosting domains finalized).
 - [ ] Go to Google Cloud Console → APIs & Services → Credentials
 - [ ] Update OAuth 2.0 Client:
   - App name: "OpenStory"
-  - Authorized redirect URIs: replace `velro.ai` with `openstory.so`
+  - Authorized redirect URIs: replace `velro.ai` with `app.openstory.so`
   - Add both Vercel and Cloudflare domains if different
   - Keep old redirect URIs temporarily for transition
 - [ ] Update OAuth consent screen branding (app name, logo, homepage URL)
@@ -155,7 +155,7 @@ These are API-key-based and don't reference the domain, but update for consisten
 
 After all services are migrated, update local dev environment.
 
-- [ ] `APP_URL=https://local.openstory.so`
+- [ ] `APP_URL=https://local.openstory.so` (local dev keeps `local.` subdomain)
 - [ ] `EMAIL_FROM=noreply@notifications.openstory.so`
 - [ ] `R2_BUCKET_NAME=openstory-storage-dev`
 - [ ] `R2_PUBLIC_ASSETS_BUCKET=openstory-public-assets-stg`
