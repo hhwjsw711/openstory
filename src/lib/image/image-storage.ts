@@ -3,15 +3,12 @@
  * Handles uploading and managing images in R2 Storage
  */
 
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { deleteFile, getSignedUrl, listFiles, uploadFile } from '#storage';
 import {
-  deleteFile,
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  getSignedUrl,
-  listFiles,
-  STORAGE_BUCKETS,
-  uploadFile,
-} from '@/lib/db/helpers/storage';
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 
 interface UploadImageOptions {

@@ -14,7 +14,8 @@ import {
   updateCharacterSheet,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
