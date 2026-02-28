@@ -35,11 +35,7 @@ export default defineConfig({
       ],
     },
     warmup: {
-      ssrFiles: [
-        './src/routes/api/**/*.ts',
-        './src/routes/_protected/**/*.tsx',
-        './src/routes/_auth/**/*.tsx',
-      ],
+      ssrFiles: ['./src/routes/api/**/*.ts'],
     },
   },
   preview: {

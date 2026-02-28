@@ -18,7 +18,7 @@ export async function waitForLibraryPageLoad(
   buttonName: string
 ): Promise<void> {
   const addButton = page.getByRole('button', { name: buttonName }).first();
-  await expect(addButton).toBeEnabled({ timeout: 15000 });
+  await expect(addButton).toBeEnabled({ timeout: 30000 });
 }
 
 /**
