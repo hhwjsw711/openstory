@@ -34,14 +34,14 @@ export const OpenStoryLogo: React.FC<OpenStoryLogoProps> = ({
     >
       <defs>
         <linearGradient id="twilight-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#A770EF" />
-          <stop offset="50%" stop-color="#CF8BF3" />
-          <stop offset="100%" stop-color="#FDB99B" />
+          <stop offset="0%" stopColor="#A770EF" />
+          <stop offset="50%" stopColor="#CF8BF3" />
+          <stop offset="100%" stopColor="#FDB99B" />
         </linearGradient>
         <linearGradient id="twilight-light" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#6D28D9" />
-          <stop offset="50%" stop-color="#A855F7" />
-          <stop offset="100%" stop-color="#EA7B30" />
+          <stop offset="0%" stopColor="#6D28D9" />
+          <stop offset="50%" stopColor="#A855F7" />
+          <stop offset="100%" stopColor="#EA7B30" />
         </linearGradient>
       </defs>
       <path
