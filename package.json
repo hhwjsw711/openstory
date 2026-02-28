@@ -158,6 +158,10 @@
       "development": "./src/lib/db/client-local.ts",
       "default": "./src/lib/db/client-web.ts"
     },
+    "#storage": {
+      "workerd": "./src/lib/storage/storage-cloudflare.ts",
+      "default": "./src/lib/storage/storage-s3.ts"
+    },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
       "default": "./src/app/actions/*/index.ts"

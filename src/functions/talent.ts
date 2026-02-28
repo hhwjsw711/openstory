@@ -27,14 +27,14 @@ import {
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import {
   STORAGE_BUCKETS,
-  uploadFile,
-  deleteFile,
-  getExtensionFromUrl,
-  getMimeTypeFromExtension,
   getPathFromUrl,
   getPublicUrl,
-  moveFile,
-} from '@/lib/db/helpers/storage';
+} from '@/lib/storage/buckets';
+import { deleteFile, moveFile, uploadFile } from '#storage';
+import {
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';

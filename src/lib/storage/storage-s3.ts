@@ -1,0 +1,296 @@
+/**
+ * Storage S3 — AWS S3 SDK implementation for R2 operations.
+ * Used on all platforms by default; on Cloudflare, only loaded lazily for signed URLs.
+ */
+
+import { getEnv } from '#env';
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  buildR2Key,
+  getPublicUrl,
+  type StorageBucket,
+  type StorageFileInfo,
+  type UploadResult,
+} from './buckets';
+
+export function createR2Client(): S3Client {
+  const accountId = getEnv().R2_ACCOUNT_ID;
+  const accessKeyId = getEnv().R2_ACCESS_KEY_ID;
+  const secretAccessKey = getEnv().R2_SECRET_ACCESS_KEY;
+
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error(
+      'Missing required R2 environment variables: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY'
+    );
+  }
+
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
+}
+
+export function getR2BucketName(): string {
+  const bucketName = getEnv().R2_BUCKET_NAME;
+  if (!bucketName) {
+    throw new Error('R2_BUCKET_NAME environment variable is not set');
+  }
+  return bucketName;
+}
+
+export async function uploadFile(
+  bucket: StorageBucket,
+  path: string,
+  file: File | Blob | ArrayBuffer,
+  options?: {
+    upsert?: boolean;
+    contentType?: string;
+    cacheControl?: string;
+  }
+): Promise<UploadResult> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    let body: Buffer | Uint8Array;
+    if (file instanceof ArrayBuffer) {
+      body = Buffer.from(file);
+    } else {
+      const arrayBuffer = await file.arrayBuffer();
+      body = Buffer.from(arrayBuffer);
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: body,
+      ContentType: options?.contentType,
+      CacheControl: options?.cacheControl ?? 'public, max-age=31536000',
+    });
+
+    await client.send(command);
+
+    const publicUrl = getPublicUrl(bucket, path);
+
+    return {
+      path: key,
+      publicUrl,
+      fullPath: key,
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to upload file to ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function getSignedUrl(
+  bucket: StorageBucket,
+  path: string,
+  expiresIn = 3600
+): Promise<string> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    const url = await getS3SignedUrl(client, command, { expiresIn });
+    return url;
+  } catch (error) {
+    throw new Error(
+      `Failed to create signed URL for ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function getSignedUrlWithDownload(
+  bucket: StorageBucket,
+  path: string,
+  filename: string,
+  expiresIn = 3600
+): Promise<string> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${filename}"`,
+    });
+
+    const url = await getS3SignedUrl(client, command, { expiresIn });
+    return url;
+  } catch (error) {
+    throw new Error(
+      `Failed to create download URL for ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function deleteFile(
+  bucket: StorageBucket,
+  path: string
+): Promise<void> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    await client.send(command);
+  } catch (error) {
+    throw new Error(
+      `Failed to delete file from ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function deleteFiles(
+  bucket: StorageBucket,
+  paths: string[]
+): Promise<void> {
+  if (paths.length === 0) return;
+
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+
+  try {
+    const command = new DeleteObjectsCommand({
+      Bucket: bucketName,
+      Delete: {
+        Objects: paths.map((path) => ({ Key: buildR2Key(bucket, path) })),
+      },
+    });
+
+    await client.send(command);
+  } catch (error) {
+    throw new Error(
+      `Failed to delete files from ${bucket}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function listFiles(
+  bucket: StorageBucket,
+  path = '',
+  options?: {
+    limit?: number;
+    offset?: number;
+    sortBy?: { column: string; order: 'asc' | 'desc' };
+  }
+): Promise<StorageFileInfo[]> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const prefix = buildR2Key(bucket, path);
+
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: prefix,
+      MaxKeys: options?.limit,
+    });
+
+    const response = await client.send(command);
+
+    return (
+      response.Contents?.map((item) => ({
+        name: item.Key?.replace(`${prefix}/`, '') ?? '',
+        id: item.Key ?? '',
+        updated_at: item.LastModified?.toISOString() ?? '',
+        created_at: item.LastModified?.toISOString() ?? '',
+        last_accessed_at: item.LastModified?.toISOString() ?? '',
+        metadata: {
+          size: item.Size ?? 0,
+          mimetype: '',
+          cacheControl: '',
+          eTag: item.ETag ?? '',
+        },
+      })) ?? []
+    );
+  } catch (error) {
+    throw new Error(
+      `Failed to list files in ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function moveFile(
+  bucket: StorageBucket,
+  fromPath: string,
+  toPath: string
+): Promise<void> {
+  await copyFile(bucket, fromPath, toPath);
+  await deleteFile(bucket, fromPath);
+}
+
+export async function copyFile(
+  bucket: StorageBucket,
+  fromPath: string,
+  toPath: string
+): Promise<void> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const sourceKey = buildR2Key(bucket, fromPath);
+  const destKey = buildR2Key(bucket, toPath);
+
+  try {
+    const command = new CopyObjectCommand({
+      Bucket: bucketName,
+      CopySource: `${bucketName}/${sourceKey}`,
+      Key: destKey,
+    });
+
+    await client.send(command);
+  } catch (error) {
+    throw new Error(
+      `Failed to copy file from ${fromPath} to ${toPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fileExists(
+  bucket: StorageBucket,
+  path: string
+): Promise<boolean> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  try {
+    const command = new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    await client.send(command);
+    return true;
+  } catch {
+    return false;
+  }
+}

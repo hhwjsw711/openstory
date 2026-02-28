@@ -7,14 +7,12 @@ import { locationLibrary, locationSheets } from '@/lib/db/schema';
 import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
+import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
+import { moveFile, uploadFile } from '#storage';
 import {
-  STORAGE_BUCKETS,
-  getMimeTypeFromExtension,
   getExtensionFromUrl,
-  getPublicUrl,
-  moveFile,
-  uploadFile,
-} from '@/lib/db/helpers/storage';
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';

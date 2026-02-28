@@ -6,19 +6,20 @@
  * as the main reference for the location.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
 import { updateLibraryLocationReference } from '@/lib/db/helpers/location-library';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import type {
   LibraryLocationSheetWorkflowInput,
   LibraryLocationSheetWorkflowResult,

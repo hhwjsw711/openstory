@@ -1019,14 +1019,38 @@ async function main() {
   );
 
   if (setupStorage) {
-    const r2Keys: Array<{ key: string; message: string; hint?: string }> = [
+    const isCloudflare = vars.get('DEPLOY_PLATFORM') === 'cloudflare';
+
+    if (isCloudflare) {
+      p.log.info(
+        'On Cloudflare, most storage operations use native R2 bindings (no credentials needed).\n' +
+          'S3 credentials are only required for generating presigned/download URLs.'
+      );
+    }
+
+    const r2Keys: Array<{
+      key: string;
+      message: string;
+      hint?: string;
+      optional?: boolean;
+    }> = [
       {
         key: 'R2_ACCOUNT_ID',
         message: 'Cloudflare Account ID',
         hint: 'Find in Cloudflare Dashboard > R2 > Overview',
       },
-      { key: 'R2_ACCESS_KEY_ID', message: 'R2 Access Key ID' },
-      { key: 'R2_SECRET_ACCESS_KEY', message: 'R2 Secret Access Key' },
+      {
+        key: 'R2_ACCESS_KEY_ID',
+        message: 'R2 Access Key ID',
+        hint: isCloudflare ? 'Only needed for signed URLs' : undefined,
+        optional: isCloudflare,
+      },
+      {
+        key: 'R2_SECRET_ACCESS_KEY',
+        message: 'R2 Secret Access Key',
+        hint: isCloudflare ? 'Only needed for signed URLs' : undefined,
+        optional: isCloudflare,
+      },
       { key: 'R2_BUCKET_NAME', message: 'R2 Bucket Name' },
       {
         key: 'R2_PUBLIC_STORAGE_DOMAIN',

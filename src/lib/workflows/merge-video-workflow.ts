@@ -5,12 +5,12 @@
 
 import { getDb } from '#db-client';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
-  STORAGE_BUCKETS,
-  uploadFile,
-} from '@/lib/db/helpers/storage';
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import { sequences } from '@/lib/db/schema';
 import { mergeVideos } from '@/lib/motion/merge-videos';
