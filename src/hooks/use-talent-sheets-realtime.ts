@@ -3,18 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { talentKeys } from './use-talent';
 
-type SheetProgressEvent = {
-  event: string;
-  data: {
-    talentId: string;
-    status: 'generating' | 'completed' | 'failed';
-    sheetId?: string;
-    sheetImageUrl?: string;
-    headshotImageUrl?: string;
-    error?: string;
-  };
-};
-
 /**
  * Hook for subscribing to real-time talent sheet generation events for multiple talent.
  * Tracks generating status for all provided talent IDs.
@@ -35,44 +23,39 @@ export function useTalentSheetsRealtime(talentIds: string[] = []) {
   );
 
   const handleEvent = useCallback(
-    (event: SheetProgressEvent) => {
+    (event: { event: string; data: Record<string, unknown> }) => {
       const { event: eventName, data } = event;
 
       if (eventName !== 'talent.sheet:progress') return;
+      if (typeof data.talentId !== 'string') return;
       if (!talentIds.includes(data.talentId)) return;
 
-      switch (data.status) {
-        case 'generating':
-          setGeneratingStatus((prev) => {
-            const next = new Map(prev);
-            next.set(data.talentId, true);
-            return next;
-          });
-          break;
+      const eventTalentId = data.talentId;
 
-        case 'completed':
-          setGeneratingStatus((prev) => {
-            const next = new Map(prev);
-            next.delete(data.talentId);
-            return next;
-          });
-          // Invalidate queries to refresh sheets and headshot
-          void queryClient.invalidateQueries({
-            queryKey: talentKeys.detail(data.talentId),
-          });
-          // Also invalidate list to show new headshot in talent grid
-          void queryClient.invalidateQueries({
-            queryKey: talentKeys.lists(),
-          });
-          break;
-
-        case 'failed':
-          setGeneratingStatus((prev) => {
-            const next = new Map(prev);
-            next.delete(data.talentId);
-            return next;
-          });
-          break;
+      if (data.status === 'generating') {
+        setGeneratingStatus((prev) => {
+          const next = new Map(prev);
+          next.set(eventTalentId, true);
+          return next;
+        });
+      } else if (data.status === 'completed') {
+        setGeneratingStatus((prev) => {
+          const next = new Map(prev);
+          next.delete(eventTalentId);
+          return next;
+        });
+        void queryClient.invalidateQueries({
+          queryKey: talentKeys.detail(eventTalentId),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: talentKeys.lists(),
+        });
+      } else if (data.status === 'failed') {
+        setGeneratingStatus((prev) => {
+          const next = new Map(prev);
+          next.delete(eventTalentId);
+          return next;
+        });
       }
     },
     [talentIds, queryClient]

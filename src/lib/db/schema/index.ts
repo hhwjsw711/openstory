@@ -89,6 +89,8 @@ import { scriptAnalysisAudit } from './audit';
 
 import { teamApiKeys, teamApiKeysRelations } from './team-api-keys';
 
+import { oauthStates } from './oauth-states';
+
 // ============================================================================
 // Relations defined here to avoid circular dependencies
 // ============================================================================
@@ -281,6 +283,9 @@ export type {
   TeamApiKey,
 } from './team-api-keys';
 
+// OAuth States (temporary PKCE flow state)
+export { oauthStates };
+
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -374,4 +379,7 @@ export const schema = {
   // Team API Keys
   teamApiKeys,
   teamApiKeysRelations,
+
+  // OAuth States
+  oauthStates,
 };

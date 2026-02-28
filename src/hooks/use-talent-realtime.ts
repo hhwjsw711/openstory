@@ -3,18 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { talentKeys } from './use-talent';
 
-type SheetProgressEvent = {
-  event: string;
-  data: {
-    talentId: string;
-    status: 'generating' | 'completed' | 'failed';
-    sheetId?: string;
-    sheetImageUrl?: string;
-    headshotImageUrl?: string;
-    error?: string;
-  };
-};
-
 /**
  * Hook for subscribing to real-time talent sheet generation events.
  *
@@ -27,35 +15,34 @@ export function useTalentSheetRealtime(talentId?: string) {
   const [error, setError] = useState<string | null>(null);
 
   const handleEvent = useCallback(
-    (event: SheetProgressEvent) => {
+    (event: { event: string; data: Record<string, unknown> }) => {
       const { event: eventName, data } = event;
 
       if (eventName !== 'talent.sheet:progress') return;
-      if (data.talentId !== talentId) return;
+      if (typeof data.talentId !== 'string' || data.talentId !== talentId)
+        return;
 
-      switch (data.status) {
-        case 'generating':
-          setIsGenerating(true);
-          setError(null);
-          break;
+      const eventTalentId = data.talentId;
 
-        case 'completed':
-          setIsGenerating(false);
-          setError(null);
-          // Invalidate talent queries to refresh sheets and headshot
-          void queryClient.invalidateQueries({
-            queryKey: talentKeys.detail(data.talentId),
-          });
-          // Also invalidate list to show new headshot in talent grid
-          void queryClient.invalidateQueries({
-            queryKey: talentKeys.lists(),
-          });
-          break;
-
-        case 'failed':
-          setIsGenerating(false);
-          setError(data.error ?? 'Sheet generation failed');
-          break;
+      if (data.status === 'generating') {
+        setIsGenerating(true);
+        setError(null);
+      } else if (data.status === 'completed') {
+        setIsGenerating(false);
+        setError(null);
+        void queryClient.invalidateQueries({
+          queryKey: talentKeys.detail(eventTalentId),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: talentKeys.lists(),
+        });
+      } else if (data.status === 'failed') {
+        setIsGenerating(false);
+        setError(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Sheet generation failed'
+        );
       }
     },
     [talentId, queryClient]

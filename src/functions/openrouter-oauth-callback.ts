@@ -4,9 +4,8 @@
  */
 
 import { exchangeCodeForKey } from '@/lib/byok/openrouter-oauth';
-import type { OAuthState } from '@/lib/byok/openrouter-oauth';
 import { apiKeyService } from '@/lib/byok/api-key.service';
-import { getOAuthRedis, OAUTH_STATE_PREFIX } from './openrouter-oauth-utils';
+import { getAndDeleteOAuthState } from './openrouter-oauth-utils';
 
 /**
  * Complete the OpenRouter OAuth PKCE flow.
@@ -17,15 +16,11 @@ export async function completeOpenRouterOAuth(
   teamId: string,
   code: string
 ): Promise<void> {
-  const redis = getOAuthRedis();
-  const stateKey = `${OAUTH_STATE_PREFIX}${teamId}`;
-
-  // Retrieve and delete PKCE state
-  const state = await redis.get<OAuthState>(stateKey);
+  // Retrieve and delete PKCE state from DB
+  const state = await getAndDeleteOAuthState(teamId);
   if (!state) {
     throw new Error('OAuth session expired or not found');
   }
-  await redis.del(stateKey);
 
   // Exchange code for API key
   const { apiKey } = await exchangeCodeForKey(code, state.codeVerifier);

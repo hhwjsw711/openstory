@@ -219,8 +219,6 @@ jobs:
           SECRET_QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
           SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values
           jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \

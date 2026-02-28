@@ -82,9 +82,6 @@ jobs:
           R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           R2_PUBLIC_ASSETS_BUCKET: ${{ secrets.R2_PUBLIC_ASSETS_BUCKET }}
           R2_PUBLIC_ASSETS_DOMAIN: ${{ secrets.R2_PUBLIC_ASSETS_DOMAIN }}
-          # Redis - preview environment
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           # Auth - preview environment
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}

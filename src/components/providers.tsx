@@ -1,7 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
-import { RealtimeProvider } from '@upstash/realtime/client';
+import { RealtimeProvider } from '@/lib/realtime/realtime-provider';
 import { lazy, type FC } from 'react';
 
 // Wrap the entire lazy() in import.meta.env.DEV so Vite dead-code-eliminates

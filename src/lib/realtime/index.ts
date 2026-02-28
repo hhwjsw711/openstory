@@ -1,6 +1,5 @@
-import { getRedis } from '#redis';
-import { Realtime } from '@upstash/realtime';
 import { z } from 'zod';
+import { getEventBus } from './event-bus';
 
 /**
  * Realtime event schema for generation progress streaming.
@@ -176,43 +175,34 @@ export const realtimeSchema = {
   },
 };
 
-let realtimeInstance: ReturnType<typeof createRealtime> | null = null;
-
-function createRealtime() {
-  const redis = getRedis();
-  return new Realtime({ schema: realtimeSchema, redis });
-}
+type RealtimeChannel = {
+  emit: (event: string, data: Record<string, unknown>) => void;
+};
 
 /**
- * Get the Realtime instance for emitting/subscribing to events.
- * Lazily initialized to avoid errors when Redis env vars are not set.
- */
-export function getRealtime() {
-  if (realtimeInstance) return realtimeInstance;
-  realtimeInstance = createRealtime();
-  return realtimeInstance;
-}
-
-/**
- * Get a channel for a specific sequence to emit/receive events.
+ * Get a channel for a specific sequence to emit events.
  * @param sequenceId - The sequence ID to use as the channel identifier
  */
-export function getGenerationChannel(sequenceId?: string) {
-  return sequenceId
-    ? getRealtime().channel(sequenceId)
-    : {
-        emit: () => null,
-      };
+export function getGenerationChannel(sequenceId?: string): RealtimeChannel {
+  if (!sequenceId) return { emit: () => undefined };
+  const bus = getEventBus();
+  return {
+    emit: (event: string, data: Record<string, unknown>) => {
+      bus.emit(sequenceId, event, data);
+    },
+  };
 }
 
 /**
  * Get a channel for talent library events.
  * @param talentId - The talent ID to use as the channel identifier
  */
-export function getTalentChannel(talentId?: string) {
-  return talentId
-    ? getRealtime().channel(`talent:${talentId}`)
-    : {
-        emit: () => null,
-      };
+export function getTalentChannel(talentId?: string): RealtimeChannel {
+  if (!talentId) return { emit: () => undefined };
+  const bus = getEventBus();
+  return {
+    emit: (event: string, data: Record<string, unknown>) => {
+      bus.emit(`talent:${talentId}`, event, data);
+    },
+  };
 }
