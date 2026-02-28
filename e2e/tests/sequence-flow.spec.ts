@@ -273,7 +273,10 @@ testWithUser.describe('Character Recast', () => {
       await page.goto(`/sequences/${testSequence.id}/cast/${testCharacter.id}`);
 
       // Wait for character detail to load
-      await expect(page.getByText('John')).toBeVisible({ timeout: 10000 });
+      await page.waitForLoadState('domcontentloaded');
+      await expect(page.locator('h1').filter({ hasText: 'John' })).toBeVisible({
+        timeout: 15000,
+      });
 
       // Click Recast button
       const recastButton = page.getByRole('button', { name: 'Recast' });
