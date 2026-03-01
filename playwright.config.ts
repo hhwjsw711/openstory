@@ -59,10 +59,12 @@ export default defineConfig({
     },
   ],
 
-  // Run dev server on port 3001 with test.db
-  // server.warmup in vite.config.ts pre-compiles SSR routes to avoid race conditions
+  // CI: use pre-built bundle via `vite preview` (no dep optimizer = no chunk invalidation)
+  // Local: use dev server with SSR warmup
   webServer: {
-    command: 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    command: process.env.CI
+      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun preview --port 3001'
+      : 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

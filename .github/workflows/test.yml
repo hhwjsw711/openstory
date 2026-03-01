@@ -63,6 +63,12 @@ jobs:
           # Enable WAL mode for concurrent access from fixtures and dev server
           sqlite3 test.db "PRAGMA journal_mode=WAL;"
 
+      - name: Build for E2E
+        run: bun build
+        env:
+          E2E_TEST: 'true'
+          DATABASE_URL: file:test.db
+
       - name: Run E2E tests
         run: bun test:e2e
         env:
