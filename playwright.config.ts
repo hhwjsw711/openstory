@@ -63,7 +63,7 @@ export default defineConfig({
   // Local: use dev server with SSR warmup
   webServer: {
     command: process.env.CI
-      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun start'
+      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db node .output/server/index.mjs'
       : 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
