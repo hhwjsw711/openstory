@@ -6,7 +6,7 @@
 
 import { LangfuseClient } from '@langfuse/client';
 
-const PROMPT_NAME = 'openstory/phase/music-prompt-generation-chat';
+const PROMPT_NAME = 'phase/music-prompt-generation-chat';
 
 const SYSTEM_PROMPT = `You are a music director and score supervisor for film/video production. Your job is to translate narrative scene data into generation-ready music descriptors for AI music models.
 

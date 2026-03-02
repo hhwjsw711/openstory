@@ -68,7 +68,7 @@ export const motionPromptSceneWorkflow = createWorkflow(
         name: 'motion-prompts',
         phase: { number: 4, name: 'Motion Prompts' },
 
-        promptName: 'openstory/phase/motion-prompt-scene-generation-chat',
+        promptName: 'phase/motion-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,

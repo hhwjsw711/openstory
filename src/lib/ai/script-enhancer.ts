@@ -66,7 +66,7 @@ export async function enhanceScript(
     throw new Error('OpenRouter API key not configured');
   }
 
-  const { prompt, compiled } = await getPrompt('openstory/script/enhance');
+  const { prompt, compiled } = await getPrompt('script/enhance');
   const userPrompt = createUserPrompt(validatedOptions.originalScript);
 
   const response = await callLLM({

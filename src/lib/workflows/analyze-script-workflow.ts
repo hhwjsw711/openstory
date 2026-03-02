@@ -163,7 +163,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         name: 'scene-splitting',
         phase: { number: 1, name: 'Scene Splitting' },
 
-        promptName: 'openstory/phase/scene-splitting-chat',
+        promptName: 'phase/scene-splitting-chat',
         promptVariables: {
           aspectRatio,
           script: sanitizeScriptContent(script),
@@ -243,7 +243,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         name: 'character-extraction',
         phase: { number: 2, name: 'Character Extraction' },
 
-        promptName: 'openstory/phase/character-extraction-chat',
+        promptName: 'phase/character-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -260,7 +260,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         name: 'location-extraction',
         phase: { number: 2, name: 'Location Extraction' },
 
-        promptName: 'openstory/phase/location-extraction-chat',
+        promptName: 'phase/location-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -300,7 +300,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               name: 'talent-matching',
               phase: { number: 3, name: 'Talent Matching' },
 
-              promptName: 'openstory/phase/talent-matching-chat',
+              promptName: 'phase/talent-matching-chat',
               promptVariables: matchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: talentMatchResponseSchema,
@@ -391,7 +391,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               name: 'location-matching',
               phase: { number: 3, name: 'Location Matching' },
 
-              promptName: 'openstory/phase/location-matching-chat',
+              promptName: 'phase/location-matching-chat',
               promptVariables: locationMatchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: locationMatchResponseSchema,
@@ -671,7 +671,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         name: 'audio-design',
         phase: { number: 7, name: 'Audio Design' },
 
-        promptName: 'openstory/phase/audio-design-chat',
+        promptName: 'phase/audio-design-chat',
         promptVariables: {
           scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
         },
@@ -807,7 +807,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           {
             name: 'music-prompt-generation',
             phase: { number: 8, name: 'Music Prompt Generation' },
-            promptName: 'openstory/phase/music-prompt-generation-chat',
+            promptName: 'phase/music-prompt-generation-chat',
             promptVariables: {
               scenes: JSON.stringify(sceneSummaries),
             },
