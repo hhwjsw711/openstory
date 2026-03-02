@@ -1197,16 +1197,7 @@ async function main() {
   }
 
   if (!vars.has('API_KEY_ENCRYPTION_KEY')) {
-    try {
-      const key = execFileSync('openssl', ['rand', '-base64', '32'], {
-        encoding: 'utf-8',
-      }).trim();
-      vars.set('API_KEY_ENCRYPTION_KEY', key);
-    } catch {
-      const bytes = new Uint8Array(32);
-      crypto.getRandomValues(bytes);
-      vars.set('API_KEY_ENCRYPTION_KEY', btoa(String.fromCharCode(...bytes)));
-    }
+    vars.set('API_KEY_ENCRYPTION_KEY', generateSecret());
     p.log.success('Encryption key generated');
   } else {
     p.log.success('Encryption key — already configured');
