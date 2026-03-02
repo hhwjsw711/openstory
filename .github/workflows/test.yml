@@ -66,6 +66,7 @@ jobs:
       - name: Build for E2E
         run: bun run build
         env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
           E2E_TEST: 'true'
           DATABASE_URL: file:test.db
 
