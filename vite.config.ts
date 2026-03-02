@@ -34,9 +34,6 @@ export default defineConfig({
         '**/test-results/**',
       ],
     },
-    warmup: {
-      ssrFiles: ['./src/routes/api/**/*.ts'],
-    },
   },
   preview: {
     port: 3000, // Preview server port (for cf:preview)
