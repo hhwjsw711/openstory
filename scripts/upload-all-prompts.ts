@@ -1,7 +1,7 @@
 /**
  * Upload ALL prompts to Langfuse
  *
- * Reads from prompts-local.ts (source of truth) plus additional prompts
+ * Reads from workflow-prompts.ts (source of truth) plus additional prompts
  * from standalone upload scripts that aren't captured in local fallbacks.
  *
  * Usage: bun scripts/upload-all-prompts.ts
@@ -12,11 +12,11 @@
 
 import { LangfuseClient } from '@langfuse/client';
 import {
-  LOCAL_CHAT_PROMPTS,
-  LOCAL_TEXT_PROMPTS,
-} from '../src/lib/ai/prompts-local';
+  WORKFLOW_CHAT_PROMPTS,
+  WORKFLOW_TEXT_PROMPTS,
+} from '../src/lib/prompts/workflow-prompts';
 
-// ── Additional prompts not in prompts-local.ts ────────────────────────
+// ── Additional prompts not in workflow-prompts.ts ────────────────────────
 
 const ADDITIONAL_TEXT_PROMPTS: Record<string, string> = {
   'phase/talent-matching': `You are a casting director AI. Your job is to match available talent (actors) to character roles.
@@ -125,8 +125,14 @@ const ADDITIONAL_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
 async function main() {
   const langfuse = new LangfuseClient();
 
-  const allTextPrompts = { ...LOCAL_TEXT_PROMPTS, ...ADDITIONAL_TEXT_PROMPTS };
-  const allChatPrompts = { ...LOCAL_CHAT_PROMPTS, ...ADDITIONAL_CHAT_PROMPTS };
+  const allTextPrompts = {
+    ...WORKFLOW_TEXT_PROMPTS,
+    ...ADDITIONAL_TEXT_PROMPTS,
+  };
+  const allChatPrompts = {
+    ...WORKFLOW_CHAT_PROMPTS,
+    ...ADDITIONAL_CHAT_PROMPTS,
+  };
 
   const textNames = Object.keys(allTextPrompts);
   const chatNames = Object.keys(allChatPrompts);

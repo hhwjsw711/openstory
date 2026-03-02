@@ -11,7 +11,10 @@ import { LangfuseClient } from '@langfuse/client';
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 
-const OUTPUT_PATH = resolve(import.meta.dir, '../src/lib/ai/prompts-local.ts');
+const OUTPUT_PATH = resolve(
+  import.meta.dir,
+  '../src/lib/prompts/workflow-prompts.ts'
+);
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -20,7 +23,7 @@ type ChatMessage = {
 
 async function main() {
   const langfuse = new LangfuseClient();
-  const prompts = await langfuse.api.prompts.list();
+  const prompts = await langfuse.api.prompts.list({ limit: 100 });
 
   console.log(`Found ${prompts.data.length} prompts in Langfuse\n`);
 
@@ -108,14 +111,14 @@ export type ChatMessage = {
 /**
  * Text prompts (used via getPrompt → system message for streaming calls)
  */
-export const LOCAL_TEXT_PROMPTS: Record<string, string> = {
+export const WORKFLOW_TEXT_PROMPTS: Record<string, string> = {
 ${textEntries}
 };
 
 /**
  * Chat prompts (used via getChatPrompt → durable workflow calls)
  */
-export const LOCAL_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
+export const WORKFLOW_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
 ${chatEntries}
 };
 `;

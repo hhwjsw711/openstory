@@ -6,13 +6,16 @@
  */
 
 import { getEnv } from '#env';
+import { isLangfuseEnabled } from '@/lib/observability/langfuse';
 import {
   LangfuseClient,
   type ChatPromptClient,
   type TextPromptClient,
 } from '@langfuse/client';
-import { isLangfuseEnabled } from '@/lib/observability/langfuse';
-import { LOCAL_CHAT_PROMPTS, LOCAL_TEXT_PROMPTS } from './prompts-local';
+import {
+  WORKFLOW_CHAT_PROMPTS,
+  WORKFLOW_TEXT_PROMPTS,
+} from './workflow-prompts';
 
 let client: LangfuseClient | null = null;
 
@@ -75,7 +78,7 @@ export async function getPrompt(
   }
 
   // Fall back to local prompts
-  const localPrompt = LOCAL_TEXT_PROMPTS[name];
+  const localPrompt = WORKFLOW_TEXT_PROMPTS[name];
   if (!localPrompt) {
     throw new Error(
       `Text prompt "${name}" not found in local prompts. Run \`bun scripts/pull-prompts.ts\` to populate.`
@@ -117,7 +120,7 @@ export async function getChatPrompt(
   }
 
   // Fall back to local prompts
-  const localMessages = LOCAL_CHAT_PROMPTS[name];
+  const localMessages = WORKFLOW_CHAT_PROMPTS[name];
   if (!localMessages) {
     throw new Error(
       `Chat prompt "${name}" not found in local prompts. Run \`bun scripts/pull-prompts.ts\` to populate.`

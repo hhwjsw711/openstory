@@ -5,7 +5,7 @@ import {
   sanitizeScriptContent,
   validateAIResponse,
 } from '@/lib/ai/prompt-validation';
-import { getPrompt } from './prompts';
+import { getPrompt } from '@/lib/prompts';
 import { z } from 'zod';
 
 const EnhanceScriptOptionsSchema = z.object({
