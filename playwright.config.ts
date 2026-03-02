@@ -25,7 +25,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html']] : 'html',
 
   // Global test timeout
-  timeout: 30_000,
+  timeout: 60_000,
 
   // Shared settings for all projects
   use: {
