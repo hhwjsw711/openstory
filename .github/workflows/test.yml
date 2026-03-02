@@ -63,30 +63,12 @@ jobs:
           # Enable WAL mode for concurrent access from fixtures and dev server
           sqlite3 test.db "PRAGMA journal_mode=WAL;"
 
-      - name: Build for E2E
-        run: bun run build
+      - name: Run E2E tests
+        run: bun test:e2e
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
           E2E_TEST: 'true'
           DATABASE_URL: file:test.db
-
-      - name: Run E2E tests
-        run: |
-          # Start server in background (direct output visible in CI logs)
-          PORT=3001 DATABASE_URL=file:test.db node .output/server/index.mjs &
-          SERVER_PID=$!
-          echo "Server PID: $SERVER_PID"
-
-          # Wait for server to be ready (up to 60 seconds)
-          timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null 2>&1; do sleep 1; done'
-          echo "Server ready at http://localhost:3001"
-
-          # Run tests (Playwright reuses the running server)
-          bun test:e2e
-        env:
           BETTER_AUTH_URL: http://localhost:3001
-          # Skip workflow triggers in E2E tests
-          E2E_TEST: 'true'
           # QStash - local Docker service
           QSTASH_TOKEN: eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=
           QSTASH_URL: http://localhost:8080

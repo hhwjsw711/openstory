@@ -59,12 +59,8 @@ export default defineConfig({
     },
   ],
 
-  // CI: production build served via node; started in workflow for direct log visibility
-  // Local: dev server with SSR warmup
   webServer: {
-    command: process.env.CI
-      ? 'PORT=3001 DATABASE_URL=file:test.db node .output/server/index.mjs'
-      : 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    command: 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
     reuseExistingServer: true,
     timeout: 120_000,
