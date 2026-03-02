@@ -27,6 +27,7 @@ export default defineConfig({
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
     watch: {
       ignored: [
+        '**/e2e/.auth/**',
         '**/e2e/results/**',
         '**/playwright-report/**',
         '**/test.db*',
