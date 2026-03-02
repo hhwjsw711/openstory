@@ -61,7 +61,7 @@
     "setup": "npx tsx scripts/setup.ts",
     "setup:prod": "npx tsx scripts/setup.ts --prod",
     "setup:deploy": "npx tsx scripts/setup.ts --deploy",
-    "setup:staging": "npx tsx scripts/setup.ts --staging",
+    "setup:pr-preview": "npx tsx scripts/setup.ts --pr-preview",
     "cert:setup": "bash ./scripts/setup-cert.sh",
     "cert:trust": "mkcert -install",
     "storybook": "storybook dev -p 6006",

@@ -4,7 +4,7 @@
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
  *   bun setup:prod     — production (hosting platform, database, email, services → .env.production)
- *   bun setup:staging  — push staging secrets to GitHub environment → .env.staging
+ *   bun setup:pr-preview — push PR preview secrets to GitHub staging environment
  */
 
 import * as p from '@clack/prompts';
@@ -16,17 +16,13 @@ import { resolve } from 'path';
 const MIN_BUN_VERSION = '1.3.9';
 
 const isDeploy = process.argv.includes('--deploy');
-const isStagingMode = process.argv.includes('--staging');
+const isPrPreviewMode = process.argv.includes('--pr-preview');
 const isProd = isDeploy || process.argv.includes('--prod');
 const ENV_FILE = resolve(
   process.cwd(),
-  isStagingMode ? '.env.staging' : isProd ? '.env.production' : '.env.local'
+  isProd ? '.env.production' : '.env.local'
 );
-const ENV_FILENAME = isStagingMode
-  ? '.env.staging'
-  : isProd
-    ? '.env.production'
-    : '.env.local';
+const ENV_FILENAME = isProd ? '.env.production' : '.env.local';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -218,10 +214,10 @@ function generateSecret(): string {
 // checkCancel and promptForKey are defined inside main() to capture `vars` for incremental saving
 
 // ---------------------------------------------------------------------------
-// Staging Setup — push secrets to GitHub environment
+// PR Preview Setup — push secrets to GitHub staging environment
 // ---------------------------------------------------------------------------
 
-const STAGING_SECRETS = [
+const PR_PREVIEW_SECRETS = [
   'API_KEY_ENCRYPTION_KEY',
   'APP_NAME',
   'BETTER_AUTH_SECRET',
@@ -229,8 +225,6 @@ const STAGING_SECRETS = [
   'EMAIL_FROM',
   'FAL_CONCURRENCY_LIMIT',
   'FAL_KEY',
-  'GOOGLE_CLIENT_ID',
-  'GOOGLE_CLIENT_SECRET',
   'LANGFUSE_BASE_URL',
   'LANGFUSE_PUBLIC_KEY',
   'LANGFUSE_SECRET_KEY',
@@ -242,13 +236,11 @@ const STAGING_SECRETS = [
   'QSTASH_TOKEN',
   'QSTASH_URL',
   'RESEND_API_KEY',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
   'UPSTASH_REDIS_REST_TOKEN',
   'UPSTASH_REDIS_REST_URL',
 ] as const;
 
-const STAGING_VARIABLES = [
+const PR_PREVIEW_VARIABLES = [
   'R2_PUBLIC_ASSETS_DOMAIN',
   'R2_PUBLIC_STORAGE_DOMAIN',
 ] as const;
@@ -260,10 +252,10 @@ function execGh(args: string[]): string {
   }).trim();
 }
 
-async function stagingSetup() {
-  p.intro(chalk.bold('OpenStory Staging Setup'));
+async function prPreviewSetup() {
+  p.intro(chalk.bold('OpenStory PR Preview Setup'));
   p.log.info(
-    'Pushes secrets from .env.production to a GitHub "staging" environment.'
+    'Derives preview secrets from .env.production and pushes to GitHub "staging" environment.'
   );
 
   // 1. Check gh CLI
@@ -303,11 +295,9 @@ async function stagingSetup() {
   }
   p.log.success(`Repository: ${repoName}`);
 
-  // 3. Load .env.production as base, layer .env.staging overrides
+  // 3. Load .env.production as base
   const prodFile = resolve(process.cwd(), '.env.production');
-  const stagingFile = resolve(process.cwd(), '.env.staging');
   const prodVars = parseEnvFile(prodFile);
-  const stagingVars = parseEnvFile(stagingFile);
 
   if (prodVars.size === 0) {
     p.log.error(
@@ -316,17 +306,84 @@ async function stagingSetup() {
     process.exit(1);
   }
 
-  // Merge: staging overrides prod
   const merged = new Map(prodVars);
-  for (const [k, v] of stagingVars) {
-    merged.set(k, v);
+
+  // 4. Auto-set preview overrides
+  const removed = [
+    'APP_URL',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+  ];
+  for (const key of removed) {
+    merged.delete(key);
+  }
+  p.log.info(`Removed (not needed for preview): ${removed.join(', ')}`);
+
+  merged.set('LANGFUSE_TRACING_ENVIRONMENT', 'preview');
+  p.log.info('Set LANGFUSE_TRACING_ENVIRONMENT = preview');
+
+  // Derive staging R2 domains from production APP_URL
+  const appUrl = prodVars.get('APP_URL') ?? '';
+  let baseDomain = '';
+  try {
+    const host = new URL(appUrl).hostname;
+    const parts = host.split('.');
+    baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
+  } catch {
+    // fall through
   }
 
-  // Delete APP_URL (dynamic per PR)
-  merged.delete('APP_URL');
+  if (baseDomain) {
+    merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-dev.${baseDomain}`);
+    merged.set('R2_PUBLIC_ASSETS_DOMAIN', `assets-stg.${baseDomain}`);
+  } else {
+    p.log.warn(
+      'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
+    );
+  }
+  p.log.info(
+    `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
+      `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
+  );
 
-  // 4. Count ready/missing
-  const allKeys = [...STAGING_SECRETS, ...STAGING_VARIABLES];
+  // 5. Prompt for AI keys — use same as production or enter different ones?
+  const aiKeys = ['FAL_KEY', 'OPENROUTER_KEY'] as const;
+  const hasAiKeys = aiKeys.every((k) => merged.get(k));
+
+  if (hasAiKeys) {
+    const reuseProd = await p.confirm({
+      message: 'Use the same FAL_KEY and OPENROUTER_KEY as production?',
+      initialValue: true,
+    });
+
+    if (p.isCancel(reuseProd)) {
+      p.cancel('PR preview setup cancelled.');
+      process.exit(0);
+    }
+
+    if (!reuseProd) {
+      for (const key of aiKeys) {
+        const value = await p.text({
+          message: `${key} for preview`,
+          placeholder: `Paste your ${key} here…`,
+        });
+
+        if (p.isCancel(value)) {
+          p.cancel('PR preview setup cancelled.');
+          process.exit(0);
+        }
+
+        if (value?.trim()) {
+          merged.set(key, value.trim());
+        }
+      }
+    }
+  }
+
+  // 6. Summary of what will be pushed
+  const allKeys = [...PR_PREVIEW_SECRETS, ...PR_PREVIEW_VARIABLES];
   const ready = allKeys.filter((k) => merged.get(k));
   const missing = allKeys.filter((k) => !merged.get(k));
 
@@ -338,55 +395,7 @@ async function stagingSetup() {
     p.log.warn(`Missing: ${missing.join(', ')}`);
   }
 
-  // 5. Optional override
-  const wantOverride = await p.confirm({
-    message: 'Override any values before pushing?',
-    initialValue: missing.length > 0,
-  });
-
-  if (p.isCancel(wantOverride)) {
-    p.cancel('Staging setup cancelled.');
-    process.exit(0);
-  }
-
-  if (wantOverride) {
-    const defaultSelected = missing;
-    const toOverride = await p.multiselect<string>({
-      message: 'Select keys to set/override',
-      options: allKeys.map((k) => ({
-        value: k,
-        label: k,
-        hint: merged.has(k)
-          ? `current: ${merged.get(k)?.slice(0, 20)}…`
-          : 'not set',
-      })),
-      initialValues: [...defaultSelected],
-    });
-
-    if (p.isCancel(toOverride)) {
-      p.cancel('Staging setup cancelled.');
-      process.exit(0);
-    }
-
-    for (const key of toOverride) {
-      const value = await p.text({
-        message: `${key}`,
-        placeholder: merged.get(key) ?? `Paste your ${key} here…`,
-        defaultValue: merged.get(key),
-      });
-
-      if (p.isCancel(value)) {
-        p.cancel('Staging setup cancelled.');
-        process.exit(0);
-      }
-
-      if (value && value.trim()) {
-        merged.set(key, value.trim());
-      }
-    }
-  }
-
-  // 6. Ensure GitHub staging environment exists
+  // 7. Ensure GitHub staging environment exists
   const envSpinner = p.spinner();
   envSpinner.start('Ensuring GitHub "staging" environment exists');
   try {
@@ -406,9 +415,9 @@ async function stagingSetup() {
     process.exit(1);
   }
 
-  // 7. Push secrets
+  // 8. Push secrets
   const secretSpinner = p.spinner();
-  const secretsToPush = STAGING_SECRETS.filter((k) => merged.get(k));
+  const secretsToPush = PR_PREVIEW_SECRETS.filter((k) => merged.get(k));
   secretSpinner.start(
     `Pushing ${secretsToPush.length} secrets to staging environment`
   );
@@ -441,8 +450,8 @@ async function stagingSetup() {
     secretSpinner.stop(`Pushed ${secretsPushed} secrets`);
   }
 
-  // 8. Push variables
-  const varsToPush = STAGING_VARIABLES.filter((k) => merged.get(k));
+  // 9. Push variables
+  const varsToPush = PR_PREVIEW_VARIABLES.filter((k) => merged.get(k));
   if (varsToPush.length > 0) {
     const varSpinner = p.spinner();
     varSpinner.start(
@@ -476,26 +485,6 @@ async function stagingSetup() {
     }
   }
 
-  // 9. Write .env.staging locally as record
-  const lines: string[] = [
-    '# =============================================================================',
-    '# Staging Configuration (record of what was pushed to GitHub)',
-    '# Generated by `bun setup:staging` — safe to edit',
-    '# =============================================================================',
-    '',
-  ];
-
-  for (const key of [...STAGING_SECRETS, ...STAGING_VARIABLES]) {
-    const value = merged.get(key);
-    if (value) {
-      lines.push(`${key}=${value}`);
-    }
-  }
-  lines.push('');
-
-  writeFileSync(stagingFile, lines.join('\n'));
-  p.log.success(`Wrote ${stagingFile}`);
-
   // 10. Summary
   p.note(
     [
@@ -503,10 +492,8 @@ async function stagingSetup() {
       `Environment: staging`,
       `Secrets pushed: ${secretsPushed}`,
       `Variables pushed: ${varsToPush.length}`,
-      '',
-      `Local record: .env.staging`,
     ].join('\n'),
-    'Staging Setup Complete'
+    'PR Preview Setup Complete'
   );
 
   p.outro('Done! PR preview deploys will now use the staging environment.');
@@ -900,9 +887,9 @@ async function main() {
     return value;
   }
 
-  // --staging: push secrets to GitHub staging environment
-  if (isStagingMode) {
-    await stagingSetup();
+  // --pr-preview: push secrets to GitHub staging environment for PR previews
+  if (isPrPreviewMode) {
+    await prPreviewSetup();
     return;
   }
 
