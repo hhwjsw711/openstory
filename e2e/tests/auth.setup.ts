@@ -96,7 +96,7 @@ setup('authenticate', async ({ page }) => {
   await page.waitForURL(
     (url) =>
       !url.pathname.includes('/login') && !url.pathname.includes('/verify'),
-    { timeout: 30000 }
+    { timeout: 60_000 }
   );
 
   // Save browser state

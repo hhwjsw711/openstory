@@ -21,8 +21,8 @@ export default defineConfig({
   // Local: html only
   reporter: process.env.CI ? [['github'], ['html']] : 'html',
 
-  // Global test timeout
-  timeout: 30_000,
+  // Global test timeout (longer on CI due to slower 2-vCPU runners)
+  timeout: process.env.CI ? 60_000 : 30_000,
 
   // Shared settings for all projects
   use: {

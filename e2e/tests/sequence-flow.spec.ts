@@ -210,7 +210,7 @@ testWithUser.describe('Variant Selection', () => {
           const frameAfter = await getTestFrame(testFrame.id);
           return frameAfter?.thumbnailUrl;
         },
-        { timeout: 10000 }
+        { timeout: 20_000 }
       )
       .not.toBe(originalThumbnailUrl);
   });
@@ -312,7 +312,7 @@ testWithUser.describe('Character Recast', () => {
             const characterAfter = await getTestCharacter(testCharacter.id);
             return characterAfter?.talentId;
           },
-          { timeout: 10000 }
+          { timeout: 20_000 }
         )
         .toBe(testTalents[1].id);
     }

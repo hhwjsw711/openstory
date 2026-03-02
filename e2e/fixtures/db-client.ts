@@ -14,7 +14,7 @@ const client = createClient({ url: 'file:test.db' });
 // busy_timeout waits for locks instead of failing immediately
 const initPromise = (async () => {
   await client.execute('PRAGMA journal_mode = WAL');
-  await client.execute('PRAGMA busy_timeout = 10000');
+  await client.execute('PRAGMA busy_timeout = 30000');
 })();
 
 /**

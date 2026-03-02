@@ -154,7 +154,7 @@ async function authenticateUser(page: Page, email: string): Promise<void> {
   await page.waitForURL(
     (url) =>
       !url.pathname.includes('/login') && !url.pathname.includes('/verify'),
-    { timeout: 15000 }
+    { timeout: 30_000 }
   );
 }
 
