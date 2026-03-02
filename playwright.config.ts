@@ -9,11 +9,8 @@ export default defineConfig({
   testDir: './e2e/tests',
   outputDir: './e2e/results',
 
-  // Run tests in parallel now that we share auth state
-  // Note: Using 1 worker locally to avoid SQLite locking issues
-  // CI uses WAL mode + multiple workers
   fullyParallel: true,
-  workers: 4,
+  workers: process.env.CI ? 2 : 4,
 
   // Fail fast on CI
   forbidOnly: !!process.env.CI,
