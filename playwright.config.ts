@@ -59,14 +59,12 @@ export default defineConfig({
     },
   ],
 
-  // CI: use pre-built bundle via `vite preview` (no dep optimizer = no chunk invalidation)
-  // Local: use dev server with SSR warmup
+  // CI: server started externally in workflow (gives direct stdout/stderr visibility)
+  // Local: dev server with SSR warmup
   webServer: {
-    command: process.env.CI
-      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db node .output/server/index.mjs'
-      : 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    command: 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
     url: 'http://localhost:3001',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });
