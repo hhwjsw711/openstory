@@ -32,6 +32,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3001',
     trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'on-first-retry',
   },
 
   // Configure projects
