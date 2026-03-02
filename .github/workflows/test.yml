@@ -64,7 +64,7 @@ jobs:
           sqlite3 test.db "PRAGMA journal_mode=WAL;"
 
       - name: Build for E2E
-        run: bun build
+        run: bun run build
         env:
           E2E_TEST: 'true'
           DATABASE_URL: file:test.db
