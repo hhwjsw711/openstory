@@ -59,7 +59,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: d6a35f64-abb0-4a34-a092-dc20b29f5812
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN_PRD }}
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Deploy to production
         run: bun cf:deploy:prd
@@ -76,7 +76,7 @@ jobs:
       && github.event.action != 'closed'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    environment: preview
+    environment: staging
     steps:
       - uses: actions/checkout@v5
 
@@ -143,15 +143,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN_STG }}
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Patch wrangler config for preview
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
         run: |
-          # Rewrite wrangler.jsonc with PR-specific name and D1 binding at top level
-          # so wrangler deploy (without --env) picks up the bindings correctly.
           node -e "
             const fs = require('fs');
             let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
@@ -163,8 +161,11 @@ jobs:
               database_name: 'openstory-pr-${PR_NUMBER}',
               database_id: '${D1_DATABASE_ID}'
             }];
-            obj.r2_buckets = obj.env.stg.r2_buckets;
-            delete obj.env;
+            obj.r2_buckets = [
+              { binding: 'NEXT_INC_CACHE_R2_BUCKET', bucket_name: 'cache-dev' },
+              { bucket_name: 'openstory-public-assets-stg', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
+              { binding: 'R2_STORAGE_BUCKET', bucket_name: 'velro-storage-stg' }
+            ];
             fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
           "
           echo "Patched wrangler.jsonc:"
@@ -220,6 +221,8 @@ jobs:
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
           SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values

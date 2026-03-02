@@ -3,7 +3,8 @@
  *
  * Usage:
  *   bun setup          — local dev (SQLite, QStash emulator, localhost defaults → .env.local)
- *   bun setup:prod     — production (hosting platform, database, email, services → .env)
+ *   bun setup:prod     — production (hosting platform, database, email, services → .env.production)
+ *   bun setup:staging  — push staging secrets to GitHub environment → .env.staging
  */
 
 import * as p from '@clack/prompts';
@@ -15,12 +16,17 @@ import { resolve } from 'path';
 const MIN_BUN_VERSION = '1.3.9';
 
 const isDeploy = process.argv.includes('--deploy');
+const isStagingMode = process.argv.includes('--staging');
 const isProd = isDeploy || process.argv.includes('--prod');
 const ENV_FILE = resolve(
   process.cwd(),
-  isProd ? '.env.production' : '.env.local'
+  isStagingMode ? '.env.staging' : isProd ? '.env.production' : '.env.local'
 );
-const ENV_FILENAME = isProd ? '.env.production' : '.env.local';
+const ENV_FILENAME = isStagingMode
+  ? '.env.staging'
+  : isProd
+    ? '.env.production'
+    : '.env.local';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -108,7 +114,13 @@ function writeEnvFile(vars: Map<string, string>) {
     },
     {
       header: 'AI Services',
-      keys: ['FAL_KEY', 'OPENROUTER_KEY'],
+      keys: [
+        'FAL_KEY',
+        'FAL_CONCURRENCY_LIMIT',
+        'OPENROUTER_KEY',
+        'CEREBRAS_API_KEY',
+        'LETZAI_API_KEY',
+      ],
     },
     {
       header: 'Storage (Cloudflare R2)',
@@ -118,6 +130,8 @@ function writeEnvFile(vars: Map<string, string>) {
         'R2_SECRET_ACCESS_KEY',
         'R2_BUCKET_NAME',
         'R2_PUBLIC_STORAGE_DOMAIN',
+        'R2_PUBLIC_ASSETS_BUCKET',
+        'R2_PUBLIC_ASSETS_DOMAIN',
       ],
     },
     {
@@ -126,11 +140,24 @@ function writeEnvFile(vars: Map<string, string>) {
     },
     {
       header: 'Observability (Langfuse)',
-      keys: ['LANGFUSE_PUBLIC_KEY', 'LANGFUSE_SECRET_KEY', 'LANGFUSE_BASE_URL'],
+      keys: [
+        'LANGFUSE_PUBLIC_KEY',
+        'LANGFUSE_SECRET_KEY',
+        'LANGFUSE_BASE_URL',
+        'LANGFUSE_TRACING_ENVIRONMENT',
+      ],
     },
     {
       header: 'Billing (Stripe)',
       keys: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
+    },
+    {
+      header: 'Redis (Upstash)',
+      keys: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+    },
+    {
+      header: 'Security',
+      keys: ['API_KEY_ENCRYPTION_KEY'],
     },
   ];
 
@@ -189,6 +216,301 @@ function generateSecret(): string {
 }
 
 // checkCancel and promptForKey are defined inside main() to capture `vars` for incremental saving
+
+// ---------------------------------------------------------------------------
+// Staging Setup — push secrets to GitHub environment
+// ---------------------------------------------------------------------------
+
+const STAGING_SECRETS = [
+  'API_KEY_ENCRYPTION_KEY',
+  'APP_NAME',
+  'BETTER_AUTH_SECRET',
+  'CEREBRAS_API_KEY',
+  'EMAIL_FROM',
+  'FAL_CONCURRENCY_LIMIT',
+  'FAL_KEY',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'LANGFUSE_BASE_URL',
+  'LANGFUSE_PUBLIC_KEY',
+  'LANGFUSE_SECRET_KEY',
+  'LANGFUSE_TRACING_ENVIRONMENT',
+  'LETZAI_API_KEY',
+  'OPENROUTER_KEY',
+  'QSTASH_CURRENT_SIGNING_KEY',
+  'QSTASH_NEXT_SIGNING_KEY',
+  'QSTASH_TOKEN',
+  'QSTASH_URL',
+  'RESEND_API_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'UPSTASH_REDIS_REST_URL',
+] as const;
+
+const STAGING_VARIABLES = [
+  'R2_PUBLIC_ASSETS_DOMAIN',
+  'R2_PUBLIC_STORAGE_DOMAIN',
+] as const;
+
+function execGh(args: string[]): string {
+  return execFileSync('gh', args, {
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
+}
+
+async function stagingSetup() {
+  p.intro(chalk.bold('OpenStory Staging Setup'));
+  p.log.info(
+    'Pushes secrets from .env.production to a GitHub "staging" environment.'
+  );
+
+  // 1. Check gh CLI
+  if (!commandExists('gh')) {
+    p.log.error(
+      'GitHub CLI (gh) is not installed.\n' +
+        'Install it: https://cli.github.com/'
+    );
+    process.exit(1);
+  }
+
+  try {
+    execGh(['auth', 'status']);
+  } catch {
+    p.log.error('Not authenticated with gh. Run: gh auth login');
+    process.exit(1);
+  }
+  p.log.success('GitHub CLI authenticated');
+
+  // 2. Detect repo
+  let repoName: string;
+  try {
+    const repoJson = execGh([
+      'repo',
+      'view',
+      '--json',
+      'nameWithOwner',
+      '-q',
+      '.nameWithOwner',
+    ]);
+    repoName = repoJson;
+  } catch {
+    p.log.error(
+      'Could not detect GitHub repository. Are you in a git repo with a GitHub remote?'
+    );
+    process.exit(1);
+  }
+  p.log.success(`Repository: ${repoName}`);
+
+  // 3. Load .env.production as base, layer .env.staging overrides
+  const prodFile = resolve(process.cwd(), '.env.production');
+  const stagingFile = resolve(process.cwd(), '.env.staging');
+  const prodVars = parseEnvFile(prodFile);
+  const stagingVars = parseEnvFile(stagingFile);
+
+  if (prodVars.size === 0) {
+    p.log.error(
+      'No .env.production found. Run `bun setup:prod` first to configure production values.'
+    );
+    process.exit(1);
+  }
+
+  // Merge: staging overrides prod
+  const merged = new Map(prodVars);
+  for (const [k, v] of stagingVars) {
+    merged.set(k, v);
+  }
+
+  // Delete APP_URL (dynamic per PR)
+  merged.delete('APP_URL');
+
+  // 4. Count ready/missing
+  const allKeys = [...STAGING_SECRETS, ...STAGING_VARIABLES];
+  const ready = allKeys.filter((k) => merged.get(k));
+  const missing = allKeys.filter((k) => !merged.get(k));
+
+  p.log.info(
+    `${chalk.green(String(ready.length))} keys ready, ${chalk.yellow(String(missing.length))} missing`
+  );
+
+  if (missing.length > 0) {
+    p.log.warn(`Missing: ${missing.join(', ')}`);
+  }
+
+  // 5. Optional override
+  const wantOverride = await p.confirm({
+    message: 'Override any values before pushing?',
+    initialValue: missing.length > 0,
+  });
+
+  if (p.isCancel(wantOverride)) {
+    p.cancel('Staging setup cancelled.');
+    process.exit(0);
+  }
+
+  if (wantOverride) {
+    const defaultSelected = missing;
+    const toOverride = await p.multiselect<string>({
+      message: 'Select keys to set/override',
+      options: allKeys.map((k) => ({
+        value: k,
+        label: k,
+        hint: merged.has(k)
+          ? `current: ${merged.get(k)?.slice(0, 20)}…`
+          : 'not set',
+      })),
+      initialValues: [...defaultSelected],
+    });
+
+    if (p.isCancel(toOverride)) {
+      p.cancel('Staging setup cancelled.');
+      process.exit(0);
+    }
+
+    for (const key of toOverride) {
+      const value = await p.text({
+        message: `${key}`,
+        placeholder: merged.get(key) ?? `Paste your ${key} here…`,
+        defaultValue: merged.get(key),
+      });
+
+      if (p.isCancel(value)) {
+        p.cancel('Staging setup cancelled.');
+        process.exit(0);
+      }
+
+      if (value && value.trim()) {
+        merged.set(key, value.trim());
+      }
+    }
+  }
+
+  // 6. Ensure GitHub staging environment exists
+  const envSpinner = p.spinner();
+  envSpinner.start('Ensuring GitHub "staging" environment exists');
+  try {
+    execGh([
+      'api',
+      '--method',
+      'PUT',
+      `/repos/${repoName}/environments/staging`,
+    ]);
+    envSpinner.stop('GitHub "staging" environment ready');
+  } catch (error) {
+    envSpinner.stop('Failed to create staging environment');
+    p.log.error(
+      `Error: ${error instanceof Error ? error.message : String(error)}\n` +
+        'You may need to create it manually in GitHub Settings > Environments.'
+    );
+    process.exit(1);
+  }
+
+  // 7. Push secrets
+  const secretSpinner = p.spinner();
+  const secretsToPush = STAGING_SECRETS.filter((k) => merged.get(k));
+  secretSpinner.start(
+    `Pushing ${secretsToPush.length} secrets to staging environment`
+  );
+  let secretsPushed = 0;
+  let secretsFailed = 0;
+
+  for (const key of secretsToPush) {
+    const value = merged.get(key);
+    if (!value) continue;
+    try {
+      execFileSync(
+        'gh',
+        ['secret', 'set', key, '--env', 'staging', '--body', value],
+        {
+          stdio: ['pipe', 'pipe', 'pipe'],
+        }
+      );
+      secretsPushed++;
+    } catch {
+      secretsFailed++;
+      p.log.warn(`Failed to push secret: ${key}`);
+    }
+  }
+
+  if (secretsFailed > 0) {
+    secretSpinner.stop(
+      `Pushed ${secretsPushed} secrets (${secretsFailed} failed)`
+    );
+  } else {
+    secretSpinner.stop(`Pushed ${secretsPushed} secrets`);
+  }
+
+  // 8. Push variables
+  const varsToPush = STAGING_VARIABLES.filter((k) => merged.get(k));
+  if (varsToPush.length > 0) {
+    const varSpinner = p.spinner();
+    varSpinner.start(
+      `Pushing ${varsToPush.length} variables to staging environment`
+    );
+    let varsPushed = 0;
+    let varsFailed = 0;
+
+    for (const key of varsToPush) {
+      const value = merged.get(key);
+      if (!value) continue;
+      try {
+        execFileSync(
+          'gh',
+          ['variable', 'set', key, '--env', 'staging', '--body', value],
+          {
+            stdio: ['pipe', 'pipe', 'pipe'],
+          }
+        );
+        varsPushed++;
+      } catch {
+        varsFailed++;
+        p.log.warn(`Failed to push variable: ${key}`);
+      }
+    }
+
+    if (varsFailed > 0) {
+      varSpinner.stop(`Pushed ${varsPushed} variables (${varsFailed} failed)`);
+    } else {
+      varSpinner.stop(`Pushed ${varsPushed} variables`);
+    }
+  }
+
+  // 9. Write .env.staging locally as record
+  const lines: string[] = [
+    '# =============================================================================',
+    '# Staging Configuration (record of what was pushed to GitHub)',
+    '# Generated by `bun setup:staging` — safe to edit',
+    '# =============================================================================',
+    '',
+  ];
+
+  for (const key of [...STAGING_SECRETS, ...STAGING_VARIABLES]) {
+    const value = merged.get(key);
+    if (value) {
+      lines.push(`${key}=${value}`);
+    }
+  }
+  lines.push('');
+
+  writeFileSync(stagingFile, lines.join('\n'));
+  p.log.success(`Wrote ${stagingFile}`);
+
+  // 10. Summary
+  p.note(
+    [
+      `Repository: ${repoName}`,
+      `Environment: staging`,
+      `Secrets pushed: ${secretsPushed}`,
+      `Variables pushed: ${varsToPush.length}`,
+      '',
+      `Local record: .env.staging`,
+    ].join('\n'),
+    'Staging Setup Complete'
+  );
+
+  p.outro('Done! PR preview deploys will now use the staging environment.');
+}
 
 // ---------------------------------------------------------------------------
 // Deploy Setup
@@ -368,7 +690,7 @@ async function deploySetup(
       const secretsSpinner = p.spinner();
       secretsSpinner.start('Pushing secrets to Cloudflare');
       try {
-        execFileSync('wrangler', ['secret', 'bulk', '--env=prd', ENV_FILE], {
+        execFileSync('wrangler', ['secret', 'bulk', ENV_FILE], {
           stdio: 'pipe',
         });
         secretsSpinner.stop('Secrets pushed to Cloudflare');
@@ -378,7 +700,7 @@ async function deploySetup(
           `Error: ${error instanceof Error ? error.message : String(error)}`
         );
         p.log.info(
-          `Run manually: ${chalk.bold(`wrangler secret bulk --env=prd ${ENV_FILENAME}`)}`
+          `Run manually: ${chalk.bold(`wrangler secret bulk ${ENV_FILENAME}`)}`
         );
       }
     }
@@ -502,41 +824,9 @@ async function deploySetup(
   }
 
   if (platform === 'cloudflare') {
-    // Migrate D1
-    const migrateSpinner = p.spinner();
-    migrateSpinner.start('Running D1 migrations');
-    try {
-      execFileSync('bun', ['db:migrate:d1'], {
-        stdio: 'pipe',
-        cwd: process.cwd(),
-      });
-      migrateSpinner.stop('D1 migrations applied');
-    } catch (error) {
-      migrateSpinner.stop('D1 migration failed');
-      p.log.error(
-        `Migration error: ${error instanceof Error ? error.message : String(error)}`
-      );
-      p.log.info(`Run manually: ${chalk.bold('bun db:migrate:d1')}`);
-      return;
-    }
-
-    // Seed D1
-    const seedSpinner = p.spinner();
-    seedSpinner.start('Seeding D1 database');
-    try {
-      execFileSync('bun', ['db:seed:d1'], {
-        stdio: 'pipe',
-        cwd: process.cwd(),
-      });
-      seedSpinner.stop('D1 database seeded');
-    } catch (error) {
-      seedSpinner.stop('D1 seed failed');
-      p.log.error(
-        `Seed error: ${error instanceof Error ? error.message : String(error)}`
-      );
-      p.log.info(`Run manually: ${chalk.bold('bun db:seed:d1')}`);
-      return;
-    }
+    p.log.info(
+      'D1 migrations and seeding are handled by the GitHub Actions deploy workflow.'
+    );
 
     // Deploy
     p.log.info('Building and deploying to Cloudflare Workers…');
@@ -608,6 +898,12 @@ async function main() {
       process.exit(0);
     }
     return value;
+  }
+
+  // --staging: push secrets to GitHub staging environment
+  if (isStagingMode) {
+    await stagingSetup();
+    return;
   }
 
   // --deploy: skip env var prompts, jump straight to deploy phase
@@ -913,6 +1209,22 @@ async function main() {
     p.log.success('Auth secret — already configured');
   }
 
+  if (!vars.has('API_KEY_ENCRYPTION_KEY')) {
+    try {
+      const key = execFileSync('openssl', ['rand', '-base64', '32'], {
+        encoding: 'utf-8',
+      }).trim();
+      vars.set('API_KEY_ENCRYPTION_KEY', key);
+    } catch {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      vars.set('API_KEY_ENCRYPTION_KEY', btoa(String.fromCharCode(...bytes)));
+    }
+    p.log.success('Encryption key generated');
+  } else {
+    p.log.success('Encryption key — already configured');
+  }
+
   if (vars.get('DEPLOY_PLATFORM') === 'cloudflare') {
     p.log.success('Database: Cloudflare D1 (via wrangler.jsonc)');
   } else if (vars.has('TURSO_DATABASE_URL')) {
@@ -979,6 +1291,22 @@ async function main() {
     }
   }
 
+  if (vars.has('FAL_KEY') && !vars.has('FAL_CONCURRENCY_LIMIT')) {
+    const concLimit = checkCancel(
+      await p.text({
+        message: 'Fal.ai concurrency limit',
+        placeholder: '10',
+        defaultValue: '10',
+      })
+    );
+    if (concLimit) {
+      vars.set('FAL_CONCURRENCY_LIMIT', concLimit.trim() || '10');
+      saveProgress();
+    }
+  } else if (vars.has('FAL_CONCURRENCY_LIMIT')) {
+    p.log.success('FAL_CONCURRENCY_LIMIT — already configured');
+  }
+
   // -------------------------------------------------------------------------
   // Script Analysis (OPENROUTER_KEY)
   // -------------------------------------------------------------------------
@@ -997,6 +1325,38 @@ async function main() {
         'OPENROUTER_KEY',
         'Enter your OpenRouter API key',
         'Get one at: https://openrouter.ai/settings/keys'
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Additional AI Providers (optional)
+  // -------------------------------------------------------------------------
+  const hasAdditionalAI =
+    vars.has('CEREBRAS_API_KEY') || vars.has('LETZAI_API_KEY');
+  if (hasAdditionalAI) {
+    if (vars.has('CEREBRAS_API_KEY'))
+      p.log.success('CEREBRAS_API_KEY — already configured');
+    if (vars.has('LETZAI_API_KEY'))
+      p.log.success('LETZAI_API_KEY — already configured');
+  } else {
+    const setupAdditionalAI = checkCancel(
+      await p.confirm({
+        message: 'Set up additional AI providers? (optional)',
+        initialValue: false,
+      })
+    );
+
+    if (setupAdditionalAI) {
+      await promptForKey(
+        'CEREBRAS_API_KEY',
+        'Cerebras API key (fast inference)',
+        'Get one at: https://cloud.cerebras.ai'
+      );
+      await promptForKey(
+        'LETZAI_API_KEY',
+        'LetzAI API key (alternative image gen)',
+        'Get one at: https://letz.ai'
       );
     }
   }
@@ -1096,14 +1456,126 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Redis (Upstash) — real-time progress updates
+  // -------------------------------------------------------------------------
+  const redisKeys = [
+    'UPSTASH_REDIS_REST_URL',
+    'UPSTASH_REDIS_REST_TOKEN',
+  ] as const;
+  if (redisKeys.every((k) => vars.has(k))) {
+    p.log.success('Upstash Redis — already configured');
+  } else {
+    const setupRedis = checkCancel(
+      await p.confirm({
+        message: 'Set up Upstash Redis? (real-time progress updates)',
+        initialValue: false,
+      })
+    );
+
+    if (setupRedis) {
+      await promptForKey(
+        'UPSTASH_REDIS_REST_URL',
+        'Upstash Redis REST URL',
+        'Get one at: https://console.upstash.com/redis'
+      );
+      await promptForKey(
+        'UPSTASH_REDIS_REST_TOKEN',
+        'Upstash Redis REST Token'
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Storage (R2)
   // -------------------------------------------------------------------------
   if (vars.get('DEPLOY_PLATFORM') === 'cloudflare') {
     p.log.info(
       'R2 storage is handled by native bindings configured in wrangler.jsonc.\n' +
-        'S3 credentials (for signed URLs) and R2_PUBLIC_STORAGE_DOMAIN can be\n' +
-        'added to .env and deployed via `bun setup-cloudflare-secrets.sh`.'
+        'S3 credentials (for signed URLs) can be added to .env and deployed\n' +
+        'via `bun setup-cloudflare-secrets.sh`.'
     );
+
+    if (
+      !vars.has('R2_PUBLIC_STORAGE_DOMAIN') ||
+      !vars.has('R2_PUBLIC_ASSETS_DOMAIN')
+    ) {
+      // Derive R2 domains from APP_URL base domain
+      const appUrl = vars.get('APP_URL') ?? '';
+      let baseDomain = '';
+      try {
+        const host = new URL(appUrl).hostname; // e.g. app.openstory.so
+        const parts = host.split('.');
+        baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
+      } catch {
+        // APP_URL not set or invalid — fall through to manual prompt
+      }
+
+      const isStaging = checkCancel(
+        await p.select({
+          message: 'Which R2 environment is this?',
+          options: [
+            { value: 'production', label: 'Production' },
+            {
+              value: 'staging',
+              label: 'Staging / Preview',
+              hint: 'uses -stg/-dev subdomains',
+            },
+          ],
+        })
+      );
+
+      const storageSub = isStaging === 'staging' ? 'storage-dev' : 'storage';
+      const assetsSub = isStaging === 'staging' ? 'assets-stg' : 'assets';
+
+      if (baseDomain) {
+        const storageDomain = `${storageSub}.${baseDomain}`;
+        const assetsDomain = `${assetsSub}.${baseDomain}`;
+
+        p.log.info(
+          `Derived from ${chalk.bold(baseDomain)}:\n` +
+            `  R2_PUBLIC_STORAGE_DOMAIN = ${storageDomain}\n` +
+            `  R2_PUBLIC_ASSETS_DOMAIN  = ${assetsDomain}`
+        );
+
+        const useDefaults = checkCancel(
+          await p.confirm({
+            message: 'Use these derived domains?',
+            initialValue: true,
+          })
+        );
+
+        if (useDefaults) {
+          vars.set('R2_PUBLIC_STORAGE_DOMAIN', storageDomain);
+          vars.set('R2_PUBLIC_ASSETS_DOMAIN', assetsDomain);
+          saveProgress();
+        } else {
+          await promptForKey(
+            'R2_PUBLIC_STORAGE_DOMAIN',
+            `R2 Public Storage Domain (e.g. ${storageSub}.example.com)`
+          );
+          await promptForKey(
+            'R2_PUBLIC_ASSETS_DOMAIN',
+            `R2 Public Assets Domain (e.g. ${assetsSub}.example.com)`
+          );
+        }
+      } else {
+        await promptForKey(
+          'R2_PUBLIC_STORAGE_DOMAIN',
+          `R2 Public Storage Domain (e.g. ${storageSub}.example.com)`
+        );
+        await promptForKey(
+          'R2_PUBLIC_ASSETS_DOMAIN',
+          `R2 Public Assets Domain (e.g. ${assetsSub}.example.com)`
+        );
+      }
+    } else {
+      p.log.success(
+        `R2_PUBLIC_STORAGE_DOMAIN = ${vars.get('R2_PUBLIC_STORAGE_DOMAIN')}`
+      );
+      p.log.success(
+        `R2_PUBLIC_ASSETS_DOMAIN  = ${vars.get('R2_PUBLIC_ASSETS_DOMAIN')}`
+      );
+    }
   } else {
     const setupStorage = checkCancel(
       await p.confirm({
@@ -1147,12 +1619,23 @@ async function main() {
   // -------------------------------------------------------------------------
   // Google OAuth
   // -------------------------------------------------------------------------
-  const setupGoogle = checkCancel(
-    await p.confirm({
-      message: 'Set up Google sign-in? (or use email OTP)',
-      initialValue: false,
-    })
-  );
+  const googleKeys = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const;
+  const hasGoogle = googleKeys.some((k) => vars.has(k));
+
+  if (hasGoogle) {
+    for (const k of googleKeys) {
+      if (vars.has(k)) p.log.success(`${k} — already configured`);
+    }
+  }
+
+  const setupGoogle =
+    hasGoogle ||
+    checkCancel(
+      await p.confirm({
+        message: 'Set up Google sign-in? (or use email OTP)',
+        initialValue: false,
+      })
+    );
 
   if (setupGoogle) {
     await promptForKey(
@@ -1166,13 +1649,28 @@ async function main() {
   // -------------------------------------------------------------------------
   // Observability (Langfuse)
   // -------------------------------------------------------------------------
-  const setupLangfuse = checkCancel(
-    await p.confirm({
-      message:
-        'Set up Langfuse for prompt management & LLM tracing? (optional)',
-      initialValue: false,
-    })
-  );
+  const langfuseKeys = [
+    'LANGFUSE_PUBLIC_KEY',
+    'LANGFUSE_SECRET_KEY',
+    'LANGFUSE_BASE_URL',
+  ] as const;
+  const hasLangfuse = langfuseKeys.some((k) => vars.has(k));
+
+  if (hasLangfuse) {
+    for (const k of langfuseKeys) {
+      if (vars.has(k)) p.log.success(`${k} — already configured`);
+    }
+  }
+
+  const setupLangfuse =
+    hasLangfuse ||
+    checkCancel(
+      await p.confirm({
+        message:
+          'Set up Langfuse for prompt management & LLM tracing? (optional)',
+        initialValue: false,
+      })
+    );
 
   if (setupLangfuse) {
     await promptForKey(
@@ -1186,34 +1684,94 @@ async function main() {
       'Langfuse Base URL (leave empty for cloud)',
       'Default: https://cloud.langfuse.com'
     );
+
+    if (!vars.has('LANGFUSE_TRACING_ENVIRONMENT')) {
+      const defaultEnv = isProd ? 'production' : 'development';
+      const tracingEnv = checkCancel(
+        await p.text({
+          message: 'Langfuse tracing environment',
+          placeholder: defaultEnv,
+          defaultValue: defaultEnv,
+        })
+      );
+      if (tracingEnv) {
+        vars.set(
+          'LANGFUSE_TRACING_ENVIRONMENT',
+          tracingEnv.trim() || defaultEnv
+        );
+        saveProgress();
+      }
+    } else {
+      p.log.success('LANGFUSE_TRACING_ENVIRONMENT — already configured');
+    }
   }
 
   // -------------------------------------------------------------------------
   // Billing (Stripe)
   // -------------------------------------------------------------------------
-  const setupBilling = checkCancel(
-    await p.confirm({
-      message: 'Set up Stripe billing?',
-      initialValue: false,
-    })
-  );
+  const stripeKeys = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const;
+  const hasStripe = stripeKeys.some((k) => vars.has(k));
+
+  if (hasStripe) {
+    for (const k of stripeKeys) {
+      if (vars.has(k)) p.log.success(`${k} — already configured`);
+    }
+  }
+
+  const setupBilling =
+    hasStripe ||
+    checkCancel(
+      await p.confirm({
+        message: 'Set up Stripe billing?',
+        initialValue: false,
+      })
+    );
 
   if (setupBilling) {
-    await promptForKey(
-      'STRIPE_SECRET_KEY',
-      'Stripe Secret Key (sk_test_...)',
-      'Get one at: https://dashboard.stripe.com/test/apikeys'
-    );
-    await promptForKey(
-      'STRIPE_WEBHOOK_SECRET',
-      'Stripe Webhook Secret (whsec_...)',
-      'Run `stripe listen` to get this'
-    );
+    if (isProd) {
+      await promptForKey(
+        'STRIPE_SECRET_KEY',
+        'Stripe Secret Key (sk_live_...)',
+        'Get one at: https://dashboard.stripe.com/apikeys'
+      );
+      await promptForKey(
+        'STRIPE_WEBHOOK_SECRET',
+        'Stripe Webhook Secret (whsec_...)',
+        'From your webhook endpoint in the Stripe dashboard'
+      );
 
-    p.note(
-      'Run `bun stripe:dev` in a separate terminal for webhook forwarding.',
-      'Stripe Webhooks'
-    );
+      const appUrl = vars.get('APP_URL') ?? '<your-app-url>';
+      p.note(
+        [
+          `Endpoint URL: ${appUrl}/api/billing/webhook`,
+          '',
+          'Events to enable:',
+          '  - checkout.session.completed',
+          '  - payment_intent.succeeded',
+          '',
+          'If using a restricted key, required permissions:',
+          '  Charges (Read), Customers (Write),',
+          '  Payment Intents (Read), Checkout Sessions (Write)',
+        ].join('\n'),
+        'Production Webhook Setup'
+      );
+    } else {
+      await promptForKey(
+        'STRIPE_SECRET_KEY',
+        'Stripe Secret Key (sk_test_...)',
+        'Get one at: https://dashboard.stripe.com/test/apikeys'
+      );
+      await promptForKey(
+        'STRIPE_WEBHOOK_SECRET',
+        'Stripe Webhook Secret (whsec_...)',
+        'Run `stripe listen` to get this'
+      );
+
+      p.note(
+        'Run `bun stripe:dev` in a separate terminal for webhook forwarding.',
+        'Stripe Webhooks'
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
