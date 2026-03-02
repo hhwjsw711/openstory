@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "bun --bun vite dev",
     "dev:db": "bun --bun --sequential db:migrate:local db:seed:local dev",
     "dev:all": "bun run --parallel dev:db stripe:dev qstash:dev",
-    "dev:e2e": "vite dev",
+    "dev:e2e": "bun --bun vite dev",
     "dev:https": "vite dev --experimental-https --experimental-https-key certs/localhost-key.pem --experimental-https-cert certs/localhost.pem",
     "build": "vite build",
     "start": "bun --bun run .output/server/index.mjs",

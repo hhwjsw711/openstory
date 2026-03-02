@@ -29,8 +29,8 @@ export default defineConfig({
       ignored: [
         '**/e2e/results/**',
         '**/playwright-report/**',
-        '**/test.db',
-        '**/local.db',
+        '**/test.db*',
+        '**/local.db*',
         '**/test-results/**',
       ],
     },
@@ -66,6 +66,7 @@ export default defineConfig({
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
       : nitro({
+          preset: 'bun',
           rollupConfig: {
             // Default: treeshake disabled due to Nitro bug (see docs/nitro-treeshake-bug-report.md)
             // Enable with DEBUG_TREESHAKE=1 for debugging
