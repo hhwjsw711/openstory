@@ -1,9 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": ["nodejs_compat"],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["RealtimeChannelDO"],
+    },
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -21,6 +27,9 @@
   },
   "env": {
     "stg": {
+      "durable_objects": {
+        "bindings": [{ "name": "REALTIME", "class_name": "RealtimeChannelDO" }],
+      },
       "d1_databases": [
         {
           "binding": "DB",
@@ -59,6 +68,9 @@
       },
     },
     "prd": {
+      "durable_objects": {
+        "bindings": [{ "name": "REALTIME", "class_name": "RealtimeChannelDO" }],
+      },
       "d1_databases": [
         {
           "binding": "DB",

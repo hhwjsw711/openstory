@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getEventBus } from './event-bus';
+import { getEventBus } from '#realtime-bus';
 
 /**
  * Realtime event schema for generation progress streaming.
