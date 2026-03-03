@@ -18,6 +18,11 @@ export const Route = createFileRoute('/api/realtime')({
           return handleCloudflareSSE(bus, channels, events, request.signal);
         }
 
+        // Upstash: Redis Streams polling
+        if (isUpstashBus(bus)) {
+          return bus.handleSSE(request, channels, events);
+        }
+
         // Local: in-memory subscribe
         return handleLocalSSE(bus, channels, events, request.signal);
       },
@@ -36,8 +41,20 @@ type CloudflareBus = {
   getSSEStream: (ch: string, ev: string[]) => Promise<Response>;
 };
 
+type UpstashBus = {
+  handleSSE: (
+    req: Request,
+    channels: string[],
+    events: string[]
+  ) => Promise<Response>;
+};
+
 function isCloudfareBus(bus: unknown): bus is CloudflareBus {
   return typeof bus === 'object' && bus !== null && 'getSSEStream' in bus;
+}
+
+function isUpstashBus(bus: unknown): bus is UpstashBus {
+  return typeof bus === 'object' && bus !== null && 'handleSSE' in bus;
 }
 
 function handleLocalSSE(

@@ -120,6 +120,7 @@
     "@tanstack/zod-adapter": "^1.159.5",
     "@unpic/react": "^1.0.2",
     "@upstash/qstash": "^2.9.0",
+    "@upstash/redis": "^1.36.2",
     "@upstash/workflow": "^1.1.1",
     "@vidstack/react": "^1.12.13",
     "better-auth": "^1.4.18",
@@ -158,7 +159,8 @@
     },
     "#realtime-bus": {
       "workerd": "./src/lib/realtime/event-bus-cloudflare.ts",
-      "default": "./src/lib/realtime/event-bus-local.ts"
+      "development": "./src/lib/realtime/event-bus-local.ts",
+      "default": "./src/lib/realtime/event-bus-upstash.ts"
     },
     "#actions/*": {
       "storybook": "./src/app/actions/*/index.mock.ts",
