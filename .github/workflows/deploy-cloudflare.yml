@@ -164,7 +164,7 @@ jobs:
             obj.r2_buckets = [
               { binding: 'NEXT_INC_CACHE_R2_BUCKET', bucket_name: 'cache-dev' },
               { bucket_name: 'openstory-public-assets-stg', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
-              { binding: 'R2_STORAGE_BUCKET', bucket_name: 'velro-storage-stg' }
+              { binding: 'R2_STORAGE_BUCKET', bucket_name: 'openstory-storage-stg' }
             ];
             fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
           "
