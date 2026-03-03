@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": "src/server.ts",
+  "main": "server-cloudflare.ts",
   "name": "frontend",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": ["nodejs_compat"],
