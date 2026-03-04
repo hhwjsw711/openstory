@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
 import type { Style } from '@/types/database';
+import { Image } from '@unpic/react';
 import { ChevronDown } from 'lucide-react';
-import type { FC } from 'react';
+import { useState, type FC } from 'react';
+import { getStyleGradient } from './style-gradient';
 
 type StyleSelectorButtonProps = {
   selectedStyle?: Style | null;
@@ -38,6 +40,10 @@ export const StyleSelectorButton: FC<StyleSelectorButtonProps> = ({
     lg: 'hover:scale-[1.02]',
   };
 
+  const [imgError, setImgError] = useState(false);
+  const previewUrl = selectedStyle?.previewUrl;
+  const showImage = previewUrl && !imgError;
+
   return (
     <Button
       type="button"
@@ -46,13 +52,26 @@ export const StyleSelectorButton: FC<StyleSelectorButtonProps> = ({
       onClick={onClick}
       className={`relative overflow-hidden ${sizeClasses[size]} min-w-[200px] justify-start rounded-2xl border-2 border-background bg-background/95 backdrop-blur-sm shadow-lg transition-all duration-200 ${hoverScaleClasses[size]} hover:border-foreground/60 hover:shadow-xl`}
     >
-      {/* Background thumbnail with overlay */}
-      {selectedStyle?.previewUrl && (
+      {/* Background thumbnail / gradient with overlay */}
+      {selectedStyle && (
         <>
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${selectedStyle.previewUrl})` }}
-          />
+          {showImage ? (
+            <Image
+              key={selectedStyle.id}
+              src={previewUrl}
+              layout="fullWidth"
+              alt={selectedStyle.name}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: getStyleGradient(selectedStyle.config.colorPalette),
+              }}
+            />
+          )}
           {/* Subtle dark overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/20" />
         </>

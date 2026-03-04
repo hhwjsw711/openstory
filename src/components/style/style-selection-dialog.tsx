@@ -104,17 +104,9 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
     setSearchQuery(e.target.value);
   }, []);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      handleOk();
-    },
-    [handleOk]
-  );
-
   return (
     <DialogContent className="flex h-[90vh] max-w-[95vw] flex-col sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw]">
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <DialogHeader>
           <DialogTitle>Director's DNA</DialogTitle>
           <DialogDescription>
@@ -190,10 +182,12 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="submit">OK</Button>
+            <Button type="button" onClick={handleOk}>
+              OK
+            </Button>
           </DialogClose>
         </DialogFooter>
-      </form>
+      </div>
     </DialogContent>
   );
 };
