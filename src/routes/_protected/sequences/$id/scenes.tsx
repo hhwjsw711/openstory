@@ -1,6 +1,4 @@
 import { ScenesView } from '@/components/scenes/scenes-view';
-import { SequenceTabs } from '@/components/sequence/sequence-tabs';
-import { useUser } from '@/hooks/use-user';
 import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id/scenes')({
@@ -10,15 +8,5 @@ export const Route = createFileRoute('/_protected/sequences/$id/scenes')({
 function ScenesPage() {
   const { id: sequenceId } = Route.useParams();
 
-  // Verify session
-  useUser();
-
-  return (
-    <div className="flex h-full flex-col">
-      <SequenceTabs sequenceId={sequenceId} />
-      <div className="flex-1 overflow-hidden">
-        <ScenesView sequenceId={sequenceId} />
-      </div>
-    </div>
-  );
+  return <ScenesView sequenceId={sequenceId} />;
 }

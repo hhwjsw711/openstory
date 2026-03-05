@@ -65,7 +65,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   const showButton = notStartedFrames.length > 0 || isMotionInProgress;
 
   return (
-    <div className="flex h-full w-80 flex-col border-r bg-background">
+    <div className="flex h-full w-[480px] flex-col rounded-lg border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

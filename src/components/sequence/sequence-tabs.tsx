@@ -44,7 +44,7 @@ export const SequenceTabs: React.FC<SequenceTabsProps> = ({ sequenceId }) => {
   ];
 
   return (
-    <nav className="flex items-center justify-center gap-2 px-4 py-3">
+    <nav className="flex items-center gap-2 py-2">
       {tabs.map((tab) => {
         const isActive = matchRoute({ to: tab.href, fuzzy: false });
 

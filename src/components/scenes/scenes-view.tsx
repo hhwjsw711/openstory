@@ -1,10 +1,4 @@
 import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
-import { PageContainer } from '@/components/layout/page-container';
-import {
-  ImageModelBadge,
-  ModelBadge,
-  VideoModelBadge,
-} from '@/components/model/model-badge';
 import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
@@ -13,8 +7,6 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
-import { PageHeader } from '@/components/typography/page-header';
-import { PageHeading } from '@/components/typography/page-heading';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
@@ -249,40 +241,43 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   return (
-    <PageContainer maxWidth="full" fullHeight={true} padding="none">
-      <PageHeader>
-        <PageHeading>{sequence?.title}</PageHeading>
-        <ModelBadge model={sequence?.analysisModel} />
-        <ImageModelBadge model={sequence?.imageModel} />
-        <VideoModelBadge model={sequence?.videoModel} />
-        {/* Show failure badge with retry button */}
-        {(sequence?.status === 'failed' || generationState.isFailed) && (
-          <>
-            <SequenceStatusBadge status="failed" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleRetryStoryboard()}
-              disabled={isRetrying}
-            >
-              <RotateCcw
-                className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
-              />
-              {isRetrying ? 'Retrying…' : 'Retry'}
-            </Button>
-          </>
-        )}
-        {!generationState.isComplete &&
+    <div className="flex h-full flex-col">
+      {/* Status indicators (title + badges provided by layout route) */}
+      {(sequence?.status === 'failed' ||
+        generationState.isFailed ||
+        (!generationState.isComplete &&
           !generationState.isFailed &&
           generationState.currentPhase > 0 &&
-          realtimeStatus === 'connected' && (
-            <PhaseIndicatorCompact phases={generationState.phases} />
+          realtimeStatus === 'connected')) && (
+        <div className="flex items-center gap-2 px-4 py-2">
+          {(sequence?.status === 'failed' || generationState.isFailed) && (
+            <>
+              <SequenceStatusBadge status="failed" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleRetryStoryboard()}
+                disabled={isRetrying}
+              >
+                <RotateCcw
+                  className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
+                />
+                {isRetrying ? 'Retrying…' : 'Retry'}
+              </Button>
+            </>
           )}
-      </PageHeader>
+          {!generationState.isComplete &&
+            !generationState.isFailed &&
+            generationState.currentPhase > 0 &&
+            realtimeStatus === 'connected' && (
+              <PhaseIndicatorCompact phases={generationState.phases} />
+            )}
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Desktop: Scene List sidebar */}
-        <div className="hidden md:block">
+        <div className="hidden md:block pl-4 py-4">
           <SceneList
             frames={frames}
             selectedFrameId={curSelectedFrameId}
@@ -332,6 +327,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           />
         </ScrollArea>
       </div>
-    </PageContainer>
+    </div>
   );
 };
