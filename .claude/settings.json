@@ -51,7 +51,7 @@
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["shadcn", "tanstack"],
+  "enabledMcpjsonServers": ["shadcn"],
   "hooks": {
     "PreToolUse": [
       {
