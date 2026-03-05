@@ -93,6 +93,7 @@ function writeEnvFile(vars: Map<string, string>) {
         'TURSO_AUTH_TOKEN',
         'CLOUDFLARE_ACCOUNT_ID',
         'CLOUDFLARE_API_TOKEN',
+        'CLOUDFLARE_ZONE_ID',
       ],
     },
     {
@@ -252,6 +253,19 @@ function execGh(args: string[]): string {
   }).trim();
 }
 
+function bucketHasDomain(bucket: string, domain: string): boolean {
+  try {
+    const output = execFileSync(
+      'bunx',
+      ['wrangler', 'r2', 'bucket', 'domain', 'list', bucket],
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' }
+    );
+    return output.includes(domain);
+  } catch {
+    return false;
+  }
+}
+
 async function prPreviewSetup() {
   p.intro(chalk.bold('OpenStory PR Preview Setup'));
   p.log.info(
@@ -324,30 +338,6 @@ async function prPreviewSetup() {
   merged.set('LANGFUSE_TRACING_ENVIRONMENT', 'preview');
   p.log.info('Set LANGFUSE_TRACING_ENVIRONMENT = preview');
 
-  // Derive staging R2 domains from production APP_URL
-  const appUrl = prodVars.get('APP_URL') ?? '';
-  let baseDomain = '';
-  try {
-    const host = new URL(appUrl).hostname;
-    const parts = host.split('.');
-    baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
-  } catch {
-    // fall through
-  }
-
-  if (baseDomain) {
-    merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-dev.${baseDomain}`);
-    merged.set('R2_PUBLIC_ASSETS_DOMAIN', `assets-stg.${baseDomain}`);
-  } else {
-    p.log.warn(
-      'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
-    );
-  }
-  p.log.info(
-    `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
-      `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
-  );
-
   // 5. Prompt for AI keys — use same as production or enter different ones?
   const aiKeys = ['FAL_KEY', 'OPENROUTER_KEY'] as const;
   const hasAiKeys = aiKeys.every((k) => merged.get(k));
@@ -382,7 +372,137 @@ async function prPreviewSetup() {
     }
   }
 
-  // 6. Summary of what will be pushed
+  // 6. Derive staging R2 domains from production APP_URL
+  const appUrl = prodVars.get('APP_URL') ?? '';
+  let baseDomain = '';
+  try {
+    const host = new URL(appUrl).hostname;
+    const parts = host.split('.');
+    baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
+  } catch {
+    // fall through
+  }
+
+  if (baseDomain) {
+    merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-stg.${baseDomain}`);
+    merged.set('R2_PUBLIC_ASSETS_DOMAIN', `assets-stg.${baseDomain}`);
+  } else {
+    p.log.warn(
+      'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
+    );
+  }
+  p.log.info(
+    `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
+      `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
+  );
+
+  // Offer to attach custom domains to R2 buckets
+  const stgStorageDomain = merged.get('R2_PUBLIC_STORAGE_DOMAIN');
+  const stgAssetsDomain = merged.get('R2_PUBLIC_ASSETS_DOMAIN');
+
+  if (stgStorageDomain || stgAssetsDomain) {
+    const attachDomains = await p.confirm({
+      message: 'Attach these custom domains to R2 buckets via Cloudflare?',
+      initialValue: true,
+    });
+
+    if (p.isCancel(attachDomains)) {
+      p.cancel('PR preview setup cancelled.');
+      process.exit(0);
+    }
+
+    if (attachDomains) {
+      // Auto-detect zone ID from domain
+      let zoneId = prodVars.get('CLOUDFLARE_ZONE_ID');
+      const apiToken = prodVars.get('CLOUDFLARE_API_TOKEN');
+
+      if (!zoneId && apiToken && baseDomain) {
+        const zoneSpinner = p.spinner();
+        zoneSpinner.start(`Looking up zone ID for ${baseDomain}`);
+        try {
+          const res = await fetch(
+            `https://api.cloudflare.com/client/v4/zones?name=${baseDomain}`,
+            { headers: { Authorization: `Bearer ${apiToken}` } }
+          );
+          const data: { success?: boolean; result?: { id: string }[] } =
+            await res.json();
+          if (data.success && data.result && data.result.length > 0) {
+            zoneId = data.result[0].id;
+            zoneSpinner.stop(
+              `Found zone ID for ${baseDomain}: ${zoneId.slice(0, 8)}…`
+            );
+          } else {
+            zoneSpinner.stop(`Could not find zone for ${baseDomain}`);
+          }
+        } catch {
+          zoneSpinner.stop('Zone lookup failed');
+        }
+      }
+
+      if (!zoneId) {
+        const manualZoneId = await p.text({
+          message:
+            'Cloudflare Zone ID\n' +
+            chalk.dim('Find in Cloudflare Dashboard > your domain > Overview'),
+          placeholder: 'Paste your CLOUDFLARE_ZONE_ID here…',
+        });
+
+        if (p.isCancel(manualZoneId)) {
+          p.cancel('PR preview setup cancelled.');
+          process.exit(0);
+        }
+
+        zoneId = manualZoneId?.trim() || undefined;
+      }
+
+      if (zoneId) {
+        // Staging buckets use -stg suffix
+        const prodStorageBucket =
+          merged.get('R2_BUCKET_NAME') ?? 'openstory-storage';
+        const prodAssetsBucket =
+          merged.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
+        const storageBucket = `${prodStorageBucket}-stg`;
+        const assetsBucket = `${prodAssetsBucket}-stg`;
+
+        for (const [domain, bucket] of [
+          [stgStorageDomain, storageBucket],
+          [stgAssetsDomain, assetsBucket],
+        ] as const) {
+          if (!domain) continue;
+          if (bucketHasDomain(bucket, domain)) {
+            p.log.success(`${domain} → ${bucket} (already attached)`);
+            continue;
+          }
+          try {
+            execFileSync(
+              'bunx',
+              [
+                'wrangler',
+                'r2',
+                'bucket',
+                'domain',
+                'add',
+                bucket,
+                '--domain',
+                domain,
+                '--zone-id',
+                zoneId,
+                '--force',
+              ],
+              { stdio: 'inherit' }
+            );
+            p.log.success(`Attached ${domain} → ${bucket}`);
+          } catch {
+            p.log.warn(`Could not attach ${domain} to ${bucket}`);
+          }
+        }
+      } else {
+        p.log.warn('No zone ID — skipping domain attachment.');
+      }
+    }
+  }
+
+  // 7. Summary + confirm
   const allKeys = [...PR_PREVIEW_SECRETS, ...PR_PREVIEW_VARIABLES];
   const ready = allKeys.filter((k) => merged.get(k));
   const missing = allKeys.filter((k) => !merged.get(k));
@@ -395,7 +515,18 @@ async function prPreviewSetup() {
     p.log.warn(`Missing: ${missing.join(', ')}`);
   }
 
-  // 7. Ensure GitHub staging environment exists
+  // Confirm before pushing to GitHub
+  const confirmPush = await p.confirm({
+    message: `Push ${ready.length} keys to GitHub "staging" environment?`,
+    initialValue: true,
+  });
+
+  if (p.isCancel(confirmPush) || !confirmPush) {
+    p.cancel('PR preview setup cancelled.');
+    process.exit(0);
+  }
+
+  // 8. Push to GitHub staging environment
   const envSpinner = p.spinner();
   envSpinner.start('Ensuring GitHub "staging" environment exists');
   try {
@@ -415,7 +546,7 @@ async function prPreviewSetup() {
     process.exit(1);
   }
 
-  // 8. Push secrets
+  // Push secrets
   const secretSpinner = p.spinner();
   const secretsToPush = PR_PREVIEW_SECRETS.filter((k) => merged.get(k));
   secretSpinner.start(
@@ -450,7 +581,7 @@ async function prPreviewSetup() {
     secretSpinner.stop(`Pushed ${secretsPushed} secrets`);
   }
 
-  // 9. Push variables
+  // Push variables
   const varsToPush = PR_PREVIEW_VARIABLES.filter((k) => merged.get(k));
   if (varsToPush.length > 0) {
     const varSpinner = p.spinner();
@@ -485,7 +616,7 @@ async function prPreviewSetup() {
     }
   }
 
-  // 10. Summary
+  // 9. Summary
   p.note(
     [
       `Repository: ${repoName}`,
@@ -986,6 +1117,131 @@ async function main() {
 
     vars.set(key, value);
     saveProgress();
+  }
+
+  async function attachR2Domains(): Promise<void> {
+    const storageDomain = vars.get('R2_PUBLIC_STORAGE_DOMAIN');
+    const assetsDomain = vars.get('R2_PUBLIC_ASSETS_DOMAIN');
+
+    if (!storageDomain && !assetsDomain) return;
+
+    const attachDomains = checkCancel(
+      await p.confirm({
+        message: 'Attach custom domains to R2 buckets via Cloudflare?',
+        initialValue: true,
+      })
+    );
+
+    if (attachDomains) {
+      if (!vars.has('CLOUDFLARE_ZONE_ID')) {
+        // Try to auto-detect zone ID from the domain name
+        const domain = storageDomain ?? assetsDomain;
+        const baseDomain = domain?.split('.').slice(-2).join('.');
+        const apiToken = vars.get('CLOUDFLARE_API_TOKEN');
+
+        if (apiToken && baseDomain) {
+          const zoneSpinner = p.spinner();
+          zoneSpinner.start(`Looking up zone ID for ${baseDomain}`);
+          try {
+            const res = await fetch(
+              `https://api.cloudflare.com/client/v4/zones?name=${baseDomain}`,
+              { headers: { Authorization: `Bearer ${apiToken}` } }
+            );
+            const data: { success?: boolean; result?: { id: string }[] } =
+              await res.json();
+            if (data.success && data.result && data.result.length > 0) {
+              const zoneId = data.result[0].id;
+              vars.set('CLOUDFLARE_ZONE_ID', zoneId);
+              saveProgress();
+              zoneSpinner.stop(
+                `Found zone ID for ${baseDomain}: ${zoneId.slice(0, 8)}…`
+              );
+            } else {
+              zoneSpinner.stop(`Could not find zone for ${baseDomain}`);
+            }
+          } catch {
+            zoneSpinner.stop('Zone lookup failed');
+          }
+        }
+
+        if (!vars.has('CLOUDFLARE_ZONE_ID')) {
+          await promptForKey(
+            'CLOUDFLARE_ZONE_ID',
+            'Cloudflare Zone ID',
+            'Find in Cloudflare Dashboard > your domain > Overview'
+          );
+        }
+      }
+      const zoneId = vars.get('CLOUDFLARE_ZONE_ID');
+      if (!zoneId) {
+        p.log.warn('No zone ID provided — skipping domain attachment.');
+        return;
+      }
+
+      const storageBucket = vars.get('R2_BUCKET_NAME') ?? 'openstory-storage';
+      const assetsBucket =
+        vars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
+
+      for (const [domain, bucket] of [
+        [storageDomain, storageBucket],
+        [assetsDomain, assetsBucket],
+      ] as const) {
+        if (!domain) continue;
+        if (bucketHasDomain(bucket, domain)) {
+          p.log.success(`${domain} → ${bucket} (already attached)`);
+          continue;
+        }
+        try {
+          execFileSync(
+            'bunx',
+            [
+              'wrangler',
+              'r2',
+              'bucket',
+              'domain',
+              'add',
+              bucket,
+              '--domain',
+              domain,
+              '--zone-id',
+              zoneId,
+              '--force',
+            ],
+            { stdio: 'inherit' }
+          );
+          p.log.success(`Attached ${domain} → ${bucket}`);
+        } catch {
+          p.log.warn(`Could not attach ${domain} to ${bucket}`);
+        }
+      }
+    } else {
+      const enableDevUrl = checkCancel(
+        await p.confirm({
+          message:
+            'Enable r2.dev public URLs instead? (rate-limited, dev only)',
+          initialValue: false,
+        })
+      );
+
+      if (enableDevUrl) {
+        const storageBucket = vars.get('R2_BUCKET_NAME') ?? 'openstory-storage';
+        const assetsBucket =
+          vars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
+
+        for (const bucket of [storageBucket, assetsBucket]) {
+          try {
+            execFileSync(
+              'bunx',
+              ['wrangler', 'r2', 'bucket', 'dev-url', 'enable', bucket],
+              { stdio: 'inherit' }
+            );
+            p.log.success(`Enabled r2.dev URL for ${bucket}`);
+          } catch {
+            p.log.warn(`Could not enable r2.dev URL for ${bucket}`);
+          }
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1502,7 +1758,7 @@ async function main() {
         })
       );
 
-      const storageSub = isStaging === 'staging' ? 'storage-dev' : 'storage';
+      const storageSub = isStaging === 'staging' ? 'storage-stg' : 'storage';
       const assetsSub = isStaging === 'staging' ? 'assets-stg' : 'assets';
 
       if (baseDomain) {
@@ -1592,6 +1848,11 @@ async function main() {
         await promptForKey(key, message, hint);
       }
     }
+  }
+
+  // Offer to attach custom domains to R2 buckets (prod & non-Cloudflare)
+  if (isProd) {
+    await attachR2Domains();
   }
 
   // -------------------------------------------------------------------------
