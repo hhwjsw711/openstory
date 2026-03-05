@@ -27,7 +27,7 @@ export function Header({ className }: HeaderProps) {
         className
       )}
     >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <div className="mx-auto flex h-16 w-full max-w-[1920px] items-center justify-between px-6">
         {/* Logo and navigation */}
         <div className="flex items-center gap-8">
           <Link to={sequencesRoute.to} className="flex items-center">
