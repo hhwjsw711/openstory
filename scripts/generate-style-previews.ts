@@ -11,7 +11,7 @@ if (!hasFalKey) {
     '   Images will NOT be generated. Running in dry-run mode to preview prompts.'
   );
   console.warn(
-    '   To generate images, run: FAL_KEY=your_key node scripts/generate-dna-previews.ts'
+    '   To generate images, run: FAL_KEY=your_key bun scripts/generate-style-previews.ts'
   );
 }
 
@@ -422,7 +422,7 @@ async function processWithConcurrencyLimit(
 }
 
 async function main() {
-  console.log('🎨 Starting System Director DNA Preview Generation...');
+  console.log('🎨 Starting Style Preview Generation...');
   console.log(`⚡ Max concurrent jobs: ${MAX_CONCURRENT}`);
 
   // Parse command line arguments
@@ -478,7 +478,7 @@ async function main() {
     }
 
     for (const scene of SCENES) {
-      // Construct prompt blending scene + style DNA
+      // Construct prompt blending scene + style config
       const styleConfig = style.config;
 
       const fullPrompt = [

@@ -32,6 +32,8 @@ const StyleCard: FC<StyleCardProps> = ({
   tabIndex = -1,
   onKeyDown: onKeyDownProp,
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   const handleClick = useCallback(() => {
     onSelect(style.id);
   }, [style.id, onSelect]);
@@ -83,12 +85,13 @@ const StyleCard: FC<StyleCardProps> = ({
     >
       <CardContent className="p-0">
         <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
-          {style.previewUrl ? (
+          {style.previewUrl && !imgError ? (
             <Image
               src={style.previewUrl}
               alt={`${style.name} style preview`}
               layout="fullWidth"
               className="object-cover"
+              onError={() => setImgError(true)}
             />
           ) : (
             <div

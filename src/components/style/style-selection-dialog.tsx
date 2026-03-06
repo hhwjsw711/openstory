@@ -47,7 +47,7 @@ type StyleSelectionDialogContentProps = {
 };
 
 /**
- * Internal content component for the DNA selection dialog
+ * Internal content component for the style selection dialog
  */
 const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
   styles,
@@ -108,7 +108,7 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
     <DialogContent className="flex h-[90vh] max-w-[95vw] flex-col sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw]">
       <div className="flex min-h-0 flex-1 flex-col">
         <DialogHeader>
-          <DialogTitle>Director's DNA</DialogTitle>
+          <DialogTitle>Visual Style</DialogTitle>
           <DialogDescription>
             Choose the visual style of your sequence
           </DialogDescription>
@@ -193,7 +193,7 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
 };
 
 /**
- * Controlled dialog for DNA/style selection (backward compatible)
+ * Controlled dialog for style selection (backward compatible)
  */
 export const StyleSelectionDialog: FC<StyleSelectionDialogProps> = ({
   open,
