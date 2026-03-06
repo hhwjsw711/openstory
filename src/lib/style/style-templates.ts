@@ -20,7 +20,7 @@ function getStylePreviewUrl(styleName: string): string {
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  return `https://${getPublicAssetsDomain()}/styles/${sanitized}/character.jpg`;
+  return `https://${getPublicAssetsDomain()}/styles/${sanitized}/thumbnail.webp`;
 }
 
 // Default style templates that can be imported into any team
@@ -30,33 +30,26 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   {
     name: 'Product Ad',
     description:
-      'Polished commercial photography with clean compositions and aspirational lifestyle framing. Designed for product ads, brand campaigns, and e-commerce content.',
+      'Fresh, tactile product content with lifestyle context and sensory detail. Designed for Instagram, DTC brands, e-commerce, and social-first campaigns.',
     category: 'ecommerce',
-    tags: [
-      'ecommerce',
-      'product',
-      'commercial',
-      'brand',
-      'lifestyle',
-      'advertising',
-    ],
+    tags: ['ecommerce', 'product', 'instagram', 'dtc', 'lifestyle', 'social'],
     config: {
-      mood: 'Aspirational, premium, and trustworthy',
+      mood: 'Fresh, sensory, and effortlessly cool',
       artStyle:
-        'High-end commercial photography with clean, editorial compositions. Subjects framed against minimalist or aspirational lifestyle environments. Product-forward staging with intentional negative space and precise object placement',
+        'Modern social-first product photography with tactile, editorial energy. Products shown in real-life context -- hands opening packaging, fingers pressing textures, products on bathroom shelves, kitchen counters, rumpled linen. Close-up detail shots emphasize material and finish. Flat-lays with curated minimal arrangements. Color-matched backgrounds that complement the product. Every frame feels like something you would screenshot and save',
       lighting:
-        'Soft studio key light with subtle fill, clean catchlights. Controlled highlights to emphasize surfaces and textures. No harsh shadows -- diffused, wrap-around illumination with occasional rim accent for separation',
-      colorPalette: ['#F5F0EB', '#2C2C2C', '#C9A96E', '#E8E0D5', '#1A1A2E'],
+        'Bright natural window light with clean directional shadows. Direct on-camera flash for punchy editorial energy on select shots. No heavy diffusion -- let light feel real and immediate. Golden hour warmth for lifestyle moments. High-key and airy overall with pops of contrast',
+      colorPalette: ['#FFFFFF', '#F0E6D3', '#D4536D', '#1A1A1A', '#E8F4E8'],
       cameraWork:
-        'Locked-off tripod with precise framing. Slow push-ins on hero products, smooth orbital reveals. Medium close-ups for detail, wide shots for lifestyle context. Shallow depth of field to isolate subjects',
+        'Dynamic mix of handheld and locked shots with consistent energy. Handheld with natural micro-movement for lifestyle moments -- hands interacting, daily rituals, real context. Quick-cut to locked beauty frames for hero product shots. Macro details on textures and surfaces. Overhead flat-lays directly above. Eye-level and slightly above angles. Shallow depth of field on tactile details. Energetic pacing -- no lingering, every frame earns its time',
       referenceFilms: [
-        'Apple Product Films',
-        'Squarespace Brand Campaigns',
-        'Nike Dream Crazy',
+        'Rhode Skin Instagram',
         'Glossier Visual Identity',
+        'Summer Fridays Campaigns',
+        'Drunk Elephant Content',
       ],
       colorGrading:
-        'Clean and neutral with lifted shadows and creamy skin tones. Subtle warm shift in highlights, controlled saturation to keep colors true-to-product',
+        'Clean and bright with true-to-life color. Whites are crisp, skin tones warm and natural. Minimal processing -- the product looks like it does in your hand. Slight warmth in highlights, lifted shadows keeping everything airy. One accent color pops against neutral base',
     },
     isPublic: true,
     isTemplate: true,
@@ -67,33 +60,33 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   {
     name: 'Real Estate',
     description:
-      'Architectural photography with golden-hour warmth and expansive compositions. Perfect for property tours, listing videos, and luxury real estate showcases.',
+      'Prestige property cinematography with golden-hour warmth and aspirational lifestyle framing. Glamorous figures inhabit sun-drenched interiors, adding warmth and scale to luxury spaces. Designed for high-end real estate branding, lifestyle property films, and luxury development showcases.',
     category: 'realestate',
     tags: [
       'real-estate',
       'property',
-      'architecture',
       'luxury',
+      'lifestyle',
+      'prestige',
       'interior-design',
-      'walkthrough',
     ],
     config: {
-      mood: 'Welcoming, sophisticated, and spacious',
+      mood: 'Luxurious, aspirational, and effortlessly glamorous',
       artStyle:
-        'Architectural and interior photography with wide-angle perspectives. Emphasize spatial depth, clean sight lines, and the interplay of natural light with interior design. Rooms feel lived-in but immaculate, spaces feel expansive and inviting',
+        'Prestige property cinematography with editorial lifestyle sensibility. Luxury interiors shot with depth and grandeur -- marble surfaces, floor-to-ceiling windows, curated furnishings. Elegant women in designer loungewear or evening attire occupy the spaces naturally -- reading on a linen sofa, pouring wine at a kitchen island, silhouetted against a sunset terrace. The architecture dominates every frame while human presence adds warmth, scale, and aspiration. Compositions emphasize clean sight lines, spatial depth, and the interplay of golden light with rich materials',
       lighting:
-        'Golden hour sunlight streaming through large windows casting warm directional beams across surfaces. Balanced ambient fill preserving shadow detail in corners. Interior spaces glow with mixed warm artificial and natural daylight',
-      colorPalette: ['#F7F3EE', '#8B7355', '#4A6741', '#D4C5B2', '#2B3A42'],
+        'Late afternoon golden hour streaming through expansive windows, casting long warm beams across polished floors and textured surfaces. Rim light catching hair and shoulders of figures in the space. Balanced ambient fill preserving detail in corners and alcoves. Interior spaces glow with warm artificial accents -- table lamps, pendant fixtures -- blending seamlessly with fading daylight',
+      colorPalette: ['#F5EDE3', '#C9A96E', '#6B4C3B', '#E8D5C4', '#2C2420'],
       cameraWork:
-        'Slow, fluid Steadicam walk-throughs at eye level. Wide-angle establishing shots of exteriors, smooth dolly reveals through doorways and hallways. Static hero shots of key rooms with symmetrical or rule-of-thirds framing',
+        'Slow, cinematic dolly movements through grand interiors at eye level. Smooth reveals through doorways framing figures in the distance. Wide establishing shots of exteriors at golden hour, intimate medium shots of lifestyle moments. Shallow depth of field isolating textures and details -- a hand on a marble countertop, light catching crystal glassware. Symmetrical compositions for architectural grandeur, rule-of-thirds for lifestyle vignettes',
       referenceFilms: [
-        'Architectural Digest Open Door Series',
-        'Selling Sunset Cinematography',
+        "Sotheby's International Realty Brand Films",
         'Tom Ford A Single Man Interiors',
-        'Dwell Magazine Films',
+        'Succession HBO Cinematography',
+        'The Great Gatsby Production Design',
       ],
       colorGrading:
-        'Warm and luminous with golden highlights and open shadows. Slight lift in blacks to keep interiors airy. Greens and earth tones slightly enhanced for landscaping and organic elements',
+        'Warm and luminous with rich golden highlights and creamy skin tones. Lifted shadows keeping interiors airy and inviting. Subtle amber shift throughout, with deep walnut tones in shadows. Skin rendered with warmth and softness. Overall palette feels like late-afternoon sun on travertine',
     },
     isPublic: true,
     isTemplate: true,
@@ -255,17 +248,33 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   {
     name: 'Animated',
     description:
-      'Vibrant, stylized visuals reminiscent of high-quality animation productions.',
+      'Premium, adult-oriented animation with rich textures, painterly detail, and cinematic depth. Built for sophisticated storytelling, dark fantasy, sci-fi, and narrative-driven content.',
     category: 'animation',
-    tags: ['animation', 'cartoon', 'vibrant', 'stylized', 'family'],
+    tags: [
+      'animation',
+      'sophisticated',
+      'cinematic',
+      'dark',
+      'premium',
+      'narrative',
+    ],
     config: {
-      artStyle: 'High-quality animation style with vibrant colors',
-      colorPalette: ['#FF69B4', '#00CED1', '#FFD700', '#98FB98', '#DDA0DD'],
-      lighting: 'Bright, even lighting with soft shadows',
-      cameraWork: 'Dynamic camera movements with exaggerated perspectives',
-      mood: 'Playful and imaginative',
-      referenceFilms: ['Spider-Verse', 'Coco', 'How to Train Your Dragon'],
-      colorGrading: 'Hyper-saturated with vibrant colors',
+      artStyle:
+        'High-fidelity stylized animation with painterly textures and hand-crafted detail. Environments are richly layered with depth and atmosphere -- decayed grandeur, neon-lit cityscapes, or lush otherworldly landscapes. Characters have grounded proportions with expressive, nuanced faces. Every frame composed like a standalone illustration',
+      colorPalette: ['#1B1F3B', '#C9A227', '#8B2252', '#2E4045', '#D4A574'],
+      lighting:
+        'Dramatic volumetric lighting with god rays, atmospheric haze, and deep contrast. Motivated sources -- firelight, neon signage, bioluminescence -- casting colored shadows. Rim lighting separates characters from richly detailed backgrounds. Chiaroscuro for emotional weight',
+      cameraWork:
+        'Cinematic camera language -- slow tracking shots through detailed environments, dramatic rack focuses between foreground and background layers. Low angles for power, high angles for vulnerability. Long takes that let the world breathe, punctuated by sharp editorial cuts for impact',
+      mood: 'Intense, layered, and emotionally complex',
+      referenceFilms: [
+        'Arcane',
+        'Love Death + Robots',
+        'Into the Spider-Verse',
+        'Wolfwalkers',
+      ],
+      colorGrading:
+        'Deep, moody palette with crushed blacks and selective saturation. Warm amber and gold for intimate scenes, cold steel blue for tension. Rich jewel tones used sparingly as accent. Overall filmic with subtle grain and texture overlay',
     },
     isPublic: true,
     isTemplate: true,

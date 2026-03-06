@@ -45,8 +45,9 @@ describe('filterStyles', () => {
 
     test('filters by name match (case insensitive)', () => {
       const result = filterStyles(mockStyles, 'all', 'cinematic');
-      expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Award Season');
+      expect(result.length).toBe(2);
+      expect(result.map((s) => s.name)).toContain('Award Season');
+      expect(result.map((s) => s.name)).toContain('Animated');
     });
 
     test('filters by description match', () => {

@@ -1,5 +1,6 @@
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
+import { PhotonImage } from '@cf-wasm/photon';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -15,7 +16,7 @@ if (!hasFalKey) {
   );
 }
 
-const OUTPUT_DIR = path.join(process.cwd(), 'public/assets/styles');
+const OUTPUT_DIR = path.join(process.cwd(), 'preview');
 const MAX_CONCURRENT = 8;
 const MAX_RETRIES = 2; // Retry failed tasks up to 2 times
 
@@ -37,20 +38,25 @@ const SCENES = [
   },
 ];
 
-async function downloadImage(url: string, outputPath: string) {
+async function downloadAndConvertToWebP(url: string, outputPath: string) {
   try {
     const response = await fetch(url);
     if (!response.ok)
       throw new Error(`Failed to fetch image: ${response.statusText}`);
 
-    // Convert response to buffer and write using Node.js fs
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    await writeFile(outputPath, buffer);
+    const inputBytes = new Uint8Array(arrayBuffer);
+    const image = PhotonImage.new_from_byteslice(inputBytes);
+
+    try {
+      const webpBytes = image.get_bytes_webp();
+      await writeFile(outputPath, Buffer.from(webpBytes));
+    } finally {
+      image.free();
+    }
   } catch (error) {
-    // Re-throw with more context
     throw new Error(
-      `Failed to download image from ${url}: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to download/convert image from ${url}: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -315,10 +321,10 @@ async function processTask(
 
     const imageUrl = result.imageUrls[0];
     if (imageUrl) {
-      const filename = `${sceneName}.jpg`;
+      const filename = `${sceneName}.webp`;
       const filePath = path.join(outputDir, filename);
 
-      await downloadImage(imageUrl, filePath);
+      await downloadAndConvertToWebP(imageUrl, filePath);
       progressTracker.updateTask(displayKey, 'completed');
       progressTracker.incrementCompleted();
       return { success: true, shouldRetry: false };
