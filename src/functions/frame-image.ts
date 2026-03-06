@@ -324,7 +324,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
 
     await requireCredits(
       sequence.teamId,
-      estimateImageCost('nano_banana_pro', '16:9', 1),
+      estimateImageCost('nano_banana_2', '16:9', 1),
       { errorMessage: 'Insufficient credits for variant upscale' }
     );
 

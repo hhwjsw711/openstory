@@ -133,7 +133,7 @@ export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowCon
   characterName: string;
   /** Character metadata from script analysis */
   characterMetadata: CharacterBibleEntry;
-  /** Image model to use (defaults to nano_banana_pro) */
+  /** Image model to use (defaults to nano_banana_2) */
   imageModel?: TextToImageModel;
   /** Reference image URL (e.g., from talent sheet) for recasting */
   referenceImageUrl?: string;
@@ -214,7 +214,7 @@ export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowCon
   // Character bible from script analysis
   characterBible: CharacterBibleEntry[];
 
-  /** Image model to use (defaults to nano_banana_pro) */
+  /** Image model to use (defaults to nano_banana_2) */
   imageModel?: TextToImageModel;
 
   /** Matched talent data for characters that should use talent references */

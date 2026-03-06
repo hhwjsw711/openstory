@@ -178,10 +178,11 @@ async function generateImageInternal(
 
   const modelOptions = buildFalModelOptions(params);
 
-  // Switch to edit endpoint for nano_banana_pro with reference images
+  // Switch to edit endpoint for models with reference images
   let endpoint = modelId;
-  if (params.model === 'nano_banana_pro' && params.referenceImageUrls?.length) {
-    endpoint = getEditEndpoint(params.model) ?? modelId;
+  const editEndpoint = getEditEndpoint(params.model);
+  if (editEndpoint && params.referenceImageUrls?.length) {
+    endpoint = editEndpoint;
   }
 
   const adapter = createFalAdapter(endpoint, falApiKeyInfo.key);
@@ -338,6 +339,7 @@ function buildFalModelOptions(
       };
 
     case 'nano_banana_pro':
+    case 'nano_banana_2':
       return {
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE

@@ -68,7 +68,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       }
 
       const result = await generateImageWithProvider({
-        model: 'nano_banana_pro',
+        model: 'nano_banana_2',
         prompt: UPSCALE_PROMPT,
         referenceImageUrls: [input.croppedTileUrl],
         numImages: 1,
@@ -92,7 +92,7 @@ export const upscaleVariantWorkflow = createWorkflow(
         costUsd: upscaleResult.cost,
         usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
-        description: 'Variant upscale (nano_banana_pro)',
+        description: 'Variant upscale (nano_banana_2)',
         metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
         workflowName: 'UpscaleVariantWorkflow',
       });
