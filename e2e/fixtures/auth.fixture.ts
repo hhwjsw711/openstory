@@ -144,11 +144,23 @@ async function authenticateUser(page: Page, email: string): Promise<void> {
   // Navigate directly to verify page with email
   await page.goto(`/verify?email=${encodeURIComponent(email)}`);
 
-  // Wait for OTP input to appear
-  await page.waitForSelector('[data-slot]', { timeout: 5000 });
+  // Wait for the OTP input to receive auto-focus from React's autoFocus prop.
+  // This confirms React hydration is complete — before hydration, the input
+  // element exists in SSR HTML but event handlers aren't attached yet.
+  await page.waitForFunction(
+    () => document.activeElement?.hasAttribute('data-input-otp'),
+    { timeout: 30_000 }
+  );
 
-  // Type the OTP (auto-verifies when all 6 digits are entered)
-  await page.keyboard.type(testOtp);
+  // Clear and re-focus to ensure the controlled input is fully wired up.
+  // Without this, the first keystroke can be swallowed by a React re-render.
+  const otpInput = page.locator('input[data-input-otp]');
+  await otpInput.fill('');
+  await otpInput.focus();
+
+  // Type the OTP with per-key delay so React processes each character via onChange
+  // (auto-verifies when all 6 digits are entered)
+  await page.keyboard.type(testOtp, { delay: 150 });
 
   // Wait for redirect away from verify page
   await page.waitForURL(
