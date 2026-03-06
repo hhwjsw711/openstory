@@ -1,3 +1,4 @@
+import { RouteErrorFallback } from '@/components/error/route-error-fallback';
 import {
   ImageModelBadge,
   ModelBadge,
@@ -12,6 +13,9 @@ import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id')({
   component: SequenceLayout,
+  errorComponent: (props) => (
+    <RouteErrorFallback {...props} heading="Sequence error" />
+  ),
 });
 
 function SequenceLayout() {
