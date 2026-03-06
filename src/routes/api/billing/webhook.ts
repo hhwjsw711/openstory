@@ -7,11 +7,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
-import {
-  addCredits,
-  saveStripeCustomerId,
-  hasTransactionWithStripeSessionId,
-} from '@/lib/billing/credit-service';
+import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
@@ -65,17 +61,6 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 break;
               }
 
-              // Idempotency: skip if this session was already processed
-              const alreadyProcessed = await hasTransactionWithStripeSessionId(
-                session.id
-              );
-              if (alreadyProcessed) {
-                console.log(
-                  `[Webhook] Duplicate event for session ${session.id}, skipping`
-                );
-                break;
-              }
-
               // Retrieve receipt URL + set default payment method (best-effort)
               const customerId = session.customer
                 ? typeof session.customer === 'string'
@@ -117,16 +102,23 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 console.error('[Webhook] Failed to fetch receipt URL:', err);
               }
 
-              // Add credits
-              await addCredits(teamId, amountUsd, {
+              // Add credits (unique stripeSessionId prevents duplicates)
+              const result = await addCredits(teamId, amountUsd, {
                 userId,
+                stripeSessionId: session.id,
                 description: `Top-up: $${amountUsd.toFixed(2)}`,
                 metadata: {
-                  stripeSessionId: session.id,
                   stripePaymentIntentId: session.payment_intent,
                   ...(receiptUrl && { receiptUrl }),
                 },
               });
+
+              if (!result) {
+                console.log(
+                  `[Webhook] Duplicate session ${session.id}, skipping`
+                );
+                break;
+              }
 
               console.log(
                 `[Webhook] Added $${amountUsd} credits to team ${teamId}`

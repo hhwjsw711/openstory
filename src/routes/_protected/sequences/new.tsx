@@ -1,7 +1,7 @@
 import { PageContainer } from '@/components/layout/page-container';
 import { ScriptView } from '@/components/script/script-view';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Route as ScenesRoute } from '@/routes/_protected/sequences/$id/scenes';
 export const Route = createFileRoute('/_protected/sequences/new')({
   component: NewSequencePage,
@@ -9,6 +9,11 @@ export const Route = createFileRoute('/_protected/sequences/new')({
 
 function NewSequencePage() {
   const navigate = useNavigate();
+
+  // Clear billing return flag when user is back on this page
+  useEffect(() => {
+    localStorage.removeItem('openstory:billing-return');
+  }, []);
 
   const handleSuccess = useCallback(
     (sequenceIds: string[]) => {

@@ -10,6 +10,7 @@ import {
   text,
   real,
   index,
+  uniqueIndex,
   check,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
@@ -57,6 +58,7 @@ export const transactions = sqliteTable(
     amount: real().notNull(),
     balanceAfter: real('balance_after').notNull(),
     metadata: text({ mode: 'json' }).$defaultFn(() => ({})),
+    stripeSessionId: text('stripe_session_id'),
     description: text(),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
@@ -67,6 +69,7 @@ export const transactions = sqliteTable(
     index('idx_transactions_type').on(table.type),
     index('idx_transactions_team_id').on(table.teamId),
     index('idx_transactions_user_id').on(table.userId),
+    uniqueIndex('idx_transactions_stripe_session_id').on(table.stripeSessionId),
   ]
 );
 

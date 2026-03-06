@@ -13,6 +13,7 @@ import {
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
+import { useSequenceDraft } from '@/hooks/use-sequence-draft';
 import { useBillingGate } from '@/hooks/use-billing-gate';
 import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { useStyles } from '@/hooks/use-styles';
@@ -69,6 +70,14 @@ export const ScriptView: FC<{
     isLoaded: settingsLoaded,
     save: saveSettings,
   } = useGenerationSettings();
+
+  // Load draft from localStorage (script, style, talent, location)
+  const {
+    draft,
+    isLoaded: draftLoaded,
+    saveDraft,
+    clearDraft,
+  } = useSequenceDraft();
 
   // Determine if we're editing an existing sequence
   const isEditing = !!sequence?.id;
@@ -129,6 +138,25 @@ export const ScriptView: FC<{
     }
   }, [styles, isLoadingStyles, styleId, sequence?.styleId]);
 
+  // Sync draft state when creating new sequences (not editing)
+  const hasSyncedDraftRef = React.useRef(false);
+  useEffect(() => {
+    if (isEditing) {
+      hasSyncedDraftRef.current = false;
+      return;
+    }
+    if (!draftLoaded) return;
+    if (!hasSyncedDraftRef.current && draft.script) {
+      setScript(draft.script);
+      if (draft.styleId) setStyleId(draft.styleId);
+      if (draft.selectedTalentIds.length > 0)
+        setSelectedTalentIds(draft.selectedTalentIds);
+      if (draft.selectedLocationIds.length > 0)
+        setSelectedLocationIds(draft.selectedLocationIds);
+      hasSyncedDraftRef.current = true;
+    }
+  }, [isEditing, draftLoaded, draft]);
+
   // Sync state with savedSettings when creating new sequences (not when editing)
   // Use a ref to track if we've already synced to avoid loops
   const hasSyncedRef = React.useRef(false);
@@ -182,9 +210,36 @@ export const ScriptView: FC<{
     saveSettings,
   ]);
 
+  // Persist draft to localStorage when creating new sequences
+  useEffect(() => {
+    if (!isEditing && draftLoaded) {
+      saveDraft({
+        script: script ?? '',
+        styleId,
+        selectedTalentIds,
+        selectedLocationIds,
+      });
+    }
+  }, [
+    isEditing,
+    draftLoaded,
+    script,
+    styleId,
+    selectedTalentIds,
+    selectedLocationIds,
+    saveDraft,
+  ]);
+
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
-  const { needsBillingSetup, showGate, gateProps } = useBillingGate();
+  const {
+    needsBillingSetup,
+    showGate,
+    gateProps,
+    hasFalKey,
+    hasOpenRouterKey,
+    hasCredits,
+  } = useBillingGate();
 
   const handleCancel = onCancel;
 
@@ -236,6 +291,7 @@ export const ScriptView: FC<{
         },
         {
           onSuccess: (result) => {
+            clearDraft();
             if (onSuccess) {
               onSuccess(result.data.map((sequence) => sequence.id));
             }
@@ -370,7 +426,12 @@ export const ScriptView: FC<{
           </div>
         </CardFooter>
       </form>
-      <BillingGateDialog {...gateProps} />
+      <BillingGateDialog
+        {...gateProps}
+        hasFalKey={hasFalKey}
+        hasOpenRouterKey={hasOpenRouterKey}
+        hasCredits={hasCredits}
+      />
     </Card>
   );
 };
