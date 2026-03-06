@@ -67,7 +67,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
       context,
       {
         name: 'visual-prompts',
-        phase: { number: 4, name: 'Visual Prompts' },
+        phase: { number: 4, name: 'Writing image prompts…' },
 
         promptName: 'phase/visual-prompt-scene-generation-chat',
         promptVariables,

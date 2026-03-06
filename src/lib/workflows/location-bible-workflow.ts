@@ -54,7 +54,7 @@ export const locationBibleWorkflow = createWorkflow(
         'generation.phase:start',
         {
           phase: 4,
-          phaseName: 'Location Bible',
+          phaseName: 'Designing locations…',
         }
       );
     });

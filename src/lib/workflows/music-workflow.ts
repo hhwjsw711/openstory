@@ -63,7 +63,7 @@ export const generateMusicWorkflow = createWorkflow(
         context,
         {
           name: 'music-prompt-generation',
-          phase: { number: 8, name: 'Music Prompt Generation' },
+          phase: { number: 8, name: 'Composing music…' },
           promptName: 'phase/music-prompt-generation-chat',
           promptVariables: {
             scenes: JSON.stringify(input.scenes),

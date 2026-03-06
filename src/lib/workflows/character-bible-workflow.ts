@@ -46,7 +46,7 @@ export const characterBibleWorkflow = createWorkflow(
         'generation.phase:start',
         {
           phase: 3,
-          phaseName: 'Character Bible',
+          phaseName: 'Drawing characters…',
         }
       );
     });
