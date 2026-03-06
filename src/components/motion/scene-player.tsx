@@ -17,12 +17,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Link, Share2, VideoIcon } from 'lucide-react';
+import { AlertCircle, Link, Loader2, Share2, VideoIcon } from 'lucide-react';
 import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
+import { BlobLoader } from '@/components/ui/blob-loader';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -31,6 +32,7 @@ type ScenePlayerProps = {
   onSelectFrame: (frameId: string) => void;
   className?: string;
   selectedTab?: TabValue;
+  progressMessage?: string;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
 };
@@ -41,6 +43,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   selectedFrameId,
   aspectRatio,
   selectedTab,
+  progressMessage,
   onSelectFrame,
   onTimeUpdate,
   onEnded,
@@ -121,8 +124,28 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     }
   }, [nextFrame, onEnded, onSelectFrame]);
 
-  // Show skeleton when frames are loading
+  // Show blob loader during generation, skeleton otherwise
   if (!frames || frames.length === 0) {
+    if (progressMessage) {
+      return (
+        <div
+          className={cn(
+            'relative flex items-center justify-center overflow-hidden bg-zinc-950',
+            className,
+            getAspectRatioClassName(aspectRatio)
+          )}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
+          <div className="flex flex-col items-center gap-4">
+            <BlobLoader size="lg" />
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <p className="text-sm font-medium">{progressMessage}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
         <Skeleton className="w-full h-full" />
@@ -273,6 +296,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           <VideoStateOverlay
             thumbnailUrl={currentFrame.thumbnailUrl}
             videoStatus={currentFrame.videoStatus ?? null}
+            progressMessage={progressMessage}
           />
         </div>
       )}

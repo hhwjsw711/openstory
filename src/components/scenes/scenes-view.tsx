@@ -1,4 +1,3 @@
-import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
 import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
@@ -242,36 +241,21 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Status indicators (title + badges provided by layout route) */}
-      {(sequence?.status === 'failed' ||
-        generationState.isFailed ||
-        (!generationState.isComplete &&
-          !generationState.isFailed &&
-          generationState.currentPhase > 0 &&
-          realtimeStatus === 'connected')) && (
+      {/* Status indicators */}
+      {(sequence?.status === 'failed' || generationState.isFailed) && (
         <div className="flex items-center gap-2 px-4 py-2">
-          {(sequence?.status === 'failed' || generationState.isFailed) && (
-            <>
-              <SequenceStatusBadge status="failed" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void handleRetryStoryboard()}
-                disabled={isRetrying}
-              >
-                <RotateCcw
-                  className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
-                />
-                {isRetrying ? 'Retrying…' : 'Retry'}
-              </Button>
-            </>
-          )}
-          {!generationState.isComplete &&
-            !generationState.isFailed &&
-            generationState.currentPhase > 0 &&
-            realtimeStatus === 'connected' && (
-              <PhaseIndicatorCompact phases={generationState.phases} />
-            )}
+          <SequenceStatusBadge status="failed" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRetryStoryboard()}
+            disabled={isRetrying}
+          >
+            <RotateCcw
+              className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
+            />
+            {isRetrying ? 'Retrying…' : 'Retry'}
+          </Button>
         </div>
       )}
 
@@ -311,6 +295,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
               selectedTab={selectedTab}
+              progressMessage={
+                generationState.phases.find((p) => p.status === 'active')
+                  ?.phaseName
+              }
               className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
             />
           </div>

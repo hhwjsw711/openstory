@@ -144,7 +144,7 @@ export const characterBibleWorkflow = createWorkflow(
               sheetImagePath: storageResult.path,
               sheetStatus: 'completed' as const,
               // Talent link (if matched)
-              talentId: talentMatch?.talentId ?? null,
+              talentId: talentMatch?.talentId || null,
             });
             return {
               id: created.id,

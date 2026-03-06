@@ -216,54 +216,51 @@ body {
   }
 }
 
-/* 3D Transform utilities */
-.transform-3d {
-  transform-style: preserve-3d;
-}
-
-/* Plates Loader Animation */
-@keyframes plates-wave {
+/* Blob Loader Animation */
+@keyframes blob-morph {
   0%,
   100% {
-    transform: translateZ(var(--base-z)) translateY(0);
-    filter: brightness(1);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  25% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
   }
   50% {
-    transform: translateZ(calc(var(--base-z) + 12px)) translateY(-4px);
-    filter: brightness(1.4);
+    border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%;
+  }
+  75% {
+    border-radius: 60% 40% 60% 30% / 70% 30% 50% 60%;
   }
 }
 
-@keyframes plates-sheen {
+@keyframes blob-glow {
   0%,
   100% {
     background-position: 0% 50%;
-    opacity: 0.4;
   }
   50% {
     background-position: 100% 50%;
-    opacity: 0.8;
   }
 }
 
 /* Reduced motion: simple fade pulse */
 @media (prefers-reduced-motion: reduce) {
-  @keyframes plates-wave {
+  @keyframes blob-morph {
     0%,
     100% {
-      opacity: 0.6;
+      opacity: 0.7;
     }
     50% {
       opacity: 1;
     }
   }
-  @keyframes plates-sheen {
+  @keyframes blob-glow {
     0%,
     100% {
-      opacity: 0.4;
+      opacity: 0.7;
     }
     50% {
-      opacity: 0.6;
+      opacity: 1;
     }
   }
 }
