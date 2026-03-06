@@ -67,10 +67,8 @@ export type FrameContext = TeamContext & {
  * so every server function gets logging automatically.
  */
 export const loggerMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next }) => {
-    const request = getRequest();
-    const url = new URL(request.url);
-    const fnName = url.searchParams.get('_serverFnName') ?? url.pathname;
+  async ({ next, serverFnMeta }) => {
+    const fnName = serverFnMeta.name;
     const start = performance.now();
 
     try {
