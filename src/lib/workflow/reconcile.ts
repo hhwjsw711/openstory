@@ -13,16 +13,16 @@ import { frames } from '@/lib/db/schema';
 import type { Frame } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getWorkflowClient } from './client';
-import { buildWorkflowRunId, type WorkflowRunState } from './status';
+import type { WorkflowRunState } from './status';
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 type StatusField = 'thumbnailStatus' | 'videoStatus' | 'variantImageStatus';
 
-const STATUS_TO_WORKFLOW_TYPE: Record<StatusField, string> = {
-  thumbnailStatus: 'image',
-  videoStatus: 'motion',
-  variantImageStatus: 'variant',
+const STATUS_TO_RUN_ID_FIELD: Record<StatusField, keyof Frame> = {
+  thumbnailStatus: 'thumbnailWorkflowRunId',
+  videoStatus: 'videoWorkflowRunId',
+  variantImageStatus: 'variantWorkflowRunId',
 };
 
 /**
@@ -61,8 +61,14 @@ export async function reconcileStaleFrameStatuses(
 
   // Query QStash for each stale workflow and reconcile
   for (const { frame, field } of staleEntries) {
-    const workflowType = STATUS_TO_WORKFLOW_TYPE[field];
-    const runId = buildWorkflowRunId(workflowType, frame.id);
+    const runIdField = STATUS_TO_RUN_ID_FIELD[field];
+    const runId = String(frame[runIdField] ?? '');
+
+    if (runId === '') {
+      // No stored run ID — workflow was never tracked properly
+      await markFrameStatus(db, frame.id, field, 'failed');
+      continue;
+    }
 
     try {
       const { runs } = await client.logs({ workflowRunId: runId, count: 1 });

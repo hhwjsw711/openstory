@@ -126,7 +126,7 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/storyboard', workflowInput, {
-      deduplicationId: `storyboard-${sequence.id}`,
+      deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
     });
 
     return { workflowRunId, frames: [] };
@@ -187,7 +187,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
-      deduplicationId: `image-${frame.id}`,
+      deduplicationId: `image-${frame.id}-${Date.now()}`,
     });
 
     return { workflowRunId, frameId: frame.id };
@@ -254,7 +254,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/variant-image',
       workflowInput,
-      { deduplicationId: `variant-${frame.id}` }
+      { deduplicationId: `variant-${frame.id}-${Date.now()}` }
     );
 
     return { workflowRunId, frameId: frame.id };

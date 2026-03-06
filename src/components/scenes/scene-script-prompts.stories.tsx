@@ -13,6 +13,7 @@ const mockFrame = {
   thumbnailPath: 'teams/mock/sequences/mock/frames/frame-1/thumbnail.jpg',
   variantImageUrl: null,
   variantImageStatus: 'pending',
+  variantWorkflowRunId: null,
   videoUrl: null,
   videoPath: null,
   thumbnailStatus: 'completed',

@@ -141,7 +141,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
         };
 
         await triggerWorkflow('/storyboard', workflowInput, {
-          deduplicationId: `storyboard-${sequence.id}`,
+          deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
         });
 
         return sequence;

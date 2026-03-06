@@ -33,6 +33,7 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     thumbnailPath: `teams/${faker.string.ulid()}/sequences/${faker.string.ulid()}/frames/${faker.string.ulid()}/thumbnail.jpg`,
     variantImageUrl: null,
     variantImageStatus: 'pending',
+    variantWorkflowRunId: null,
     videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
       : null,

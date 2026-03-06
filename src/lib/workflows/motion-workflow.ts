@@ -229,7 +229,7 @@ export const generateMotionWorkflow = createWorkflow(
         };
 
         await triggerWorkflow('/merge-video', mergeInput, {
-          deduplicationId: `merge-${input.sequenceId}`,
+          deduplicationId: `merge-${input.sequenceId}-${Date.now()}`,
         });
       });
     }
