@@ -15,7 +15,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { retryStoryboardFn } from '@/functions/sequences';
+import { generateMusicFn, retryStoryboardFn } from '@/functions/sequences';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { Button } from '@/components/ui/button';
@@ -239,6 +239,38 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     [sequenceId, queryClient]
   );
 
+  const musicPromptsReady = !!(sequence?.musicPrompt && sequence?.musicTags);
+
+  const handleGenerateMusic = useCallback(async () => {
+    if (!sequenceId) return;
+    try {
+      await generateMusicFn({ data: { sequenceId } });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('INSUFFICIENT_CREDITS') ||
+          error.message.includes('Insufficient credits'))
+      ) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to generate music.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/settings/billing';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      } else {
+        toast.error('Failed to generate music', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+  }, [sequenceId, queryClient]);
+
   return (
     <div className="flex h-full flex-col">
       {/* Status indicators */}
@@ -270,6 +302,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -283,6 +317,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 

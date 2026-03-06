@@ -23,6 +23,7 @@ const meta: Meta<typeof SceneList> = {
     onSelectFrame: () => console.log('onSelectFrame'),
     regeneratingImages: new Set<string>(),
     regeneratingMotion: new Set<string>(),
+    musicPromptsReady: false,
   },
 };
 
