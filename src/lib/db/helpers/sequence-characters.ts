@@ -128,7 +128,29 @@ export async function getSequenceCharactersWithSheets(
 export async function createSequenceCharacter(
   data: NewCharacter
 ): Promise<Character> {
-  const [character] = await getDb().insert(characters).values(data).returning();
+  const [character] = await getDb()
+    .insert(characters)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [characters.sequenceId, characters.characterId],
+      set: {
+        name: data.name,
+        age: data.age,
+        gender: data.gender,
+        ethnicity: data.ethnicity,
+        physicalDescription: data.physicalDescription,
+        standardClothing: data.standardClothing,
+        distinguishingFeatures: data.distinguishingFeatures,
+        consistencyTag: data.consistencyTag,
+        sheetImageUrl: data.sheetImageUrl,
+        sheetImagePath: data.sheetImagePath,
+        sheetStatus: data.sheetStatus,
+        sheetGeneratedAt: data.sheetGeneratedAt,
+        talentId: data.talentId,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
   return character;
 }
 
