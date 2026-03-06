@@ -327,6 +327,19 @@ export const IMAGE_MODELS = {
       currency: 'USD',
     } as ImageModelPricing,
   },
+  nano_banana_2: {
+    id: 'fal-ai/nano-banana-2' as const,
+    name: 'Nano Banana 2',
+    provider: 'Fal.ai',
+    tier: 'high quality',
+    description: "Google's latest fast image generation and editing model",
+    maxPromptLength: 50000,
+    pricing: {
+      price: 0.08,
+      unit: 'images',
+      currency: 'USD',
+    } as ImageModelPricing,
+  },
   flux_schnell: {
     id: 'fal-ai/flux/schnell' as const,
     name: 'Flux Schnell',
@@ -551,7 +564,7 @@ export type TextToImageModel = keyof typeof IMAGE_MODELS;
 type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
 type TextToImageModelId = ImageModelConfig['id'];
 
-export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_pro';
+export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_2';
 
 // Helper to get model ID from key
 export function getTextToImageModelId(
@@ -931,7 +944,7 @@ export function safeAudioModel(
  */
 const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
   nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
-  // Add other models with edit support here as they become available
+  nano_banana_2: 'fal-ai/nano-banana-2/edit',
 };
 
 /**
