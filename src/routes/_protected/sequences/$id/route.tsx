@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
 import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
-import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id')({
   component: SequenceLayout,
@@ -16,13 +16,8 @@ export const Route = createFileRoute('/_protected/sequences/$id')({
 
 function SequenceLayout() {
   const { id: sequenceId } = Route.useParams();
-  const location = useLocation();
 
   useUser();
-
-  const isScriptPage = location.pathname.endsWith('/script');
-
-  if (isScriptPage) return <Outlet />;
 
   const { data: sequence } = useSequence(sequenceId);
 

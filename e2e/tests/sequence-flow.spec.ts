@@ -93,7 +93,7 @@ Here's your caffeine fix. How's it going?
       // Now fill the textarea - React is hydrated since style click worked
       await scriptTextarea.fill(testScript);
 
-      // Wait for "Activate Crew" button to become enabled - this proves:
+      // Wait for "Generate Sequence" button to become enabled - this proves:
       // 1. React hydration is complete (event handlers attached)
       // 2. Textarea fill was picked up by React state (script is set)
       // 3. Style was selected (from our click above)

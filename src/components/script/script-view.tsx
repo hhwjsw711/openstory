@@ -252,7 +252,8 @@ export const ScriptView: FC<{
 
   const isSubmitting =
     createSequenceMutation.isPending || updateSequenceMutation.isPending;
-  const isDisabled = !isFormValid || isSubmitting;
+  const isProcessing = sequence?.status === 'processing';
+  const isDisabled = !isFormValid || isSubmitting || isProcessing;
 
   const scriptValue = script || sequence?.script || '';
 
@@ -285,21 +286,18 @@ export const ScriptView: FC<{
             disabled={loading}
             singleSelectAnalysis={!!sequence?.id}
           />
-          {/* Suggestion selectors - only shown when creating new sequence */}
-          {!isEditing && (
-            <div className="flex items-center gap-3">
-              <TalentSuggestionSelector
-                selectedTalentIds={selectedTalentIds}
-                onSelectionChange={setSelectedTalentIds}
-                disabled={loading}
-              />
-              <LocationSuggestionSelector
-                selectedLocationIds={selectedLocationIds}
-                onSelectionChange={setSelectedLocationIds}
-                disabled={loading}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <TalentSuggestionSelector
+              selectedTalentIds={selectedTalentIds}
+              onSelectionChange={setSelectedTalentIds}
+              disabled={loading}
+            />
+            <LocationSuggestionSelector
+              selectedLocationIds={selectedLocationIds}
+              onSelectionChange={setSelectedLocationIds}
+              disabled={loading}
+            />
+          </div>
         </CardHeader>
 
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
@@ -363,7 +361,7 @@ export const ScriptView: FC<{
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   <GenerateSequenceIcon className="size-4" />
-                  Activate Crew
+                  {sequence?.id ? 'Regenerate Sequence' : 'Generate Sequence'}
                 </span>
                 {/* Shine effect */}
                 <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
