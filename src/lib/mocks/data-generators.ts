@@ -219,15 +219,14 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     description: faker.lorem.sentence(),
     category: faker.helpers.arrayElement([
       'cinematic',
-      'noir',
-      'artistic',
       'documentary',
-      'scifi',
-      'horror',
       'action',
       'romance',
-      'western',
       'animation',
+      'ecommerce',
+      'realestate',
+      'youtube',
+      'corporate',
     ]),
     tags: faker.helpers.arrayElements(
       [

@@ -28,7 +28,148 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   Omit<Style, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'createdBy'>
 > = [
   {
-    name: 'Cinematic Drama',
+    name: 'Product Ad',
+    description:
+      'Polished commercial photography with clean compositions and aspirational lifestyle framing. Designed for product ads, brand campaigns, and e-commerce content.',
+    category: 'ecommerce',
+    tags: [
+      'ecommerce',
+      'product',
+      'commercial',
+      'brand',
+      'lifestyle',
+      'advertising',
+    ],
+    config: {
+      mood: 'Aspirational, premium, and trustworthy',
+      artStyle:
+        'High-end commercial photography with clean, editorial compositions. Subjects framed against minimalist or aspirational lifestyle environments. Product-forward staging with intentional negative space and precise object placement',
+      lighting:
+        'Soft studio key light with subtle fill, clean catchlights. Controlled highlights to emphasize surfaces and textures. No harsh shadows -- diffused, wrap-around illumination with occasional rim accent for separation',
+      colorPalette: ['#F5F0EB', '#2C2C2C', '#C9A96E', '#E8E0D5', '#1A1A2E'],
+      cameraWork:
+        'Locked-off tripod with precise framing. Slow push-ins on hero products, smooth orbital reveals. Medium close-ups for detail, wide shots for lifestyle context. Shallow depth of field to isolate subjects',
+      referenceFilms: [
+        'Apple Product Films',
+        'Squarespace Brand Campaigns',
+        'Nike Dream Crazy',
+        'Glossier Visual Identity',
+      ],
+      colorGrading:
+        'Clean and neutral with lifted shadows and creamy skin tones. Subtle warm shift in highlights, controlled saturation to keep colors true-to-product',
+    },
+    isPublic: true,
+    isTemplate: true,
+    previewUrl: getStylePreviewUrl('Product Ad'),
+    version: null,
+    usageCount: null,
+  },
+  {
+    name: 'Real Estate',
+    description:
+      'Architectural photography with golden-hour warmth and expansive compositions. Perfect for property tours, listing videos, and luxury real estate showcases.',
+    category: 'realestate',
+    tags: [
+      'real-estate',
+      'property',
+      'architecture',
+      'luxury',
+      'interior-design',
+      'walkthrough',
+    ],
+    config: {
+      mood: 'Welcoming, sophisticated, and spacious',
+      artStyle:
+        'Architectural and interior photography with wide-angle perspectives. Emphasize spatial depth, clean sight lines, and the interplay of natural light with interior design. Rooms feel lived-in but immaculate, spaces feel expansive and inviting',
+      lighting:
+        'Golden hour sunlight streaming through large windows casting warm directional beams across surfaces. Balanced ambient fill preserving shadow detail in corners. Interior spaces glow with mixed warm artificial and natural daylight',
+      colorPalette: ['#F7F3EE', '#8B7355', '#4A6741', '#D4C5B2', '#2B3A42'],
+      cameraWork:
+        'Slow, fluid Steadicam walk-throughs at eye level. Wide-angle establishing shots of exteriors, smooth dolly reveals through doorways and hallways. Static hero shots of key rooms with symmetrical or rule-of-thirds framing',
+      referenceFilms: [
+        'Architectural Digest Open Door Series',
+        'Selling Sunset Cinematography',
+        'Tom Ford A Single Man Interiors',
+        'Dwell Magazine Films',
+      ],
+      colorGrading:
+        'Warm and luminous with golden highlights and open shadows. Slight lift in blacks to keep interiors airy. Greens and earth tones slightly enhanced for landscaping and organic elements',
+    },
+    isPublic: true,
+    isTemplate: true,
+    previewUrl: getStylePreviewUrl('Real Estate'),
+    version: null,
+    usageCount: null,
+  },
+  {
+    name: 'YouTube',
+    description:
+      'Energetic, personality-driven visuals with punchy colors and direct-to-camera framing. Built for YouTube content, vlogs, podcast clips, and creator-led explainers.',
+    category: 'youtube',
+    tags: [
+      'youtube',
+      'creator',
+      'vlog',
+      'podcast',
+      'explainer',
+      'talking-head',
+    ],
+    config: {
+      mood: 'Energetic, approachable, and confident',
+      artStyle:
+        'Modern digital content creator aesthetic. Clean background environments with personality -- RGB accent lighting, styled bookshelves, or minimal desk setups. Subject is always the focal point with direct eye contact to camera. Punchy, scroll-stopping visual energy',
+      lighting:
+        'Three-point key light setup with strong key, soft fill, and colored RGB rim/backlight for depth. High-key on subject face for clarity. Background slightly darker to create depth separation. Clean, modern, studio-grade illumination',
+      colorPalette: ['#FF4D4D', '#1E1E2E', '#00D4FF', '#FFFFFF', '#FFB800'],
+      cameraWork:
+        'Locked medium close-up for talking head, occasional slow push-in for emphasis. Cut-away wide shots of workspace or B-roll. Direct-to-camera angle at eye level. Minimal movement -- stability and clarity prioritized over cinematic dynamism',
+      referenceFilms: [
+        'MKBHD Studio Setup',
+        'Casey Neistat Visual Style',
+        'Linus Tech Tips',
+        'Ali Abdaal Content Aesthetic',
+      ],
+      colorGrading:
+        'High contrast with vivid saturation. Skin tones warm and natural against cooler backgrounds. Blacks are deep, whites are clean. Slight teal-orange split for modern digital look',
+    },
+    isPublic: true,
+    isTemplate: true,
+    previewUrl: getStylePreviewUrl('YouTube'),
+    version: null,
+    usageCount: null,
+  },
+  {
+    name: 'Corporate',
+    description:
+      'Clean, professional visuals with contemporary design sensibility. Ideal for company culture videos, SaaS product demos, training content, and corporate communications.',
+    category: 'corporate',
+    tags: ['corporate', 'saas', 'business', 'professional', 'training', 'tech'],
+    config: {
+      mood: 'Professional, innovative, and trustworthy',
+      artStyle:
+        'Contemporary corporate visual style with clean geometry and professional environments. Modern office spaces, collaborative workspaces, and technology-forward settings. People appear natural and engaged, not staged. Compositions are balanced and uncluttered with intentional use of negative space',
+      lighting:
+        'Bright, even overhead lighting typical of modern offices with large windows. Soft and clean with no dramatic shadows. Natural daylight supplemented by warm artificial ambiance. Flattering and professional without being clinical',
+      colorPalette: ['#0066FF', '#F8F9FA', '#1A1A2E', '#00C853', '#6C757D'],
+      cameraWork:
+        'Smooth dolly or gimbal movements through workspace environments. Static or slow-push medium shots for interviews and presentations. Over-the-shoulder angles for screen and product demonstrations. Clean, corporate B-roll pacing',
+      referenceFilms: [
+        'Stripe Brand Films',
+        'Notion Product Videos',
+        'HubSpot Culture Videos',
+        'Salesforce Dreamforce Keynotes',
+      ],
+      colorGrading:
+        'Clean and modern with slight cool cast. Whites are bright and true, skin tones natural. Subtle blue tint in shadows for a tech-forward feel. Overall bright and airy with controlled, professional color rendering',
+    },
+    isPublic: true,
+    isTemplate: true,
+    previewUrl: getStylePreviewUrl('Corporate'),
+    version: null,
+    usageCount: null,
+  },
+  {
+    name: 'Award Season',
     description:
       'Deep, emotional storytelling with rich cinematography. Perfect for character-driven narratives.',
     category: 'cinematic',
@@ -44,59 +185,12 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Cinematic Drama'),
+    previewUrl: getStylePreviewUrl('Award Season'),
     version: null,
     usageCount: null,
   },
   {
-    name: 'Neo-Noir Thriller',
-    description:
-      'Dark, stylized visuals with high contrast and urban settings. Ideal for mystery and crime stories.',
-    category: 'noir',
-    tags: ['noir', 'thriller', 'urban', 'mystery', 'crime'],
-    config: {
-      artStyle: 'Neo-noir with stark contrasts and neon accents',
-      colorPalette: ['#000000', '#FF0000', '#00CED1', '#4B0082', '#FF1493'],
-      lighting: 'High contrast with venetian blind shadows and neon highlights',
-      cameraWork: 'Dutch angles and voyeuristic framing',
-      mood: 'Tense and mysterious',
-      referenceFilms: ['Blade Runner', 'Sin City', 'Drive'],
-      colorGrading: 'Desaturated with selective color pops',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Neo-Noir Thriller'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Wes Anderson Style',
-    description:
-      'Symmetrical compositions with pastel colors and whimsical aesthetics.',
-    category: 'artistic',
-    tags: ['whimsical', 'symmetrical', 'pastel', 'quirky', 'artistic'],
-    config: {
-      artStyle: 'Perfectly symmetrical compositions with pastel palette',
-      colorPalette: ['#FFB6C1', '#87CEEB', '#F0E68C', '#DDA0DD', '#98FB98'],
-      lighting: 'Soft, even lighting with minimal shadows',
-      cameraWork:
-        'Centered framing, tracking shots, and planimetric composition',
-      mood: 'Whimsical and nostalgic',
-      referenceFilms: [
-        'Grand Budapest Hotel',
-        'Moonrise Kingdom',
-        'The Royal Tenenbaums',
-      ],
-      colorGrading: 'Saturated pastels with vintage feel',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Wes Anderson Style'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Documentary Realism',
+    name: 'Documentary',
     description:
       'Natural, observational style with authentic lighting and handheld movement.',
     category: 'documentary',
@@ -112,54 +206,12 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Documentary Realism'),
+    previewUrl: getStylePreviewUrl('Documentary'),
     version: null,
     usageCount: null,
   },
   {
-    name: 'Sci-Fi Futuristic',
-    description:
-      'Clean, high-tech aesthetics with cool tones and sleek designs.',
-    category: 'scifi',
-    tags: ['scifi', 'futuristic', 'technology', 'space', 'cyberpunk'],
-    config: {
-      artStyle: 'Futuristic sci-fi with clean lines and holographic elements',
-      colorPalette: ['#00FFFF', '#0000FF', '#C0C0C0', '#800080', '#00FF00'],
-      lighting: 'Cool LED lighting with lens flares',
-      cameraWork: 'Smooth camera movements with wide establishing shots',
-      mood: 'Futuristic and technological',
-      referenceFilms: ['Ex Machina', 'Arrival', 'Interstellar'],
-      colorGrading: 'Cool blues and teals with high contrast',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Sci-Fi Futuristic'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Horror Gothic',
-    description:
-      'Dark, atmospheric visuals with Gothic elements and unsettling compositions.',
-    category: 'horror',
-    tags: ['horror', 'gothic', 'dark', 'atmospheric', 'supernatural'],
-    config: {
-      artStyle: 'Gothic horror with dark shadows and eerie atmosphere',
-      colorPalette: ['#1C1C1C', '#8B0000', '#483D8B', '#2F4F4F', '#696969'],
-      lighting: 'Low-key lighting with harsh shadows',
-      cameraWork: 'Unsettling angles and slow zooms',
-      mood: 'Ominous and foreboding',
-      referenceFilms: ['The Witch', 'Hereditary', 'The Lighthouse'],
-      colorGrading: 'Desaturated with crushed blacks',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Horror Gothic'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Action Blockbuster',
+    name: 'Action',
     description:
       'High-energy visuals with dynamic camera work and explosive color palette.',
     category: 'action',
@@ -175,12 +227,12 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Action Blockbuster'),
+    previewUrl: getStylePreviewUrl('Action'),
     version: null,
     usageCount: null,
   },
   {
-    name: 'Romantic Comedy',
+    name: 'Rom-Com',
     description:
       'Bright, warm visuals with soft lighting and cheerful compositions.',
     category: 'romance',
@@ -196,37 +248,12 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Romantic Comedy'),
+    previewUrl: getStylePreviewUrl('Rom-Com'),
     version: null,
     usageCount: null,
   },
   {
-    name: 'Western Epic',
-    description:
-      'Wide vistas with dusty, golden hour lighting and classic Western aesthetics.',
-    category: 'western',
-    tags: ['western', 'epic', 'frontier', 'classic', 'americana'],
-    config: {
-      artStyle: 'Classic Western with wide landscapes and golden hour lighting',
-      colorPalette: ['#D2691E', '#8B4513', '#DEB887', '#CD853F', '#F4A460'],
-      lighting: 'Magic hour lighting with long shadows',
-      cameraWork: 'Wide shots, slow zooms, and classic Western framing',
-      mood: 'Epic and frontier-inspired',
-      referenceFilms: [
-        'The Good, The Bad and The Ugly',
-        'Once Upon a Time in the West',
-        'The Searchers',
-      ],
-      colorGrading: 'Warm, dusty tones with high contrast',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Western Epic'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Animation Studio',
+    name: 'Animated',
     description:
       'Vibrant, stylized visuals reminiscent of high-quality animation productions.',
     category: 'animation',
@@ -242,38 +269,7 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
     },
     isPublic: true,
     isTemplate: true,
-    previewUrl: getStylePreviewUrl('Animation Studio'),
-    version: null,
-    usageCount: null,
-  },
-  {
-    name: 'Lo-Fi iPhone 7 Aesthetic (Clean)',
-    description:
-      'Simulates the look of circa-2016 smartphone photography without any overlays. Characterized by lower resolution, poor dynamic range (blown-out highlights), digital noise, and the specific "crunchy" JPEG processing of the iPhone 7 era.',
-    category: 'photography',
-    tags: ['lo-fi', 'iphone-7', 'amateur', '2010s', 'no-text', 'digital-noise'],
-    config: {
-      // ADDED EXPLICIT "NO TEXT" CONSTRAINTS HERE
-      artStyle:
-        'iPhone 7 12MP JPEG aesthetic. Clean image with absolutely NO text overlays, NO datestamps, and NO time indicators burnt into the visual. Visible digital compression artifacts and over-sharpening. Textures are slightly soft/muddy. Includes sensor limitations: significant digital noise in shadows and color fringing.',
-      colorPalette: ['#F5F5DC', '#D2B48C', '#8B4513', '#FFFAF0', '#2F4F4F'],
-      lighting:
-        'Low dynamic range (LDR). Highlights are blown out/clipped (loss of detail in bright areas like skies or lamps). Shadows are crushed and grainy. Simulates the struggle of older sensors to balance exposure.',
-      cameraWork:
-        'Handheld amateur perspective, f/1.8 aperture. Less sophisticated stabilization implies slight micro-jitters. Focus is decent but not clinical; background separation is digital and less smooth than modern sensors.',
-      mood: 'Nostalgic, amateur, "Camera Roll 2016". Authentic snapshot quality with no professional polish. Pure photographic capture.',
-      // REMOVED 'Found Footage' and 'Snapchat' as they often trigger text overlays
-      referenceFilms: [
-        'Amateur Vlogs circa 2016',
-        'Early Instagram Aesthetic',
-        'Raw Phone Camera Roll',
-      ],
-      colorGrading:
-        'Standard Rec.709 sRGB with older auto-white balance tendencies (often slightly too cool or too warm). No Log profile. Colors appear "baked in" and digital.',
-    },
-    isPublic: true,
-    isTemplate: true,
-    previewUrl: getStylePreviewUrl('Lo-Fi iPhone 7 Aesthetic Clean'),
+    previewUrl: getStylePreviewUrl('Animated'),
     version: null,
     usageCount: null,
   },
