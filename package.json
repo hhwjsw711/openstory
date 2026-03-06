@@ -61,6 +61,7 @@
     "setup:prd": "npx tsx scripts/setup.ts --prod",
     "setup:deploy": "npx tsx scripts/setup.ts --deploy",
     "setup:stg": "npx tsx scripts/setup.ts --pr-preview",
+    "setup:previews": "bun scripts/generate-style-previews.ts && bun scripts/upload-style-previews-to-r2.ts",
     "cert:setup": "bash ./scripts/setup-cert.sh",
     "cert:trust": "mkcert -install",
     "storybook": "storybook dev -p 6006",
