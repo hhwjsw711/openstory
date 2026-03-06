@@ -228,6 +228,53 @@ describe('generateChaptersVTT', () => {
     expect(vtt).toContain('Scene 5: The Great Revelation');
   });
 
+  test('escapes XSS vectors in scene titles', () => {
+    const xssVectors = [
+      {
+        input: "<script>alert('XSS')</script>",
+        expected: "&lt;script&gt;alert('XSS')&lt;/script&gt;",
+      },
+      {
+        input: '<img src=x onerror=alert(1)>',
+        expected: '&lt;img src=x onerror=alert(1)&gt;',
+      },
+      {
+        input: 'Scene --> 00:05:00',
+        expected: 'Scene —&gt; 00:05:00',
+      },
+      {
+        input: 'Title with &amp; entity',
+        expected: 'Title with &amp;amp; entity',
+      },
+      {
+        input: 'Line one\nLine two',
+        expected: 'Line one Line two',
+      },
+    ];
+
+    for (const { input, expected } of xssVectors) {
+      const frames: Frame[] = [
+        createTestFrame({
+          durationMs: 3000,
+          metadata: createTestScene({
+            sceneNumber: 1,
+            metadata: {
+              title: input,
+              durationSeconds: 3,
+              location: 'Test',
+              timeOfDay: 'day',
+              storyBeat: 'Test',
+            },
+          }),
+        }),
+      ];
+
+      const vtt = generateChaptersVTT(frames);
+      expect(vtt).toContain(`Scene 1: ${expected}`);
+      expect(vtt).not.toContain(input !== expected ? input : '<<impossible>>');
+    }
+  });
+
   test('handles fractional seconds in timestamps', () => {
     const frames: Frame[] = [
       createTestFrame({
