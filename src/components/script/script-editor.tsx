@@ -56,7 +56,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   return (
     <>
-      <div className="min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <Textarea
           name="script"
           id="script"
@@ -68,7 +68,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-[4lh] max-h-full resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain',
+            'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed]',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"

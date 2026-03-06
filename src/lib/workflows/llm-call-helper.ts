@@ -6,10 +6,10 @@
 
 import { createAdapter } from '@/lib/ai/create-adapter';
 import type { TextModel } from '@/lib/ai/models';
-import { getChatPrompt } from '@/lib/ai/prompts';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { apiKeyService } from '@/lib/byok/api-key.service';
 import type { PromptReference } from '@/lib/observability/langfuse';
+import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';
@@ -102,6 +102,13 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         );
         const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
 
+        console.log(`[LLM:${logName}] Starting call`, {
+          model: modelId,
+          attempt,
+          keySource: openRouterApiKeyInfo.source,
+          messageCount: messages.length,
+        });
+
         const systemPrompts: string[] = [];
         const chatMessages: Array<{
           role: 'user' | 'assistant';
@@ -116,22 +123,37 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
           }
         }
 
-        // chat() with outputSchema returns a parsed object, not a string
-        return await chat({
-          adapter,
-          messages: chatMessages,
-          systemPrompts,
-          stream: false,
-          metadata: {
-            observationName: logName,
-            prompt: promptReference,
-            tags: logTags,
-            metadata: logMetadata,
-            sessionId: callContext.sequenceId,
-            userId: callContext.userId,
-          },
-          outputSchema: config.responseSchema,
-        });
+        try {
+          // chat() with outputSchema returns a parsed object, not a string
+          const result = await chat({
+            adapter,
+            messages: chatMessages,
+            systemPrompts,
+            stream: false,
+            metadata: {
+              observationName: logName,
+              prompt: promptReference,
+              tags: logTags,
+              metadata: logMetadata,
+              sessionId: callContext.sequenceId,
+              userId: callContext.userId,
+            },
+            outputSchema: config.responseSchema,
+          });
+
+          console.log(`[LLM:${logName}] Call succeeded`);
+          return result;
+        } catch (error) {
+          const errorDetails = {
+            model: modelId,
+            attempt,
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            cause: error instanceof Error ? error.cause : undefined,
+          };
+          console.error(`[LLM:${logName}] Call failed`, errorDetails);
+          throw error;
+        }
       }
     );
 

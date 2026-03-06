@@ -6,13 +6,16 @@
  */
 
 import { getEnv } from '#env';
+import { isLangfuseEnabled } from '@/lib/observability/langfuse';
 import {
   LangfuseClient,
   type ChatPromptClient,
   type TextPromptClient,
 } from '@langfuse/client';
-import { isLangfuseEnabled } from '@/lib/observability/langfuse';
-import { LOCAL_CHAT_PROMPTS, LOCAL_TEXT_PROMPTS } from './prompts-local';
+import {
+  WORKFLOW_CHAT_PROMPTS,
+  WORKFLOW_TEXT_PROMPTS,
+} from './workflow-prompts';
 
 let client: LangfuseClient | null = null;
 
@@ -52,7 +55,7 @@ export type ChatMessage = {
 /**
  * Fetch a text prompt. Tries Langfuse if enabled, falls back to local prompts.
  *
- * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
+ * @param name - Prompt name (e.g., 'phase/scene-splitting')
  * @param variables - Optional variables to compile into the prompt
  * @returns The prompt reference (for trace linking, undefined when local) and compiled text
  */
@@ -75,7 +78,7 @@ export async function getPrompt(
   }
 
   // Fall back to local prompts
-  const localPrompt = LOCAL_TEXT_PROMPTS[name];
+  const localPrompt = WORKFLOW_TEXT_PROMPTS[name];
   if (!localPrompt) {
     throw new Error(
       `Text prompt "${name}" not found in local prompts. Run \`bun scripts/pull-prompts.ts\` to populate.`
@@ -91,7 +94,7 @@ export async function getPrompt(
 /**
  * Fetch a chat prompt. Tries Langfuse if enabled, falls back to local prompts.
  *
- * @param name - Prompt name (e.g., 'velro/phase/scene-splitting')
+ * @param name - Prompt name (e.g., 'phase/scene-splitting')
  * @param variables - Variables to compile into the prompt messages
  * @returns The prompt reference (for trace linking, undefined when local) and compiled messages
  */
@@ -117,7 +120,7 @@ export async function getChatPrompt(
   }
 
   // Fall back to local prompts
-  const localMessages = LOCAL_CHAT_PROMPTS[name];
+  const localMessages = WORKFLOW_CHAT_PROMPTS[name];
   if (!localMessages) {
     throw new Error(
       `Chat prompt "${name}" not found in local prompts. Run \`bun scripts/pull-prompts.ts\` to populate.`

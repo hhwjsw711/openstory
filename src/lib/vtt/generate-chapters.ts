@@ -15,6 +15,16 @@ function formatTimestamp(seconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
+function escapeVTTText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/-->/g, '—>')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, ' ')
+    .trim();
+}
+
 /**
  * Generates a WebVTT chapters file from an array of frames.
  * Each frame becomes a chapter with its scene number and title.
@@ -41,7 +51,7 @@ export function generateChaptersVTT(frames: Frame[]): string {
     const sceneTitle = frame.metadata?.metadata?.title ?? `Scene ${i + 1}`;
 
     // Format: "Scene {number}: {title}"
-    const chapterTitle = `Scene ${sceneNumber}: ${sceneTitle}`;
+    const chapterTitle = `Scene ${sceneNumber}: ${escapeVTTText(sceneTitle)}`;
 
     // Add cue block
     lines.push(`${formatTimestamp(startTime)} --> ${formatTimestamp(endTime)}`);

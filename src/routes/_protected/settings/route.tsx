@@ -3,6 +3,7 @@
  * Provides tab navigation between settings sub-pages
  */
 
+import { RouteErrorFallback } from '@/components/error/route-error-fallback';
 import {
   createFileRoute,
   Link,
@@ -14,6 +15,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Route = createFileRoute('/_protected/settings')({
   component: SettingsLayout,
+  errorComponent: (props) => (
+    <RouteErrorFallback {...props} heading="Settings error" />
+  ),
 });
 
 const tabs = [

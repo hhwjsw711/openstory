@@ -161,9 +161,9 @@ export const analyzeScriptWorkflow = createWorkflow(
       context,
       {
         name: 'scene-splitting',
-        phase: { number: 1, name: 'Scene Splitting' },
+        phase: { number: 1, name: 'Analyzing script…' },
 
-        promptName: 'velro/phase/scene-splitting-chat',
+        promptName: 'phase/scene-splitting-chat',
         promptVariables: {
           aspectRatio,
           script: sanitizeScriptContent(script),
@@ -241,9 +241,9 @@ export const analyzeScriptWorkflow = createWorkflow(
       context,
       {
         name: 'character-extraction',
-        phase: { number: 2, name: 'Character Extraction' },
+        phase: { number: 2, name: 'Finding characters…' },
 
-        promptName: 'velro/phase/character-extraction-chat',
+        promptName: 'phase/character-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -258,9 +258,9 @@ export const analyzeScriptWorkflow = createWorkflow(
       context,
       {
         name: 'location-extraction',
-        phase: { number: 2, name: 'Location Extraction' },
+        phase: { number: 2, name: 'Finding locations…' },
 
-        promptName: 'velro/phase/location-extraction-chat',
+        promptName: 'phase/location-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -298,9 +298,9 @@ export const analyzeScriptWorkflow = createWorkflow(
             context,
             {
               name: 'talent-matching',
-              phase: { number: 3, name: 'Talent Matching' },
+              phase: { number: 3, name: 'Casting characters…' },
 
-              promptName: 'velro/phase/talent-matching-chat',
+              promptName: 'phase/talent-matching-chat',
               promptVariables: matchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: talentMatchResponseSchema,
@@ -389,9 +389,9 @@ export const analyzeScriptWorkflow = createWorkflow(
             context,
             {
               name: 'location-matching',
-              phase: { number: 3, name: 'Location Matching' },
+              phase: { number: 3, name: 'Matching locations…' },
 
-              promptName: 'velro/phase/location-matching-chat',
+              promptName: 'phase/location-matching-chat',
               promptVariables: locationMatchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: locationMatchResponseSchema,
@@ -542,7 +542,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 5,
-          phaseName: 'Generate Images',
+          phaseName: 'Generating images…',
         });
       });
 
@@ -669,9 +669,9 @@ export const analyzeScriptWorkflow = createWorkflow(
       context,
       {
         name: 'audio-design',
-        phase: { number: 7, name: 'Audio Design' },
+        phase: { number: 7, name: 'Designing sound…' },
 
-        promptName: 'velro/phase/audio-design-chat',
+        promptName: 'phase/audio-design-chat',
         promptVariables: {
           scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
         },
@@ -731,7 +731,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       await context.run('start-motion-generation', async () => {
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 7,
-          phaseName: 'Motion Generation',
+          phaseName: 'Generating motion…',
         });
       });
 
@@ -782,7 +782,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             'generation.phase:start',
             {
               phase: 8,
-              phaseName: 'Music Prompt Generation',
+              phaseName: 'Composing music…',
             }
           );
         });
@@ -806,8 +806,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           context,
           {
             name: 'music-prompt-generation',
-            phase: { number: 8, name: 'Music Prompt Generation' },
-            promptName: 'velro/phase/music-prompt-generation-chat',
+            phase: { number: 8, name: 'Composing music…' },
+            promptName: 'phase/music-prompt-generation-chat',
             promptVariables: {
               scenes: JSON.stringify(sceneSummaries),
             },

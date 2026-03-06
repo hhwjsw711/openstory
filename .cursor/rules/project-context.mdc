@@ -1,16 +1,16 @@
 ---
-description: Core project context and architecture for Velro AI video platform
+description: Core project context and architecture for OpenStory AI video platform
 globs: []
 alwaysApply: true
 ---
 
-# Velro Project Context
+# OpenStory Project Context
 
-You are working on **Velro**, an AI-powered cinematic content creation platform that transforms scripts into consistent, styled video productions.
+You are working on **OpenStory**, an AI-powered cinematic content creation platform that transforms scripts into consistent, styled video productions.
 
 ## Project Overview
 
-Velro democratizes cinematic content creation through:
+OpenStory democratizes cinematic content creation through:
 
 - **Script-to-storyboard AI**: Automatic scene breakdown and frame generation
 - **Style Stacks**: JSON-based presets that ensure consistent artistic vision across AI models
@@ -23,7 +23,7 @@ Velro democratizes cinematic content creation through:
 Separated frontend/backend monorepo architecture:
 
 ```
-velro/
+openstory/
 ├── apps/
 │   ├── backend/                # Elysia API server
 │   │   ├── src/
@@ -188,7 +188,7 @@ velro/
 
 ### Supabase Usage Clarification
 
-**IMPORTANT:** Velro uses Supabase for:
+**IMPORTANT:** OpenStory uses Supabase for:
 
 - ✅ **PostgreSQL Database** (accessed via Drizzle ORM, NOT Supabase client)
 - ✅ **Storage** (Supabase Storage for images/videos)
@@ -261,7 +261,7 @@ export function useEntity(id: string) {
 
 ### Error Handling
 
-- Custom error classes: `VelroError`, `ValidationError`
+- Custom error classes: `OpenStoryError`, `ValidationError`
 - Centralized handler: `handleApiError()`
 - User-friendly messages, detailed logs
 

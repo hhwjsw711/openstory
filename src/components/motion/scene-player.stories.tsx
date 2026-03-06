@@ -36,6 +36,9 @@ const mockFrameBase = {
   audioGeneratedAt: null,
   audioError: null,
   audioModel: null,
+  variantImageUrl: null,
+  variantImageStatus: 'pending' as const,
+  variantWorkflowRunId: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,

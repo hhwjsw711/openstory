@@ -1,10 +1,33 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Style } from '@/lib/db/schema/libraries';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal } from 'lucide-react';
 import { Image } from '@unpic/react';
+import { MoreHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getStyleGradient } from './style-gradient';
 import { StyleSelectionDialog } from './style-selection-dialog';
+
+const StyleTileBackground: React.FC<{ style: Style }> = ({ style }) => {
+  const [imgError, setImgError] = useState(false);
+
+  return style.previewUrl && !imgError ? (
+    <Image
+      key={style.id}
+      src={style.previewUrl}
+      layout="fullWidth"
+      alt={style.name}
+      className="h-full w-full object-cover"
+      onError={() => setImgError(true)}
+    />
+  ) : (
+    <div
+      className="h-full w-full"
+      style={{
+        background: getStyleGradient(style.config.colorPalette),
+      }}
+    />
+  );
+};
 
 type StyleSelectorProps = {
   styles: Style[];
@@ -163,17 +186,8 @@ export function StyleSelector({
                 )}
                 aria-label={`Select ${style.name} style`}
               >
-                {/* Background Image */}
-                {style.previewUrl ? (
-                  <Image
-                    src={style.previewUrl}
-                    alt={style.name}
-                    layout="fullWidth"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-linear-to-br from-muted to-muted-foreground/20" />
-                )}
+                {/* Background Image / Gradient Fallback */}
+                <StyleTileBackground style={style} />
 
                 {/* Name Overlay on Image */}
                 <div className="absolute inset-x-0 bottom-0 p-2 bg-linear-to-t from-black/80 via-black/60 to-transparent">

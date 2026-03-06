@@ -58,6 +58,34 @@ export type FrameContext = TeamContext & {
 };
 
 // ============================================================================
+// Logger Middleware
+// ============================================================================
+
+/**
+ * Request logging middleware - logs server function name, duration, and outcome.
+ * All other middleware chains from authMiddleware which chains from this,
+ * so every server function gets logging automatically.
+ */
+export const loggerMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next, serverFnMeta }) => {
+    const fnName = serverFnMeta.name;
+    const start = performance.now();
+
+    try {
+      const result = await next();
+      const ms = Math.round(performance.now() - start);
+      console.info(`[ServerFn:${fnName}] OK ${ms}ms`);
+      return result;
+    } catch (error) {
+      const ms = Math.round(performance.now() - start);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[ServerFn:${fnName}] ERROR ${ms}ms "${message}"`);
+      throw error;
+    }
+  }
+);
+
+// ============================================================================
 // Auth Middleware
 // ============================================================================
 
@@ -65,8 +93,9 @@ export type FrameContext = TeamContext & {
  * Basic auth middleware - requires authenticated user
  * Adds user and session to context
  */
-export const authMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next }) => {
+export const authMiddleware = createMiddleware({ type: 'function' })
+  .middleware([loggerMiddleware])
+  .server(async ({ next }) => {
     const request = getRequest();
     const auth = getAuth();
     const session = await auth.api.getSession({ headers: request.headers });
@@ -81,8 +110,7 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(
         session,
       },
     });
-  }
-);
+  });
 
 /**
  * Auth with default team context

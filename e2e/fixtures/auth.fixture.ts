@@ -144,17 +144,18 @@ async function authenticateUser(page: Page, email: string): Promise<void> {
   // Navigate directly to verify page with email
   await page.goto(`/verify?email=${encodeURIComponent(email)}`);
 
-  // Wait for OTP input to appear
-  await page.waitForSelector('[data-slot]', { timeout: 5000 });
+  // Wait for the OTP input to be ready and type the code
+  const otpInput = page.locator('input[data-input-otp="true"]');
+  await otpInput.waitFor({ timeout: 30_000 });
+  await otpInput.focus();
+  await otpInput.pressSequentially(testOtp, { delay: 50 });
 
-  // Type the OTP (auto-verifies when all 6 digits are entered)
-  await page.keyboard.type(testOtp);
-
-  // Wait for redirect away from verify page
+  // Wait for auto-verify to trigger and redirect
+  await page.waitForTimeout(500);
   await page.waitForURL(
     (url) =>
       !url.pathname.includes('/login') && !url.pathname.includes('/verify'),
-    { timeout: 15000 }
+    { timeout: 30_000 }
   );
 }
 

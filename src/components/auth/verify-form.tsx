@@ -18,12 +18,13 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { authClient } from '@/lib/auth/client';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
 function hasSkippedPasskeyPrompt(): boolean {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('velro-passkey-skip') === 'true';
+  return localStorage.getItem('openstory-passkey-skip') === 'true';
 }
 
 type VerifyFormProps = {
@@ -36,6 +37,7 @@ export function VerifyForm({
   redirectTo = '/sequences',
 }: VerifyFormProps) {
   const navigate = useNavigate();
+  const hydrated = useHydrated();
   const [otp, setOtp] = useState('');
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +45,10 @@ export function VerifyForm({
 
   const verifyOtp = useCallback(
     (otpValue: string) => {
-      if (isPending) return;
-
-      setError(null);
-      setSuccess(null);
-
       startTransition(async () => {
+        setError(null);
+        setSuccess(null);
+
         try {
           const result = await authClient.signIn.emailOtp({
             email,
@@ -57,7 +57,6 @@ export function VerifyForm({
 
           if (result.error) {
             setError(result.error.message || 'Invalid code');
-            setOtp('');
             return;
           }
 
@@ -74,11 +73,10 @@ export function VerifyForm({
         } catch (err) {
           console.error('[VerifyForm] Verify OTP error:', err);
           setError(err instanceof Error ? err.message : 'Verification failed');
-          setOtp('');
         }
       });
     },
-    [email, navigate, redirectTo, isPending]
+    [email, navigate, redirectTo]
   );
 
   // Auto-verify when OTP is complete (6 digits)
@@ -94,12 +92,10 @@ export function VerifyForm({
   };
 
   const handleResendOtp = () => {
-    if (isPending) return;
-
-    setError(null);
-    setSuccess(null);
-
     startTransition(async () => {
+      setError(null);
+      setSuccess(null);
+
       try {
         const result = await authClient.emailOtp.sendVerificationOtp({
           email,
@@ -162,7 +158,7 @@ export function VerifyForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={isPending || otp.length !== 6}
+            disabled={!hydrated || isPending || otp.length !== 6}
           >
             {isPending ? 'Verifying…' : 'Verify'}
           </Button>

@@ -66,9 +66,9 @@ export const motionPromptSceneWorkflow = createWorkflow(
       context,
       {
         name: 'motion-prompts',
-        phase: { number: 4, name: 'Motion Prompts' },
+        phase: { number: 4, name: 'Writing motion prompts…' },
 
-        promptName: 'velro/phase/motion-prompt-scene-generation-chat',
+        promptName: 'phase/motion-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,

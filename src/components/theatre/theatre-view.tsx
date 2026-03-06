@@ -40,7 +40,7 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
         src={mergedVideoUrl}
         aspectRatio={aspectRatio}
         enableDownload
-        downloadFilename={`${sequence.title || 'sequence'}_velro.mp4`}
+        downloadFilename={`${sequence.title || 'sequence'}_openstory.mp4`}
       />
     );
   }

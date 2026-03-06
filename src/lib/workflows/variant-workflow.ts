@@ -60,6 +60,7 @@ export const generateVariantWorkflow = createWorkflow(
             input.frameId,
             {
               variantImageStatus: 'generating',
+              variantWorkflowRunId: context.workflowRunId,
             },
             { throwOnMissing: false }
           );

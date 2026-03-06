@@ -7,6 +7,7 @@
       "Bash(bun lint:fix)",
       "Bash(bun format:*)",
       "Bash(bun format)",
+      "Bash(bun typecheck)",
       "Bash(bun format:check)",
       "Bash(bunx oxlint:*)",
       "Bash(bunx oxfmt:*)",
@@ -15,21 +16,37 @@
       "Bash(bun test --watch)",
       "Bash(bun test --coverage)",
       "Bash(bun test --watch --coverage)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run lint)",
+      "Bash(bun run lint:fix)",
+      "Bash(bun format:*)",
+      "Bash(bun run format)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run format:check)",
+      "Bash(bun run oxlint:*)",
+      "Bash(bun run oxfmt:*)",
+      "Bash(bun run tsgo:*)",
+      "Bash(bun run test:*)",
+      "Bash(bun run test --watch)",
+      "Bash(bun run build:*)",
+      "Bash(bun run build)",
       "Bash(gh pr view:*)",
       "Bash(rg:*)",
       "Bash(git status)",
       "Bash(cat:*)",
       "Bash(bun storybook:*)",
       "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(git mv:*)",
       "Bash(bun cf:typegen:all:*)",
-      "Bash(bun typecheck:*)",
       "mcp__chrome-devtools__navigate_page",
       "mcp__chrome-devtools__wait_for",
       "mcp__chrome-devtools__list_console_messages",
       "mcp__chrome-devtools__take_screenshot",
       "mcp__context7__get-library-docs",
       "mcp__context7__resolve-library-id",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "mcp__plugin_context7_context7__query-docs"
     ],
     "deny": [],
     "ask": [
@@ -47,6 +64,8 @@
       "Bash(bunx drizzle-kit:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["shadcn"],
   "hooks": {
     "PreToolUse": [
       {

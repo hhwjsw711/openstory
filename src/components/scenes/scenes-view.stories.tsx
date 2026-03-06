@@ -58,6 +58,9 @@ const mockFrameBase = {
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  variantImageUrl: null,
+  variantImageStatus: 'pending' as const,
+  variantWorkflowRunId: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,

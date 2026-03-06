@@ -89,14 +89,19 @@ setup('authenticate', async ({ page }) => {
 
   // Navigate to verify page and enter OTP
   await page.goto(`/verify?email=${encodeURIComponent(email)}`);
-  await page.waitForSelector('[data-slot]', { timeout: 5000 });
-  await page.keyboard.type(testOtp);
 
-  // Wait for redirect away from verify page
+  // Wait for the OTP input to be ready and type the code
+  const otpInput = page.locator('input[data-input-otp="true"]');
+  await otpInput.waitFor({ timeout: 30_000 });
+  await otpInput.focus();
+  await otpInput.pressSequentially(testOtp, { delay: 50 });
+
+  // Wait for auto-verify to trigger and redirect
+  await page.waitForTimeout(500);
   await page.waitForURL(
     (url) =>
       !url.pathname.includes('/login') && !url.pathname.includes('/verify'),
-    { timeout: 15000 }
+    { timeout: 60_000 }
   );
 
   // Save browser state

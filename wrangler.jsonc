@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": "@tanstack/react-start/server-entry",
-  "name": "frontend",
+  "name": "openstory",
   "compatibility_date": "2025-11-18",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -19,82 +19,23 @@
       "head_sampling_rate": 1,
     },
   },
-  "env": {
-    "stg": {
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "velro-stg",
-          "database_id": "38506473-18a4-4c4e-9776-ebfa5e581de1",
-          "migrations_dir": "drizzle/migrations-d1",
-        },
-      ],
-      "r2_buckets": [
-        {
-          "binding": "NEXT_INC_CACHE_R2_BUCKET",
-          "bucket_name": "cache-dev",
-        },
-        {
-          "bucket_name": "velro-public-assets-stg",
-          "binding": "R2_PUBLIC_ASSETS_BUCKET",
-          "remote": true,
-        },
-        {
-          "binding": "R2_STORAGE_BUCKET",
-          "bucket_name": "velro-storage-stg",
-        },
-      ],
-      "observability": {
-        "logs": {
-          "enabled": true,
-          "head_sampling_rate": 1,
-          "invocation_logs": true,
-          "persist": true,
-        },
-        "traces": {
-          "enabled": true,
-          "head_sampling_rate": 1,
-          "persist": true,
-        },
-      },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openstory-prd",
+      "database_id": "d6a35f64-abb0-4a34-a092-dc20b29f5812",
+      "migrations_dir": "drizzle/migrations-d1",
     },
-    "prd": {
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "velro-prd",
-          "database_id": "d6a35f64-abb0-4a34-a092-dc20b29f5812",
-          "migrations_dir": "drizzle/migrations-d1",
-        },
-      ],
-      "r2_buckets": [
-        {
-          "binding": "NEXT_INC_CACHE_R2_BUCKET",
-          "bucket_name": "cache",
-        },
-        {
-          "bucket_name": "velro-public-assets",
-          "binding": "R2_PUBLIC_ASSETS_BUCKET",
-          "remote": true,
-        },
-        {
-          "binding": "R2_STORAGE_BUCKET",
-          "bucket_name": "velro-storage",
-        },
-      ],
-      "observability": {
-        "logs": {
-          "enabled": true,
-          "head_sampling_rate": 1,
-          "invocation_logs": true,
-          "persist": true,
-        },
-        "traces": {
-          "enabled": true,
-          "head_sampling_rate": 1,
-          "persist": true,
-        },
-      },
+  ],
+  "r2_buckets": [
+    {
+      "bucket_name": "openstory-public-assets",
+      "binding": "R2_PUBLIC_ASSETS_BUCKET",
+      "remote": true,
     },
-  },
+    {
+      "binding": "R2_STORAGE_BUCKET",
+      "bucket_name": "openstory-storage",
+    },
+  ],
 }

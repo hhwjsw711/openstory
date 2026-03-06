@@ -63,8 +63,8 @@ export const generateMusicWorkflow = createWorkflow(
         context,
         {
           name: 'music-prompt-generation',
-          phase: { number: 8, name: 'Music Prompt Generation' },
-          promptName: 'velro/phase/music-prompt-generation-chat',
+          phase: { number: 8, name: 'Composing music…' },
+          promptName: 'phase/music-prompt-generation-chat',
           promptVariables: {
             scenes: JSON.stringify(input.scenes),
           },

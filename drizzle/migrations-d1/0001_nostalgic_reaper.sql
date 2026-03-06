@@ -1,0 +1,1 @@
+ALTER TABLE `frames` ADD `variant_workflow_run_id` text;

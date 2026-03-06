@@ -104,6 +104,27 @@ export async function createSequenceLocation(
   const [location] = await getDb()
     .insert(sequenceLocations)
     .values(data)
+    .onConflictDoUpdate({
+      target: [sequenceLocations.sequenceId, sequenceLocations.locationId],
+      set: {
+        name: data.name,
+        libraryLocationId: data.libraryLocationId,
+        type: data.type,
+        timeOfDay: data.timeOfDay,
+        description: data.description,
+        architecturalStyle: data.architecturalStyle,
+        keyFeatures: data.keyFeatures,
+        colorPalette: data.colorPalette,
+        lightingSetup: data.lightingSetup,
+        ambiance: data.ambiance,
+        consistencyTag: data.consistencyTag,
+        referenceImageUrl: data.referenceImageUrl,
+        referenceImagePath: data.referenceImagePath,
+        referenceStatus: data.referenceStatus,
+        referenceGeneratedAt: data.referenceGeneratedAt,
+        updatedAt: new Date(),
+      },
+    })
     .returning();
   return location;
 }

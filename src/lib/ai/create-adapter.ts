@@ -15,7 +15,7 @@ export function createAdapter(model: TextModel, apiKey?: string) {
   const adapterModel = model as Parameters<typeof openRouterText>[0];
   const config = {
     httpReferer: env.APP_URL || 'http://localhost:3000',
-    xTitle: env.APP_NAME || 'AI Video Studio',
+    xTitle: env.APP_NAME || 'OpenStory',
   };
 
   return key

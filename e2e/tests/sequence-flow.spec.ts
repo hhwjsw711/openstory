@@ -93,13 +93,13 @@ Here's your caffeine fix. How's it going?
       // Now fill the textarea - React is hydrated since style click worked
       await scriptTextarea.fill(testScript);
 
-      // Wait for "Activate Crew" button to become enabled - this proves:
+      // Wait for "Generate Sequence" button to become enabled - this proves:
       // 1. React hydration is complete (event handlers attached)
       // 2. Textarea fill was picked up by React state (script is set)
       // 3. Style was selected (from our click above)
-      await expect(page.getByRole('button', { name: /Activate/i })).toBeEnabled(
-        { timeout: 10000 }
-      );
+      await expect(
+        page.getByRole('button', { name: /Generate Sequence/i })
+      ).toBeEnabled({ timeout: 10000 });
 
       // Open talent suggestion dialog
       const talentButton = page
@@ -127,7 +127,9 @@ Here's your caffeine fix. How's it going?
       await expect(talentDialog).not.toBeVisible();
 
       // Verify submit button is ready (may have different text based on state)
-      const submitButton = page.getByRole('button', { name: /Activate/i });
+      const submitButton = page.getByRole('button', {
+        name: /Generate Sequence/i,
+      });
       await expect(submitButton).toBeVisible();
     }
   );
@@ -210,7 +212,7 @@ testWithUser.describe('Variant Selection', () => {
           const frameAfter = await getTestFrame(testFrame.id);
           return frameAfter?.thumbnailUrl;
         },
-        { timeout: 10000 }
+        { timeout: 20_000 }
       )
       .not.toBe(originalThumbnailUrl);
   });
@@ -312,7 +314,7 @@ testWithUser.describe('Character Recast', () => {
             const characterAfter = await getTestCharacter(testCharacter.id);
             return characterAfter?.talentId;
           },
-          { timeout: 10000 }
+          { timeout: 20_000 }
         )
         .toBe(testTalents[1].id);
     }

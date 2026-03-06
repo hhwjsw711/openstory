@@ -39,7 +39,7 @@ async function getEncryptionKey(): Promise<CryptoKey> {
     {
       name: 'HKDF',
       hash: 'SHA-256',
-      salt: new TextEncoder().encode('velro-api-key-encryption'),
+      salt: new TextEncoder().encode('openstory-api-key-encryption'),
       info: new TextEncoder().encode('aes-256-gcm'),
     },
     keyMaterial,

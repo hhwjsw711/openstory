@@ -5,7 +5,7 @@ import {
   sanitizeScriptContent,
   validateAIResponse,
 } from '@/lib/ai/prompt-validation';
-import { getPrompt } from './prompts';
+import { getPrompt } from '@/lib/prompts';
 import { z } from 'zod';
 
 const EnhanceScriptOptionsSchema = z.object({
@@ -66,7 +66,7 @@ export async function enhanceScript(
     throw new Error('OpenRouter API key not configured');
   }
 
-  const { prompt, compiled } = await getPrompt('velro/script/enhance');
+  const { prompt, compiled } = await getPrompt('script/enhance');
   const userPrompt = createUserPrompt(validatedOptions.originalScript);
 
   const response = await callLLM({

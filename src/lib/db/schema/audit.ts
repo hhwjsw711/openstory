@@ -32,7 +32,7 @@ export const scriptAnalysisAudit = sqliteTable(
       length: 16,
     }).notNull(), // Hash of system prompt
     userPrompt: text('user_prompt').notNull(), // Full user prompt sent to AI (script + style config)
-    styleConfig: text('style_config', { mode: 'json' }).notNull(), // Director DNA/style configuration
+    styleConfig: text('style_config', { mode: 'json' }).notNull(), // Style configuration
     model: text('model', { length: 100 }).notNull(), // AI model identifier (e.g., "cerebras/llama-3.3-70b")
 
     // Output data

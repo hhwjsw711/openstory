@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for velro
+description: Suggest a new feature or enhancement for OpenStory
 title: '[Feature] '
 labels: ['enhancement', 'triage']
 
@@ -27,7 +27,7 @@ body:
       label: Proposed Solution
       description: Describe the solution you'd like to see
       placeholder: |
-        I would like Velro to...
+        I would like OpenStory to...
         This could work by...
         The interface might look like...
     validations:

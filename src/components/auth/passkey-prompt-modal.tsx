@@ -17,7 +17,7 @@ import { authClient } from '@/lib/auth/client';
 import { Fingerprint } from 'lucide-react';
 import { useState } from 'react';
 
-const PASSKEY_SKIP_KEY = 'velro-passkey-skip';
+const PASSKEY_SKIP_KEY = 'openstory-passkey-skip';
 
 export function hasSkippedPasskeyPrompt(): boolean {
   if (typeof window === 'undefined') return false;

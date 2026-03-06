@@ -59,7 +59,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: d6a35f64-abb0-4a34-a092-dc20b29f5812
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN_PRD }}
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Deploy to production
         run: bun cf:deploy:prd
@@ -76,7 +76,7 @@ jobs:
       && github.event.action != 'closed'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    environment: preview
+    environment: staging
     steps:
       - uses: actions/checkout@v5
 
@@ -98,7 +98,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          DB_NAME="velro-pr-${PR_NUMBER}"
+          DB_NAME="openstory-pr-${PR_NUMBER}"
 
           # Check if database already exists
           list_response=$(curl -s \
@@ -143,15 +143,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN_STG }}
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Patch wrangler config for preview
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
         run: |
-          # Rewrite wrangler.jsonc with PR-specific name and D1 binding at top level
-          # so wrangler deploy (without --env) picks up the bindings correctly.
           node -e "
             const fs = require('fs');
             let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
@@ -160,11 +158,13 @@ jobs:
             obj.name = 'frontend-pr-${PR_NUMBER}';
             obj.d1_databases = [{
               binding: 'DB',
-              database_name: 'velro-pr-${PR_NUMBER}',
+              database_name: 'openstory-pr-${PR_NUMBER}',
               database_id: '${D1_DATABASE_ID}'
             }];
-            obj.r2_buckets = obj.env.stg.r2_buckets;
-            delete obj.env;
+            obj.r2_buckets = [
+              { bucket_name: 'openstory-public-assets-stg', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
+              { binding: 'R2_STORAGE_BUCKET', bucket_name: 'openstory-storage-stg' }
+            ];
             fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
           "
           echo "Patched wrangler.jsonc:"
@@ -220,6 +220,8 @@ jobs:
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
           SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values
@@ -248,7 +250,7 @@ jobs:
             |---|---|
             | URL | ${{ steps.deploy.outputs.url }} |
             | Worker | `frontend-pr-${{ github.event.pull_request.number }}` |
-            | D1 Database | `velro-pr-${{ github.event.pull_request.number }}` |
+            | D1 Database | `openstory-pr-${{ github.event.pull_request.number }}` |
             | Commit | ${{ github.sha }} |
 
   # ── Cleanup on PR close ───────────────────────────────────────────
@@ -280,7 +282,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          DB_NAME="velro-pr-${PR_NUMBER}"
+          DB_NAME="openstory-pr-${PR_NUMBER}"
 
           # Find database ID by name
           uuid=$(curl -sf \
@@ -316,4 +318,4 @@ jobs:
             <!-- cf-preview -->
             **Cloudflare Preview** torn down
 
-            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `velro-pr-${{ github.event.pull_request.number }}` have been deleted.
+            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `openstory-pr-${{ github.event.pull_request.number }}` have been deleted.

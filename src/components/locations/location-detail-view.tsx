@@ -194,9 +194,9 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header with back button */}
-      <div className="flex items-center gap-3 border-b px-4 py-3">
+      <div className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
         <Link
           to="/sequences/$id/locations"
           params={{ id: sequenceId }}
@@ -207,7 +207,7 @@ export const LocationDetailView: React.FC<LocationDetailViewProps> = ({
         <h1 className="text-lg font-semibold">{location.name}</h1>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-6 p-4">
           {/* Location reference image - 16:9 aspect ratio */}
           <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">

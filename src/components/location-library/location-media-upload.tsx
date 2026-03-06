@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   FileUpload,
@@ -50,8 +50,14 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
   disabled = false,
   maxFiles = 5,
 }) => {
-  const [, setUploadedUrls] = useState<Map<string, string>>(new Map());
+  const [uploadedUrlsMap, setUploadedUrlsMap] = useState<Map<string, string>>(
+    new Map()
+  );
   const uploadMedia = useUploadLocationMedia();
+
+  useEffect(() => {
+    onUploadedUrlsChange?.(Array.from(uploadedUrlsMap.values()));
+  }, [uploadedUrlsMap, onUploadedUrlsChange]);
 
   const handleValueChange = useCallback(
     (newFiles: File[]) => {
@@ -61,7 +67,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
 
       // Clean up URLs for removed files
       const currentKeys = new Set(limitedFiles.map(getFileKey));
-      setUploadedUrls((prev) => {
+      setUploadedUrlsMap((prev) => {
         const next = new Map(prev);
         let changed = false;
         for (const key of next.keys()) {
@@ -70,13 +76,10 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
             changed = true;
           }
         }
-        if (changed) {
-          onUploadedUrlsChange?.(Array.from(next.values()));
-        }
         return changed ? next : prev;
       });
     },
-    [onFilesChange, onUploadedUrlsChange, maxFiles]
+    [onFilesChange, maxFiles]
   );
 
   const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
@@ -94,11 +97,9 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
             locationId,
           });
 
-          setUploadedUrls((prev) => {
-            const next = new Map(prev).set(getFileKey(file), result.url);
-            onUploadedUrlsChange?.(Array.from(next.values()));
-            return next;
-          });
+          setUploadedUrlsMap((prev) =>
+            new Map(prev).set(getFileKey(file), result.url)
+          );
 
           onProgress(file, 100);
           onSuccess(file);
@@ -115,7 +116,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
         onComplete?.();
       }
     },
-    [locationId, uploadMedia, onUploadedUrlsChange, onComplete]
+    [locationId, uploadMedia, onComplete]
   );
 
   const isUploading = uploadMedia.isPending;

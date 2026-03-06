@@ -46,7 +46,7 @@ function slugify(text: string): string {
 /**
  * Upload an audio file from URL to R2 Storage
  * Uses human-readable filename with short hash for uniqueness:
- * {sequence-slug}_{scene-slug}_{hash}_velro.{ext}
+ * {sequence-slug}_{scene-slug}_{hash}_openstory.{ext}
  */
 export async function uploadAudioToStorage(
   options: UploadAudioOptions
@@ -81,7 +81,7 @@ export async function uploadAudioToStorage(
     const shortHash = ulid.slice(-6).toLowerCase();
     const sequenceSlug = slugify(sequenceTitle) || 'audio';
     const sceneSlug = sceneTitle ? slugify(sceneTitle) : 'track';
-    const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_velro.${extension}`;
+    const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_openstory.${extension}`;
 
     // Store under frame path if per-scene, otherwise under sequence
     const storagePath = frameId

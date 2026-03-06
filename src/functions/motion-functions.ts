@@ -87,7 +87,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-      deduplicationId: `motion-${frame.id}`,
+      deduplicationId: `motion-${frame.id}-${Date.now()}`,
     });
 
     return { workflowRunId, frameId: frame.id };
@@ -171,7 +171,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
         };
 
         const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-          deduplicationId: `motion-${frame.id}`,
+          deduplicationId: `motion-${frame.id}-${Date.now()}`,
         });
 
         workflows.push({
@@ -245,7 +245,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
-      deduplicationId: `merge-${sequence.id}`,
+      deduplicationId: `merge-${sequence.id}-${Date.now()}`,
     });
 
     return { workflowRunId, sequenceId: sequence.id };

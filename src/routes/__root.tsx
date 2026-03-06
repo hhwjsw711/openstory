@@ -29,18 +29,18 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content:
           'Transform scripts into consistent, styled video productions using multiple AI models.',
       },
-      { title: 'AI Video Studio' },
+      { title: 'OpenStory' },
     ],
     links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icon-192.png' },
       {
-        rel: 'stylesheet',
-        href: appCss,
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
       },
-      {
-        rel: 'icon',
-        type: 'image/svg+xml',
-        href: '/icon.svg',
-      },
+      { rel: 'manifest', href: '/manifest.json' },
     ],
   }),
   component: RootLayout,
@@ -51,7 +51,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>

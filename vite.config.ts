@@ -27,18 +27,12 @@ export default defineConfig({
     allowedHosts: ['localhost', '127.0.0.1', 'host.docker.internal'],
     watch: {
       ignored: [
+        '**/e2e/.auth/**',
         '**/e2e/results/**',
         '**/playwright-report/**',
-        '**/test.db',
-        '**/local.db',
+        '**/test.db*',
+        '**/local.db*',
         '**/test-results/**',
-      ],
-    },
-    warmup: {
-      ssrFiles: [
-        './src/routes/api/**/*.ts',
-        './src/routes/_protected/**/*.tsx',
-        './src/routes/_auth/**/*.tsx',
       ],
     },
   },
@@ -70,6 +64,7 @@ export default defineConfig({
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
       : nitro({
+          preset: 'bun',
           rollupConfig: {
             // Default: treeshake disabled due to Nitro bug (see docs/nitro-treeshake-bug-report.md)
             // Enable with DEBUG_TREESHAKE=1 for debugging

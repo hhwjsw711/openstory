@@ -1,10 +1,3 @@
-import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
-import { PageContainer } from '@/components/layout/page-container';
-import {
-  ImageModelBadge,
-  ModelBadge,
-  VideoModelBadge,
-} from '@/components/model/model-badge';
 import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
@@ -13,8 +6,6 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
-import { PageHeader } from '@/components/typography/page-header';
-import { PageHeading } from '@/components/typography/page-heading';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
@@ -24,7 +15,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { retryStoryboardFn } from '@/functions/sequences';
+import { generateMusicFn, retryStoryboardFn } from '@/functions/sequences';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { Button } from '@/components/ui/button';
@@ -248,41 +239,61 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     [sequenceId, queryClient]
   );
 
+  const musicPromptsReady = !!(sequence?.musicPrompt && sequence?.musicTags);
+
+  const handleGenerateMusic = useCallback(async () => {
+    if (!sequenceId) return;
+    try {
+      await generateMusicFn({ data: { sequenceId } });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('INSUFFICIENT_CREDITS') ||
+          error.message.includes('Insufficient credits'))
+      ) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to generate music.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/settings/billing';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      } else {
+        toast.error('Failed to generate music', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+  }, [sequenceId, queryClient]);
+
   return (
-    <PageContainer maxWidth="full" fullHeight={true} padding="none">
-      <PageHeader>
-        <PageHeading>{sequence?.title}</PageHeading>
-        <ModelBadge model={sequence?.analysisModel} />
-        <ImageModelBadge model={sequence?.imageModel} />
-        <VideoModelBadge model={sequence?.videoModel} />
-        {/* Show failure badge with retry button */}
-        {(sequence?.status === 'failed' || generationState.isFailed) && (
-          <>
-            <SequenceStatusBadge status="failed" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleRetryStoryboard()}
-              disabled={isRetrying}
-            >
-              <RotateCcw
-                className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
-              />
-              {isRetrying ? 'Retrying…' : 'Retry'}
-            </Button>
-          </>
-        )}
-        {!generationState.isComplete &&
-          !generationState.isFailed &&
-          generationState.currentPhase > 0 &&
-          realtimeStatus === 'connected' && (
-            <PhaseIndicatorCompact phases={generationState.phases} />
-          )}
-      </PageHeader>
+    <div className="flex h-full flex-col">
+      {/* Status indicators */}
+      {(sequence?.status === 'failed' || generationState.isFailed) && (
+        <div className="flex items-center gap-2 px-4 py-2">
+          <SequenceStatusBadge status="failed" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRetryStoryboard()}
+            disabled={isRetrying}
+          >
+            <RotateCcw
+              className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
+            />
+            {isRetrying ? 'Retrying…' : 'Retry'}
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Desktop: Scene List sidebar */}
-        <div className="hidden md:block">
+        <div className="hidden md:block pl-4 py-4">
           <SceneList
             frames={frames}
             selectedFrameId={curSelectedFrameId}
@@ -291,6 +302,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -304,6 +317,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -316,6 +331,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
               selectedTab={selectedTab}
+              progressMessage={
+                generationState.phases.find((p) => p.status === 'active')
+                  ?.phaseName
+              }
               className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
             />
           </div>
@@ -332,6 +351,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           />
         </ScrollArea>
       </div>
-    </PageContainer>
+    </div>
   );
 };

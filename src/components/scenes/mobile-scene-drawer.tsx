@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
@@ -23,6 +24,8 @@ type MobileSceneDrawerProps = {
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
   onBatchGenerateMotion?: (frameIds: string[]) => Promise<void>;
+  musicPromptsReady: boolean;
+  onGenerateMusic?: () => Promise<void>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -39,9 +42,12 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
   regeneratingImages,
   regeneratingMotion,
   onBatchGenerateMotion,
+  musicPromptsReady,
+  onGenerateMusic,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [includeMusic, setIncludeMusic] = useState(false);
 
   // Get the currently selected frame
   const selectedFrame = useMemo(
@@ -67,12 +73,26 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
     setIsOpen(false);
   };
 
+  // Check if all eligible frames have motion prompts ready
+  const motionPromptsReady = useMemo(() => {
+    if (!eligibleFrames.length) return true;
+    return eligibleFrames.every(
+      (f) => f.motionPrompt || f.metadata?.prompts?.motion?.fullPrompt
+    );
+  }, [eligibleFrames]);
+
   const handleGenerateMotion = async () => {
     if (!onBatchGenerateMotion || eligibleFrames.length === 0) return;
 
     setIsGenerating(true);
     try {
-      await onBatchGenerateMotion(eligibleFrames.map((f) => f.id));
+      const promises: Promise<void>[] = [
+        onBatchGenerateMotion(eligibleFrames.map((f) => f.id)),
+      ];
+      if (includeMusic && onGenerateMusic) {
+        promises.push(onGenerateMusic());
+      }
+      await Promise.all(promises);
     } finally {
       setIsGenerating(false);
     }
@@ -87,6 +107,13 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
 
   const hasEligibleFrames = eligibleFrames.length > 0;
   const isMotionInProgress = regeneratingMotion.size > 0;
+  const showFooter = hasEligibleFrames || isMotionInProgress;
+  const isButtonDisabled =
+    isGenerating ||
+    isMotionInProgress ||
+    eligibleFrames.length === 0 ||
+    !motionPromptsReady ||
+    (includeMusic && !musicPromptsReady);
 
   return (
     <>
@@ -154,17 +181,27 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
             </div>
           </ScrollArea>
 
-          {hasEligibleFrames && (
-            <SheetFooter className="border-t pt-4 px-4 justify-center">
+          {showFooter && (
+            <SheetFooter className="border-t pt-4 px-4 flex-col items-stretch gap-3">
               <Button
                 variant="default"
                 onClick={() => void handleGenerateMotion()}
-                disabled={isGenerating || isMotionInProgress}
+                disabled={isButtonDisabled}
               >
                 {isGenerating || isMotionInProgress ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
+                    Generating…
+                  </>
+                ) : !motionPromptsReady ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Writing motion prompts…
+                  </>
+                ) : includeMusic && !musicPromptsReady ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Composing music…
                   </>
                 ) : (
                   <>
@@ -174,6 +211,21 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
                   </>
                 )}
               </Button>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
+                <Checkbox
+                  checked={includeMusic}
+                  onCheckedChange={(checked) =>
+                    setIncludeMusic(checked === true)
+                  }
+                  disabled={!musicPromptsReady}
+                />
+                <span>
+                  Also generate music
+                  {!musicPromptsReady && (
+                    <span className="text-xs ml-1">(preparing…)</span>
+                  )}
+                </span>
+              </label>
             </SheetFooter>
           )}
         </SheetContent>

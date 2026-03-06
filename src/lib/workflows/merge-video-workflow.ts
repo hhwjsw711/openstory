@@ -133,7 +133,7 @@ export const mergeVideoWorkflow = createWorkflow(
       const extension = getExtensionFromUrl(mergeResult.videoUrl) || 'mp4';
       const contentType = getMimeTypeFromExtension(extension);
       const shortHash = generateId().slice(-8);
-      const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_velro.${extension}`;
+      const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_openstory.${extension}`;
 
       const result = await uploadFile(STORAGE_BUCKETS.VIDEOS, path, videoBlob, {
         contentType,

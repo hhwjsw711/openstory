@@ -67,9 +67,9 @@ export const visualPromptSceneWorkflow = createWorkflow(
       context,
       {
         name: 'visual-prompts',
-        phase: { number: 4, name: 'Visual Prompts' },
+        phase: { number: 4, name: 'Writing image prompts…' },
 
-        promptName: 'velro/phase/visual-prompt-scene-generation-chat',
+        promptName: 'phase/visual-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,

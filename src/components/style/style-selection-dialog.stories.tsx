@@ -16,7 +16,7 @@ const meta: Meta<typeof StyleSelectionDialog> = {
     docs: {
       description: {
         component:
-          "A full-featured dialog for browsing and selecting Director's DNA (visual styles) with search, category filters, and responsive grid layout.",
+          'A full-featured dialog for browsing and selecting visual styles with search, category filters, and responsive grid layout.',
       },
     },
   },
@@ -64,7 +64,7 @@ function InteractiveStyleDialog(
   return (
     <div className="flex flex-col gap-4">
       {!open && (
-        <Button onClick={handleReopen}>Open Director's DNA Dialog</Button>
+        <Button onClick={handleReopen}>Open Visual Style Dialog</Button>
       )}
       <StyleSelectionDialog
         open={open}
@@ -84,7 +84,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'Default DNA selection dialog with search, category filters, and style grid. Click on any style to select it.',
+          'Default style selection dialog with search, category filters, and style grid. Click on any style to select it.',
       },
     },
   },
@@ -252,7 +252,7 @@ export const InteractionFlow: Story = {
             )}
           </div>
 
-          <Button onClick={() => setOpen(true)}>Choose Director's DNA</Button>
+          <Button onClick={() => setOpen(true)}>Choose Visual Style</Button>
 
           <StyleSelectionDialog
             open={open}
@@ -533,9 +533,7 @@ export const CustomTrigger: Story = {
               styles={styles}
               selectedStyle={selectedStyle}
               onStyleSelect={setSelectedStyleId}
-              trigger={
-                <Button variant="default">Choose Director&apos;s DNA</Button>
-              }
+              trigger={<Button variant="default">Choose Visual Style</Button>}
             />
 
             <StyleSelectionDialogWithTrigger

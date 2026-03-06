@@ -1,6 +1,6 @@
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
-import { Film, Grid3X3, MapPin, Music, Users } from 'lucide-react';
+import { FileText, Film, Grid3X3, MapPin, Music, Users } from 'lucide-react';
 
 type SequenceTabsProps = {
   sequenceId: string;
@@ -16,6 +16,11 @@ export const SequenceTabs: React.FC<SequenceTabsProps> = ({ sequenceId }) => {
   const matchRoute = useMatchRoute();
 
   const tabs: TabItem[] = [
+    {
+      label: 'Script',
+      href: `/sequences/${sequenceId}/script`,
+      icon: <FileText className="h-4 w-4" />,
+    },
     {
       label: 'Scenes',
       href: `/sequences/${sequenceId}/scenes`,
@@ -44,7 +49,7 @@ export const SequenceTabs: React.FC<SequenceTabsProps> = ({ sequenceId }) => {
   ];
 
   return (
-    <nav className="flex items-center justify-center gap-2 px-4 py-3">
+    <nav className="flex items-center gap-2 py-2">
       {tabs.map((tab) => {
         const isActive = matchRoute({ to: tab.href, fuzzy: false });
 
