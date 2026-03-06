@@ -23,9 +23,12 @@ import {
 } from '@/functions/api-keys';
 import { initiateOpenRouterOAuthFn } from '@/functions/openrouter-oauth';
 import { getCurrentUserProfileFn } from '@/functions/user';
+import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { ExternalLink, Key, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 type ApiKeySettingsProps = {
   success?: string;
@@ -60,6 +63,8 @@ function ApiKeySettingsLoading() {
   );
 }
 
+const RETURN_KEY = 'openstory:billing-return';
+
 function ApiKeySettingsContent({
   teamId,
   success,
@@ -68,6 +73,8 @@ function ApiKeySettingsContent({
   const queryClient = useQueryClient();
   const [falKeyInput, setFalKeyInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const hasShownToastRef = useRef(false);
 
   const { data: apiKeys, isLoading: keysLoading } = useQuery({
     queryKey: ['apiKeys', teamId],
@@ -81,9 +88,29 @@ function ApiKeySettingsContent({
     staleTime: 5 * 60 * 1000,
   });
 
+  // Show toast when both keys become configured and there's a return path
+  useEffect(() => {
+    if (hasShownToastRef.current) return;
+    if (keyStatus?.fal !== 'team' || keyStatus?.openrouter !== 'team') return;
+    const returnTo = localStorage.getItem(RETURN_KEY);
+    if (!returnTo) return;
+
+    hasShownToastRef.current = true;
+    localStorage.removeItem(RETURN_KEY);
+    toast.success('API keys configured', {
+      description: 'Both fal.ai and OpenRouter are connected.',
+      action: {
+        label: 'Continue creating',
+        onClick: () => void navigate({ to: returnTo }),
+      },
+      duration: 15_000,
+    });
+  }, [keyStatus, navigate]);
+
   const invalidateKeys = () => {
     void queryClient.invalidateQueries({ queryKey: ['apiKeys', teamId] });
     void queryClient.invalidateQueries({ queryKey: ['apiKeyStatus', teamId] });
+    void queryClient.invalidateQueries({ queryKey: [...BILLING_GATE_KEY] });
   };
 
   const saveFalKeyMutation = useMutation({

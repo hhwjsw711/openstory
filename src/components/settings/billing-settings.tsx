@@ -25,6 +25,7 @@ import {
   useBillingBalance,
   BILLING_BALANCE_KEY,
 } from '@/hooks/use-billing-balance';
+import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -34,7 +35,9 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 type BillingSettingsProps = {
   success?: boolean;
@@ -105,11 +108,15 @@ function getErrorMessage(
   return 'Something went wrong';
 }
 
+const RETURN_KEY = 'openstory:billing-return';
+
 export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   // Clear success/canceled from URL after showing
   useEffect(() => {
@@ -121,7 +128,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     }
   }, [success, canceled]);
 
-  // Refetch balance on success
+  // Refetch balance on success + show return toast
   useEffect(() => {
     if (success) {
       void queryClient.invalidateQueries({
@@ -130,14 +137,43 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       void queryClient.invalidateQueries({
         queryKey: ['billing-transactions'],
       });
+      void queryClient.invalidateQueries({
+        queryKey: [...BILLING_GATE_KEY],
+      });
+
+      const returnTo = localStorage.getItem(RETURN_KEY);
+      if (returnTo) {
+        localStorage.removeItem(RETURN_KEY);
+        toast.success('Credits added successfully', {
+          description: 'Your balance has been updated.',
+          action: {
+            label: 'Continue creating',
+            onClick: () => void navigate({ to: returnTo }),
+          },
+          duration: 15_000,
+        });
+      }
     }
-  }, [success, queryClient]);
+  }, [success, queryClient, navigate]);
 
   const {
     data: balanceData,
     isLoading: balanceLoading,
     error: balanceError,
   } = useBillingBalance();
+
+  // After successful top-up, prompt to enable auto-topup if not already on
+  useEffect(() => {
+    if (!success || balanceLoading || !balanceData) return;
+    if (balanceData.autoTopUp.enabled) return;
+
+    const lastAmount = localStorage.getItem('openstory:last-topup-amount');
+    localStorage.removeItem('openstory:last-topup-amount');
+    const amount = lastAmount ? parseFloat(lastAmount) : null;
+    if (amount && !isNaN(amount) && amount >= MIN_TOPUP_AMOUNT_USD) {
+      setAutoTopUpPrompt(amount);
+    }
+  }, [success, balanceLoading, balanceData]);
 
   // When billing is disabled server-side, show a simple message
   if (!balanceLoading && balanceData?.billingEnabled === false) {
@@ -221,6 +257,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       setError(`Minimum top-up is $${MIN_TOPUP_AMOUNT_USD}`);
       return;
     }
+    // Remember the amount so we can suggest it for auto-topup after checkout
+    localStorage.setItem(
+      'openstory:last-topup-amount',
+      String(effectiveAmount)
+    );
     checkoutMutation.mutate(effectiveAmount);
   };
 
@@ -240,6 +281,36 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
             Top-up canceled. No charges were made.
           </AlertDescription>
         </Alert>
+      )}
+
+      {autoTopUpPrompt !== null && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <SectionHeader
+              icon={RefreshCw}
+              title="Enable Auto Top-Up?"
+              description={`Automatically add $${autoTopUpPrompt} when your balance drops below $5.`}
+            />
+          </CardHeader>
+          <CardContent className="flex gap-3">
+            <Button
+              onClick={() => {
+                autoTopUpMutation.mutate({
+                  enabled: true,
+                  thresholdUsd: 5,
+                  amountUsd: autoTopUpPrompt,
+                });
+                setAutoTopUpPrompt(null);
+              }}
+              disabled={autoTopUpMutation.isPending}
+            >
+              {autoTopUpMutation.isPending ? 'Enabling…' : 'Enable auto top-up'}
+            </Button>
+            <Button variant="ghost" onClick={() => setAutoTopUpPrompt(null)}>
+              No thanks
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {(error || balanceError || txError) && (
@@ -280,7 +351,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
           />
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-3">
             {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
               <Button
                 key={amount}
@@ -334,6 +405,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                 ? `Top up $${effectiveAmount}`
                 : 'Top up'}
           </Button>
+
+          {!balanceLoading && !balanceData?.hasPaymentMethod && (
+            <p className="text-xs text-muted-foreground">
+              Your payment method will be saved. After your first purchase,
+              you'll be able to enable auto top-up.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -359,9 +437,10 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
             </p>
           ) : (
             <AutoTopUpForm
+              key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
               enabled={balanceData.autoTopUp.enabled}
               thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
-              amountUsd={balanceData.autoTopUp.amountUsd ?? 25}
+              amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
               isPending={autoTopUpMutation.isPending}
               onSave={(settings) => autoTopUpMutation.mutate(settings)}
             />
@@ -462,12 +541,17 @@ function AutoTopUpForm({
   const [threshold, setThreshold] = useState(String(initialThreshold));
   const [amount, setAmount] = useState(String(initialAmount));
 
-  const handleSave = () => {
+  const save = (overrides?: { enabled?: boolean }) => {
     onSave({
-      enabled,
+      enabled: overrides?.enabled ?? enabled,
       thresholdUsd: parseFloat(threshold) || 5,
-      amountUsd: parseFloat(amount) || 25,
+      amountUsd: parseFloat(amount) || 100,
     });
+  };
+
+  const handleToggle = (value: boolean) => {
+    setEnabled(value);
+    save({ enabled: value });
   };
 
   return (
@@ -476,17 +560,22 @@ function AutoTopUpForm({
         <Button
           variant={enabled ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setEnabled(true)}
+          onClick={() => handleToggle(true)}
+          disabled={isPending}
         >
           On
         </Button>
         <Button
           variant={!enabled ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setEnabled(false)}
+          onClick={() => handleToggle(false)}
+          disabled={isPending}
         >
           Off
         </Button>
+        {isPending && (
+          <span className="text-xs text-muted-foreground">Saving…</span>
+        )}
       </div>
 
       {enabled && (
@@ -504,6 +593,7 @@ function AutoTopUpForm({
                 step="1"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
+                onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
               />
@@ -522,6 +612,7 @@ function AutoTopUpForm({
                 step="1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
               />
@@ -529,10 +620,6 @@ function AutoTopUpForm({
           </div>
         </div>
       )}
-
-      <Button onClick={handleSave} disabled={isPending} className="w-full">
-        {isPending ? 'Saving…' : 'Save auto top-up settings'}
-      </Button>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,18 +18,37 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Link } from '@tanstack/react-router';
-import { CreditCard, KeyRound } from 'lucide-react';
+import { ChevronRight, CreditCard, KeyRound } from 'lucide-react';
+
+const RETURN_KEY = 'openstory:billing-return';
+
+function setReturnPath(returnTo?: string) {
+  const path =
+    returnTo ??
+    (typeof window !== 'undefined' ? window.location.pathname : '/');
+  localStorage.setItem(RETURN_KEY, path);
+}
 
 type BillingGateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  hasFalKey?: boolean;
+  hasOpenRouterKey?: boolean;
+  hasCredits?: boolean;
+  returnTo?: string;
 };
 
 export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
   open,
   onOpenChange,
+  hasFalKey = false,
+  hasOpenRouterKey = false,
+  returnTo,
 }) => {
+  const byokPartial = hasFalKey || hasOpenRouterKey;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -40,7 +60,13 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
         </DialogHeader>
 
         <div className="flex flex-col gap-3 pt-2">
-          <Link to="/settings/billing" onClick={() => onOpenChange(false)}>
+          <Link
+            to="/settings/billing"
+            onClick={() => {
+              setReturnPath(returnTo);
+              onOpenChange(false);
+            }}
+          >
             <Card className="cursor-pointer transition-colors hover:bg-accent">
               <CardHeader className="flex-row items-center gap-4 space-y-0">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -49,27 +75,62 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
                 <div className="flex-1 space-y-1">
                   <CardTitle className="text-base">Add Credits</CardTitle>
                   <CardDescription>
-                    Top up your balance to start generating
+                    Pay as you go. Auto top-up keeps you generating without
+                    interruption.
                   </CardDescription>
                 </div>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
               </CardHeader>
             </Card>
           </Link>
 
-          <Link to="/settings/api-keys" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <Link
+            to="/settings/api-keys"
+            onClick={() => {
+              setReturnPath(returnTo);
+              onOpenChange(false);
+            }}
+          >
             <Card className="cursor-pointer transition-colors hover:bg-accent">
               <CardHeader className="flex-row items-center gap-4 space-y-0">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <KeyRound className="size-5 text-primary" />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <CardTitle className="text-base">
-                    Use Your Own API Keys
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base">
+                      Use Your Own API Keys
+                    </CardTitle>
+                  </div>
                   <CardDescription>
-                    Connect your fal.ai and OpenRouter keys to skip credits
+                    Connect fal.ai and OpenRouter. Pay providers directly.
                   </CardDescription>
+                  {byokPartial && (
+                    <div className="flex gap-1.5 pt-1">
+                      <Badge
+                        variant={hasFalKey ? 'default' : 'secondary'}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {hasFalKey ? 'fal.ai connected' : 'fal.ai needed'}
+                      </Badge>
+                      <Badge
+                        variant={hasOpenRouterKey ? 'default' : 'secondary'}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {hasOpenRouterKey
+                          ? 'OpenRouter connected'
+                          : 'OpenRouter needed'}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
               </CardHeader>
             </Card>
           </Link>

@@ -22,21 +22,6 @@ import {
 import { getStripeOrThrow } from './stripe';
 import { ValidationError } from '@/lib/errors';
 
-/** Check if a transaction with the given Stripe session ID already exists (for idempotency). */
-export async function hasTransactionWithStripeSessionId(
-  stripeSessionId: string
-): Promise<boolean> {
-  const db = getDb();
-  const [row] = await db
-    .select({ id: transactions.id })
-    .from(transactions)
-    .where(
-      sql`json_extract(${transactions.metadata}, '$.stripeSessionId') = ${stripeSessionId}`
-    )
-    .limit(1);
-  return !!row;
-}
-
 /** Creates a credits row if one doesn't exist yet. */
 export async function getTeamBalance(teamId: string): Promise<number> {
   const db = getDb();
@@ -70,8 +55,9 @@ export async function addCredits(
     userId?: string | null;
     description?: string;
     metadata?: Record<string, unknown>;
+    stripeSessionId?: string;
   } = {}
-): Promise<{ newBalance: number; transactionId: string }> {
+): Promise<{ newBalance: number; transactionId: string } | null> {
   if (amountUsd <= 0) {
     throw new ValidationError('Credit amount must be positive');
   }
@@ -91,7 +77,8 @@ export async function addCredits(
     .where(eq(credits.teamId, teamId))
     .returning({ balance: credits.balance });
 
-  const [tx] = await db
+  // Insert transaction with unique stripeSessionId — DB rejects duplicates
+  const rows = await db
     .insert(transactions)
     .values({
       teamId,
@@ -101,10 +88,24 @@ export async function addCredits(
       balanceAfter: updated.balance,
       description: opts.description ?? `Added $${amountUsd.toFixed(2)} credits`,
       metadata: opts.metadata ?? {},
+      stripeSessionId: opts.stripeSessionId ?? null,
     })
+    .onConflictDoNothing()
     .returning({ id: transactions.id });
 
-  return { newBalance: updated.balance, transactionId: tx.id };
+  if (rows.length === 0) {
+    // Duplicate — roll back the balance update
+    await db
+      .update(credits)
+      .set({
+        balance: sql`${credits.balance} - ${amountUsd}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(credits.teamId, teamId));
+    return null;
+  }
+
+  return { newBalance: updated.balance, transactionId: rows[0].id };
 }
 
 /** Applies markup automatically. Triggers auto-top-up if balance drops below threshold. */
