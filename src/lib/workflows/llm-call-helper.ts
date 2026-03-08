@@ -26,6 +26,7 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   promptVariables?: Record<string, string>;
   modelId: TextModel;
   responseSchema: TSchema;
+  maxTokens?: number;
   additionalMetadata?: Record<string, unknown>;
   retryResponse?: (response: z.infer<TSchema>) => boolean;
 };
@@ -130,6 +131,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             messages: chatMessages,
             systemPrompts,
             stream: false,
+            maxTokens: config.maxTokens ?? 128_000,
             metadata: {
               observationName: logName,
               prompt: promptReference,

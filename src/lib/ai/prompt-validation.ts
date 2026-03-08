@@ -1,117 +1,55 @@
 // Security: Prompt injection protection patterns
+// These patterns detect injection attempts for logging/alerting only.
+// sanitizeScriptContent performs safe, line-scoped replacements.
 export const INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?previous\s+instructions?/gi,
   /forget\s+(all\s+)?previous\s+instructions?/gi,
-  /system\s*:[\s\S]*$/gi,
-  /assistant\s*:[\s\S]*$/gi,
-  /user\s*:[\s\S]*$/gi,
-  /<\s*\/?system[^>]*>/gi,
-  /<\s*\/?assistant[^>]*>/gi,
-  /<\s*\/?user[^>]*>/gi,
-  /you\s+are\s+now\s+[\s\S]*$/gi,
-  /act\s+as\s+[\s\S]*$/gi,
-  /pretend\s+to\s+be[\s\S]*$/gi,
-  /roleplay\s+as[\s\S]*$/gi,
-  /simulate\s+(being\s+)?[\s\S]*$/gi,
-  /output\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-  /what\s+(is\s+)?your\s+(system\s+)?prompt[\s\S]*$/gi,
-  /reveal\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-  /show\s+(me\s+)?(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
-  /```[\s\S]*?```/g,
-  /{\s*"[\s\S]*?"[\s\S]*?}/gi, // JSON-like structures
+  /you\s+are\s+now\s+/gi,
+  /act\s+as\s+a\s+/gi,
+  /pretend\s+to\s+be\s+/gi,
+  /roleplay\s+as\s+/gi,
+  /output\s+(your|the)\s+(system\s+)?prompt/gi,
+  /what\s+(is\s+)?your\s+(system\s+)?prompt/gi,
+  /reveal\s+(your|the)\s+(system\s+)?prompt/gi,
+  /show\s+(me\s+)?(your|the)\s+(system\s+)?prompt/gi,
 ];
 
-// Security: Sanitize user input to prevent prompt injection
+// Security: Sanitize user input to prevent prompt injection.
+// IMPORTANT: All replacements are line-scoped (.*) not string-scoped ([\s\S]*$)
+// to avoid destroying screenplay content after a false-positive match.
+// Screenplays legitimately contain phrases like "act as if", "system:", "pretend to be calm".
 export const sanitizeScriptContent = (input: string): string => {
   let sanitized = input;
 
-  // First, handle code blocks and JSON structures (greedy matching)
+  // Handle code blocks (these are unlikely in screenplays and could contain injection)
   sanitized = sanitized.replace(/```[\s\S]*?```/gi, '[technical content]');
-  sanitized = sanitized.replace(
-    /{\s*"[\s\S]*?"[\s\S]*?}/g,
-    '[structured data]'
-  );
 
-  // Remove XML-like tags and their content to prevent complex injection
+  // Handle explicit injection attempts (line-scoped: .* not [\s\S]*$)
   sanitized = sanitized.replace(
-    /<[^>]*>[\s\S]*?<\/[^>]*>/gi,
-    '[markup removed]'
-  );
-  sanitized = sanitized.replace(/<[^>]*>/g, '[markup removed]');
-
-  // Handle instruction injection patterns
-  sanitized = sanitized.replace(
-    /ignore\s+(all\s+)?previous\s+instructions?[\s\S]*$/gi,
+    /ignore\s+(all\s+)?previous\s+instructions?.*/gi,
     '[character dismisses something]'
   );
   sanitized = sanitized.replace(
-    /forget\s+(all\s+)?previous\s+instructions?[\s\S]*$/gi,
+    /forget\s+(all\s+)?previous\s+instructions?.*/gi,
     '[character dismisses something]'
   );
 
-  // Handle role manipulation
+  // Handle prompt extraction attempts (line-scoped)
   sanitized = sanitized.replace(
-    /you\s+are\s+now\s+[\s\S]*$/gi,
-    '[character takes on a role]'
-  );
-  sanitized = sanitized.replace(
-    /act\s+as\s+[\s\S]*$/gi,
-    '[character takes on a role]'
-  );
-  sanitized = sanitized.replace(
-    /pretend\s+to\s+be[\s\S]*$/gi,
-    '[character takes on a role]'
-  );
-  sanitized = sanitized.replace(
-    /roleplay\s+as[\s\S]*$/gi,
-    '[character takes on a role]'
-  );
-  sanitized = sanitized.replace(
-    /simulate\s+(being\s+)?[\s\S]*$/gi,
-    '[character takes on a role]'
-  );
-
-  // Handle prompt extraction attempts
-  sanitized = sanitized.replace(
-    /output\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
+    /output\s+(your|the)\s+(system\s+)?prompt.*/gi,
     '[technical discussion]'
   );
   sanitized = sanitized.replace(
-    /what\s+(is\s+)?your\s+(system\s+)?prompt[\s\S]*$/gi,
+    /what\s+(is\s+)?your\s+(system\s+)?prompt.*/gi,
     '[technical discussion]'
   );
   sanitized = sanitized.replace(
-    /reveal\s+(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
+    /reveal\s+(your|the)\s+(system\s+)?prompt.*/gi,
     '[technical discussion]'
   );
   sanitized = sanitized.replace(
-    /show\s+(me\s+)?(your|the)\s+(system\s+)?prompt[\s\S]*$/gi,
+    /show\s+(me\s+)?(your|the)\s+(system\s+)?prompt.*/gi,
     '[technical discussion]'
-  );
-
-  // Handle role indicators
-  sanitized = sanitized.replace(
-    /system\s*:[\s\S]*$/gi,
-    '[technical discussion]'
-  );
-  sanitized = sanitized.replace(
-    /assistant\s*:[\s\S]*$/gi,
-    '[technical discussion]'
-  );
-  sanitized = sanitized.replace(/user\s*:[\s\S]*$/gi, '[technical discussion]');
-
-  // Clean up any remaining suspicious fragments
-  sanitized = sanitized.replace(
-    /\bsystem\s+prompt\b/gi,
-    '[technical discussion]'
-  );
-  sanitized = sanitized.replace(
-    /\bprevious\s+instructions?\b/gi,
-    '[earlier guidance]'
-  );
-  sanitized = sanitized.replace(
-    /\bcomplete\s+instructions?\b/gi,
-    '[full guidance]'
   );
 
   return sanitized.trim();
