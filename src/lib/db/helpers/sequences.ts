@@ -10,7 +10,7 @@ import {
   type SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { AuthenticationError, ValidationError } from '@/lib/errors';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, not } from 'drizzle-orm';
 import { sequences } from '../schema';
 
 // ============================================================================
@@ -119,7 +119,9 @@ export async function getSequencesByTeam(teamId: string): Promise<Sequence[]> {
   return await getDb()
     .select()
     .from(sequences)
-    .where(eq(sequences.teamId, teamId))
+    .where(
+      and(eq(sequences.teamId, teamId), not(eq(sequences.status, 'archived')))
+    )
     .orderBy(desc(sequences.updatedAt));
 }
 

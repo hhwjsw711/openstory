@@ -18,6 +18,7 @@ import {
   getSequencesByTeam,
   updateSequence,
   updateSequenceMusicPrompt,
+  updateSequenceStatus,
 } from '@/lib/db/helpers/sequences';
 import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import {
@@ -296,6 +297,15 @@ export const deleteSequenceFn = createServerFn({ method: 'POST' })
     await requireTeamMemberAccess(context.user.id, sequence.teamId, 'admin');
     await deleteSequence(data.sequenceId);
 
+    return { success: true };
+  });
+
+/** Archive a sequence (hides from list, lets in-flight workflows finish) */
+export const archiveSequenceFn = createServerFn({ method: 'POST' })
+  .middleware([sequenceAccessMiddleware])
+  .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
+  .handler(async ({ context }) => {
+    await updateSequenceStatus(context.sequence.id, 'archived');
     return { success: true };
   });
 

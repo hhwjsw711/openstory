@@ -11,6 +11,7 @@ import {
   createSequenceFn,
   updateSequenceFn,
   deleteSequenceFn,
+  archiveSequenceFn,
 } from '@/functions/sequences';
 
 // Query keys
@@ -150,6 +151,21 @@ export function useUpdateSequence() {
         .catch((error) => {
           console.error('Error invalidating sequences list on success:', error);
         });
+    },
+  });
+}
+
+// Hook for archiving sequence
+export function useArchiveSequence() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (id: string) => {
+      await archiveSequenceFn({ data: { sequenceId: id } });
+    },
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });
 }

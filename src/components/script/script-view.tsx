@@ -11,7 +11,7 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
+import { useCreateSequence, useArchiveSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
 import { useBillingGate } from '@/hooks/use-billing-gate';
@@ -236,7 +236,7 @@ export const ScriptView: FC<{
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
 
   const createSequenceMutation = useCreateSequence();
-  const updateSequenceMutation = useUpdateSequence();
+  const archiveSequenceMutation = useArchiveSequence();
   const {
     needsBillingSetup,
     showGate,
@@ -253,57 +253,44 @@ export const ScriptView: FC<{
       event.preventDefault();
     }
 
-    // Gate: require billing setup before creating new sequences
-    if (!sequence?.id && needsBillingSetup) {
+    if (needsBillingSetup) {
       showGate();
       return;
     }
 
-    if (sequence?.id) {
-      updateSequenceMutation.mutate(
-        {
-          id: sequence.id,
-          script: script || sequence?.script || '',
-          styleId: styleId || sequence?.styleId || undefined,
-          analysisModel: analysisModels[0],
-        },
-        {
-          onSuccess: (result) => {
-            if (result.id && onSuccess) {
-              onSuccess([result.id]);
-            }
-          },
-        }
-      );
-    } else {
-      createSequenceMutation.mutate(
-        {
-          title: undefined, // Will default to 'Untitled Sequence' in hook
-          teamId,
-          script: script || '',
-          styleId: styleId || undefined,
-          aspectRatio,
-          analysisModels,
-          imageModel,
-          videoModel: motionModel,
-          autoGenerateMotion,
-          autoGenerateMusic,
-          musicModel,
-          suggestedTalentIds:
-            selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
-          suggestedLocationIds:
-            selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
-        },
-        {
-          onSuccess: (result) => {
+    const oldSequenceId = sequence?.id;
+
+    createSequenceMutation.mutate(
+      {
+        title: undefined,
+        teamId,
+        script: script || sequence?.script || '',
+        styleId: styleId || sequence?.styleId || undefined,
+        aspectRatio,
+        analysisModels,
+        imageModel,
+        videoModel: motionModel,
+        autoGenerateMotion,
+        autoGenerateMusic,
+        musicModel,
+        suggestedTalentIds:
+          selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
+        suggestedLocationIds:
+          selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
+      },
+      {
+        onSuccess: (result) => {
+          if (oldSequenceId) {
+            archiveSequenceMutation.mutate(oldSequenceId);
+          } else {
             clearDraft();
-            if (onSuccess) {
-              onSuccess(result.data.map((sequence) => sequence.id));
-            }
-          },
-        }
-      );
-    }
+          }
+          if (onSuccess) {
+            onSuccess(result.data.map((seq) => seq.id));
+          }
+        },
+      }
+    );
   };
 
   const previousScriptRef = useRef<string>('');
@@ -342,8 +329,7 @@ export const ScriptView: FC<{
     (styleId || sequence?.styleId) &&
     analysisModels.length > 0;
 
-  const isSubmitting =
-    createSequenceMutation.isPending || updateSequenceMutation.isPending;
+  const isSubmitting = createSequenceMutation.isPending;
   const isProcessing = sequence?.status === 'processing';
   const isDisabled = !isFormValid || isSubmitting || isProcessing;
 
@@ -376,7 +362,6 @@ export const ScriptView: FC<{
             onMusicModelChange={setMusicModel}
             onAutoGenerateMusicChange={setAutoGenerateMusic}
             disabled={loading}
-            singleSelectAnalysis={!!sequence?.id}
           />
           <div className="flex items-center gap-3">
             <TalentSuggestionSelector
@@ -456,13 +441,11 @@ export const ScriptView: FC<{
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {!sequence?.id && (
-                <span className="hidden sm:block text-xs text-muted-foreground">
-                  {analysisModels.length === 1
-                    ? '1 sequence will be created'
-                    : `${analysisModels.length} sequences will be created`}
-                </span>
-              )}
+              <span className="hidden sm:block text-xs text-muted-foreground">
+                {analysisModels.length === 1
+                  ? '1 sequence will be created'
+                  : `${analysisModels.length} sequences will be created`}
+              </span>
               {sequence?.id && (
                 <Button
                   type="button"
