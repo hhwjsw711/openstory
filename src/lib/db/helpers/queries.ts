@@ -134,7 +134,11 @@ async function getTeamStyles(
     .select()
     .from(styles)
     .where(and(...conditions))
-    .orderBy(desc(styles.usageCount), asc(styles.createdAt));
+    .orderBy(
+      asc(styles.sortOrder),
+      desc(styles.usageCount),
+      asc(styles.createdAt)
+    );
 }
 
 /**
@@ -153,7 +157,7 @@ export async function getPublicStyles(): Promise<Style[]> {
     .select()
     .from(styles)
     .where(eq(styles.isPublic, true))
-    .orderBy(asc(styles.name));
+    .orderBy(asc(styles.sortOrder), asc(styles.name));
   return result;
 }
 
@@ -174,7 +178,7 @@ export async function getTeamAndPublicStyles(teamId: string): Promise<Style[]> {
     .select()
     .from(styles)
     .where(or(eq(styles.teamId, teamId), eq(styles.isPublic, true)))
-    .orderBy(asc(styles.name));
+    .orderBy(asc(styles.sortOrder), asc(styles.name));
   return result;
 }
 

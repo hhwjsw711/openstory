@@ -52,6 +52,7 @@ export const styles = sqliteTable(
     isTemplate: integer('is_template', { mode: 'boolean' }).default(false),
     version: integer().default(1),
     previewUrl: text('preview_url'),
+    sortOrder: integer('sort_order').default(100),
     usageCount: integer('usage_count').default(0),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())

@@ -22,6 +22,13 @@
       "when": 1772950952460,
       "tag": "0002_big_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1772957027134,
+      "tag": "0003_minor_vertigo",
+      "breakpoints": true
     }
   ]
 }

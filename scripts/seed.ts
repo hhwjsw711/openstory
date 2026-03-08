@@ -19,6 +19,17 @@ import { drizzle } from 'drizzle-orm/libsql';
 
 const SYSTEM_TEAM_SLUG = 'system-templates';
 
+// Old name → new name mappings for renamed templates
+const RENAMES: Record<string, string> = {
+  'Cinematic Drama': 'Award Season',
+  'Documentary Realism': 'Documentary',
+  'Action Blockbuster': 'Action',
+  'Romantic Comedy': 'Rom-Com',
+  'Animation Studio': 'Animated',
+  'Wes Anderson Style': 'Pastel',
+  'Lo-Fi iPhone 7 Aesthetic (Clean)': 'Lo-Fi Retro',
+};
+
 function parseArgs() {
   const args = process.argv.slice(2);
   return {
@@ -105,46 +116,76 @@ async function seed() {
       console.log(`✅ System team found with ID: ${systemTeam.id}\n`);
     }
 
-    // 2. Check which templates already exist
-    console.log('Checking existing template styles...');
+    // 2. Rename old template styles
+    console.log('Checking for styles to rename...');
     const existingTemplates = await db
       .select()
       .from(styles)
       .where(eq(styles.teamId, systemTeam.id));
 
-    const existingNames = new Set(existingTemplates.map((t) => t.name));
-    console.log(
-      `ℹ️  Found ${existingTemplates.length} existing template styles`
-    );
+    const existingByName = new Map(existingTemplates.map((t) => [t.name, t]));
+    let renamedCount = 0;
 
-    // Filter out templates that already exist
-    const templatesToInsert = DEFAULT_SYSTEM_STYLES.filter(
-      (template) => !existingNames.has(template.name)
-    );
+    for (const [oldName, newName] of Object.entries(RENAMES)) {
+      const existing = existingByName.get(oldName);
+      if (existing && !existingByName.has(newName)) {
+        await db
+          .update(styles)
+          .set({ name: newName, updatedAt: new Date() })
+          .where(eq(styles.id, existing.id));
+        existingByName.set(newName, { ...existing, name: newName });
+        existingByName.delete(oldName);
+        renamedCount++;
+        console.log(`   "${oldName}" → "${newName}"`);
+      }
+    }
 
-    if (templatesToInsert.length === 0) {
-      console.log('✅ All templates already exist - nothing to add\n');
+    if (renamedCount > 0) {
+      console.log(`✅ Renamed ${renamedCount} style(s)\n`);
     } else {
-      // 3. Insert new template styles one at a time (D1 has a 100-variable limit)
-      console.log(
-        `Inserting ${templatesToInsert.length} new template style(s)...`
-      );
-      for (const style of templatesToInsert) {
+      console.log('✅ No renames needed\n');
+    }
+
+    // 3. Update existing templates and insert new ones
+    console.log('Syncing template styles...');
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    for (const template of DEFAULT_SYSTEM_STYLES) {
+      const existing = existingByName.get(template.name);
+
+      if (existing) {
+        // Update all fields on existing template
+        await db
+          .update(styles)
+          .set({
+            description: template.description,
+            category: template.category,
+            tags: template.tags,
+            config: template.config,
+            isPublic: template.isPublic,
+            isTemplate: template.isTemplate,
+            previewUrl: template.previewUrl,
+            sortOrder: template.sortOrder,
+            updatedAt: new Date(),
+          })
+          .where(eq(styles.id, existing.id));
+        updatedCount++;
+      } else {
+        // Insert new template
         await db.insert(styles).values({
-          ...style,
+          ...template,
           teamId: systemTeam.id,
           createdBy: null,
         } as typeof styles.$inferInsert);
+        insertedCount++;
+        console.log(`   + ${template.name}`);
       }
-
-      console.log(
-        `✅ Inserted ${templatesToInsert.length} new template style(s):`
-      );
-      templatesToInsert.forEach((style) => {
-        console.log(`   - ${style.name}`);
-      });
-      console.log();
     }
+
+    console.log(
+      `✅ Synced templates: ${updatedCount} updated, ${insertedCount} inserted\n`
+    );
 
     console.log('🎉 Database seeded successfully!');
   } catch (error) {

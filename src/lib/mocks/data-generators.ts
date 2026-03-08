@@ -219,15 +219,14 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     description: faker.lorem.sentence(),
     category: faker.helpers.arrayElement([
       'cinematic',
-      'noir',
-      'artistic',
       'documentary',
-      'scifi',
-      'horror',
       'action',
       'romance',
-      'western',
       'animation',
+      'ecommerce',
+      'realestate',
+      'youtube',
+      'corporate',
     ]),
     tags: faker.helpers.arrayElements(
       [
@@ -304,6 +303,7 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.ulid(),
+    sortOrder: 100,
     usageCount: null,
     version: null,
     ...overrides,

@@ -11,19 +11,19 @@ describe('filterStyles', () => {
     test('returns all styles when category is "all"', () => {
       const result = filterStyles(mockStyles, 'all', '');
       expect(result).toEqual(mockStyles);
-      expect(result.length).toBe(11);
+      expect(result.length).toBe(15);
     });
 
     test('filters by specific category', () => {
       const result = filterStyles(mockStyles, 'cinematic', '');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Cinematic Drama');
+      expect(result[0].name).toBe('Award Season');
     });
 
     test('filters by "new" category (last 7 days)', () => {
       const result = filterStyles(mockStyles, 'new', '');
       // All styles are created at the same time, so all should be new
-      expect(result.length).toBe(11);
+      expect(result.length).toBe(15);
     });
 
     test('returns empty array for non-matching category', () => {
@@ -35,36 +35,38 @@ describe('filterStyles', () => {
   describe('search query filtering', () => {
     test('returns all styles when search query is empty', () => {
       const result = filterStyles(mockStyles, 'all', '');
-      expect(result.length).toBe(11);
+      expect(result.length).toBe(15);
     });
 
     test('returns all styles when search query is whitespace', () => {
       const result = filterStyles(mockStyles, 'all', '   ');
-      expect(result.length).toBe(11);
+      expect(result.length).toBe(15);
     });
 
     test('filters by name match (case insensitive)', () => {
       const result = filterStyles(mockStyles, 'all', 'cinematic');
-      expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Cinematic Drama');
+      expect(result.length).toBe(3);
+      expect(result.map((s) => s.name)).toContain('Award Season');
+      expect(result.map((s) => s.name)).toContain('Animated');
+      expect(result.map((s) => s.name)).toContain('YouTube');
     });
 
     test('filters by description match', () => {
       const result = filterStyles(mockStyles, 'all', 'bright');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Romantic Comedy');
+      expect(result[0].name).toBe('Rom-Com');
     });
 
     test('filters by category match in search', () => {
       const result = filterStyles(mockStyles, 'all', 'documentary');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Documentary Realism');
+      expect(result[0].name).toBe('Documentary');
     });
 
     test('filters by tag match', () => {
       const result = filterStyles(mockStyles, 'all', 'emotional');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Cinematic Drama');
+      expect(result[0].name).toBe('Award Season');
     });
 
     test('returns multiple matches for common search term', () => {
@@ -76,7 +78,7 @@ describe('filterStyles', () => {
     test('handles partial matches', () => {
       const result = filterStyles(mockStyles, 'all', 'anim');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Animation Studio');
+      expect(result[0].name).toBe('Animated');
     });
 
     test('returns empty array for non-matching search', () => {
@@ -87,9 +89,9 @@ describe('filterStyles', () => {
 
   describe('combined category and search filtering', () => {
     test('applies both category and search filters', () => {
-      const result = filterStyles(mockStyles, 'artistic', 'whimsical');
+      const result = filterStyles(mockStyles, 'ecommerce', 'product');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Wes Anderson Style');
+      expect(result[0].name).toBe('Product Ad');
     });
 
     test('returns empty when category matches but search does not', () => {
@@ -105,7 +107,7 @@ describe('filterStyles', () => {
     test('filters new items with search query', () => {
       const result = filterStyles(mockStyles, 'new', 'animation');
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('Animation Studio');
+      expect(result[0].name).toBe('Animated');
     });
   });
 

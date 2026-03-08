@@ -2,108 +2,73 @@
 /**
  * Upload Style Preview Images to R2 Public Bucket
  *
- * This script:
- * 1. Reads existing images from /public/assets/styles/
- * 2. Downsamples them to 512x512 square
- * 3. Uploads to R2 public bucket (environment-specific)
- * 4. Images are accessible at: https://{R2_PUBLIC_ASSETS_DOMAIN}/styles/{style-name}/{scene-name}.jpg
- *
- * Database URLs are handled by the seed script using deterministic URLs.
+ * Interactive script that:
+ * 1. Reads existing images from preview/
+ * 2. Processes to 512x512 (preview) and 256x256 (thumbnail) WebP
+ * 3. Lets you choose which scene becomes each style's thumbnail
+ * 4. Uploads to R2 public bucket (environment-specific)
  *
  * Usage:
- *   bun scripts/upload-style-previews-to-r2.ts                    # Dry run (dev)
- *   bun scripts/upload-style-previews-to-r2.ts --env stg          # Dry run (staging)
- *   bun scripts/upload-style-previews-to-r2.ts --env prd          # Dry run (production)
- *   bun scripts/upload-style-previews-to-r2.ts --env stg --execute # Upload to staging
- *   bun scripts/upload-style-previews-to-r2.ts --env prd --execute # Upload to production
+ *   bun scripts/upload-style-previews-to-r2.ts              # Upload (interactive)
+ *   bun scripts/upload-style-previews-to-r2.ts --dry-run    # Preview only, no uploads
  */
 
+import * as p from '@clack/prompts';
 import { $ } from 'bun';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PhotonImage, resize, SamplingFilter } from '@cf-wasm/photon';
 
-const PUBLIC_ASSETS_DIR = path.join(process.cwd(), 'public/assets/styles');
+const PREVIEW_DIR = path.join(process.cwd(), 'preview');
 const TEMP_DIR = path.join(process.cwd(), '.tmp/r2-upload');
-const TARGET_SIZE = 512; // 512x512 square
-const JPEG_QUALITY = 85; // 85% quality for good balance of size/quality
+const PREVIEW_SIZE = 512;
+const THUMBNAIL_SIZE = 256;
 
-// Parse command line arguments
-const isExecute = process.argv.includes('--execute');
-const isDryRun = !isExecute;
-
-// Get environment from --env flag (prd, stg, or default to dev)
-const envIndex = process.argv.indexOf('--env');
-const environment = envIndex !== -1 ? process.argv[envIndex + 1] : 'dev';
+const isDryRun = process.argv.includes('--dry-run');
 
 // Environment-specific configuration
-// Set via env vars: R2_PUBLIC_ASSETS_BUCKET and R2_PUBLIC_ASSETS_DOMAIN
 const ENV_CONFIG = {
   prd: {
-    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
+    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
   },
   stg: {
-    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets-stg',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
+    bucket:
+      process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets-stg',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets-stg.openstory.so'}`,
   },
 };
 
-function isValidEnvironment(env: string): env is keyof typeof ENV_CONFIG {
-  return env in ENV_CONFIG;
-}
-
-if (!isValidEnvironment(environment)) {
-  console.error(`❌ Invalid environment: ${environment}`);
-  console.error('   Valid options: prd, stg');
-  process.exit(1);
-}
-
-const R2_PUBLIC_BUCKET = ENV_CONFIG[environment].bucket;
-const R2_PUBLIC_URL = ENV_CONFIG[environment].url;
-
-if (isDryRun) {
-  console.log('🔍 DRY RUN MODE - No uploads will be made');
-  console.log(`   Environment: ${environment.toUpperCase()}`);
-  console.log(`   Bucket: ${R2_PUBLIC_BUCKET}`);
-  console.log(`   URL: ${R2_PUBLIC_URL}`);
-  console.log('   Run with --execute to actually upload to public R2 bucket\n');
-} else {
-  console.log(`📦 Environment: ${environment.toUpperCase()}`);
-  console.log(`🪣 Bucket: ${R2_PUBLIC_BUCKET}`);
-  console.log(`🔗 Public URL: ${R2_PUBLIC_URL}\n`);
-}
+type Environment = keyof typeof ENV_CONFIG;
 
 type ImageInfo = {
   styleName: string;
   sanitizedName: string;
   sceneName: string;
   localPath: string;
-  r2Path: string;
 };
 
 /**
- * Downsample image to 512x512 using @cf-wasm/photon (WASM-based)
- * Returns a Buffer of the resized JPEG
+ * Process image to target size as WebP
  */
-async function downsampleImage(inputPath: string): Promise<Buffer> {
+async function processImage(
+  inputPath: string,
+  targetSize: number
+): Promise<Buffer> {
   const imageData = await readFile(inputPath);
   const inputBytes = new Uint8Array(imageData);
-
   const inputImage = PhotonImage.new_from_byteslice(inputBytes);
 
   try {
-    // Resize using Lanczos3 filter for best quality
     const resized = resize(
       inputImage,
-      TARGET_SIZE,
-      TARGET_SIZE,
+      targetSize,
+      targetSize,
       SamplingFilter.Lanczos3
     );
 
     try {
-      // Get JPEG bytes with specified quality
-      const outputBytes = resized.get_bytes_jpeg(JPEG_QUALITY);
+      const outputBytes = resized.get_bytes_webp();
       return Buffer.from(outputBytes);
     } finally {
       resized.free();
@@ -114,13 +79,13 @@ async function downsampleImage(inputPath: string): Promise<Buffer> {
 }
 
 /**
- * Scan the public/assets/styles directory and collect all images
+ * Scan the preview/ directory and collect all images
  */
 async function scanStyleImages(): Promise<ImageInfo[]> {
   const images: ImageInfo[] = [];
 
   try {
-    const styleDirectories = await readdir(PUBLIC_ASSETS_DIR, {
+    const styleDirectories = await readdir(PREVIEW_DIR, {
       withFileTypes: true,
     });
 
@@ -128,17 +93,15 @@ async function scanStyleImages(): Promise<ImageInfo[]> {
       if (!dir.isDirectory()) continue;
 
       const sanitizedName = dir.name;
-      const stylePath = path.join(PUBLIC_ASSETS_DIR, sanitizedName);
-
-      // Read scene images
+      const stylePath = path.join(PREVIEW_DIR, sanitizedName);
       const files = await readdir(stylePath);
 
       for (const file of files) {
-        if (!file.endsWith('.jpg') && !file.endsWith('.jpeg')) continue;
+        const ext = path.extname(file).toLowerCase();
+        if (!['.webp', '.jpg', '.jpeg'].includes(ext)) continue;
 
-        const sceneName = path.basename(file, path.extname(file));
+        const sceneName = path.basename(file, ext);
         const localPath = path.join(stylePath, file);
-        const r2Path = `styles/${sanitizedName}/${sceneName}.jpg`;
 
         images.push({
           styleName: sanitizedName
@@ -147,15 +110,14 @@ async function scanStyleImages(): Promise<ImageInfo[]> {
           sanitizedName,
           sceneName,
           localPath,
-          r2Path,
         });
       }
     }
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      console.error(`❌ Directory not found: ${PUBLIC_ASSETS_DIR}`);
-      console.error(
-        '   Make sure style preview images exist in /public/assets/styles/'
+      p.log.error(`Directory not found: ${PREVIEW_DIR}`);
+      p.log.info(
+        'Run generate-style-previews.ts first to create preview images.'
       );
       process.exit(1);
     }
@@ -166,127 +128,269 @@ async function scanStyleImages(): Promise<ImageInfo[]> {
 }
 
 /**
- * Upload a single image to R2 public bucket using wrangler CLI
+ * Upload a buffer to R2 using wrangler CLI
  */
-async function uploadImage(image: ImageInfo): Promise<string> {
-  // Downsample the image
-  const resizedBuffer = await downsampleImage(image.localPath);
+async function uploadToR2(
+  buffer: Buffer,
+  r2Key: string,
+  bucket: string
+): Promise<void> {
+  const tempFile = path.join(TEMP_DIR, r2Key.replace(/\//g, '-'));
+  await mkdir(path.dirname(tempFile), { recursive: true });
+  await writeFile(tempFile, buffer);
 
-  // Write to temp file
-  const tempFile = path.join(
-    TEMP_DIR,
-    `${image.sanitizedName}-${image.sceneName}.jpg`
-  );
-  await writeFile(tempFile, resizedBuffer);
-
-  // Upload using wrangler CLI (--remote flag uploads to actual R2, not local)
-  const r2Key = `${R2_PUBLIC_BUCKET}/${image.r2Path}`;
-
+  const fullKey = `${bucket}/${r2Key}`;
   try {
-    await $`bunx wrangler r2 object put ${r2Key} --file=${tempFile} --remote`.quiet();
+    await $`bunx wrangler r2 object put ${fullKey} --file=${tempFile} --remote`.quiet();
   } catch (error) {
+    const stderr =
+      error && typeof error === 'object' && 'stderr' in error
+        ? String(error.stderr).trim()
+        : '';
     throw new Error(
-      `Failed to upload ${image.r2Path}: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to upload ${r2Key}: ${stderr || (error instanceof Error ? error.message : String(error))}`
     );
   }
-
-  // Return deterministic public URL
-  const publicUrl = `${R2_PUBLIC_URL}/${image.r2Path}`;
-  return publicUrl;
 }
 
 /**
- * Generate deterministic public URL for an image
+ * Upload all images to a single environment
  */
-function getPublicUrl(styleName: string, sceneName: string): string {
-  return `${R2_PUBLIC_URL}/styles/${styleName}/${sceneName}.jpg`;
+async function uploadToEnvironment(
+  env: Environment,
+  images: ImageInfo[],
+  thumbnailMap: Map<string, string>
+): Promise<{ success: number; failed: number }> {
+  const config = ENV_CONFIG[env];
+  let success = 0;
+  let failed = 0;
+
+  // Group images by style
+  const styleGroups = new Map<string, ImageInfo[]>();
+  for (const img of images) {
+    const group = styleGroups.get(img.sanitizedName) || [];
+    group.push(img);
+    styleGroups.set(img.sanitizedName, group);
+  }
+
+  const spinner = p.spinner();
+  spinner.start(`Uploading to ${env.toUpperCase()} (${config.bucket})`);
+
+  for (const [styleName, styleImages] of styleGroups) {
+    const thumbnailScene = thumbnailMap.get(styleName) || 'character';
+
+    for (const img of styleImages) {
+      try {
+        // Upload original (full-resolution)
+        const originalBuffer = await readFile(img.localPath);
+        const originalKey = `styles/${img.sanitizedName}/${img.sceneName}.webp`;
+        await uploadToR2(
+          Buffer.from(originalBuffer),
+          originalKey,
+          config.bucket
+        );
+        success++;
+
+        // Upload 512px preview
+        const previewBuffer = await processImage(img.localPath, PREVIEW_SIZE);
+        const previewKey = `styles/${img.sanitizedName}/${img.sceneName}-preview.webp`;
+        await uploadToR2(previewBuffer, previewKey, config.bucket);
+        success++;
+
+        // Upload 256px thumbnail if this is the chosen scene
+        if (img.sceneName === thumbnailScene) {
+          const thumbBuffer = await processImage(img.localPath, THUMBNAIL_SIZE);
+          const thumbKey = `styles/${img.sanitizedName}/thumbnail.webp`;
+          await uploadToR2(thumbBuffer, thumbKey, config.bucket);
+          success++;
+        }
+      } catch (error) {
+        p.log.error(
+          `Failed: ${img.sanitizedName}/${img.sceneName} — ${error instanceof Error ? error.message : String(error)}`
+        );
+        failed++;
+      }
+    }
+
+    spinner.message(`Uploading to ${env.toUpperCase()} — ${styleName} done`);
+  }
+
+  spinner.stop(
+    `Uploaded to ${env.toUpperCase()}: ${success} files, ${failed} failed`
+  );
+  return { success, failed };
 }
 
-/**
- * Main execution
- */
 async function main() {
-  console.log('🎨 Style Preview Migration to R2\n');
-
-  // Create temp directory for processed images
-  await mkdir(TEMP_DIR, { recursive: true });
+  p.intro('Style Preview Upload to R2');
 
   // Scan for images
-  console.log('📂 Scanning for style images...');
   const images = await scanStyleImages();
-  console.log(
-    `   Found ${images.length} images in ${new Set(images.map((i) => i.sanitizedName)).size} styles\n`
-  );
+  const styleNames = [...new Set(images.map((i) => i.sanitizedName))];
+  const sceneNames = [...new Set(images.map((i) => i.sceneName))];
 
   if (images.length === 0) {
-    console.log('✅ No images to process');
+    p.log.warn('No images found in preview/');
+    p.outro('Nothing to upload.');
     return;
   }
 
-  // Display what will be processed
-  console.log('📋 Images to process:');
-  const styleGroups = images.reduce(
-    (acc, img) => {
-      if (!acc[img.sanitizedName]) acc[img.sanitizedName] = [];
-      acc[img.sanitizedName].push(img.sceneName);
-      return acc;
-    },
-    {} as Record<string, string[]>
+  p.log.info(
+    `Found ${images.length} images across ${styleNames.length} styles`
   );
 
-  for (const [style, scenes] of Object.entries(styleGroups)) {
-    console.log(`   ${style}: ${scenes.join(', ')}`);
+  // 1. Choose environment
+  const env = await p.select({
+    message: 'Which environment to upload to?',
+    options: [
+      {
+        value: 'stg' as const,
+        label: 'Staging',
+        hint: 'public-assets-stg bucket',
+      },
+      {
+        value: 'prd' as const,
+        label: 'Production',
+        hint: 'public-assets bucket',
+      },
+      { value: 'both' as const, label: 'Both', hint: 'staging + production' },
+    ],
+  });
+
+  if (p.isCancel(env)) {
+    p.cancel('Upload cancelled.');
+    process.exit(0);
   }
-  console.log();
+
+  // 2. Choose thumbnail scene
+  const sceneOptions = sceneNames.map((s) => ({
+    value: s,
+    label: s.charAt(0).toUpperCase() + s.slice(1),
+    hint:
+      s === 'character'
+        ? 'close-up portrait'
+        : s === 'environment'
+          ? 'wide establishing shot'
+          : s === 'action'
+            ? 'dynamic scene'
+            : undefined,
+  }));
+
+  const defaultScene = await p.select({
+    message: 'Which scene image for style selector thumbnails?',
+    options: [
+      ...sceneOptions,
+      {
+        value: 'per-style' as const,
+        label: 'Choose per style',
+        hint: 'pick individually',
+      },
+    ],
+  });
+
+  if (p.isCancel(defaultScene)) {
+    p.cancel('Upload cancelled.');
+    process.exit(0);
+  }
+
+  // Build thumbnail map
+  const thumbnailMap = new Map<string, string>();
+
+  if (defaultScene === 'per-style') {
+    for (const styleName of styleNames) {
+      const displayName = styleName
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+
+      const styleScenes = images
+        .filter((i) => i.sanitizedName === styleName)
+        .map((i) => i.sceneName);
+
+      const scene = await p.select({
+        message: `Thumbnail for "${displayName}"?`,
+        options: styleScenes.map((s) => ({
+          value: s,
+          label: s.charAt(0).toUpperCase() + s.slice(1),
+        })),
+      });
+
+      if (p.isCancel(scene)) {
+        p.cancel('Upload cancelled.');
+        process.exit(0);
+      }
+
+      thumbnailMap.set(styleName, scene);
+    }
+  } else {
+    for (const styleName of styleNames) {
+      thumbnailMap.set(styleName, defaultScene);
+    }
+  }
+
+  // 3. Show summary
+  const environments: Environment[] = env === 'both' ? ['stg', 'prd'] : [env];
+  const envLabels = environments
+    .map((e) => `${e.toUpperCase()} (${ENV_CONFIG[e].bucket})`)
+    .join(', ');
+
+  const thumbnailSummary =
+    defaultScene === 'per-style'
+      ? [...thumbnailMap.entries()]
+          .map(([style, scene]) => `  ${style}: ${scene}`)
+          .join('\n')
+      : `  All styles: ${defaultScene}`;
+
+  p.note(
+    [
+      `Environment: ${envLabels}`,
+      `Styles: ${styleNames.length}`,
+      `Scene images: ${images.length} (original + ${PREVIEW_SIZE}px)`,
+      `Thumbnails: ${styleNames.length} (${THUMBNAIL_SIZE}px)`,
+      `Total files: ${images.length * 2 + styleNames.length} per environment`,
+      '',
+      'Thumbnail scenes:',
+      thumbnailSummary,
+    ].join('\n'),
+    'Upload Summary'
+  );
 
   if (isDryRun) {
-    console.log(
-      '💡 This was a dry run. Run with --execute to upload to public R2 bucket.'
+    p.log.warn('Dry run — no uploads will be made.');
+    p.log.info('Run without --dry-run to upload.');
+
+    const sampleStyle = styleNames[0];
+    const sampleEnv = ENV_CONFIG[environments[0]];
+    p.log.info(
+      `Sample URL: ${sampleEnv.url}/styles/${sampleStyle}/thumbnail.webp`
     );
-    console.log('\n📋 Sample URLs that will be generated:');
-    const sampleStyle = images[0];
-    if (sampleStyle) {
-      console.log(
-        `   ${getPublicUrl(sampleStyle.sanitizedName, sampleStyle.sceneName)}`
-      );
-    }
+
+    p.outro('Dry run complete.');
     return;
   }
 
-  // Execute the upload
-  console.log(`⬆️  Uploading images to public R2 bucket: ${R2_PUBLIC_BUCKET}\n`);
-  let successCount = 0;
-  let failCount = 0;
+  // 4. Confirm
+  const confirmed = await p.confirm({
+    message: 'Proceed with upload?',
+  });
 
-  for (const image of images) {
-    try {
-      console.log(
-        `   Uploading ${image.sanitizedName}/${image.sceneName}.jpg...`
-      );
-      const publicUrl = await uploadImage(image);
-      console.log(`      → ${publicUrl}`);
-      successCount++;
-    } catch (error) {
-      console.error(`   ❌ Failed to upload ${image.r2Path}:`, error);
-      failCount++;
-    }
+  if (p.isCancel(confirmed) || !confirmed) {
+    p.cancel('Upload cancelled.');
+    process.exit(0);
   }
 
-  console.log(
-    `\n✅ Upload complete: ${successCount} succeeded, ${failCount} failed\n`
-  );
+  // 5. Create temp directory and upload
+  await mkdir(TEMP_DIR, { recursive: true });
 
-  console.log('🎉 Migration complete!');
-  console.log('\n📝 Next steps:');
-  console.log('   1. Update seed script to use deterministic URLs:');
-  console.log(
-    `      previewUrl: '${R2_PUBLIC_URL}/styles/\${sanitizedName}/character.jpg'`
-  );
-  console.log('   2. Test image display in the app');
-  console.log('   3. Delete /public/assets/styles/ to reduce bundle size');
+  for (const e of environments) {
+    await uploadToEnvironment(e, images, thumbnailMap);
+  }
+
+  p.outro('Upload complete!');
 }
 
 main().catch((error) => {
-  console.error('❌ Error during migration:', error);
+  p.log.error(
+    `Error: ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 });

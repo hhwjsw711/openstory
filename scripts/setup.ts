@@ -1889,6 +1889,42 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Style Previews
+  // -------------------------------------------------------------------------
+  if (vars.has('FAL_KEY') && vars.has('R2_ACCOUNT_ID')) {
+    const setupPreviews = checkCancel(
+      await p.confirm({
+        message: 'Generate and upload style preview images?',
+        initialValue: false,
+      })
+    );
+
+    if (setupPreviews) {
+      p.log.step(chalk.bold('Generating style previews…'));
+      try {
+        execFileSync('bun', ['scripts/generate-style-previews.ts'], {
+          stdio: 'inherit',
+          cwd: process.cwd(),
+        });
+        p.log.step(chalk.bold('Uploading style previews to R2…'));
+        execFileSync('bun', ['scripts/upload-style-previews-to-r2.ts'], {
+          stdio: 'inherit',
+          cwd: process.cwd(),
+        });
+        p.log.success('Style previews generated and uploaded');
+      } catch {
+        p.log.warn(
+          'Style preview setup failed. Run manually later: bun setup:previews'
+        );
+      }
+    }
+  } else {
+    p.log.info(
+      'Style previews skipped (requires FAL_KEY + R2). Run later: bun setup:previews'
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Google OAuth
   // -------------------------------------------------------------------------
   const googleKeys = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const;
