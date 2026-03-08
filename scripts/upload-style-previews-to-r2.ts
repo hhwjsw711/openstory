@@ -29,12 +29,13 @@ const isDryRun = process.argv.includes('--dry-run');
 // Environment-specific configuration
 const ENV_CONFIG = {
   prd: {
-    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
+    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
   },
   stg: {
-    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'public-assets-stg',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.example.com'}`,
+    bucket:
+      process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets-stg',
+    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets-stg.openstory.so'}`,
   },
 };
 
@@ -142,8 +143,12 @@ async function uploadToR2(
   try {
     await $`bunx wrangler r2 object put ${fullKey} --file=${tempFile} --remote`.quiet();
   } catch (error) {
+    const stderr =
+      error && typeof error === 'object' && 'stderr' in error
+        ? String(error.stderr).trim()
+        : '';
     throw new Error(
-      `Failed to upload ${r2Key}: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to upload ${r2Key}: ${stderr || (error instanceof Error ? error.message : String(error))}`
     );
   }
 }
@@ -176,9 +181,19 @@ async function uploadToEnvironment(
 
     for (const img of styleImages) {
       try {
+        // Upload original (full-resolution)
+        const originalBuffer = await readFile(img.localPath);
+        const originalKey = `styles/${img.sanitizedName}/${img.sceneName}.webp`;
+        await uploadToR2(
+          Buffer.from(originalBuffer),
+          originalKey,
+          config.bucket
+        );
+        success++;
+
         // Upload 512px preview
         const previewBuffer = await processImage(img.localPath, PREVIEW_SIZE);
-        const previewKey = `styles/${img.sanitizedName}/${img.sceneName}.webp`;
+        const previewKey = `styles/${img.sanitizedName}/${img.sceneName}-preview.webp`;
         await uploadToR2(previewBuffer, previewKey, config.bucket);
         success++;
 
@@ -329,9 +344,9 @@ async function main() {
     [
       `Environment: ${envLabels}`,
       `Styles: ${styleNames.length}`,
-      `Scene images: ${images.length} (${PREVIEW_SIZE}px)`,
+      `Scene images: ${images.length} (original + ${PREVIEW_SIZE}px)`,
       `Thumbnails: ${styleNames.length} (${THUMBNAIL_SIZE}px)`,
-      `Total files: ${images.length + styleNames.length} per environment`,
+      `Total files: ${images.length * 2 + styleNames.length} per environment`,
       '',
       'Thumbnail scenes:',
       thumbnailSummary,

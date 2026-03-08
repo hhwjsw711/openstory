@@ -1,3 +1,4 @@
+import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { DEFAULT_STYLE_TEMPLATES } from '@/lib/style/style-templates';
 import { PhotonImage } from '@cf-wasm/photon';
@@ -279,7 +280,7 @@ async function processTask(
 
   try {
     const result = await generateImageWithProvider({
-      model: 'nano_banana_pro',
+      model: DEFAULT_IMAGE_MODEL,
       prompt: prompt,
       imageSize: 'square_hd',
       numImages: 1,
@@ -498,6 +499,7 @@ async function main() {
         styleConfig.referenceFilms?.length
           ? `Inspired by: ${styleConfig.referenceFilms.join(', ')}`
           : '',
+        'No text, no words, no titles, no watermarks, no logos. No celebrities, no famous people, no real identifiable individuals',
       ]
         .filter(Boolean)
         .join('. ');
