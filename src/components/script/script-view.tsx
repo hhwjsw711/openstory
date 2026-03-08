@@ -264,7 +264,7 @@ export const ScriptView: FC<{
       {
         title: undefined,
         teamId,
-        script: script || sequence?.script || '',
+        script: script ?? sequence?.script ?? '',
         styleId: styleId || sequence?.styleId || undefined,
         aspectRatio,
         analysisModels,
@@ -333,7 +333,7 @@ export const ScriptView: FC<{
   const isProcessing = sequence?.status === 'processing';
   const isDisabled = !isFormValid || isSubmitting || isProcessing;
 
-  const scriptValue = script || sequence?.script || '';
+  const scriptValue = script ?? sequence?.script ?? '';
 
   return (
     <Card
