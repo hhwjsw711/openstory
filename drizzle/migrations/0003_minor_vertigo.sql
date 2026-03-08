@@ -1,0 +1,1 @@
+ALTER TABLE `styles` ADD `sort_order` integer DEFAULT 100;
