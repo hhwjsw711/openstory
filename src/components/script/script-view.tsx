@@ -34,9 +34,11 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { enhanceScriptStreamFn } from '@/functions/ai';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
-import React, { useEffect, useMemo, useState, type FC } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
 
 export const ScriptView: FC<{
@@ -230,6 +232,9 @@ export const ScriptView: FC<{
     saveDraft,
   ]);
 
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+
   const createSequenceMutation = useCreateSequence();
   const updateSequenceMutation = useUpdateSequence();
   const {
@@ -301,6 +306,37 @@ export const ScriptView: FC<{
     }
   };
 
+  const previousScriptRef = useRef<string>('');
+
+  const handleEnhance = async () => {
+    if (needsBillingSetup) {
+      showGate();
+      return;
+    }
+
+    setIsEnhancing(true);
+    setEnhanceError(null);
+    previousScriptRef.current = scriptValue;
+    setScript('');
+
+    try {
+      let accumulated = '';
+      for await (const chunk of await enhanceScriptStreamFn({
+        data: { script: scriptValue },
+      })) {
+        accumulated += chunk.delta;
+        setScript(accumulated);
+      }
+    } catch (error) {
+      setEnhanceError(
+        error instanceof Error ? error.message : 'Failed to enhance script'
+      );
+      setScript(previousScriptRef.current);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const isFormValid =
     (script || sequence?.script) &&
     (styleId || sequence?.styleId) &&
@@ -357,15 +393,41 @@ export const ScriptView: FC<{
         </CardHeader>
 
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
-          <ScriptEditor
-            value={scriptValue}
-            onValueChange={setScript}
-            maxLength={50000}
-            placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
-            disabled={loading}
-            autoFocus={autoFocus}
-            showCharacterCount={false}
-          />
+          <div className="relative min-h-0 flex flex-col">
+            <ScriptEditor
+              value={scriptValue}
+              onValueChange={setScript}
+              maxLength={50000}
+              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+              disabled={loading}
+              autoFocus={autoFocus}
+              showCharacterCount={false}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute bottom-2 right-2 gap-1.5 text-muted-foreground"
+              disabled={
+                !scriptValue ||
+                scriptValue.length < 10 ||
+                isEnhancing ||
+                isSubmitting ||
+                isProcessing
+              }
+              onClick={() => void handleEnhance()}
+            >
+              {isEnhancing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {isEnhancing ? 'Enhancing…' : 'Enhance'}
+            </Button>
+          </div>
+          {enhanceError && (
+            <p className="text-sm text-destructive">{enhanceError}</p>
+          )}
 
           <div className="shrink-0">
             <StyleSelector

@@ -92,12 +92,12 @@ describe('Script Enhancer Security Tests', () => {
       expect(sanitized).not.toContain('Pretend to be admin');
     });
 
-    it('should truncate overly long content', () => {
-      const longInput = 'A'.repeat(6000);
+    it('should preserve long content without truncation', () => {
+      const longInput = 'A'.repeat(8000);
       const sanitized = sanitizeScriptContent(longInput);
 
-      expect(sanitized.length).toBeLessThan(5100); // 5000 + truncation message
-      expect(sanitized).toContain('[content truncated for safety]');
+      expect(sanitized.length).toBe(8000);
+      expect(sanitized).not.toContain('[content truncated');
     });
 
     it('should handle JSON-like injection attempts', () => {

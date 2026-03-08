@@ -8,12 +8,21 @@ import { getRequest } from '@tanstack/react-start/server';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { getEnv } from '#env';
-import { callLLM, RECOMMENDED_MODELS } from '@/lib/ai/llm-client';
 import {
-  enhanceScript as enhanceScriptService,
+  callLLM,
+  callLLMStream,
+  RECOMMENDED_MODELS,
+} from '@/lib/ai/llm-client';
+import {
+  checkForInjectionAttempts,
+  sanitizeScriptContent,
+} from '@/lib/ai/prompt-validation';
+import {
+  createUserPrompt,
   RateLimiter,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
+import { getPrompt } from '@/lib/prompts';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
@@ -151,10 +160,10 @@ const enhanceScriptInputSchema = z.object({
   style: z.string().optional(),
 });
 
-export const enhanceScriptFn = createServerFn({ method: 'POST' })
+export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(enhanceScriptInputSchema))
-  .handler(async ({ data, context }) => {
+  .handler(async function* ({ data, context }) {
     enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
     const deduct = await prepareBilling(
@@ -163,18 +172,29 @@ export const enhanceScriptFn = createServerFn({ method: 'POST' })
       'Script enhancement'
     );
 
-    const result = await enhanceScriptService({
-      originalScript: data.script,
-      targetDuration: data.targetDuration,
-      tone: data.tone,
-      style: data.style,
-    });
+    if (checkForInjectionAttempts(data.script)) {
+      console.warn('Script enhancement: Potential injection attempt detected');
+    }
+
+    const sanitized = sanitizeScriptContent(data.script);
+    const { compiled } = await getPrompt('script/enhance');
+    const userPrompt = createUserPrompt(sanitized);
+
+    const systemMessage = `${compiled}\n\nReturn ONLY the enhanced script text. No JSON, no markdown formatting, no explanations.`;
+
+    for await (const chunk of callLLMStream({
+      model: RECOMMENDED_MODELS.creative,
+      messages: [
+        { role: 'system' as const, content: systemMessage },
+        { role: 'user' as const, content: userPrompt },
+      ],
+      max_tokens: 4000,
+      temperature: 0.7,
+    })) {
+      if (chunk.delta) {
+        yield { delta: chunk.delta };
+      }
+    }
 
     await deduct?.();
-
-    return {
-      originalScript: data.script,
-      enhancedScript: result.enhanced_script,
-      styleStackRecommendation: result.style_stack_recommendation,
-    };
   });

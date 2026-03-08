@@ -114,11 +114,6 @@ export const sanitizeScriptContent = (input: string): string => {
     '[full guidance]'
   );
 
-  // Limit length to prevent abuse
-  if (sanitized.length > 5000) {
-    sanitized = `${sanitized.substring(0, 5000)}... [content truncated for safety]`;
-  }
-
   return sanitized.trim();
 };
 
