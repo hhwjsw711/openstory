@@ -1,1 +1,0 @@
-ALTER TABLE `frames` ADD `motion_model` text(100);

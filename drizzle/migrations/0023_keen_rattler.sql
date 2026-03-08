@@ -1,1 +1,0 @@
-ALTER TABLE `sequences` DROP COLUMN `merged_video_duration_ms`;

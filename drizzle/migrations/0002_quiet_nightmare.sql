@@ -1,1 +1,0 @@
-ALTER TABLE `frames` ADD `motion_prompt` text;
