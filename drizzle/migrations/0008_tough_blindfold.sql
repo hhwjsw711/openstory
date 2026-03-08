@@ -1,1 +1,0 @@
-ALTER TABLE `sequences` ADD `workflow` text(100);

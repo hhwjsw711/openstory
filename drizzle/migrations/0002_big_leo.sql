@@ -87,6 +87,5 @@ CREATE INDEX `idx_sequences_created_at` ON `sequences` (`created_at`);--> statem
 CREATE INDEX `idx_sequences_status` ON `sequences` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_sequences_style_id` ON `sequences` (`style_id`);--> statement-breakpoint
 CREATE INDEX `idx_sequences_team_id` ON `sequences` (`team_id`);--> statement-breakpoint
-ALTER TABLE `styles` ADD `sort_order` integer DEFAULT 100;--> statement-breakpoint
 ALTER TABLE `transactions` ADD `stripe_session_id` text;--> statement-breakpoint
 CREATE UNIQUE INDEX `idx_transactions_stripe_session_id` ON `transactions` (`stripe_session_id`);
