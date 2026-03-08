@@ -499,7 +499,7 @@ async function main() {
         styleConfig.referenceFilms?.length
           ? `Inspired by: ${styleConfig.referenceFilms.join(', ')}`
           : '',
-        'No text, no words, no titles, no watermarks, no logos. No celebrities, no famous people, no real identifiable individuals',
+        'No text, no words, no titles, no watermarks, no logos. No celebrities, no famous people, no real identifiable individuals. No grid, no collage, no montage, no multiple images, no split screen, no photo collection. Single image only',
       ]
         .filter(Boolean)
         .join('. ');

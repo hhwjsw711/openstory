@@ -316,22 +316,25 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   {
     name: 'Pastel',
     description:
-      'Symmetrical compositions with pastel colors and whimsical aesthetics.',
+      'Obsessively symmetrical live-action cinematography with candy-colored pastels, dollhouse interiors, and deadpan whimsy.',
     category: 'artistic',
     tags: ['whimsical', 'symmetrical', 'pastel', 'quirky', 'artistic'],
     config: {
-      artStyle: 'Perfectly symmetrical compositions with pastel palette',
+      artStyle:
+        'Obsessively symmetrical, centered, planimetric frontal framing. Meticulously art-directed interiors with period props, patterned wallpaper, corduroy upholstery, brass fixtures, and leather luggage arranged in dollhouse-like environments. Live-action photographic cinematography — NOT cartoon, NOT illustration, NOT animation. Real actors in real sets. Candy-colored pastels dominate every surface: dusty pinks, powder blues, butter yellows, lavender, mint green. Vintage textures and handcrafted details in every frame',
       colorPalette: ['#FFB6C1', '#87CEEB', '#F0E68C', '#DDA0DD', '#98FB98'],
-      lighting: 'Soft, even lighting with minimal shadows',
+      lighting:
+        'Soft, perfectly even diffused lighting with minimal shadows. Warm tones reminiscent of 1960s-70s Kodak film stock. Flat illumination that emphasizes set design over dramatic shadow',
       cameraWork:
         'Centered framing, tracking shots, and planimetric composition',
-      mood: 'Whimsical and nostalgic',
+      mood: 'Whimsical melancholy, deadpan charm, nostalgic precision',
       referenceFilms: [
         'Grand Budapest Hotel',
         'Moonrise Kingdom',
         'The Royal Tenenbaums',
       ],
-      colorGrading: 'Saturated pastels with vintage feel',
+      colorGrading:
+        'Muted saturated pastels with warm vintage film emulsion. Lifted blacks, soft film grain, slightly faded highlights. Every color feels hand-picked and coordinated',
     },
     isPublic: true,
     isTemplate: true,
