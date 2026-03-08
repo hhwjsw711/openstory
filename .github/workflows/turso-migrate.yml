@@ -1,4 +1,4 @@
-name: Database Migrations
+name: Turso Migrate
 
 on:
   push:
@@ -23,7 +23,8 @@ jobs:
         run: bun install
 
       - name: Run migrations
-        run: bun db:migrate
+        if: env.TURSO_DATABASE_URL != '' && env.TURSO_AUTH_TOKEN != ''
+        run: bun db:migrate:turso
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
@@ -45,7 +46,8 @@ jobs:
         run: bun install
 
       - name: Run migrations
-        run: bun db:migrate
+        if: env.TURSO_DATABASE_URL != '' && env.TURSO_AUTH_TOKEN != ''
+        run: bun db:migrate:turso
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

@@ -33,6 +33,7 @@
     "db:generate": "bun --bun drizzle-kit generate --config=drizzle.config.local.ts",
     "db:migrate": "bun --bun drizzle-kit migrate --config=drizzle.config.local.ts",
     "db:migrate:local": "bun --bun drizzle-kit migrate --config=drizzle.config.local.ts",
+    "db:migrate:turso": "bun --bun drizzle-kit migrate --config=drizzle.config.turso.ts",
     "db:migrate:test": "bun --bun drizzle-kit migrate --config=drizzle.config.test.ts",
     "db:studio": "bun drizzle-kit studio --config=drizzle.config.local.ts",
     "db:studio:local": "bun drizzle-kit studio --config=drizzle.config.local.ts",
