@@ -855,6 +855,90 @@ async function deploySetup(
         );
       }
     }
+
+    // Push R2 domain variables to GitHub production environment
+    // (CI seed step reads these via vars.R2_PUBLIC_ASSETS_DOMAIN)
+    const varsToPush = PR_PREVIEW_VARIABLES.filter((k) => vars.get(k));
+    if (varsToPush.length > 0) {
+      const shouldPushVars = checkCancel(
+        await p.confirm({
+          message:
+            'Push R2 domain variables to GitHub production environment? (needed for CI seed)',
+          initialValue: true,
+        })
+      );
+
+      if (shouldPushVars) {
+        const varSpinner = p.spinner();
+        varSpinner.start(
+          `Pushing ${varsToPush.length} variables to production environment`
+        );
+
+        try {
+          const repoName = execGh([
+            'repo',
+            'view',
+            '--json',
+            'nameWithOwner',
+            '-q',
+            '.nameWithOwner',
+          ]);
+
+          // Ensure the production environment exists
+          execGh([
+            'api',
+            '--method',
+            'PUT',
+            `/repos/${repoName}/environments/production`,
+          ]);
+
+          let varsPushed = 0;
+          let varsFailed = 0;
+
+          for (const key of varsToPush) {
+            const value = vars.get(key);
+            if (!value) continue;
+            try {
+              execGh([
+                'variable',
+                'set',
+                key,
+                '--env',
+                'production',
+                '--body',
+                value,
+              ]);
+              varsPushed++;
+            } catch {
+              varsFailed++;
+              p.log.warn(`Failed to push variable: ${key}`);
+            }
+          }
+
+          if (varsFailed > 0) {
+            varSpinner.stop(
+              `Pushed ${varsPushed} variables (${varsFailed} failed)`
+            );
+          } else {
+            varSpinner.stop(`Pushed ${varsPushed} variables`);
+          }
+        } catch (error) {
+          varSpinner.stop('Failed to push variables');
+          p.log.error(
+            `Error: ${error instanceof Error ? error.message : String(error)}`
+          );
+          p.log.info(
+            'Run manually:\n' +
+              varsToPush
+                .map(
+                  (k) =>
+                    `  gh variable set ${k} --env production --body "${vars.get(k)}"`
+                )
+                .join('\n')
+          );
+        }
+      }
+    }
   } else if (platform === 'vercel') {
     const shouldPushSecrets = checkCancel(
       await p.confirm({
