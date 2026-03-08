@@ -155,13 +155,27 @@ export async function createSequenceCharacter(
 }
 
 /**
- * Create multiple sequence characters in a single insert
+ * Create multiple sequence characters in batched inserts.
+ * Batches to stay within D1's 100 bound parameter limit
+ * (~20 params per row, so 4 rows per batch is safe)
  */
 export async function createSequenceCharactersBulk(
   data: NewCharacter[]
 ): Promise<Character[]> {
   if (data.length === 0) return [];
-  return await getDb().insert(characters).values(data).returning();
+  const BATCH_SIZE = 4;
+  const results: Character[] = [];
+
+  for (let i = 0; i < data.length; i += BATCH_SIZE) {
+    const batch = data.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(characters)
+      .values(batch)
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**

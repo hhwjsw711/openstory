@@ -130,13 +130,27 @@ export async function createSequenceLocation(
 }
 
 /**
- * Create multiple sequence locations in a single insert
+ * Create multiple sequence locations in batched inserts.
+ * Batches to stay within D1's 100 bound parameter limit
+ * (~24 params per row, so 3 rows per batch is safe)
  */
 export async function createSequenceLocationsBulk(
   data: NewSequenceLocation[]
 ): Promise<SequenceLocation[]> {
   if (data.length === 0) return [];
-  return await getDb().insert(sequenceLocations).values(data).returning();
+  const BATCH_SIZE = 3;
+  const results: SequenceLocation[] = [];
+
+  for (let i = 0; i < data.length; i += BATCH_SIZE) {
+    const batch = data.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(sequenceLocations)
+      .values(batch)
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**
