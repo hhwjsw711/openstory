@@ -99,33 +99,35 @@ export const DEFAULT_STYLE_TEMPLATES: Array<
   {
     name: 'YouTube',
     description:
-      'Energetic, personality-driven visuals with punchy colors and direct-to-camera framing. Built for YouTube content, vlogs, podcast clips, and creator-led explainers.',
+      'High-energy, visually diverse content with fast-paced editing rhythm and cinematic B-roll. Built for video essays, tutorials, product reviews, vlogs, and creator-led explainers -- every frame a different shot from a well-cut sequence.',
     category: 'youtube',
     tags: [
       'youtube',
       'creator',
       'vlog',
-      'podcast',
+      'tutorial',
+      'review',
+      'video-essay',
       'explainer',
-      'talking-head',
+      'b-roll',
     ],
     config: {
-      mood: 'Energetic, approachable, and confident',
+      mood: 'Confident, high-energy, and visually varied -- shifting between focused intimacy in close-ups and expansive cinematic scope in B-roll. Every frame earns attention through visual interest, not repetition',
       artStyle:
-        'Modern digital content creator aesthetic. Clean background environments with personality -- RGB accent lighting, styled bookshelves, or minimal desk setups. Subject is always the focal point with direct eye contact to camera. Punchy, scroll-stopping visual energy',
+        'Modern YouTube production aesthetic built on shot variety. Alternate between: direct-to-camera medium shots with shallow depth of field for presenting, tight macro inserts of hands interacting with products and objects, cinematic establishing B-roll of environments and locations, over-the-shoulder and POV angles for demonstrations. Backgrounds shift between styled studio spaces, outdoor locations, coffee shops, streets, and workspaces. Real-world texture and tactile interaction in every frame -- hands typing, unboxing, touching surfaces. Every shot feels like a different cut from a well-edited video',
       lighting:
-        'Three-point key light setup with strong key, soft fill, and colored RGB rim/backlight for depth. High-key on subject face for clarity. Background slightly darker to create depth separation. Clean, modern, studio-grade illumination',
+        'Adapts to shot context. Studio frames: bright key light with subtle colored rim accent for depth separation, face well-lit and clear. Location B-roll: natural light -- golden hour warmth, overcast soft diffusion, or dramatic side-light for texture. Insert shots: focused directional light isolating the subject against soft bokeh. Practical lights used atmospherically -- screen glow, desk lamps, cafe ambient. Overall: high clarity on subject, cinematic atmosphere in environment',
       colorPalette: ['#FF4D4D', '#1E1E2E', '#00D4FF', '#FFFFFF', '#FFB800'],
       cameraWork:
-        'Locked medium close-up for talking head, occasional slow push-in for emphasis. Cut-away wide shots of workspace or B-roll. Direct-to-camera angle at eye level. Minimal movement -- stability and clarity prioritized over cinematic dynamism',
+        'Dynamic editing rhythm -- every frame is a different shot type from a fast-paced cut sequence. Locked shallow-DOF medium for presenting to camera. Smooth gimbal tracking for walk-and-talk reveals. Locked macro close-ups of hands, products, and textures at 45-degree or overhead angles. Slow push-in on key moments for emphasis. Handheld with natural micro-movement for outdoor vlog energy. Wide establishing shots of locations and environments. No two consecutive frames share the same angle or distance',
       referenceFilms: [
-        'MKBHD Studio Setup',
-        'Casey Neistat Visual Style',
-        'Linus Tech Tips',
-        'Ali Abdaal Content Aesthetic',
+        'MKBHD Product Review Cinematography',
+        'Johnny Harris Video Essay Visual Style',
+        'Casey Neistat Vlog Energy',
+        'Peter McKinnon B-Roll Aesthetic',
       ],
       colorGrading:
-        'High contrast with vivid saturation. Skin tones warm and natural against cooler backgrounds. Blacks are deep, whites are clean. Slight teal-orange split for modern digital look',
+        'Punchy and clean with high contrast. Rich skin tones kept warm and natural. Teal-orange split in shadows and highlights for modern digital look. Outdoor shots lean warmer, studio shots cooler. Deep blacks, crisp whites. Vivid but not oversaturated -- polished without feeling clinical',
     },
     isPublic: true,
     isTemplate: true,
