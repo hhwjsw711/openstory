@@ -28,6 +28,13 @@ const llmMetadataSchema = z.object({
 });
 
 const inflight = new Map<string, ReturnType<typeof startObservation>>();
+const inputAccumulator = new Map<
+  string,
+  {
+    systemPrompts?: string[];
+    messages: Array<{ role: string; content: string }>;
+  }
+>();
 
 export function initAIEventBridge(): void {
   aiEventClient.on(
@@ -37,6 +44,11 @@ export function initAIEventBridge(): void {
       const parsed = llmMetadataSchema.safeParse(payload.options?.metadata);
       const meta = parsed.success ? parsed.data : {};
       const name = meta.observationName ?? `${payload.provider}-call`;
+
+      inputAccumulator.set(payload.requestId, {
+        systemPrompts: payload.systemPrompts,
+        messages: [],
+      });
 
       const createObs = () => {
         const obs = startObservation(
@@ -68,13 +80,30 @@ export function initAIEventBridge(): void {
   );
 
   aiEventClient.on(
+    'text:message:created',
+    (event) => {
+      const payload = event.payload;
+      const reqId = payload.requestId ?? payload.streamId;
+      if (!reqId) return;
+      const acc = inputAccumulator.get(reqId);
+      if (!acc) return;
+      if (payload.role === 'user' || payload.role === 'system') {
+        acc.messages.push({ role: payload.role, content: payload.content });
+      }
+    },
+    { withEventTarget: true }
+  );
+
+  aiEventClient.on(
     'text:request:completed',
     (event) => {
       const payload = event.payload;
       const obs = inflight.get(payload.requestId);
       if (!obs) return;
+      const accumulated = inputAccumulator.get(payload.requestId);
       obs
         .update({
+          input: accumulated ?? undefined,
           output: payload.content,
           ...(payload.usage && {
             usageDetails: {
@@ -85,6 +114,7 @@ export function initAIEventBridge(): void {
         })
         .end();
       inflight.delete(payload.requestId);
+      inputAccumulator.delete(payload.requestId);
     },
     { withEventTarget: true }
   );
@@ -98,6 +128,7 @@ export function initAIEventBridge(): void {
       if (!obs) return;
       obs.update({ level: 'ERROR', statusMessage: payload.error }).end();
       inflight.delete(reqId);
+      inputAccumulator.delete(reqId);
     },
     { withEventTarget: true }
   );

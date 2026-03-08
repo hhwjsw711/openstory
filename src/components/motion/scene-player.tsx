@@ -130,7 +130,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       return (
         <div
           className={cn(
-            'relative flex items-center justify-center overflow-hidden bg-zinc-950',
+            'relative flex w-full items-center justify-center overflow-hidden bg-muted',
             className,
             getAspectRatioClassName(aspectRatio)
           )}
