@@ -507,6 +507,33 @@ export const analyzeScriptWorkflow = createWorkflow(
     const locationsWithSheets = locationResult.body;
     const scenesWithVisualPrompts = visualResult.body;
 
+    // Persist visual prompts + continuity to frames immediately
+    // so cast/location tabs work before image generation completes
+    if (sequenceId) {
+      await context.run('update-frames-after-visual-prompts', async () => {
+        await Promise.all(
+          scenesWithVisualPrompts.map(async (scene) => {
+            const matched = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
+            );
+            if (!matched) return;
+            await updateFrame(matched.frameId, {
+              metadata: scene,
+              imagePrompt: scene.prompts?.visual?.fullPrompt,
+            });
+            await getGenerationChannel(sequenceId).emit(
+              'generation.frame:updated',
+              {
+                frameId: matched.frameId,
+                updateType: 'visual-prompt',
+                metadata: scene,
+              }
+            );
+          })
+        );
+      });
+    }
+
     let imageUrls: string[] = [];
 
     if (imageModel) {

@@ -324,13 +324,12 @@ export const WORKFLOW_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
   'phase/audio-design-chat': [
     {
       role: 'system',
-      content: `You are a Cinematic Audio Designer. Output pure JSON only - no markdown, no explanation.
+      content: `You are a Cinematic Audio Designer. You will be called via a structured output tool. Follow the provided schema exactly.
 
 ## Core Rules
 
 1. Use exact enum values for all fields (see allowed values below)
 2. Always include roomTone and atmosphere
-3. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
 
 ## Audio Categories
 
@@ -409,13 +408,12 @@ Respond with ONLY valid JSON matching the schema.`,
   'phase/character-extraction-chat': [
     {
       role: 'system',
-      content: `You are a Character Bible Generator. Output pure JSON only - no markdown, no explanation.
+      content: `You are a Character Bible Generator. You will be called via a structured output tool. Follow the provided schema exactly.
 
 ## Core Rules
 
 1. **TRACK FIRST MENTION**: Record exact text where character first appears (e.g., "a man" or "JACK (30s)")
 2. **COMPLETE DESCRIPTIONS**: Provide full physical/clothing details - these go in EVERY visual prompt
-3. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
 
 ## Character Analysis
 
@@ -472,7 +470,7 @@ For each location:
 5. Create a short consistency tag for image generation
 
 Focus on visual consistency - locations should be easily recognizable across multiple scenes.
-Output must be valid JSON matching the provided schema.`,
+You will be called via a structured output tool. Follow the provided schema exactly.`,
     },
     {
       role: 'user',
@@ -586,9 +584,8 @@ Respond with up to {{expectedMatches}} matches, only including high-confidence m
       content: `You are an expert Motion Prompt Engineer for Generative Video. Your goal is to generate a text prompt that directs the ANIMATION of a provided static image.
 
 ### CRITICAL OUTPUT RULES
-1. **OUTPUT FORMAT**: Pure JSON only. Start with \`{\`, end with \`}\`. No markdown code blocks.
-2. **SCHEMA**: \`{"prompt": "The full motion description string..."}\`
-3. **NO VISUAL REDUNDANCY**: Do NOT describe static details (hair color, clothing, room decor). The video model already sees these in the starting frame. Only describe what MOVES or CHANGES.
+1. You will be called via a structured output tool. Follow the provided schema exactly.
+2. **NO VISUAL REDUNDANCY**: Do NOT describe static details (hair color, clothing, room decor). The video model already sees these in the starting frame. Only describe what MOVES or CHANGES.
 
 ### MOTION CONSTRUCTION STRATEGY
 1. **FOCUS ON VERBS**: Use strong, imperative verbs. (e.g., "Camera pushes in," "Character turns abruptly," "Smoke billows").
@@ -709,13 +706,12 @@ Generate tags and prompt for a single cohesive music track that spans the entire
   'phase/scene-splitting-chat': [
     {
       role: 'system',
-      content: `You are a Script Scene Analyzer. Output pure JSON only - no markdown, no explanation.
+      content: `You are a Script Scene Analyzer. You will be called via a structured output tool. Follow the provided schema exactly.
 
 ## Core Rules
 
 1. **PRESERVE EXACT INPUT**: Store user's exact words verbatim in originalScript.extract. Never modify, enhance, or rewrite.
-2. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
-3. **SCENE** = single location + continuous action + unified emotional beat + ONE SHOT (single continuous camera take without cuts)
+2. **SCENE** = single location + continuous action + unified emotional beat + ONE SHOT (single continuous camera take without cuts)
 
 ## ONE SHOT RULE (Critical)
 
@@ -841,9 +837,8 @@ Respond with exactly {{expectedMatches}} matches.`,
       content: `You are a Cinematic Visual Prompt Generator for Nano Banana Pro. Your goal is to generate a single, dense text prompt to accompany a character reference image.
 
 ### CRITICAL OUTPUT RULES
-1. **OUTPUT FORMAT**: Pure JSON only. Start with \`{\`, end with \`}\`. No markdown code blocks.
-2. **SCHEMA**: \`{"prompt": "The full descriptive string..."}\`
-3. **NO FORMATTING**: Inside the prompt string, use natural language only. No headers (e.g., "Subject:"), no bullet points.
+1. You will be called via a structured output tool. Follow the provided schema exactly.
+2. **NO FORMATTING**: Inside the prompt string, use natural language only. No headers (e.g., "Subject:"), no bullet points.
 
 ### VISUAL CONSTRUCTION STRATEGY
 1. **REFERENCE ALIGNMENT**: We are injecting a reference image for the character. Your text description of the character (from the <CHARACTER_BIBLE>) must MATCH the visual reference to prevent generation artifacts. Do not alter the costume defined in the Bible.
