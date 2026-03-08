@@ -11,7 +11,7 @@ describe('filterStyles', () => {
     test('returns all styles when category is "all"', () => {
       const result = filterStyles(mockStyles, 'all', '');
       expect(result).toEqual(mockStyles);
-      expect(result.length).toBe(9);
+      expect(result.length).toBe(15);
     });
 
     test('filters by specific category', () => {
@@ -23,7 +23,7 @@ describe('filterStyles', () => {
     test('filters by "new" category (last 7 days)', () => {
       const result = filterStyles(mockStyles, 'new', '');
       // All styles are created at the same time, so all should be new
-      expect(result.length).toBe(9);
+      expect(result.length).toBe(15);
     });
 
     test('returns empty array for non-matching category', () => {
@@ -35,12 +35,12 @@ describe('filterStyles', () => {
   describe('search query filtering', () => {
     test('returns all styles when search query is empty', () => {
       const result = filterStyles(mockStyles, 'all', '');
-      expect(result.length).toBe(9);
+      expect(result.length).toBe(15);
     });
 
     test('returns all styles when search query is whitespace', () => {
       const result = filterStyles(mockStyles, 'all', '   ');
-      expect(result.length).toBe(9);
+      expect(result.length).toBe(15);
     });
 
     test('filters by name match (case insensitive)', () => {

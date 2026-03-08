@@ -303,6 +303,7 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.ulid(),
+    sortOrder: 100,
     usageCount: null,
     version: null,
     ...overrides,
