@@ -79,9 +79,10 @@ const AUDIO_PROVIDER_INPUT_BUILDERS: Record<
       prompt: options.tags ?? options.prompt,
       lyrics,
       duration: clampDuration(options.duration, config),
-      steps: options.steps ?? 27,
+      instrumental: options.instrumental ?? true,
+      number_of_steps: options.steps ?? 27,
       scheduler: 'euler',
-      cfg_type: 'apg',
+      guidance_type: 'apg',
     };
   },
 

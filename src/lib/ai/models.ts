@@ -919,6 +919,14 @@ export function isValidAudioModel(value: unknown): value is AudioModel {
   return typeof value === 'string' && Object.keys(AUDIO_MODELS).includes(value);
 }
 
+export function getAudioModelDurationLimits(model: AudioModel) {
+  const config = AUDIO_MODELS[model];
+  return {
+    max: config.capabilities.maxDuration,
+    default: config.capabilities.defaultDuration,
+  };
+}
+
 export function safeAudioModel(
   value: string | null | undefined,
   fallback: AudioModel = DEFAULT_MUSIC_MODEL

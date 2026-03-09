@@ -5,21 +5,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DEFAULT_MUSIC_MODEL,
+  getAudioModelDurationLimits,
   safeAudioModel,
   type AudioModel,
 } from '@/lib/ai/models';
 import type { Sequence } from '@/types/database';
-import { AlertCircle, Film, Loader2, Music, Volume2 } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Film,
+  Loader2,
+  Music,
+  Volume2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 type GenerateMusicArgs = {
   prompt?: string;
   tags?: string;
   model?: string;
+  duration?: number;
 };
 
 type MusicViewProps = {
   sequence: Sequence;
+  videoDuration?: number;
   onGenerateMusic: (args?: GenerateMusicArgs) => void;
   isGeneratingMusic: boolean;
   onMergeVideoAndMusic: () => void;
@@ -66,6 +76,7 @@ const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({ label, value }) => (
 
 export const MusicView: React.FC<MusicViewProps> = ({
   sequence,
+  videoDuration,
   onGenerateMusic,
   isGeneratingMusic,
   onMergeVideoAndMusic,
@@ -85,12 +96,21 @@ export const MusicView: React.FC<MusicViewProps> = ({
   const [editModel, setEditModel] = useState<AudioModel>(
     safeAudioModel(musicModel, DEFAULT_MUSIC_MODEL)
   );
+  const [editDuration, setEditDuration] = useState<number | undefined>(
+    videoDuration
+  );
+
+  const durationLimits = getAudioModelDurationLimits(editModel);
+  const effectiveDuration =
+    editDuration ?? videoDuration ?? durationLimits.default;
+  const durationExceedsMax = effectiveDuration > durationLimits.max;
 
   function handleGenerate(): void {
     onGenerateMusic({
       prompt: editPrompt || undefined,
       tags: editTags || undefined,
       model: editModel,
+      duration: editDuration,
     });
   }
 
@@ -112,9 +132,13 @@ export const MusicView: React.FC<MusicViewProps> = ({
             <track kind="captions" />
           </audio>
         </div>
-        {musicModel && (
-          <p className="text-xs text-muted-foreground">Model: {musicModel}</p>
-        )}
+        <div className="w-full max-w-lg flex flex-col gap-2">
+          <Label className="text-xs text-muted-foreground">Model</Label>
+          <MusicModelSelector
+            selectedModel={editModel}
+            onModelChange={setEditModel}
+          />
+        </div>
 
         {musicPrompt && <ReadOnlyField label="Prompt" value={musicPrompt} />}
         {musicTags && <ReadOnlyField label="Tags" value={musicTags} />}
@@ -162,6 +186,13 @@ export const MusicView: React.FC<MusicViewProps> = ({
             {musicError}
           </p>
         )}
+        <div className="w-full max-w-xs flex flex-col gap-2">
+          <Label className="text-xs text-muted-foreground">Model</Label>
+          <MusicModelSelector
+            selectedModel={editModel}
+            onModelChange={setEditModel}
+          />
+        </div>
         <LoadingButton
           onClick={handleGenerate}
           isLoading={isGeneratingMusic}
@@ -210,16 +241,30 @@ export const MusicView: React.FC<MusicViewProps> = ({
               onModelChange={setEditModel}
             />
           </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="music-duration">Duration (seconds)</Label>
+            <input
+              id="music-duration"
+              type="number"
+              min={1}
+              max={durationLimits.max}
+              value={effectiveDuration}
+              onChange={(e) => setEditDuration(Number(e.target.value))}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            />
+            {durationExceedsMax && (
+              <p className="flex items-center gap-1.5 text-xs text-warning">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Video is {Math.round(effectiveDuration)}s but {editModel} max is{' '}
+                {durationLimits.max}s — music will be clamped.
+              </p>
+            )}
+          </div>
         </div>
 
         <LoadingButton
-          onClick={() =>
-            onGenerateMusic({
-              prompt: editPrompt,
-              tags: editTags,
-              model: editModel,
-            })
-          }
+          onClick={handleGenerate}
           disabled={!editPrompt}
           isLoading={isGeneratingMusic}
           loadingText="Generating…"
@@ -239,8 +284,15 @@ export const MusicView: React.FC<MusicViewProps> = ({
         Generate a background music track based on your sequence&apos;s scene
         audio design.
       </p>
+      <div className="w-full max-w-xs flex flex-col gap-2">
+        <Label className="text-xs text-muted-foreground">Model</Label>
+        <MusicModelSelector
+          selectedModel={editModel}
+          onModelChange={setEditModel}
+        />
+      </div>
       <LoadingButton
-        onClick={() => onGenerateMusic()}
+        onClick={handleGenerate}
         isLoading={isGeneratingMusic}
         loadingText="Generating…"
       >

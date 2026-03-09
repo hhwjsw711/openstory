@@ -57,7 +57,7 @@ export const generateMusicWorkflow = createWorkflow(
 
     if (input.prompt && input.tags) {
       effectivePrompt = input.prompt;
-      effectiveTags = input.tags;
+      effectiveTags = reinforceInstrumentalTags(input.tags);
     } else {
       const musicPrompt = await durableLLMCall(
         context,
