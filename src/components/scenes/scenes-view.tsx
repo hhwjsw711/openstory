@@ -1,4 +1,3 @@
-import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
@@ -6,6 +5,7 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
+import { FailureSummaryBanner } from '@/components/sequence/failure-summary-banner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
@@ -13,13 +13,13 @@ import {
   DEFAULT_ASPECT_RATIO,
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
+import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { generateMusicFn, retryStoryboardFn } from '@/functions/sequences';
+import { generateMusicFn } from '@/functions/sequences';
+import { smartRetryFn } from '@/functions/smart-retry';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
-import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -164,12 +164,17 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const handleRetryStoryboard = useCallback(async () => {
+  const failureSummary = useMemo(
+    () => (sequence ? analyzeFailures(frames ?? [], sequence) : null),
+    [frames, sequence]
+  );
+
+  const handleSmartRetry = useCallback(async () => {
     if (!sequenceId) return;
     setIsRetrying(true);
     try {
-      await retryStoryboardFn({ data: { sequenceId } });
-      toast.success('Retrying storyboard generation…');
+      const result = await smartRetryFn({ data: { sequenceId } });
+      toast.success(`Retrying: ${result.retriedItems.join(', ')}`);
       void queryClient.invalidateQueries({
         queryKey: ['sequence', sequenceId],
       });
@@ -181,7 +186,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           error.message.includes('Insufficient credits'))
       ) {
         toast.error('Insufficient credits', {
-          description: 'Add credits to retry storyboard generation.',
+          description: 'Add credits to retry.',
           action: {
             label: 'Add Credits',
             onClick: () => {
@@ -273,22 +278,13 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Status indicators */}
-      {(sequence?.status === 'failed' || generationState.isFailed) && (
-        <div className="flex items-center gap-2 px-4 py-2">
-          <SequenceStatusBadge status="failed" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleRetryStoryboard()}
-            disabled={isRetrying}
-          >
-            <RotateCcw
-              className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
-            />
-            {isRetrying ? 'Retrying…' : 'Retry'}
-          </Button>
-        </div>
+      {/* Failure summary with smart retry */}
+      {failureSummary?.hasFailed && (
+        <FailureSummaryBanner
+          summary={failureSummary}
+          onRetry={() => void handleSmartRetry()}
+          isRetrying={isRetrying}
+        />
       )}
 
       <div className="flex flex-1 min-h-0">
