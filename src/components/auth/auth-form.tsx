@@ -36,6 +36,8 @@ export function AuthForm({
 
   // Preload passkeys for conditional UI (browser autofill)
   useEffect(() => {
+    let cancelled = false;
+
     const preloadPasskeys = async () => {
       if (
         !window.PublicKeyCredential?.isConditionalMediationAvailable ||
@@ -43,16 +45,21 @@ export function AuthForm({
       ) {
         return;
       }
-      void authClient.signIn.passkey({
+      if (cancelled) return;
+
+      const result = await authClient.signIn.passkey({
         autoFill: true,
-        fetchOptions: {
-          onSuccess: () => {
-            void navigate({ to: redirectTo });
-          },
-        },
       });
+
+      if (!cancelled && result?.data) {
+        void navigate({ to: redirectTo });
+      }
     };
     void preloadPasskeys();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, redirectTo]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
