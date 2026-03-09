@@ -1,12 +1,11 @@
 name: Auto Progress Issues
 
 on:
-  pull_request:
-    types: [opened, reopened]
+  create:
 
 jobs:
   progress-issue:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
       issues: read
@@ -15,7 +14,7 @@ jobs:
       - name: Extract issue number from branch
         id: extract
         env:
-          BRANCH: ${{ github.head_ref }}
+          BRANCH: ${{ github.event.ref }}
         run: |
           if [[ "$BRANCH" =~ ^([0-9]+)- ]]; then
             echo "issue_number=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
