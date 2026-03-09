@@ -2222,6 +2222,30 @@ async function main() {
     } else {
       p.log.success('LANGFUSE_TRACING_ENVIRONMENT — already configured');
     }
+
+    const uploadPrompts = checkCancel(
+      await p.confirm({
+        message: 'Upload all prompts to Langfuse now?',
+        initialValue: true,
+      })
+    );
+
+    if (uploadPrompts) {
+      const promptSpinner = p.spinner();
+      promptSpinner.start('Uploading prompts to Langfuse');
+      try {
+        execFileSync('bun', ['scripts/upload-all-prompts.ts'], {
+          stdio: 'pipe',
+          cwd: process.cwd(),
+        });
+        promptSpinner.stop('Prompts uploaded to Langfuse');
+      } catch {
+        promptSpinner.stop('Prompt upload failed');
+        p.log.warn(
+          'You can retry later with: bun scripts/upload-all-prompts.ts'
+        );
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
