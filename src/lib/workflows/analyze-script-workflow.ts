@@ -610,6 +610,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             } satisfies ImageWorkflowInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000',
+            flowControl: getFalFlowControl(),
           });
 
           if (result.isFailed || result.isCanceled || !result.body.imageUrl) {
@@ -790,6 +791,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             } satisfies MotionWorkflowInput,
             retries: 3,
             retryDelay: 'pow(2, retried) * 1000',
+            flowControl: getFalFlowControl(),
           });
         })
       );
