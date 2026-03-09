@@ -155,7 +155,7 @@ jobs:
             let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
             cfg = cfg.replace(/\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '\$1');
             const obj = JSON.parse(cfg);
-            obj.name = 'frontend-pr-${PR_NUMBER}';
+            obj.name = 'pr-${PR_NUMBER}';
             obj.d1_databases = [{
               binding: 'DB',
               database_name: 'openstory-pr-${PR_NUMBER}',
@@ -226,7 +226,7 @@ jobs:
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values
           jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \
-            | bunx wrangler secret bulk --name "frontend-pr-${PR_NUMBER}"
+            | bunx wrangler secret bulk --name "pr-${PR_NUMBER}"
 
       - name: Find existing PR comment
         uses: peter-evans/find-comment@v3
@@ -249,7 +249,7 @@ jobs:
             | | |
             |---|---|
             | URL | ${{ steps.deploy.outputs.url }} |
-            | Worker | `frontend-pr-${{ github.event.pull_request.number }}` |
+            | Worker | `pr-${{ github.event.pull_request.number }}` |
             | D1 Database | `openstory-pr-${{ github.event.pull_request.number }}` |
             | Commit | ${{ github.sha }} |
 
@@ -269,7 +269,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          WORKER_NAME="frontend-pr-${PR_NUMBER}"
+          WORKER_NAME="pr-${PR_NUMBER}"
           status=$(curl -sw '%{http_code}' -o /dev/null \
             -X DELETE \
             -H "Authorization: Bearer $CF_API_TOKEN" \
@@ -318,4 +318,4 @@ jobs:
             <!-- cf-preview -->
             **Cloudflare Preview** torn down
 
-            Worker `frontend-pr-${{ github.event.pull_request.number }}` and D1 database `openstory-pr-${{ github.event.pull_request.number }}` have been deleted.
+            Worker `pr-${{ github.event.pull_request.number }}` and D1 database `openstory-pr-${{ github.event.pull_request.number }}` have been deleted.
