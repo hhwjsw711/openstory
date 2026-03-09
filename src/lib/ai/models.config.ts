@@ -10,6 +10,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Seed 1.6 Flash',
     provider: 'ByteDance',
     tier: 'fast',
+    contextWindow: 262_144,
     description: 'Ultra-fast multimodal with 256K context',
   },
   {
@@ -17,6 +18,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'MiniMax M2',
     provider: 'MiniMax',
     tier: 'fast',
+    contextWindow: 196_608,
     description: 'Fast with 131K context',
   },
   {
@@ -24,6 +26,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Mistral Small 3.2',
     provider: 'Mistral',
     tier: 'fast',
+    contextWindow: 128_000,
     description: 'Latest small model with 131K context',
   },
   {
@@ -31,6 +34,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Grok 4.1 Fast',
     provider: 'xAI',
     tier: 'fast',
+    contextWindow: 2_000_000,
     description: 'Latest fast xAI model',
   },
   {
@@ -38,6 +42,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'GPT-5 Mini',
     provider: 'OpenAI',
     tier: 'fast',
+    contextWindow: 400_000,
     description: 'Compact GPT-5 with 128K context',
   },
   {
@@ -45,6 +50,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'GPT-5 Nano',
     provider: 'OpenAI',
     tier: 'fast',
+    contextWindow: 400_000,
     description:
       'GPT-5-Nano is the smallest and fastest variant in the GPT-5 system',
   },
@@ -53,6 +59,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Gemini 3 Flash',
     provider: 'Google',
     tier: 'fast',
+    contextWindow: 1_048_576,
     description: 'Fast multimodal model',
   },
   // === PREMIUM TIER ===
@@ -61,6 +68,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'DeepSeek V3.2',
     provider: 'DeepSeek',
     tier: 'premium',
+    contextWindow: 163_840,
     description: 'Latest DeepSeek model',
   },
   {
@@ -68,6 +76,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Gemini 3 Pro',
     provider: 'Google',
     tier: 'premium',
+    contextWindow: 1_048_576,
     description: 'High-quality multimodal reasoning',
   },
   {
@@ -75,6 +84,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'GPT-5.2',
     provider: 'OpenAI',
     tier: 'premium',
+    contextWindow: 400_000,
     description: 'Latest GPT-5 series',
   },
   {
@@ -82,6 +92,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Claude Sonnet 4.6',
     provider: 'Anthropic',
     tier: 'premium',
+    contextWindow: 1_000_000,
     description: 'State-of-the-art coding',
   },
   {
@@ -89,6 +100,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'Claude Opus 4.6',
     provider: 'Anthropic',
     tier: 'premium',
+    contextWindow: 1_000_000,
     description: 'Frontier reasoning and coding',
   },
   {
@@ -96,6 +108,7 @@ export const SCRIPT_ANALYSIS_MODELS = [
     name: 'GLM 5',
     provider: 'Z.ai',
     tier: 'premium',
+    contextWindow: 202_752,
     description: 'Open-source 744B systems engineering',
   },
 ] as const;
@@ -132,6 +145,14 @@ export function getAllModelIds(): AnalysisModelId[] {
 }
 
 export const ANALYSIS_MODEL_IDS = getAllModelIds();
+
+/**
+ * Get context window size (in tokens) for a model
+ */
+export function getContextWindow(modelId: string): number {
+  const model = SCRIPT_ANALYSIS_MODELS.find((m) => m.id === modelId);
+  return model?.contextWindow ?? 128_000;
+}
 /**
  * Default model to use when none is specified
  */

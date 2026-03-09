@@ -5,6 +5,7 @@
  */
 
 import { createAdapter } from '@/lib/ai/create-adapter';
+import { getContextWindow } from '@/lib/ai/models.config';
 import type { TextModel } from '@/lib/ai/models';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { apiKeyService } from '@/lib/byok/api-key.service';
@@ -131,7 +132,10 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
             messages: chatMessages,
             systemPrompts,
             stream: false,
-            maxTokens: config.maxTokens ?? 128_000,
+            maxTokens: Math.min(
+              config.maxTokens ?? 16_000,
+              Math.floor(getContextWindow(config.modelId) * 0.75)
+            ),
             metadata: {
               observationName: logName,
               prompt: promptReference,
