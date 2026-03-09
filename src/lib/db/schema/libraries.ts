@@ -15,13 +15,13 @@ import { user } from './auth';
 import { teams } from './teams';
 
 export const StyleConfigSchema = z.object({
-  mood: z.string().min(3).max(500),
-  artStyle: z.string().min(3).max(500),
-  lighting: z.string().min(3).max(500),
+  mood: z.string().min(3).max(1000),
+  artStyle: z.string().min(3).max(1000),
+  lighting: z.string().min(3).max(1000),
   colorPalette: z.array(z.string().min(1)).min(1).max(20),
-  cameraWork: z.string().min(3).max(500),
+  cameraWork: z.string().min(3).max(1000),
   referenceFilms: z.array(z.string().min(1)).max(50),
-  colorGrading: z.string().min(3).max(300),
+  colorGrading: z.string().min(3).max(1000),
 });
 
 export type StyleConfig = z.infer<typeof StyleConfigSchema>;

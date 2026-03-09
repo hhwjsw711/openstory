@@ -9,12 +9,10 @@ export const getFalFlowControl = (): FlowControl => {
   const env = getEnv();
   const concurrencyLimit = env.FAL_CONCURRENCY_LIMIT
     ? parseInt(env.FAL_CONCURRENCY_LIMIT)
-    : 40;
+    : 20;
 
   return {
     key: 'fal-requests',
-    rate: 40,
-    period: '5s',
     parallelism: concurrencyLimit,
   };
 };

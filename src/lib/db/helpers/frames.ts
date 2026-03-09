@@ -177,32 +177,53 @@ export async function deleteSequenceFrames(
 
 /**
  * Create multiple frames in a single insert
+ * Batches to stay within D1's 100 bound parameter limit
  */
 export async function createFramesBulk(
   frameData: NewFrame[]
 ): Promise<Frame[]> {
-  return await getDb().insert(frames).values(frameData).returning();
+  const BATCH_SIZE = 5;
+  const results: Frame[] = [];
+
+  for (let i = 0; i < frameData.length; i += BATCH_SIZE) {
+    const batch = frameData.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb().insert(frames).values(batch).returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**
  * Bulk insert frames with upsert on conflict (sequenceId + orderIndex)
+ * Batches inserts to stay within D1's 100 bound parameter limit
+ * (~13 params per row, so 5 rows per batch is safe)
  */
 export async function bulkInsertFrames(
   frameInserts: NewFrame[]
 ): Promise<Frame[]> {
-  return await getDb()
-    .insert(frames)
-    .values(frameInserts)
-    .onConflictDoUpdate({
-      target: [frames.sequenceId, frames.orderIndex],
-      set: {
-        description: sql.raw(`excluded."description"`),
-        durationMs: sql.raw(`excluded."duration_ms"`),
-        metadata: sql.raw(`excluded."metadata"`),
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+  const BATCH_SIZE = 5;
+  const results: Frame[] = [];
+
+  for (let i = 0; i < frameInserts.length; i += BATCH_SIZE) {
+    const batch = frameInserts.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(frames)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [frames.sequenceId, frames.orderIndex],
+        set: {
+          description: sql.raw(`excluded."description"`),
+          durationMs: sql.raw(`excluded."duration_ms"`),
+          metadata: sql.raw(`excluded."metadata"`),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**

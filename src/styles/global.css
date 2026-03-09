@@ -3,7 +3,11 @@
 @import '@vidstack/react/player/styles/default/theme.css';
 @import '@vidstack/react/player/styles/default/layouts/video.css';
 
-@custom-variant dark (prefers-color-scheme: dark);
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    @slot;
+  }
+}
 
 :root {
   color-scheme: light dark;

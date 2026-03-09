@@ -218,7 +218,7 @@ function generateSecret(): string {
 // PR Preview Setup — push secrets to GitHub staging environment
 // ---------------------------------------------------------------------------
 
-const PR_PREVIEW_SECRETS = [
+const PR_PREVIEW_SECRETS_BASE = [
   'API_KEY_ENCRYPTION_KEY',
   'APP_NAME',
   'BETTER_AUTH_SECRET',
@@ -236,10 +236,25 @@ const PR_PREVIEW_SECRETS = [
   'QSTASH_NEXT_SIGNING_KEY',
   'QSTASH_TOKEN',
   'QSTASH_URL',
+  'R2_ACCESS_KEY_ID',
+  'R2_ACCOUNT_ID',
+  'R2_BUCKET_NAME',
+  'R2_PUBLIC_ASSETS_BUCKET',
+  'R2_SECRET_ACCESS_KEY',
   'RESEND_API_KEY',
   'UPSTASH_REDIS_REST_TOKEN',
   'UPSTASH_REDIS_REST_URL',
 ] as const;
+
+function getPrPreviewSecrets(vars: Map<string, string>): string[] {
+  const isCloudflare =
+    vars.get('DEPLOY_PLATFORM') === 'cloudflare' ||
+    vars.has('CLOUDFLARE_API_TOKEN');
+  const ciSecrets = isCloudflare
+    ? ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']
+    : ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
+  return [...PR_PREVIEW_SECRETS_BASE, ...ciSecrets];
+}
 
 const PR_PREVIEW_VARIABLES = [
   'R2_PUBLIC_ASSETS_DOMAIN',
@@ -337,6 +352,23 @@ async function prPreviewSetup() {
     p.log.info(`Loaded ${prodVars.size} values from .env.production`);
   }
 
+  // 3b. Fallback to .env.local for account-level R2 credentials
+  const localFile = resolve(process.cwd(), '.env.local');
+  const localVars = parseEnvFile(localFile);
+  const R2_FALLBACK_KEYS = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
+  for (const key of R2_FALLBACK_KEYS) {
+    const localVal = localVars.get(key);
+    if (!merged.get(key) && localVal) {
+      merged.set(key, localVal);
+    }
+  }
+
+  // 3c. Auto-derive R2_ACCOUNT_ID from CLOUDFLARE_ACCOUNT_ID (same value)
+  const cfAccountId = merged.get('CLOUDFLARE_ACCOUNT_ID');
+  if (!merged.get('R2_ACCOUNT_ID') && cfAccountId) {
+    merged.set('R2_ACCOUNT_ID', cfAccountId);
+  }
+
   // 4. Auto-set preview overrides
   const removed = [
     'APP_URL',
@@ -409,6 +441,15 @@ async function prPreviewSetup() {
       'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
     );
   }
+
+  // 6b. Derive staging bucket names (with -stg suffix, from production values only)
+  const prodStorageBucket =
+    prodVars.get('R2_BUCKET_NAME') ?? 'openstory-storage';
+  const prodAssetsBucket =
+    prodVars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
+  merged.set('R2_BUCKET_NAME', `${prodStorageBucket}-stg`);
+  merged.set('R2_PUBLIC_ASSETS_BUCKET', `${prodAssetsBucket}-stg`);
+
   p.log.info(
     `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
       `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
@@ -474,13 +515,12 @@ async function prPreviewSetup() {
       }
 
       if (zoneId) {
-        // Staging buckets use -stg suffix
-        const prodStorageBucket =
-          merged.get('R2_BUCKET_NAME') ?? 'openstory-storage';
-        const prodAssetsBucket =
-          merged.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
-        const storageBucket = `${prodStorageBucket}-stg`;
-        const assetsBucket = `${prodAssetsBucket}-stg`;
+        // Use already-derived staging bucket names (set in step 6b)
+        const storageBucket =
+          merged.get('R2_BUCKET_NAME') ?? 'openstory-storage-stg';
+        const assetsBucket =
+          merged.get('R2_PUBLIC_ASSETS_BUCKET') ??
+          'openstory-public-assets-stg';
 
         for (const [domain, bucket] of [
           [stgStorageDomain, storageBucket],
@@ -521,7 +561,8 @@ async function prPreviewSetup() {
   }
 
   // 7. Summary + confirm
-  const allKeys = [...PR_PREVIEW_SECRETS, ...PR_PREVIEW_VARIABLES];
+  const previewSecrets = getPrPreviewSecrets(merged);
+  const allKeys = [...previewSecrets, ...PR_PREVIEW_VARIABLES];
   const ready = allKeys.filter((k) => merged.get(k));
   const missing = allKeys.filter((k) => !merged.get(k));
 
@@ -581,7 +622,7 @@ async function prPreviewSetup() {
 
   // Push secrets
   const secretSpinner = p.spinner();
-  const secretsToPush = PR_PREVIEW_SECRETS.filter((k) => merged.get(k));
+  const secretsToPush = previewSecrets.filter((k) => merged.get(k));
   secretSpinner.start(
     `Pushing ${secretsToPush.length} secrets to staging environment`
   );
@@ -855,6 +896,90 @@ async function deploySetup(
         );
       }
     }
+
+    // Push R2 domain variables to GitHub production environment
+    // (CI seed step reads these via vars.R2_PUBLIC_ASSETS_DOMAIN)
+    const varsToPush = PR_PREVIEW_VARIABLES.filter((k) => vars.get(k));
+    if (varsToPush.length > 0) {
+      const shouldPushVars = checkCancel(
+        await p.confirm({
+          message:
+            'Push R2 domain variables to GitHub production environment? (needed for CI seed)',
+          initialValue: true,
+        })
+      );
+
+      if (shouldPushVars) {
+        const varSpinner = p.spinner();
+        varSpinner.start(
+          `Pushing ${varsToPush.length} variables to production environment`
+        );
+
+        try {
+          const repoName = execGh([
+            'repo',
+            'view',
+            '--json',
+            'nameWithOwner',
+            '-q',
+            '.nameWithOwner',
+          ]);
+
+          // Ensure the production environment exists
+          execGh([
+            'api',
+            '--method',
+            'PUT',
+            `/repos/${repoName}/environments/production`,
+          ]);
+
+          let varsPushed = 0;
+          let varsFailed = 0;
+
+          for (const key of varsToPush) {
+            const value = vars.get(key);
+            if (!value) continue;
+            try {
+              execGh([
+                'variable',
+                'set',
+                key,
+                '--env',
+                'production',
+                '--body',
+                value,
+              ]);
+              varsPushed++;
+            } catch {
+              varsFailed++;
+              p.log.warn(`Failed to push variable: ${key}`);
+            }
+          }
+
+          if (varsFailed > 0) {
+            varSpinner.stop(
+              `Pushed ${varsPushed} variables (${varsFailed} failed)`
+            );
+          } else {
+            varSpinner.stop(`Pushed ${varsPushed} variables`);
+          }
+        } catch (error) {
+          varSpinner.stop('Failed to push variables');
+          p.log.error(
+            `Error: ${error instanceof Error ? error.message : String(error)}`
+          );
+          p.log.info(
+            'Run manually:\n' +
+              varsToPush
+                .map(
+                  (k) =>
+                    `  gh variable set ${k} --env production --body "${vars.get(k)}"`
+                )
+                .join('\n')
+          );
+        }
+      }
+    }
   } else if (platform === 'vercel') {
     const shouldPushSecrets = checkCancel(
       await p.confirm({
@@ -961,7 +1086,92 @@ async function deploySetup(
     );
   }
 
-  // 5. Deploy
+  // 5. Push CI secrets to GitHub production environment
+  const ciSecrets =
+    platform === 'cloudflare'
+      ? (['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'] as const)
+      : (['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'] as const);
+  const ciSecretsToPush = ciSecrets.filter((k) => vars.get(k));
+
+  if (ciSecretsToPush.length > 0) {
+    const shouldPushCiSecrets = checkCancel(
+      await p.confirm({
+        message: `Push CI secrets (${ciSecretsToPush.join(', ')}) to GitHub production environment?`,
+        initialValue: true,
+      })
+    );
+
+    if (shouldPushCiSecrets) {
+      const ciSpinner = p.spinner();
+      ciSpinner.start(
+        `Pushing ${ciSecretsToPush.length} CI secrets to production environment`
+      );
+
+      try {
+        const repoName = execGh([
+          'repo',
+          'view',
+          '--json',
+          'nameWithOwner',
+          '-q',
+          '.nameWithOwner',
+        ]);
+
+        // Ensure the production environment exists
+        execGh([
+          'api',
+          '--method',
+          'PUT',
+          `/repos/${repoName}/environments/production`,
+        ]);
+
+        let pushed = 0;
+        let failed = 0;
+
+        for (const key of ciSecretsToPush) {
+          const value = vars.get(key);
+          if (!value) continue;
+          try {
+            execGh([
+              'secret',
+              'set',
+              key,
+              '--env',
+              'production',
+              '--body',
+              value,
+            ]);
+            pushed++;
+          } catch {
+            failed++;
+            p.log.warn(`Failed to push CI secret: ${key}`);
+          }
+        }
+
+        if (failed > 0) {
+          ciSpinner.stop(`Pushed ${pushed} CI secrets (${failed} failed)`);
+        } else {
+          ciSpinner.stop(`Pushed ${pushed} CI secrets`);
+        }
+      } catch (error) {
+        ciSpinner.stop('Failed to push CI secrets');
+        p.log.error(
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        );
+        p.log.info(
+          'Run manually:\n' +
+            ciSecretsToPush
+              .map(
+                (k) =>
+                  `  gh secret set ${k} --env production --body "${vars.get(k)}"`
+              )
+              .join('\n')
+        );
+      }
+    }
+  }
+
+  // 6. Deploy
   const shouldDeploy = checkCancel(
     await p.confirm({
       message: `Deploy to ${label} now?`,
@@ -2011,6 +2221,30 @@ async function main() {
       }
     } else {
       p.log.success('LANGFUSE_TRACING_ENVIRONMENT — already configured');
+    }
+
+    const uploadPrompts = checkCancel(
+      await p.confirm({
+        message: 'Upload all prompts to Langfuse now?',
+        initialValue: true,
+      })
+    );
+
+    if (uploadPrompts) {
+      const promptSpinner = p.spinner();
+      promptSpinner.start('Uploading prompts to Langfuse');
+      try {
+        execFileSync('bun', ['scripts/upload-all-prompts.ts'], {
+          stdio: 'pipe',
+          cwd: process.cwd(),
+        });
+        promptSpinner.stop('Prompts uploaded to Langfuse');
+      } catch {
+        promptSpinner.stop('Prompt upload failed');
+        p.log.warn(
+          'You can retry later with: bun scripts/upload-all-prompts.ts'
+        );
+      }
     }
   }
 
