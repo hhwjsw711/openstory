@@ -27,7 +27,7 @@ jobs:
       - name: Move issue to In Progress
         if: steps.extract.outputs.issue_number != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           ISSUE_NUMBER=${{ steps.extract.outputs.issue_number }}
