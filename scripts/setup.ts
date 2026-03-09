@@ -236,6 +236,11 @@ const PR_PREVIEW_SECRETS_BASE = [
   'QSTASH_NEXT_SIGNING_KEY',
   'QSTASH_TOKEN',
   'QSTASH_URL',
+  'R2_ACCESS_KEY_ID',
+  'R2_ACCOUNT_ID',
+  'R2_BUCKET_NAME',
+  'R2_PUBLIC_ASSETS_BUCKET',
+  'R2_SECRET_ACCESS_KEY',
   'RESEND_API_KEY',
   'UPSTASH_REDIS_REST_TOKEN',
   'UPSTASH_REDIS_REST_URL',
@@ -347,6 +352,23 @@ async function prPreviewSetup() {
     p.log.info(`Loaded ${prodVars.size} values from .env.production`);
   }
 
+  // 3b. Fallback to .env.local for account-level R2 credentials
+  const localFile = resolve(process.cwd(), '.env.local');
+  const localVars = parseEnvFile(localFile);
+  const R2_FALLBACK_KEYS = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
+  for (const key of R2_FALLBACK_KEYS) {
+    const localVal = localVars.get(key);
+    if (!merged.get(key) && localVal) {
+      merged.set(key, localVal);
+    }
+  }
+
+  // 3c. Auto-derive R2_ACCOUNT_ID from CLOUDFLARE_ACCOUNT_ID (same value)
+  const cfAccountId = merged.get('CLOUDFLARE_ACCOUNT_ID');
+  if (!merged.get('R2_ACCOUNT_ID') && cfAccountId) {
+    merged.set('R2_ACCOUNT_ID', cfAccountId);
+  }
+
   // 4. Auto-set preview overrides
   const removed = [
     'APP_URL',
@@ -419,6 +441,15 @@ async function prPreviewSetup() {
       'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
     );
   }
+
+  // 6b. Derive staging bucket names (with -stg suffix, from production values only)
+  const prodStorageBucket =
+    prodVars.get('R2_BUCKET_NAME') ?? 'openstory-storage';
+  const prodAssetsBucket =
+    prodVars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
+  merged.set('R2_BUCKET_NAME', `${prodStorageBucket}-stg`);
+  merged.set('R2_PUBLIC_ASSETS_BUCKET', `${prodAssetsBucket}-stg`);
+
   p.log.info(
     `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
       `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
@@ -484,13 +515,12 @@ async function prPreviewSetup() {
       }
 
       if (zoneId) {
-        // Staging buckets use -stg suffix
-        const prodStorageBucket =
-          merged.get('R2_BUCKET_NAME') ?? 'openstory-storage';
-        const prodAssetsBucket =
-          merged.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
-        const storageBucket = `${prodStorageBucket}-stg`;
-        const assetsBucket = `${prodAssetsBucket}-stg`;
+        // Use already-derived staging bucket names (set in step 6b)
+        const storageBucket =
+          merged.get('R2_BUCKET_NAME') ?? 'openstory-storage-stg';
+        const assetsBucket =
+          merged.get('R2_PUBLIC_ASSETS_BUCKET') ??
+          'openstory-public-assets-stg';
 
         for (const [domain, bucket] of [
           [stgStorageDomain, storageBucket],
