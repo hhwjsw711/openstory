@@ -218,7 +218,7 @@ function generateSecret(): string {
 // PR Preview Setup — push secrets to GitHub staging environment
 // ---------------------------------------------------------------------------
 
-const PR_PREVIEW_SECRETS = [
+const PR_PREVIEW_SECRETS_BASE = [
   'API_KEY_ENCRYPTION_KEY',
   'APP_NAME',
   'BETTER_AUTH_SECRET',
@@ -240,6 +240,16 @@ const PR_PREVIEW_SECRETS = [
   'UPSTASH_REDIS_REST_TOKEN',
   'UPSTASH_REDIS_REST_URL',
 ] as const;
+
+function getPrPreviewSecrets(vars: Map<string, string>): string[] {
+  const isCloudflare =
+    vars.get('DEPLOY_PLATFORM') === 'cloudflare' ||
+    vars.has('CLOUDFLARE_API_TOKEN');
+  const ciSecrets = isCloudflare
+    ? ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']
+    : ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
+  return [...PR_PREVIEW_SECRETS_BASE, ...ciSecrets];
+}
 
 const PR_PREVIEW_VARIABLES = [
   'R2_PUBLIC_ASSETS_DOMAIN',
@@ -521,7 +531,8 @@ async function prPreviewSetup() {
   }
 
   // 7. Summary + confirm
-  const allKeys = [...PR_PREVIEW_SECRETS, ...PR_PREVIEW_VARIABLES];
+  const previewSecrets = getPrPreviewSecrets(merged);
+  const allKeys = [...previewSecrets, ...PR_PREVIEW_VARIABLES];
   const ready = allKeys.filter((k) => merged.get(k));
   const missing = allKeys.filter((k) => !merged.get(k));
 
@@ -581,7 +592,7 @@ async function prPreviewSetup() {
 
   // Push secrets
   const secretSpinner = p.spinner();
-  const secretsToPush = PR_PREVIEW_SECRETS.filter((k) => merged.get(k));
+  const secretsToPush = previewSecrets.filter((k) => merged.get(k));
   secretSpinner.start(
     `Pushing ${secretsToPush.length} secrets to staging environment`
   );
@@ -1045,7 +1056,92 @@ async function deploySetup(
     );
   }
 
-  // 5. Deploy
+  // 5. Push CI secrets to GitHub production environment
+  const ciSecrets =
+    platform === 'cloudflare'
+      ? (['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'] as const)
+      : (['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'] as const);
+  const ciSecretsToPush = ciSecrets.filter((k) => vars.get(k));
+
+  if (ciSecretsToPush.length > 0) {
+    const shouldPushCiSecrets = checkCancel(
+      await p.confirm({
+        message: `Push CI secrets (${ciSecretsToPush.join(', ')}) to GitHub production environment?`,
+        initialValue: true,
+      })
+    );
+
+    if (shouldPushCiSecrets) {
+      const ciSpinner = p.spinner();
+      ciSpinner.start(
+        `Pushing ${ciSecretsToPush.length} CI secrets to production environment`
+      );
+
+      try {
+        const repoName = execGh([
+          'repo',
+          'view',
+          '--json',
+          'nameWithOwner',
+          '-q',
+          '.nameWithOwner',
+        ]);
+
+        // Ensure the production environment exists
+        execGh([
+          'api',
+          '--method',
+          'PUT',
+          `/repos/${repoName}/environments/production`,
+        ]);
+
+        let pushed = 0;
+        let failed = 0;
+
+        for (const key of ciSecretsToPush) {
+          const value = vars.get(key);
+          if (!value) continue;
+          try {
+            execGh([
+              'secret',
+              'set',
+              key,
+              '--env',
+              'production',
+              '--body',
+              value,
+            ]);
+            pushed++;
+          } catch {
+            failed++;
+            p.log.warn(`Failed to push CI secret: ${key}`);
+          }
+        }
+
+        if (failed > 0) {
+          ciSpinner.stop(`Pushed ${pushed} CI secrets (${failed} failed)`);
+        } else {
+          ciSpinner.stop(`Pushed ${pushed} CI secrets`);
+        }
+      } catch (error) {
+        ciSpinner.stop('Failed to push CI secrets');
+        p.log.error(
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        );
+        p.log.info(
+          'Run manually:\n' +
+            ciSecretsToPush
+              .map(
+                (k) =>
+                  `  gh secret set ${k} --env production --body "${vars.get(k)}"`
+              )
+              .join('\n')
+        );
+      }
+    }
+  }
+
+  // 6. Deploy
   const shouldDeploy = checkCancel(
     await p.confirm({
       message: `Deploy to ${label} now?`,
