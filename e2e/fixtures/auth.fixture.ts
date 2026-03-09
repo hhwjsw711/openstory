@@ -10,19 +10,19 @@
  *    - Uses `authenticatedPage` fixture for fresh authentication
  */
 
-import { test as base, type Page } from 'playwright/test';
-import { eq } from 'drizzle-orm';
-import { ulid } from 'ulid';
-import fs from 'node:fs';
-import path from 'node:path';
-import { testDb, ensureDbInit } from './db-client';
 import {
-  user,
   session,
-  teams,
   teamMembers,
+  teams,
+  user,
   verification,
 } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import fs from 'node:fs';
+import path from 'node:path';
+import { test as base, expect, type Page } from 'playwright/test';
+import { ulid } from 'ulid';
+import { ensureDbInit, testDb } from './db-client';
 
 type TestUser = {
   id: string;
@@ -49,14 +49,16 @@ function getStoredUserInfo(): TestUser {
 /**
  * Create a test user with team directly in the database
  */
-async function createTestUser(): Promise<TestUser> {
+export async function createTestUser(
+  options: { name?: string } = {}
+): Promise<TestUser> {
+  const { name = 'E2E Test User' } = options;
   await ensureDbInit();
   const userId = ulid();
   const teamId = ulid();
   const now = new Date();
 
   const email = `test-${userId.slice(-8).toLowerCase()}@e2e.test`;
-  const name = 'E2E Test User';
   const teamSlug = `test-team-${teamId.slice(-8).toLowerCase()}`;
 
   // Insert user with active status
@@ -103,7 +105,7 @@ async function cleanupTestUser(userId: string, teamId: string): Promise<void> {
 /**
  * Create OTP verification record directly in database
  */
-async function createOtpVerification(
+export async function createOtpVerification(
   email: string,
   otp: string
 ): Promise<void> {
@@ -135,7 +137,10 @@ async function createOtpVerification(
 /**
  * Authenticate a user by navigating directly to /verify and entering OTP
  */
-async function authenticateUser(page: Page, email: string): Promise<void> {
+export async function authenticateUser(
+  page: Page,
+  email: string
+): Promise<void> {
   const testOtp = '123456';
 
   // Create OTP directly in database
@@ -147,7 +152,8 @@ async function authenticateUser(page: Page, email: string): Promise<void> {
   // Wait for the OTP input to be ready and type the code
   const otpInput = page.locator('input[data-input-otp="true"]');
   await otpInput.waitFor({ timeout: 30_000 });
-  await otpInput.focus();
+  await expect(otpInput).toBeEnabled({ timeout: 10_000 });
+  await otpInput.click();
   await otpInput.pressSequentially(testOtp, { delay: 50 });
 
   // Wait for auto-verify to trigger and redirect

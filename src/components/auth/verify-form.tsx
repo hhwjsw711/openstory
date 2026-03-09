@@ -141,7 +141,7 @@ export function VerifyForm({
               maxLength={6}
               value={otp}
               onChange={setOtp}
-              disabled={isPending}
+              disabled={!hydrated || isPending}
               autoFocus
             >
               <InputOTPGroup>
