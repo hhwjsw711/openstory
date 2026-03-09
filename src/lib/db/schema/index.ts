@@ -89,6 +89,8 @@ import { scriptAnalysisAudit } from './audit';
 
 import { teamApiKeys, teamApiKeysRelations } from './team-api-keys';
 
+import { giftTokens, giftTokensRelations } from './gift-tokens';
+
 // ============================================================================
 // Relations defined here to avoid circular dependencies
 // ============================================================================
@@ -281,6 +283,11 @@ export type {
   TeamApiKey,
 } from './team-api-keys';
 
+// Gift Tokens
+export { giftTokens };
+
+export type { GiftToken, NewGiftToken } from './gift-tokens';
+
 /**
  * Complete schema object for Drizzle client initialization
  * Import this when creating your Drizzle instance
@@ -374,4 +381,8 @@ export const schema = {
   // Team API Keys
   teamApiKeys,
   teamApiKeysRelations,
+
+  // Gift Tokens
+  giftTokens,
+  giftTokensRelations,
 };

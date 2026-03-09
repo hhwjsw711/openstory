@@ -17,6 +17,7 @@ import {
   requireTeamAdminAccess,
   requireTeamOwnerAccess,
 } from '@/lib/auth/action-utils';
+import { requireSystemAdmin } from '@/lib/auth/system-admin';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { Sequence, Frame } from '@/types/database';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -33,6 +34,8 @@ export type AuthContext = {
 export type TeamContext = AuthContext & {
   teamId: string;
 };
+
+export type SystemAdminContext = TeamContext;
 
 export type SequenceContext = TeamContext & {
   sequence: Sequence;
@@ -130,6 +133,21 @@ export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
         teamId: team.teamId,
       },
     });
+  });
+
+// ============================================================================
+// System Admin Middleware
+// ============================================================================
+
+/**
+ * System admin middleware - requires ADMIN_EMAILS env var match
+ * Extends authWithTeamMiddleware so context includes teamId
+ */
+export const systemAdminMiddleware = createMiddleware({ type: 'function' })
+  .middleware([authWithTeamMiddleware])
+  .server(async ({ next, context }) => {
+    requireSystemAdmin(context.user.email);
+    return next();
   });
 
 // ============================================================================
