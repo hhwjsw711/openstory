@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, CreditCard, KeyRound } from 'lucide-react';
+import { ChevronRight, CreditCard, Gift, KeyRound } from 'lucide-react';
 
 const RETURN_KEY = 'openstory:billing-return';
 
@@ -77,6 +77,29 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
                   <CardDescription>
                     Pay as you go. Auto top-up keeps you generating without
                     interruption.
+                  </CardDescription>
+                </div>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link
+            to="/settings/gift-codes"
+            onClick={() => {
+              setReturnPath(returnTo);
+              onOpenChange(false);
+            }}
+          >
+            <Card className="cursor-pointer transition-colors hover:bg-accent">
+              <CardHeader className="flex-row items-center gap-4 space-y-0">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Gift className="size-5 text-primary" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <CardTitle className="text-base">Redeem Gift Code</CardTitle>
+                  <CardDescription>
+                    Have a gift code? Redeem it to add credits instantly.
                   </CardDescription>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-muted-foreground" />

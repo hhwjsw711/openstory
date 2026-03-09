@@ -10,7 +10,7 @@ import {
   Outlet,
   useLocation,
 } from '@tanstack/react-router';
-import { CreditCard, Fingerprint, Key } from 'lucide-react';
+import { CreditCard, Fingerprint, Gift, Key } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Route = createFileRoute('/_protected/settings')({
@@ -38,6 +38,12 @@ const tabs = [
     label: 'Billing',
     href: '/settings/billing',
     icon: <CreditCard className="h-4 w-4" />,
+  },
+  {
+    value: 'gift-codes',
+    label: 'Gift Codes',
+    href: '/settings/gift-codes',
+    icon: <Gift className="h-4 w-4" />,
   },
 ];
 

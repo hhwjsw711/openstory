@@ -53,6 +53,7 @@ export async function addCredits(
   amountUsd: number,
   opts: {
     userId?: string | null;
+    type?: TransactionType;
     description?: string;
     metadata?: Record<string, unknown>;
     stripeSessionId?: string;
@@ -83,7 +84,7 @@ export async function addCredits(
     .values({
       teamId,
       userId: opts.userId ?? null,
-      type: 'credit_purchase' as TransactionType,
+      type: opts.type ?? ('credit_purchase' as TransactionType),
       amount: amountUsd,
       balanceAfter: updated.balance,
       description: opts.description ?? `Added $${amountUsd.toFixed(2)} credits`,

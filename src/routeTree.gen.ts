@@ -32,6 +32,7 @@ import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/au
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
+import { Route as ProtectedSettingsGiftCodesRouteImport } from './routes/_protected/settings/gift-codes'
 import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protected/settings/billing'
 import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
@@ -162,6 +163,12 @@ const ProtectedSettingsPasskeysRoute =
     path: '/passkeys',
     getParentRoute: () => ProtectedSettingsRouteRoute,
   } as any)
+const ProtectedSettingsGiftCodesRoute =
+  ProtectedSettingsGiftCodesRouteImport.update({
+    id: '/gift-codes',
+    path: '/gift-codes',
+    getParentRoute: () => ProtectedSettingsRouteRoute,
+  } as any)
 const ProtectedSettingsBillingRoute =
   ProtectedSettingsBillingRouteImport.update({
     id: '/billing',
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/settings/billing': typeof ProtectedSettingsBillingRoute
+  '/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -302,6 +310,7 @@ export interface FileRoutesByTo {
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/settings/billing': typeof ProtectedSettingsBillingRoute
+  '/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -343,6 +352,7 @@ export interface FileRoutesById {
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
   '/_protected/settings/billing': typeof ProtectedSettingsBillingRoute
+  '/_protected/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/sequences/new'
     | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/gift-codes'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
@@ -420,6 +431,7 @@ export interface FileRouteTypes {
     | '/sequences/new'
     | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/gift-codes'
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
@@ -460,6 +472,7 @@ export interface FileRouteTypes {
     | '/_protected/sequences/new'
     | '/_protected/settings/api-keys'
     | '/_protected/settings/billing'
+    | '/_protected/settings/gift-codes'
     | '/_protected/settings/passkeys'
     | '/_protected/talent/$id'
     | '/api/auth/$'
@@ -667,6 +680,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
       parentRoute: typeof ProtectedSettingsRouteRoute
     }
+    '/_protected/settings/gift-codes': {
+      id: '/_protected/settings/gift-codes'
+      path: '/gift-codes'
+      fullPath: '/settings/gift-codes'
+      preLoaderRoute: typeof ProtectedSettingsGiftCodesRouteImport
+      parentRoute: typeof ProtectedSettingsRouteRoute
+    }
     '/_protected/settings/billing': {
       id: '/_protected/settings/billing'
       path: '/billing'
@@ -792,6 +812,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 interface ProtectedSettingsRouteRouteChildren {
   ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute
   ProtectedSettingsBillingRoute: typeof ProtectedSettingsBillingRoute
+  ProtectedSettingsGiftCodesRoute: typeof ProtectedSettingsGiftCodesRoute
   ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
   ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
 }
@@ -800,6 +821,7 @@ const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
   {
     ProtectedSettingsApiKeysRoute: ProtectedSettingsApiKeysRoute,
     ProtectedSettingsBillingRoute: ProtectedSettingsBillingRoute,
+    ProtectedSettingsGiftCodesRoute: ProtectedSettingsGiftCodesRoute,
     ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
     ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   }
