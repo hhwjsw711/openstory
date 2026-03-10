@@ -47,6 +47,8 @@ import type {
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
+import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
@@ -647,8 +649,11 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     const scenesWithMotionPrompts: Scene[] = await context.run(
       'merge-motion-prompts',
-      () =>
-        scenesWithVisualPrompts.map((scene) => {
+      () => {
+        const modelKey = videoModel || DEFAULT_VIDEO_MODEL;
+        const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+
+        return scenesWithVisualPrompts.map((scene) => {
           const enrichment = partialScenesWithMotionPrompts.body.find(
             (s) => s.sceneId === scene.sceneId
           );
@@ -657,14 +662,29 @@ export const analyzeScriptWorkflow = createWorkflow(
               `Scene ID mismatch in motion prompts: expected "${scene.sceneId}"`
             );
           }
+
+          // Snap duration to model capabilities so music generation uses accurate values
+          const metadata =
+            scene.metadata && modelConfig
+              ? {
+                  ...scene.metadata,
+                  durationSeconds: snapDuration(
+                    scene.metadata.durationSeconds,
+                    modelConfig.capabilities
+                  ),
+                }
+              : scene.metadata;
+
           return {
             ...scene,
+            metadata,
             prompts: {
               ...scene.prompts,
               motion: enrichment.prompts?.motion,
             },
           };
-        })
+        });
+      }
     );
 
     if (sequenceId) {
@@ -678,6 +698,9 @@ export const analyzeScriptWorkflow = createWorkflow(
             await updateFrame(matched.frameId, {
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
+              durationMs: Math.round(
+                (scene.metadata?.durationSeconds || 3) * 1000
+              ),
             });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',

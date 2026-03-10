@@ -70,7 +70,7 @@ export type MotionResult = {
  * Snap a requested duration to the nearest supported value for a model.
  * Falls back to capping at maxDuration if no discrete durations are defined.
  */
-function snapDuration(
+export function snapDuration(
   requested: number | undefined,
   capabilities: ImageToVideoModelConfig['capabilities']
 ): number {
