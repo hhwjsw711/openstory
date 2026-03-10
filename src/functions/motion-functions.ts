@@ -23,7 +23,7 @@ import type {
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
 
-import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
+import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
 
 // -- Shared helper: resolve motion prompt from frame data -----------------
 
@@ -164,8 +164,12 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
           sequenceId: sequence.id,
           imageUrl: frame.thumbnailUrl,
           prompt: resolveMotionPrompt(frame),
-          model: data.model,
-          duration: data.duration,
+          model: safeImageToVideoModel(
+            data.model || frame.motionModel || sequence.videoModel,
+            DEFAULT_VIDEO_MODEL
+          ),
+          duration:
+            data.duration || frame.metadata?.metadata?.durationSeconds || 3,
           fps: data.fps,
           motionBucket: data.motionBucket,
         };
