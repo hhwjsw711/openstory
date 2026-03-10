@@ -33,6 +33,7 @@ const baseSequence: Sequence = {
   musicModel: null,
   musicPrompt: null,
   musicTags: null,
+  statusError: null,
 };
 
 const meta: Meta<typeof TheatreView> = {

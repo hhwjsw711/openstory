@@ -1,0 +1,1 @@
+ALTER TABLE `sequences` ADD `status_error` text;

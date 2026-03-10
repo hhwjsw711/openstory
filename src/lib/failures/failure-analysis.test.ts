@@ -1,0 +1,272 @@
+import { describe, expect, test } from 'bun:test';
+import { analyzeFailures } from './failure-analysis';
+import type { Frame } from '@/lib/db/schema/frames';
+import type { Sequence } from '@/lib/db/schema/sequences';
+
+function makeFrame(overrides: Partial<Frame> = {}): Frame {
+  return {
+    id: 'frame-1',
+    sequenceId: 'seq-1',
+    orderIndex: 0,
+    description: 'A scene',
+    durationMs: 3000,
+    thumbnailUrl: 'https://example.com/thumb.jpg',
+    thumbnailPath: null,
+    thumbnailStatus: 'completed',
+    thumbnailWorkflowRunId: null,
+    thumbnailGeneratedAt: null,
+    thumbnailError: null,
+    imageModel: 'nano_banana_2',
+    imagePrompt: null,
+    variantImageUrl: null,
+    variantImageStatus: 'pending',
+    variantWorkflowRunId: null,
+    videoUrl: 'https://example.com/video.mp4',
+    videoPath: null,
+    videoStatus: 'completed',
+    videoWorkflowRunId: null,
+    videoGeneratedAt: null,
+    videoError: null,
+    motionPrompt: 'Camera pan left',
+    motionModel: null,
+    audioUrl: null,
+    audioPath: null,
+    audioStatus: 'pending',
+    audioWorkflowRunId: null,
+    audioGeneratedAt: null,
+    audioError: null,
+    audioModel: null,
+    metadata: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
+  return {
+    id: 'seq-1',
+    teamId: 'team-1',
+    title: 'Test Sequence',
+    script: 'A test script',
+    status: 'completed',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: null,
+    updatedBy: null,
+    styleId: 'style-1',
+    aspectRatio: '16:9',
+    analysisModel: 'anthropic/claude-haiku-4.5',
+    analysisDurationMs: 0,
+    imageModel: 'nano_banana_2',
+    videoModel: 'wan_i2v',
+    workflow: null,
+    mergedVideoUrl: null,
+    mergedVideoPath: null,
+    mergedVideoStatus: 'pending',
+    mergedVideoGeneratedAt: null,
+    mergedVideoError: null,
+    musicUrl: null,
+    musicPath: null,
+    musicStatus: 'pending',
+    musicGeneratedAt: null,
+    musicError: null,
+    musicModel: null,
+    musicPrompt: 'Epic cinematic music',
+    musicTags: 'epic,cinematic',
+    statusError: null,
+    ...overrides,
+  };
+}
+
+describe('analyzeFailures', () => {
+  test('no failures returns empty summary', () => {
+    const frames = [makeFrame(), makeFrame({ id: 'frame-2', orderIndex: 1 })];
+    const sequence = makeSequence();
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(false);
+    expect(result.requiresFullRetry).toBe(false);
+    expect(result.groups).toHaveLength(0);
+    expect(result.totalFailures).toBe(0);
+  });
+
+  test('script analysis failure (no frames) requires full retry', () => {
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures([], sequence);
+
+    expect(result.hasFailed).toBe(true);
+    expect(result.requiresFullRetry).toBe(true);
+    expect(result.headline).toContain('full retry required');
+  });
+
+  test('image-only failures', () => {
+    const frames = [
+      makeFrame({
+        thumbnailStatus: 'failed',
+        thumbnailUrl: null,
+        thumbnailError: 'Model timeout',
+      }),
+      makeFrame({ id: 'frame-2', orderIndex: 1 }),
+    ];
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(true);
+    expect(result.requiresFullRetry).toBe(false);
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0].category).toBe('image');
+    expect(result.groups[0].frames).toHaveLength(1);
+    expect(result.groups[0].frames[0].error).toBe('Model timeout');
+    expect(result.headline).toContain('1 image failed');
+  });
+
+  test('motion-only failures', () => {
+    const frames = [
+      makeFrame({
+        videoStatus: 'failed',
+        videoUrl: null,
+        videoError: 'Generation timeout',
+      }),
+      makeFrame({ id: 'frame-2', orderIndex: 1 }),
+    ];
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(true);
+    expect(result.requiresFullRetry).toBe(false);
+    const motionGroup = result.groups.find((g) => g.category === 'motion');
+    expect(motionGroup).toBeDefined();
+    expect(motionGroup?.frames).toHaveLength(1);
+    expect(result.headline).toContain('1 motion video failed');
+  });
+
+  test('music-only failure', () => {
+    const frames = [makeFrame()];
+    const sequence = makeSequence({
+      status: 'failed',
+      musicStatus: 'failed',
+      musicError: 'Audio model error',
+      musicPrompt: 'Epic music',
+    });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(true);
+    const musicGroup = result.groups.find((g) => g.category === 'music');
+    expect(musicGroup).toBeDefined();
+    expect(musicGroup?.error).toBe('Audio model error');
+    expect(result.headline).toContain('music generation failed');
+  });
+
+  test('merge failure', () => {
+    const frames = [makeFrame()];
+    const sequence = makeSequence({
+      status: 'failed',
+      mergedVideoStatus: 'failed',
+      mergedVideoError: 'FFmpeg error',
+    });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(true);
+    const mergeGroup = result.groups.find((g) => g.category === 'merge');
+    expect(mergeGroup).toBeDefined();
+    expect(mergeGroup?.error).toBe('FFmpeg error');
+  });
+
+  test('mixed failures (image + motion)', () => {
+    const frames = [
+      makeFrame({
+        thumbnailStatus: 'failed',
+        thumbnailUrl: null,
+        thumbnailError: 'Image error',
+      }),
+      makeFrame({
+        id: 'frame-2',
+        orderIndex: 1,
+        videoStatus: 'failed',
+        videoError: 'Motion error',
+      }),
+    ];
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(true);
+    expect(result.groups.length).toBeGreaterThanOrEqual(2);
+    expect(result.headline).toContain('image');
+    expect(result.headline).toContain('motion');
+  });
+
+  test('motion failed but no thumbnail skips motion retry', () => {
+    const frames = [
+      makeFrame({
+        thumbnailUrl: null,
+        thumbnailStatus: 'failed',
+        videoStatus: 'failed',
+        videoUrl: null,
+      }),
+    ];
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    const motionGroup = result.groups.find((g) => g.category === 'motion');
+    expect(motionGroup).toBeUndefined();
+    const imageGroup = result.groups.find((g) => g.category === 'image');
+    expect(imageGroup).toBeDefined();
+  });
+
+  test('missing motion prompts requires full retry', () => {
+    const frames = [
+      makeFrame({
+        thumbnailStatus: 'completed',
+        motionPrompt: null,
+        videoStatus: 'pending',
+      }),
+    ];
+    const sequence = makeSequence({ status: 'failed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.requiresFullRetry).toBe(true);
+    const promptGroup = result.groups.find(
+      (g) => g.category === 'motion-prompts'
+    );
+    expect(promptGroup).toBeDefined();
+    expect(result.headline).toContain('Motion prompts were not generated');
+  });
+
+  test('missing music prompt requires full retry', () => {
+    const frames = [makeFrame()];
+    const sequence = makeSequence({
+      status: 'failed',
+      musicPrompt: null,
+      musicTags: null,
+      musicStatus: 'pending',
+    });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.requiresFullRetry).toBe(true);
+    const promptGroup = result.groups.find(
+      (g) => g.category === 'music-prompt'
+    );
+    expect(promptGroup).toBeDefined();
+  });
+
+  test('completed sequence with no failures', () => {
+    const frames = [makeFrame()];
+    const sequence = makeSequence({ status: 'completed' });
+
+    const result = analyzeFailures(frames, sequence);
+
+    expect(result.hasFailed).toBe(false);
+    expect(result.requiresFullRetry).toBe(false);
+  });
+});

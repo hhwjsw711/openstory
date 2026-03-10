@@ -149,11 +149,12 @@ export async function getSequenceForUser({
 
 export async function updateSequenceStatus(
   sequenceId: string,
-  status: SequenceStatus
+  status: SequenceStatus,
+  error?: string | null
 ) {
   await getDb()
     .update(sequences)
-    .set({ status, updatedAt: new Date() })
+    .set({ status, statusError: error ?? null, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }
 
