@@ -80,6 +80,8 @@ export function isPreviewDeployment(request: Request): boolean {
   if (isLocalDevelopment()) return false;
 
   const envAppUrl = getEnv().APP_URL;
+  console.log('envAppUrl', envAppUrl);
+  console.log('isProductionDeployment', isProductionDeployment(request));
   // APP_URL explicitly set to empty string or not set = preview branch
   if (!envAppUrl) return true;
 

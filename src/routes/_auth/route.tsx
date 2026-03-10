@@ -17,6 +17,7 @@ export const Route = createFileRoute('/_auth')({
     }
 
     const isPreview = await getIsPreviewFn();
+    console.log('isPreview in beforeLoad', isPreview);
     return { isPreview };
   },
   component: AuthLayout,
