@@ -755,99 +755,53 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
-      await context.run('start-motion-generation', async () => {
+    // Music prompt generation + optional audio generation
+    const scenesWithMusic = completeScenes.filter(
+      (scene) =>
+        scene.audioDesign?.music?.presence &&
+        scene.audioDesign.music.presence !== 'none'
+    );
+
+    if (scenesWithMusic.length > 0) {
+      await context.run('start-music-prompt-generation', async () => {
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 7,
-          phaseName: 'Generating motion…',
+          phase: 8,
+          phaseName: 'Composing music…',
         });
       });
 
-      await Promise.all(
-        completeScenes.map(async (scene, index) => {
-          const motionPrompt = scene.prompts?.motion?.fullPrompt;
-          if (!motionPrompt) {
-            throw new WorkflowValidationError(
-              `Scene ${scene.sceneId} has no motion prompt`
-            );
-          }
+      let totalDuration = 0;
+      const sceneSummaries = scenesWithMusic.map((scene) => {
+        const durationSeconds = scene.metadata?.durationSeconds || 10;
+        totalDuration += durationSeconds;
+        return {
+          title: scene.metadata?.title || 'Untitled Scene',
+          storyBeat: scene.metadata?.storyBeat || '',
+          durationSeconds,
+          musicStyle: scene.audioDesign?.music?.style || '',
+          musicMood: scene.audioDesign?.music?.mood || '',
+          musicPresence: scene.audioDesign?.music?.presence || 'none',
+          atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
+        };
+      });
 
-          const matchedFrame = frameMapping.find(
-            (f) => f.sceneId === scene.sceneId
-          );
-
-          await context.invoke('motion', {
-            workflow: generateMotionWorkflow,
-            body: {
-              userId: input.userId,
-              teamId: input.teamId,
-              frameId: matchedFrame?.frameId,
-              sequenceId,
-              imageUrl: imageUrls[index],
-              prompt: motionPrompt,
-              model: videoModel,
-              aspectRatio,
-              duration: scene.metadata?.durationSeconds || 3,
-            } satisfies MotionWorkflowInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000',
-            flowControl: getFalFlowControl(),
-          });
-        })
-      );
-    }
-
-    // Music prompt generation + optional audio generation
-    if (sequenceId) {
-      const scenesWithMusic = completeScenes.filter(
-        (scene) =>
-          scene.audioDesign?.music?.presence &&
-          scene.audioDesign.music.presence !== 'none'
-      );
-
-      if (scenesWithMusic.length > 0) {
-        await context.run('start-music-prompt-generation', async () => {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.phase:start',
-            {
-              phase: 8,
-              phaseName: 'Composing music…',
-            }
-          );
-        });
-
-        let totalDuration = 0;
-        const sceneSummaries = scenesWithMusic.map((scene) => {
-          const durationSeconds = scene.metadata?.durationSeconds || 10;
-          totalDuration += durationSeconds;
-          return {
-            title: scene.metadata?.title || 'Untitled Scene',
-            storyBeat: scene.metadata?.storyBeat || '',
-            durationSeconds,
-            musicStyle: scene.audioDesign?.music?.style || '',
-            musicMood: scene.audioDesign?.music?.mood || '',
-            musicPresence: scene.audioDesign?.music?.presence || 'none',
-            atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
-          };
-        });
-
-        const musicPrompt = await durableLLMCall(
-          context,
-          {
-            name: 'music-prompt-generation',
-            phase: { number: 8, name: 'Composing music…' },
-            promptName: 'phase/music-prompt-generation-chat',
-            promptVariables: {
-              scenes: JSON.stringify(sceneSummaries),
-            },
-            modelId: analysisModelId,
-            responseSchema: musicPromptSchema,
+      const musicPrompt = await durableLLMCall(
+        context,
+        {
+          name: 'music-prompt-generation',
+          phase: { number: 8, name: 'Composing music…' },
+          promptName: 'phase/music-prompt-generation-chat',
+          promptVariables: {
+            scenes: JSON.stringify(sceneSummaries),
           },
-          llmCallContext
-        );
+          modelId: analysisModelId,
+          responseSchema: musicPromptSchema,
+        },
+        llmCallContext
+      );
 
-        const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
-
+      const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
+      if (sequenceId) {
         await context.run('store-music-prompt', async () => {
           await updateSequenceMusicPrompt(
             sequenceId,
@@ -855,28 +809,73 @@ export const analyzeScriptWorkflow = createWorkflow(
             reinforcedTags
           );
         });
+      }
+      // Now generate motion for each scene
+      if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
+        await context.run('start-motion-generation', async () => {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.phase:start',
+            {
+              phase: 7,
+              phaseName: 'Generating motion…',
+            }
+          );
+        });
 
-        if (autoGenerateMusic) {
-          if (!input.userId || !input.teamId) {
-            throw new Error('userId and teamId required for music generation');
-          }
+        await Promise.all(
+          completeScenes.map(async (scene, index) => {
+            const motionPrompt = scene.prompts?.motion?.fullPrompt;
+            if (!motionPrompt) {
+              throw new WorkflowValidationError(
+                `Scene ${scene.sceneId} has no motion prompt`
+              );
+            }
 
-          await context.invoke('music', {
-            workflow: generateMusicWorkflow,
-            body: {
-              userId: input.userId,
-              teamId: input.teamId,
-              sequenceId,
-              prompt: musicPrompt.prompt,
-              tags: reinforcedTags,
-              duration: totalDuration,
-              model: musicModel,
-            } satisfies MusicWorkflowInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000',
-            flowControl: getFalFlowControl(),
-          });
+            const matchedFrame = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
+            );
+
+            await context.invoke('motion', {
+              workflow: generateMotionWorkflow,
+              body: {
+                userId: input.userId,
+                teamId: input.teamId,
+                frameId: matchedFrame?.frameId,
+                sequenceId,
+                imageUrl: imageUrls[index],
+                prompt: motionPrompt,
+                model: videoModel,
+                aspectRatio,
+                duration: scene.metadata?.durationSeconds || 3,
+              } satisfies MotionWorkflowInput,
+              retries: 3,
+              retryDelay: 'pow(2, retried) * 1000',
+              flowControl: getFalFlowControl(),
+            });
+          })
+        );
+      }
+      // Now generate music for whole movie
+      if (autoGenerateMusic && sequenceId) {
+        if (!input.userId || !input.teamId) {
+          throw new Error('userId and teamId required for music generation');
         }
+
+        await context.invoke('music', {
+          workflow: generateMusicWorkflow,
+          body: {
+            userId: input.userId,
+            teamId: input.teamId,
+            sequenceId,
+            prompt: musicPrompt.prompt,
+            tags: reinforcedTags,
+            duration: totalDuration,
+            model: musicModel,
+          } satisfies MusicWorkflowInput,
+          retries: 3,
+          retryDelay: 'pow(2, retried) * 1000',
+          flowControl: getFalFlowControl(),
+        });
       }
     }
 
