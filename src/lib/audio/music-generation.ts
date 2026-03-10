@@ -1,4 +1,4 @@
-import { calculateFalCost } from '@/lib/ai/fal-cost';
+import { calculateAudioCost } from '@/lib/ai/fal-cost';
 import {
   AUDIO_MODEL_KEYS,
   AUDIO_MODELS,
@@ -239,7 +239,10 @@ async function callFalAudio(
   }
 
   const duration = options.duration ?? modelConfig.capabilities.defaultDuration;
-  const cost = calculateFalCost(modelConfig.id, duration, 'seconds');
+  const cost = calculateAudioCost({
+    endpointId: modelConfig.id,
+    durationSeconds: duration,
+  });
 
   return {
     success: true,

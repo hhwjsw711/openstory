@@ -1,4 +1,4 @@
-import { calculateFalCost, getEndpointPricing } from '@/lib/ai/fal-cost';
+import { calculateImageCost } from '@/lib/ai/fal-cost';
 import {
   getEditEndpoint,
   getTextToImageModelId,
@@ -161,7 +161,7 @@ export async function generateImageWithProvider(
     throw error;
   }
 }
-
+// @TODO: TB Mar 2026 - this needs to be updated to be typesafe. Especially after the work put in on Tanstack AI to keep it safe
 async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
@@ -197,14 +197,23 @@ async function generateImageInternal(
 
   const processingTimeMs = Date.now() - startTime;
 
-  const billable = computeImageBillableQuantity(
-    params.model,
-    imageUrls.length,
-    params.imageSize ?? DEFAULT_IMAGE_SIZE
-  );
-  const cost = billable
-    ? calculateFalCost(endpoint, billable.quantity, billable.callerUnit)
-    : 0;
+  const imageSize = params.imageSize ?? DEFAULT_IMAGE_SIZE;
+  const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
+  const sizeMap: Record<ImageSize, string> = {
+    square_hd: '1024x1024',
+    portrait_16_9: '1024x1536',
+    landscape_16_9: '1536x1024',
+  };
+  const cost = calculateImageCost({
+    endpointId: endpoint,
+    numImages: imageUrls.length,
+    widthPx: dims.width,
+    heightPx: dims.height,
+    resolution: params.resolution,
+    style: params.style,
+    quality: params.model === 'gpt_image_1_5' ? 'high' : undefined,
+    imageSize: sizeMap[imageSize],
+  });
 
   return {
     imageUrls,
@@ -501,36 +510,3 @@ const IMAGE_SIZE_DIMENSIONS: Record<
   portrait_16_9: { width: 576, height: 1024 },
   landscape_16_9: { width: 1344, height: 768 },
 };
-
-/**
- * Returns billable quantity and unit for fal cost calculation.
- * Returns undefined for non-fal models (LetzAI).
- */
-function computeImageBillableQuantity(
-  model: TextToImageModel,
-  numImages: number,
-  imageSize: ImageSize
-): { quantity: number; callerUnit: 'images' | 'megapixels' } | undefined {
-  const modelConfig = IMAGE_MODELS[model];
-  const endpointId = modelConfig.id;
-  const pricing = getEndpointPricing(endpointId);
-  if (!pricing) return undefined;
-
-  const unit = pricing.unit.toLowerCase();
-
-  if (unit === 'images' || unit === 'units') {
-    return { quantity: numImages, callerUnit: 'images' };
-  }
-
-  if (unit === 'megapixels') {
-    const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
-    const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
-    return {
-      quantity: megapixelsPerImage * numImages,
-      callerUnit: 'megapixels',
-    };
-  }
-
-  // compute_seconds and other units are handled directly by calculateFalCost
-  return { quantity: numImages, callerUnit: 'images' };
-}

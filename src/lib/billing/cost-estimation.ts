@@ -3,7 +3,7 @@
  * Estimate generation costs before triggering workflows
  */
 
-import { FAL_PRICING } from '@/lib/ai/fal-pricing-data';
+import { calculateImageCost, calculateVideoCost } from '@/lib/ai/fal-cost';
 import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
@@ -13,36 +13,33 @@ import {
 import { aspectRatioToDimensions } from '@/lib/constants/aspect-ratios';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
-/** Default compute time estimate for compute_seconds-priced models */
-const DEFAULT_COMPUTE_SECONDS = 3;
-
 /**
  * Estimate the raw cost (before markup) of generating images
  */
 export function estimateImageCost(
   model: TextToImageModel,
   aspectRatio: AspectRatio,
-  numImages: number
+  numImages: number,
+  opts?: {
+    resolution?: '0.5K' | '1K' | '2K' | '4K';
+    style?: string;
+    quality?: string;
+    imageSize?: string;
+  }
 ): number {
   const endpointId = IMAGE_MODELS[model].id;
-  const pricing = FAL_PRICING[endpointId];
-  if (!pricing) return 0;
+  const { width, height } = aspectRatioToDimensions(aspectRatio);
 
-  const unit = pricing.unit.toLowerCase();
-
-  if (unit === 'images' || unit === 'units') {
-    return pricing.unitPrice * numImages;
-  }
-  if (unit === 'megapixels') {
-    const { width, height } = aspectRatioToDimensions(aspectRatio);
-    const megapixels = (width * height) / 1_000_000;
-    return pricing.unitPrice * megapixels * numImages;
-  }
-  if (unit === 'compute seconds') {
-    return pricing.unitPrice * DEFAULT_COMPUTE_SECONDS * numImages;
-  }
-
-  return 0;
+  return calculateImageCost({
+    endpointId,
+    numImages,
+    widthPx: width,
+    heightPx: height,
+    resolution: opts?.resolution,
+    style: opts?.style,
+    quality: opts?.quality,
+    imageSize: opts?.imageSize,
+  });
 }
 
 /**
@@ -50,19 +47,18 @@ export function estimateImageCost(
  */
 export function estimateVideoCost(
   model: ImageToVideoModel,
-  durationSeconds: number
+  durationSeconds: number,
+  opts?: { audioEnabled?: boolean; resolution?: string }
 ): number {
-  const endpointId = IMAGE_TO_VIDEO_MODELS[model].id;
-  const pricing = FAL_PRICING[endpointId];
-  if (!pricing) return 0;
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
+  const endpointId = modelConfig.id;
 
-  const unit = pricing.unit.toLowerCase();
-
-  if (unit === 'seconds') return pricing.unitPrice * durationSeconds;
-  if (unit === 'minutes') return pricing.unitPrice * (durationSeconds / 60);
-
-  // Opaque units (e.g. "1m tokens") — can't compute per-second, return 0
-  return 0;
+  return calculateVideoCost({
+    endpointId,
+    durationSeconds,
+    audioEnabled: opts?.audioEnabled ?? modelConfig.capabilities.supportsAudio,
+    resolution: opts?.resolution,
+  });
 }
 
 /**
