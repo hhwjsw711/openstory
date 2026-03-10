@@ -61,7 +61,7 @@ export const VideoModelBadge = ({ model }: { model?: string }) => {
 
 export const MusicModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
-    return <Skeleton className="w-[100px] h-[24px]" />;
+    return null;
   }
 
   const modelConfig = isValidAudioModel(model)
