@@ -3,6 +3,7 @@
  * Estimate generation costs before triggering workflows
  */
 
+import { FAL_PRICING } from '@/lib/ai/fal-pricing-data';
 import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
@@ -23,22 +24,25 @@ export function estimateImageCost(
   aspectRatio: AspectRatio,
   numImages: number
 ): number {
-  const config = IMAGE_MODELS[model];
-  if (!config.pricing) return 0;
+  const endpointId = IMAGE_MODELS[model].id;
+  const pricing = FAL_PRICING[endpointId];
+  if (!pricing) return 0;
 
-  const { price, unit } = config.pricing;
+  const unit = pricing.unit.toLowerCase();
 
-  switch (unit) {
-    case 'images':
-      return price * numImages;
-    case 'megapixels': {
-      const { width, height } = aspectRatioToDimensions(aspectRatio);
-      const megapixels = (width * height) / 1_000_000;
-      return price * megapixels * numImages;
-    }
-    case 'compute_seconds':
-      return price * DEFAULT_COMPUTE_SECONDS * numImages;
+  if (unit === 'images' || unit === 'units') {
+    return pricing.unitPrice * numImages;
   }
+  if (unit === 'megapixels') {
+    const { width, height } = aspectRatioToDimensions(aspectRatio);
+    const megapixels = (width * height) / 1_000_000;
+    return pricing.unitPrice * megapixels * numImages;
+  }
+  if (unit === 'compute seconds') {
+    return pricing.unitPrice * DEFAULT_COMPUTE_SECONDS * numImages;
+  }
+
+  return 0;
 }
 
 /**
@@ -48,8 +52,17 @@ export function estimateVideoCost(
   model: ImageToVideoModel,
   durationSeconds: number
 ): number {
-  const config = IMAGE_TO_VIDEO_MODELS[model];
-  return config.pricing.pricePerSecond * durationSeconds;
+  const endpointId = IMAGE_TO_VIDEO_MODELS[model].id;
+  const pricing = FAL_PRICING[endpointId];
+  if (!pricing) return 0;
+
+  const unit = pricing.unit.toLowerCase();
+
+  if (unit === 'seconds') return pricing.unitPrice * durationSeconds;
+  if (unit === 'minutes') return pricing.unitPrice * (durationSeconds / 60);
+
+  // Opaque units (e.g. "1m tokens") — can't compute per-second, return 0
+  return 0;
 }
 
 /**

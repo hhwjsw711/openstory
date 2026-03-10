@@ -1,20 +1,26 @@
 /**
- * Fal.ai cost calculation using live pricing from fal's Platform API.
+ * Fal.ai cost calculation using locally-cached pricing data.
  *
  * Callers pass quantity in natural units (seconds, images, megapixels).
- * For convertible units: normalizes to the API's unit, then unit_price x quantity.
- * For opaque units ("1m tokens", "compute seconds"): falls back to fal's
- * historical per-call cost estimate (can't compute client-side).
+ * Normalizes to the pricing data's unit, then unit_price × quantity.
+ * Returns 0 with a warning for unknown endpoints.
  */
 
-import {
-  getFalHistoricalCostPerCall,
-  getFalUnitPrice,
-} from '@/lib/ai/fal-pricing';
+import { FAL_PRICING } from '@/lib/ai/fal-pricing-data';
 
 type CallerUnit = 'seconds' | 'images' | 'megapixels';
 
-/** Normalize caller quantity to the pricing API's unit. Returns undefined if incompatible. */
+/** Default compute time estimate for compute_seconds-priced models */
+const DEFAULT_COMPUTE_SECONDS = 3;
+
+/** Look up pricing for a fal endpoint ID. */
+export function getEndpointPricing(
+  endpointId: string
+): { unitPrice: number; unit: string; pricingNotes?: string } | undefined {
+  return FAL_PRICING[endpointId];
+}
+
+/** Normalize caller quantity to the pricing data's unit. Returns undefined if incompatible. */
 function normalizeQuantity(
   quantity: number,
   callerUnit: CallerUnit,
@@ -27,26 +33,34 @@ function normalizeQuantity(
   if (callerUnit === 'images' && (unit === 'images' || unit === 'units'))
     return quantity;
   if (callerUnit === 'megapixels' && unit === 'megapixels') return quantity;
+  if (unit === 'compute seconds') return DEFAULT_COMPUTE_SECONDS * quantity;
 
   return undefined;
 }
 
-/** Calculate cost for a fal.ai generation in USD. */
-export async function calculateFalCost(
+/** Calculate cost for a fal.ai generation in USD (synchronous). */
+export function calculateFalCost(
   endpointId: string,
   quantity: number,
-  callerUnit: CallerUnit,
-  falApiKey?: string
-): Promise<number> {
-  const { unitPrice, unit } = await getFalUnitPrice(endpointId, falApiKey);
-  const normalized = normalizeQuantity(quantity, callerUnit, unit);
+  callerUnit: CallerUnit
+): number {
+  const pricing = getEndpointPricing(endpointId);
 
-  if (normalized !== undefined) {
-    return unitPrice * normalized;
+  if (!pricing) {
+    console.warn(
+      `[fal-cost] No pricing data for endpoint: ${endpointId}, returning 0`
+    );
+    return 0;
   }
 
-  console.log(
-    `[fal-cost] Cannot convert "${callerUnit}" to "${unit}" for ${endpointId}, using historical estimate`
+  const normalized = normalizeQuantity(quantity, callerUnit, pricing.unit);
+
+  if (normalized !== undefined) {
+    return pricing.unitPrice * normalized;
+  }
+
+  console.warn(
+    `[fal-cost] Cannot convert "${callerUnit}" to "${pricing.unit}" for ${endpointId}, returning 0`
   );
-  return getFalHistoricalCostPerCall(endpointId, falApiKey);
+  return 0;
 }

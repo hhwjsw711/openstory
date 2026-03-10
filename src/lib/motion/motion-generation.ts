@@ -326,12 +326,7 @@ async function generateMotionInternal(
   );
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  const cost = await calculateFalCost(
-    modelConfig.id,
-    validatedDuration,
-    'seconds',
-    falApiKeyInfo.key
-  );
+  const cost = calculateFalCost(modelConfig.id, validatedDuration, 'seconds');
 
   return {
     success: true,

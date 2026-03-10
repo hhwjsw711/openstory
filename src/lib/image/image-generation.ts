@@ -1,5 +1,4 @@
-import { calculateFalCost } from '@/lib/ai/fal-cost';
-import { getFalHistoricalCostPerCall } from '@/lib/ai/fal-pricing';
+import { calculateFalCost, getEndpointPricing } from '@/lib/ai/fal-cost';
 import {
   getEditEndpoint,
   getTextToImageModelId,
@@ -198,21 +197,14 @@ async function generateImageInternal(
 
   const processingTimeMs = Date.now() - startTime;
 
-  // Computable quantities (images, megapixels) use unit pricing;
-  // opaque billing (compute_seconds, LetzAI) falls back to historical estimate
   const billable = computeImageBillableQuantity(
     params.model,
     imageUrls.length,
     params.imageSize ?? DEFAULT_IMAGE_SIZE
   );
   const cost = billable
-    ? await calculateFalCost(
-        endpoint,
-        billable.quantity,
-        billable.callerUnit,
-        falApiKeyInfo.key
-      )
-    : await getFalHistoricalCostPerCall(endpoint, falApiKeyInfo.key);
+    ? calculateFalCost(endpoint, billable.quantity, billable.callerUnit)
+    : 0;
 
   return {
     imageUrls,
@@ -511,8 +503,8 @@ const IMAGE_SIZE_DIMENSIONS: Record<
 };
 
 /**
- * Returns billable quantity and unit, or undefined for models with opaque billing
- * (compute_seconds, LetzAI) which fall back to historical per-call estimates.
+ * Returns billable quantity and unit for fal cost calculation.
+ * Returns undefined for non-fal models (LetzAI).
  */
 function computeImageBillableQuantity(
   model: TextToImageModel,
@@ -520,25 +512,25 @@ function computeImageBillableQuantity(
   imageSize: ImageSize
 ): { quantity: number; callerUnit: 'images' | 'megapixels' } | undefined {
   const modelConfig = IMAGE_MODELS[model];
-  if (!modelConfig.pricing) return undefined;
+  const endpointId = modelConfig.id;
+  const pricing = getEndpointPricing(endpointId);
+  if (!pricing) return undefined;
 
-  const { unit } = modelConfig.pricing;
+  const unit = pricing.unit.toLowerCase();
 
-  switch (unit) {
-    case 'images':
-      return { quantity: numImages, callerUnit: 'images' };
-
-    case 'megapixels': {
-      const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
-      const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
-      return {
-        quantity: megapixelsPerImage * numImages,
-        callerUnit: 'megapixels',
-      };
-    }
-
-    case 'compute_seconds':
-    default:
-      return undefined;
+  if (unit === 'images' || unit === 'units') {
+    return { quantity: numImages, callerUnit: 'images' };
   }
+
+  if (unit === 'megapixels') {
+    const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
+    const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
+    return {
+      quantity: megapixelsPerImage * numImages,
+      callerUnit: 'megapixels',
+    };
+  }
+
+  // compute_seconds and other units are handled directly by calculateFalCost
+  return { quantity: numImages, callerUnit: 'images' };
 }

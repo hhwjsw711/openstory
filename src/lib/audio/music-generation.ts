@@ -239,12 +239,7 @@ async function callFalAudio(
   }
 
   const duration = options.duration ?? modelConfig.capabilities.defaultDuration;
-  const cost = await calculateFalCost(
-    modelConfig.id,
-    duration,
-    'seconds',
-    falApiKeyInfo.key
-  );
+  const cost = calculateFalCost(modelConfig.id, duration, 'seconds');
 
   return {
     success: true,
