@@ -21,6 +21,7 @@ import { smartRetryFn } from '@/functions/smart-retry';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
@@ -64,6 +65,7 @@ function isTerminalStatus(status: string | null): boolean {
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [selectedTab, setSelectedTab] = useState<TabValue>('script');
@@ -168,6 +170,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     () => (sequence ? analyzeFailures(frames ?? [], sequence) : null),
     [frames, sequence]
   );
+
+  const handleFullRetry = useCallback(() => {
+    if (!sequenceId) return;
+    void navigate({ to: '/sequences/$id/script', params: { id: sequenceId } });
+  }, [sequenceId, navigate]);
 
   const handleSmartRetry = useCallback(async () => {
     if (!sequenceId) return;
@@ -283,6 +290,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         <FailureSummaryBanner
           summary={failureSummary}
           onRetry={() => void handleSmartRetry()}
+          onFullRetry={handleFullRetry}
           isRetrying={isRetrying}
         />
       )}

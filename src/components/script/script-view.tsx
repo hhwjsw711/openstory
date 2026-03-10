@@ -3,6 +3,16 @@ import { LocationSuggestionSelector } from '@/components/location-library/locati
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
 import { TalentSuggestionSelector } from '@/components/talent/talent-suggestion-selector';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -234,6 +244,7 @@ export const ScriptView: FC<{
 
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   const createSequenceMutation = useCreateSequence();
   const archiveSequenceMutation = useArchiveSequence();
@@ -248,16 +259,7 @@ export const ScriptView: FC<{
 
   const handleCancel = onCancel;
 
-  const handleSubmit = async (event?: React.FormEvent) => {
-    if (event) {
-      event.preventDefault();
-    }
-
-    if (needsBillingSetup) {
-      showGate();
-      return;
-    }
-
+  const executeRegeneration = () => {
     const oldSequenceId = sequence?.id;
 
     createSequenceMutation.mutate(
@@ -291,6 +293,24 @@ export const ScriptView: FC<{
         },
       }
     );
+  };
+
+  const handleSubmit = async (event?: React.FormEvent) => {
+    if (event) {
+      event.preventDefault();
+    }
+
+    if (needsBillingSetup) {
+      showGate();
+      return;
+    }
+
+    if (isEditing) {
+      setShowRegenerateConfirm(true);
+      return;
+    }
+
+    executeRegeneration();
   };
 
   const previousScriptRef = useRef<string>('');
@@ -477,6 +497,31 @@ export const ScriptView: FC<{
         hasOpenRouterKey={hasOpenRouterKey}
         hasCredits={hasCredits}
       />
+      <AlertDialog
+        open={showRegenerateConfirm}
+        onOpenChange={setShowRegenerateConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate sequence?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A new sequence will be created from this script. The current
+              sequence will be archived.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowRegenerateConfirm(false);
+                executeRegeneration();
+              }}
+            >
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

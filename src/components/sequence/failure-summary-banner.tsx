@@ -6,12 +6,14 @@ import { AlertCircle, RotateCcw } from 'lucide-react';
 type FailureSummaryBannerProps = {
   summary: FailureSummary;
   onRetry: () => void;
+  onFullRetry?: () => void;
   isRetrying: boolean;
 };
 
 export const FailureSummaryBanner: React.FC<FailureSummaryBannerProps> = ({
   summary,
   onRetry,
+  onFullRetry,
   isRetrying,
 }) => (
   <Alert variant="destructive" className="mx-4 mt-2">
@@ -51,7 +53,9 @@ export const FailureSummaryBanner: React.FC<FailureSummaryBannerProps> = ({
       <Button
         variant="outline"
         size="sm"
-        onClick={onRetry}
+        onClick={
+          summary.requiresFullRetry && onFullRetry ? onFullRetry : onRetry
+        }
         disabled={isRetrying}
         className="mt-2"
       >
@@ -59,7 +63,7 @@ export const FailureSummaryBanner: React.FC<FailureSummaryBannerProps> = ({
         {isRetrying
           ? 'Retrying\u2026'
           : summary.requiresFullRetry
-            ? 'Retry'
+            ? 'Regenerate Sequence'
             : 'Retry Failed'}
       </Button>
     </AlertDescription>
