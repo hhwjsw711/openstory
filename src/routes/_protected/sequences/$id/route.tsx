@@ -2,6 +2,7 @@ import { RouteErrorFallback } from '@/components/error/route-error-fallback';
 import {
   ImageModelBadge,
   ModelBadge,
+  MusicModelBadge,
   VideoModelBadge,
 } from '@/components/model/model-badge';
 import { SequenceTabs } from '@/components/sequence/sequence-tabs';
@@ -33,6 +34,7 @@ function SequenceLayout() {
           <ModelBadge model={sequence?.analysisModel} />
           <ImageModelBadge model={sequence?.imageModel} />
           <VideoModelBadge model={sequence?.videoModel} />
+          <MusicModelBadge model={sequence?.musicModel ?? undefined} />
         </PageHeader>
         <SequenceTabs sequenceId={sequenceId} />
       </div>

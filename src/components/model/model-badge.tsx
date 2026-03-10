@@ -1,8 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  AUDIO_MODELS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
+  isValidAudioModel,
   isValidTextToImageModel,
   isValidImageToVideoModel,
 } from '@/lib/ai/models';
@@ -49,6 +51,21 @@ export const VideoModelBadge = ({ model }: { model?: string }) => {
 
   const modelConfig = isValidImageToVideoModel(model)
     ? IMAGE_TO_VIDEO_MODELS[model]
+    : undefined;
+  return (
+    <Badge variant="secondary" className="text-xs">
+      {modelConfig?.name || model}
+    </Badge>
+  );
+};
+
+export const MusicModelBadge = ({ model }: { model?: string }) => {
+  if (!model) {
+    return null;
+  }
+
+  const modelConfig = isValidAudioModel(model)
+    ? AUDIO_MODELS[model]
     : undefined;
   return (
     <Badge variant="secondary" className="text-xs">

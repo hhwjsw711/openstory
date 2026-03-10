@@ -1,25 +1,36 @@
 import { MusicModelSelector } from '@/components/model/music-model-selector';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DEFAULT_MUSIC_MODEL,
+  getAudioModelDurationLimits,
   safeAudioModel,
   type AudioModel,
 } from '@/lib/ai/models';
 import type { Sequence } from '@/types/database';
-import { AlertCircle, Film, Loader2, Music, Volume2 } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Film,
+  Loader2,
+  Music,
+  Volume2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 type GenerateMusicArgs = {
   prompt?: string;
   tags?: string;
   model?: string;
+  duration?: number;
 };
 
 type MusicViewProps = {
   sequence: Sequence;
+  videoDuration?: number;
   onGenerateMusic: (args?: GenerateMusicArgs) => void;
   isGeneratingMusic: boolean;
   onMergeVideoAndMusic: () => void;
@@ -50,22 +61,71 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   </Button>
 );
 
-type ReadOnlyFieldProps = {
-  label: string;
-  value: string;
+type StatusPanelProps = {
+  icon: React.ReactNode;
+  message?: string;
+  children?: React.ReactNode;
+  contentWidth?: 'sm' | 'lg';
 };
 
-const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({ label, value }) => (
-  <div className="w-full max-w-lg flex flex-col gap-2">
-    <Label className="text-xs text-muted-foreground">{label}</Label>
+const StatusPanel: React.FC<StatusPanelProps> = ({
+  icon,
+  message,
+  children,
+  contentWidth = 'lg',
+}) => {
+  const maxWidth = contentWidth === 'sm' ? 'max-w-xs' : 'max-w-lg';
+  return (
+    <div className="flex flex-col items-center gap-6 py-12">
+      {icon}
+      {message && <p className="text-muted-foreground">{message}</p>}
+      {children && (
+        <div className={`w-full ${maxWidth} flex flex-col gap-4`}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+type FormFieldProps = {
+  label: string;
+  htmlFor?: string;
+  muted?: boolean;
+  children: React.ReactNode;
+};
+
+const FormField: React.FC<FormFieldProps> = ({
+  label,
+  htmlFor,
+  muted,
+  children,
+}) => (
+  <div className="flex flex-col gap-2">
+    <Label
+      htmlFor={htmlFor}
+      className={muted ? 'text-xs text-muted-foreground' : undefined}
+    >
+      {label}
+    </Label>
+    {children}
+  </div>
+);
+
+const ReadOnlyField: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
+  <FormField label={label} muted>
     <p className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
       {value}
     </p>
-  </div>
+  </FormField>
 );
 
 export const MusicView: React.FC<MusicViewProps> = ({
   sequence,
+  videoDuration,
   onGenerateMusic,
   isGeneratingMusic,
   onMergeVideoAndMusic,
@@ -81,45 +141,55 @@ export const MusicView: React.FC<MusicViewProps> = ({
   } = sequence;
 
   const [editPrompt, setEditPrompt] = useState(musicPrompt ?? '');
-  const [editTags, setEditTags] = useState(musicTags ?? '');
   const [editModel, setEditModel] = useState<AudioModel>(
     safeAudioModel(musicModel, DEFAULT_MUSIC_MODEL)
   );
+  const [editDuration, setEditDuration] = useState<number | undefined>(
+    videoDuration
+  );
+
+  const durationLimits = getAudioModelDurationLimits(editModel);
+  const effectiveDuration =
+    editDuration ?? videoDuration ?? durationLimits.default;
+  const durationExceedsMax = effectiveDuration > durationLimits.max;
 
   function handleGenerate(): void {
     onGenerateMusic({
       prompt: editPrompt || undefined,
-      tags: editTags || undefined,
+      tags: musicTags || undefined,
       model: editModel,
+      duration: editDuration,
     });
   }
 
-  // Completed — show audio player + prompt (read-only) + merge button
   if (musicStatus === 'completed' && musicUrl) {
     const isMerging =
       isMergingVideoAndMusic || sequence.mergedVideoStatus === 'merging';
 
     return (
-      <div className="flex flex-col items-center gap-6 py-12">
-        <Volume2 className="h-10 w-10 text-muted-foreground" />
-        <div className="w-full max-w-lg">
-          <audio
-            controls
-            src={musicUrl}
-            className="h-10 w-full"
-            preload="metadata"
-          >
-            <track kind="captions" />
-          </audio>
-        </div>
-        {musicModel && (
-          <p className="text-xs text-muted-foreground">Model: {musicModel}</p>
-        )}
+      <StatusPanel
+        icon={<Volume2 className="h-10 w-10 text-muted-foreground" />}
+      >
+        <audio
+          controls
+          src={musicUrl}
+          className="h-10 w-full"
+          preload="metadata"
+        >
+          <track kind="captions" />
+        </audio>
 
-        {musicPrompt && <ReadOnlyField label="Prompt" value={musicPrompt} />}
-        {musicTags && <ReadOnlyField label="Tags" value={musicTags} />}
+        <FormField label="Model" muted>
+          <MusicModelSelector
+            selectedModel={editModel}
+            onModelChange={setEditModel}
+          />
+        </FormField>
 
-        <div className="flex gap-3">
+        <ReadOnlyField label="Prompt" value={musicPrompt ?? 'Missing prompt'} />
+        <ReadOnlyField label="Tags" value={musicTags ?? 'Missing tags'} />
+
+        <div className="flex justify-center gap-3">
           <LoadingButton
             variant="outline"
             onClick={handleGenerate}
@@ -137,122 +207,123 @@ export const MusicView: React.FC<MusicViewProps> = ({
             Merge with Video
           </LoadingButton>
         </div>
-      </div>
+      </StatusPanel>
     );
   }
 
-  // Generating
   if (musicStatus === 'generating') {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">Generating music…</p>
-      </div>
+      <StatusPanel
+        icon={
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        }
+        message="Generating music…"
+      />
     );
   }
 
-  // Failed
   if (musicStatus === 'failed') {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16">
-        <AlertCircle className="h-8 w-8 text-destructive" />
-        <p className="text-destructive">Music generation failed</p>
+      <StatusPanel
+        icon={<AlertCircle className="h-8 w-8 text-destructive" />}
+        contentWidth="sm"
+      >
+        <p className="text-destructive text-center">Music generation failed</p>
         {musicError && (
-          <p className="text-sm text-muted-foreground max-w-md text-center">
+          <p className="text-sm text-muted-foreground text-center">
             {musicError}
           </p>
         )}
+
+        <FormField label="Model" muted>
+          <MusicModelSelector
+            selectedModel={editModel}
+            onModelChange={setEditModel}
+          />
+        </FormField>
+
         <LoadingButton
+          className="self-center"
           onClick={handleGenerate}
           isLoading={isGeneratingMusic}
           loadingText="Retrying…"
         >
           Retry
         </LoadingButton>
-      </div>
+      </StatusPanel>
     );
   }
 
-  // Pending — with stored prompt: show editable prompt/tags/model
-  if (musicPrompt) {
-    return (
-      <div className="flex flex-col items-center gap-6 py-12">
-        <Music className="h-8 w-8 text-muted-foreground" />
-        <p className="text-muted-foreground">Music prompt ready</p>
+  const promptPending = !musicPrompt;
 
-        <div className="w-full max-w-lg flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="music-prompt">Prompt</Label>
-            <Textarea
-              id="music-prompt"
-              value={editPrompt}
-              onChange={(e) => setEditPrompt(e.target.value)}
-              rows={4}
-              placeholder="Descriptive music prompt…"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="music-tags">Tags</Label>
-            <Textarea
-              id="music-tags"
-              value={editTags}
-              onChange={(e) => setEditTags(e.target.value)}
-              rows={2}
-              placeholder="Comma-separated genre/style tags…"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label>Model</Label>
-            <MusicModelSelector
-              selectedModel={editModel}
-              onModelChange={setEditModel}
-            />
-          </div>
-        </div>
-
-        <LoadingButton
-          onClick={() =>
-            onGenerateMusic({
-              prompt: editPrompt,
-              tags: editTags,
-              model: editModel,
-            })
-          }
-          disabled={!editPrompt}
-          isLoading={isGeneratingMusic}
-          loadingText="Generating…"
-        >
-          Generate Music
-        </LoadingButton>
-      </div>
-    );
-  }
-
-  // Pending — no stored prompt (legacy sequences)
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-16">
-      <Music className="h-8 w-8 text-muted-foreground" />
-      <p className="text-muted-foreground">No music track yet</p>
-      <p className="text-sm text-muted-foreground max-w-md text-center">
-        Generate a background music track based on your sequence&apos;s scene
-        audio design.
-      </p>
+    <StatusPanel
+      icon={<Music className="h-8 w-8 text-muted-foreground" />}
+      message={promptPending ? 'Preparing music…' : 'Music prompt ready'}
+    >
+      <FormField label="Prompt" htmlFor="music-prompt">
+        <Textarea
+          id="music-prompt"
+          value={editPrompt}
+          onChange={(e) => setEditPrompt(e.target.value)}
+          rows={4}
+          disabled={promptPending}
+          placeholder={
+            promptPending
+              ? 'Generating music prompt…'
+              : 'Descriptive music prompt…'
+          }
+        />
+      </FormField>
+
+      <FormField label="Tags" muted>
+        {musicTags ? (
+          <p className="text-sm text-muted-foreground">{musicTags}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground/60">Generating…</p>
+        )}
+      </FormField>
+
+      <FormField label="Model">
+        <MusicModelSelector
+          selectedModel={editModel}
+          onModelChange={setEditModel}
+        />
+      </FormField>
+
+      <FormField label="Duration (seconds)" htmlFor="music-duration">
+        <Input
+          id="music-duration"
+          type="number"
+          min={1}
+          max={durationLimits.max}
+          value={effectiveDuration}
+          onChange={(e) => setEditDuration(Number(e.target.value))}
+        />
+        {durationExceedsMax && (
+          <p className="flex items-center gap-1.5 text-xs text-warning">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Video is {Math.round(effectiveDuration)}s but {editModel} max is{' '}
+            {durationLimits.max}s — music will be clamped.
+          </p>
+        )}
+      </FormField>
+
       <LoadingButton
-        onClick={() => onGenerateMusic()}
+        className="self-center"
+        onClick={handleGenerate}
+        disabled={!editPrompt}
         isLoading={isGeneratingMusic}
         loadingText="Generating…"
       >
         Generate Music
       </LoadingButton>
-    </div>
+    </StatusPanel>
   );
 };
 
 export const MusicViewSkeleton: React.FC = () => (
-  <div className="flex flex-col items-center gap-6 py-12">
-    <Skeleton className="h-10 w-10 rounded-full" />
-    <Skeleton className="h-10 w-full max-w-lg" />
-  </div>
+  <StatusPanel icon={<Skeleton className="h-10 w-10 rounded-full" />}>
+    <Skeleton className="h-10 w-full" />
+  </StatusPanel>
 );

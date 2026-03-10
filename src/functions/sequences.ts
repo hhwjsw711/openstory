@@ -343,6 +343,7 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
         prompt: z.string().optional(),
         tags: z.string().optional(),
         model: z.string().optional(),
+        duration: z.number().min(1).max(600).optional(),
       })
     )
   )
@@ -373,7 +374,7 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
       userId: user.id,
       teamId: sequence.teamId,
       sequenceId: sequence.id,
-      duration: totalDuration || 30,
+      duration: data.duration ?? (totalDuration || 30),
       model:
         data.model && isValidAudioModel(data.model) ? data.model : undefined,
     };

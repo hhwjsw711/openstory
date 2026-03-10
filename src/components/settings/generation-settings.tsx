@@ -92,7 +92,11 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
-        <GenerationSettingsTrigger aspectRatio={aspectRatio} />
+        <GenerationSettingsTrigger
+          aspectRatio={aspectRatio}
+          autoGenerateMotion={autoGenerateMotion}
+          autoGenerateMusic={autoGenerateMusic}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4" align="start">
         <div className="flex flex-col gap-4">

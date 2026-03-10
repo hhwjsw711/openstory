@@ -69,6 +69,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
 
     setIsGenerating(true);
     try {
+      // TB 2026-03-10: Both of these should be a mutation that calls a server function that triggers the workflow.
       const promises: Promise<void>[] = [
         onBatchGenerateMotion(notStartedFrames.map((f) => f.id)),
       ];
