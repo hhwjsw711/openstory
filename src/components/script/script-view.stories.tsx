@@ -46,6 +46,7 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   musicModel: null,
   musicPrompt: null,
   musicTags: null,
+  statusError: null,
 };
 
 // Create a new QueryClient for each story to avoid state leakage

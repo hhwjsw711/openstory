@@ -112,7 +112,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
       await getDb()
         .update(sequences)
-        .set({ status: 'processing', updatedAt: new Date() })
+        .set({ status: 'processing', statusError: null, updatedAt: new Date() })
         .where(eq(sequences.id, sequence.id));
 
       const workflowInput: StoryboardWorkflowInput = {
@@ -315,7 +315,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
     if (sequence.status === 'failed') {
       await getDb()
         .update(sequences)
-        .set({ status: 'completed', updatedAt: new Date() })
+        .set({ status: 'completed', statusError: null, updatedAt: new Date() })
         .where(eq(sequences.id, sequence.id));
     }
 

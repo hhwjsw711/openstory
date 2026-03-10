@@ -26,6 +26,10 @@ export const FailureSummaryBanner: React.FC<FailureSummaryBannerProps> = ({
     <AlertDescription>
       <p>{summary.headline}</p>
 
+      {summary.groups.length === 0 && summary.error && (
+        <p className="mt-1 text-xs font-mono">{summary.error}</p>
+      )}
+
       {summary.groups.length > 0 && (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs underline">

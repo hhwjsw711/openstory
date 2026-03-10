@@ -902,7 +902,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       if (!sequenceId) return;
 
       console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
-      await updateSequenceStatus(sequenceId, 'failed');
+      await updateSequenceStatus(sequenceId, 'failed', String(failResponse));
       await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: String(failResponse),
       });

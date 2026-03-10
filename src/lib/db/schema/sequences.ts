@@ -60,6 +60,7 @@ export const sequences = sqliteTable(
     title: text({ length: 500 }).notNull(),
     script: text(),
     status: text().$type<SequenceStatus>().default('draft').notNull(),
+    statusError: text('status_error'),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),

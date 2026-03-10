@@ -74,6 +74,7 @@ function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
     musicModel: null,
     musicPrompt: 'Epic cinematic music',
     musicTags: 'epic,cinematic',
+    statusError: null,
     ...overrides,
   };
 }

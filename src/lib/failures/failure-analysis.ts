@@ -34,6 +34,7 @@ export type FailureSummary = {
   groups: FailureGroup[];
   totalFailures: number;
   hasFailed: boolean;
+  error?: string | null;
 };
 
 function getSceneTitle(frame: Frame): string {
@@ -44,7 +45,11 @@ function buildHeadline(
   groups: FailureGroup[],
   requiresFullRetry: boolean
 ): string {
-  if (groups.length === 0) return 'No failures detected';
+  if (groups.length === 0) {
+    if (requiresFullRetry)
+      return 'Generation failed \u2014 full retry required';
+    return 'No failures detected';
+  }
 
   if (requiresFullRetry) {
     const promptGroups = groups.filter(
@@ -92,6 +97,7 @@ export function analyzeFailures(
       groups: [],
       totalFailures: 1,
       hasFailed: true,
+      error: sequence.statusError,
     };
   }
 
@@ -191,6 +197,11 @@ export function analyzeFailures(
     // Full retry re-runs everything including generation
   }
 
+  // Catch-all: sequence failed but no specific failures identified
+  if (sequence.status === 'failed' && groups.length === 0) {
+    requiresFullRetry = true;
+  }
+
   const totalFailures = groups.reduce(
     (sum, g) => sum + Math.max(g.frames.length, 1),
     0
@@ -204,5 +215,6 @@ export function analyzeFailures(
     groups,
     totalFailures,
     hasFailed,
+    error: sequence.statusError,
   };
 }
