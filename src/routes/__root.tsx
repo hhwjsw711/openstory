@@ -1,22 +1,47 @@
+import { Providers } from '@/components/providers';
+import { Button } from '@/components/ui/button';
+import { sessionQueryOptions } from '@/lib/auth/session-query';
+import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
 import appCss from '@/styles/global.css?url';
+import type { QueryClient } from '@tanstack/react-query';
 import {
-  Outlet,
   createRootRouteWithContext,
   HeadContent,
-  Scripts,
   Link,
+  Outlet,
+  redirect,
+  Scripts,
   useRouter,
 } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import type { QueryClient } from '@tanstack/react-query';
-import { Providers } from '@/components/providers';
-import { Button } from '@/components/ui/button';
+import { createIsomorphicFn } from '@tanstack/react-start';
+import { getRequestHeaders } from '@tanstack/react-start/server';
 
 type RouterContext = {
   queryClient: QueryClient;
 };
+const getCanonicalOriginFn = createIsomorphicFn().server(() => {
+  const headers = getRequestHeaders();
+  const host = headers.get('x-forwarded-host') ?? headers.get('host');
+  if (!host) return null;
+
+  const canonical = new URL(getProductionDeploymentAppUrl(headers));
+  if (host === canonical.host) return null;
+  return canonical.origin;
+});
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ context: { queryClient }, location }) => {
+    // This is to redirect from git origins to the hash origin on vercel preview branches
+    const canonicalOrigin = getCanonicalOriginFn();
+    if (canonicalOrigin) {
+      throw redirect({ href: canonicalOrigin + location.href });
+    }
+    const sessionData = await queryClient.ensureQueryData(sessionQueryOptions);
+    const { session, user } = sessionData ?? { session: null, user: null };
+
+    return { session, user };
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

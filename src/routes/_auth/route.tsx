@@ -5,13 +5,17 @@
 
 import { RouteErrorFallback } from '@/components/error/route-error-fallback';
 import { getIsPreviewFn } from '@/lib/utils/environment';
-import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_auth')({
   errorComponent: (props) => (
     <RouteErrorFallback {...props} heading="Authentication error" />
   ),
-  beforeLoad: async () => {
+  beforeLoad: async ({ context: { user } }) => {
+    if (user) {
+      throw redirect({ to: '/' });
+    }
+
     const isPreview = await getIsPreviewFn();
     return { isPreview };
   },
