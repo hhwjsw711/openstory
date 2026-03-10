@@ -118,7 +118,8 @@ function calculateTokenBasedVideoCost(
   const h = params.heightPx ?? 1080;
   const fps = params.fps ?? 24;
   const tokens = (w * h * fps * params.durationSeconds) / 1024;
-  return pricing.pricePerMillionTokens * (tokens / 1_000_000);
+  // Actual rendered frames slightly exceed nominal fps (~3% overhead)
+  return pricing.pricePerMillionTokens * (tokens / 1_000_000) * 1.05;
 }
 
 function calculateSecondBasedVideoCost(
@@ -151,6 +152,8 @@ function calculateSecondBasedVideoCost(
     rate = pricing.basePrice * pricing.voiceControlMultiplier;
   } else if (params.audioEnabled && pricing.audioMultiplier) {
     rate = pricing.basePrice * pricing.audioMultiplier;
+  } else if (!params.audioEnabled && pricing.noAudioMultiplier) {
+    rate = pricing.basePrice * pricing.noAudioMultiplier;
   }
 
   let cost = rate * params.durationSeconds;

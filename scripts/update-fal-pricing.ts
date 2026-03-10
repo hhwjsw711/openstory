@@ -77,16 +77,17 @@ const IMAGE_OVERRIDES: Record<string, Partial<ImagePricing>> = {
   'fal-ai/gpt-image-1.5': {
     basePrice: 0, // Overridden by matrix
     qualitySizeMatrix: {
-      low: { '1024x1024': 0.009, '1024x1536': 0.013, '1536x1024': 0.013 },
+      // Prices from llms.txt + ~$0.01 buffer for prompt token processing costs
+      low: { '1024x1024': 0.02, '1024x1536': 0.025, '1536x1024': 0.025 },
       medium: {
-        '1024x1024': 0.034,
-        '1024x1536': 0.051,
-        '1536x1024': 0.05,
+        '1024x1024': 0.045,
+        '1024x1536': 0.062,
+        '1536x1024': 0.061,
       },
       high: {
-        '1024x1024': 0.133,
-        '1024x1536': 0.2,
-        '1536x1024': 0.199,
+        '1024x1024': 0.144,
+        '1024x1536': 0.211,
+        '1536x1024': 0.21,
       },
     },
   },
@@ -98,11 +99,9 @@ type VideoOverride =
 
 const VIDEO_OVERRIDES: Record<string, VideoOverride> = {
   'fal-ai/veo3': {
-    basePrice: 0.2,
-    audioMultiplier: 2.0,
+    // API returns audio-on rate ($0.40); no multiplier needed
   },
   'fal-ai/veo3.1/image-to-video': {
-    basePrice: 0.2,
     resolutionAudioPricing: {
       '720p': { noAudio: 0.2, withAudio: 0.4 },
       '1080p': { noAudio: 0.2, withAudio: 0.4 },
@@ -110,9 +109,9 @@ const VIDEO_OVERRIDES: Record<string, VideoOverride> = {
     },
   },
   'fal-ai/kling-video/v3/pro/image-to-video': {
-    basePrice: 0.224,
-    audioMultiplier: 1.5,
-    voiceControlMultiplier: 1.75,
+    noAudioMultiplier: 0.8,
+    audioMultiplier: 1.2,
+    voiceControlMultiplier: 1.4,
   },
   'wan/v2.6/image-to-video/flash': {
     resolutionPricing: { '720p': 0.05, '1080p': 0.075 },
@@ -486,6 +485,7 @@ type VideoPricingBase = { pricingNotes?: string };
 type VideoPricingPerSecond = VideoPricingBase & {
   mode: 'per_second';
   basePrice: number;
+  noAudioMultiplier?: number;
   audioMultiplier?: number;
   voiceControlMultiplier?: number;
   resolutionPricing?: Record<string, number>;

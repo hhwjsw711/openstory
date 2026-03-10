@@ -83,19 +83,19 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     unit: 'per_image',
     qualitySizeMatrix: {
       low: {
-        '1024x1024': 0.009,
-        '1024x1536': 0.013,
-        '1536x1024': 0.013,
+        '1024x1024': 0.02,
+        '1024x1536': 0.025,
+        '1536x1024': 0.025,
       },
       medium: {
-        '1024x1024': 0.034,
-        '1024x1536': 0.051,
-        '1536x1024': 0.05,
+        '1024x1024': 0.045,
+        '1024x1536': 0.062,
+        '1536x1024': 0.061,
       },
       high: {
-        '1024x1024': 0.133,
-        '1024x1536': 0.2,
-        '1536x1024': 0.199,
+        '1024x1024': 0.144,
+        '1024x1536': 0.211,
+        '1536x1024': 0.21,
       },
     },
     pricingNotes:
@@ -128,31 +128,49 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
   'fal-ai/nano-banana-2': {
     basePrice: 0.08,
     unit: 'per_image',
-    resolutionMultipliers: { '0.5K': 0.75, '2K': 1, '1K': 1, '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    resolutionMultipliers: {
+      '0.5K': 0.75,
+      '1K': 1,
+      '2K': 1,
+      '4K': 2,
+    },
+    surcharges: {
+      webSearch: 0.015,
+    },
     pricingNotes:
       'Your request will cost **$0.08** per image. For **$1.00**, you can run this model **12** times. 2K and 4K outputs will be charged at **1.5** times and **2** times the standard rate, respectively. 0.5K (512px) resolution outputs will be charged at **0.75** times the standard rate. If web search is used, an additional $0.015 will be charged. **Note: Pricing is subject to change.**\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'fal-ai/nano-banana-pro': {
     basePrice: 0.15,
     unit: 'per_image',
-    resolutionMultipliers: { '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    resolutionMultipliers: {
+      '4K': 2,
+    },
+    surcharges: {
+      webSearch: 0.015,
+    },
     pricingNotes:
       'Your request will cost **$0.15** per image. For **$1.00**, you can run this model **7** times. 4K outputs will be charged at double the standard rate. If web search is used, an additional $0.015 will be charged. Note: Pricing may change in the future.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'fal-ai/nano-banana-pro/edit': {
     basePrice: 0.15,
     unit: 'per_image',
-    resolutionMultipliers: { '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    resolutionMultipliers: {
+      '4K': 2,
+    },
+    surcharges: {
+      webSearch: 0.015,
+    },
     pricingNotes:
       'Your request will cost **$0.15** per image. For **$1.00**, you can run this model **7** times. 4K outputs will be charged at double the standard rate. If web search is used, an additional $0.015 will be charged. Note: Pricing may change in the future.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'fal-ai/recraft/v3/text-to-image': {
     basePrice: 0.04,
     unit: 'per_image',
-    styleMultipliers: { vector_illustration: 2, vector: 2 },
+    styleMultipliers: {
+      vector_illustration: 2,
+      vector: 2,
+    },
     pricingNotes:
       'Your request will cost **$0.04** per image (or **$0.08** if you are using a vector style). For $1 you can run this model approximately **25** times.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
@@ -173,6 +191,7 @@ type VideoPricingBase = { pricingNotes?: string };
 type VideoPricingPerSecond = VideoPricingBase & {
   mode: 'per_second';
   basePrice: number;
+  noAudioMultiplier?: number;
   audioMultiplier?: number;
   voiceControlMultiplier?: number;
   resolutionPricing?: Record<string, number>;
@@ -211,11 +230,12 @@ export const VIDEO_PRICING: Record<string, VideoPricing> = {
   },
   'fal-ai/kling-video/v3/pro/image-to-video': {
     mode: 'per_second',
-    basePrice: 0.224,
-    audioMultiplier: 1.5,
-    voiceControlMultiplier: 1.75,
+    basePrice: 0.14,
+    noAudioMultiplier: 0.8,
+    audioMultiplier: 1.2,
+    voiceControlMultiplier: 1.4,
     pricingNotes:
-      'For every second of video you generated, you will be charged **$0.224** (audio off) or **$0.336** (audio on), if voice control is used while generating audio you will be charged **$0.392**. For example, a 5s video with audio on and voice control will cost **$1.96**\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
+      'For every second of video you generated, you will be charged **$0.112** (audio off) or **$0.168** (audio on), if voice control is used while generating audio you will be charged **$0.196**. For example, a 5s video with audio on and voice control will cost **$0.98**\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'fal-ai/sora-2/image-to-video': {
     mode: 'per_second',
@@ -225,18 +245,26 @@ export const VIDEO_PRICING: Record<string, VideoPricing> = {
   },
   'fal-ai/veo3': {
     mode: 'per_second',
-    basePrice: 0.2,
-    audioMultiplier: 2.0,
+    basePrice: 0.4,
     pricingNotes:
       'For every second of video you generated, you will be charged **$0.20** (audio off) or **$0.40** (audio on). For example, a **5s video** with audio on will cost **$2**.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'fal-ai/veo3.1/image-to-video': {
     mode: 'per_second',
-    basePrice: 0.2,
+    basePrice: 0.4,
     resolutionAudioPricing: {
-      '720p': { noAudio: 0.2, withAudio: 0.4 },
-      '1080p': { noAudio: 0.2, withAudio: 0.4 },
-      '4K': { noAudio: 0.4, withAudio: 0.6 },
+      '720p': {
+        noAudio: 0.2,
+        withAudio: 0.4,
+      },
+      '1080p': {
+        noAudio: 0.2,
+        withAudio: 0.4,
+      },
+      '4K': {
+        noAudio: 0.4,
+        withAudio: 0.6,
+      },
     },
     pricingNotes:
       'For every second of video you generate you will be charged **$0.20** without audio or **$0.40** with audio for 720p or 1080p. At 4k, you will be charged **$0.40** per second without audio, or **$0.60** with. For example, a **5 second video** at **1080p** with **audio on** will cost **$2.00**.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
@@ -244,15 +272,23 @@ export const VIDEO_PRICING: Record<string, VideoPricing> = {
   'wan/v2.6/image-to-video/flash': {
     mode: 'per_second',
     basePrice: 0.05,
-    resolutionPricing: { '720p': 0.05, '1080p': 0.075 },
+    resolutionPricing: {
+      '720p': 0.05,
+      '1080p': 0.075,
+    },
     pricingNotes:
       'Your request will cost  **$0.05** per second for **720p**, **$0.075** per second for **1080p**.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
   'xai/grok-imagine-video/image-to-video': {
     mode: 'per_second',
     basePrice: 0.05,
-    resolutionPricing: { '480p': 0.05, '720p': 0.07 },
-    surcharges: { imageInput: 0.002 },
+    resolutionPricing: {
+      '480p': 0.05,
+      '720p': 0.07,
+    },
+    surcharges: {
+      imageInput: 0.002,
+    },
     pricingNotes:
       'A 6s 480p video will cost **$0.302** (**$0.05** per second of 480p video + **$0.002** for image input). At an output resolution of 480p, every second costs **$0.05**, and at 720p, every second costs **$0.07**.\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
@@ -311,4 +347,4 @@ export const AUDIO_PRICING: Record<string, AudioPricing> = {
   },
 };
 
-export const PRICING_LAST_UPDATED = '2026-03-10T01:19:06.428Z';
+export const PRICING_LAST_UPDATED = '2026-03-10T07:24:08.507Z';

@@ -53,7 +53,7 @@ export const IMAGE_TO_VIDEO_MODELS = {
       maxDuration: 8,
       defaultDuration: 8,
       fpsRange: { min: 24, max: 30, default: 24 }, // Fixed FPS
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
+      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
       supportedResolutions: ['720p', '1080p'],
       supportedDurations: [8], // Only 8s supported
     },
