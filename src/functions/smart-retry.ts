@@ -16,6 +16,12 @@ import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
 import { requireCredits } from '@/lib/billing/preflight';
 import {
+  addMicros,
+  multiplyMicros,
+  ZERO_MICROS,
+  usdToMicros,
+} from '@/lib/billing/money';
+import {
   estimateImageCost,
   estimateStoryboardCost,
   estimateVideoCost,
@@ -135,7 +141,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Smart retry: only retry failed parts
     const retried: string[] = [];
-    let totalCost = 0;
+    let totalCost = ZERO_MICROS;
 
     const imageModel = safeTextToImageModel(
       sequence.imageModel,
@@ -159,22 +165,30 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Calculate total cost
     if (failedImageFrames.length > 0) {
-      totalCost += estimateImageCost(
-        imageModel,
-        sequence.aspectRatio,
-        failedImageFrames.length
+      totalCost = addMicros(
+        totalCost,
+        estimateImageCost(
+          imageModel,
+          sequence.aspectRatio,
+          failedImageFrames.length
+        )
       );
     }
 
     if (failedMotionFrames.length > 0) {
       const duration =
         IMAGE_TO_VIDEO_MODELS[videoModel].capabilities.defaultDuration;
-      totalCost +=
-        estimateVideoCost(videoModel, duration) * failedMotionFrames.length;
+      totalCost = addMicros(
+        totalCost,
+        multiplyMicros(
+          estimateVideoCost(videoModel, duration),
+          failedMotionFrames.length
+        )
+      );
     }
 
     if (hasMergeFailure) {
-      totalCost += 0.01;
+      totalCost = addMicros(totalCost, usdToMicros(0.01));
     }
 
     // Single credit check for all retries

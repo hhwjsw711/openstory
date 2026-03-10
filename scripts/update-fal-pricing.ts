@@ -10,12 +10,66 @@ import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
 } from '@/lib/ai/models';
-import type {
-  ImagePricing,
-  VideoPricing,
-  AudioPricing,
-} from '@/lib/ai/fal-pricing-data';
+import { typedEntries } from '@/lib/utils/typed-object';
 import { getFalEndpointIds } from './fal-endpoints';
+
+/**
+ * Wrapper to tag numeric values that should be serialized as `X as Microdollars`
+ * in the generated output file. Multipliers stay as plain numbers.
+ */
+class MicrosValue {
+  constructor(readonly value: number) {}
+}
+
+/** Convert USD to a MicrosValue for serialization tagging */
+const m = (usd: number): MicrosValue =>
+  new MicrosValue(Math.round(usd * 1_000_000));
+
+// ============================================================================
+// Builder types — mirror the output types but with MicrosValue for price fields
+// ============================================================================
+
+type BuilderImagePricing = {
+  basePrice: MicrosValue;
+  unit: 'per_image' | 'per_megapixel' | 'per_compute_second';
+  resolutionMultipliers?: Partial<Record<'0.5K' | '1K' | '2K' | '4K', number>>;
+  styleMultipliers?: Record<string, number>;
+  qualitySizeMatrix?: Record<string, Record<string, MicrosValue>>;
+  surcharges?: { webSearch?: MicrosValue };
+  pricingNotes?: string;
+};
+
+type BuilderVideoPricingPerSecond = {
+  mode: 'per_second';
+  basePrice: MicrosValue;
+  noAudioMultiplier?: number;
+  audioMultiplier?: number;
+  voiceControlMultiplier?: number;
+  resolutionPricing?: Record<string, MicrosValue>;
+  resolutionAudioPricing?: Record<
+    string,
+    { noAudio: MicrosValue; withAudio: MicrosValue }
+  >;
+  surcharges?: { imageInput?: MicrosValue };
+  pricingNotes?: string;
+};
+
+type BuilderVideoPricingPerToken = {
+  mode: 'per_token';
+  pricePerMillionTokens: MicrosValue;
+  pricingNotes?: string;
+};
+
+type BuilderVideoPricing =
+  | BuilderVideoPricingPerSecond
+  | BuilderVideoPricingPerToken;
+
+type BuilderAudioPricing = {
+  basePrice: MicrosValue;
+  unit: 'per_second' | 'per_minute' | 'per_compute_second';
+  roundUpToMinute?: boolean;
+  pricingNotes?: string;
+};
 
 const fetchLlmsTxt = process.argv.includes('--llms-txt');
 
@@ -58,54 +112,57 @@ function classifyEndpoint(id: string): 'image' | 'video' | 'audio' | 'unknown' {
 // Manual overrides — conditional pricing that can't be auto-derived from API
 // ============================================================================
 
-const IMAGE_OVERRIDES: Record<string, Partial<ImagePricing>> = {
+const IMAGE_OVERRIDES: Record<string, Partial<BuilderImagePricing>> = {
   'fal-ai/nano-banana-2': {
     resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1, '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    surcharges: { webSearch: m(0.015) },
   },
   'fal-ai/nano-banana-pro': {
     resolutionMultipliers: { '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    surcharges: { webSearch: m(0.015) },
   },
   'fal-ai/nano-banana-pro/edit': {
     resolutionMultipliers: { '4K': 2 },
-    surcharges: { webSearch: 0.015 },
+    surcharges: { webSearch: m(0.015) },
   },
   'fal-ai/recraft/v3/text-to-image': {
     styleMultipliers: { vector_illustration: 2, vector: 2 },
   },
   'fal-ai/gpt-image-1.5': {
-    basePrice: 0, // Overridden by matrix
+    basePrice: m(0), // Overridden by matrix
     qualitySizeMatrix: {
       // Prices from llms.txt + ~$0.01 buffer for prompt token processing costs
-      low: { '1024x1024': 0.02, '1024x1536': 0.025, '1536x1024': 0.025 },
+      low: {
+        '1024x1024': m(0.02),
+        '1024x1536': m(0.025),
+        '1536x1024': m(0.025),
+      },
       medium: {
-        '1024x1024': 0.045,
-        '1024x1536': 0.062,
-        '1536x1024': 0.061,
+        '1024x1024': m(0.045),
+        '1024x1536': m(0.062),
+        '1536x1024': m(0.061),
       },
       high: {
-        '1024x1024': 0.144,
-        '1024x1536': 0.211,
-        '1536x1024': 0.21,
+        '1024x1024': m(0.144),
+        '1024x1536': m(0.211),
+        '1536x1024': m(0.21),
       },
     },
   },
 };
 
-type VideoOverride =
-  | Partial<Extract<VideoPricing, { mode: 'per_second' }>>
-  | { mode: 'per_token'; pricePerMillionTokens?: number };
-
-const VIDEO_OVERRIDES: Record<string, VideoOverride> = {
+const VIDEO_OVERRIDES: Record<
+  string,
+  Partial<BuilderVideoPricingPerSecond> | { mode: 'per_token' }
+> = {
   'fal-ai/veo3': {
     // API returns audio-on rate ($0.40); no multiplier needed
   },
   'fal-ai/veo3.1/image-to-video': {
     resolutionAudioPricing: {
-      '720p': { noAudio: 0.2, withAudio: 0.4 },
-      '1080p': { noAudio: 0.2, withAudio: 0.4 },
-      '4K': { noAudio: 0.4, withAudio: 0.6 },
+      '720p': { noAudio: m(0.2), withAudio: m(0.4) },
+      '1080p': { noAudio: m(0.2), withAudio: m(0.4) },
+      '4K': { noAudio: m(0.4), withAudio: m(0.6) },
     },
   },
   'fal-ai/kling-video/v3/pro/image-to-video': {
@@ -114,18 +171,18 @@ const VIDEO_OVERRIDES: Record<string, VideoOverride> = {
     voiceControlMultiplier: 1.4,
   },
   'wan/v2.6/image-to-video/flash': {
-    resolutionPricing: { '720p': 0.05, '1080p': 0.075 },
+    resolutionPricing: { '720p': m(0.05), '1080p': m(0.075) },
   },
   'xai/grok-imagine-video/image-to-video': {
-    resolutionPricing: { '480p': 0.05, '720p': 0.07 },
-    surcharges: { imageInput: 0.002 },
+    resolutionPricing: { '480p': m(0.05), '720p': m(0.07) },
+    surcharges: { imageInput: m(0.002) },
   },
   'fal-ai/bytedance/seedance/v1/pro/image-to-video': {
     mode: 'per_token',
   },
 };
 
-const AUDIO_OVERRIDES: Record<string, Partial<AudioPricing>> = {
+const AUDIO_OVERRIDES: Record<string, Partial<BuilderAudioPricing>> = {
   'fal-ai/elevenlabs/music': {
     roundUpToMinute: true,
   },
@@ -161,7 +218,7 @@ const found = new Set(data.prices.map((p) => p.endpoint_id));
 const missing = endpoints.filter((e) => !found.has(e));
 if (missing.length > 0) {
   console.error('\nERROR: Missing endpoints from fal pricing API:');
-  for (const m of missing) console.error(`  - ${m}`);
+  for (const ep of missing) console.error(`  - ${ep}`);
   process.exit(1);
 }
 
@@ -172,9 +229,14 @@ if (missing.length > 0) {
 const outPath = new URL('../src/lib/ai/fal-pricing-data.ts', import.meta.url)
   .pathname;
 
-let oldImagePricing: Record<string, ImagePricing> = {};
-let oldVideoPricing: Record<string, VideoPricing> = {};
-let oldAudioPricing: Record<string, AudioPricing> = {};
+type OldPricingEntry = {
+  basePrice?: number;
+  pricePerMillionTokens?: number;
+  pricingNotes?: string;
+};
+let oldImagePricing: Record<string, OldPricingEntry> = {};
+let oldVideoPricing: Record<string, OldPricingEntry> = {};
+let oldAudioPricing: Record<string, OldPricingEntry> = {};
 try {
   const existing = await import(outPath);
   oldImagePricing = existing.IMAGE_PRICING ?? {};
@@ -185,12 +247,12 @@ try {
 }
 
 // ============================================================================
-// Build typed pricing maps
+// Build pricing maps (prices wrapped in MicrosValue for serialization)
 // ============================================================================
 
-const imagePricing: Record<string, ImagePricing> = {};
-const videoPricing: Record<string, VideoPricing> = {};
-const audioPricing: Record<string, AudioPricing> = {};
+const imagePricing: Record<string, BuilderImagePricing> = {};
+const videoPricing: Record<string, BuilderVideoPricing> = {};
+const audioPricing: Record<string, BuilderAudioPricing> = {};
 
 function mapImageUnit(
   apiUnit: string
@@ -219,8 +281,8 @@ for (const p of data.prices.sort((a, b) =>
     case 'image': {
       const override = IMAGE_OVERRIDES[p.endpoint_id];
       imagePricing[p.endpoint_id] = {
-        basePrice: override?.basePrice ?? p.unit_price,
-        unit: mapImageUnit(p.unit),
+        basePrice: override?.basePrice ?? m(p.unit_price),
+        unit: override?.unit ?? mapImageUnit(p.unit),
         ...override,
       };
       break;
@@ -230,15 +292,15 @@ for (const p of data.prices.sort((a, b) =>
       if (override && 'mode' in override && override.mode === 'per_token') {
         videoPricing[p.endpoint_id] = {
           mode: 'per_token',
-          pricePerMillionTokens: override.pricePerMillionTokens ?? p.unit_price,
+          pricePerMillionTokens: m(p.unit_price),
         };
       } else {
         const secOverride = override as
-          | Partial<Extract<VideoPricing, { mode: 'per_second' }>>
+          | Partial<BuilderVideoPricingPerSecond>
           | undefined;
         videoPricing[p.endpoint_id] = {
           mode: 'per_second',
-          basePrice: secOverride?.basePrice ?? p.unit_price,
+          basePrice: secOverride?.basePrice ?? m(p.unit_price),
           ...secOverride,
         };
       }
@@ -247,8 +309,8 @@ for (const p of data.prices.sort((a, b) =>
     case 'audio': {
       const override = AUDIO_OVERRIDES[p.endpoint_id];
       audioPricing[p.endpoint_id] = {
-        basePrice: p.unit_price,
-        unit: mapAudioUnit(p.unit),
+        basePrice: m(p.unit_price),
+        unit: override?.unit ?? mapAudioUnit(p.unit),
         ...override,
       };
       break;
@@ -262,10 +324,11 @@ for (const p of data.prices.sort((a, b) =>
 // Fetch llms.txt pricing notes
 // ============================================================================
 
-const allPricing = new Map<string, { pricingNotes?: string }>();
-for (const [id, p] of Object.entries(imagePricing)) allPricing.set(id, p);
-for (const [id, p] of Object.entries(videoPricing)) allPricing.set(id, p);
-for (const [id, p] of Object.entries(audioPricing)) allPricing.set(id, p);
+type PricingEntry = { pricingNotes?: string };
+const allPricing = new Map<string, PricingEntry>();
+for (const [id, p] of typedEntries(imagePricing)) allPricing.set(id, p);
+for (const [id, p] of typedEntries(videoPricing)) allPricing.set(id, p);
+for (const [id, p] of typedEntries(audioPricing)) allPricing.set(id, p);
 
 if (fetchLlmsTxt) {
   console.log('\nFetching llms.txt pricing notes...\n');
@@ -319,19 +382,19 @@ if (fetchLlmsTxt) {
 
 // Preserve existing pricingNotes when not fetching llms.txt
 if (!fetchLlmsTxt) {
-  for (const [id, entry] of Object.entries(imagePricing)) {
+  for (const [id, entry] of typedEntries(imagePricing)) {
     const old = oldImagePricing[id];
     if (old?.pricingNotes && !entry.pricingNotes) {
       entry.pricingNotes = old.pricingNotes;
     }
   }
-  for (const [id, entry] of Object.entries(videoPricing)) {
+  for (const [id, entry] of typedEntries(videoPricing)) {
     const old = oldVideoPricing[id];
     if (old?.pricingNotes && !entry.pricingNotes) {
       entry.pricingNotes = old.pricingNotes;
     }
   }
-  for (const [id, entry] of Object.entries(audioPricing)) {
+  for (const [id, entry] of typedEntries(audioPricing)) {
     const old = oldAudioPricing[id];
     if (old?.pricingNotes && !entry.pricingNotes) {
       entry.pricingNotes = old.pricingNotes;
@@ -345,10 +408,16 @@ if (!fetchLlmsTxt) {
 
 let changes = 0;
 
-function getBasePrice(entry: Record<string, unknown>): number {
-  if (typeof entry.basePrice === 'number') return entry.basePrice;
-  if (typeof entry.pricePerMillionTokens === 'number')
-    return entry.pricePerMillionTokens;
+function getBasePrice(entry: OldPricingEntry): number {
+  return entry.basePrice ?? entry.pricePerMillionTokens ?? 0;
+}
+
+function getMicrosBasePrice(
+  entry: BuilderImagePricing | BuilderVideoPricing | BuilderAudioPricing
+): number {
+  if ('basePrice' in entry) return entry.basePrice.value;
+  if ('pricePerMillionTokens' in entry)
+    return entry.pricePerMillionTokens.value;
   return 0;
 }
 
@@ -356,26 +425,22 @@ function diffMap(
   label: string,
   newIds: string[],
   oldIds: string[],
-  getNew: (id: string) => Record<string, unknown> | undefined,
-  getOld: (id: string) => Record<string, unknown> | undefined
+  getNew: (id: string) => number,
+  getOld: (id: string) => number | undefined
 ) {
   for (const id of newIds) {
-    const entry = getNew(id);
-    const old = getOld(id);
-    const bp = entry ? getBasePrice(entry) : 0;
-    if (!old) {
-      console.log(`  + [${label}] ${id}: $${bp} (new)`);
+    const bp = getNew(id);
+    const oldBp = getOld(id);
+    if (oldBp === undefined) {
+      console.log(`  + [${label}] ${id}: ${bp} micros (new)`);
       changes++;
-    } else {
-      const oldBp = getBasePrice(old);
-      if (oldBp !== bp) {
-        console.log(`  ~ [${label}] ${id}: $${oldBp} → $${bp}`);
-        changes++;
-      }
+    } else if (oldBp !== bp) {
+      console.log(`  ~ [${label}] ${id}: ${oldBp} → ${bp} micros`);
+      changes++;
     }
   }
   for (const id of oldIds) {
-    if (!getNew(id)) {
+    if (!newIds.includes(id)) {
       console.log(`  - [${label}] ${id}: removed`);
       changes++;
     }
@@ -386,22 +451,22 @@ diffMap(
   'image',
   Object.keys(imagePricing),
   Object.keys(oldImagePricing),
-  (id) => imagePricing[id],
-  (id) => oldImagePricing[id]
+  (id) => getMicrosBasePrice(imagePricing[id]),
+  (id) => (oldImagePricing[id] ? getBasePrice(oldImagePricing[id]) : undefined)
 );
 diffMap(
   'video',
   Object.keys(videoPricing),
   Object.keys(oldVideoPricing),
-  (id) => videoPricing[id],
-  (id) => oldVideoPricing[id]
+  (id) => getMicrosBasePrice(videoPricing[id]),
+  (id) => (oldVideoPricing[id] ? getBasePrice(oldVideoPricing[id]) : undefined)
 );
 diffMap(
   'audio',
   Object.keys(audioPricing),
   Object.keys(oldAudioPricing),
-  (id) => audioPricing[id],
-  (id) => oldAudioPricing[id]
+  (id) => getMicrosBasePrice(audioPricing[id]),
+  (id) => (oldAudioPricing[id] ? getBasePrice(oldAudioPricing[id]) : undefined)
 );
 
 // ============================================================================
@@ -412,11 +477,24 @@ function escapeString(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
 }
 
+/** Format large integers with underscore separators for readability */
+function formatMicros(value: number): string {
+  if (value === 0) return '0';
+  const str = String(value);
+  // Add underscore separators for values >= 1000
+  if (value >= 1000) {
+    return str.replace(/\B(?=(\d{3})+(?!\d))/g, '_');
+  }
+  return str;
+}
+
 function serializeValue(value: unknown, indent: number): string {
   const pad = '  '.repeat(indent);
   const padInner = '  '.repeat(indent + 1);
 
   if (value === undefined || value === null) return 'undefined';
+  if (value instanceof MicrosValue)
+    return `${formatMicros(value.value)} as Microdollars`;
   if (typeof value === 'string') return `'${escapeString(value)}'`;
   if (typeof value === 'number' || typeof value === 'boolean')
     return String(value);
@@ -445,7 +523,10 @@ function quoteKey(key: string): string {
 function serializeMap(
   name: string,
   type: string,
-  map: Record<string, unknown>
+  map: Record<
+    string,
+    BuilderImagePricing | BuilderVideoPricing | BuilderAudioPricing
+  >
 ): string {
   const entries = Object.entries(map)
     .map(([id, p]) => `  '${id}': ${serializeValue(p, 1)},`)
@@ -458,44 +539,46 @@ const now = new Date().toISOString();
 const output = `// AUTO-GENERATED — do not edit manually. Run: bun scripts/update-fal-pricing.ts
 // Manual overrides (multipliers, matrices) are maintained in scripts/update-fal-pricing.ts
 
+import type { Microdollars } from '@/lib/billing/money';
+
 // ============================================================================
-// Image Pricing
+// Image Pricing (all prices in microdollars: 1 USD = 1,000,000)
 // ============================================================================
 
 type ImagePricingUnit = 'per_image' | 'per_megapixel' | 'per_compute_second';
 
 export type ImagePricing = {
-  basePrice: number;
+  basePrice: Microdollars;
   unit: ImagePricingUnit;
   resolutionMultipliers?: Partial<Record<'0.5K' | '1K' | '2K' | '4K', number>>;
   styleMultipliers?: Record<string, number>;
-  qualitySizeMatrix?: Record<string, Record<string, number>>;
-  surcharges?: { webSearch?: number };
+  qualitySizeMatrix?: Record<string, Record<string, Microdollars>>;
+  surcharges?: { webSearch?: Microdollars };
   pricingNotes?: string;
 };
 
 ${serializeMap('IMAGE_PRICING', 'ImagePricing', imagePricing)}
 
 // ============================================================================
-// Video Pricing
+// Video Pricing (all prices in microdollars: 1 USD = 1,000,000)
 // ============================================================================
 
 type VideoPricingBase = { pricingNotes?: string };
 
 type VideoPricingPerSecond = VideoPricingBase & {
   mode: 'per_second';
-  basePrice: number;
+  basePrice: Microdollars;
   noAudioMultiplier?: number;
   audioMultiplier?: number;
   voiceControlMultiplier?: number;
-  resolutionPricing?: Record<string, number>;
-  resolutionAudioPricing?: Record<string, { noAudio: number; withAudio: number }>;
-  surcharges?: { imageInput?: number };
+  resolutionPricing?: Record<string, Microdollars>;
+  resolutionAudioPricing?: Record<string, { noAudio: Microdollars; withAudio: Microdollars }>;
+  surcharges?: { imageInput?: Microdollars };
 };
 
 type VideoPricingPerToken = VideoPricingBase & {
   mode: 'per_token';
-  pricePerMillionTokens: number;
+  pricePerMillionTokens: Microdollars;
 };
 
 export type VideoPricing = VideoPricingPerSecond | VideoPricingPerToken;
@@ -503,13 +586,13 @@ export type VideoPricing = VideoPricingPerSecond | VideoPricingPerToken;
 ${serializeMap('VIDEO_PRICING', 'VideoPricing', videoPricing)}
 
 // ============================================================================
-// Audio Pricing
+// Audio Pricing (all prices in microdollars: 1 USD = 1,000,000)
 // ============================================================================
 
 type AudioPricingUnit = 'per_second' | 'per_minute' | 'per_compute_second';
 
 export type AudioPricing = {
-  basePrice: number;
+  basePrice: Microdollars;
   unit: AudioPricingUnit;
   roundUpToMinute?: boolean;
   pricingNotes?: string;

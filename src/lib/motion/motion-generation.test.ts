@@ -56,7 +56,7 @@ describe('Motion Service', () => {
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
       expect(result.metadata?.fps).toBe(30);
-      expect(result.metadata?.cost).toBeCloseTo(1.68, 2); // $0.224/sec * 1.5 (audio) * 5 seconds
+      expect(result.metadata?.cost).toBe(840_000); // 140_000 micros/s * 1.2 (audio) * 5s
 
       expect(mockGenerateVideo).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -2,7 +2,7 @@
  * Type-safe fal.ai cost calculation with per-output-type pricing.
  *
  * Three domain-specific functions accept real generation parameters
- * instead of generic quantity/unit pairs.
+ * instead of generic quantity/unit pairs. All return Microdollars.
  */
 
 import {
@@ -11,6 +11,12 @@ import {
   AUDIO_PRICING,
   type VideoPricing,
 } from '@/lib/ai/fal-pricing-data';
+import {
+  type Microdollars,
+  ZERO_MICROS,
+  multiplyMicros,
+  addMicros,
+} from '@/lib/billing/money';
 
 /** Default compute time estimate for compute_seconds-priced models */
 const DEFAULT_COMPUTE_SECONDS = 3;
@@ -30,11 +36,11 @@ export type ImageCostParams = {
   imageSize?: string;
 };
 
-export function calculateImageCost(params: ImageCostParams): number {
+export function calculateImageCost(params: ImageCostParams): Microdollars {
   const pricing = IMAGE_PRICING[params.endpointId];
   if (!pricing) {
     warnMissing('image', params.endpointId);
-    return 0;
+    return ZERO_MICROS;
   }
 
   // Quality/size matrix (e.g. GPT Image 1.5)
@@ -43,7 +49,7 @@ export function calculateImageCost(params: ImageCostParams): number {
     if (qualityPrices) {
       const price = qualityPrices[params.imageSize];
       if (price !== undefined) {
-        return price * params.numImages;
+        return multiplyMicros(price, params.numImages);
       }
     }
     // Fall through to base price if matrix doesn't match
@@ -52,21 +58,25 @@ export function calculateImageCost(params: ImageCostParams): number {
   if (pricing.unit === 'per_megapixel') {
     const w = params.widthPx ?? 1024;
     const h = params.heightPx ?? 1024;
-    return pricing.basePrice * ((w * h) / 1_000_000) * params.numImages;
+    const megapixels = (w * h) / 1_000_000;
+    return multiplyMicros(pricing.basePrice, megapixels * params.numImages);
   }
 
   if (pricing.unit === 'per_compute_second') {
-    return pricing.basePrice * DEFAULT_COMPUTE_SECONDS * params.numImages;
+    return multiplyMicros(
+      pricing.basePrice,
+      DEFAULT_COMPUTE_SECONDS * params.numImages
+    );
   }
 
   // per_image
-  let cost = pricing.basePrice * params.numImages;
+  let cost = multiplyMicros(pricing.basePrice, params.numImages);
 
   // Apply resolution multiplier
   if (pricing.resolutionMultipliers && params.resolution) {
     const mult = pricing.resolutionMultipliers[params.resolution];
     if (mult !== undefined) {
-      cost = cost * mult;
+      cost = multiplyMicros(cost, mult);
     }
   }
 
@@ -74,7 +84,7 @@ export function calculateImageCost(params: ImageCostParams): number {
   if (pricing.styleMultipliers && params.style) {
     const mult = pricing.styleMultipliers[params.style];
     if (mult !== undefined) {
-      cost = cost * mult;
+      cost = multiplyMicros(cost, mult);
     }
   }
 
@@ -96,11 +106,11 @@ export type VideoCostParams = {
   fps?: number;
 };
 
-export function calculateVideoCost(params: VideoCostParams): number {
+export function calculateVideoCost(params: VideoCostParams): Microdollars {
   const pricing = VIDEO_PRICING[params.endpointId];
   if (!pricing) {
     warnMissing('video', params.endpointId);
-    return 0;
+    return ZERO_MICROS;
   }
 
   if (pricing.mode === 'per_token') {
@@ -113,19 +123,20 @@ export function calculateVideoCost(params: VideoCostParams): number {
 function calculateTokenBasedVideoCost(
   pricing: Extract<VideoPricing, { mode: 'per_token' }>,
   params: VideoCostParams
-): number {
+): Microdollars {
   const w = params.widthPx ?? 1920;
   const h = params.heightPx ?? 1080;
   const fps = params.fps ?? 24;
   const tokens = (w * h * fps * params.durationSeconds) / 1024;
   // Actual rendered frames slightly exceed nominal fps (~3% overhead)
-  return pricing.pricePerMillionTokens * (tokens / 1_000_000) * 1.05;
+  const millionTokens = (tokens / 1_000_000) * 1.05;
+  return multiplyMicros(pricing.pricePerMillionTokens, millionTokens);
 }
 
 function calculateSecondBasedVideoCost(
   pricing: Extract<VideoPricing, { mode: 'per_second' }>,
   params: VideoCostParams
-): number {
+): Microdollars {
   let rate = pricing.basePrice;
 
   // Resolution+audio matrix (e.g. Veo 3.1)
@@ -133,9 +144,11 @@ function calculateSecondBasedVideoCost(
     const resPricing = pricing.resolutionAudioPricing[params.resolution];
     if (resPricing) {
       rate = params.audioEnabled ? resPricing.withAudio : resPricing.noAudio;
-      return (
-        rate * params.durationSeconds + (pricing.surcharges?.imageInput ?? 0)
-      );
+      let cost = multiplyMicros(rate, params.durationSeconds);
+      if (pricing.surcharges?.imageInput) {
+        cost = addMicros(cost, pricing.surcharges.imageInput);
+      }
+      return cost;
     }
   }
 
@@ -149,18 +162,18 @@ function calculateSecondBasedVideoCost(
 
   // Audio/voice multipliers (e.g. Kling v3 Pro, Veo3)
   if (params.voiceControl && pricing.voiceControlMultiplier) {
-    rate = pricing.basePrice * pricing.voiceControlMultiplier;
+    rate = multiplyMicros(pricing.basePrice, pricing.voiceControlMultiplier);
   } else if (params.audioEnabled && pricing.audioMultiplier) {
-    rate = pricing.basePrice * pricing.audioMultiplier;
+    rate = multiplyMicros(pricing.basePrice, pricing.audioMultiplier);
   } else if (!params.audioEnabled && pricing.noAudioMultiplier) {
-    rate = pricing.basePrice * pricing.noAudioMultiplier;
+    rate = multiplyMicros(pricing.basePrice, pricing.noAudioMultiplier);
   }
 
-  let cost = rate * params.durationSeconds;
+  let cost = multiplyMicros(rate, params.durationSeconds);
 
   // Image input surcharge (e.g. Grok Video)
   if (pricing.surcharges?.imageInput) {
-    cost += pricing.surcharges.imageInput;
+    cost = addMicros(cost, pricing.surcharges.imageInput);
   }
 
   return cost;
@@ -175,27 +188,30 @@ export type AudioCostParams = {
   durationSeconds: number;
 };
 
-export function calculateAudioCost(params: AudioCostParams): number {
+export function calculateAudioCost(params: AudioCostParams): Microdollars {
   const pricing = AUDIO_PRICING[params.endpointId];
   if (!pricing) {
     warnMissing('audio', params.endpointId);
-    return 0;
+    return ZERO_MICROS;
   }
 
   if (pricing.roundUpToMinute) {
-    return pricing.basePrice * Math.ceil(params.durationSeconds / 60);
+    return multiplyMicros(
+      pricing.basePrice,
+      Math.ceil(params.durationSeconds / 60)
+    );
   }
 
   if (pricing.unit === 'per_second') {
-    return pricing.basePrice * params.durationSeconds;
+    return multiplyMicros(pricing.basePrice, params.durationSeconds);
   }
 
   if (pricing.unit === 'per_minute') {
-    return pricing.basePrice * (params.durationSeconds / 60);
+    return multiplyMicros(pricing.basePrice, params.durationSeconds / 60);
   }
 
   // per_compute_second
-  return pricing.basePrice * DEFAULT_COMPUTE_SECONDS;
+  return multiplyMicros(pricing.basePrice, DEFAULT_COMPUTE_SECONDS);
 }
 
 // ============================================================================

@@ -110,7 +110,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     await context.run('deduct-credits-sheet', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(imageResult.metadata),
+        costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Talent sheet (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
@@ -211,7 +211,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     await context.run('deduct-credits-headshot', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(headshotResult.metadata),
+        costMicros: extractImageCost(headshotResult.metadata),
         usedOwnKey: headshotResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Talent headshot (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,

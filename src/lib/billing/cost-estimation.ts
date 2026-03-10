@@ -1,6 +1,7 @@
 /**
  * Cost Estimation Utilities
- * Estimate generation costs before triggering workflows
+ * Estimate generation costs before triggering workflows.
+ * All functions return Microdollars for exact arithmetic.
  */
 
 import { calculateImageCost, calculateVideoCost } from '@/lib/ai/fal-cost';
@@ -12,6 +13,7 @@ import {
 } from '@/lib/ai/models';
 import { aspectRatioToDimensions } from '@/lib/constants/aspect-ratios';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { type Microdollars, addMicros, micros, multiplyMicros } from './money';
 
 /**
  * Estimate the raw cost (before markup) of generating images
@@ -26,7 +28,7 @@ export function estimateImageCost(
     quality?: string;
     imageSize?: string;
   }
-): number {
+): Microdollars {
   const endpointId = IMAGE_MODELS[model].id;
   const { width, height } = aspectRatioToDimensions(aspectRatio);
 
@@ -49,7 +51,7 @@ export function estimateVideoCost(
   model: ImageToVideoModel,
   durationSeconds: number,
   opts?: { audioEnabled?: boolean; resolution?: string }
-): number {
+): Microdollars {
   const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
   const endpointId = modelConfig.id;
 
@@ -66,10 +68,10 @@ export function estimateVideoCost(
  * Based on average token usage for script analysis calls.
  * Only used for client-side gate affordability checks, not actual deduction.
  */
-const AVERAGE_LLM_COST_PER_CALL_USD = 0.02;
+const AVERAGE_LLM_COST_PER_CALL_MICROS = micros(20_000); // $0.02
 
-export function estimateLLMCost(numCalls: number = 1): number {
-  return AVERAGE_LLM_COST_PER_CALL_USD * numCalls;
+export function estimateLLMCost(numCalls: number = 1): Microdollars {
+  return multiplyMicros(AVERAGE_LLM_COST_PER_CALL_MICROS, numCalls);
 }
 
 /** Average scene count for a typical script (used when we can't know in advance) */
@@ -87,7 +89,7 @@ export function estimateStoryboardCost(opts: {
   autoGenerateMotion?: boolean;
   videoModel?: ImageToVideoModel;
   videoDurationSeconds?: number;
-}): number {
+}): Microdollars {
   const sceneCount = opts.estimatedSceneCount ?? DEFAULT_ESTIMATED_SCENE_COUNT;
 
   // LLM calls: script analysis + character bible + location bible (~3 calls)
@@ -106,12 +108,19 @@ export function estimateStoryboardCost(opts: {
     sceneCount
   );
 
-  let totalCost = llmCost + characterSheetCost + locationSheetCost + frameCost;
+  let totalCost = addMicros(
+    addMicros(addMicros(llmCost, characterSheetCost), locationSheetCost),
+    frameCost
+  );
 
   // Optional motion generation for all frames
   if (opts.autoGenerateMotion && opts.videoModel) {
     const duration = opts.videoDurationSeconds ?? 5;
-    totalCost += estimateVideoCost(opts.videoModel, duration) * sceneCount;
+    const perFrameMotion = estimateVideoCost(opts.videoModel, duration);
+    totalCost = addMicros(
+      totalCost,
+      multiplyMicros(perFrameMotion, sceneCount)
+    );
   }
 
   return totalCost;

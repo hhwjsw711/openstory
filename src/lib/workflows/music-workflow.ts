@@ -4,6 +4,7 @@ import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { usdToMicros, microsToUsd } from '@/lib/billing/money';
 import { sequences } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -106,20 +107,21 @@ export const generateMusicWorkflow = createWorkflow(
         : (input.duration ?? 60);
 
     // Deduct credits (skip if team used own fal key)
-    const musicCost =
+    const musicCostRaw =
       typeof audioResult.metadata?.cost === 'number'
         ? audioResult.metadata.cost
         : 0;
-    if (musicCost > 0 && !audioResult.metadata.usedOwnKey) {
+    const musicCostMicros = usdToMicros(musicCostRaw);
+    if (musicCostMicros > 0 && !audioResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, musicCost);
+        const canAfford = await hasEnoughCredits(teamId, musicCostMicros);
         if (!canAfford) {
           console.warn(
-            `[MusicWorkflow] Insufficient credits for team ${teamId} (cost: $${musicCost.toFixed(4)}), skipping deduction`
+            `[MusicWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(musicCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, musicCost, {
+        await deductCredits(teamId, musicCostMicros, {
           userId: input.userId,
           description: `Music generation (${model})`,
           metadata: {

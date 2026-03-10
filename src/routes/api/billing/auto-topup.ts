@@ -16,6 +16,7 @@ import {
   getBillingSettings,
   updateAutoTopUpSettings,
 } from '@/lib/billing/credit-service';
+import { usdToMicros } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/auto-topup')({
   server: {
@@ -57,8 +58,14 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
 
           await updateAutoTopUpSettings(team.teamId, {
             enabled: body.enabled,
-            thresholdUsd: body.thresholdUsd,
-            amountUsd: body.amountUsd,
+            thresholdMicros:
+              body.thresholdUsd !== undefined
+                ? usdToMicros(body.thresholdUsd)
+                : undefined,
+            amountMicros:
+              body.amountUsd !== undefined
+                ? usdToMicros(body.amountUsd)
+                : undefined,
           });
 
           return json(

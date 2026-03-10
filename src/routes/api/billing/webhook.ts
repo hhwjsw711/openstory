@@ -8,6 +8,7 @@ import { json } from '@tanstack/react-start';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
+import { usdToMicros, microsToDisplayUsd } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
@@ -103,10 +104,11 @@ export const Route = createFileRoute('/api/billing/webhook')({
               }
 
               // Add credits (unique stripeSessionId prevents duplicates)
-              const result = await addCredits(teamId, amountUsd, {
+              const amountMicros = usdToMicros(amountUsd);
+              const result = await addCredits(teamId, amountMicros, {
                 userId,
                 stripeSessionId: session.id,
-                description: `Top-up: $${amountUsd.toFixed(2)}`,
+                description: `Top-up: ${microsToDisplayUsd(amountMicros)}`,
                 metadata: {
                   stripePaymentIntentId: session.payment_intent,
                   ...(receiptUrl && { receiptUrl }),

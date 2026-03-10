@@ -31,10 +31,6 @@ import { frames, framesRelations } from './frames';
 
 import { characters, charactersRelations } from './characters';
 
-import { characterSheets, characterSheetsRelations } from './character-sheets';
-
-import { frameCharacters, frameCharactersRelations } from './frame-characters';
-
 // Location Library (team-level templates)
 import { locationLibrary, locationLibraryRelations } from './location-library';
 
@@ -45,8 +41,6 @@ import {
 } from './sequence-locations';
 
 import { locationSheets, locationSheetsRelations } from './location-sheets';
-
-import { frameLocations, frameLocationsRelations } from './frame-locations';
 
 import {
   talent,
@@ -61,8 +55,6 @@ import {
   audio,
   audioRelations,
   StyleConfigSchema,
-  styleAdaptations,
-  styleAdaptationsRelations,
   styles,
   stylesRelations,
   vfx,
@@ -70,13 +62,8 @@ import {
 } from './libraries';
 
 import {
-  falRequests,
-  falRequestsRelations,
-  letzaiRequests,
-  letzaiRequestsRelations,
-} from './tracking';
-
-import {
+  creditBatches,
+  creditBatchesRelations,
   credits,
   creditsRelations,
   teamBillingSettings,
@@ -84,8 +71,6 @@ import {
   transactions,
   transactionsRelations,
 } from './credits';
-
-import { scriptAnalysisAudit } from './audit';
 
 import { teamApiKeys, teamApiKeysRelations } from './team-api-keys';
 
@@ -163,24 +148,6 @@ export type {
   SheetStatus,
 } from './characters';
 
-// Character Sheets (role-specific looks/costumes)
-export { characterSheets };
-
-export type {
-  CharacterSheet,
-  CharacterSheetSource,
-  NewCharacterSheet,
-} from './character-sheets';
-
-// Frame Characters (which characters appear in which frames)
-export { frameCharacters };
-
-export type {
-  FrameCharacter,
-  FrameCharacterWithDetails,
-  NewFrameCharacter,
-} from './frame-characters';
-
 // Location Library (team-level templates)
 export { locationLibrary };
 
@@ -210,15 +177,6 @@ export type {
   NewLocationSheet,
 } from './location-sheets';
 
-// Frame Locations (which location in each frame)
-export { frameLocations };
-
-export type {
-  FrameLocation,
-  FrameLocationWithDetails,
-  NewFrameLocation,
-} from './frame-locations';
-
 // Talent Library
 export { talent, talentMedia, talentSheets };
 
@@ -242,30 +200,21 @@ export type {
   Audio,
   NewAudio,
   NewStyle,
-  NewStyleAdaptation,
   NewVfx,
   Style,
-  StyleAdaptation,
   StyleConfig,
   Vfx,
 } from './libraries';
 
-// API Request Tracking
-export type {
-  FalRequest,
-  FalRequestStatus,
-  LetzaiRequest,
-  LetzaiRequestStatus,
-  NewFalRequest,
-  NewLetzaiRequest,
-} from './tracking';
-
 // Credits, Transactions, and Billing
-export { credits, transactions, teamBillingSettings };
+export { creditBatches, credits, transactions, teamBillingSettings };
 
 export type {
   Credit,
+  CreditBatch,
+  CreditBatchSource,
   NewCredit,
+  NewCreditBatch,
   NewTeamBillingSetting,
   NewTransaction,
   TeamBillingSetting,
@@ -319,14 +268,6 @@ export const schema = {
   characters,
   charactersRelations,
 
-  // Character Sheets (role-specific looks/costumes)
-  characterSheets,
-  characterSheetsRelations,
-
-  // Frame Characters (which characters in each frame)
-  frameCharacters,
-  frameCharactersRelations,
-
   // Location Library (team-level templates)
   locationLibrary,
   locationLibraryRelations,
@@ -339,10 +280,6 @@ export const schema = {
   locationSheets,
   locationSheetsRelations,
 
-  // Frame Locations (which location in each frame)
-  frameLocations,
-  frameLocationsRelations,
-
   // Talent Library
   talent,
   talentRelations,
@@ -353,30 +290,21 @@ export const schema = {
 
   // Libraries
   styles,
-  styleAdaptations,
   vfx,
   audio,
   stylesRelations,
-  styleAdaptationsRelations,
   vfxRelations,
   audioRelations,
 
-  // Tracking
-  falRequests,
-  letzaiRequests,
-  falRequestsRelations,
-  letzaiRequestsRelations,
-
   // Credits & Billing
   credits,
+  creditBatches,
   transactions,
   teamBillingSettings,
   creditsRelations,
+  creditBatchesRelations,
   transactionsRelations,
   teamBillingSettingsRelations,
-
-  // Audit
-  scriptAnalysisAudit,
 
   // Team API Keys
   teamApiKeys,

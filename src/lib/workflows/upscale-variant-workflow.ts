@@ -1,3 +1,4 @@
+import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
@@ -89,7 +90,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: upscaleResult.cost,
+        costMicros: usdToMicros(upscaleResult.cost),
         usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
         description: 'Variant upscale (nano_banana_2)',
