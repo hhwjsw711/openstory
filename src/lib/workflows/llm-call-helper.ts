@@ -5,19 +5,16 @@
  */
 
 import { createAdapter } from '@/lib/ai/create-adapter';
+import { getContextWindow } from '@/lib/ai/models.config';
 import type { TextModel } from '@/lib/ai/models';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { apiKeyService } from '@/lib/byok/api-key.service';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { chat } from '@tanstack/ai';
 import type { WorkflowContext } from '@upstash/workflow';
 import { z } from 'zod';
-
-const MAX_ATTEMPTS = 5;
-const RETRY_DELAY_SECONDS = 5;
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   name: string;
@@ -26,9 +23,7 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   promptVariables?: Record<string, string>;
   modelId: TextModel;
   responseSchema: TSchema;
-  maxTokens?: number;
   additionalMetadata?: Record<string, unknown>;
-  retryResponse?: (response: z.infer<TSchema>) => boolean;
 };
 
 export type DurableLLMCallContext = {
@@ -90,90 +85,54 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     }
   );
 
-  // Step 2: Durable LLM call (context.run retries on failure automatically)
-  let jsonResponse: z.infer<TSchema> | null = null;
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const data = await context.run(
-      attempt === 0 ? name : `${name}-retry-${attempt}`,
-      async () => {
-        const openRouterApiKeyInfo = await apiKeyService.resolveKey(
-          'openrouter',
-          callContext.teamId
-        );
-        const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
-
-        console.log(`[LLM:${logName}] Starting call`, {
-          model: modelId,
-          attempt,
-          keySource: openRouterApiKeyInfo.source,
-          messageCount: messages.length,
-        });
-
-        const systemPrompts: string[] = [];
-        const chatMessages: Array<{
-          role: 'user' | 'assistant';
-          content: string;
-        }> = [];
-
-        for (const msg of messages) {
-          if (msg.role === 'system') {
-            systemPrompts.push(msg.content);
-          } else {
-            chatMessages.push({ role: msg.role, content: msg.content });
-          }
-        }
-
-        try {
-          // chat() with outputSchema returns a parsed object, not a string
-          const result = await chat({
-            adapter,
-            messages: chatMessages,
-            systemPrompts,
-            stream: false,
-            maxTokens: config.maxTokens ?? 128_000,
-            metadata: {
-              observationName: logName,
-              prompt: promptReference,
-              tags: logTags,
-              metadata: logMetadata,
-              sessionId: callContext.sequenceId,
-              userId: callContext.userId,
-            },
-            outputSchema: config.responseSchema,
-          });
-
-          console.log(`[LLM:${logName}] Call succeeded`);
-          return result;
-        } catch (error) {
-          const errorDetails = {
-            model: modelId,
-            attempt,
-            name: error instanceof Error ? error.name : 'Unknown',
-            message: error instanceof Error ? error.message : String(error),
-            cause: error instanceof Error ? error.cause : undefined,
-          };
-          console.error(`[LLM:${logName}] Call failed`, errorDetails);
-          throw error;
-        }
-      }
+  // Step 2: Durable LLM call (QStash retries step delivery on failure)
+  const jsonResponse = await context.run(name, async () => {
+    const openRouterApiKeyInfo = await apiKeyService.resolveKey(
+      'openrouter',
+      callContext.teamId
     );
+    const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
 
-    // retryResponse is a business logic check (e.g., empty results)
-    if (config.retryResponse?.(data)) {
-      await context.sleep(`retry-pause-${attempt}`, RETRY_DELAY_SECONDS);
-      continue;
+    console.log(`[LLM:${logName}] Starting call`, {
+      model: modelId,
+      keySource: openRouterApiKeyInfo.source,
+      messageCount: messages.length,
+    });
+
+    const systemPrompts: string[] = [];
+    const chatMessages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+    }> = [];
+
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemPrompts.push(msg.content);
+      } else {
+        chatMessages.push({ role: msg.role, content: msg.content });
+      }
     }
 
-    jsonResponse = data;
-    break;
-  }
+    const result = await chat({
+      adapter,
+      messages: chatMessages,
+      systemPrompts,
+      stream: false,
+      maxTokens: Math.floor(getContextWindow(config.modelId) * 0.5),
+      metadata: {
+        observationName: logName,
+        prompt: promptReference,
+        tags: logTags,
+        metadata: logMetadata,
+        sessionId: callContext.sequenceId,
+        userId: callContext.userId,
+      },
+      outputSchema: config.responseSchema,
+    });
 
-  if (!jsonResponse) {
-    throw new WorkflowValidationError(
-      `${logName} Tried multiple times to get a valid response, but failed`
-    );
-  }
+    console.log(`[LLM:${logName}] Call succeeded`);
+    return result;
+  });
 
   // Deduct LLM credits (cost tracked via Langfuse; adapter doesn't expose per-call usage)
   if (callContext.teamId) {

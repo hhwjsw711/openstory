@@ -86,8 +86,13 @@ export const visualPromptSceneWorkflow = createWorkflow(
     return { sceneId: scenes[sceneIndex].sceneId, ...result };
   },
   {
-    failureFunction: async () => {
-      return `Visual prompt generation failed`;
+    failureFunction: async ({ context, failStatus, failResponse }) => {
+      console.error('[VisualPromptWorkflow] Failed', {
+        workflowRunId: context.workflowRunId,
+        failStatus,
+        failResponse,
+      });
+      return `Visual prompt generation failed: ${failResponse}`;
     },
   }
 );
