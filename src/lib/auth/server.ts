@@ -18,12 +18,12 @@ export const getSessionFn = createIsomorphicFn()
     const sessionData = await getAuth().api.getSession({
       headers: headers,
     });
-    return sessionData;
+    return sessionData ?? null;
   })
   .client(async () => {
     const { data: sessionData } = await authClient.getSession();
 
-    return sessionData;
+    return sessionData ?? null;
   });
 
 /**
