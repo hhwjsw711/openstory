@@ -44,8 +44,8 @@ export const Route = createFileRoute('/api/billing/checkout')({
             amountUsd,
             userId: user.id,
             userEmail: user.email,
-            successUrl: `${appUrl}/settings/billing?success=true`,
-            cancelUrl: `${appUrl}/settings/billing?canceled=true`,
+            successUrl: `${appUrl}/credits?success=true`,
+            cancelUrl: `${appUrl}/credits?canceled=true`,
           });
 
           return json(

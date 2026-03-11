@@ -39,7 +39,7 @@ export function useLowBalanceWarning() {
         action: {
           label: 'Add Credits',
           onClick: () => {
-            window.location.href = '/settings/billing';
+            window.location.href = '/credits';
           },
         },
         duration: 10_000,
@@ -51,7 +51,7 @@ export function useLowBalanceWarning() {
         action: {
           label: 'Add Credits',
           onClick: () => {
-            window.location.href = '/settings/billing';
+            window.location.href = '/credits';
           },
         },
         duration: 8_000,

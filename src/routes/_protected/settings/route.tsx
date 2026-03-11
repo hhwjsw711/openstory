@@ -11,7 +11,7 @@ import {
   Outlet,
   useLocation,
 } from '@tanstack/react-router';
-import { CreditCard, Fingerprint, Gift, Key, Receipt } from 'lucide-react';
+import { Fingerprint, Key } from 'lucide-react';
 
 export const Route = createFileRoute('/_protected/settings')({
   component: SettingsLayout,
@@ -32,24 +32,6 @@ const tabs = [
     label: 'Passkeys',
     href: '/settings/passkeys',
     icon: <Fingerprint className="h-4 w-4" />,
-  },
-  {
-    value: 'billing',
-    label: 'Billing',
-    href: '/settings/billing',
-    icon: <CreditCard className="h-4 w-4" />,
-  },
-  {
-    value: 'transactions',
-    label: 'Transactions',
-    href: '/settings/transactions',
-    icon: <Receipt className="h-4 w-4" />,
-  },
-  {
-    value: 'gift-codes',
-    label: 'Gift Codes',
-    href: '/settings/gift-codes',
-    icon: <Gift className="h-4 w-4" />,
   },
 ];
 

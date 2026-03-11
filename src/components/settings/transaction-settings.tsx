@@ -1,12 +1,11 @@
 /**
  * Transaction Settings Component
- * Full transaction history with infinite scroll and virtualization
+ * Full transaction history with infinite scroll
  */
 
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { CreditCard, ExternalLink } from 'lucide-react';
 import React from 'react';
 
@@ -85,7 +84,7 @@ function TransactionRow({ tx }: { tx: TransactionData }) {
 }
 
 export function TransactionSettings() {
-  const parentRef = React.useRef<HTMLDivElement>(null);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   const {
     status,
@@ -108,35 +107,25 @@ export function TransactionSettings() {
 
   const allTransactions = data?.pages.flatMap((p) => p.transactions) ?? [];
 
-  const rowVirtualizer = useVirtualizer({
-    count: hasNextPage ? allTransactions.length + 1 : allTransactions.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
-    overscan: 5,
-  });
-
   React.useEffect(() => {
-    const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
 
-    if (!lastItem) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
 
-    if (
-      lastItem.index >= allTransactions.length - 1 &&
-      hasNextPage &&
-      !isFetchingNextPage
-    ) {
-      void fetchNextPage();
-    }
-  }, [
-    hasNextPage,
-    fetchNextPage,
-    allTransactions.length,
-    isFetchingNextPage,
-    rowVirtualizer.getVirtualItems(),
-  ]);
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {error && (
         <p className="text-sm text-destructive">
           {error instanceof Error
@@ -166,36 +155,16 @@ export function TransactionSettings() {
           No transactions yet
         </p>
       ) : (
-        <div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
-          <div
-            className="relative w-full"
-            style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const isLoaderRow = virtualRow.index > allTransactions.length - 1;
-              const tx = allTransactions[virtualRow.index];
-
-              return (
-                <div
-                  key={virtualRow.index}
-                  className="absolute left-0 w-full"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
-                  {isLoaderRow ? (
-                    <p className="text-center text-sm text-muted-foreground py-2">
-                      {hasNextPage ? 'Loading more…' : ''}
-                    </p>
-                  ) : (
-                    <div className="pb-2">
-                      <TransactionRow tx={tx} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        <div className="space-y-2">
+          {allTransactions.map((tx) => (
+            <TransactionRow key={tx.id} tx={tx} />
+          ))}
+          <div ref={sentinelRef}>
+            {isFetchingNextPage && (
+              <p className="text-center text-sm text-muted-foreground py-2">
+                Loading more…
+              </p>
+            )}
           </div>
         </div>
       )}

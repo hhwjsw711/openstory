@@ -28,6 +28,7 @@ function setReturnPath(returnTo?: string) {
 
 type OptionCardProps = {
   to: string;
+  search?: Record<string, string>;
   icon: React.ReactNode;
   title: string;
   description: string;
@@ -39,6 +40,7 @@ type OptionCardProps = {
 
 const OptionCard: React.FC<OptionCardProps> = ({
   to,
+  search,
   icon,
   title,
   description,
@@ -47,7 +49,7 @@ const OptionCard: React.FC<OptionCardProps> = ({
   onClick,
   children,
 }) => (
-  <Link to={to} onClick={onClick}>
+  <Link to={to} search={search} onClick={onClick}>
     <div
       className={cn(
         'group relative flex items-center gap-3.5 rounded-xl border p-3.5 transition-all duration-200',
@@ -138,7 +140,7 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
 
         <div className="flex flex-col gap-2 pt-1">
           <OptionCard
-            to="/settings/billing"
+            to="/credits"
             icon={<CreditCard className="size-4" />}
             title="Add Credits"
             description="Pay as you go. Auto top-up keeps you generating."
@@ -153,7 +155,8 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
           />
 
           <OptionCard
-            to="/settings/gift-codes"
+            to="/credits"
+            search={{ tab: 'gift-codes' }}
             icon={<Gift className="size-4" />}
             title="Redeem Gift Code"
             description="Have a gift code? Redeem it to add credits instantly."

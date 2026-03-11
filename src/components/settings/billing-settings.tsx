@@ -120,7 +120,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   useEffect(() => {
     if (success || canceled) {
       const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/settings/billing');
+        window.history.replaceState({}, '', '/credits');
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -502,7 +502,8 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
 
               <div className="pt-2 text-center">
                 <Link
-                  to="/settings/transactions"
+                  to="/credits"
+                  search={{ tab: 'transactions' }}
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   View all transactions
