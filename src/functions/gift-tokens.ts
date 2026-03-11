@@ -21,6 +21,7 @@ export const createGiftTokenFn = createServerFn({ method: 'POST' })
     zodValidator(
       z.object({
         amountUsd: z.number().positive(),
+        maxRedemptions: z.number().int().min(1).default(1),
         note: z.string().optional(),
         expiresInDays: z.number().positive().optional(),
       })
@@ -34,6 +35,7 @@ export const createGiftTokenFn = createServerFn({ method: 'POST' })
     return createGiftToken({
       createdByUserId: context.user.id,
       amountUsd: data.amountUsd,
+      maxRedemptions: data.maxRedemptions,
       note: data.note,
       expiresAt,
     });
