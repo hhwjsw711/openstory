@@ -8,8 +8,8 @@ import {
 import { SequenceTabs } from '@/components/sequence/sequence-tabs';
 import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
+import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
-import type { Sequence } from '@/lib/db/schema';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id')({
@@ -24,19 +24,19 @@ function SequenceLayout() {
 
   useUser();
 
-  // const { data: sequence } = useSequence(sequenceId);
-
-  const sequence = undefined as Sequence | undefined;
+  const { data: sequence } = useSequence(sequenceId);
 
   return (
     <div className="flex h-full flex-col">
       <div className="mx-auto w-full max-w-[1920px] shrink-0 space-y-1 px-6 pt-4">
         <PageHeader>
           <PageHeading>{sequence?.title}</PageHeading>
-          <ModelBadge model={sequence?.analysisModel} />
-          <ImageModelBadge model={sequence?.imageModel} />
-          <VideoModelBadge model={sequence?.videoModel} />
-          <MusicModelBadge model={sequence?.musicModel ?? undefined} />
+          <div className="flex flex-row items-start gap-2">
+            <ModelBadge model={sequence?.analysisModel} />
+            <ImageModelBadge model={sequence?.imageModel} />
+            <VideoModelBadge model={sequence?.videoModel} />
+            <MusicModelBadge model={sequence?.musicModel ?? undefined} />
+          </div>
         </PageHeader>
         <SequenceTabs sequenceId={sequenceId} />
       </div>
