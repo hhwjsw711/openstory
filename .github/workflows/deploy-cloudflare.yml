@@ -201,6 +201,7 @@ jobs:
           SECRET_ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
           SECRET_APP_NAME: ${{ secrets.APP_NAME }}
+          SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
           SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           SECRET_EMAIL_FROM: ${{ secrets.EMAIL_FROM }}

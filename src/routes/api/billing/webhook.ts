@@ -3,19 +3,18 @@
  * POST /api/billing/webhook - Handle Stripe webhook events
  */
 
-import { createFileRoute } from '@tanstack/react-router';
-import { json } from '@tanstack/react-start';
 import { isBillingEnabled } from '@/lib/billing/constants';
-import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToDisplayUsd } from '@/lib/billing/money';
+import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
+import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
+import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         if (!isBillingEnabled()) {
-          return json({ received: true }, { status: 200 });
+          return Response.json({ received: true }, { status: 200 });
         }
 
         try {
@@ -23,7 +22,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
           const webhookSecret = getStripeWebhookSecret();
 
           if (!webhookSecret) {
-            return json(
+            return Response.json(
               { error: 'Webhook secret not configured' },
               { status: 500 }
             );
@@ -33,7 +32,10 @@ export const Route = createFileRoute('/api/billing/webhook')({
           const signature = request.headers.get('stripe-signature');
 
           if (!signature) {
-            return json({ error: 'Missing signature' }, { status: 400 });
+            return Response.json(
+              { error: 'Missing signature' },
+              { status: 400 }
+            );
           }
 
           const event = await stripe.webhooks.constructEventAsync(
@@ -144,10 +146,13 @@ export const Route = createFileRoute('/api/billing/webhook')({
               break;
           }
 
-          return json({ received: true }, { status: 200 });
+          return Response.json({ received: true }, { status: 200 });
         } catch (error) {
           console.error('[POST /api/billing/webhook] Error:', error);
-          return json({ error: 'Webhook handler failed' }, { status: 400 });
+          return Response.json(
+            { error: 'Webhook handler failed' },
+            { status: 400 }
+          );
         }
       },
     },

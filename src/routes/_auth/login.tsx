@@ -22,7 +22,6 @@ export const Route = createFileRoute('/_auth/login')({
 function LoginPage() {
   const search = Route.useSearch();
   const { isPreview } = Route.useRouteContext();
-  console.log('isPreview', isPreview);
   const redirectTo = getRedirectFromParams(search);
   const email = search.email || '';
 
