@@ -8,8 +8,8 @@ import {
 import { SequenceTabs } from '@/components/sequence/sequence-tabs';
 import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
-import { useSequence } from '@/hooks/use-sequences';
 import { useUser } from '@/hooks/use-user';
+import type { Sequence } from '@/lib/db/schema';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id')({
@@ -24,7 +24,9 @@ function SequenceLayout() {
 
   useUser();
 
-  const { data: sequence } = useSequence(sequenceId);
+  // const { data: sequence } = useSequence(sequenceId);
+
+  const sequence = undefined as Sequence | undefined;
 
   return (
     <div className="flex h-full flex-col">

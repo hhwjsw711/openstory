@@ -1,10 +1,9 @@
 /**
  * Billing Settings Component
- * Credit balance, top-up buttons, auto-top-up config, transaction history
+ * Credit balance, top-up buttons, auto-top-up config, and invoices
  */
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -35,7 +34,7 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -50,30 +49,31 @@ type ApiResponse<T> = {
   error?: { message?: string };
 };
 
-type TransactionData = {
+type InvoiceData = {
   id: string;
   type: string;
   amount: number;
-  balanceAfter: number;
   description: string | null;
   metadata?: { receiptUrl?: string } | null;
   createdAt: string;
 };
 
-type TransactionApiResponse = {
+type InvoiceApiResponse = {
   success: boolean;
-  data?: { transactions: TransactionData[]; total: number };
+  data?: { transactions: InvoiceData[]; total: number };
   error?: { message?: string };
 };
 
-async function fetchTransactions(): Promise<{
-  transactions: TransactionData[];
+async function fetchInvoices(): Promise<{
+  transactions: InvoiceData[];
   total: number;
 }> {
-  const res = await fetch('/api/billing/transactions?limit=20');
-  const json: TransactionApiResponse = await res.json();
+  const res = await fetch(
+    '/api/billing/transactions?type=credit_purchase&limit=10'
+  );
+  const json: InvoiceApiResponse = await res.json();
   if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch transactions');
+    throw new Error(json.error?.message ?? 'Failed to fetch invoices');
   return json.data;
 }
 
@@ -99,12 +99,10 @@ function SectionHeader({ icon: Icon, title, description }: SectionHeaderProps) {
 
 function getErrorMessage(
   error: string | null,
-  balanceError: Error | null,
-  txError: Error | null
+  balanceError: Error | null
 ): string {
   if (error) return error;
   if (balanceError instanceof Error) return balanceError.message;
-  if (txError instanceof Error) return txError.message;
   return 'Something went wrong';
 }
 
@@ -135,7 +133,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         queryKey: [...BILLING_BALANCE_KEY],
       });
       void queryClient.invalidateQueries({
-        queryKey: ['billing-transactions'],
+        queryKey: ['billing-invoices'],
       });
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_GATE_KEY],
@@ -190,12 +188,12 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   }
 
   const {
-    data: txData,
-    isLoading: txLoading,
-    error: txError,
+    data: invoiceData,
+    isLoading: invoicesLoading,
+    error: invoicesError,
   } = useQuery({
-    queryKey: ['billing-transactions'],
-    queryFn: fetchTransactions,
+    queryKey: ['billing-invoices'],
+    queryFn: fetchInvoices,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -313,10 +311,10 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </Card>
       )}
 
-      {(error || balanceError || txError) && (
+      {(error || balanceError || invoicesError) && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            {getErrorMessage(error, balanceError, txError)}
+            {getErrorMessage(error, balanceError)}
           </AlertDescription>
         </Alert>
       )}
@@ -448,54 +446,45 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Transaction History */}
+      {/* Invoices */}
       <Card>
         <CardHeader>
           <SectionHeader
             icon={CreditCard}
-            title="Transaction History"
-            description="Recent credit activity"
+            title="Invoices"
+            description="Recent purchases"
           />
         </CardHeader>
         <CardContent>
-          {txLoading ? (
+          {invoicesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : txData?.transactions.length === 0 ? (
+          ) : invoiceData?.transactions.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
-              No transactions yet
+              No purchases yet
             </p>
           ) : (
             <div className="space-y-2">
-              {txData?.transactions.map((tx) => (
+              {invoiceData?.transactions.map((tx) => (
                 <div
                   key={tx.id}
                   className="flex items-center justify-between rounded-lg border p-3"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {tx.description ?? tx.type}
+                      {tx.description ?? 'Credit purchase'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tx.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <span
-                      className={`text-sm font-semibold tabular-nums ${
-                        tx.amount > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(2)}
+                    <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
+                      +${tx.amount.toFixed(2)}
                     </span>
-                    <Badge variant="outline" className="text-xs">
-                      ${tx.balanceAfter.toFixed(2)}
-                    </Badge>
                     {tx.metadata?.receiptUrl && (
                       <a
                         href={tx.metadata.receiptUrl}
@@ -510,6 +499,15 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                   </div>
                 </div>
               ))}
+
+              <div className="pt-2 text-center">
+                <Link
+                  to="/settings/transactions"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  View all transactions
+                </Link>
+              </div>
             </div>
           )}
         </CardContent>

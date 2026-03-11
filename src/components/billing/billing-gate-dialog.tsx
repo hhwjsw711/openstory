@@ -3,13 +3,6 @@
  * Prompts users to add credits or configure BYOK API keys
  */
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight, CreditCard, Gift, KeyRound } from 'lucide-react';
@@ -92,18 +92,16 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
             }}
           >
             <Card className="cursor-pointer transition-colors hover:bg-accent">
-              <CardHeader className="flex-row items-center gap-4 space-y-0">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <Gift className="size-5 text-primary" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <CardTitle className="text-base">Redeem Gift Code</CardTitle>
-                  <CardDescription>
-                    Have a gift code? Redeem it to add credits instantly.
-                  </CardDescription>
-                </div>
-                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-              </CardHeader>
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Gift className="size-5 text-primary" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <CardTitle className="text-base">Redeem Gift Code</CardTitle>
+                <CardDescription>
+                  Have a gift code? Redeem it to add credits instantly.
+                </CardDescription>
+              </div>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </Card>
           </Link>
 
