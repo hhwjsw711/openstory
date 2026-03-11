@@ -26,8 +26,8 @@ function LoginPage() {
   const email = search.email || '';
 
   return (
-    <PageContainer>
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+    <PageContainer className="min-h-0 flex-1">
+      <div className="flex h-full items-center justify-center">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h1 className="text-3xl font-bold">Welcome to OpenStory</h1>

@@ -135,12 +135,12 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
             )}
           </InputGroup>
 
-          {/* Category Filters */}
+          {/* Category Filters (hidden on mobile — shows all styles) */}
           <ToggleGroup
             type="single"
             value={selectedCategory}
             onValueChange={(value) => value && setSelectedCategory(value)}
-            className="flex-wrap justify-start"
+            className="hidden sm:flex flex-wrap justify-start"
           >
             {categories?.map((category) => (
               <ToggleGroupItem
