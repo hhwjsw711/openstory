@@ -30,6 +30,7 @@ export async function createSequence(params: {
   analysisModel: string;
   imageModel?: string;
   videoModel?: string;
+  musicModel?: string;
 }): Promise<Sequence> {
   const sequenceData: NewSequence = {
     teamId: params.teamId,
@@ -42,6 +43,7 @@ export async function createSequence(params: {
     analysisModel: params.analysisModel,
     imageModel: params.imageModel,
     videoModel: params.videoModel,
+    musicModel: params.musicModel,
     status: 'draft',
   };
 

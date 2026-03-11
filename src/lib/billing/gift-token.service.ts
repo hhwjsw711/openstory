@@ -1,9 +1,9 @@
 import { getDb } from '#db-client';
 import { generateId } from '@/lib/db/id';
-import { giftTokens } from '@/lib/db/schema/gift-tokens';
+import { giftTokenRedemptions, giftTokens } from '@/lib/db/schema/gift-tokens';
 import type { GiftToken } from '@/lib/db/schema/gift-tokens';
 import { ValidationError } from '@/lib/errors';
-import { desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { addCredits } from './credit-service';
 import { micros, microsToDisplayUsd, microsToUsd, usdToMicros } from './money';
 
@@ -18,10 +18,13 @@ export function generateGiftCode(): string {
     .join('');
 }
 
-export type GiftTokenStatus = 'available' | 'redeemed' | 'expired';
+export type GiftTokenStatus = 'available' | 'fully_redeemed' | 'expired';
 
-export function getGiftTokenStatus(token: GiftToken): GiftTokenStatus {
-  if (token.redeemedAt) return 'redeemed';
+export function getGiftTokenStatus(
+  token: GiftToken,
+  redemptionCount: number
+): GiftTokenStatus {
+  if (redemptionCount >= token.maxRedemptions) return 'fully_redeemed';
   if (token.expiresAt && token.expiresAt < new Date()) return 'expired';
   return 'available';
 }
@@ -29,11 +32,17 @@ export function getGiftTokenStatus(token: GiftToken): GiftTokenStatus {
 export async function createGiftToken(opts: {
   createdByUserId: string;
   amountUsd: number;
+  maxRedemptions?: number;
   note?: string;
   expiresAt?: Date;
 }): Promise<GiftToken> {
   if (opts.amountUsd <= 0) {
     throw new ValidationError('Gift token amount must be positive');
+  }
+
+  const maxRedemptions = opts.maxRedemptions ?? 1;
+  if (maxRedemptions < 1) {
+    throw new ValidationError('Max redemptions must be at least 1');
   }
 
   const db = getDb();
@@ -46,6 +55,7 @@ export async function createGiftToken(opts: {
       id: generateId(),
       code,
       amountMicros,
+      maxRedemptions,
       createdByUserId: opts.createdByUserId,
       note: opts.note ?? null,
       expiresAt: opts.expiresAt ?? null,
@@ -63,37 +73,63 @@ export async function redeemGiftToken(opts: {
   const db = getDb();
   const normalizedCode = opts.code.trim().toUpperCase();
 
-  const [token] = await db
-    .select()
-    .from(giftTokens)
-    .where(eq(giftTokens.code, normalizedCode))
-    .limit(1);
+  const token = await db.transaction(async (tx) => {
+    const [found] = await tx
+      .select()
+      .from(giftTokens)
+      .where(eq(giftTokens.code, normalizedCode))
+      .limit(1);
 
-  if (!token) {
-    throw new ValidationError('Invalid gift code');
-  }
+    if (!found) {
+      throw new ValidationError('Invalid gift code');
+    }
 
-  if (token.redeemedAt) {
-    throw new ValidationError('This gift code has already been redeemed');
-  }
+    if (found.expiresAt && found.expiresAt < new Date()) {
+      throw new ValidationError('This gift code has expired');
+    }
 
-  if (token.expiresAt && token.expiresAt < new Date()) {
-    throw new ValidationError('This gift code has expired');
-  }
+    // Count existing redemptions
+    const [{ value: redemptionCount }] = await tx
+      .select({ value: count() })
+      .from(giftTokenRedemptions)
+      .where(eq(giftTokenRedemptions.giftTokenId, found.id));
 
-  // Mark as redeemed
-  await db
-    .update(giftTokens)
-    .set({
-      redeemedByTeamId: opts.teamId,
-      redeemedByUserId: opts.userId,
-      redeemedAt: new Date(),
-    })
-    .where(eq(giftTokens.id, token.id));
+    if (redemptionCount >= found.maxRedemptions) {
+      throw new ValidationError('This gift code has been fully redeemed');
+    }
+
+    // Check if this team already redeemed
+    const [existing] = await tx
+      .select()
+      .from(giftTokenRedemptions)
+      .where(
+        and(
+          eq(giftTokenRedemptions.giftTokenId, found.id),
+          eq(giftTokenRedemptions.teamId, opts.teamId)
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new ValidationError(
+        'Your team has already redeemed this gift code'
+      );
+    }
+
+    // Record redemption
+    await tx.insert(giftTokenRedemptions).values({
+      id: generateId(),
+      giftTokenId: found.id,
+      teamId: opts.teamId,
+      userId: opts.userId,
+    });
+
+    return found;
+  });
 
   const amountMicros = micros(token.amountMicros);
 
-  // Add credits to team
+  // Add credits to team (outside transaction)
   const result = await addCredits(opts.teamId, amountMicros, {
     userId: opts.userId,
     type: 'credit_adjustment',
@@ -110,18 +146,37 @@ export async function redeemGiftToken(opts: {
 export type GiftTokenWithStatus = GiftToken & {
   status: GiftTokenStatus;
   amountUsd: number;
+  redemptionCount: number;
 };
 
 export async function listGiftTokens(): Promise<GiftTokenWithStatus[]> {
   const db = getDb();
+
+  const redemptionCountSq = db
+    .select({
+      giftTokenId: giftTokenRedemptions.giftTokenId,
+      count: count().as('count'),
+    })
+    .from(giftTokenRedemptions)
+    .groupBy(giftTokenRedemptions.giftTokenId)
+    .as('redemption_counts');
+
   const tokens = await db
-    .select()
+    .select({
+      token: giftTokens,
+      redemptionCount: sql<number>`coalesce(${redemptionCountSq.count}, 0)`,
+    })
     .from(giftTokens)
+    .leftJoin(
+      redemptionCountSq,
+      eq(giftTokens.id, redemptionCountSq.giftTokenId)
+    )
     .orderBy(desc(giftTokens.createdAt));
 
-  return tokens.map((token) => ({
+  return tokens.map(({ token, redemptionCount }) => ({
     ...token,
-    status: getGiftTokenStatus(token),
+    redemptionCount,
+    status: getGiftTokenStatus(token, redemptionCount),
     amountUsd: microsToUsd(micros(token.amountMicros)),
   }));
 }

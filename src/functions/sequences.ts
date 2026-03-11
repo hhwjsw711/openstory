@@ -27,6 +27,7 @@ import {
 } from '@/lib/ai/models.config';
 import {
   DEFAULT_IMAGE_MODEL,
+  DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
   safeTextToImageModel,
   safeImageToVideoModel,
@@ -119,6 +120,10 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             getAnalysisModelById(modelId)?.id || DEFAULT_ANALYSIS_MODEL,
           imageModel,
           videoModel,
+          musicModel:
+            musicModel && isValidAudioModel(musicModel)
+              ? musicModel
+              : DEFAULT_MUSIC_MODEL,
         });
 
         const workflowInput: StoryboardWorkflowInput = {

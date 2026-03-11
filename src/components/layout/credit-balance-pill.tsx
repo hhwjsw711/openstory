@@ -22,7 +22,7 @@ export const CreditBalancePill: React.FC = () => {
   if (!isLowBalance || hasSafetyNet) return null;
 
   return (
-    <Link to="/settings/billing">
+    <Link to="/credits">
       <Badge
         variant="outline"
         className="tabular-nums cursor-pointer border-amber-500 text-amber-600 dark:text-amber-400"

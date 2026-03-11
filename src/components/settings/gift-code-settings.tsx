@@ -21,13 +21,17 @@ import {
 } from '@/functions/gift-tokens';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Check, Copy, Gift, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Gift, LinkIcon, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 const RETURN_KEY = 'openstory:billing-return';
 
-export function GiftCodeSettings() {
+type GiftCodeSettingsProps = {
+  code?: string;
+};
+
+export function GiftCodeSettings({ code }: GiftCodeSettingsProps) {
   const { data: adminStatus, isLoading: adminLoading } = useQuery({
     queryKey: ['system-admin-status'],
     queryFn: () => isSystemAdminFn(),
@@ -42,16 +46,30 @@ export function GiftCodeSettings() {
 
   return (
     <div className="space-y-6">
-      <RedeemSection />
+      <RedeemSection code={code} />
       {renderAdminSection()}
     </div>
   );
 }
 
-function RedeemSection() {
+const PENDING_GIFT_KEY = 'openstory:pending-gift-code';
+
+function resolveInitialCode(codeProp?: string): string {
+  if (codeProp) return codeProp.toUpperCase();
+  if (typeof window !== 'undefined') {
+    const stored = sessionStorage.getItem(PENDING_GIFT_KEY);
+    if (stored) {
+      sessionStorage.removeItem(PENDING_GIFT_KEY);
+      return stored.toUpperCase();
+    }
+  }
+  return '';
+}
+
+function RedeemSection({ code: codeProp }: { code?: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => resolveInitialCode(codeProp));
 
   const redeemMutation = useMutation({
     mutationFn: (input: { code: string }) => redeemGiftTokenFn({ data: input }),
@@ -145,6 +163,7 @@ function AdminSection() {
 function CreateGiftCodeCard() {
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState('');
+  const [maxRedemptions, setMaxRedemptions] = useState('1');
   const [note, setNote] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
@@ -152,12 +171,14 @@ function CreateGiftCodeCard() {
   const createMutation = useMutation({
     mutationFn: (input: {
       amountUsd: number;
+      maxRedemptions: number;
       note?: string;
       expiresInDays?: number;
     }) => createGiftTokenFn({ data: input }),
     onSuccess: (token) => {
       setCreatedCode(token.code);
       setAmount('');
+      setMaxRedemptions('1');
       setNote('');
       setExpiresInDays('');
       void queryClient.invalidateQueries({ queryKey: ['gift-tokens'] });
@@ -175,8 +196,10 @@ function CreateGiftCodeCard() {
     if (isNaN(amountUsd) || amountUsd <= 0) return;
 
     const parsedDays = parseInt(expiresInDays, 10);
+    const parsedMax = parseInt(maxRedemptions, 10);
     createMutation.mutate({
       amountUsd,
+      maxRedemptions: parsedMax > 0 ? parsedMax : 1,
       note: note || undefined,
       expiresInDays: parsedDays > 0 ? parsedDays : undefined,
     });
@@ -192,14 +215,14 @@ function CreateGiftCodeCard() {
           <div>
             <CardTitle>Create Gift Code</CardTitle>
             <CardDescription>
-              Generate a new single-use gift code (admin only)
+              Generate a new gift code (admin only)
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="gift-amount">Amount (USD)</Label>
               <div className="relative">
@@ -219,6 +242,20 @@ function CreateGiftCodeCard() {
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gift-max-redemptions">Max redemptions</Label>
+              <Input
+                id="gift-max-redemptions"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="1"
+                value={maxRedemptions}
+                onChange={(e) => setMaxRedemptions(e.target.value)}
+                autoComplete="off"
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="gift-expires">Expires in (days)</Label>
@@ -258,7 +295,10 @@ function CreateGiftCodeCard() {
                   {createdCode}
                 </span>
               </span>
-              <CopyButton text={createdCode} />
+              <div className="flex items-center gap-1">
+                <CopyButton text={createdCode} />
+                <CopyLinkButton code={createdCode} />
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -322,6 +362,8 @@ type GiftTokenRowProps = {
     createdAt: Date | string;
     expiresAt: Date | string | null;
     amountUsd: number;
+    maxRedemptions: number;
+    redemptionCount: number;
   };
 };
 
@@ -334,6 +376,9 @@ function GiftTokenRow({ token }: GiftTokenRowProps) {
             {token.code}
           </span>
           <StatusBadge status={token.status} />
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {token.redemptionCount}/{token.maxRedemptions}
+          </span>
         </div>
         <p className="text-xs text-muted-foreground truncate">
           {token.note ? `${token.note} · ` : ''}
@@ -346,7 +391,12 @@ function GiftTokenRow({ token }: GiftTokenRowProps) {
         <span className="text-sm font-semibold tabular-nums">
           ${token.amountUsd.toFixed(2)}
         </span>
-        {token.status === 'available' && <CopyButton text={token.code} />}
+        {token.status === 'available' && (
+          <>
+            <CopyButton text={token.code} />
+            <CopyLinkButton code={token.code} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -358,15 +408,49 @@ function getStatusVariant(
   switch (status) {
     case 'available':
       return 'default';
-    case 'redeemed':
+    case 'fully_redeemed':
       return 'secondary';
     default:
       return 'destructive';
   }
 }
 
+function getStatusLabel(status: string): string {
+  if (status === 'fully_redeemed') return 'fully redeemed';
+  return status;
+}
+
 function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={getStatusVariant(status)}>{status}</Badge>;
+  return (
+    <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>
+  );
+}
+
+function CopyLinkButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/gift/${code}`;
+    void navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={handleCopy}
+      aria-label="Copy gift link"
+    >
+      {copied ? (
+        <Check className="h-4 w-4 text-green-600" />
+      ) : (
+        <LinkIcon className="h-4 w-4" />
+      )}
+    </Button>
+  );
 }
 
 function CopyButton({ text }: { text: string }) {

@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GiftCodeRouteImport } from './routes/gift/$code'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
+import { Route as ProtectedCreditsRouteImport } from './routes/_protected/credits'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route'
@@ -31,10 +33,7 @@ import { Route as ApiBillingBalanceRouteImport } from './routes/api/billing/bala
 import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/auto-topup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
-import { Route as ProtectedSettingsTransactionsRouteImport } from './routes/_protected/settings/transactions'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
-import { Route as ProtectedSettingsGiftCodesRouteImport } from './routes/_protected/settings/gift-codes'
-import { Route as ProtectedSettingsBillingRouteImport } from './routes/_protected/settings/billing'
 import { Route as ProtectedSettingsApiKeysRouteImport } from './routes/_protected/settings/api-keys'
 import { Route as ProtectedSequencesNewRouteImport } from './routes/_protected/sequences/new'
 import { Route as ProtectedLocationsLocationIdRouteImport } from './routes/_protected/locations/$locationId'
@@ -63,6 +62,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GiftCodeRoute = GiftCodeRouteImport.update({
+  id: '/gift/$code',
+  path: '/gift/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
   id: '/api/realtime',
   path: '/api/realtime',
@@ -76,6 +80,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
   id: '/eval',
   path: '/eval',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedCreditsRoute = ProtectedCreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
@@ -158,28 +167,10 @@ const ProtectedTalentIdRoute = ProtectedTalentIdRouteImport.update({
   path: '/talent/$id',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedSettingsTransactionsRoute =
-  ProtectedSettingsTransactionsRouteImport.update({
-    id: '/transactions',
-    path: '/transactions',
-    getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
 const ProtectedSettingsPasskeysRoute =
   ProtectedSettingsPasskeysRouteImport.update({
     id: '/passkeys',
     path: '/passkeys',
-    getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
-const ProtectedSettingsGiftCodesRoute =
-  ProtectedSettingsGiftCodesRouteImport.update({
-    id: '/gift-codes',
-    path: '/gift-codes',
-    getParentRoute: () => ProtectedSettingsRouteRoute,
-  } as any)
-const ProtectedSettingsBillingRoute =
-  ProtectedSettingsBillingRouteImport.update({
-    id: '/billing',
-    path: '/billing',
     getParentRoute: () => ProtectedSettingsRouteRoute,
   } as any)
 const ProtectedSettingsApiKeysRoute =
@@ -271,17 +262,16 @@ export interface FileRoutesByFullPath {
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
+  '/credits': typeof ProtectedCreditsRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/settings/transactions': typeof ProtectedSettingsTransactionsRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
@@ -310,17 +300,16 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
+  '/credits': typeof ProtectedCreditsRoute
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
   '/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/settings/transactions': typeof ProtectedSettingsTransactionsRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
@@ -353,17 +342,16 @@ export interface FileRoutesById {
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/verify': typeof AuthVerifyRoute
+  '/_protected/credits': typeof ProtectedCreditsRoute
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/_protected/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
   '/_protected/settings/api-keys': typeof ProtectedSettingsApiKeysRoute
-  '/_protected/settings/billing': typeof ProtectedSettingsBillingRoute
-  '/_protected/settings/gift-codes': typeof ProtectedSettingsGiftCodesRoute
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
-  '/_protected/settings/transactions': typeof ProtectedSettingsTransactionsRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
@@ -395,17 +383,16 @@ export interface FileRouteTypes {
     | '/settings'
     | '/login'
     | '/verify'
+    | '/credits'
     | '/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/api-keys'
-    | '/settings/billing'
-    | '/settings/gift-codes'
     | '/settings/passkeys'
-    | '/settings/transactions'
     | '/talent/$id'
     | '/api/auth/$'
     | '/api/billing/auto-topup'
@@ -434,17 +421,16 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/verify'
+    | '/credits'
     | '/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
     | '/settings/api-keys'
-    | '/settings/billing'
-    | '/settings/gift-codes'
     | '/settings/passkeys'
-    | '/settings/transactions'
     | '/talent/$id'
     | '/api/auth/$'
     | '/api/billing/auto-topup'
@@ -476,17 +462,16 @@ export interface FileRouteTypes {
     | '/_protected/settings'
     | '/_auth/login'
     | '/_auth/verify'
+    | '/_protected/credits'
     | '/_protected/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/_protected/sequences/$id'
     | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
     | '/_protected/settings/api-keys'
-    | '/_protected/settings/billing'
-    | '/_protected/settings/gift-codes'
     | '/_protected/settings/passkeys'
-    | '/_protected/settings/transactions'
     | '/_protected/talent/$id'
     | '/api/auth/$'
     | '/api/billing/auto-topup'
@@ -518,6 +503,7 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
+  GiftCodeRoute: typeof GiftCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
   ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
@@ -553,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gift/$code': {
+      id: '/gift/$code'
+      path: '/gift/$code'
+      fullPath: '/gift/$code'
+      preLoaderRoute: typeof GiftCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/realtime': {
       id: '/api/realtime'
       path: '/api/realtime'
@@ -572,6 +565,13 @@ declare module '@tanstack/react-router' {
       path: '/eval'
       fullPath: '/eval'
       preLoaderRoute: typeof ProtectedEvalRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/credits': {
+      id: '/_protected/credits'
+      path: '/credits'
+      fullPath: '/credits'
+      preLoaderRoute: typeof ProtectedCreditsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_auth/verify': {
@@ -686,32 +686,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedTalentIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/settings/transactions': {
-      id: '/_protected/settings/transactions'
-      path: '/transactions'
-      fullPath: '/settings/transactions'
-      preLoaderRoute: typeof ProtectedSettingsTransactionsRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
     '/_protected/settings/passkeys': {
       id: '/_protected/settings/passkeys'
       path: '/passkeys'
       fullPath: '/settings/passkeys'
       preLoaderRoute: typeof ProtectedSettingsPasskeysRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
-    '/_protected/settings/gift-codes': {
-      id: '/_protected/settings/gift-codes'
-      path: '/gift-codes'
-      fullPath: '/settings/gift-codes'
-      preLoaderRoute: typeof ProtectedSettingsGiftCodesRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
-    }
-    '/_protected/settings/billing': {
-      id: '/_protected/settings/billing'
-      path: '/billing'
-      fullPath: '/settings/billing'
-      preLoaderRoute: typeof ProtectedSettingsBillingRouteImport
       parentRoute: typeof ProtectedSettingsRouteRoute
     }
     '/_protected/settings/api-keys': {
@@ -831,20 +810,14 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface ProtectedSettingsRouteRouteChildren {
   ProtectedSettingsApiKeysRoute: typeof ProtectedSettingsApiKeysRoute
-  ProtectedSettingsBillingRoute: typeof ProtectedSettingsBillingRoute
-  ProtectedSettingsGiftCodesRoute: typeof ProtectedSettingsGiftCodesRoute
   ProtectedSettingsPasskeysRoute: typeof ProtectedSettingsPasskeysRoute
-  ProtectedSettingsTransactionsRoute: typeof ProtectedSettingsTransactionsRoute
   ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
 }
 
 const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
   {
     ProtectedSettingsApiKeysRoute: ProtectedSettingsApiKeysRoute,
-    ProtectedSettingsBillingRoute: ProtectedSettingsBillingRoute,
-    ProtectedSettingsGiftCodesRoute: ProtectedSettingsGiftCodesRoute,
     ProtectedSettingsPasskeysRoute: ProtectedSettingsPasskeysRoute,
-    ProtectedSettingsTransactionsRoute: ProtectedSettingsTransactionsRoute,
     ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
   }
 
@@ -886,6 +859,7 @@ const ProtectedSequencesIdRouteRouteWithChildren =
 
 interface ProtectedRouteRouteChildren {
   ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren
+  ProtectedCreditsRoute: typeof ProtectedCreditsRoute
   ProtectedEvalRoute: typeof ProtectedEvalRoute
   ProtectedSequencesIdRouteRoute: typeof ProtectedSequencesIdRouteRouteWithChildren
   ProtectedLocationsLocationIdRoute: typeof ProtectedLocationsLocationIdRoute
@@ -898,6 +872,7 @@ interface ProtectedRouteRouteChildren {
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedSettingsRouteRoute: ProtectedSettingsRouteRouteWithChildren,
+  ProtectedCreditsRoute: ProtectedCreditsRoute,
   ProtectedEvalRoute: ProtectedEvalRoute,
   ProtectedSequencesIdRouteRoute: ProtectedSequencesIdRouteRouteWithChildren,
   ProtectedLocationsLocationIdRoute: ProtectedLocationsLocationIdRoute,
@@ -918,6 +893,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
+  GiftCodeRoute: GiftCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
   ApiBillingBalanceRoute: ApiBillingBalanceRoute,
