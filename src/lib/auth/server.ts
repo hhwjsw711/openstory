@@ -3,20 +3,28 @@
  * Provides session management for Server Actions and API routes
  */
 
+import { createIsomorphicFn, createServerFn } from '@tanstack/react-start';
+import { getRequestHeaders } from '@tanstack/react-start/server';
+import { authClient } from './client';
 import { getAuth } from './config';
-import { createServerFn } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
 
 /**
  * Get the current session from server context
  * Works in Server Actions, API routes, and Server Components
  */
-export const getSessionFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const request = getRequest();
-    return getAuth().api.getSession({ headers: request.headers });
-  }
-);
+export const getSessionFn = createIsomorphicFn()
+  .server(async () => {
+    const headers = getRequestHeaders();
+    const sessionData = await getAuth().api.getSession({
+      headers: headers,
+    });
+    return sessionData;
+  })
+  .client(async () => {
+    const { data: sessionData } = await authClient.getSession();
+
+    return sessionData;
+  });
 
 /**
  * Get the current user from server context
@@ -24,9 +32,9 @@ export const getSessionFn = createServerFn({ method: 'GET' }).handler(
  */
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const request = getRequest();
+    const headers = getRequestHeaders();
     const session = await getAuth().api.getSession({
-      headers: request.headers,
+      headers: headers,
     });
     return session?.user;
   }
@@ -37,7 +45,7 @@ export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
  */
 export const signOutFn = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const request = getRequest();
-    return getAuth().api.signOut({ headers: request.headers });
+    const headers = getRequestHeaders();
+    return getAuth().api.signOut({ headers: headers });
   }
 );

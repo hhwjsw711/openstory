@@ -1,6 +1,5 @@
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
-import { sessionQueryOptions } from '@/lib/auth/session-query';
 import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
 import appCss from '@/styles/global.css?url';
 import type { QueryClient } from '@tanstack/react-query';
@@ -31,16 +30,12 @@ const getCanonicalOriginFn = createIsomorphicFn().server(() => {
 });
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async ({ context: { queryClient }, location }) => {
+  beforeLoad: async ({ location }) => {
     // This is to redirect from git origins to the hash origin on vercel preview branches
     const canonicalOrigin = getCanonicalOriginFn();
     if (canonicalOrigin) {
       throw redirect({ href: canonicalOrigin + location.href });
     }
-    const sessionData = await queryClient.ensureQueryData(sessionQueryOptions);
-    const { session, user } = sessionData ?? { session: null, user: null };
-
-    return { session, user };
   },
   head: () => ({
     meta: [
