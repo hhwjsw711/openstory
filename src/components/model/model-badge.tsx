@@ -5,14 +5,14 @@ import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
   isValidAudioModel,
-  isValidTextToImageModel,
   isValidImageToVideoModel,
+  isValidTextToImageModel,
 } from '@/lib/ai/models';
 import { getAnalysisModelById } from '@/lib/ai/models.config';
 
 export const ModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
-    return <Skeleton className="w-[100px] h-[24px]" />;
+    return <Skeleton className="w-[100px] h-[20px]" />;
   }
 
   return (
@@ -31,7 +31,7 @@ export const ModelBadge = ({ model }: { model?: string }) => {
 
 export const ImageModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
-    return <Skeleton className="w-[100px] h-[24px]" />;
+    return <Skeleton className="w-[100px] h-[20px]" />;
   }
 
   const modelConfig = isValidTextToImageModel(model)
@@ -46,7 +46,7 @@ export const ImageModelBadge = ({ model }: { model?: string }) => {
 
 export const VideoModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
-    return <Skeleton className="w-[100px] h-[24px]" />;
+    return <Skeleton className="w-[100px] h-[20px]" />;
   }
 
   const modelConfig = isValidImageToVideoModel(model)
@@ -61,7 +61,7 @@ export const VideoModelBadge = ({ model }: { model?: string }) => {
 
 export const MusicModelBadge = ({ model }: { model?: string }) => {
   if (!model) {
-    return null;
+    return <Skeleton className="w-[100px] h-[20px]" />;
   }
 
   const modelConfig = isValidAudioModel(model)

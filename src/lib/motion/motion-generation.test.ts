@@ -56,7 +56,7 @@ describe('Motion Service', () => {
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
       expect(result.metadata?.fps).toBe(30);
-      expect(result.metadata?.cost).toBeCloseTo(1.68, 2); // 0.336 * 5 seconds
+      expect(result.metadata?.cost).toBe(840_000); // 140_000 micros/s * 1.2 (audio) * 5s
 
       expect(mockGenerateVideo).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -198,11 +198,6 @@ describe('Motion Service', () => {
           defaultDuration: 5,
           requiresStringDuration: true,
         },
-        pricing: {
-          pricePerSecond: 0.336,
-          currency: 'USD',
-          unit: 'seconds',
-        },
         performance: {
           estimatedGenerationTime: 20,
           quality: 'best',
@@ -214,11 +209,6 @@ describe('Motion Service', () => {
         provider: 'seedance',
         capabilities: {
           defaultDuration: 5,
-        },
-        pricing: {
-          pricePerSecond: 0.5,
-          currency: 'USD',
-          unit: 'seconds',
         },
         performance: {
           quality: 'best',
@@ -235,11 +225,6 @@ describe('Motion Service', () => {
           maxDuration: 10,
           defaultDuration: 10,
           requiresStringDuration: true,
-        },
-        pricing: {
-          pricePerSecond: 0.112,
-          currency: 'USD',
-          unit: 'seconds',
         },
         performance: {
           quality: 'best',

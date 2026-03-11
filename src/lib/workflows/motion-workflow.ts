@@ -6,6 +6,7 @@
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { usdToMicros, microsToUsd } from '@/lib/billing/money';
 import {
   getFrameWithSequence,
   getSequenceFrames,
@@ -97,26 +98,27 @@ export const generateMotionWorkflow = createWorkflow(
         : (input.duration ?? 2);
 
     // Deduct credits (skip if team used own fal key)
-    const motionCost =
+    const motionCostRaw =
       typeof videoResult.metadata?.cost === 'number'
         ? videoResult.metadata.cost
         : 0;
+    const motionCostMicros = usdToMicros(motionCostRaw);
     const { teamId } = input;
     if (
       isBillingEnabled() &&
-      motionCost > 0 &&
+      motionCostMicros > 0 &&
       teamId &&
       !videoResult.metadata.usedOwnKey
     ) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, motionCost);
+        const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
         if (!canAfford) {
           console.warn(
-            `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${motionCost.toFixed(4)}), skipping deduction`
+            `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(motionCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, motionCost, {
+        await deductCredits(teamId, motionCostMicros, {
           userId: input.userId,
           description: `Motion generation (${model})`,
           metadata: {

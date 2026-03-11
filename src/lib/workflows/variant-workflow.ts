@@ -132,7 +132,7 @@ export const generateVariantWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(imageResult.metadata),
+        costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Variant image generation (${generationParams.model})`,

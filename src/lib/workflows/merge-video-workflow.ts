@@ -4,6 +4,7 @@
  */
 
 import { getDb } from '#db-client';
+import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
@@ -112,7 +113,7 @@ export const mergeVideoWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: mergeResult.cost,
+        costMicros: usdToMicros(mergeResult.cost),
         usedOwnKey: mergeResult.metadata.usedOwnKey,
         userId: input.userId,
         description: `Video merge (${input.videoUrls.length} clips)`,

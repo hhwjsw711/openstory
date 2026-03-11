@@ -13,6 +13,7 @@ import {
   getTeamBalance,
   getBillingSettings,
 } from '@/lib/billing/credit-service';
+import { micros, microsToUsd } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/balance')({
   server: {
@@ -49,11 +50,15 @@ export const Route = createFileRoute('/api/billing/balance')({
             {
               success: true,
               data: {
-                balance,
+                balance: microsToUsd(balance),
                 autoTopUp: {
                   enabled: settings.autoTopUpEnabled,
-                  thresholdUsd: settings.autoTopUpThresholdUsd,
-                  amountUsd: settings.autoTopUpAmountUsd,
+                  thresholdUsd: settings.autoTopUpThresholdMicros
+                    ? microsToUsd(micros(settings.autoTopUpThresholdMicros))
+                    : null,
+                  amountUsd: settings.autoTopUpAmountMicros
+                    ? microsToUsd(micros(settings.autoTopUpAmountMicros))
+                    : null,
                 },
                 hasPaymentMethod: !!settings.stripeCustomerId,
               },

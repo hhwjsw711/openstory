@@ -198,6 +198,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          SECRET_ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
           SECRET_APP_NAME: ${{ secrets.APP_NAME }}
           SECRET_APP_URL: ${{ steps.deploy.outputs.url }}

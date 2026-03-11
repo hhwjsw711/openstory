@@ -11,6 +11,7 @@ import {
   getTeamBalance,
   getBillingSettings,
 } from '@/lib/billing/credit-service';
+import { microsToUsd } from '@/lib/billing/money';
 
 /**
  * Check billing gate status: balance, BYOK keys, and auto-top-up
@@ -43,7 +44,7 @@ export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
       hasCredits: balance > 0,
       hasFalKey,
       hasOpenRouterKey,
-      balance,
+      balance: microsToUsd(balance),
       hasAutoTopUp:
         billingSettings.autoTopUpEnabled && !!billingSettings.stripeCustomerId,
     };

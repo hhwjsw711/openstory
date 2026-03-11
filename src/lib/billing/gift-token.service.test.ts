@@ -92,7 +92,7 @@ describe('getGiftTokenStatus', () => {
     return {
       id: 'gt-test',
       code: 'TEST01',
-      amountUsd: 10,
+      amountMicros: 10,
       createdByUserId: 'user-1',
       redeemedByTeamId: null,
       redeemedByUserId: null,
@@ -158,7 +158,7 @@ describe('redeemGiftToken', () => {
       {
         id: 'gt-1',
         code: 'HK7NWE',
-        amountUsd: 10,
+        amountMicros: 10,
         redeemedAt: new Date(),
         expiresAt: null,
       },
@@ -182,7 +182,7 @@ describe('redeemGiftToken', () => {
       {
         id: 'gt-1',
         code: 'HK7NWE',
-        amountUsd: 10,
+        amountMicros: 10,
         redeemedAt: null,
         expiresAt: new Date(Date.now() - 1000),
       },

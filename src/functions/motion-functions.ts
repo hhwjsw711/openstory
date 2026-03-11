@@ -13,6 +13,7 @@ import {
   safeImageToVideoModel,
 } from '@/lib/ai/models';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
+import { usdToMicros, multiplyMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
@@ -143,8 +144,10 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
 
     await requireCredits(
       teamId,
-      estimateVideoCost(batchModel, batchDuration) *
-        framesWithThumbnails.length,
+      multiplyMicros(
+        estimateVideoCost(batchModel, batchDuration),
+        framesWithThumbnails.length
+      ),
       {
         errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
       }
@@ -232,7 +235,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, 0.01, {
+    await requireCredits(teamId, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 

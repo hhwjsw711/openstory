@@ -79,7 +79,7 @@ export const libraryLocationSheetWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(imageResult.metadata),
+        costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         description: `Library location sheet (${generationParams.model})`,
         metadata: {

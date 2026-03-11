@@ -31,10 +31,12 @@ function SequenceLayout() {
       <div className="mx-auto w-full max-w-[1920px] shrink-0 space-y-1 px-6 pt-4">
         <PageHeader>
           <PageHeading>{sequence?.title}</PageHeading>
-          <ModelBadge model={sequence?.analysisModel} />
-          <ImageModelBadge model={sequence?.imageModel} />
-          <VideoModelBadge model={sequence?.videoModel} />
-          <MusicModelBadge model={sequence?.musicModel ?? undefined} />
+          <div className="flex flex-row items-start gap-2">
+            <ModelBadge model={sequence?.analysisModel} />
+            <ImageModelBadge model={sequence?.imageModel} />
+            <VideoModelBadge model={sequence?.videoModel} />
+            <MusicModelBadge model={sequence?.musicModel ?? undefined} />
+          </div>
         </PageHeader>
         <SequenceTabs sequenceId={sequenceId} />
       </div>

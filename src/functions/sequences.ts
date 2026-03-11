@@ -34,6 +34,7 @@ import {
 } from '@/lib/ai/models';
 import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
+import { usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
@@ -428,7 +429,7 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, 0.01, {
+    await requireCredits(teamId, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 

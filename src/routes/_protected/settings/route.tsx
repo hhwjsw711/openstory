@@ -4,14 +4,14 @@
  */
 
 import { RouteErrorFallback } from '@/components/error/route-error-fallback';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   createFileRoute,
   Link,
   Outlet,
   useLocation,
 } from '@tanstack/react-router';
-import { CreditCard, Fingerprint, Gift, Key } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreditCard, Fingerprint, Gift, Key, Receipt } from 'lucide-react';
 
 export const Route = createFileRoute('/_protected/settings')({
   component: SettingsLayout,
@@ -40,6 +40,12 @@ const tabs = [
     icon: <CreditCard className="h-4 w-4" />,
   },
   {
+    value: 'transactions',
+    label: 'Transactions',
+    href: '/settings/transactions',
+    icon: <Receipt className="h-4 w-4" />,
+  },
+  {
     value: 'gift-codes',
     label: 'Gift Codes',
     href: '/settings/gift-codes',
@@ -56,7 +62,7 @@ function SettingsLayout() {
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6">
-      <Tabs value={activeTab} className="mb-6">
+      <Tabs value={activeTab} className="mb-6 shrink-0">
         <TabsList className="w-full justify-start">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} asChild>

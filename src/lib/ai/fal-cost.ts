@@ -1,52 +1,225 @@
 /**
- * Fal.ai cost calculation using live pricing from fal's Platform API.
+ * Type-safe fal.ai cost calculation with per-output-type pricing.
  *
- * Callers pass quantity in natural units (seconds, images, megapixels).
- * For convertible units: normalizes to the API's unit, then unit_price x quantity.
- * For opaque units ("1m tokens", "compute seconds"): falls back to fal's
- * historical per-call cost estimate (can't compute client-side).
+ * Three domain-specific functions accept real generation parameters
+ * instead of generic quantity/unit pairs. All return Microdollars.
  */
 
 import {
-  getFalHistoricalCostPerCall,
-  getFalUnitPrice,
-} from '@/lib/ai/fal-pricing';
+  IMAGE_PRICING,
+  VIDEO_PRICING,
+  AUDIO_PRICING,
+  type VideoPricing,
+} from '@/lib/ai/fal-pricing-data';
+import {
+  type Microdollars,
+  ZERO_MICROS,
+  multiplyMicros,
+  addMicros,
+} from '@/lib/billing/money';
 
-type CallerUnit = 'seconds' | 'images' | 'megapixels';
+/** Default compute time estimate for compute_seconds-priced models */
+const DEFAULT_COMPUTE_SECONDS = 3;
 
-/** Normalize caller quantity to the pricing API's unit. Returns undefined if incompatible. */
-function normalizeQuantity(
-  quantity: number,
-  callerUnit: CallerUnit,
-  apiUnit: string
-): number | undefined {
-  const unit = apiUnit.toLowerCase();
+// ============================================================================
+// Image Cost
+// ============================================================================
 
-  if (callerUnit === 'seconds' && unit === 'seconds') return quantity;
-  if (callerUnit === 'seconds' && unit === 'minutes') return quantity / 60;
-  if (callerUnit === 'images' && (unit === 'images' || unit === 'units'))
-    return quantity;
-  if (callerUnit === 'megapixels' && unit === 'megapixels') return quantity;
+export type ImageCostParams = {
+  endpointId: string;
+  numImages: number;
+  widthPx?: number;
+  heightPx?: number;
+  resolution?: '0.5K' | '1K' | '2K' | '4K';
+  style?: string;
+  quality?: string;
+  imageSize?: string;
+};
 
-  return undefined;
-}
-
-/** Calculate cost for a fal.ai generation in USD. */
-export async function calculateFalCost(
-  endpointId: string,
-  quantity: number,
-  callerUnit: CallerUnit,
-  falApiKey?: string
-): Promise<number> {
-  const { unitPrice, unit } = await getFalUnitPrice(endpointId, falApiKey);
-  const normalized = normalizeQuantity(quantity, callerUnit, unit);
-
-  if (normalized !== undefined) {
-    return unitPrice * normalized;
+export function calculateImageCost(params: ImageCostParams): Microdollars {
+  const pricing = IMAGE_PRICING[params.endpointId];
+  if (!pricing) {
+    warnMissing('image', params.endpointId);
+    return ZERO_MICROS;
   }
 
-  console.log(
-    `[fal-cost] Cannot convert "${callerUnit}" to "${unit}" for ${endpointId}, using historical estimate`
+  // Quality/size matrix (e.g. GPT Image 1.5)
+  if (pricing.qualitySizeMatrix && params.quality && params.imageSize) {
+    const qualityPrices = pricing.qualitySizeMatrix[params.quality];
+    if (qualityPrices) {
+      const price = qualityPrices[params.imageSize];
+      if (price !== undefined) {
+        return multiplyMicros(price, params.numImages);
+      }
+    }
+    // Fall through to base price if matrix doesn't match
+  }
+
+  if (pricing.unit === 'per_megapixel') {
+    const w = params.widthPx ?? 1024;
+    const h = params.heightPx ?? 1024;
+    const megapixels = (w * h) / 1_000_000;
+    return multiplyMicros(pricing.basePrice, megapixels * params.numImages);
+  }
+
+  if (pricing.unit === 'per_compute_second') {
+    return multiplyMicros(
+      pricing.basePrice,
+      DEFAULT_COMPUTE_SECONDS * params.numImages
+    );
+  }
+
+  // per_image
+  let cost = multiplyMicros(pricing.basePrice, params.numImages);
+
+  // Apply resolution multiplier
+  if (pricing.resolutionMultipliers && params.resolution) {
+    const mult = pricing.resolutionMultipliers[params.resolution];
+    if (mult !== undefined) {
+      cost = multiplyMicros(cost, mult);
+    }
+  }
+
+  // Apply style multiplier
+  if (pricing.styleMultipliers && params.style) {
+    const mult = pricing.styleMultipliers[params.style];
+    if (mult !== undefined) {
+      cost = multiplyMicros(cost, mult);
+    }
+  }
+
+  return cost;
+}
+
+// ============================================================================
+// Video Cost
+// ============================================================================
+
+export type VideoCostParams = {
+  endpointId: string;
+  durationSeconds: number;
+  audioEnabled?: boolean;
+  voiceControl?: boolean;
+  resolution?: string;
+  widthPx?: number;
+  heightPx?: number;
+  fps?: number;
+};
+
+export function calculateVideoCost(params: VideoCostParams): Microdollars {
+  const pricing = VIDEO_PRICING[params.endpointId];
+  if (!pricing) {
+    warnMissing('video', params.endpointId);
+    return ZERO_MICROS;
+  }
+
+  if (pricing.mode === 'per_token') {
+    return calculateTokenBasedVideoCost(pricing, params);
+  }
+
+  return calculateSecondBasedVideoCost(pricing, params);
+}
+
+function calculateTokenBasedVideoCost(
+  pricing: Extract<VideoPricing, { mode: 'per_token' }>,
+  params: VideoCostParams
+): Microdollars {
+  const w = params.widthPx ?? 1920;
+  const h = params.heightPx ?? 1080;
+  const fps = params.fps ?? 24;
+  const tokens = (w * h * fps * params.durationSeconds) / 1024;
+  // Actual rendered frames slightly exceed nominal fps (~3% overhead)
+  const millionTokens = (tokens / 1_000_000) * 1.05;
+  return multiplyMicros(pricing.pricePerMillionTokens, millionTokens);
+}
+
+function calculateSecondBasedVideoCost(
+  pricing: Extract<VideoPricing, { mode: 'per_second' }>,
+  params: VideoCostParams
+): Microdollars {
+  let rate = pricing.basePrice;
+
+  // Resolution+audio matrix (e.g. Veo 3.1)
+  if (pricing.resolutionAudioPricing && params.resolution) {
+    const resPricing = pricing.resolutionAudioPricing[params.resolution];
+    if (resPricing) {
+      rate = params.audioEnabled ? resPricing.withAudio : resPricing.noAudio;
+      let cost = multiplyMicros(rate, params.durationSeconds);
+      if (pricing.surcharges?.imageInput) {
+        cost = addMicros(cost, pricing.surcharges.imageInput);
+      }
+      return cost;
+    }
+  }
+
+  // Resolution-only pricing (e.g. Wan Flash, Grok Video)
+  if (pricing.resolutionPricing && params.resolution) {
+    const resRate = pricing.resolutionPricing[params.resolution];
+    if (resRate !== undefined) {
+      rate = resRate;
+    }
+  }
+
+  // Audio/voice multipliers (e.g. Kling v3 Pro, Veo3)
+  if (params.voiceControl && pricing.voiceControlMultiplier) {
+    rate = multiplyMicros(pricing.basePrice, pricing.voiceControlMultiplier);
+  } else if (params.audioEnabled && pricing.audioMultiplier) {
+    rate = multiplyMicros(pricing.basePrice, pricing.audioMultiplier);
+  } else if (!params.audioEnabled && pricing.noAudioMultiplier) {
+    rate = multiplyMicros(pricing.basePrice, pricing.noAudioMultiplier);
+  }
+
+  let cost = multiplyMicros(rate, params.durationSeconds);
+
+  // Image input surcharge (e.g. Grok Video)
+  if (pricing.surcharges?.imageInput) {
+    cost = addMicros(cost, pricing.surcharges.imageInput);
+  }
+
+  return cost;
+}
+
+// ============================================================================
+// Audio Cost
+// ============================================================================
+
+export type AudioCostParams = {
+  endpointId: string;
+  durationSeconds: number;
+};
+
+export function calculateAudioCost(params: AudioCostParams): Microdollars {
+  const pricing = AUDIO_PRICING[params.endpointId];
+  if (!pricing) {
+    warnMissing('audio', params.endpointId);
+    return ZERO_MICROS;
+  }
+
+  if (pricing.roundUpToMinute) {
+    return multiplyMicros(
+      pricing.basePrice,
+      Math.ceil(params.durationSeconds / 60)
+    );
+  }
+
+  if (pricing.unit === 'per_second') {
+    return multiplyMicros(pricing.basePrice, params.durationSeconds);
+  }
+
+  if (pricing.unit === 'per_minute') {
+    return multiplyMicros(pricing.basePrice, params.durationSeconds / 60);
+  }
+
+  // per_compute_second
+  return multiplyMicros(pricing.basePrice, DEFAULT_COMPUTE_SECONDS);
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function warnMissing(type: string, endpointId: string): void {
+  console.warn(
+    `[fal-cost] No ${type} pricing data for endpoint: ${endpointId}, returning 0`
   );
-  return getFalHistoricalCostPerCall(endpointId, falApiKey);
 }

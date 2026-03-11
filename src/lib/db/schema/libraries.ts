@@ -68,38 +68,6 @@ export const styles = sqliteTable(
 );
 
 /**
- * Style adaptations
- * Model-specific configurations for different AI providers
- */
-export const styleAdaptations = sqliteTable(
-  'style_adaptations',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    styleId: text('style_id')
-      .notNull()
-      .references(() => styles.id, { onDelete: 'cascade' }),
-    modelProvider: text('model_provider', { length: 100 }).notNull(),
-    modelName: text('model_name', { length: 100 }).notNull(),
-    adaptedConfig: text('adapted_config', { mode: 'json' })
-      .default('{}')
-      .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_style_adaptations_provider_model').on(
-      table.modelProvider,
-      table.modelName
-    ),
-    index('idx_style_adaptations_style_id').on(table.styleId),
-  ]
-);
-
-/**
  * VFX library
  * Visual effects presets and configurations
  */
@@ -169,7 +137,7 @@ export const audio = sqliteTable(
 );
 
 // Relations
-export const stylesRelations = relations(styles, ({ one, many }) => ({
+export const stylesRelations = relations(styles, ({ one }) => ({
   team: one(teams, {
     fields: [styles.teamId],
     references: [teams.id],
@@ -178,18 +146,7 @@ export const stylesRelations = relations(styles, ({ one, many }) => ({
     fields: [styles.createdBy],
     references: [user.id],
   }),
-  styleAdaptations: many(styleAdaptations),
 }));
-
-export const styleAdaptationsRelations = relations(
-  styleAdaptations,
-  ({ one }) => ({
-    style: one(styles, {
-      fields: [styleAdaptations.styleId],
-      references: [styles.id],
-    }),
-  })
-);
 
 export const vfxRelations = relations(vfx, ({ one }) => ({
   team: one(teams, {
@@ -216,9 +173,6 @@ export const audioRelations = relations(audio, ({ one }) => ({
 // Type exports
 export type Style = InferSelectModel<typeof styles>;
 export type NewStyle = InferInsertModel<typeof styles>;
-
-export type StyleAdaptation = InferSelectModel<typeof styleAdaptations>;
-export type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
 
 export type Vfx = InferSelectModel<typeof vfx>;
 export type NewVfx = InferInsertModel<typeof vfx>;

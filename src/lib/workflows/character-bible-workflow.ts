@@ -85,7 +85,7 @@ export const characterBibleWorkflow = createWorkflow(
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
             teamId: input.teamId,
-            costUsd: extractImageCost(imageResult.metadata),
+            costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
             userId: input.userId,
             description: `Character bible sheet (${model})`,

@@ -17,8 +17,8 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from '@/components/ui/input-otp';
-import { authClient } from '@/lib/auth/client';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { authClient } from '@/lib/auth/client';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
@@ -59,8 +59,6 @@ export function VerifyForm({
             setError(result.error.message || 'Invalid code');
             return;
           }
-
-          setSuccess('Signed in!');
           // Redirect to passkey setup if user hasn't skipped it
           if (!hasSkippedPasskeyPrompt()) {
             await navigate({

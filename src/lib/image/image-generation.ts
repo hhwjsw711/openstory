@@ -1,5 +1,4 @@
-import { calculateFalCost } from '@/lib/ai/fal-cost';
-import { getFalHistoricalCostPerCall } from '@/lib/ai/fal-pricing';
+import { calculateImageCost } from '@/lib/ai/fal-cost';
 import {
   getEditEndpoint,
   getTextToImageModelId,
@@ -162,7 +161,7 @@ export async function generateImageWithProvider(
     throw error;
   }
 }
-
+// @TODO: TB Mar 2026 - this needs to be updated to be typesafe. Especially after the work put in on Tanstack AI to keep it safe
 async function generateImageInternal(
   params: ImageGenerationParams,
   modelId: string
@@ -198,21 +197,23 @@ async function generateImageInternal(
 
   const processingTimeMs = Date.now() - startTime;
 
-  // Computable quantities (images, megapixels) use unit pricing;
-  // opaque billing (compute_seconds, LetzAI) falls back to historical estimate
-  const billable = computeImageBillableQuantity(
-    params.model,
-    imageUrls.length,
-    params.imageSize ?? DEFAULT_IMAGE_SIZE
-  );
-  const cost = billable
-    ? await calculateFalCost(
-        endpoint,
-        billable.quantity,
-        billable.callerUnit,
-        falApiKeyInfo.key
-      )
-    : await getFalHistoricalCostPerCall(endpoint, falApiKeyInfo.key);
+  const imageSize = params.imageSize ?? DEFAULT_IMAGE_SIZE;
+  const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
+  const sizeMap: Record<ImageSize, string> = {
+    square_hd: '1024x1024',
+    portrait_16_9: '1024x1536',
+    landscape_16_9: '1536x1024',
+  };
+  const cost = calculateImageCost({
+    endpointId: endpoint,
+    numImages: imageUrls.length,
+    widthPx: dims.width,
+    heightPx: dims.height,
+    resolution: params.resolution,
+    style: params.style,
+    quality: params.model === 'gpt_image_1_5' ? 'high' : undefined,
+    imageSize: sizeMap[imageSize],
+  });
 
   return {
     imageUrls,
@@ -509,36 +510,3 @@ const IMAGE_SIZE_DIMENSIONS: Record<
   portrait_16_9: { width: 576, height: 1024 },
   landscape_16_9: { width: 1344, height: 768 },
 };
-
-/**
- * Returns billable quantity and unit, or undefined for models with opaque billing
- * (compute_seconds, LetzAI) which fall back to historical per-call estimates.
- */
-function computeImageBillableQuantity(
-  model: TextToImageModel,
-  numImages: number,
-  imageSize: ImageSize
-): { quantity: number; callerUnit: 'images' | 'megapixels' } | undefined {
-  const modelConfig = IMAGE_MODELS[model];
-  if (!modelConfig.pricing) return undefined;
-
-  const { unit } = modelConfig.pricing;
-
-  switch (unit) {
-    case 'images':
-      return { quantity: numImages, callerUnit: 'images' };
-
-    case 'megapixels': {
-      const dims = IMAGE_SIZE_DIMENSIONS[imageSize];
-      const megapixelsPerImage = (dims.width * dims.height) / 1_000_000;
-      return {
-        quantity: megapixelsPerImage * numImages,
-        callerUnit: 'megapixels',
-      };
-    }
-
-    case 'compute_seconds':
-    default:
-      return undefined;
-  }
-}

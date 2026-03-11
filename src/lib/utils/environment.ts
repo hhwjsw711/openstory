@@ -6,9 +6,9 @@
  * where process.env is only populated at request time.
  */
 
+import { getEnv } from '#env';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { getEnv } from '#env';
 
 /**
  * Platform detection
@@ -80,8 +80,14 @@ export function isPreviewDeployment(request: Request): boolean {
   if (isLocalDevelopment()) return false;
 
   const envAppUrl = getEnv().APP_URL;
-  // APP_URL explicitly set to empty string = preview branch
-  if (envAppUrl === '') return true;
+
+  // APP_URL explicitly set to empty string or not set = preview branch
+  if (!envAppUrl) return true;
+
+  // Otherwise check APP_URL to see if it's a PR url
+  if (envAppUrl.includes('pr-')) {
+    return true;
+  }
 
   return !isProductionDeployment(request);
 }

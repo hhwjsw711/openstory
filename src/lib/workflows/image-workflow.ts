@@ -1,6 +1,7 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { usdToMicros, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
@@ -104,22 +105,23 @@ export const generateImageWorkflow = createWorkflow(
       });
     });
 
-    const imageCost = imageResult.metadata.cost ?? 0;
+    const imageCostRaw = imageResult.metadata.cost ?? 0;
+    const imageCostMicros = usdToMicros(imageCostRaw);
     const { teamId, frameId, sequenceId } = input;
     if (
       isBillingEnabled() &&
-      imageCost > 0 &&
+      imageCostMicros > 0 &&
       teamId &&
       !imageResult.metadata.usedOwnKey
     ) {
       await context.run('deduct-credits', async () => {
-        if (!(await hasEnoughCredits(teamId, imageCost))) {
+        if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
           console.warn(
-            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${imageCost.toFixed(4)}), skipping deduction`
+            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(imageCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, imageCost, {
+        await deductCredits(teamId, imageCostMicros, {
           userId: input.userId,
           description: `Image generation (${generationParams.model})`,
           metadata: {
