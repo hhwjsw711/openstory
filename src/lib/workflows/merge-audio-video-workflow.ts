@@ -5,6 +5,7 @@
 
 import { getDb } from '#db-client';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
+import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
@@ -70,7 +71,7 @@ export const mergeAudioVideoWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: muxResult.cost,
+        costMicros: usdToMicros(muxResult.cost),
         usedOwnKey: muxResult.usedOwnKey,
         userId: input.userId,
         description: 'Audio+video mux',

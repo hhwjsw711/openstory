@@ -1,4 +1,4 @@
-import { calculateFalCost } from '@/lib/ai/fal-cost';
+import { calculateVideoCost } from '@/lib/ai/fal-cost';
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODEL_KEYS,
@@ -326,12 +326,17 @@ async function generateMotionInternal(
   );
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  const cost = await calculateFalCost(
-    modelConfig.id,
-    validatedDuration,
-    'seconds',
-    falApiKeyInfo.key
-  );
+  const providerInput = inputBuilder(options, modelConfig);
+  const cost = calculateVideoCost({
+    endpointId: modelConfig.id,
+    durationSeconds: validatedDuration,
+    audioEnabled: modelConfig.capabilities.supportsAudio,
+    resolution:
+      typeof providerInput.resolution === 'string'
+        ? providerInput.resolution
+        : undefined,
+    fps: validatedFps,
+  });
 
   return {
     success: true,

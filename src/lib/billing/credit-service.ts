@@ -1,29 +1,42 @@
 /**
  * Credit Service
  * Core billing logic: balance queries, credit additions, deductions, and auto-top-up
+ * All monetary values are in Microdollars (1 USD = 1,000,000)
  */
 
 import { getDb } from '#db-client';
 import {
+  creditBatches,
   credits,
-  transactions,
   teamBillingSettings,
+  transactions,
 } from '@/lib/db/schema/credits';
 import type {
+  CreditBatchSource,
   TeamBillingSetting,
   TransactionType,
 } from '@/lib/db/schema/credits';
-import { eq, sql, desc, and } from 'drizzle-orm';
+import { ValidationError } from '@/lib/errors';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   applyMarkup,
-  MIN_TOPUP_AMOUNT_USD,
   AUTO_TOPUP_COOLDOWN_MS,
+  calculateExpiryDate,
+  MIN_TOPUP_AMOUNT_MICROS,
 } from './constants';
+import {
+  type Microdollars,
+  micros,
+  microsToDisplayUsd,
+  microsToUsdCents,
+  microsToUsd,
+  negateMicros,
+  ZERO_MICROS,
+} from './money';
 import { getStripeOrThrow } from './stripe';
-import { ValidationError } from '@/lib/errors';
 
 /** Creates a credits row if one doesn't exist yet. */
-export async function getTeamBalance(teamId: string): Promise<number> {
+export async function getTeamBalance(teamId: string): Promise<Microdollars> {
   const db = getDb();
   const [row] = await db
     .select({ balance: credits.balance })
@@ -34,23 +47,33 @@ export async function getTeamBalance(teamId: string): Promise<number> {
   if (!row) {
     // Initialize with 0 balance
     await db.insert(credits).values({ teamId, balance: 0 });
-    return 0;
+    return ZERO_MICROS;
   }
 
-  return row.balance;
+  return micros(row.balance);
 }
 
 export async function hasEnoughCredits(
   teamId: string,
-  estimatedCostUsd: number
+  estimatedCostMicros: Microdollars
 ): Promise<boolean> {
   const balance = await getTeamBalance(teamId);
-  return balance >= applyMarkup(estimatedCostUsd);
+  return balance >= applyMarkup(estimatedCostMicros);
+}
+
+function mapBatchSource(
+  type: TransactionType,
+  metadata?: Record<string, unknown>
+): CreditBatchSource {
+  if (metadata?.giftTokenId) return 'gift_code';
+  if (metadata?.autoTopUp) return 'auto_topup';
+  if (type === 'credit_adjustment') return 'adjustment';
+  return 'stripe_checkout';
 }
 
 export async function addCredits(
   teamId: string,
-  amountUsd: number,
+  amountMicros: Microdollars,
   opts: {
     userId?: string | null;
     type?: TransactionType;
@@ -58,8 +81,8 @@ export async function addCredits(
     metadata?: Record<string, unknown>;
     stripeSessionId?: string;
   } = {}
-): Promise<{ newBalance: number; transactionId: string } | null> {
-  if (amountUsd <= 0) {
+): Promise<{ newBalance: Microdollars; transactionId: string } | null> {
+  if (amountMicros <= 0) {
     throw new ValidationError('Credit amount must be positive');
   }
 
@@ -72,11 +95,13 @@ export async function addCredits(
   const [updated] = await db
     .update(credits)
     .set({
-      balance: sql`${credits.balance} + ${amountUsd}`,
+      balance: sql`${credits.balance} + ${amountMicros}`,
       updatedAt: new Date(),
     })
     .where(eq(credits.teamId, teamId))
     .returning({ balance: credits.balance });
+
+  const txType = opts.type ?? ('credit_purchase' as TransactionType);
 
   // Insert transaction with unique stripeSessionId — DB rejects duplicates
   const rows = await db
@@ -84,10 +109,11 @@ export async function addCredits(
     .values({
       teamId,
       userId: opts.userId ?? null,
-      type: opts.type ?? ('credit_purchase' as TransactionType),
-      amount: amountUsd,
+      type: txType,
+      amount: amountMicros,
       balanceAfter: updated.balance,
-      description: opts.description ?? `Added $${amountUsd.toFixed(2)} credits`,
+      description:
+        opts.description ?? `Added ${microsToDisplayUsd(amountMicros)} credits`,
       metadata: opts.metadata ?? {},
       stripeSessionId: opts.stripeSessionId ?? null,
     })
@@ -99,38 +125,50 @@ export async function addCredits(
     await db
       .update(credits)
       .set({
-        balance: sql`${credits.balance} - ${amountUsd}`,
+        balance: sql`${credits.balance} - ${amountMicros}`,
         updatedAt: new Date(),
       })
       .where(eq(credits.teamId, teamId));
     return null;
   }
 
-  return { newBalance: updated.balance, transactionId: rows[0].id };
+  const transactionId = rows[0].id;
+
+  // Create a credit batch for future expiration tracking
+  await db.insert(creditBatches).values({
+    teamId,
+    originalAmount: amountMicros,
+    remainingAmount: amountMicros,
+    source: mapBatchSource(txType, opts.metadata),
+    transactionId,
+    expiresAt: calculateExpiryDate(),
+  });
+
+  return { newBalance: micros(updated.balance), transactionId };
 }
 
 /** Applies markup automatically. Triggers auto-top-up if balance drops below threshold. */
 export async function deductCredits(
   teamId: string,
-  rawCostUsd: number,
+  rawCostMicros: Microdollars,
   opts: {
     userId?: string | null;
     description?: string;
     metadata?: Record<string, unknown>;
   } = {}
 ): Promise<{
-  newBalance: number;
-  chargedAmount: number;
+  newBalance: Microdollars;
+  chargedAmount: Microdollars;
   transactionId: string;
 }> {
-  if (rawCostUsd <= 0)
+  if (rawCostMicros <= 0)
     return {
       newBalance: await getTeamBalance(teamId),
-      chargedAmount: 0,
+      chargedAmount: ZERO_MICROS,
       transactionId: '',
     };
 
-  const chargedAmount = applyMarkup(rawCostUsd);
+  const chargedAmount = applyMarkup(rawCostMicros);
   const db = getDb();
 
   // Ensure credits row exists
@@ -146,36 +184,43 @@ export async function deductCredits(
     .where(eq(credits.teamId, teamId))
     .returning({ balance: credits.balance });
 
+  const rawUsd = microsToUsd(rawCostMicros);
+  const chargedUsd = microsToUsd(chargedAmount);
+
   const [tx] = await db
     .insert(transactions)
     .values({
       teamId,
       userId: opts.userId ?? null,
       type: 'credit_usage' as TransactionType,
-      amount: -chargedAmount,
+      amount: negateMicros(chargedAmount),
       balanceAfter: updated.balance,
       description:
         opts.description ??
-        `Usage: $${chargedAmount.toFixed(4)} (raw: $${rawCostUsd.toFixed(4)})`,
+        `Usage: $${chargedUsd.toFixed(4)} (raw: $${rawUsd.toFixed(4)})`,
       metadata: {
-        rawCostUsd,
-        chargedAmount,
+        rawCostMicros,
+        chargedAmountMicros: chargedAmount,
         ...opts.metadata,
       },
     })
     .returning({ id: transactions.id });
 
   // Check if auto-top-up should trigger (fire-and-forget)
-  void maybeAutoTopUp(teamId, updated.balance).catch((err) => {
+  void maybeAutoTopUp(teamId, micros(updated.balance)).catch((err) => {
     console.error('[AutoTopUp] Failed:', err);
   });
 
-  return { newBalance: updated.balance, chargedAmount, transactionId: tx.id };
+  return {
+    newBalance: micros(updated.balance),
+    chargedAmount,
+    transactionId: tx.id,
+  };
 }
 
 export async function getTransactionHistory(
   teamId: string,
-  opts: { limit?: number; offset?: number } = {}
+  opts: { limit?: number; offset?: number; type?: TransactionType } = {}
 ): Promise<{
   transactions: Array<{
     id: string;
@@ -192,6 +237,13 @@ export async function getTransactionHistory(
   const limit = opts.limit ?? 50;
   const offset = opts.offset ?? 0;
 
+  const conditions = [eq(transactions.teamId, teamId)];
+  if (opts.type) {
+    conditions.push(eq(transactions.type, opts.type));
+  }
+  const whereClause =
+    conditions.length === 1 ? conditions[0] : and(...conditions);
+
   const [rows, countResult] = await Promise.all([
     db
       .select({
@@ -204,14 +256,14 @@ export async function getTransactionHistory(
         createdAt: transactions.createdAt,
       })
       .from(transactions)
-      .where(eq(transactions.teamId, teamId))
+      .where(whereClause)
       .orderBy(desc(transactions.createdAt))
       .limit(limit)
       .offset(offset),
     db
       .select({ count: sql<number>`count(*)` })
       .from(transactions)
-      .where(eq(transactions.teamId, teamId)),
+      .where(whereClause),
   ]);
 
   return { transactions: rows, total: countResult[0].count };
@@ -242,24 +294,24 @@ export async function updateAutoTopUpSettings(
   teamId: string,
   settings: {
     enabled: boolean;
-    thresholdUsd?: number;
-    amountUsd?: number;
+    thresholdMicros?: Microdollars;
+    amountMicros?: Microdollars;
   }
 ): Promise<void> {
   if (
-    settings.amountUsd !== undefined &&
-    settings.amountUsd < MIN_TOPUP_AMOUNT_USD
+    settings.amountMicros !== undefined &&
+    settings.amountMicros < MIN_TOPUP_AMOUNT_MICROS
   ) {
     throw new ValidationError(
-      `Auto top-up amount must be at least $${MIN_TOPUP_AMOUNT_USD}`
+      `Auto top-up amount must be at least ${microsToDisplayUsd(MIN_TOPUP_AMOUNT_MICROS)}`
     );
   }
 
   if (
     settings.enabled &&
-    settings.thresholdUsd !== undefined &&
-    settings.amountUsd !== undefined &&
-    settings.amountUsd <= settings.thresholdUsd
+    settings.thresholdMicros !== undefined &&
+    settings.amountMicros !== undefined &&
+    settings.amountMicros <= settings.thresholdMicros
   ) {
     throw new ValidationError(
       'Auto top-up amount must be greater than the threshold'
@@ -273,18 +325,18 @@ export async function updateAutoTopUpSettings(
     .values({
       teamId,
       autoTopUpEnabled: settings.enabled,
-      autoTopUpThresholdUsd: settings.thresholdUsd,
-      autoTopUpAmountUsd: settings.amountUsd,
+      autoTopUpThresholdMicros: settings.thresholdMicros,
+      autoTopUpAmountMicros: settings.amountMicros,
     })
     .onConflictDoUpdate({
       target: teamBillingSettings.teamId,
       set: {
         autoTopUpEnabled: settings.enabled,
-        ...(settings.thresholdUsd !== undefined && {
-          autoTopUpThresholdUsd: settings.thresholdUsd,
+        ...(settings.thresholdMicros !== undefined && {
+          autoTopUpThresholdMicros: settings.thresholdMicros,
         }),
-        ...(settings.amountUsd !== undefined && {
-          autoTopUpAmountUsd: settings.amountUsd,
+        ...(settings.amountMicros !== undefined && {
+          autoTopUpAmountMicros: settings.amountMicros,
         }),
         updatedAt: new Date(),
       },
@@ -293,20 +345,20 @@ export async function updateAutoTopUpSettings(
 
 async function maybeAutoTopUp(
   teamId: string,
-  currentBalance: number
+  currentBalance: Microdollars
 ): Promise<void> {
   const settings = await getBillingSettings(teamId);
 
   if (
     !settings.autoTopUpEnabled ||
     !settings.stripeCustomerId ||
-    !settings.autoTopUpThresholdUsd ||
-    !settings.autoTopUpAmountUsd
+    !settings.autoTopUpThresholdMicros ||
+    !settings.autoTopUpAmountMicros
   ) {
     return;
   }
 
-  if (currentBalance > settings.autoTopUpThresholdUsd) {
+  if (currentBalance > settings.autoTopUpThresholdMicros) {
     return;
   }
 
@@ -335,7 +387,8 @@ async function maybeAutoTopUp(
   }
 
   const stripe = getStripeOrThrow();
-  const amountCents = Math.round(settings.autoTopUpAmountUsd * 100);
+  // Convert micros to cents for Stripe
+  const amountCents = microsToUsdCents(micros(settings.autoTopUpAmountMicros));
 
   // Get the customer's default payment method
   const customer = await stripe.customers.retrieve(settings.stripeCustomerId);
@@ -370,8 +423,9 @@ async function maybeAutoTopUp(
     const receiptUrl =
       charge && typeof charge === 'object' ? charge.receipt_url : undefined;
 
-    await addCredits(teamId, settings.autoTopUpAmountUsd, {
-      description: `Auto top-up: $${settings.autoTopUpAmountUsd.toFixed(2)}`,
+    const topUpMicros = micros(settings.autoTopUpAmountMicros);
+    await addCredits(teamId, topUpMicros, {
+      description: `Auto top-up: ${microsToDisplayUsd(topUpMicros)}`,
       metadata: {
         stripePaymentIntentId: paymentIntent.id,
         autoTopUp: true,
@@ -402,4 +456,35 @@ export async function saveStripeCustomerId(
         updatedAt: new Date(),
       },
     });
+}
+
+/** Sum active (non-expired) batch remainingAmounts and compare to credits.balance */
+export async function reconcileBatchBalance(teamId: string): Promise<{
+  runningBalance: Microdollars;
+  batchTotal: Microdollars;
+  drift: number;
+}> {
+  const db = getDb();
+  const [balanceRow] = await db
+    .select({ balance: credits.balance })
+    .from(credits)
+    .where(eq(credits.teamId, teamId))
+    .limit(1);
+
+  const runningBalance = micros(balanceRow?.balance ?? 0);
+
+  const [batchRow] = await db
+    .select({
+      total: sql<number>`COALESCE(SUM(${creditBatches.remainingAmount}), 0)`,
+    })
+    .from(creditBatches)
+    .where(eq(creditBatches.teamId, teamId));
+
+  const batchTotal = micros(batchRow?.total ?? 0);
+
+  return {
+    runningBalance,
+    batchTotal,
+    drift: runningBalance - batchTotal,
+  };
 }

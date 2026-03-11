@@ -7,6 +7,7 @@
 import { createAdapter } from '@/lib/ai/create-adapter';
 import { getContextWindow } from '@/lib/ai/models.config';
 import type { TextModel } from '@/lib/ai/models';
+import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { apiKeyService } from '@/lib/byok/api-key.service';
 import type { PromptReference } from '@/lib/observability/langfuse';
@@ -139,7 +140,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     await context.run(`deduct-llm-credits-${name}`, async () => {
       await deductWorkflowCredits({
         teamId: callContext.teamId,
-        costUsd: 0,
+        costMicros: ZERO_MICROS,
         usedOwnKey: !!callContext.openRouterApiKey,
         userId: callContext.userId,
         description: `LLM analysis (${modelId})`,

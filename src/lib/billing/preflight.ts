@@ -6,8 +6,9 @@
 
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { hasEnoughCredits } from '@/lib/billing/credit-service';
-import { InsufficientCreditsError } from '@/lib/errors';
+import type { Microdollars } from '@/lib/billing/money';
 import { apiKeyService } from '@/lib/byok/api-key.service';
+import { InsufficientCreditsError } from '@/lib/errors';
 
 type Provider = 'fal' | 'openrouter';
 
@@ -16,7 +17,7 @@ type Provider = 'fal' | 'openrouter';
  * Skips the check entirely if the team has BYOK keys for all required providers.
  *
  * @param teamId - Team to check
- * @param estimatedCost - Estimated raw cost in USD
+ * @param estimatedCostMicros - Estimated raw cost in Microdollars
  * @param providers - Which BYOK providers bypass the check (default: ['fal'])
  * @param errorMessage - Custom error message for insufficient credits
  *
@@ -24,7 +25,7 @@ type Provider = 'fal' | 'openrouter';
  */
 export async function requireCredits(
   teamId: string,
-  estimatedCost: number,
+  estimatedCostMicros: Microdollars,
   opts: {
     providers?: Provider[];
     errorMessage?: string;
@@ -42,7 +43,7 @@ export async function requireCredits(
 
   if (hasAllKeys) return;
 
-  const canAfford = await hasEnoughCredits(teamId, estimatedCost);
+  const canAfford = await hasEnoughCredits(teamId, estimatedCostMicros);
   if (!canAfford) {
     throw new InsufficientCreditsError(
       opts.errorMessage ?? 'Insufficient credits'

@@ -4,19 +4,27 @@
  * Skips deduction if team used their own API key (BYOK).
  * Warns and skips (rather than throwing) if credits are insufficient,
  * since the work has already been completed at this point.
+ *
+ * All monetary values are in Microdollars.
  */
 
 import { isBillingEnabled } from '@/lib/billing/constants';
 import {
+  checkAutoTopUp,
   deductCredits,
   hasEnoughCredits,
-  checkAutoTopUp,
 } from '@/lib/billing/credit-service';
+import {
+  type Microdollars,
+  microsToUsd,
+  usdToMicros,
+  ZERO_MICROS,
+} from './money';
 
 type WorkflowDeductionOpts = {
   /** Team to deduct from. Skips deduction if undefined (e.g., anonymous workflows). */
   teamId: string | undefined;
-  costUsd: number;
+  costMicros: Microdollars;
   /** Set to true if the team used their own API key for this generation */
   usedOwnKey: boolean;
   userId?: string | null;
@@ -30,7 +38,7 @@ type WorkflowDeductionOpts = {
  * Deduct credits for a completed workflow generation.
  *
  * - Skips if teamId is undefined
- * - Skips if costUsd <= 0
+ * - Skips if costMicros <= 0
  * - Skips if the team used their own API key (usedOwnKey = true)
  * - Warns and skips if the team has insufficient credits (work already done)
  */
@@ -40,16 +48,16 @@ export async function deductWorkflowCredits(
   if (
     !isBillingEnabled() ||
     !opts.teamId ||
-    opts.costUsd <= 0 ||
+    opts.costMicros <= 0 ||
     opts.usedOwnKey
   )
     return;
 
-  const canAfford = await hasEnoughCredits(opts.teamId, opts.costUsd);
+  const canAfford = await hasEnoughCredits(opts.teamId, opts.costMicros);
   if (!canAfford) {
     const prefix = opts.workflowName ? `[${opts.workflowName}]` : '[Workflow]';
     console.warn(
-      `${prefix} Insufficient credits for team ${opts.teamId} (cost: $${opts.costUsd.toFixed(4)}), skipping deduction`
+      `${prefix} Insufficient credits for team ${opts.teamId} (cost: $${microsToUsd(opts.costMicros).toFixed(4)}), skipping deduction`
     );
     // Still attempt auto-top-up so balance can recover
     void checkAutoTopUp(opts.teamId).catch((err) => {
@@ -58,7 +66,7 @@ export async function deductWorkflowCredits(
     return;
   }
 
-  await deductCredits(opts.teamId, opts.costUsd, {
+  await deductCredits(opts.teamId, opts.costMicros, {
     userId: opts.userId ?? null,
     description: opts.description,
     metadata: opts.metadata,
@@ -67,8 +75,10 @@ export async function deductWorkflowCredits(
 
 /**
  * Extract the numeric cost from a fal.ai image generation result's metadata.
- * Returns 0 if the cost field is missing or not a number.
+ * Converts USD cost to Microdollars. Returns ZERO_MICROS if missing.
  */
-export function extractImageCost(metadata: { cost?: unknown }): number {
-  return typeof metadata.cost === 'number' ? metadata.cost : 0;
+export function extractImageCost(metadata: { cost?: unknown }): Microdollars {
+  return typeof metadata.cost === 'number'
+    ? usdToMicros(metadata.cost)
+    : ZERO_MICROS;
 }

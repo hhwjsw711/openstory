@@ -7,7 +7,6 @@ import {
   integer,
   sqliteTable,
   text,
-  real,
   index,
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
@@ -23,7 +22,7 @@ export const giftTokens = sqliteTable(
       .primaryKey()
       .notNull(),
     code: text().unique().notNull(),
-    amountUsd: real('amount_usd').notNull(),
+    amountMicros: integer('amount_micros').notNull(),
     createdByUserId: text('created_by_user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

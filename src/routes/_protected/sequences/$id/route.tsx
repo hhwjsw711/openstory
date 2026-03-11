@@ -48,7 +48,7 @@ function SequenceLayout() {
       <div className="mx-auto w-full max-w-[1920px] shrink-0 space-y-1 px-6 pt-4">
         <PageHeader>
           <PageHeading>{sequence?.title}</PageHeading>
-          <div className="hidden md:flex flex-wrap gap-2">
+          <div className="hidden md:flex flex-row flex-wrap gap-2">
             <ModelBadge model={sequence?.analysisModel} />
             <ImageModelBadge model={sequence?.imageModel} />
             <VideoModelBadge model={sequence?.videoModel} />

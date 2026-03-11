@@ -1,10 +1,11 @@
 import { getDb } from '#db-client';
+import { generateId } from '@/lib/db/id';
 import { giftTokens } from '@/lib/db/schema/gift-tokens';
 import type { GiftToken } from '@/lib/db/schema/gift-tokens';
-import { generateId } from '@/lib/db/id';
-import { addCredits } from './credit-service';
 import { ValidationError } from '@/lib/errors';
-import { eq, desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
+import { addCredits } from './credit-service';
+import { micros, microsToDisplayUsd, microsToUsd, usdToMicros } from './money';
 
 // Ambiguity-free alphabet (no 0/O/1/I) — 32 chars → 32^6 ≈ 1B combinations
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -37,13 +38,14 @@ export async function createGiftToken(opts: {
 
   const db = getDb();
   const code = generateGiftCode();
+  const amountMicros = usdToMicros(opts.amountUsd);
 
   const [token] = await db
     .insert(giftTokens)
     .values({
       id: generateId(),
       code,
-      amountUsd: opts.amountUsd,
+      amountMicros,
       createdByUserId: opts.createdByUserId,
       note: opts.note ?? null,
       expiresAt: opts.expiresAt ?? null,
@@ -89,21 +91,26 @@ export async function redeemGiftToken(opts: {
     })
     .where(eq(giftTokens.id, token.id));
 
+  const amountMicros = micros(token.amountMicros);
+
   // Add credits to team
-  const result = await addCredits(opts.teamId, token.amountUsd, {
+  const result = await addCredits(opts.teamId, amountMicros, {
     userId: opts.userId,
     type: 'credit_adjustment',
-    description: `Gift code redeemed: ${normalizedCode} ($${token.amountUsd.toFixed(2)})`,
+    description: `Gift code redeemed: ${normalizedCode} (${microsToDisplayUsd(amountMicros)})`,
     metadata: { giftTokenId: token.id, giftCode: normalizedCode },
   });
 
   return {
-    newBalance: result?.newBalance ?? 0,
-    amountUsd: token.amountUsd,
+    newBalance: result ? microsToUsd(result.newBalance) : 0,
+    amountUsd: microsToUsd(amountMicros),
   };
 }
 
-export type GiftTokenWithStatus = GiftToken & { status: GiftTokenStatus };
+export type GiftTokenWithStatus = GiftToken & {
+  status: GiftTokenStatus;
+  amountUsd: number;
+};
 
 export async function listGiftTokens(): Promise<GiftTokenWithStatus[]> {
   const db = getDb();
@@ -115,5 +122,6 @@ export async function listGiftTokens(): Promise<GiftTokenWithStatus[]> {
   return tokens.map((token) => ({
     ...token,
     status: getGiftTokenStatus(token),
+    amountUsd: microsToUsd(micros(token.amountMicros)),
   }));
 }
