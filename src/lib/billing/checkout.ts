@@ -3,10 +3,10 @@
  * Creates checkout sessions for credit top-ups
  */
 
-import { getStripeOrThrow } from './stripe';
-import { getBillingSettings, saveStripeCustomerId } from './credit-service';
-import { MIN_TOPUP_AMOUNT_USD } from './constants';
 import { ValidationError } from '@/lib/errors';
+import { MIN_TOPUP_AMOUNT_USD } from './constants';
+import { getBillingSettings, saveStripeCustomerId } from './credit-service';
+import { getStripeOrThrow } from './stripe';
 
 type CreateCheckoutParams = {
   teamId: string;
@@ -34,6 +34,17 @@ export async function createCheckoutSession(
 
   // Reuse existing Stripe customer or create new one
   let customerId = settings.stripeCustomerId;
+  if (customerId) {
+    // Verify the customer still exists in Stripe (may differ between environments)
+    try {
+      const existing = await stripe.customers.retrieve(customerId);
+      if (existing.deleted) {
+        customerId = null;
+      }
+    } catch {
+      customerId = null;
+    }
+  }
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: userEmail,
@@ -71,6 +82,16 @@ export async function createCheckoutSession(
       userId,
       amountUsd: String(amountUsd),
       type: 'credit_top_up',
+    },
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
+    tax_id_collection: {
+      enabled: true,
+    },
+    automatic_tax: {
+      enabled: true,
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
