@@ -21,13 +21,17 @@ import {
 } from '@/functions/gift-tokens';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Check, Copy, Gift, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Gift, LinkIcon, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 const RETURN_KEY = 'openstory:billing-return';
 
-export function GiftCodeSettings() {
+type GiftCodeSettingsProps = {
+  code?: string;
+};
+
+export function GiftCodeSettings({ code }: GiftCodeSettingsProps) {
   const { data: adminStatus, isLoading: adminLoading } = useQuery({
     queryKey: ['system-admin-status'],
     queryFn: () => isSystemAdminFn(),
@@ -42,16 +46,30 @@ export function GiftCodeSettings() {
 
   return (
     <div className="space-y-6">
-      <RedeemSection />
+      <RedeemSection code={code} />
       {renderAdminSection()}
     </div>
   );
 }
 
-function RedeemSection() {
+const PENDING_GIFT_KEY = 'openstory:pending-gift-code';
+
+function resolveInitialCode(codeProp?: string): string {
+  if (codeProp) return codeProp.toUpperCase();
+  if (typeof window !== 'undefined') {
+    const stored = sessionStorage.getItem(PENDING_GIFT_KEY);
+    if (stored) {
+      sessionStorage.removeItem(PENDING_GIFT_KEY);
+      return stored.toUpperCase();
+    }
+  }
+  return '';
+}
+
+function RedeemSection({ code: codeProp }: { code?: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => resolveInitialCode(codeProp));
 
   const redeemMutation = useMutation({
     mutationFn: (input: { code: string }) => redeemGiftTokenFn({ data: input }),
@@ -277,7 +295,10 @@ function CreateGiftCodeCard() {
                   {createdCode}
                 </span>
               </span>
-              <CopyButton text={createdCode} />
+              <div className="flex items-center gap-1">
+                <CopyButton text={createdCode} />
+                <CopyLinkButton code={createdCode} />
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -370,7 +391,12 @@ function GiftTokenRow({ token }: GiftTokenRowProps) {
         <span className="text-sm font-semibold tabular-nums">
           ${token.amountUsd.toFixed(2)}
         </span>
-        {token.status === 'available' && <CopyButton text={token.code} />}
+        {token.status === 'available' && (
+          <>
+            <CopyButton text={token.code} />
+            <CopyLinkButton code={token.code} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -397,6 +423,33 @@ function getStatusLabel(status: string): string {
 function StatusBadge({ status }: { status: string }) {
   return (
     <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>
+  );
+}
+
+function CopyLinkButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/gift/${code}`;
+    void navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={handleCopy}
+      aria-label="Copy gift link"
+    >
+      {copied ? (
+        <Check className="h-4 w-4 text-green-600" />
+      ) : (
+        <LinkIcon className="h-4 w-4" />
+      )}
+    </Button>
   );
 }
 

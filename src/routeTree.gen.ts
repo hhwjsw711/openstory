@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GiftCodeRouteImport } from './routes/gift/$code'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
@@ -59,6 +60,11 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GiftCodeRoute = GiftCodeRouteImport.update({
+  id: '/gift/$code',
+  path: '/gift/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   '/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -338,6 +346,7 @@ export interface FileRoutesById {
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
+  '/gift/$code': typeof GiftCodeRoute
   '/_protected/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/_protected/sequences/new': typeof ProtectedSequencesNewRoute
@@ -378,6 +387,7 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/_protected/eval'
     | '/api/health'
     | '/api/realtime'
+    | '/gift/$code'
     | '/_protected/sequences/$id'
     | '/_protected/locations/$locationId'
     | '/_protected/sequences/new'
@@ -491,6 +503,7 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
+  GiftCodeRoute: typeof GiftCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
   ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
@@ -524,6 +537,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gift/$code': {
+      id: '/gift/$code'
+      path: '/gift/$code'
+      fullPath: '/gift/$code'
+      preLoaderRoute: typeof GiftCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/realtime': {
@@ -873,6 +893,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
+  GiftCodeRoute: GiftCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
   ApiBillingBalanceRoute: ApiBillingBalanceRoute,

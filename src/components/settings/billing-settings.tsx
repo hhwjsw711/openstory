@@ -4,6 +4,16 @@
  */
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -112,7 +122,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
   const navigate = useNavigate();
 
@@ -249,6 +259,8 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const effectiveAmount = selectedAmount ?? parseFloat(customAmount);
   const isValidAmount =
     !isNaN(effectiveAmount) && effectiveAmount >= MIN_TOPUP_AMOUNT_USD;
+  const autoTopUpThreshold =
+    autoTopUpPrompt !== null ? Math.ceil((autoTopUpPrompt * 0.1) / 5) * 5 : 5;
 
   const handleTopUp = () => {
     if (!isValidAmount) {
@@ -281,35 +293,35 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </Alert>
       )}
 
-      {autoTopUpPrompt !== null && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader>
-            <SectionHeader
-              icon={RefreshCw}
-              title="Enable Auto Top-Up?"
-              description={`Automatically add $${autoTopUpPrompt} when your balance drops below $5.`}
-            />
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button
+      <AlertDialog open={autoTopUpPrompt !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Auto Top-Up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Automatically add ${autoTopUpPrompt} when your balance drops below
+              ${autoTopUpThreshold}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAutoTopUpPrompt(null)}>
+              No thanks
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={() => {
                 autoTopUpMutation.mutate({
                   enabled: true,
-                  thresholdUsd: 5,
-                  amountUsd: autoTopUpPrompt,
+                  thresholdUsd: autoTopUpThreshold,
+                  amountUsd: autoTopUpPrompt ?? 0,
                 });
                 setAutoTopUpPrompt(null);
               }}
               disabled={autoTopUpMutation.isPending}
             >
               {autoTopUpMutation.isPending ? 'Enabling…' : 'Enable auto top-up'}
-            </Button>
-            <Button variant="ghost" onClick={() => setAutoTopUpPrompt(null)}>
-              No thanks
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {(error || balanceError || invoicesError) && (
         <Alert variant="destructive" className="mb-4">
@@ -374,13 +386,12 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
               $
             </span>
             <Input
-              type="number"
-              min={MIN_TOPUP_AMOUNT_USD}
-              step="1"
+              type="text"
+              inputMode="decimal"
               placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
               value={customAmount}
               onChange={(e) => {
-                setCustomAmount(e.target.value);
+                setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''));
                 setSelectedAmount(null);
                 setError(null);
               }}
@@ -587,11 +598,12 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="threshold"
-                type="number"
-                min="1"
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
+                onChange={(e) =>
+                  setThreshold(e.target.value.replace(/[^0-9.]/g, ''))
+                }
                 onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
@@ -606,11 +618,12 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="recharge"
-                type="number"
-                min={MIN_TOPUP_AMOUNT_USD}
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) =>
+                  setAmount(e.target.value.replace(/[^0-9.]/g, ''))
+                }
                 onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
