@@ -46,7 +46,7 @@
         "@upstash/realtime": "^1.0.2",
         "@upstash/redis": "^1.36.2",
         "@upstash/workflow": "^1.1.1",
-        "@vidstack/react": "^1.12.13",
+        "@videojs/react": "^10.0.0-alpha.11",
         "better-auth": "^1.4.18",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -1356,7 +1356,15 @@
 
     "@upstash/workflow": ["@upstash/workflow@1.1.1", "", { "dependencies": { "@upstash/qstash": "2.9.0-rc" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-1TWVoE8jS3bHcRGQlWgFg0j9J0MPMHD8Tm9Sq61Ix226d8S4LEwAQWPnHYxjxe5PWw/RUgMDOR8lhM62bzQWRg=="],
 
-    "@vidstack/react": ["@vidstack/react@1.12.13", "", { "dependencies": { "@floating-ui/dom": "^1.6.10", "media-captions": "^1.0.4" }, "peerDependencies": { "@types/react": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0" } }, "sha512-zyNydy1+HtoK6cJ8EmqFNkPPGHIFMrr2KH+ef3654EqXx4IcJ8A5LCNMXBuALQE8IMxtk040JMoR9OKyeXjBOQ=="],
+    "@videojs/core": ["@videojs/core@10.0.0-alpha.11", "", { "dependencies": { "@videojs/spf": "10.0.0-alpha.11", "@videojs/store": "10.0.0-alpha.11", "@videojs/utils": "10.0.0-alpha.11", "hls.js": "^1.6.7" } }, "sha512-hSPa80nn3Hhsv6bVx2yieUbw3etJE4xpQ+FUH08sk/wYEALWrC2r6E9CdauwPRdhK109dnwAXOZRto0kK9kcZg=="],
+
+    "@videojs/react": ["@videojs/react@10.0.0-alpha.11", "", { "dependencies": { "@videojs/core": "10.0.0-alpha.11", "@videojs/spf": "10.0.0-alpha.11", "@videojs/store": "10.0.0-alpha.11", "@videojs/utils": "10.0.0-alpha.11" }, "peerDependencies": { "react": ">=16.8.0" } }, "sha512-IzRTObEv5KqMfE0PYwUAcMYJEyacQ1KmX5NolAifsyMxhbUSnWowNCzNDLa03fIXvm4KomGQ3lbkGDoT9M/52w=="],
+
+    "@videojs/spf": ["@videojs/spf@10.0.0-alpha.11", "", { "dependencies": { "@videojs/utils": "10.0.0-alpha.11" } }, "sha512-s9od5/jrB2tMnO4o3DJ9JP3CCxaVwMi+doTJp6E+b0U/Jq49LI9X55ItVV6awfjV5jrQU0j9W33lrTOGdc058Q=="],
+
+    "@videojs/store": ["@videojs/store@10.0.0-alpha.11", "", { "dependencies": { "@videojs/utils": "10.0.0-alpha.11" }, "peerDependencies": { "@videojs/element": "10.0.0-alpha.11", "react": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@videojs/element", "react"] }, "sha512-GCQxBbIK3xALGzhx8ke/r1oFb85Hv6aQTGWmMiP6UNnJLDnhjbi+xD8POO6p/1LJVhmVkzFa/OW8GCe9CCp2Pw=="],
+
+    "@videojs/utils": ["@videojs/utils@10.0.0-alpha.11", "", {}, "sha512-HS9rgOEzlPGiHrg8U169xslNuo7Njjye0O1yPnsWiN/rXjfHy2N5v/bOBt7jgJBdD5OtchaIvTsrV3arpxbSfQ=="],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@5.1.3", "", { "dependencies": { "@babel/core": "^7.29.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-rc.2", "@types/babel__core": "^7.20.5", "react-refresh": "^0.18.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-NVUnA6gQCl8jfoYqKqQU5Clv0aPw14KkZYCsX6T9Lfu9slI0LOU10OTwFHS/WmptsMMpshNd/1tuWsHQ2Uk+cg=="],
 
@@ -1718,6 +1726,8 @@
 
     "headers-polyfill": ["headers-polyfill@4.0.3", "", {}, "sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ=="],
 
+    "hls.js": ["hls.js@1.6.15", "", {}, "sha512-E3a5VwgXimGHwpRGV+WxRTKeSp2DW5DI5MWv34ulL3t5UNmyJWCQ1KmLEHbYzcfThfXG8amBL+fCYPneGHC4VA=="],
+
     "hono": ["hono@4.11.9", "", {}, "sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ=="],
 
     "html-to-text": ["html-to-text@9.0.5", "", { "dependencies": { "@selderee/plugin-htmlparser2": "^0.11.0", "deepmerge": "^4.3.1", "dom-serializer": "^2.0.0", "htmlparser2": "^8.0.2", "selderee": "^0.11.0" } }, "sha512-qY60FjREgVZL03vJU6IfMV4GDjGBIoOyvuFdpBDIX9yTlDw0TjxVBQp+P8NvpdIXNJvfWBTNul7fsAQJq2FNpg=="],
@@ -1901,8 +1911,6 @@
     "mailparser": ["mailparser@3.9.1", "", { "dependencies": { "@zone-eu/mailsplit": "5.4.8", "encoding-japanese": "2.2.0", "he": "1.2.0", "html-to-text": "9.0.5", "iconv-lite": "0.7.0", "libmime": "5.3.7", "linkify-it": "5.0.0", "nodemailer": "7.0.11", "punycode.js": "2.3.1", "tlds": "1.261.0" } }, "sha512-6vHZcco3fWsDMkf4Vz9iAfxvwrKNGbHx0dV1RKVphQ/zaNY34Buc7D37LSa09jeSeybWzYcTPjhiZFxzVRJedA=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
-
-    "media-captions": ["media-captions@1.0.4", "", {}, "sha512-cyDNmuZvvO4H27rcBq2Eudxo9IZRDCOX/I7VEyqbxsEiD2Ei7UYUhG/Sc5fvMZjmathgz3fEK7iAKqvpY+Ux1w=="],
 
     "media-typer": ["media-typer@1.1.0", "", {}, "sha512-aisnrDP4GNe06UcKFnV5bfMNPBUw4jsLGaWwWfnH3v02GnBuXX2MCVn5RbrWo0j3pczUilYblq7fQ7Nw2t5XKw=="],
 

@@ -9,7 +9,6 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
-import { MediaPlayer, MediaProvider } from '@vidstack/react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -303,13 +302,12 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">
-          <MediaPlayer
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- preload only, not user-facing */}
+          <video
             key={nextFrame.videoUrl}
             src={nextFrame.videoUrl}
             preload="auto"
-          >
-            <MediaProvider />
-          </MediaPlayer>
+          />
         </div>
       )}
     </>

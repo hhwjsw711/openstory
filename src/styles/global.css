@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '@vidstack/react/player/styles/default/theme.css';
-@import '@vidstack/react/player/styles/default/layouts/video.css';
+@import '@videojs/react/video/skin.css';
 
 @custom-variant dark {
   @media (prefers-color-scheme: dark) {
