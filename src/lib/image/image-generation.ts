@@ -1,4 +1,5 @@
 import { calculateImageCost } from '@/lib/ai/fal-cost';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   getEditEndpoint,
   getTextToImageModelId,
@@ -70,7 +71,7 @@ export type ImageGenerationResult = {
     file_sizes: number[];
     seed?: number;
     has_nsfw_concepts?: boolean[];
-    cost?: number;
+    cost?: Microdollars;
     requestId?: string;
     usedOwnKey: boolean;
   };
@@ -146,7 +147,7 @@ export async function generateImageWithProvider(
           ...(imageMedia && { generatedImage: imageMedia }),
         },
         costDetails: result.metadata.cost
-          ? { total: result.metadata.cost }
+          ? { total: microsToUsd(result.metadata.cost) }
           : undefined,
       })
       .end();

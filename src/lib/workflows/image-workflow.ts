@@ -1,7 +1,7 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToUsd } from '@/lib/billing/money';
+import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
@@ -105,8 +105,7 @@ export const generateImageWorkflow = createWorkflow(
       });
     });
 
-    const imageCostRaw = imageResult.metadata.cost ?? 0;
-    const imageCostMicros = usdToMicros(imageCostRaw);
+    const imageCostMicros = imageResult.metadata.cost ?? ZERO_MICROS;
     const { teamId, frameId, sequenceId } = input;
     if (
       isBillingEnabled() &&

@@ -1,4 +1,5 @@
 import { calculateAudioCost } from '@/lib/ai/fal-cost';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   AUDIO_MODEL_KEYS,
   AUDIO_MODELS,
@@ -46,7 +47,7 @@ export type MusicResult = {
     model: string;
     provider: string;
     duration: number;
-    cost: number;
+    cost: Microdollars;
     generatedAt: string;
     usedOwnKey: boolean;
   };
@@ -165,10 +166,9 @@ export async function generateMusicForScene(
     span
       .update({
         output: { audioUrl: result.audioUrl },
-        costDetails:
-          typeof result.metadata?.cost === 'number'
-            ? { total: result.metadata.cost }
-            : undefined,
+        costDetails: result.metadata?.cost
+          ? { total: microsToUsd(result.metadata.cost) }
+          : undefined,
       })
       .end();
 

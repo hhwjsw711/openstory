@@ -6,7 +6,7 @@
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToUsd } from '@/lib/billing/money';
+import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import {
   getFrameWithSequence,
   getSequenceFrames,
@@ -98,11 +98,7 @@ export const generateMotionWorkflow = createWorkflow(
         : (input.duration ?? 2);
 
     // Deduct credits (skip if team used own fal key)
-    const motionCostRaw =
-      typeof videoResult.metadata?.cost === 'number'
-        ? videoResult.metadata.cost
-        : 0;
-    const motionCostMicros = usdToMicros(motionCostRaw);
+    const motionCostMicros = videoResult.metadata?.cost ?? ZERO_MICROS;
     const { teamId } = input;
     if (
       isBillingEnabled() &&
