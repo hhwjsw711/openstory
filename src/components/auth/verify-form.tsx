@@ -22,11 +22,6 @@ import { authClient } from '@/lib/auth/client';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
-function hasSkippedPasskeyPrompt(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem('openstory-passkey-skip') === 'true';
-}
-
 type VerifyFormProps = {
   email: string;
   redirectTo?: string;
@@ -59,15 +54,7 @@ export function VerifyForm({
             setError(result.error.message || 'Invalid code');
             return;
           }
-          // Redirect to passkey setup if user hasn't skipped it
-          if (!hasSkippedPasskeyPrompt()) {
-            await navigate({
-              to: '/settings/passkeys',
-              search: { setup: true },
-            });
-          } else {
-            await navigate({ to: redirectTo });
-          }
+          await navigate({ to: redirectTo });
         } catch (err) {
           console.error('[VerifyForm] Verify OTP error:', err);
           setError(err instanceof Error ? err.message : 'Verification failed');

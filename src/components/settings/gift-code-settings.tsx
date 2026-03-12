@@ -22,7 +22,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, Copy, Gift, LinkIcon, ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const RETURN_KEY = 'openstory:billing-return';
@@ -54,22 +54,27 @@ export function GiftCodeSettings({ code }: GiftCodeSettingsProps) {
 
 const PENDING_GIFT_KEY = 'openstory:pending-gift-code';
 
-function resolveInitialCode(codeProp?: string): string {
-  if (codeProp) return codeProp.toUpperCase();
-  if (typeof window !== 'undefined') {
-    const stored = sessionStorage.getItem(PENDING_GIFT_KEY);
-    if (stored) {
-      sessionStorage.removeItem(PENDING_GIFT_KEY);
-      return stored.toUpperCase();
-    }
-  }
-  return '';
-}
-
 function RedeemSection({ code: codeProp }: { code?: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [code, setCode] = useState(() => resolveInitialCode(codeProp));
+  const [code, setCode] = useState(codeProp?.toUpperCase() ?? '');
+
+  // Sync code when URL search param changes after mount
+  useEffect(() => {
+    if (codeProp) {
+      setCode(codeProp.toUpperCase());
+    }
+  }, [codeProp]);
+
+  // Read pending gift code from sessionStorage (set by /gift/:code page for login flow)
+  useEffect(() => {
+    if (codeProp) return;
+    const stored = sessionStorage.getItem(PENDING_GIFT_KEY);
+    if (stored) {
+      sessionStorage.removeItem(PENDING_GIFT_KEY);
+      setCode(stored.toUpperCase());
+    }
+  }, [codeProp]);
 
   const redeemMutation = useMutation({
     mutationFn: (input: { code: string }) => redeemGiftTokenFn({ data: input }),
