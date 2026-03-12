@@ -5,11 +5,12 @@
 
 import { getDb } from '#db-client';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
@@ -88,16 +89,19 @@ export const mergeAudioVideoWorkflow = createWorkflow(
         );
       }
 
-      const videoBlob = await response.blob();
       const extension = getExtensionFromUrl(muxResult.videoUrl) || 'mp4';
       const contentType = getMimeTypeFromExtension(extension);
       const shortHash = generateId().slice(-8);
       const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_openstory.${extension}`;
 
-      const result = await uploadFile(STORAGE_BUCKETS.VIDEOS, path, videoBlob, {
-        contentType,
-        upsert: true,
-      });
+      const result = await uploadResponse(
+        response,
+        STORAGE_BUCKETS.VIDEOS,
+        path,
+        {
+          contentType,
+        }
+      );
 
       return { path, url: result.publicUrl };
     });
@@ -128,18 +132,19 @@ export const mergeAudioVideoWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getDb()
         .update(sequences)
         .set({
           mergedVideoStatus: 'failed',
-          mergedVideoError: String(failResponse),
+          mergedVideoError: error,
           updatedAt: new Date(),
         })
         .where(eq(sequences.id, input.sequenceId));
 
       console.error(
-        `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${failResponse}`
+        `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${error}`
       );
 
       return `Audio+video mux failed for sequence ${input.sequenceId}`;

@@ -1,27 +1,42 @@
 /**
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
+ *
+ * Uses batched polling: each context.run polls in a tight loop for ~30s,
+ * then checkpoints via context.sleep between batches for durability.
+ * This reduces QStash steps by ~10x vs one-step-per-poll.
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
+import { micros, microsToUsd } from '@/lib/billing/money';
 import {
   getFrameWithSequence,
   getSequenceFrames,
   updateFrame,
 } from '@/lib/db/helpers/frames';
-import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+import {
+  calculateMotionMetadata,
+  pollMotionJob,
+  submitMotionJob,
+} from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+
+/** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
+const POLL_BATCH_DURATION_MS = 30_000;
+const POLL_INTERVAL_MS = 3_000;
+/** 30 batches × 30s = 15 minutes total timeout */
+const MAX_BATCHES = 30;
 
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
@@ -70,9 +85,9 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2: Generate motion/video
-    const videoResult = await context.run('generate-motion', async () => {
-      const result = await generateMotionForFrame({
+    // Step 2a: Submit the motion generation job
+    const job = await context.run('submit-motion', async () => {
+      return submitMotionJob({
         imageUrl: input.imageUrl,
         prompt: input.prompt,
         model,
@@ -80,26 +95,80 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        traceName: 'frame-motion',
         teamId: input.teamId,
       });
-
-      if (!result.success || !result.videoUrl) {
-        throw new Error(result.error || 'Motion generation failed');
-      }
-
-      return result;
     });
 
-    const actualDuration =
-      typeof videoResult.metadata?.duration === 'number'
-        ? videoResult.metadata.duration
-        : (input.duration ?? 2);
+    // Step 2b: Batched polling — tight loop inside each context.run, checkpoint between batches
+    let videoUrl = '';
+
+    for (let batch = 0; batch < MAX_BATCHES; batch++) {
+      if (batch > 0) {
+        await context.sleep(`motion-batch-wait-${batch}`, 1);
+      }
+
+      const poll = await context.run(`motion-poll-batch-${batch}`, async () => {
+        const deadline = Date.now() + POLL_BATCH_DURATION_MS;
+
+        while (Date.now() < deadline) {
+          const result = await pollMotionJob(
+            job.jobId,
+            job.modelKey,
+            input.teamId
+          );
+
+          if (result.progress !== undefined) {
+            console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
+          }
+
+          if (result.status === 'completed' && result.videoUrl) {
+            console.log(`[MotionWorkflow] Generation completed`);
+            return result;
+          }
+
+          if (result.status === 'failed') {
+            return result;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+
+        return { status: 'pending' as const };
+      });
+
+      if (poll.status === 'completed' && 'videoUrl' in poll && poll.videoUrl) {
+        videoUrl = poll.videoUrl;
+        break;
+      }
+
+      if (poll.status === 'failed') {
+        throw new Error(
+          ('error' in poll && poll.error) || 'Motion generation failed'
+        );
+      }
+    }
+
+    if (!videoUrl) {
+      throw new Error('Motion generation timed out after 15 minutes');
+    }
+
+    // Calculate cost + metadata
+    const motionMeta = calculateMotionMetadata({
+      imageUrl: input.imageUrl,
+      prompt: input.prompt,
+      model,
+      duration: input.duration,
+      fps: input.fps,
+      motionBucket: input.motionBucket,
+      aspectRatio: input.aspectRatio,
+    });
+
+    const actualDuration = motionMeta.duration;
 
     // Deduct credits (skip if team used own fal key)
-    const motionCostMicros = videoResult.metadata?.cost ?? ZERO_MICROS;
+    const motionCostMicros = micros(motionMeta.cost);
     const { teamId } = input;
-    if (motionCostMicros > 0 && teamId && !videoResult.metadata.usedOwnKey) {
+    if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
         if (!canAfford) {
@@ -115,16 +184,11 @@ export const generateMotionWorkflow = createWorkflow(
             model,
             frameId: input.frameId,
             sequenceId: input.sequenceId,
-            duration: videoResult.metadata?.duration,
+            duration: motionMeta.duration,
           },
         });
       });
     }
-
-    if (!videoResult.videoUrl) {
-      throw new Error('Video URL missing from generation result');
-    }
-    let videoUrl = videoResult.videoUrl;
 
     if (input.frameId) {
       const { frameId } = input;
@@ -232,12 +296,13 @@ export const generateMotionWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
       if (input.frameId) {
         await updateFrame(
           input.frameId,
           {
             videoStatus: 'failed',
-            videoError: failResponse,
+            videoError: error,
           },
           { throwOnMissing: false }
         );
@@ -255,7 +320,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       console.error(
-        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${failResponse}`
+        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${error}`
       );
 
       return `Motion generation failed for frame ${input.frameId}`;

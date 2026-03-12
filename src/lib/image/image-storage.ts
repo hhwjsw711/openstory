@@ -5,6 +5,7 @@
 
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { deleteFile, getSignedUrl, listFiles, uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
@@ -64,19 +65,16 @@ export async function uploadImageToStorage(
   const ulid = generateId();
   const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
 
-  const imageBlob = await response.blob();
-
   // Get proper MIME type for the extension
   const contentType = getMimeTypeFromExtension(extension);
 
-  // Upload to R2 Storage
-  const result = await uploadFile(
+  // Stream directly to R2 Storage (avoids buffering entire image in memory)
+  const result = await uploadResponse(
+    response,
     STORAGE_BUCKETS.THUMBNAILS,
     storagePath,
-    imageBlob,
     {
       contentType,
-      upsert: true, // Overwrite if exists
     }
   );
 

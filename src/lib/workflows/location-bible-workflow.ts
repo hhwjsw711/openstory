@@ -11,6 +11,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -218,6 +219,7 @@ export const locationBibleWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Emit failure event for phase completion
       if (input.sequenceId) {
@@ -229,7 +231,7 @@ export const locationBibleWorkflow = createWorkflow(
 
       console.error(
         '[LocationBibleWorkflow]',
-        `Location reference generation failed: ${failResponse}`
+        `Location reference generation failed: ${error}`
       );
 
       return `Location bible generation failed`;

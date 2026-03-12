@@ -1,5 +1,6 @@
 import { getDb } from '#db-client';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
@@ -202,12 +203,13 @@ export const generateMusicWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getDb()
         .update(sequences)
         .set({
           musicStatus: 'failed',
-          musicError: String(failResponse),
+          musicError: error,
           updatedAt: new Date(),
         })
         .where(eq(sequences.id, input.sequenceId));
@@ -223,7 +225,7 @@ export const generateMusicWorkflow = createWorkflow(
 
       console.error(
         '[MusicWorkflow]',
-        `Music generation failed for sequence ${input.sequenceId}: ${failResponse}`
+        `Music generation failed for sequence ${input.sequenceId}: ${error}`
       );
       return `Music generation failed for sequence ${input.sequenceId}`;
     },

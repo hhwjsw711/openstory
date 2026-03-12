@@ -7,6 +7,7 @@
  */
 
 import { getGenerationChannel } from '@/lib/realtime';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type { RecastLocationWorkflowInput } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -94,18 +95,19 @@ export const recastLocationWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getGenerationChannel(input.sequenceId).emit(
         'generation.recast-location:failed',
         {
           locationId: input.locationDbId,
-          error: String(failResponse),
+          error,
         }
       );
 
       console.error(
         '[RecastLocationWorkflow]',
-        `Recast failed for ${input.locationName}: ${failResponse}`
+        `Recast failed for ${input.locationName}: ${error}`
       );
 
       return `Recast failed for ${input.locationName}`;

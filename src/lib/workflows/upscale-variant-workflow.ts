@@ -1,4 +1,5 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
@@ -157,10 +158,11 @@ export const upscaleVariantWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       console.error(
         '[UpscaleVariantWorkflow]',
-        `Upscale failed for frame ${input.frameId}: ${failResponse}`
+        `Upscale failed for frame ${input.frameId}: ${error}`
       );
 
       await updateFrame(

@@ -62,8 +62,9 @@ export async function deductWorkflowCredits(
 }
 
 /**
- * Extract the cost from a generation result's metadata.
- * Values are already in Microdollars. Returns ZERO_MICROS if missing.
+ * Extract the cost from a fal.ai generation result's metadata.
+ * Returns ZERO_MICROS if missing. Cost is already in Microdollars
+ * from calculateImageCost/calculateVideoCost/calculateAudioCost.
  */
 export function extractImageCost(metadata: {
   cost?: Microdollars;

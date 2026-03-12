@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { getFramesByIds } from '@/lib/db/helpers/frames';
 import { getSequenceById } from '@/lib/db/helpers/queries';
@@ -196,21 +197,22 @@ export const regenerateFramesWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getGenerationChannel(input.sequenceId).emit(
         'generation.recast:failed',
         {
           characterId: input.triggeringCharacterId,
-          error: String(failResponse),
+          error,
         }
       );
 
       console.error(
         '[RegenerateFramesWorkflow]',
-        `Frame regeneration failed: ${failResponse}`
+        `Frame regeneration failed: ${error}`
       );
 
-      return `Frame regeneration failed: ${failResponse}`;
+      return `Frame regeneration failed: ${error}`;
     },
   }
 );
