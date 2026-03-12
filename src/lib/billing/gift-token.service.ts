@@ -3,7 +3,7 @@ import { generateId } from '@/lib/db/id';
 import { giftTokenRedemptions, giftTokens } from '@/lib/db/schema/gift-tokens';
 import type { GiftToken } from '@/lib/db/schema/gift-tokens';
 import { ValidationError } from '@/lib/errors';
-import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { addCredits } from './credit-service';
 import { micros, microsToDisplayUsd, microsToUsd, usdToMicros } from './money';
 
@@ -73,59 +73,46 @@ export async function redeemGiftToken(opts: {
   const db = getDb();
   const normalizedCode = opts.code.trim().toUpperCase();
 
-  const token = await db.transaction(async (tx) => {
-    const [found] = await tx
-      .select()
-      .from(giftTokens)
-      .where(eq(giftTokens.code, normalizedCode))
-      .limit(1);
+  // Find the token
+  const [token] = await db
+    .select()
+    .from(giftTokens)
+    .where(eq(giftTokens.code, normalizedCode))
+    .limit(1);
 
-    if (!found) {
-      throw new ValidationError('Invalid gift code');
-    }
+  if (!token) {
+    throw new ValidationError('Invalid gift code');
+  }
 
-    if (found.expiresAt && found.expiresAt < new Date()) {
-      throw new ValidationError('This gift code has expired');
-    }
+  if (token.expiresAt && token.expiresAt < new Date()) {
+    throw new ValidationError('This gift code has expired');
+  }
 
-    // Count existing redemptions
-    const [{ value: redemptionCount }] = await tx
-      .select({ value: count() })
-      .from(giftTokenRedemptions)
-      .where(eq(giftTokenRedemptions.giftTokenId, found.id));
+  // Count existing redemptions
+  const [{ value: redemptionCount }] = await db
+    .select({ value: count() })
+    .from(giftTokenRedemptions)
+    .where(eq(giftTokenRedemptions.giftTokenId, token.id));
 
-    if (redemptionCount >= found.maxRedemptions) {
-      throw new ValidationError('This gift code has been fully redeemed');
-    }
+  if (redemptionCount >= token.maxRedemptions) {
+    throw new ValidationError('This gift code has been fully redeemed');
+  }
 
-    // Check if this team already redeemed
-    const [existing] = await tx
-      .select()
-      .from(giftTokenRedemptions)
-      .where(
-        and(
-          eq(giftTokenRedemptions.giftTokenId, found.id),
-          eq(giftTokenRedemptions.teamId, opts.teamId)
-        )
-      )
-      .limit(1);
-
-    if (existing) {
-      throw new ValidationError(
-        'Your team has already redeemed this gift code'
-      );
-    }
-
-    // Record redemption
-    await tx.insert(giftTokenRedemptions).values({
+  // Record redemption — unique index on (giftTokenId, teamId) prevents duplicates
+  const [inserted] = await db
+    .insert(giftTokenRedemptions)
+    .values({
       id: generateId(),
-      giftTokenId: found.id,
+      giftTokenId: token.id,
       teamId: opts.teamId,
       userId: opts.userId,
-    });
+    })
+    .onConflictDoNothing()
+    .returning();
 
-    return found;
-  });
+  if (!inserted) {
+    throw new ValidationError('Your team has already redeemed this gift code');
+  }
 
   const amountMicros = micros(token.amountMicros);
 
