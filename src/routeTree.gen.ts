@@ -14,7 +14,6 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GiftCodeRouteImport } from './routes/gift/$code'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
 import { Route as ProtectedCreditsRouteImport } from './routes/_protected/credits'
 import { Route as AuthVerifyRouteImport } from './routes/_auth/verify'
@@ -70,11 +69,6 @@ const GiftCodeRoute = GiftCodeRouteImport.update({
 const ApiRealtimeRoute = ApiRealtimeRouteImport.update({
   id: '/api/realtime',
   path: '/api/realtime',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedEvalRoute = ProtectedEvalRouteImport.update({
@@ -264,7 +258,6 @@ export interface FileRoutesByFullPath {
   '/verify': typeof AuthVerifyRoute
   '/credits': typeof ProtectedCreditsRoute
   '/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
@@ -302,7 +295,6 @@ export interface FileRoutesByTo {
   '/verify': typeof AuthVerifyRoute
   '/credits': typeof ProtectedCreditsRoute
   '/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
@@ -344,7 +336,6 @@ export interface FileRoutesById {
   '/_auth/verify': typeof AuthVerifyRoute
   '/_protected/credits': typeof ProtectedCreditsRoute
   '/_protected/eval': typeof ProtectedEvalRoute
-  '/api/health': typeof ApiHealthRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
   '/_protected/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
@@ -385,7 +376,6 @@ export interface FileRouteTypes {
     | '/verify'
     | '/credits'
     | '/eval'
-    | '/api/health'
     | '/api/realtime'
     | '/gift/$code'
     | '/sequences/$id'
@@ -423,7 +413,6 @@ export interface FileRouteTypes {
     | '/verify'
     | '/credits'
     | '/eval'
-    | '/api/health'
     | '/api/realtime'
     | '/gift/$code'
     | '/sequences/$id'
@@ -464,7 +453,6 @@ export interface FileRouteTypes {
     | '/_auth/verify'
     | '/_protected/credits'
     | '/_protected/eval'
-    | '/api/health'
     | '/api/realtime'
     | '/gift/$code'
     | '/_protected/sequences/$id'
@@ -501,7 +489,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
-  ApiHealthRoute: typeof ApiHealthRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -551,13 +538,6 @@ declare module '@tanstack/react-router' {
       path: '/api/realtime'
       fullPath: '/api/realtime'
       preLoaderRoute: typeof ApiRealtimeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected/eval': {
@@ -891,7 +871,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
-  ApiHealthRoute: ApiHealthRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

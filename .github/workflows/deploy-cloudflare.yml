@@ -203,31 +203,23 @@ jobs:
           SECRET_APP_NAME: ${{ secrets.APP_NAME }}
           SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
           SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          SECRET_EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           SECRET_FAL_CONCURRENCY_LIMIT: ${{ secrets.FAL_CONCURRENCY_LIMIT }}
           SECRET_FAL_KEY: ${{ secrets.FAL_KEY }}
           SECRET_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           SECRET_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          SECRET_LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
-          SECRET_LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          SECRET_LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          SECRET_LANGFUSE_TRACING_ENVIRONMENT: ${{ secrets.LANGFUSE_TRACING_ENVIRONMENT }}
-          SECRET_LETZAI_API_KEY: ${{ secrets.LETZAI_API_KEY }}
           SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
           SECRET_QSTASH_CURRENT_SIGNING_KEY: ${{ secrets.QSTASH_CURRENT_SIGNING_KEY }}
           SECRET_QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
           SECRET_QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
-          SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
           SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
           # Build JSON from SECRET_* env vars, stripping empty values
-          jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \
-            | bunx wrangler secret bulk --name "pr-${PR_NUMBER}"
+          jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' 2>/dev/null \
+            | bunx wrangler secret bulk --name "pr-${PR_NUMBER}" 2>&1 | grep -v '"value"' || echo "::warning::Failed to push some secrets"
 
       - name: Find existing PR comment
         uses: peter-evans/find-comment@v3
