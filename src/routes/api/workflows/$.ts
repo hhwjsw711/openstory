@@ -5,6 +5,10 @@
 
 import { initAIEventBridge } from '@/lib/observability/ai-event-bridge';
 import { flushTracing, initTracing } from '@/lib/observability/langfuse';
+import {
+  initMemoryProfiler,
+  recordMemorySample,
+} from '@/lib/observability/memory-profiler';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
@@ -37,6 +41,7 @@ function getHandler() {
     // Initialize Langfuse tracing and AI event bridge at load
     initTracing();
     initAIEventBridge();
+    initMemoryProfiler();
 
     _handler = serveMany(
       {
@@ -75,7 +80,12 @@ export const Route = createFileRoute('/api/workflows/$')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const workflowName =
+          new URL(request.url).pathname.split('/api/workflows/')[1] ??
+          'unknown';
+        recordMemorySample(workflowName, 'before');
         const response = await getHandler().POST({ request });
+        recordMemorySample(workflowName, 'after');
         await flushTracing();
         return response;
       },

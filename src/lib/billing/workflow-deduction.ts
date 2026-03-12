@@ -14,12 +14,7 @@ import {
   deductCredits,
   hasEnoughCredits,
 } from '@/lib/billing/credit-service';
-import {
-  type Microdollars,
-  microsToUsd,
-  usdToMicros,
-  ZERO_MICROS,
-} from './money';
+import { type Microdollars, micros, microsToUsd, ZERO_MICROS } from './money';
 
 type WorkflowDeductionOpts = {
   /** Team to deduct from. Skips deduction if undefined (e.g., anonymous workflows). */
@@ -74,11 +69,11 @@ export async function deductWorkflowCredits(
 }
 
 /**
- * Extract the numeric cost from a fal.ai image generation result's metadata.
- * Converts USD cost to Microdollars. Returns ZERO_MICROS if missing.
+ * Extract the numeric cost from image generation result metadata.
+ * The cost is already in Microdollars (set by calculateImageCost in fal-cost.ts).
  */
 export function extractImageCost(metadata: { cost?: unknown }): Microdollars {
   return typeof metadata.cost === 'number'
-    ? usdToMicros(metadata.cost)
+    ? micros(metadata.cost)
     : ZERO_MICROS;
 }
