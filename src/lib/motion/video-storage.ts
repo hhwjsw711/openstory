@@ -9,8 +9,8 @@ import {
   getSignedUrl,
   getSignedUrlWithDownload,
   listFiles,
-  uploadFile,
 } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
@@ -107,19 +107,16 @@ export async function uploadVideoToStorage(
       frameId,
     });
 
-    const videoBlob = await response.blob();
-
     // Get proper MIME type for the extension
     const contentType = getMimeTypeFromExtension(extension);
 
-    // Upload to R2 Storage
-    const result = await uploadFile(
+    // Stream directly to R2 Storage (avoids buffering entire video in memory)
+    const result = await uploadResponse(
+      response,
       STORAGE_BUCKETS.VIDEOS,
       storagePath,
-      videoBlob,
       {
         contentType,
-        upsert: true, // Overwrite if exists
       }
     );
 

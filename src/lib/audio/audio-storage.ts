@@ -4,7 +4,7 @@
  */
 
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
@@ -94,16 +94,15 @@ export async function uploadAudioToStorage(
       storagePath,
     });
 
-    const audioBlob = await response.blob();
     const contentType = getMimeTypeFromExtension(extension);
 
-    const result = await uploadFile(
+    // Stream directly to R2 Storage (avoids buffering entire audio in memory)
+    const result = await uploadResponse(
+      response,
       STORAGE_BUCKETS.AUDIO,
       storagePath,
-      audioBlob,
       {
         contentType,
-        upsert: true,
       }
     );
 

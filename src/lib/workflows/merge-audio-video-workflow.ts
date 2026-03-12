@@ -10,7 +10,7 @@ import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
@@ -89,16 +89,19 @@ export const mergeAudioVideoWorkflow = createWorkflow(
         );
       }
 
-      const videoBlob = await response.blob();
       const extension = getExtensionFromUrl(muxResult.videoUrl) || 'mp4';
       const contentType = getMimeTypeFromExtension(extension);
       const shortHash = generateId().slice(-8);
       const path = `teams/${input.teamId}/sequences/${input.sequenceId}/merged/${shortHash}_openstory.${extension}`;
 
-      const result = await uploadFile(STORAGE_BUCKETS.VIDEOS, path, videoBlob, {
-        contentType,
-        upsert: true,
-      });
+      const result = await uploadResponse(
+        response,
+        STORAGE_BUCKETS.VIDEOS,
+        path,
+        {
+          contentType,
+        }
+      );
 
       return { path, url: result.publicUrl };
     });
