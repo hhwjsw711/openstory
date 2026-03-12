@@ -5,6 +5,7 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type { VisualPromptSceneWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -87,12 +88,13 @@ export const visualPromptSceneWorkflow = createWorkflow(
   },
   {
     failureFunction: async ({ context, failStatus, failResponse }) => {
+      const error = sanitizeFailResponse(failResponse);
       console.error('[VisualPromptWorkflow] Failed', {
         workflowRunId: context.workflowRunId,
         failStatus,
-        failResponse,
+        failResponse: error,
       });
-      return `Visual prompt generation failed: ${failResponse}`;
+      return `Visual prompt generation failed: ${error}`;
     },
   }
 );

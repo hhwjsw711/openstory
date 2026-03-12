@@ -10,7 +10,6 @@ import {
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
-import { createImageMedia } from '@/lib/observability/langfuse-media';
 import { startObservation } from '@langfuse/tracing';
 
 import { getEnv } from '#env';
@@ -134,16 +133,10 @@ export async function generateImageWithProvider(
   try {
     const result = await generateImageInternal(params, modelId);
 
-    // Fetch first image for inline preview in Langfuse
-    const imageMedia = result.imageUrls[0]
-      ? await createImageMedia(result.imageUrls[0])
-      : null;
-
     span
       .update({
         output: {
           imageUrls: result.imageUrls,
-          ...(imageMedia && { generatedImage: imageMedia }),
         },
         costDetails: result.metadata.cost
           ? { total: result.metadata.cost }

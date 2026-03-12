@@ -4,6 +4,7 @@
  */
 
 import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   audioDesignGenerationResultSchema,
@@ -923,13 +924,14 @@ export const analyzeScriptWorkflow = createWorkflow(
       const { sequenceId } = context.requestPayload;
       if (!sequenceId) return;
 
-      console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
-      await updateSequenceStatus(sequenceId, 'failed', String(failResponse));
+      const error = sanitizeFailResponse(failResponse);
+      console.error('[AnalyzeScriptWorkflow] Failure:', error);
+      await updateSequenceStatus(sequenceId, 'failed', error);
       await getGenerationChannel(sequenceId).emit('generation.failed', {
-        message: String(failResponse),
+        message: error,
       });
 
-      return `Analysis workflow failed: ${failResponse}`;
+      return `Analysis workflow failed: ${error}`;
     },
   }
 );

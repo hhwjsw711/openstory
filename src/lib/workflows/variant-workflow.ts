@@ -1,4 +1,5 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -220,6 +221,7 @@ export const generateVariantWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
       if (input.frameId) {
@@ -227,7 +229,7 @@ export const generateVariantWorkflow = createWorkflow(
           input.frameId,
           {
             thumbnailStatus: 'failed',
-            thumbnailError: failResponse,
+            thumbnailError: error,
           },
           { throwOnMissing: false }
         );
@@ -249,7 +251,7 @@ export const generateVariantWorkflow = createWorkflow(
 
         console.error(
           '[VariantWorkflow]',
-          `Image generation failed for frame ${input.frameId}: ${failResponse}`
+          `Image generation failed for frame ${input.frameId}: ${error}`
         );
       }
 

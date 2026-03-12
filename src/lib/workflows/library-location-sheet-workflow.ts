@@ -8,6 +8,7 @@
 
 import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -159,10 +160,11 @@ export const libraryLocationSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       console.error(
         '[LibraryLocationSheetWorkflow]',
-        `Sheet generation failed for location ${input.locationName}: ${failResponse}`
+        `Sheet generation failed for location ${input.locationName}: ${error}`
       );
 
       return `Library location sheet generation failed for ${input.locationName}`;

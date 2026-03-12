@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -213,14 +214,11 @@ export const characterSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Mark character sheet as failed
       if (input.characterDbId) {
-        await updateSheetStatus(
-          input.characterDbId,
-          'failed',
-          String(failResponse)
-        );
+        await updateSheetStatus(input.characterDbId, 'failed', error);
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {
@@ -229,14 +227,14 @@ export const characterSheetWorkflow = createWorkflow(
             {
               characterId: input.characterDbId,
               status: 'failed',
-              error: String(failResponse),
+              error,
             }
           );
         }
 
         console.error(
           '[CharacterSheetWorkflow]',
-          `Sheet generation failed for character ${input.characterName}: ${failResponse}`
+          `Sheet generation failed for character ${input.characterName}: ${error}`
         );
       }
 

@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -300,17 +301,18 @@ export const libraryTalentSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       console.error(
         '[LibraryTalentSheetWorkflow]',
-        `Sheet generation failed for talent ${input.talentName}: ${failResponse}`
+        `Sheet generation failed for talent ${input.talentName}: ${error}`
       );
 
       // Emit failed status
       await getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
         talentId: input.talentId,
         status: 'failed',
-        error: `Sheet generation failed: ${failResponse}`,
+        error: `Sheet generation failed: ${error}`,
       });
 
       return `Talent sheet generation failed for ${input.talentName}`;

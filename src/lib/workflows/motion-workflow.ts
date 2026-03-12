@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { usdToMicros, microsToUsd } from '@/lib/billing/money';
@@ -242,12 +243,13 @@ export const generateMotionWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
       if (input.frameId) {
         await updateFrame(
           input.frameId,
           {
             videoStatus: 'failed',
-            videoError: failResponse,
+            videoError: error,
           },
           { throwOnMissing: false }
         );
@@ -265,7 +267,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       console.error(
-        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${failResponse}`
+        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${error}`
       );
 
       return `Motion generation failed for frame ${input.frameId}`;

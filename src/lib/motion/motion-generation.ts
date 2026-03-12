@@ -6,11 +6,6 @@ import {
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
 } from '@/lib/ai/models';
-import {
-  createImageMedia,
-  createVideoMedia,
-} from '@/lib/observability/langfuse-media';
-
 import { getEnv } from '#env';
 import {
   type AspectRatio,
@@ -192,9 +187,6 @@ export async function generateMotionForFrame(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
-  // Fetch input image for inline preview in Langfuse
-  const inputImageMedia = await createImageMedia(options.imageUrl);
-
   const span = startObservation(
     options.traceName ?? 'fal-motion',
     {
@@ -202,7 +194,6 @@ export async function generateMotionForFrame(
       input: {
         prompt: options.prompt,
         imageUrl: options.imageUrl,
-        ...(inputImageMedia && { inputImage: inputImageMedia }),
       },
     },
     { asType: 'generation' }
@@ -211,16 +202,10 @@ export async function generateMotionForFrame(
   try {
     const result = await generateMotionInternal(options, modelConfig);
 
-    // Fetch output video for Langfuse media attachment
-    const outputVideoMedia = result.videoUrl
-      ? await createVideoMedia(result.videoUrl)
-      : null;
-
     span
       .update({
         output: {
           videoUrl: result.videoUrl,
-          ...(outputVideoMedia && { generatedVideo: outputVideoMedia }),
         },
         costDetails:
           typeof result.metadata?.cost === 'number'

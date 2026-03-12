@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
@@ -218,14 +219,11 @@ export const locationSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Mark location reference as failed
       if (input.locationDbId) {
-        await updateReferenceStatus(
-          input.locationDbId,
-          'failed',
-          String(failResponse)
-        );
+        await updateReferenceStatus(input.locationDbId, 'failed', error);
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {
@@ -234,14 +232,14 @@ export const locationSheetWorkflow = createWorkflow(
             {
               locationId: input.locationDbId,
               status: 'failed',
-              error: String(failResponse),
+              error,
             }
           );
         }
 
         console.error(
           '[LocationSheetWorkflow]',
-          `Reference generation failed for location ${input.locationName}: ${failResponse}`
+          `Reference generation failed for location ${input.locationName}: ${error}`
         );
       }
 

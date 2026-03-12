@@ -5,6 +5,7 @@
 
 import { getDb } from '#db-client';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
@@ -128,18 +129,19 @@ export const mergeAudioVideoWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getDb()
         .update(sequences)
         .set({
           mergedVideoStatus: 'failed',
-          mergedVideoError: String(failResponse),
+          mergedVideoError: error,
           updatedAt: new Date(),
         })
         .where(eq(sequences.id, input.sequenceId));
 
       console.error(
-        `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${failResponse}`
+        `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${error}`
       );
 
       return `Audio+video mux failed for sequence ${input.sequenceId}`;

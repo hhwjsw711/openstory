@@ -7,6 +7,7 @@
  */
 
 import { getGenerationChannel } from '@/lib/realtime';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type { RecastCharacterWorkflowInput } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -95,18 +96,19 @@ export const recastCharacterWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getGenerationChannel(input.sequenceId).emit(
         'generation.recast:failed',
         {
           characterId: input.characterDbId,
-          error: String(failResponse),
+          error,
         }
       );
 
       console.error(
         '[RecastCharacterWorkflow]',
-        `Recast failed for ${input.characterName}: ${failResponse}`
+        `Recast failed for ${input.characterName}: ${error}`
       );
 
       return `Recast failed for ${input.characterName}`;

@@ -5,6 +5,7 @@
 
 import { getDb } from '#db-client';
 import { usdToMicros } from '@/lib/billing/money';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
@@ -174,18 +175,19 @@ export const mergeVideoWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       await getDb()
         .update(sequences)
         .set({
           mergedVideoStatus: 'failed',
-          mergedVideoError: String(failResponse),
+          mergedVideoError: error,
           updatedAt: new Date(),
         })
         .where(eq(sequences.id, input.sequenceId));
 
       console.error(
-        `[MergeVideoWorkflow] Failed to merge sequence ${input.sequenceId}: ${failResponse}`
+        `[MergeVideoWorkflow] Failed to merge sequence ${input.sequenceId}: ${error}`
       );
 
       return `Merge failed for sequence ${input.sequenceId}`;
