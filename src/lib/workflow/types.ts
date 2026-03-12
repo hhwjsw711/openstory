@@ -3,6 +3,7 @@
  */
 
 import type {
+  AUDIO_MODELS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
   ImageToVideoModel,
@@ -15,9 +16,9 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
-import type { DirectorDnaConfig } from '@/lib/services/director-dna-types';
-import type { Json } from '@/types/database';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
+import type { StyleConfig } from '@/lib/db/schema';
+import type { Json } from '@/types/database';
 
 /**
  * Base workflow context that includes authentication
@@ -80,6 +81,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
     regenerateAll?: boolean;
   };
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -93,11 +96,13 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
   // Required inputs
   script: string;
   aspectRatio: AspectRatio;
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
   videoModel?: ImageToVideoModel;
   autoGenerateMotion?: boolean;
+  autoGenerateMusic?: boolean;
+  musicModel?: keyof typeof AUDIO_MODELS;
   /** Talent IDs suggested by user for AI-assisted casting */
   suggestedTalentIds?: string[];
   /** Location IDs suggested by user for visual consistency */
@@ -128,7 +133,7 @@ export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowCon
   characterName: string;
   /** Character metadata from script analysis */
   characterMetadata: CharacterBibleEntry;
-  /** Image model to use (defaults to nano_banana_pro) */
+  /** Image model to use (defaults to nano_banana_2) */
   imageModel?: TextToImageModel;
   /** Reference image URL (e.g., from talent sheet) for recasting */
   referenceImageUrl?: string;
@@ -209,7 +214,7 @@ export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowCon
   // Character bible from script analysis
   characterBible: CharacterBibleEntry[];
 
-  /** Image model to use (defaults to nano_banana_pro) */
+  /** Image model to use (defaults to nano_banana_2) */
   imageModel?: TextToImageModel;
 
   /** Matched talent data for characters that should use talent references */
@@ -221,7 +226,7 @@ export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowConte
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
   locationBible: LocationBibleEntry[];
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   imageModel?: TextToImageModel;
 }
@@ -234,7 +239,7 @@ export interface MotionPromptWorkflowInput extends Partial<SequenceWorkflowConte
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
-  styleConfig: DirectorDnaConfig;
+  styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
   videoModel?: ImageToVideoModel;
 }
@@ -439,4 +444,57 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
   libraryLocationDescription?: string;
   /** Frame IDs to regenerate after sheet generation */
   affectedFrameIds: string[];
+}
+
+/**
+ * Compact scene summary passed to the music workflow for AI prompt generation
+ */
+export type MusicSceneSummary = {
+  title: string;
+  storyBeat: string;
+  durationSeconds: number;
+  musicStyle: string;
+  musicMood: string;
+  musicPresence: string;
+  atmosphere?: string;
+};
+
+/**
+ * Music generation workflow input
+ * Generates background music for an entire sequence using audioDesign specs
+ */
+export interface MusicWorkflowInput extends SequenceWorkflowContext {
+  /** Compact scene summaries for AI prompt generation (legacy fallback) */
+  scenes?: MusicSceneSummary[];
+  /** Pre-generated prompt. If provided with tags, skip LLM step. */
+  prompt?: string;
+  /** Pre-generated tags. If provided with prompt, skip LLM step. */
+  tags?: string;
+  /** Duration in seconds */
+  duration?: number;
+  /** Audio model to use */
+  model?: keyof typeof AUDIO_MODELS;
+}
+
+export interface MusicWorkflowResult {
+  audioUrl: string;
+  duration?: number;
+}
+
+/**
+ * Merge audio+video workflow input
+ * Muxes a music track onto the merged video to produce the final output
+ */
+export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
+  /** URL of the merged video (all frames stitched) */
+  mergedVideoUrl: string;
+  /** URL of the sequence-level music track */
+  musicUrl: string;
+  /** Total duration in milliseconds (for compose track timing) */
+  durationMs?: number;
+}
+
+export interface MergeAudioVideoWorkflowResult {
+  mergedVideoUrl: string;
+  mergedVideoPath: string | null;
 }

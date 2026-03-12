@@ -1,10 +1,19 @@
 /**
  * Billing Settings Component
- * Credit balance, top-up buttons, auto-top-up config, transaction history
+ * Credit balance, top-up buttons, auto-top-up config, and invoices
  */
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,6 +34,7 @@ import {
   useBillingBalance,
   BILLING_BALANCE_KEY,
 } from '@/hooks/use-billing-balance';
+import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -34,7 +44,9 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 type BillingSettingsProps = {
   success?: boolean;
@@ -47,30 +59,31 @@ type ApiResponse<T> = {
   error?: { message?: string };
 };
 
-type TransactionData = {
+type InvoiceData = {
   id: string;
   type: string;
   amount: number;
-  balanceAfter: number;
   description: string | null;
   metadata?: { receiptUrl?: string } | null;
   createdAt: string;
 };
 
-type TransactionApiResponse = {
+type InvoiceApiResponse = {
   success: boolean;
-  data?: { transactions: TransactionData[]; total: number };
+  data?: { transactions: InvoiceData[]; total: number };
   error?: { message?: string };
 };
 
-async function fetchTransactions(): Promise<{
-  transactions: TransactionData[];
+async function fetchInvoices(): Promise<{
+  transactions: InvoiceData[];
   total: number;
 }> {
-  const res = await fetch('/api/billing/transactions?limit=20');
-  const json: TransactionApiResponse = await res.json();
+  const res = await fetch(
+    '/api/billing/transactions?type=credit_purchase&limit=10'
+  );
+  const json: InvoiceApiResponse = await res.json();
   if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch transactions');
+    throw new Error(json.error?.message ?? 'Failed to fetch invoices');
   return json.data;
 }
 
@@ -96,42 +109,60 @@ function SectionHeader({ icon: Icon, title, description }: SectionHeaderProps) {
 
 function getErrorMessage(
   error: string | null,
-  balanceError: Error | null,
-  txError: Error | null
+  balanceError: Error | null
 ): string {
   if (error) return error;
   if (balanceError instanceof Error) return balanceError.message;
-  if (txError instanceof Error) return txError.message;
   return 'Something went wrong';
 }
+
+const RETURN_KEY = 'openstory:billing-return';
 
 export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
+  const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   // Clear success/canceled from URL after showing
   useEffect(() => {
     if (success || canceled) {
       const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/settings/billing');
+        window.history.replaceState({}, '', '/credits');
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [success, canceled]);
 
-  // Refetch balance on success
+  // Refetch balance on success + show return toast
   useEffect(() => {
     if (success) {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
       });
       void queryClient.invalidateQueries({
-        queryKey: ['billing-transactions'],
+        queryKey: ['billing-invoices'],
       });
+      void queryClient.invalidateQueries({
+        queryKey: [...BILLING_GATE_KEY],
+      });
+
+      const returnTo = localStorage.getItem(RETURN_KEY);
+      if (returnTo) {
+        localStorage.removeItem(RETURN_KEY);
+        toast.success('Credits added successfully', {
+          description: 'Your balance has been updated.',
+          action: {
+            label: 'Continue creating',
+            onClick: () => void navigate({ to: returnTo }),
+          },
+          duration: 15_000,
+        });
+      }
     }
-  }, [success, queryClient]);
+  }, [success, queryClient, navigate]);
 
   const {
     data: balanceData,
@@ -139,13 +170,40 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     error: balanceError,
   } = useBillingBalance();
 
+  // After successful top-up, prompt to enable auto-topup if not already on
+  useEffect(() => {
+    if (!success || balanceLoading || !balanceData) return;
+    if (balanceData.autoTopUp.enabled) return;
+
+    const lastAmount = localStorage.getItem('openstory:last-topup-amount');
+    localStorage.removeItem('openstory:last-topup-amount');
+    const amount = lastAmount ? parseFloat(lastAmount) : null;
+    if (amount && !isNaN(amount) && amount >= MIN_TOPUP_AMOUNT_USD) {
+      setAutoTopUpPrompt(amount);
+    }
+  }, [success, balanceLoading, balanceData]);
+
+  // When billing is disabled server-side, show a simple message
+  if (!balanceLoading && balanceData?.billingEnabled === false) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing</CardTitle>
+          <CardDescription>
+            Billing is not enabled for this instance.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   const {
-    data: txData,
-    isLoading: txLoading,
-    error: txError,
+    data: invoiceData,
+    isLoading: invoicesLoading,
+    error: invoicesError,
   } = useQuery({
-    queryKey: ['billing-transactions'],
-    queryFn: fetchTransactions,
+    queryKey: ['billing-invoices'],
+    queryFn: fetchInvoices,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -201,12 +259,19 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const effectiveAmount = selectedAmount ?? parseFloat(customAmount);
   const isValidAmount =
     !isNaN(effectiveAmount) && effectiveAmount >= MIN_TOPUP_AMOUNT_USD;
+  const autoTopUpThreshold =
+    autoTopUpPrompt !== null ? Math.ceil((autoTopUpPrompt * 0.1) / 5) * 5 : 5;
 
   const handleTopUp = () => {
     if (!isValidAmount) {
       setError(`Minimum top-up is $${MIN_TOPUP_AMOUNT_USD}`);
       return;
     }
+    // Remember the amount so we can suggest it for auto-topup after checkout
+    localStorage.setItem(
+      'openstory:last-topup-amount',
+      String(effectiveAmount)
+    );
     checkoutMutation.mutate(effectiveAmount);
   };
 
@@ -228,10 +293,40 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </Alert>
       )}
 
-      {(error || balanceError || txError) && (
+      <AlertDialog open={autoTopUpPrompt !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Auto Top-Up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Automatically add ${autoTopUpPrompt} when your balance drops below
+              ${autoTopUpThreshold}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAutoTopUpPrompt(null)}>
+              No thanks
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                autoTopUpMutation.mutate({
+                  enabled: true,
+                  thresholdUsd: autoTopUpThreshold,
+                  amountUsd: autoTopUpPrompt ?? 0,
+                });
+                setAutoTopUpPrompt(null);
+              }}
+              disabled={autoTopUpMutation.isPending}
+            >
+              {autoTopUpMutation.isPending ? 'Enabling…' : 'Enable auto top-up'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {(error || balanceError || invoicesError) && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            {getErrorMessage(error, balanceError, txError)}
+            {getErrorMessage(error, balanceError)}
           </AlertDescription>
         </Alert>
       )}
@@ -266,7 +361,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
           />
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-3">
             {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
               <Button
                 key={amount}
@@ -291,13 +386,12 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
               $
             </span>
             <Input
-              type="number"
-              min={MIN_TOPUP_AMOUNT_USD}
-              step="1"
+              type="text"
+              inputMode="decimal"
               placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
               value={customAmount}
               onChange={(e) => {
-                setCustomAmount(e.target.value);
+                setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''));
                 setSelectedAmount(null);
                 setError(null);
               }}
@@ -320,6 +414,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                 ? `Top up $${effectiveAmount}`
                 : 'Top up'}
           </Button>
+
+          {!balanceLoading && !balanceData?.hasPaymentMethod && (
+            <p className="text-xs text-muted-foreground">
+              Your payment method will be saved. After your first purchase,
+              you'll be able to enable auto top-up.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -345,9 +446,10 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
             </p>
           ) : (
             <AutoTopUpForm
+              key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
               enabled={balanceData.autoTopUp.enabled}
               thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
-              amountUsd={balanceData.autoTopUp.amountUsd ?? 25}
+              amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
               isPending={autoTopUpMutation.isPending}
               onSave={(settings) => autoTopUpMutation.mutate(settings)}
             />
@@ -355,54 +457,45 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Transaction History */}
+      {/* Invoices */}
       <Card>
         <CardHeader>
           <SectionHeader
             icon={CreditCard}
-            title="Transaction History"
-            description="Recent credit activity"
+            title="Invoices"
+            description="Recent purchases"
           />
         </CardHeader>
         <CardContent>
-          {txLoading ? (
+          {invoicesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : txData?.transactions.length === 0 ? (
+          ) : invoiceData?.transactions.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
-              No transactions yet
+              No purchases yet
             </p>
           ) : (
             <div className="space-y-2">
-              {txData?.transactions.map((tx) => (
+              {invoiceData?.transactions.map((tx) => (
                 <div
                   key={tx.id}
                   className="flex items-center justify-between rounded-lg border p-3"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {tx.description ?? tx.type}
+                      {tx.description ?? 'Credit purchase'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tx.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <span
-                      className={`text-sm font-semibold tabular-nums ${
-                        tx.amount > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(2)}
+                    <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
+                      +${tx.amount.toFixed(2)}
                     </span>
-                    <Badge variant="outline" className="text-xs">
-                      ${tx.balanceAfter.toFixed(2)}
-                    </Badge>
                     {tx.metadata?.receiptUrl && (
                       <a
                         href={tx.metadata.receiptUrl}
@@ -417,6 +510,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                   </div>
                 </div>
               ))}
+
+              <div className="pt-2 text-center">
+                <Link
+                  to="/credits"
+                  search={{ tab: 'transactions' }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  View all transactions
+                </Link>
+              </div>
             </div>
           )}
         </CardContent>
@@ -448,12 +551,17 @@ function AutoTopUpForm({
   const [threshold, setThreshold] = useState(String(initialThreshold));
   const [amount, setAmount] = useState(String(initialAmount));
 
-  const handleSave = () => {
+  const save = (overrides?: { enabled?: boolean }) => {
     onSave({
-      enabled,
+      enabled: overrides?.enabled ?? enabled,
       thresholdUsd: parseFloat(threshold) || 5,
-      amountUsd: parseFloat(amount) || 25,
+      amountUsd: parseFloat(amount) || 100,
     });
+  };
+
+  const handleToggle = (value: boolean) => {
+    setEnabled(value);
+    save({ enabled: value });
   };
 
   return (
@@ -462,17 +570,22 @@ function AutoTopUpForm({
         <Button
           variant={enabled ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setEnabled(true)}
+          onClick={() => handleToggle(true)}
+          disabled={isPending}
         >
           On
         </Button>
         <Button
           variant={!enabled ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setEnabled(false)}
+          onClick={() => handleToggle(false)}
+          disabled={isPending}
         >
           Off
         </Button>
+        {isPending && (
+          <span className="text-xs text-muted-foreground">Saving…</span>
+        )}
       </div>
 
       {enabled && (
@@ -485,11 +598,13 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="threshold"
-                type="number"
-                min="1"
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
+                onChange={(e) =>
+                  setThreshold(e.target.value.replace(/[^0-9.]/g, ''))
+                }
+                onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
               />
@@ -503,11 +618,13 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="recharge"
-                type="number"
-                min={MIN_TOPUP_AMOUNT_USD}
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) =>
+                  setAmount(e.target.value.replace(/[^0-9.]/g, ''))
+                }
+                onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
               />
@@ -515,10 +632,6 @@ function AutoTopUpForm({
           </div>
         </div>
       )}
-
-      <Button onClick={handleSave} disabled={isPending} className="w-full">
-        {isPending ? 'Saving…' : 'Save auto top-up settings'}
-      </Button>
     </div>
   );
 }

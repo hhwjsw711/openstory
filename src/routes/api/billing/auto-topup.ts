@@ -5,6 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import {
   getUserDefaultTeam,
@@ -15,11 +16,19 @@ import {
   getBillingSettings,
   updateAutoTopUpSettings,
 } from '@/lib/billing/credit-service';
+import { usdToMicros } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/auto-topup')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return json(
+            { success: false, error: { message: 'Billing is not enabled' } },
+            { status: 404 }
+          );
+        }
+
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);
@@ -49,8 +58,14 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
 
           await updateAutoTopUpSettings(team.teamId, {
             enabled: body.enabled,
-            thresholdUsd: body.thresholdUsd,
-            amountUsd: body.amountUsd,
+            thresholdMicros:
+              body.thresholdUsd !== undefined
+                ? usdToMicros(body.thresholdUsd)
+                : undefined,
+            amountMicros:
+              body.amountUsd !== undefined
+                ? usdToMicros(body.amountUsd)
+                : undefined,
           });
 
           return json(

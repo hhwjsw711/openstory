@@ -1,0 +1,322 @@
+name: Deploy Cloudflare
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: cf-deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-cf-token: ${{ steps.check.outputs.has-cf-token }}
+    steps:
+      - id: check
+        run: echo "has-cf-token=${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}" >> "$GITHUB_OUTPUT"
+
+  # ── Production deploy (push to main) ──────────────────────────────
+  deploy-production:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Migrate D1 (production)
+        run: bun --bun drizzle-kit migrate --config=drizzle.config.d1.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: d6a35f64-abb0-4a34-a092-dc20b29f5812
+
+      - name: Seed D1 (production)
+        run: bun db:seed:d1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: d6a35f64-abb0-4a34-a092-dc20b29f5812
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+
+      - name: Deploy to production
+        run: bun cf:deploy:prd
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+  # ── PR preview deploy ─────────────────────────────────────────────
+  deploy-preview:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'pull_request'
+      && github.event.action != 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Create or find D1 database
+        id: d1
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          DB_NAME="openstory-pr-${PR_NUMBER}"
+
+          # Check if database already exists
+          list_response=$(curl -s \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?name=$DB_NAME")
+
+          existing=$(echo "$list_response" | jq -r '.result[0].uuid // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Found existing D1 database: $existing"
+            echo "database-id=$existing" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating new D1 database: $DB_NAME"
+            result=$(curl -s \
+              -X POST \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"$DB_NAME\"}" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database")
+
+            success=$(echo "$result" | jq -r '.success')
+            if [ "$success" != "true" ]; then
+              echo "::error::Failed to create D1 database: $result"
+              exit 1
+            fi
+
+            uuid=$(echo "$result" | jq -r '.result.uuid')
+            echo "Created D1 database: $uuid"
+            echo "database-id=$uuid" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Migrate D1 (preview)
+        run: bun --bun drizzle-kit migrate --config=drizzle.config.d1.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
+
+      - name: Seed D1 (preview)
+        run: bun db:seed:d1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
+          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+
+      - name: Patch wrangler config for preview
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            let cfg = fs.readFileSync('wrangler.jsonc', 'utf8');
+            cfg = cfg.replace(/\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '\$1');
+            const obj = JSON.parse(cfg);
+            obj.name = 'pr-${PR_NUMBER}';
+            obj.d1_databases = [{
+              binding: 'DB',
+              database_name: 'openstory-pr-${PR_NUMBER}',
+              database_id: '${D1_DATABASE_ID}'
+            }];
+            obj.r2_buckets = [
+              { bucket_name: 'openstory-public-assets-stg', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
+              { binding: 'R2_STORAGE_BUCKET', bucket_name: 'openstory-storage-stg' }
+            ];
+            fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
+          "
+          echo "Patched wrangler.jsonc:"
+          cat wrangler.jsonc | head -30
+
+      - name: Build
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          bunx wrangler types
+          BUILD_CLOUDFLARE=1 bun --bun run build
+
+      - name: Deploy preview
+        id: deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          output=$(bunx wrangler deploy 2>&1) || true
+          echo "$output"
+          url=$(echo "$output" | grep -oP 'https://[^\s]+\.workers\.dev' | tail -1)
+          if [ -z "$url" ]; then
+            echo "::error::Wrangler deploy failed — no URL found in output"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Push secrets to preview worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SECRET_ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
+          SECRET_APP_NAME: ${{ secrets.APP_NAME }}
+          SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
+          SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          SECRET_EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SECRET_FAL_CONCURRENCY_LIMIT: ${{ secrets.FAL_CONCURRENCY_LIMIT }}
+          SECRET_FAL_KEY: ${{ secrets.FAL_KEY }}
+          SECRET_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          SECRET_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SECRET_LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          SECRET_LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          SECRET_LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SECRET_LANGFUSE_TRACING_ENVIRONMENT: ${{ secrets.LANGFUSE_TRACING_ENVIRONMENT }}
+          SECRET_LETZAI_API_KEY: ${{ secrets.LETZAI_API_KEY }}
+          SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
+          SECRET_QSTASH_CURRENT_SIGNING_KEY: ${{ secrets.QSTASH_CURRENT_SIGNING_KEY }}
+          SECRET_QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
+          SECRET_QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
+          SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
+          SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
+          SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+        run: |
+          # Build JSON from SECRET_* env vars, stripping empty values
+          jq -n 'env | with_entries(select(.key | startswith("SECRET_"))) | with_entries(.key |= ltrimstr("SECRET_")) | with_entries(select(.value != ""))' \
+            | bunx wrangler secret bulk --name "pr-${PR_NUMBER}"
+
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- cf-preview -->'
+
+      - name: Comment on PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- cf-preview -->
+            **Cloudflare Preview** deployed successfully
+
+            | | |
+            |---|---|
+            | URL | ${{ steps.deploy.outputs.url }} |
+            | Worker | `pr-${{ github.event.pull_request.number }}` |
+            | D1 Database | `openstory-pr-${{ github.event.pull_request.number }}` |
+            | Commit | ${{ github.sha }} |
+
+  # ── Cleanup on PR close ───────────────────────────────────────────
+  cleanup-preview:
+    needs: check-secrets
+    if: >-
+      needs.check-secrets.outputs.has-cf-token == 'true'
+      && github.event_name == 'pull_request'
+      && github.event.action == 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete worker
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WORKER_NAME="pr-${PR_NUMBER}"
+          status=$(curl -sw '%{http_code}' -o /dev/null \
+            -X DELETE \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$WORKER_NAME")
+          echo "Delete worker $WORKER_NAME response: $status"
+
+      - name: Delete D1 database
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          DB_NAME="openstory-pr-${PR_NUMBER}"
+
+          # Find database ID by name
+          uuid=$(curl -sf \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?name=$DB_NAME" \
+            | jq -r '.result[0].uuid // empty')
+
+          if [ -n "$uuid" ]; then
+            status=$(curl -sw '%{http_code}' -o /dev/null \
+              -X DELETE \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database/$uuid")
+            echo "Delete D1 database $DB_NAME ($uuid) response: $status"
+          else
+            echo "D1 database $DB_NAME not found (already deleted?)"
+          fi
+
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- cf-preview -->'
+
+      - name: Update PR comment
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            <!-- cf-preview -->
+            **Cloudflare Preview** torn down
+
+            Worker `pr-${{ github.event.pull_request.number }}` and D1 database `openstory-pr-${{ github.event.pull_request.number }}` have been deleted.

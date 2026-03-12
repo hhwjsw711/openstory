@@ -1,13 +1,22 @@
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { MotionModelSelector } from '@/components/model/motion-model-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { shortenPromptFn } from '@/functions/ai';
 import { generateFrameImageFn } from '@/functions/frame-image';
 import { generateFrameMotionFn } from '@/functions/motion-functions';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
+import { useFalBillingGate } from '@/hooks/use-billing-gate';
+import {
+  frameKeys,
+  useGenerateVariants,
+  useSelectVariant,
+} from '@/hooks/use-frames';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -18,21 +27,13 @@ import {
   type TextToImageModel,
 } from '@/lib/ai/models';
 import {
-  type AspectRatio,
   aspectRatioToImageSize,
+  type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
-import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
-import { useFalBillingGate } from '@/hooks/use-billing-gate';
-import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  useGenerateVariants,
-  useSelectVariant,
-  frameKeys,
-} from '@/hooks/use-frames';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
@@ -481,7 +482,28 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       }}
       className="w-full"
     >
-      <TabsList>
+      {/* Mobile: Select dropdown */}
+      <div className="md:hidden">
+        <Select
+          value={selectedTab}
+          onChange={(value) => {
+            if (isValidTabValue(value)) {
+              onTabChange(value);
+            }
+          }}
+          options={[
+            { value: 'script', label: 'Script' },
+            { value: 'cast', label: 'Cast' },
+            { value: 'location', label: 'Location' },
+            { value: 'image-prompt', label: 'Image' },
+            { value: 'motion-prompt', label: 'Motion' },
+            { value: 'scene-variants', label: 'Variants' },
+          ]}
+        />
+      </div>
+
+      {/* Desktop: Tab buttons */}
+      <TabsList className="hidden md:flex">
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="cast">Cast</TabsTrigger>
         <TabsTrigger value="location">Location</TabsTrigger>

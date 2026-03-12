@@ -11,6 +11,7 @@ import {
   createSequenceFn,
   updateSequenceFn,
   deleteSequenceFn,
+  archiveSequenceFn,
 } from '@/functions/sequences';
 
 // Query keys
@@ -71,6 +72,11 @@ export function useSequence(
               return 2000; // 2 seconds
             }
 
+            // Poll while music is being generated
+            if (sequence?.musicStatus === 'generating') {
+              return 2000; // 2 seconds
+            }
+
             // Stop polling for completed/archived sequences
             return false;
           },
@@ -100,6 +106,8 @@ export function useCreateSequence() {
           imageModel: input.imageModel,
           videoModel: input.videoModel,
           autoGenerateMotion: input.autoGenerateMotion,
+          autoGenerateMusic: input.autoGenerateMusic,
+          musicModel: input.musicModel,
           suggestedTalentIds: input.suggestedTalentIds,
           suggestedLocationIds: input.suggestedLocationIds,
         },
@@ -143,6 +151,21 @@ export function useUpdateSequence() {
         .catch((error) => {
           console.error('Error invalidating sequences list on success:', error);
         });
+    },
+  });
+}
+
+// Hook for archiving sequence
+export function useArchiveSequence() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (id: string) => {
+      await archiveSequenceFn({ data: { sequenceId: id } });
+    },
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
     },
   });
 }

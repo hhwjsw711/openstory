@@ -10,7 +10,7 @@ echo "$output"
 # If there were errors, extract file paths and open them
 if [ $exit_code -ne 0 ]; then
     # Extract unique file paths from oxlint output
-    # oxlint outputs paths like: /Users/tom/code/velro/src/file.tsx
+    # oxlint outputs paths like: /path/to/project/src/file.tsx
     files=$(echo "$output" | grep -oE '/[^:]+\.(tsx?|jsx?|css|json)' | sort -u)
 
     if [ -n "$files" ]; then

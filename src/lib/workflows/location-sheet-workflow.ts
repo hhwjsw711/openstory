@@ -7,27 +7,27 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
+import {
   updateLocationReference,
   updateReferenceStatus,
 } from '@/lib/db/helpers/sequence-locations';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import {
-  deductWorkflowCredits,
-  extractImageCost,
-} from '@/lib/billing/workflow-deduction';
-import { getGenerationChannel } from '@/lib/realtime';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
+import { getGenerationChannel } from '@/lib/realtime';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   LocationSheetWorkflowInput,
   LocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -89,14 +89,10 @@ export const locationSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'location-sheet-image',
-        };
+          teamId: input.teamId,
+        } satisfies ImageGenerationParams;
       }
     );
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
 
     // Step 2: Generate the location reference image
     const imageResult = await context.run(
@@ -109,7 +105,6 @@ export const locationSheetWorkflow = createWorkflow(
 
         return await generateImageWithProvider({
           ...generationParams,
-          falApiKey: apiKeys.falApiKey,
         });
       }
     );
@@ -118,8 +113,8 @@ export const locationSheetWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(imageResult.metadata),
-        usedOwnKey: !!apiKeys.falApiKey,
+        costMicros: extractImageCost(imageResult.metadata),
+        usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId ?? null,
         description: `Location sheet (${generationParams.model})`,
         metadata: {

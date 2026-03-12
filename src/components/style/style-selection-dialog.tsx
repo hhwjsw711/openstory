@@ -47,7 +47,7 @@ type StyleSelectionDialogContentProps = {
 };
 
 /**
- * Internal content component for the DNA selection dialog
+ * Internal content component for the style selection dialog
  */
 const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
   styles,
@@ -104,19 +104,11 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
     setSearchQuery(e.target.value);
   }, []);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      handleOk();
-    },
-    [handleOk]
-  );
-
   return (
     <DialogContent className="flex h-[90vh] max-w-[95vw] flex-col sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw]">
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <DialogHeader>
-          <DialogTitle>Director's DNA</DialogTitle>
+          <DialogTitle>Visual Style</DialogTitle>
           <DialogDescription>
             Choose the visual style of your sequence
           </DialogDescription>
@@ -143,12 +135,12 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
             )}
           </InputGroup>
 
-          {/* Category Filters */}
+          {/* Category Filters (hidden on mobile — shows all styles) */}
           <ToggleGroup
             type="single"
             value={selectedCategory}
             onValueChange={(value) => value && setSelectedCategory(value)}
-            className="flex-wrap justify-start"
+            className="hidden sm:flex flex-wrap justify-start"
           >
             {categories?.map((category) => (
               <ToggleGroupItem
@@ -190,16 +182,18 @@ const StyleSelectionDialogContent: FC<StyleSelectionDialogContentProps> = ({
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="submit">OK</Button>
+            <Button type="button" onClick={handleOk}>
+              OK
+            </Button>
           </DialogClose>
         </DialogFooter>
-      </form>
+      </div>
     </DialogContent>
   );
 };
 
 /**
- * Controlled dialog for DNA/style selection (backward compatible)
+ * Controlled dialog for style selection (backward compatible)
  */
 export const StyleSelectionDialog: FC<StyleSelectionDialogProps> = ({
   open,

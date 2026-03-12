@@ -17,6 +17,7 @@ import {
   requireTeamAdminAccess,
   requireTeamOwnerAccess,
 } from '@/lib/auth/action-utils';
+import { requireSystemAdmin } from '@/lib/auth/system-admin';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { Sequence, Frame } from '@/types/database';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -33,6 +34,8 @@ export type AuthContext = {
 export type TeamContext = AuthContext & {
   teamId: string;
 };
+
+export type SystemAdminContext = TeamContext;
 
 export type SequenceContext = TeamContext & {
   sequence: Sequence;
@@ -58,15 +61,67 @@ export type FrameContext = TeamContext & {
 };
 
 // ============================================================================
+// Logger Middleware
+// ============================================================================
+
+/**
+ * Request logging middleware - logs server function name, duration, and outcome.
+ * All other middleware chains from authMiddleware which chains from this,
+ * so every server function gets logging automatically.
+ */
+export const loggerMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next, serverFnMeta }) => {
+    const fnName = serverFnMeta.name;
+    const start = performance.now();
+
+    try {
+      const result = await next();
+      const ms = Math.round(performance.now() - start);
+      console.info(`[ServerFn:${fnName}] OK ${ms}ms`);
+      return result;
+    } catch (error) {
+      const ms = Math.round(performance.now() - start);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[ServerFn:${fnName}] ERROR ${ms}ms "${message}"`);
+      throw error;
+    }
+  }
+);
+
+// ============================================================================
 // Auth Middleware
 // ============================================================================
+
+/**
+ * Request auth middleware — for use with server routes (server.middleware).
+ * Unlike authMiddleware (type: 'function'), this is request-scoped and
+ * receives the request object directly from the middleware params.
+ */
+export const authRequestMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const auth = getAuth();
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (!session?.user) {
+      throw new Response('Unauthorized', { status: 401 });
+    }
+
+    return next({
+      context: {
+        user: session.user,
+        session,
+      },
+    });
+  }
+);
 
 /**
  * Basic auth middleware - requires authenticated user
  * Adds user and session to context
  */
-export const authMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next }) => {
+export const authMiddleware = createMiddleware({ type: 'function' })
+  .middleware([loggerMiddleware])
+  .server(async ({ next }) => {
     const request = getRequest();
     const auth = getAuth();
     const session = await auth.api.getSession({ headers: request.headers });
@@ -81,8 +136,7 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(
         session,
       },
     });
-  }
-);
+  });
 
 /**
  * Auth with default team context
@@ -102,6 +156,21 @@ export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
         teamId: team.teamId,
       },
     });
+  });
+
+// ============================================================================
+// System Admin Middleware
+// ============================================================================
+
+/**
+ * System admin middleware - requires ADMIN_EMAILS env var match
+ * Extends authWithTeamMiddleware so context includes teamId
+ */
+export const systemAdminMiddleware = createMiddleware({ type: 'function' })
+  .middleware([authWithTeamMiddleware])
+  .server(async ({ next, context }) => {
+    requireSystemAdmin(context.user.email);
+    return next();
   });
 
 // ============================================================================

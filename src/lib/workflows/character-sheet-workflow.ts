@@ -7,27 +7,27 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
+import {
   updateCharacterSheet,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import {
-  deductWorkflowCredits,
-  extractImageCost,
-} from '@/lib/billing/workflow-deduction';
-import { getGenerationChannel } from '@/lib/realtime';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
+import { getGenerationChannel } from '@/lib/realtime';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
@@ -88,14 +88,10 @@ export const characterSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'character-sheet-image',
-        };
+          teamId: input.teamId,
+        } satisfies ImageGenerationParams;
       }
     );
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
 
     // Step 2: Generate the character sheet image
     const imageResult = await context.run('generate-sheet-image', async () => {
@@ -106,7 +102,6 @@ export const characterSheetWorkflow = createWorkflow(
 
       return await generateImageWithProvider({
         ...generationParams,
-        falApiKey: apiKeys.falApiKey,
       });
     });
 
@@ -114,8 +109,8 @@ export const characterSheetWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: extractImageCost(imageResult.metadata),
-        usedOwnKey: !!apiKeys.falApiKey,
+        costMicros: extractImageCost(imageResult.metadata),
+        usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId ?? null,
         description: `Character sheet (${generationParams.model})`,
         metadata: {

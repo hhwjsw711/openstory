@@ -1,11 +1,3 @@
-import { PhaseIndicatorCompact } from '@/components/generation/phase-indicator';
-import { PageContainer } from '@/components/layout/page-container';
-import {
-  ImageModelBadge,
-  ModelBadge,
-  VideoModelBadge,
-} from '@/components/model/model-badge';
-import { SequenceStatusBadge } from '@/components/sequence/sequence-status-badge';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
@@ -13,8 +5,7 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
-import { PageHeader } from '@/components/typography/page-header';
-import { PageHeading } from '@/components/typography/page-heading';
+import { FailureSummaryBanner } from '@/components/sequence/failure-summary-banner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
@@ -22,50 +13,72 @@ import {
   DEFAULT_ASPECT_RATIO,
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
+import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
+import { generateMusicFn } from '@/functions/sequences';
+import { smartRetryFn } from '@/functions/smart-retry';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ScenesViewProps = {
   sequenceId?: string;
 };
 
-const getPlayerMaxClassNameByAspectRatio = (
-  aspectRatio: AspectRatio
-): string => {
-  // Use Tailwind arbitrary values - map each aspect ratio to its specific classes
-  // Tailwind JIT needs to see the full class names at build time
-  const classMap: Record<AspectRatio, string> = {
-    '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
-    '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
-    '1:1': 'max-h-[50vh] max-w-[50vh]',
-  };
-  return classMap[aspectRatio] || classMap['16:9'];
+// Full class names required for Tailwind JIT to detect at build time
+const PLAYER_MAX_CLASS_BY_RATIO: Record<AspectRatio, string> = {
+  '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
+  '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
+  '1:1': 'max-h-[50vh] max-w-[50vh]',
 };
+
+type RegenerationType = 'image' | 'motion' | 'scene-variants';
+
+function addToSet(prev: Set<string>, id: string): Set<string> {
+  return new Set(prev).add(id);
+}
+
+function removeFromSet(prev: Set<string>, id: string): Set<string> {
+  const next = new Set(prev);
+  next.delete(id);
+  return next;
+}
+
+function addAllToSet(prev: Set<string>, ids: string[]): Set<string> {
+  const next = new Set(prev);
+  for (const id of ids) next.add(id);
+  return next;
+}
+
+function removeAllFromSet(prev: Set<string>, ids: string[]): Set<string> {
+  const next = new Set(prev);
+  for (const id of ids) next.delete(id);
+  return next;
+}
+
+function isTerminalStatus(status: string | null): boolean {
+  return status === 'completed' || status === 'failed';
+}
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // State management
-  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(
-    undefined
-  );
+  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [selectedTab, setSelectedTab] = useState<TabValue>('script');
 
-  // Track which frames are currently regenerating (UI state)
   const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
   const [regeneratingMotion, setRegeneratingMotion] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
-
   const [regeneratingSceneVariants, setRegeneratingSceneVariants] = useState<
     Set<string>
-  >(new Set());
+  >(() => new Set());
 
   // Initial fetch to determine sequence status - disable default polling
   const { data: sequence } = useSequence(sequenceId, {
@@ -91,84 +104,58 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     refetchInterval: pollInterval,
   });
 
-  // Use the most recent sequence data
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
     () => frames?.find((frame) => frame.id === curSelectedFrameId),
     [frames, curSelectedFrameId]
   );
 
-  // Helper functions to manage regeneration state
+  const setterForType = useCallback((type: RegenerationType) => {
+    switch (type) {
+      case 'image':
+        return setRegeneratingImages;
+      case 'motion':
+        return setRegeneratingMotion;
+      case 'scene-variants':
+        return setRegeneratingSceneVariants;
+    }
+  }, []);
+
   const handleRegenerateStart = useCallback(
-    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
-      if (type === 'image') {
-        setRegeneratingImages((prev) => new Set(prev).add(frameId));
-      } else if (type === 'motion') {
-        setRegeneratingMotion((prev) => new Set(prev).add(frameId));
-      } else if (type === 'scene-variants') {
-        setRegeneratingSceneVariants((prev) => new Set(prev).add(frameId));
-      }
+    (frameId: string, type: RegenerationType) => {
+      setterForType(type)((prev) => addToSet(prev, frameId));
     },
-    []
+    [setterForType]
   );
 
   const handleRegenerateEnd = useCallback(
-    (frameId: string, type: 'image' | 'motion' | 'scene-variants') => {
-      if (type === 'image') {
-        setRegeneratingImages((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      } else if (type === 'motion') {
-        setRegeneratingMotion((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      } else if (type === 'scene-variants') {
-        setRegeneratingSceneVariants((prev) => {
-          const next = new Set(prev);
-          next.delete(frameId);
-          return next;
-        });
-      }
+    (frameId: string, type: RegenerationType) => {
+      setterForType(type)((prev) => removeFromSet(prev, frameId));
     },
-    []
+    [setterForType]
   );
 
-  // Auto-remove frames from regenerating Sets when generation completes or fails
-  // Keep frames in Set while status is 'generating' to maintain UI feedback
+  // Auto-remove frames from regenerating sets when generation completes or fails
   useEffect(() => {
     if (!frames) return;
 
-    frames.forEach((frame) => {
-      // Remove from image regenerating set only when generation completes or fails
+    for (const frame of frames) {
       if (
         regeneratingImages.has(frame.id) &&
-        (frame.thumbnailStatus === 'completed' ||
-          frame.thumbnailStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.thumbnailStatus)
+      )
         handleRegenerateEnd(frame.id, 'image');
-      }
-
-      // Remove from motion regenerating set only when generation completes or fails
       if (
         regeneratingMotion.has(frame.id) &&
-        (frame.videoStatus === 'completed' || frame.videoStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.videoStatus)
+      )
         handleRegenerateEnd(frame.id, 'motion');
-      }
-
-      // Remove from scene variants regenerating set only when generation completes or fails
       if (
         regeneratingSceneVariants.has(frame.id) &&
-        (frame.variantImageStatus === 'completed' ||
-          frame.variantImageStatus === 'failed')
-      ) {
+        isTerminalStatus(frame.variantImageStatus)
+      )
         handleRegenerateEnd(frame.id, 'scene-variants');
-      }
-    });
+    }
   }, [
     frames,
     regeneratingImages,
@@ -177,32 +164,67 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     handleRegenerateEnd,
   ]);
 
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const failureSummary = useMemo(
+    () => (sequence ? analyzeFailures(frames ?? [], sequence) : null),
+    [frames, sequence]
+  );
+
+  const handleFullRetry = useCallback(() => {
+    if (!sequenceId) return;
+    void navigate({ to: '/sequences/$id/script', params: { id: sequenceId } });
+  }, [sequenceId, navigate]);
+
+  const handleSmartRetry = useCallback(async () => {
+    if (!sequenceId) return;
+    setIsRetrying(true);
+    try {
+      const result = await smartRetryFn({ data: { sequenceId } });
+      toast.success(`Retrying: ${result.retriedItems.join(', ')}`);
+      void queryClient.invalidateQueries({
+        queryKey: ['sequence', sequenceId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['frames', sequenceId] });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('INSUFFICIENT_CREDITS') ||
+          error.message.includes('Insufficient credits'))
+      ) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to retry.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/credits';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      } else {
+        toast.error('Failed to retry', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [sequenceId, queryClient]);
+
   // Handler for batch motion generation
   const handleBatchMotionGeneration = useCallback(
     async (frameIds: string[]) => {
       if (!sequenceId || frameIds.length === 0) return;
 
-      // Mark all frames as regenerating
-      setRegeneratingMotion((prev) => {
-        const next = new Set(prev);
-        frameIds.forEach((id) => next.add(id));
-        return next;
-      });
+      setRegeneratingMotion((prev) => addAllToSet(prev, frameIds));
 
       try {
-        await batchGenerateMotionFn({
-          data: {
-            sequenceId,
-            frameIds,
-          },
-        });
+        await batchGenerateMotionFn({ data: { sequenceId, frameIds } });
       } catch (error) {
-        // On error, remove from regenerating set
-        setRegeneratingMotion((prev) => {
-          const next = new Set(prev);
-          frameIds.forEach((id) => next.delete(id));
-          return next;
-        });
+        setRegeneratingMotion((prev) => removeAllFromSet(prev, frameIds));
 
         if (
           error instanceof Error &&
@@ -214,7 +236,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             action: {
               label: 'Add Credits',
               onClick: () => {
-                window.location.href = '/settings/billing';
+                window.location.href = '/credits';
               },
             },
           });
@@ -226,31 +248,56 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         }
       }
     },
-    [sequenceId]
+    [sequenceId, queryClient]
   );
 
+  const musicPromptsReady = !!(sequence?.musicPrompt && sequence?.musicTags);
+
+  const handleGenerateMusic = useCallback(async () => {
+    if (!sequenceId) return;
+    try {
+      await generateMusicFn({ data: { sequenceId } });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('INSUFFICIENT_CREDITS') ||
+          error.message.includes('Insufficient credits'))
+      ) {
+        toast.error('Insufficient credits', {
+          description: 'Add credits to generate music.',
+          action: {
+            label: 'Add Credits',
+            onClick: () => {
+              window.location.href = '/credits';
+            },
+          },
+        });
+        void queryClient.invalidateQueries({
+          queryKey: [...BILLING_BALANCE_KEY],
+        });
+      } else {
+        toast.error('Failed to generate music', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+  }, [sequenceId, queryClient]);
+
   return (
-    <PageContainer maxWidth="full" fullHeight={true} padding="none">
-      <PageHeader>
-        <PageHeading>{sequence?.title}</PageHeading>
-        <ModelBadge model={sequence?.analysisModel} />
-        <ImageModelBadge model={sequence?.imageModel} />
-        <VideoModelBadge model={sequence?.videoModel} />
-        {/* Show failure badge if sequence failed OR realtime reports failure */}
-        {(sequence?.status === 'failed' || generationState.isFailed) && (
-          <SequenceStatusBadge status="failed" />
-        )}
-        {!generationState.isComplete &&
-          !generationState.isFailed &&
-          generationState.currentPhase > 0 &&
-          realtimeStatus === 'connected' && (
-            <PhaseIndicatorCompact phases={generationState.phases} />
-          )}
-      </PageHeader>
+    <div className="flex h-full flex-col">
+      {/* Failure summary with smart retry */}
+      {failureSummary?.hasFailed && (
+        <FailureSummaryBanner
+          summary={failureSummary}
+          onRetry={() => void handleSmartRetry()}
+          onFullRetry={handleFullRetry}
+          isRetrying={isRetrying}
+        />
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Desktop: Scene List sidebar */}
-        <div className="hidden md:block">
+        <div className="hidden md:block pl-4 py-4">
           <SceneList
             frames={frames}
             selectedFrameId={curSelectedFrameId}
@@ -259,6 +306,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -272,6 +321,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingImages={regeneratingImages}
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
+            musicPromptsReady={musicPromptsReady}
+            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -284,7 +335,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
               selectedTab={selectedTab}
-              className={getPlayerMaxClassNameByAspectRatio(aspectRatio)}
+              progressMessage={
+                generationState.phases.find((p) => p.status === 'active')
+                  ?.phaseName
+              }
+              className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
             />
           </div>
           <SceneScriptPrompts
@@ -300,6 +355,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           />
         </ScrollArea>
       </div>
-    </PageContainer>
+    </div>
   );
 };

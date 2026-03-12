@@ -14,29 +14,30 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useIsPreview } from '@/hooks/use-is-preview';
 import { authClient } from '@/lib/auth/client';
-import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 type AuthFormProps = {
   emailEntered?: string;
   redirectTo?: string;
+  isPreview?: boolean;
 };
 
 export function AuthForm({
   emailEntered,
   redirectTo = '/sequences',
+  isPreview = false,
 }: AuthFormProps) {
   const navigate = useNavigate();
-  const isPreview = useIsPreview();
   const [email, setEmail] = useState(emailEntered || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Preload passkeys for conditional UI (browser autofill)
   useEffect(() => {
+    let cancelled = false;
+
     const preloadPasskeys = async () => {
       if (
         !window.PublicKeyCredential?.isConditionalMediationAvailable ||
@@ -44,16 +45,21 @@ export function AuthForm({
       ) {
         return;
       }
-      void authClient.signIn.passkey({
+      if (cancelled) return;
+
+      const result = await authClient.signIn.passkey({
         autoFill: true,
-        fetchOptions: {
-          onSuccess: () => {
-            void navigate({ to: redirectTo });
-          },
-        },
       });
+
+      if (!cancelled && result?.data) {
+        void navigate({ to: redirectTo });
+      }
     };
     void preloadPasskeys();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, redirectTo]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -93,10 +99,6 @@ export function AuthForm({
       await authClient.signIn.social({
         provider: 'google',
         callbackURL: redirectTo,
-        newUserCallbackURL:
-          inviteCodeRoute.fullPath +
-          '?redirectTo=' +
-          encodeURIComponent(redirectTo),
       });
     } catch (err) {
       console.error('[AuthForm] Google sign-in error:', err);

@@ -115,7 +115,7 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
             <CardTitle className="text-sm">
               {title ?? <Skeleton className="w-24 h-4" />}
             </CardTitle>
-            <CardDescription className="line-clamp-2 text-xs leading-snug">
+            <CardDescription className="line-clamp-4 text-xs leading-snug">
               {scriptPreview ?? <Skeleton className="w-full h-4" />}
             </CardDescription>
           </div>

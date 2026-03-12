@@ -83,7 +83,7 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
   };
 
   const handleSkip = () => {
-    localStorage.setItem('velro-passkey-skip', 'true');
+    localStorage.setItem('openstory-passkey-skip', 'true');
     void navigate({ to: '/sequences' });
   };
 

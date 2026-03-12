@@ -10,7 +10,7 @@ import {
   type SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { AuthenticationError, ValidationError } from '@/lib/errors';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, not } from 'drizzle-orm';
 import { sequences } from '../schema';
 
 // ============================================================================
@@ -30,6 +30,7 @@ export async function createSequence(params: {
   analysisModel: string;
   imageModel?: string;
   videoModel?: string;
+  musicModel?: string;
 }): Promise<Sequence> {
   const sequenceData: NewSequence = {
     teamId: params.teamId,
@@ -42,6 +43,7 @@ export async function createSequence(params: {
     analysisModel: params.analysisModel,
     imageModel: params.imageModel,
     videoModel: params.videoModel,
+    musicModel: params.musicModel,
     status: 'draft',
   };
 
@@ -119,7 +121,9 @@ export async function getSequencesByTeam(teamId: string): Promise<Sequence[]> {
   return await getDb()
     .select()
     .from(sequences)
-    .where(eq(sequences.teamId, teamId))
+    .where(
+      and(eq(sequences.teamId, teamId), not(eq(sequences.status, 'archived')))
+    )
     .orderBy(desc(sequences.updatedAt));
 }
 
@@ -147,11 +151,12 @@ export async function getSequenceForUser({
 
 export async function updateSequenceStatus(
   sequenceId: string,
-  status: SequenceStatus
+  status: SequenceStatus,
+  error?: string | null
 ) {
   await getDb()
     .update(sequences)
-    .set({ status, updatedAt: new Date() })
+    .set({ status, statusError: error ?? null, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }
 
@@ -169,6 +174,17 @@ export async function updateSequenceAnalysisDurationMs(
   await getDb()
     .update(sequences)
     .set({ analysisDurationMs: durationMs, updatedAt: new Date() })
+    .where(eq(sequences.id, sequenceId));
+}
+
+export async function updateSequenceMusicPrompt(
+  sequenceId: string,
+  musicPrompt: string,
+  musicTags: string
+) {
+  await getDb()
+    .update(sequences)
+    .set({ musicPrompt, musicTags, updatedAt: new Date() })
     .where(eq(sequences.id, sequenceId));
 }
 

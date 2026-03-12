@@ -33,6 +33,7 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     thumbnailPath: `teams/${faker.string.ulid()}/sequences/${faker.string.ulid()}/frames/${faker.string.ulid()}/thumbnail.jpg`,
     variantImageUrl: null,
     variantImageStatus: 'pending',
+    variantWorkflowRunId: null,
     videoUrl: faker.datatype.boolean()
       ? `${faker.internet.url()}/video.mp4`
       : null,
@@ -70,6 +71,13 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     videoWorkflowRunId: faker.string.ulid(),
     videoGeneratedAt: faker.date.recent(),
     videoError: null,
+    audioUrl: null,
+    audioPath: null,
+    audioStatus: 'pending',
+    audioWorkflowRunId: null,
+    audioGeneratedAt: null,
+    audioError: null,
+    audioModel: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     metadata: {
@@ -211,15 +219,14 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     description: faker.lorem.sentence(),
     category: faker.helpers.arrayElement([
       'cinematic',
-      'noir',
-      'artistic',
       'documentary',
-      'scifi',
-      'horror',
       'action',
       'romance',
-      'western',
       'animation',
+      'ecommerce',
+      'realestate',
+      'youtube',
+      'corporate',
     ]),
     tags: faker.helpers.arrayElements(
       [
@@ -296,6 +303,7 @@ const generateMockStyle = (overrides?: Partial<Style>): Style => {
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     createdBy: faker.string.ulid(),
+    sortOrder: 100,
     usageCount: null,
     version: null,
     ...overrides,

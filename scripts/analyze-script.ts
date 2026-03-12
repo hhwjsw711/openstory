@@ -35,7 +35,7 @@ import {
   aspectRatioSchema,
   type AspectRatio,
 } from '../src/lib/constants/aspect-ratios';
-import { DirectorDnaConfigSchema } from '../src/lib/services/director-dna-types';
+import { StyleConfigSchema } from '../src/lib/db/schema/libraries';
 import { triggerWorkflow } from '../src/lib/workflow/client';
 
 function printUsage() {
@@ -138,7 +138,7 @@ async function main() {
     process.exit(1);
   }
 
-  const styleResult = DirectorDnaConfigSchema.safeParse(styleConfig);
+  const styleResult = StyleConfigSchema.safeParse(styleConfig);
   if (!styleResult.success) {
     console.error('Error: Invalid style config');
     for (const issue of styleResult.error.issues) {

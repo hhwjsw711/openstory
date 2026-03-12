@@ -25,6 +25,15 @@ const baseSequence: Sequence = {
   mergedVideoStatus: 'pending',
   mergedVideoGeneratedAt: null,
   mergedVideoError: null,
+  musicUrl: null,
+  musicPath: null,
+  musicStatus: 'pending',
+  musicGeneratedAt: null,
+  musicError: null,
+  musicModel: null,
+  musicPrompt: null,
+  musicTags: null,
+  statusError: null,
 };
 
 const meta: Meta<typeof TheatreView> = {
@@ -67,7 +76,7 @@ export const Completed: Story = {
       mergedVideoUrl:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       mergedVideoPath:
-        'teams/team_123/sequences/seq_123/merged/abc123_velro.mp4',
+        'teams/team_123/sequences/seq_123/merged/abc123_openstory.mp4',
       mergedVideoGeneratedAt: new Date(),
     },
   },
@@ -82,7 +91,7 @@ export const CompletedPortrait: Story = {
       mergedVideoUrl:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       mergedVideoPath:
-        'teams/team_123/sequences/seq_123/merged/abc123_velro.mp4',
+        'teams/team_123/sequences/seq_123/merged/abc123_openstory.mp4',
       mergedVideoGeneratedAt: new Date(),
     },
   },

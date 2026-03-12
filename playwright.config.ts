@@ -5,14 +5,12 @@ import { defineConfig, devices } from 'playwright/test';
  * Uses separate test.db for isolation, mocks AI/workflow responses
  */
 export default defineConfig({
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e/tests',
   outputDir: './e2e/results',
 
-  // Run tests in parallel now that we share auth state
-  // Note: Using 1 worker locally to avoid SQLite locking issues
-  // CI uses WAL mode + multiple workers
   fullyParallel: true,
-  workers: 4,
+  workers: process.env.CI ? 2 : 4,
 
   // Fail fast on CI
   forbidOnly: !!process.env.CI,
@@ -23,14 +21,15 @@ export default defineConfig({
   // Local: html only
   reporter: process.env.CI ? [['github'], ['html']] : 'html',
 
-  // Global test timeout
-  timeout: 30_000,
+  // Global test timeout (longer on CI due to slower 2-vCPU runners)
+  timeout: process.env.CI ? 60_000 : 30_000,
 
   // Shared settings for all projects
   use: {
     baseURL: 'http://localhost:3001',
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'on-first-retry',
   },
 
   // Configure projects
@@ -58,15 +57,11 @@ export default defineConfig({
     },
   ],
 
-  // Run dev server on port 3001 with test.db
-  // Local: doppler provides secrets, we override DATABASE_URL and PORT
-  // CI: env vars set on the job step
   webServer: {
-    command: process.env.CI
-      ? 'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e'
-      : 'doppler run -- env E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db bun dev:e2e',
+    command:
+      'E2E_TEST=true PORT=3001 DATABASE_URL=file:test.db APP_URL=http://localhost:3001 bun dev:e2e',
     url: 'http://localhost:3001',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });

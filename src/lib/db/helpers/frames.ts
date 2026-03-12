@@ -7,7 +7,7 @@ import { getDb } from '#db-client';
 import type { Frame, NewFrame } from '@/lib/db/schema';
 import { frames } from '@/lib/db/schema';
 import type { Sequence } from '@/lib/db/schema/sequences';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 /**
  * Frame with its parent sequence
@@ -176,85 +176,73 @@ export async function deleteSequenceFrames(
 // ============================================================================
 
 /**
- * Create multiple frames in a transaction
+ * Create multiple frames in a single insert
+ * Batches to stay within D1's 100 bound parameter limit
  */
 export async function createFramesBulk(
   frameData: NewFrame[]
 ): Promise<Frame[]> {
-  return await getDb().transaction(async (tx) => {
-    const createdFrames = await tx.insert(frames).values(frameData).returning();
-    return createdFrames;
-  });
+  const BATCH_SIZE = 5;
+  const results: Frame[] = [];
+
+  for (let i = 0; i < frameData.length; i += BATCH_SIZE) {
+    const batch = frameData.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb().insert(frames).values(batch).returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**
- * Bulk insert frames with upsert fallback
- * If unique constraint violation occurs, falls back to upsert by sequenceId+orderIndex
+ * Bulk insert frames with upsert on conflict (sequenceId + orderIndex)
+ * Batches inserts to stay within D1's 100 bound parameter limit
+ * (~13 params per row, so 5 rows per batch is safe)
  */
 export async function bulkInsertFrames(
   frameInserts: NewFrame[]
 ): Promise<Frame[]> {
-  try {
-    return await createFramesBulk(frameInserts);
-  } catch (error) {
-    // If we get a unique constraint violation, try upsert instead
-    if (
-      error instanceof Error &&
-      (error.message.includes('duplicate key') ||
-        error.message.includes('unique constraint'))
-    ) {
-      // For upsert, we need to manually handle conflicts
-      const upserted = await getDb().transaction(async (tx) => {
-        const results: Frame[] = [];
-        for (const frame of frameInserts) {
-          const [existing] = await tx
-            .select()
-            .from(frames)
-            .where(
-              and(
-                eq(frames.sequenceId, frame.sequenceId),
-                eq(frames.orderIndex, frame.orderIndex)
-              )
-            );
+  const BATCH_SIZE = 5;
+  const results: Frame[] = [];
 
-          if (existing) {
-            const [updated] = await tx
-              .update(frames)
-              .set({ ...frame, updatedAt: new Date() })
-              .where(eq(frames.id, existing.id))
-              .returning();
-            results.push(updated);
-          } else {
-            const [created] = await tx.insert(frames).values(frame).returning();
-            results.push(created);
-          }
-        }
-        return results;
-      });
-
-      return upserted;
-    }
-
-    throw error;
+  for (let i = 0; i < frameInserts.length; i += BATCH_SIZE) {
+    const batch = frameInserts.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(frames)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [frames.sequenceId, frames.orderIndex],
+        set: {
+          description: sql.raw(`excluded."description"`),
+          durationMs: sql.raw(`excluded."duration_ms"`),
+          metadata: sql.raw(`excluded."metadata"`),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    results.push(...batchResults);
   }
+
+  return results;
 }
 
 /**
  * Reorder frames in a sequence
- * Uses transaction to update all frames atomically
+ * Uses batch to update all frames atomically (D1-compatible)
  */
 export async function reorderFrames(
   _sequenceId: string,
   frameOrders: Array<{ id: string; order_index: number }>
 ): Promise<void> {
-  await getDb().transaction(async (tx) => {
-    for (const frameOrder of frameOrders) {
-      await tx
-        .update(frames)
-        .set({ orderIndex: frameOrder.order_index, updatedAt: new Date() })
-        .where(eq(frames.id, frameOrder.id));
-    }
-  });
+  if (frameOrders.length === 0) return;
+  const db = getDb();
+  const [first, ...rest] = frameOrders.map((frameOrder) =>
+    db
+      .update(frames)
+      .set({ orderIndex: frameOrder.order_index, updatedAt: new Date() })
+      .where(eq(frames.id, frameOrder.id))
+  );
+  await db.batch([first, ...rest]);
 }
 
 // ============================================================================

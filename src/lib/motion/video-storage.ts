@@ -3,16 +3,18 @@
  * Handles uploading and managing videos in R2 Storage
  */
 
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import {
   deleteFile,
-  getExtensionFromUrl,
-  getMimeTypeFromExtension,
   getSignedUrl,
   getSignedUrlWithDownload,
   listFiles,
-  STORAGE_BUCKETS,
   uploadFile,
-} from '@/lib/db/helpers/storage';
+} from '#storage';
+import {
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 
 type UploadVideoOptions = {
@@ -55,7 +57,7 @@ type StorageResult =
 /**
  * Upload a video from URL to R2 Storage
  * Uses human-readable filename with short hash for uniqueness:
- * {sequence-slug}_{scene-slug}_{hash}_velro.{ext}
+ * {sequence-slug}_{scene-slug}_{hash}_openstory.{ext}
  */
 export async function uploadVideoToStorage(
   options: UploadVideoOptions
@@ -96,7 +98,7 @@ export async function uploadVideoToStorage(
     const shortHash = ulid.slice(-6).toLowerCase();
     const sequenceSlug = slugify(sequenceTitle) || 'video';
     const sceneSlug = sceneTitle ? slugify(sceneTitle) : 'scene';
-    const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_velro.${extension}`;
+    const filename = `${sequenceSlug}_${sceneSlug}_${shortHash}_openstory.${extension}`;
     const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${filename}`;
 
     console.log(`[Video Storage] Generated filename with hash: ${shortHash}`, {
@@ -165,7 +167,7 @@ export async function getSignedVideoUrl(
  * Uses AWS ResponseContentDisposition to force browser download
  *
  * @param path - R2 storage path (e.g., 'teams/123/sequences/456/frames/789/motion.mp4')
- * @param filename - Download filename (e.g., 'desert-scene_velro.mp4')
+ * @param filename - Download filename (e.g., 'desert-scene_openstory.mp4')
  * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
  */
 export async function getVideoDownloadUrl(

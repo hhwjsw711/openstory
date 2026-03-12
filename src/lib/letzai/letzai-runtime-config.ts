@@ -1,3 +1,4 @@
+import { getEnv } from '#env';
 import type { CreateClientConfig } from '@/lib/letzai/sdk/client.gen';
 
 /**
@@ -40,7 +41,7 @@ function getHeadersObject(
 export const createClientConfig: CreateClientConfig = (config) => ({
   ...config,
   headers: {
-    Authorization: `Bearer ${process.env.LETZAI_API_KEY}`,
+    Authorization: `Bearer ${getEnv().LETZAI_API_KEY}`,
     'Content-Type': 'application/json',
     ...getHeadersObject(config?.headers),
   },

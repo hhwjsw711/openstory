@@ -8,7 +8,7 @@
 import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import type { Scene } from '@/lib/script/types';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { motionPromptSceneWorkflow } from './motion-prompt-scene-workflow';
 

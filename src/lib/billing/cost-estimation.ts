@@ -1,8 +1,10 @@
 /**
  * Cost Estimation Utilities
- * Estimate generation costs before triggering workflows
+ * Estimate generation costs before triggering workflows.
+ * All functions return Microdollars for exact arithmetic.
  */
 
+import { calculateImageCost, calculateVideoCost } from '@/lib/ai/fal-cost';
 import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
@@ -11,9 +13,7 @@ import {
 } from '@/lib/ai/models';
 import { aspectRatioToDimensions } from '@/lib/constants/aspect-ratios';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-
-/** Default compute time estimate for compute_seconds-priced models */
-const DEFAULT_COMPUTE_SECONDS = 3;
+import { type Microdollars, addMicros, micros, multiplyMicros } from './money';
 
 /**
  * Estimate the raw cost (before markup) of generating images
@@ -21,24 +21,27 @@ const DEFAULT_COMPUTE_SECONDS = 3;
 export function estimateImageCost(
   model: TextToImageModel,
   aspectRatio: AspectRatio,
-  numImages: number
-): number {
-  const config = IMAGE_MODELS[model];
-  if (!config.pricing) return 0;
-
-  const { price, unit } = config.pricing;
-
-  switch (unit) {
-    case 'images':
-      return price * numImages;
-    case 'megapixels': {
-      const { width, height } = aspectRatioToDimensions(aspectRatio);
-      const megapixels = (width * height) / 1_000_000;
-      return price * megapixels * numImages;
-    }
-    case 'compute_seconds':
-      return price * DEFAULT_COMPUTE_SECONDS * numImages;
+  numImages: number,
+  opts?: {
+    resolution?: '0.5K' | '1K' | '2K' | '4K';
+    style?: string;
+    quality?: string;
+    imageSize?: string;
   }
+): Microdollars {
+  const endpointId = IMAGE_MODELS[model].id;
+  const { width, height } = aspectRatioToDimensions(aspectRatio);
+
+  return calculateImageCost({
+    endpointId,
+    numImages,
+    widthPx: width,
+    heightPx: height,
+    resolution: opts?.resolution,
+    style: opts?.style,
+    quality: opts?.quality,
+    imageSize: opts?.imageSize,
+  });
 }
 
 /**
@@ -46,10 +49,18 @@ export function estimateImageCost(
  */
 export function estimateVideoCost(
   model: ImageToVideoModel,
-  durationSeconds: number
-): number {
-  const config = IMAGE_TO_VIDEO_MODELS[model];
-  return config.pricing.pricePerSecond * durationSeconds;
+  durationSeconds: number,
+  opts?: { audioEnabled?: boolean; resolution?: string }
+): Microdollars {
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
+  const endpointId = modelConfig.id;
+
+  return calculateVideoCost({
+    endpointId,
+    durationSeconds,
+    audioEnabled: opts?.audioEnabled ?? modelConfig.capabilities.supportsAudio,
+    resolution: opts?.resolution,
+  });
 }
 
 /**
@@ -57,10 +68,10 @@ export function estimateVideoCost(
  * Based on average token usage for script analysis calls.
  * Only used for client-side gate affordability checks, not actual deduction.
  */
-const AVERAGE_LLM_COST_PER_CALL_USD = 0.02;
+const AVERAGE_LLM_COST_PER_CALL_MICROS = micros(20_000); // $0.02
 
-export function estimateLLMCost(numCalls: number = 1): number {
-  return AVERAGE_LLM_COST_PER_CALL_USD * numCalls;
+export function estimateLLMCost(numCalls: number = 1): Microdollars {
+  return multiplyMicros(AVERAGE_LLM_COST_PER_CALL_MICROS, numCalls);
 }
 
 /** Average scene count for a typical script (used when we can't know in advance) */
@@ -78,7 +89,7 @@ export function estimateStoryboardCost(opts: {
   autoGenerateMotion?: boolean;
   videoModel?: ImageToVideoModel;
   videoDurationSeconds?: number;
-}): number {
+}): Microdollars {
   const sceneCount = opts.estimatedSceneCount ?? DEFAULT_ESTIMATED_SCENE_COUNT;
 
   // LLM calls: script analysis + character bible + location bible (~3 calls)
@@ -97,12 +108,19 @@ export function estimateStoryboardCost(opts: {
     sceneCount
   );
 
-  let totalCost = llmCost + characterSheetCost + locationSheetCost + frameCost;
+  let totalCost = addMicros(
+    addMicros(addMicros(llmCost, characterSheetCost), locationSheetCost),
+    frameCost
+  );
 
   // Optional motion generation for all frames
   if (opts.autoGenerateMotion && opts.videoModel) {
     const duration = opts.videoDurationSeconds ?? 5;
-    totalCost += estimateVideoCost(opts.videoModel, duration) * sceneCount;
+    const perFrameMotion = estimateVideoCost(opts.videoModel, duration);
+    totalCost = addMicros(
+      totalCost,
+      multiplyMicros(perFrameMotion, sceneCount)
+    );
   }
 
   return totalCost;

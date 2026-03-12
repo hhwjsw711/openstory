@@ -9,65 +9,30 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { getEnv } from '#env';
 import {
-  callOpenRouter,
+  callLLM,
+  callLLMStream,
   RECOMMENDED_MODELS,
-  systemMessage,
-  userMessage,
-} from '@/lib/ai/openrouter-client';
+} from '@/lib/ai/llm-client';
 import {
-  enhanceScript as enhanceScriptService,
+  checkForInjectionAttempts,
+  sanitizeScriptContent,
+} from '@/lib/ai/prompt-validation';
+import {
+  createUserPrompt,
+  RateLimiter,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
-import { authWithTeamMiddleware } from './middleware';
+import { getPrompt } from '@/lib/prompts';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { apiKeyService } from '@/lib/byok/api-key.service';
+import { authWithTeamMiddleware } from './middleware';
 
-// Rate limiting utility (simple in-memory implementation)
-class RateLimiter {
-  private requests: Map<string, number[]> = new Map();
+const promptShorteningRateLimiter = new RateLimiter(10, 60_000);
 
-  constructor(
-    private maxRequests: number,
-    private windowMs: number
-  ) {}
-
-  isAllowed(key: string): boolean {
-    const now = Date.now();
-    const windowStart = now - this.windowMs;
-
-    const existingRequests = this.requests.get(key) || [];
-    const recentRequests = existingRequests.filter(
-      (time) => time > windowStart
-    );
-
-    if (recentRequests.length < this.maxRequests) {
-      recentRequests.push(now);
-      this.requests.set(key, recentRequests);
-      return true;
-    }
-
-    return false;
-  }
-
-  getRemainingTime(key: string): number {
-    const requests = this.requests.get(key);
-    if (!requests || requests.length === 0) return 0;
-
-    const oldestRequest = Math.min(...requests);
-    const windowEnd = oldestRequest + this.windowMs;
-    const remaining = windowEnd - Date.now();
-
-    return Math.max(0, remaining);
-  }
-}
-
-// Rate limiter instance - 10 requests per minute
-const promptShorteningRateLimiter = new RateLimiter(10, 60 * 1000);
-
-// System prompt for shortening image prompts
-const SHORTEN_PROMPT_SYSTEM_PROMPT = `You are an expert at condensing image generation prompts while preserving all critical visual elements.
+const SHORTEN_PROMPT_SYSTEM = `You are an expert at condensing image generation prompts while preserving all critical visual elements.
 
 Your task is to shorten image prompts by:
 - Removing verbose descriptions and redundant words
@@ -80,17 +45,52 @@ Target 50-75% reduction in length while keeping the prompt's core meaning intact
 
 Return ONLY the shortened prompt text, nothing else. No explanations, no preamble.`;
 
-// Helper to get client IP from request
 function getClientIP(): string {
   const request = getRequest();
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
-  return forwardedFor?.split(',')[0] || realIP || 'anonymous';
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0] ||
+    request.headers.get('x-real-ip') ||
+    'anonymous'
+  );
 }
 
-// ============================================================================
-// Shorten Prompt
-// ============================================================================
+function enforceRateLimit(limiter: RateLimiter, key: string): void {
+  if (limiter.isAllowed(key)) return;
+  const remainingMs = limiter.getRemainingTime(key);
+  throw new Error(
+    `Rate limit exceeded. Please try again in ${Math.ceil(remainingMs / 1000)} seconds.`
+  );
+}
+
+/**
+ * Check pre-flight billing and return a deduct function.
+ * Returns `undefined` when billing is skipped (disabled or team has own key).
+ */
+async function prepareBilling(
+  teamId: string,
+  userId: string,
+  description: string,
+  metadata?: Record<string, unknown>
+): Promise<(() => Promise<void>) | undefined> {
+  const teamHasOwnKey = await apiKeyService.hasKey(teamId, 'openrouter');
+  if (!isBillingEnabled() || teamHasOwnKey) return undefined;
+
+  const cost = estimateLLMCost(1);
+  const canAfford = await hasEnoughCredits(teamId, cost);
+  if (!canAfford) {
+    throw new InsufficientCreditsError(
+      `Insufficient credits for ${description.toLowerCase()}`
+    );
+  }
+
+  return async () => {
+    if (cost > 0) {
+      await deductCredits(teamId, cost, { userId, description, metadata });
+    }
+  };
+}
+
+// -- Shorten Prompt --
 
 const shortenPromptInputSchema = z.object({
   prompt: z
@@ -99,71 +99,34 @@ const shortenPromptInputSchema = z.object({
     .max(5000, 'Prompt too long'),
 });
 
-/**
- * Shorten an image prompt using AI
- * @returns The shortened prompt with statistics
- */
 export const shortenPromptFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(shortenPromptInputSchema))
   .handler(async ({ data, context }) => {
-    const clientIP = getClientIP();
+    enforceRateLimit(promptShorteningRateLimiter, getClientIP());
 
-    // Check rate limiting
-    if (!promptShorteningRateLimiter.isAllowed(clientIP)) {
-      const remainingTimeMs =
-        promptShorteningRateLimiter.getRemainingTime(clientIP);
-      throw new Error(
-        `Rate limit exceeded. Please try again in ${Math.ceil(remainingTimeMs / 1000)} seconds.`
-      );
-    }
-
-    const env = getEnv();
-
-    // Check if OpenRouter API key is configured
-    if (!env.OPENROUTER_KEY) {
+    if (!getEnv().OPENROUTER_KEY) {
       throw new Error('AI service not configured');
     }
 
-    // Pre-flight billing check (skip if team has own OpenRouter key)
-    const teamHasOrKey = await apiKeyService.hasKey(
+    const deduct = await prepareBilling(
       context.teamId,
-      'openrouter'
+      context.user.id,
+      `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
+      { model: RECOMMENDED_MODELS.fast }
     );
-    if (!teamHasOrKey) {
-      const estimatedCost = estimateLLMCost(1);
-      const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for prompt shortening'
-        );
-      }
-    }
 
-    // Call the AI service
-    const completion = await callOpenRouter({
+    const shortenedPrompt = await callLLM({
       model: RECOMMENDED_MODELS.fast,
       messages: [
-        systemMessage(SHORTEN_PROMPT_SYSTEM_PROMPT),
-        userMessage(data.prompt),
+        { role: 'system' as const, content: SHORTEN_PROMPT_SYSTEM },
+        { role: 'user' as const, content: data.prompt },
       ],
       max_tokens: 500,
       temperature: 0.3,
     });
 
-    // Deduct actual cost from OpenRouter response (skip if team has own key)
-    if (!teamHasOrKey) {
-      const actualCost = completion.usage?.cost;
-      if (actualCost && actualCost > 0) {
-        await deductCredits(context.teamId, actualCost, {
-          userId: context.user.id,
-          description: `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
-          metadata: { model: RECOMMENDED_MODELS.fast },
-        });
-      }
-    }
-
-    const shortenedPrompt = completion.choices[0]?.message?.content;
+    await deduct?.();
 
     if (!shortenedPrompt) {
       throw new Error('No response received from AI service');
@@ -185,9 +148,7 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
     };
   });
 
-// ============================================================================
-// Enhance Script
-// ============================================================================
+// -- Enhance Script --
 
 const enhanceScriptInputSchema = z.object({
   script: z
@@ -199,66 +160,41 @@ const enhanceScriptInputSchema = z.object({
   style: z.string().optional(),
 });
 
-/**
- * Enhance a script using AI
- * @returns The enhanced script with recommendations
- */
-export const enhanceScriptFn = createServerFn({ method: 'POST' })
+export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(enhanceScriptInputSchema))
-  .handler(async ({ data, context }) => {
-    const clientIP = getClientIP();
+  .handler(async function* ({ data, context }) {
+    enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
-    // Check rate limiting
-    if (!scriptEnhancementRateLimiter.isAllowed(clientIP)) {
-      const remainingTimeMs =
-        scriptEnhancementRateLimiter.getRemainingTime(clientIP);
-      throw new Error(
-        `Rate limit exceeded. Please try again in ${Math.ceil(remainingTimeMs / 1000)} seconds.`
-      );
-    }
-
-    // Pre-flight billing check (skip if team has own OpenRouter key)
-    const teamHasOrKey = await apiKeyService.hasKey(
+    const deduct = await prepareBilling(
       context.teamId,
-      'openrouter'
+      context.user.id,
+      'Script enhancement'
     );
-    if (!teamHasOrKey) {
-      const estimatedCost = estimateLLMCost(1);
-      const canAfford = await hasEnoughCredits(context.teamId, estimatedCost);
-      if (!canAfford) {
-        throw new InsufficientCreditsError(
-          'Insufficient credits for script enhancement'
-        );
+
+    if (checkForInjectionAttempts(data.script)) {
+      console.warn('Script enhancement: Potential injection attempt detected');
+    }
+
+    const sanitized = sanitizeScriptContent(data.script);
+    const { compiled } = await getPrompt('script/enhance');
+    const userPrompt = createUserPrompt(sanitized);
+
+    const systemMessage = `${compiled}\n\nReturn ONLY the enhanced script text. No JSON, no markdown formatting, no explanations.`;
+
+    for await (const chunk of callLLMStream({
+      model: RECOMMENDED_MODELS.creative,
+      messages: [
+        { role: 'system' as const, content: systemMessage },
+        { role: 'user' as const, content: userPrompt },
+      ],
+      max_tokens: 4000,
+      temperature: 0.7,
+    })) {
+      if (chunk.delta) {
+        yield { delta: chunk.delta };
       }
     }
 
-    // Call the AI service
-    const result = await enhanceScriptService({
-      originalScript: data.script,
-      targetDuration: data.targetDuration,
-      tone: data.tone,
-      style: data.style || undefined,
-    });
-
-    if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to enhance script');
-    }
-
-    // Deduct estimated LLM cost (skip if team has own key)
-    if (!teamHasOrKey) {
-      const cost = estimateLLMCost(1);
-      if (cost > 0) {
-        await deductCredits(context.teamId, cost, {
-          userId: context.user.id,
-          description: 'Script enhancement',
-        });
-      }
-    }
-
-    return {
-      originalScript: data.script,
-      enhancedScript: result.data.enhanced_script,
-      styleStackRecommendation: result.data.style_stack_recommendation,
-    };
+    await deduct?.();
   });

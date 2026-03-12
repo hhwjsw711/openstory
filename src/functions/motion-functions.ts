@@ -6,79 +6,81 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
-import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
+
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODELS,
   safeImageToVideoModel,
 } from '@/lib/ai/models';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
+import { usdToMicros, multiplyMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
+import { getSequenceFrames } from '@/lib/db/helpers/frames';
+import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import { triggerWorkflow } from '@/lib/workflow/client';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
-// ============================================================================
-// Generate Motion for Frame (Workflow Trigger)
-// ============================================================================
+import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
+
+// -- Shared helper: resolve motion prompt from frame data -----------------
+
+function resolveMotionPrompt(frame: {
+  motionPrompt: string | null;
+  metadata: { prompts?: { motion?: { fullPrompt?: string } } } | null;
+  description: string | null;
+}): string {
+  return (
+    frame.motionPrompt ||
+    frame.metadata?.prompts?.motion?.fullPrompt ||
+    frame.description ||
+    ''
+  );
+}
+
+// -- Generate Motion for Frame -------------------------------------------
 
 const generateMotionInputSchema = generateMotionSchema.extend({
   sequenceId: ulidSchema,
   frameId: ulidSchema,
 });
 
-/**
- * Generate motion video for a single frame
- * Triggers the motion workflow and returns the workflow run ID
- * @returns { workflowRunId: string, frameId: string }
- */
 export const generateFrameMotionFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(generateMotionInputSchema))
   .handler(async ({ data, context }) => {
     const { frame, sequence, teamId } = context;
 
-    // Check for thumbnail (required for motion generation)
     if (!frame.thumbnailUrl) {
       throw new Error('Frame has no thumbnail to generate motion from');
     }
 
-    // Determine which prompt to use (priority: provided > stored > AI-generated > description)
-    const promptToUse =
-      data.prompt ||
-      frame.motionPrompt ||
-      frame.metadata?.prompts?.motion?.fullPrompt ||
-      frame.description ||
-      '';
+    const prompt = data.prompt || resolveMotionPrompt(frame);
 
-    // Determine which model to use (priority: provided > frame's stored > sequence default > global default)
-    const modelToUse = safeImageToVideoModel(
+    const model = safeImageToVideoModel(
       data.model || frame.motionModel || sequence.videoModel,
       DEFAULT_VIDEO_MODEL
     );
 
-    // Credit check before triggering workflow (skip if team has own fal key)
     const duration =
       data.duration ??
-      IMAGE_TO_VIDEO_MODELS[modelToUse].capabilities.defaultDuration;
-    await requireCredits(teamId, estimateVideoCost(modelToUse, duration), {
+      IMAGE_TO_VIDEO_MODELS[model].capabilities.defaultDuration;
+
+    await requireCredits(teamId, estimateVideoCost(model, duration), {
       errorMessage: 'Insufficient credits for motion generation',
     });
 
-    // Trigger motion generation workflow with deduplication
     const workflowInput: MotionWorkflowInput = {
       userId: context.user.id,
       teamId,
       frameId: frame.id,
       sequenceId: sequence.id,
       imageUrl: frame.thumbnailUrl,
-      prompt: promptToUse,
-      model: modelToUse,
+      prompt,
+      model,
       duration: data.duration,
       fps: data.fps,
       motionBucket: data.motionBucket,
@@ -86,15 +88,13 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-      deduplicationId: `motion-${frame.id}`,
+      deduplicationId: `motion-${frame.id}-${Date.now()}`,
     });
 
     return { workflowRunId, frameId: frame.id };
   });
 
-// ============================================================================
-// Batch Generate Motion for Sequence (Workflow Trigger)
-// ============================================================================
+// -- Batch Generate Motion for Sequence ----------------------------------
 
 const batchGenerateMotionInputSchema = z.object({
   sequenceId: ulidSchema,
@@ -116,82 +116,69 @@ type BatchMotionError = {
   error: string;
 };
 
-/**
- * Generate motion videos for multiple frames in a sequence
- * Triggers motion workflows for all frames with thumbnails
- * @returns { workflows: BatchMotionWorkflow[], errors?: BatchMotionError[] }
- */
 export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(batchGenerateMotionInputSchema))
   .handler(async ({ data, context }) => {
     const { sequence, teamId } = context;
 
-    // Get frames for the sequence
-    let allFrames = await getSequenceFrames(sequence.id);
+    const allFrames = await getSequenceFrames(sequence.id);
+    const filtered = data.frameIds?.length
+      ? allFrames.filter((f) => data.frameIds?.includes(f.id))
+      : allFrames;
 
-    // Filter by specific frame IDs if provided
-    if (data.frameIds && data.frameIds.length > 0) {
-      allFrames = allFrames.filter((f) => data.frameIds?.includes(f.id));
-    }
-
-    if (allFrames.length === 0) {
+    if (filtered.length === 0) {
       throw new Error('No frames found for sequence');
     }
 
-    // Filter frames that have thumbnails
-    const framesWithThumbnails = allFrames.filter((f) => f.thumbnailUrl);
+    const framesWithThumbnails = filtered.filter((f) => f.thumbnailUrl);
 
     if (framesWithThumbnails.length === 0) {
       throw new Error('No frames with thumbnails found');
     }
 
-    // Credit check: sum costs for all frames before starting any (skip if team has own fal key)
     const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
     const batchDuration =
       data.duration ??
       IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
+
     await requireCredits(
       teamId,
-      estimateVideoCost(batchModel, batchDuration) *
-        framesWithThumbnails.length,
+      multiplyMicros(
+        estimateVideoCost(batchModel, batchDuration),
+        framesWithThumbnails.length
+      ),
       {
         errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
       }
     );
 
-    // Generate motion for each frame using workflows
     const workflows: BatchMotionWorkflow[] = [];
     const errors: BatchMotionError[] = [];
 
     for (const frame of framesWithThumbnails) {
       try {
-        // TypeScript guard - we already filtered for frames with thumbnails
         if (!frame.thumbnailUrl) continue;
 
-        // Use motion prompt with metadata fallback (same as generateFrameMotionFn)
-        const prompt =
-          frame.motionPrompt ||
-          frame.metadata?.prompts?.motion?.fullPrompt ||
-          frame.description ||
-          '';
-
-        // Trigger motion workflow
         const workflowInput: MotionWorkflowInput = {
           userId: context.user.id,
           teamId,
           frameId: frame.id,
           sequenceId: sequence.id,
           imageUrl: frame.thumbnailUrl,
-          prompt,
-          model: data.model,
-          duration: data.duration,
+          prompt: resolveMotionPrompt(frame),
+          model: safeImageToVideoModel(
+            data.model || frame.motionModel || sequence.videoModel,
+            DEFAULT_VIDEO_MODEL
+          ),
+          duration:
+            data.duration || frame.metadata?.metadata?.durationSeconds || 3,
           fps: data.fps,
           motionBucket: data.motionBucket,
         };
 
         const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-          deduplicationId: `motion-${frame.id}`,
+          deduplicationId: `motion-${frame.id}-${Date.now()}`,
         });
 
         workflows.push({
@@ -212,7 +199,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
 
     return {
       sequenceId: sequence.id,
-      totalFrames: allFrames.length,
+      totalFrames: filtered.length,
       framesWithThumbnails: framesWithThumbnails.length,
       workflowsStarted: workflows.length,
       workflows,
@@ -220,55 +207,43 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     };
   });
 
-// ============================================================================
-// Trigger Merge Video (Workflow Trigger)
-// ============================================================================
+// -- Trigger Merge Video -------------------------------------------------
 
 const mergeVideoInputSchema = z.object({
   sequenceId: ulidSchema,
 });
 
-/**
- * Manually trigger the merge video workflow for a sequence
- * Requires all frames to have completed video generation
- * @returns The workflow run ID
- */
 export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(mergeVideoInputSchema))
   .handler(async ({ context }) => {
     const { sequence, teamId, user } = context;
 
-    // Get all frames for this sequence
     const frames = await getSequenceFrames(sequence.id);
 
     if (frames.length === 0) {
       throw new Error('No frames found in sequence');
     }
 
-    // Check all frames have completed video
-    const incompleteFrames = frames.filter(
+    const incompleteCount = frames.filter(
       (f) => f.videoStatus !== 'completed' || !f.videoUrl
-    );
+    ).length;
 
-    if (incompleteFrames.length > 0) {
+    if (incompleteCount > 0) {
       throw new Error(
-        `${incompleteFrames.length} frame(s) do not have completed videos`
+        `${incompleteCount} frame(s) do not have completed videos`
       );
     }
 
-    // Credit check before triggering merge (skip if team has own fal key)
-    await requireCredits(teamId, 0.01, {
+    await requireCredits(teamId, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 
-    // Get video URLs in order
     const videoUrls = frames
       .sort((a, b) => a.orderIndex - b.orderIndex)
       .map((f) => f.videoUrl)
       .filter((url): url is string => Boolean(url));
 
-    // Trigger merge workflow
     const workflowInput: MergeVideoWorkflowInput = {
       userId: user.id,
       teamId,
@@ -277,7 +252,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
-      deduplicationId: `merge-${sequence.id}`,
+      deduplicationId: `merge-${sequence.id}-${Date.now()}`,
     });
 
     return { workflowRunId, sequenceId: sequence.id };

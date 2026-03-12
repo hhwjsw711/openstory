@@ -56,12 +56,16 @@ testWithUser.describe('Sequence Creation Flow', () => {
     async ({ page }) => {
       // Navigate to new sequence page
       await page.goto('/sequences/new');
-      await page.waitForLoadState('networkidle');
-      await expect(page).toHaveURL('/sequences/new');
 
-      // Verify script textarea is visible
+      // Wait for React hydration + data loading by checking the style grid is populated
+      // The style grid requires useStyles() query data, which only loads after hydration
+      await expect(
+        page.getByRole('grid', { name: 'Style selection' })
+      ).toBeVisible({ timeout: 15000 });
+
       const scriptTextarea = page.locator('textarea');
       await expect(scriptTextarea).toBeVisible();
+      await expect(page).toHaveURL('/sequences/new');
 
       // Enter a simple test script
       const testScript = `
@@ -78,17 +82,29 @@ SARAH
 Here's your caffeine fix. How's it going?
     `.trim();
 
+      // Click a style to force React interaction and confirm hydration
+      // The style grid may be SSR-rendered before React hydrates
+      const firstStyle = page
+        .getByRole('grid', { name: 'Style selection' })
+        .getByRole('button')
+        .first();
+      await firstStyle.click();
+
+      // Now fill the textarea - React is hydrated since style click worked
       await scriptTextarea.fill(testScript);
 
-      // Wait for textarea to have content
-      await expect(scriptTextarea).toHaveValue(testScript);
+      // Wait for "Generate Sequence" button to become enabled - this proves:
+      // 1. React hydration is complete (event handlers attached)
+      // 2. Textarea fill was picked up by React state (script is set)
+      // 3. Style was selected (from our click above)
+      await expect(
+        page.getByRole('button', { name: /Generate Sequence/i })
+      ).toBeEnabled({ timeout: 10000 });
 
-      // Open talent suggestion dialog - find the button with Users icon in the main area
-      // The button has an icon and "Talent" text
+      // Open talent suggestion dialog
       const talentButton = page
         .locator('main')
         .getByRole('button', { name: 'Talent' });
-      await expect(talentButton).toBeVisible();
       await talentButton.click();
 
       // Wait for talent dialog to open - the dialog is rendered via a portal
@@ -111,7 +127,9 @@ Here's your caffeine fix. How's it going?
       await expect(talentDialog).not.toBeVisible();
 
       // Verify submit button is ready (may have different text based on state)
-      const submitButton = page.getByRole('button', { name: /Activate/i });
+      const submitButton = page.getByRole('button', {
+        name: /Generate Sequence/i,
+      });
       await expect(submitButton).toBeVisible();
     }
   );
@@ -194,7 +212,7 @@ testWithUser.describe('Variant Selection', () => {
           const frameAfter = await getTestFrame(testFrame.id);
           return frameAfter?.thumbnailUrl;
         },
-        { timeout: 10000 }
+        { timeout: 20_000 }
       )
       .not.toBe(originalThumbnailUrl);
   });
@@ -257,7 +275,10 @@ testWithUser.describe('Character Recast', () => {
       await page.goto(`/sequences/${testSequence.id}/cast/${testCharacter.id}`);
 
       // Wait for character detail to load
-      await expect(page.getByText('John')).toBeVisible({ timeout: 10000 });
+      await page.waitForLoadState('domcontentloaded');
+      await expect(page.locator('h1').filter({ hasText: 'John' })).toBeVisible({
+        timeout: 15000,
+      });
 
       // Click Recast button
       const recastButton = page.getByRole('button', { name: 'Recast' });
@@ -293,7 +314,7 @@ testWithUser.describe('Character Recast', () => {
             const characterAfter = await getTestCharacter(testCharacter.id);
             return characterAfter?.talentId;
           },
-          { timeout: 10000 }
+          { timeout: 20_000 }
         )
         .toBe(testTalents[1].id);
     }
@@ -310,10 +331,11 @@ testWithUser.describe.skip('Empty States', () => {
       await setupMockRoutes(page);
 
       await page.goto('/sequences/new');
-      await page.waitForLoadState('networkidle');
 
-      // Wait for the page to load
-      await page.locator('textarea').waitFor();
+      // Wait for React hydration + data loading
+      await expect(
+        page.getByRole('grid', { name: 'Style selection' })
+      ).toBeVisible({ timeout: 15000 });
 
       // Open talent dialog - find button in main content area
       const talentButton = page

@@ -9,21 +9,22 @@ import {
   relations,
 } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import z from 'zod';
 import { generateId } from '../id';
 import { user } from './auth';
 import { teams } from './teams';
 
-type ColorString = string;
+export const StyleConfigSchema = z.object({
+  mood: z.string().min(3).max(1000),
+  artStyle: z.string().min(3).max(1000),
+  lighting: z.string().min(3).max(1000),
+  colorPalette: z.array(z.string().min(1)).min(1).max(20),
+  cameraWork: z.string().min(3).max(1000),
+  referenceFilms: z.array(z.string().min(1)).max(50),
+  colorGrading: z.string().min(3).max(1000),
+});
 
-export type StyleConfig = {
-  artStyle: string; // 'Neo-noir with stark contrasts and neon accents',
-  colorPalette: ColorString[];
-  lighting: string; // 'High contrast with venetian blind shadows and neon highlights',
-  cameraWork: string; // 'Dutch angles and voyeuristic framing',
-  mood: string; // 'Tense and mysterious';
-  referenceFilms: string[]; // ['Blade Runner', 'Sin City', 'Drive'],
-  colorGrading: string; // 'Desaturated with selective color pops',
-};
+export type StyleConfig = z.infer<typeof StyleConfigSchema>;
 
 /**
  * Styles library
@@ -51,6 +52,7 @@ export const styles = sqliteTable(
     isTemplate: integer('is_template', { mode: 'boolean' }).default(false),
     version: integer().default(1),
     previewUrl: text('preview_url'),
+    sortOrder: integer('sort_order').default(100),
     usageCount: integer('usage_count').default(0),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
@@ -63,38 +65,6 @@ export const styles = sqliteTable(
     }),
   },
   (table) => [index('idx_styles_team_id').on(table.teamId)]
-);
-
-/**
- * Style adaptations
- * Model-specific configurations for different AI providers
- */
-export const styleAdaptations = sqliteTable(
-  'style_adaptations',
-  {
-    id: text()
-      .$defaultFn(() => generateId())
-      .primaryKey()
-      .notNull(),
-    styleId: text('style_id')
-      .notNull()
-      .references(() => styles.id, { onDelete: 'cascade' }),
-    modelProvider: text('model_provider', { length: 100 }).notNull(),
-    modelName: text('model_name', { length: 100 }).notNull(),
-    adaptedConfig: text('adapted_config', { mode: 'json' })
-      .default('{}')
-      .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('idx_style_adaptations_provider_model').on(
-      table.modelProvider,
-      table.modelName
-    ),
-    index('idx_style_adaptations_style_id').on(table.styleId),
-  ]
 );
 
 /**
@@ -167,7 +137,7 @@ export const audio = sqliteTable(
 );
 
 // Relations
-export const stylesRelations = relations(styles, ({ one, many }) => ({
+export const stylesRelations = relations(styles, ({ one }) => ({
   team: one(teams, {
     fields: [styles.teamId],
     references: [teams.id],
@@ -176,18 +146,7 @@ export const stylesRelations = relations(styles, ({ one, many }) => ({
     fields: [styles.createdBy],
     references: [user.id],
   }),
-  styleAdaptations: many(styleAdaptations),
 }));
-
-export const styleAdaptationsRelations = relations(
-  styleAdaptations,
-  ({ one }) => ({
-    style: one(styles, {
-      fields: [styleAdaptations.styleId],
-      references: [styles.id],
-    }),
-  })
-);
 
 export const vfxRelations = relations(vfx, ({ one }) => ({
   team: one(teams, {
@@ -214,9 +173,6 @@ export const audioRelations = relations(audio, ({ one }) => ({
 // Type exports
 export type Style = InferSelectModel<typeof styles>;
 export type NewStyle = InferInsertModel<typeof styles>;
-
-export type StyleAdaptation = InferSelectModel<typeof styleAdaptations>;
-export type NewStyleAdaptation = InferInsertModel<typeof styleAdaptations>;
 
 export type Vfx = InferSelectModel<typeof vfx>;
 export type NewVfx = InferInsertModel<typeof vfx>;

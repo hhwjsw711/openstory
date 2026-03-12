@@ -3,64 +3,69 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
-import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
+import {
+  audioDesignGenerationResultSchema,
+  characterExtractionResultSchema,
+  locationExtractionResultSchema,
+  locationMatchResponseSchema,
+  sceneSplittingResultSchema,
+  talentMatchResponseSchema,
+} from '@/lib/ai/response-schemas';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
+import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
+import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
 import {
   updateSequenceAnalysisDurationMs,
+  updateSequenceMusicPrompt,
   updateSequenceStatus,
   updateSequenceTitle,
   updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
-import type { NewFrame } from '@/lib/db/schema';
-import { getGenerationChannel } from '@/lib/realtime';
-import { characterExtractionResultSchema } from '@/lib/script/character-extraction';
-import { audioDesignGenerationResultSchema } from '@/lib/script/audio-design';
-import { sceneSplittingResultSchema } from '@/lib/script/scene-splitting';
-import type { Scene } from '@/lib/script/types';
+import { getTalentByIds } from '@/lib/db/helpers/talent';
+import type {
+  CharacterMinimal,
+  NewFrame,
+  SequenceLocationMinimal,
+} from '@/lib/db/schema';
+import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
-import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
-import { locationExtractionResultSchema } from '@/lib/script/location-extraction';
-import {
-  buildMatchingPromptVariables,
-  talentMatchResponseSchema,
-} from '@/lib/services/talent-matching.service';
-import {
-  buildLocationMatchingPromptVariables,
-  locationMatchResponseSchema,
-} from '@/lib/services/location-matching.service';
-import { getTalentByIds } from '@/lib/db/helpers/talent';
-import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
+import { getGenerationChannel } from '@/lib/realtime';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
   LibraryLocationMatch,
   MotionWorkflowInput,
+  MusicWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { recordWorkflowTrace } from '@/lib/observability/langfuse';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+
+import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { snapDuration } from '@/lib/motion/motion-generation';
+import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
+import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import { locationBibleWorkflow } from './location-bible-workflow';
-import type {
-  CharacterMinimal,
-  SequenceLocationMinimal,
-} from '@/lib/db/schema';
-import { visualPromptWorkflow } from './visual-prompt-workflow';
+import { getFalFlowControl } from './constants';
 import { durableLLMCall } from './llm-call-helper';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
+import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
-// ------------------------------------------------------------
-// Process scenes in batches for phases 3-5
-const BATCH_SIZE = 1; // Process this many scenes at a time
+import {
+  musicPromptSchema,
+  reinforceInstrumentalTags,
+} from './music-prompt.schema';
+import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 /**
- * Match characters to a scene by their continuity tags
- * Pure function that works in-memory without DB queries
+ * Match characters to a scene by their continuity tags.
+ * Pure function that works in-memory without DB queries.
  */
 function matchCharactersToScene(
   allCharacters: CharacterMinimal[],
@@ -71,21 +76,22 @@ function matchCharactersToScene(
   return allCharacters.filter((char) => {
     const consistencyTag = (char.consistencyTag ?? '').toLowerCase();
     const charName = char.name.toLowerCase();
+    const charId = char.characterId.toLowerCase();
 
     return characterTags.some((tag) => {
       const tagLower = tag.toLowerCase();
       return (
         (consistencyTag && tagLower.includes(consistencyTag)) ||
         tagLower.includes(charName) ||
-        tagLower.includes(char.characterId.toLowerCase())
+        tagLower.includes(charId)
       );
     });
   });
 }
 
 /**
- * Match locations to a scene by environment tag or location name
- * Pure function that works in-memory without DB queries
+ * Match locations to a scene by environment tag or location name.
+ * Pure function that works in-memory without DB queries.
  */
 function matchLocationsToScene(
   allLocations: SequenceLocationMinimal[],
@@ -94,27 +100,28 @@ function matchLocationsToScene(
 ): SequenceLocationMinimal[] {
   if (!environmentTag && !sceneLocation) return [];
 
+  const envTagLower = environmentTag.toLowerCase();
+  const sceneLocLower = sceneLocation.toLowerCase();
+
   return allLocations.filter((loc) => {
     const consistencyTag = (loc.consistencyTag ?? '').toLowerCase();
     const locName = loc.name.toLowerCase();
     const locId = loc.locationId.toLowerCase();
-    const envTagLower = environmentTag.toLowerCase();
-    const sceneLocLower = sceneLocation.toLowerCase();
+    const searchTerms = [
+      locName,
+      locId,
+      ...(consistencyTag ? [consistencyTag] : []),
+    ];
 
-    // Check if any location identifier matches
-    if (consistencyTag) {
-      if (envTagLower.includes(consistencyTag)) return true;
-      if (sceneLocLower.includes(consistencyTag)) return true;
-    }
-    if (envTagLower.includes(locName) || sceneLocLower.includes(locName))
-      return true;
-    if (envTagLower.includes(locId) || sceneLocLower.includes(locId))
-      return true;
-    // Reverse match: location name contains the environment tag
-    if (locName.includes(envTagLower) || locName.includes(sceneLocLower))
-      return true;
-
-    return false;
+    // Check if any location identifier appears in the environment tag or scene location
+    return searchTerms.some(
+      (term) =>
+        envTagLower.includes(term) ||
+        sceneLocLower.includes(term) ||
+        // Reverse match: location name contains the search terms
+        term.includes(envTagLower) ||
+        term.includes(sceneLocLower)
+    );
   });
 }
 
@@ -130,33 +137,23 @@ export const analyzeScriptWorkflow = createWorkflow(
       imageModel,
       videoModel,
       autoGenerateMotion = false,
+      autoGenerateMusic = false,
+      musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
     } = input;
 
-    // ============================================================
-    // PHASE 1: Scene Splitting (using durableLLMCall helper)
-    // ============================================================
-
-    // Validate input before calling
+    // Phase 1: Scene splitting
     if (!script) {
       throw new WorkflowValidationError('No script found');
     }
 
-    const startTime = await context.run('start-time', async () => {
-      return Date.now();
-    });
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
+    const startTime = await context.run('start-time', () => Date.now());
 
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
       teamId: input.teamId,
-      openRouterApiKey: apiKeys.openRouterApiKey,
     };
 
     const {
@@ -166,9 +163,9 @@ export const analyzeScriptWorkflow = createWorkflow(
       context,
       {
         name: 'scene-splitting',
-        phase: { number: 1, name: 'Scene Splitting' },
+        phase: { number: 1, name: 'Analyzing script…' },
 
-        promptName: 'velro/phase/scene-splitting-chat',
+        promptName: 'phase/scene-splitting-chat',
         promptVariables: {
           aspectRatio,
           script: sanitizeScriptContent(script),
@@ -180,7 +177,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       llmCallContext
     );
 
-    // Step 3: Update sequence with title add add basic frames. Return a map of scene ID to frame ID.
     const frameMapping: { sceneId: string; frameId: string }[] =
       await context.run('update-title-and-create-frames', async () => {
         for (const scene of scenes) {
@@ -195,50 +191,39 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         if (!sequenceId) return [];
 
-        // Add the updated metadata to the sequence
         await updateSequenceTitle(sequenceId, title);
-
-        // Emit sequence updated event so frontend can refresh title
         await getGenerationChannel(sequenceId).emit('generation.updated', {
           title,
         });
-
-        // Add the workflow to the sequence
         await updateSequenceWorkflow(
           sequenceId,
-          `analyze-script-shorter-prompts-batch-size-${BATCH_SIZE}`
+          'analyze-script-shorter-prompts-batch-size-1'
         );
 
-        // Build array of all frames to create with basic scene data
         const frameInserts = scenes.map(
           (scene, index) =>
             ({
               sequenceId,
               description: scene.originalScript?.extract || '',
               orderIndex: index,
-              metadata: scene, // Store BasicScene object - will be enriched later
+              metadata: scene,
               durationMs: Math.round(
                 (scene.metadata?.durationSeconds || 3) * 1000
               ),
-              thumbnailStatus: 'generating', // we're going to generate the thumbnail
+              thumbnailStatus: 'generating',
               videoStatus: autoGenerateMotion ? 'generating' : 'pending',
             }) satisfies NewFrame
         );
 
-        // Bulk insert all frames at once
         const createdFrames = await bulkInsertFrames(frameInserts);
-
-        // Create a map of scene ID to frame ID for later updates
-        const frameMapping = createdFrames.map((frame) => ({
-          sceneId: frame.metadata?.sceneId || '',
-          frameId: frame.id,
+        const mapping = createdFrames.map((f) => ({
+          sceneId: f.metadata?.sceneId || '',
+          frameId: f.id,
         }));
 
-        // Set sequence status to completed
         await updateSequenceStatus(sequenceId, 'completed');
 
-        // Emit frame:created for each frame
-        for (const { sceneId, frameId } of frameMapping) {
+        for (const { sceneId, frameId } of mapping) {
           const scene = scenes.find((s) => s.sceneId === sceneId);
           await getGenerationChannel(sequenceId).emit(
             'generation.frame:created',
@@ -250,20 +235,17 @@ export const analyzeScriptWorkflow = createWorkflow(
           );
         }
 
-        return frameMapping;
+        return mapping;
       });
 
-    // ============================================================
-    // PHASE 2: Character Extraction (using durableLLMCall helper)
-    // ============================================================
-
+    // Phase 2: Character and location extraction
     const { characterBible } = await durableLLMCall(
       context,
       {
         name: 'character-extraction',
-        phase: { number: 2, name: 'Character Extraction' },
+        phase: { number: 2, name: 'Finding characters…' },
 
-        promptName: 'velro/phase/character-extraction-chat',
+        promptName: 'phase/character-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -274,17 +256,13 @@ export const analyzeScriptWorkflow = createWorkflow(
       llmCallContext
     );
 
-    // ============================================================
-    // PHASE 2b: Location Extraction (using durableLLMCall helper)
-    // ============================================================
-
     const { locationBible } = await durableLLMCall(
       context,
       {
         name: 'location-extraction',
-        phase: { number: 2, name: 'Location Extraction' },
+        phase: { number: 2, name: 'Finding locations…' },
 
-        promptName: 'velro/phase/location-extraction-chat',
+        promptName: 'phase/location-extraction-chat',
         promptVariables: {
           scenes: JSON.stringify(scenes, null, 2),
         },
@@ -295,34 +273,26 @@ export const analyzeScriptWorkflow = createWorkflow(
       llmCallContext
     );
 
-    // ============================================================
-    // TALENT MATCHING (conditional three-step durable pattern)
-    // ============================================================
-
+    // Talent matching (conditional)
     const { talentList, matchingPromptVariables } = await context.run(
       'get-talent-list',
       async () => {
-        if (
-          !suggestedTalentIds ||
-          suggestedTalentIds.length === 0 ||
-          !input.teamId
-        ) {
+        if (!suggestedTalentIds?.length || !input.teamId) {
           return { talentList: [], matchingPromptVariables: {} };
         }
         const talentList = await getTalentByIds(
           suggestedTalentIds,
           input.teamId
         );
-        const matchingPromptVariables = buildMatchingPromptVariables(
-          characterBible,
-          talentList
-        );
-
-        return { talentList, matchingPromptVariables };
+        return {
+          talentList,
+          matchingPromptVariables: buildMatchingPromptVariables(
+            characterBible,
+            talentList
+          ),
+        };
       }
     );
-
-    // Call the talent matching LLM call
 
     const { matches: talentMatches } =
       talentList.length > 0
@@ -330,9 +300,9 @@ export const analyzeScriptWorkflow = createWorkflow(
             context,
             {
               name: 'talent-matching',
-              phase: { number: 3, name: 'Talent Matching' },
+              phase: { number: 3, name: 'Casting characters…' },
 
-              promptName: 'velro/phase/talent-matching-chat',
+              promptName: 'phase/talent-matching-chat',
               promptVariables: matchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: talentMatchResponseSchema,
@@ -344,19 +314,17 @@ export const analyzeScriptWorkflow = createWorkflow(
     const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
       'build-matches',
       async () => {
-        // Build match results
         const usedTalentIds = new Set<string>();
         const usedCharacterIds = new Set<string>();
         const matches: TalentCharacterMatch[] = [];
 
         for (const match of talentMatches) {
-          // This ensures that talent is never cast twice
+          // Ensure each talent and character is only cast once
           if (usedTalentIds.has(match.talentId)) continue;
-          // This ensures that a character is never cast twice
           if (usedCharacterIds.has(match.characterId)) continue;
 
           const talent = talentList.find((t) => t.id === match.talentId);
-          if (!talent || !talent.imageUrl) continue;
+          if (!talent?.imageUrl) continue;
 
           const character = characterBible.find(
             (c) => c.characterId === match.characterId
@@ -374,7 +342,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           });
         }
 
-        // Emit matched talent event
         if (matches.length > 0) {
           await getGenerationChannel(sequenceId).emit(
             'generation.talent:matched',
@@ -398,17 +365,10 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
-    // ============================================================
-    // LOCATION MATCHING (conditional three-step durable pattern)
-    // ============================================================
-
+    // Location matching (conditional)
     const { libraryLocationList, locationMatchingPromptVariables } =
       await context.run('get-library-locations', async () => {
-        if (
-          !suggestedLocationIds ||
-          suggestedLocationIds.length === 0 ||
-          !input.teamId
-        ) {
+        if (!suggestedLocationIds?.length || !input.teamId) {
           return {
             libraryLocationList: [],
             locationMatchingPromptVariables: {},
@@ -416,25 +376,24 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
         const libraryLocationList =
           await getLibraryLocationsByIds(suggestedLocationIds);
-        const locationMatchingPromptVariables =
-          buildLocationMatchingPromptVariables(
+        return {
+          libraryLocationList,
+          locationMatchingPromptVariables: buildLocationMatchingPromptVariables(
             locationBible,
             libraryLocationList
-          );
-
-        return { libraryLocationList, locationMatchingPromptVariables };
+          ),
+        };
       });
 
-    // Call the location matching LLM call
     const { matches: locationMatches } =
       libraryLocationList.length > 0
         ? await durableLLMCall(
             context,
             {
               name: 'location-matching',
-              phase: { number: 3, name: 'Location Matching' },
+              phase: { number: 3, name: 'Matching locations…' },
 
-              promptName: 'velro/phase/location-matching-chat',
+              promptName: 'phase/location-matching-chat',
               promptVariables: locationMatchingPromptVariables,
               modelId: analysisModelId,
               responseSchema: locationMatchResponseSchema,
@@ -446,17 +405,13 @@ export const analyzeScriptWorkflow = createWorkflow(
     const libraryLocationMatches: LibraryLocationMatch[] = await context.run(
       'build-location-matches',
       async () => {
-        // Build match results
         const usedLibraryIds = new Set<string>();
         const usedLocationIds = new Set<string>();
         const matches: LibraryLocationMatch[] = [];
 
         for (const match of locationMatches) {
-          // Skip if library location already used
           if (usedLibraryIds.has(match.libraryLocationId)) continue;
-          // Skip if script location already matched
           if (usedLocationIds.has(match.locationId)) continue;
-          // Skip low confidence matches
           if (match.confidence < 0.5) continue;
 
           const libraryLoc = libraryLocationList.find(
@@ -480,7 +435,6 @@ export const analyzeScriptWorkflow = createWorkflow(
           });
         }
 
-        // Emit matched locations event
         if (matches.length > 0) {
           await getGenerationChannel(sequenceId).emit(
             'generation.location:matched',
@@ -506,7 +460,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       }
     );
 
-    // Characters and locations with completed sheets - populated after sheet generation
+    // Generate character sheets, location sheets, and visual prompts in parallel
     const [charResult, locationResult, visualResult] = await Promise.all([
       context.invoke('character-sheet-from-bible', {
         workflow: characterBibleWorkflow,
@@ -517,6 +471,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           characterBible,
           talentMatches: talentCharacterMatches,
         },
+        flowControl: getFalFlowControl(),
       }),
       context.invoke('location-sheet-from-bible', {
         workflow: locationBibleWorkflow,
@@ -527,6 +482,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           locationBible,
           libraryLocationMatches,
         },
+        flowControl: getFalFlowControl(),
       }),
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
@@ -542,49 +498,72 @@ export const analyzeScriptWorkflow = createWorkflow(
       }),
     ]);
 
-    if (charResult.isFailed || charResult.isCanceled) {
+    if (charResult.isFailed || charResult.isCanceled)
       throw new Error('Character sheet generation failed');
-    }
-    if (locationResult.isFailed || locationResult.isCanceled) {
+    if (locationResult.isFailed || locationResult.isCanceled)
       throw new Error('Location sheet generation failed');
-    }
-    if (visualResult.isFailed || visualResult.isCanceled) {
+    if (visualResult.isFailed || visualResult.isCanceled)
       throw new Error('Visual prompt generation failed');
-    }
 
     const charactersWithSheets = charResult.body;
     const locationsWithSheets = locationResult.body;
     const scenesWithVisualPrompts = visualResult.body;
 
+    // Persist visual prompts + continuity to frames immediately
+    // so cast/location tabs work before image generation completes
+    if (sequenceId) {
+      await context.run('update-frames-after-visual-prompts', async () => {
+        await Promise.all(
+          scenesWithVisualPrompts.map(async (scene) => {
+            const matched = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
+            );
+            if (!matched) return;
+            await updateFrame(matched.frameId, {
+              metadata: scene,
+              imagePrompt: scene.prompts?.visual?.fullPrompt,
+            });
+            await getGenerationChannel(sequenceId).emit(
+              'generation.frame:updated',
+              {
+                frameId: matched.frameId,
+                updateType: 'visual-prompt',
+                metadata: scene,
+              }
+            );
+          })
+        );
+      });
+    }
+
     let imageUrls: string[] = [];
-    // Step 8: Generate thumbnails in parallel if enabled
+
     if (imageModel) {
-      // Map aspect ratio to image size preset
       const imageSize = aspectRatioToImageSize(aspectRatio);
 
-      // Build scene character map in-memory using characters from Phase 3
-      const sceneCharacterMap: Record<string, CharacterMinimal[]> = {};
-      // Build scene location map in-memory using locations from Phase 4
-      const sceneLocationMap: Record<string, SequenceLocationMinimal[]> = {};
-      for (const scene of scenesWithVisualPrompts) {
-        const sceneCharTags = scene.continuity?.characterTags || [];
-        sceneCharacterMap[scene.sceneId] = matchCharactersToScene(
-          charactersWithSheets,
-          sceneCharTags
-        );
-        // Match locations to scene
-        const envTag = scene.continuity?.environmentTag || '';
-        const sceneLoc = scene.metadata?.location || '';
-        sceneLocationMap[scene.sceneId] = matchLocationsToScene(
-          locationsWithSheets,
-          envTag,
-          sceneLoc
-        );
-      }
-      // Start phase 5
+      // Build per-scene character and location maps for reference image lookup
+      const sceneCharacterMap = Object.fromEntries(
+        scenesWithVisualPrompts.map((scene) => [
+          scene.sceneId,
+          matchCharactersToScene(
+            charactersWithSheets,
+            scene.continuity?.characterTags || []
+          ),
+        ])
+      );
+      const sceneLocationMap = Object.fromEntries(
+        scenesWithVisualPrompts.map((scene) => [
+          scene.sceneId,
+          matchLocationsToScene(
+            locationsWithSheets,
+            scene.continuity?.environmentTag || '',
+            scene.metadata?.location || ''
+          ),
+        ])
+      );
+
       await context.run('frame-images-start', async () => {
         if (sequenceId) {
-          // Time to first image
           await updateSequenceAnalysisDurationMs(
             sequenceId,
             Date.now() - startTime
@@ -592,12 +571,12 @@ export const analyzeScriptWorkflow = createWorkflow(
         }
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
           phase: 5,
-          phaseName: 'Generate Images',
+          phaseName: 'Generating images…',
         });
       });
+
       imageUrls = await Promise.all(
         scenesWithVisualPrompts.map(async (scene) => {
-          // Check if visual prompt exists
           const visualPrompt = scene.prompts?.visual?.fullPrompt;
           if (!visualPrompt) {
             throw new WorkflowValidationError(
@@ -605,67 +584,54 @@ export const analyzeScriptWorkflow = createWorkflow(
             );
           }
 
-          // Optional: pass the frame ID to the image generation workflow
-          const frame = frameMapping.find(
-            (frame) => frame.sceneId === scene.sceneId
+          const matchedFrame = frameMapping.find(
+            (f) => f.sceneId === scene.sceneId
           );
 
-          // Get characters and locations for this scene
-          const charsWithSheets = sceneCharacterMap[scene.sceneId] || [];
-          const locsWithSheets = sceneLocationMap[scene.sceneId] || [];
-
-          // Combine character and location reference images
-          const characterRefs = buildCharacterReferenceImages(charsWithSheets);
-          const locationRefs = buildLocationReferenceImages(locsWithSheets);
+          const characterRefs = buildCharacterReferenceImages(
+            sceneCharacterMap[scene.sceneId] || []
+          );
+          const locationRefs = buildLocationReferenceImages(
+            sceneLocationMap[scene.sceneId] || []
+          );
           const allReferences = [...characterRefs, ...locationRefs];
 
-          // Generate image for the frame using sequence's selected model
-          const imageInput: ImageWorkflowInput = {
-            userId: input.userId,
-            teamId: input.teamId,
-            prompt: visualPrompt,
-            model: imageModel,
-            imageSize,
-            numImages: 1,
-            // Not required, but can be used to update the frame thumbnail
-            frameId: frame?.frameId,
-            sequenceId,
-            // Pass character and location reference images for consistency
-            referenceImages:
-              allReferences.length > 0 ? allReferences : undefined,
-          };
-
-          const {
-            body: imageBody,
-            isFailed: imageIsFailed,
-            isCanceled: imageIsCanceled,
-          } = await context.invoke('image', {
+          const result = await context.invoke('image', {
             workflow: generateImageWorkflow,
-            body: imageInput,
+            body: {
+              userId: input.userId,
+              teamId: input.teamId,
+              prompt: visualPrompt,
+              model: imageModel,
+              imageSize,
+              numImages: 1,
+              frameId: matchedFrame?.frameId,
+              sequenceId,
+              referenceImages:
+                allReferences.length > 0 ? allReferences : undefined,
+            } satisfies ImageWorkflowInput,
             retries: 3,
-            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+            retryDelay: 'pow(2, retried) * 1000',
+            flowControl: getFalFlowControl(),
           });
 
-          if (imageIsFailed || imageIsCanceled || !imageBody.imageUrl) {
+          if (result.isFailed || result.isCanceled || !result.body.imageUrl) {
             throw new WorkflowValidationError(
-              `Image generation failed for scene ${scene.sceneId}, skipping motion generation`
+              `Image generation failed for scene ${scene.sceneId}`
             );
           }
-          return imageBody.imageUrl;
+          return result.body.imageUrl;
         })
       );
     }
 
-    // End phase 5
     await context.run('frame-images-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
         phase: 5,
       });
     });
 
-    // ============================================================
-    // PHASE 4: Motion Prompts (using durableLLMCall helper)
-    // ============================================================
+    // Motion prompt generation
     const partialScenesWithMotionPrompts = await context.invoke(
       'motion-prompts',
       {
@@ -683,7 +649,10 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     const scenesWithMotionPrompts: Scene[] = await context.run(
       'merge-motion-prompts',
-      async () => {
+      () => {
+        const modelKey = videoModel || DEFAULT_VIDEO_MODEL;
+        const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+
         return scenesWithVisualPrompts.map((scene) => {
           const enrichment = partialScenesWithMotionPrompts.body.find(
             (s) => s.sceneId === scene.sceneId
@@ -694,24 +663,23 @@ export const analyzeScriptWorkflow = createWorkflow(
             );
           }
 
+          // Snap duration to model capabilities so music generation uses accurate values
+          const metadata =
+            scene.metadata && modelConfig
+              ? {
+                  ...scene.metadata,
+                  durationSeconds: snapDuration(
+                    scene.metadata.durationSeconds,
+                    modelConfig.capabilities
+                  ),
+                }
+              : scene.metadata;
+
           return {
             ...scene,
+            metadata,
             prompts: {
-              visual: scene.prompts?.visual || {
-                fullPrompt: '',
-                negativePrompt: '',
-                components: {
-                  sceneDescription: '',
-                  subject: '',
-                  environment: '',
-                  lighting: '',
-                  camera: '',
-                  composition: '',
-                  style: '',
-                  technical: '',
-                  atmosphere: '',
-                },
-              },
+              ...scene.prompts,
               motion: enrichment.prompts?.motion,
             },
           };
@@ -720,22 +688,24 @@ export const analyzeScriptWorkflow = createWorkflow(
     );
 
     if (sequenceId) {
-      // Update frames with motion prompt data (Phase 4)
       await context.run('update-frames-after-motion-prompts', async () => {
         await Promise.all(
           scenesWithMotionPrompts.map(async (scene) => {
-            const frame = frameMapping.find(
-              (frame) => frame.sceneId === scene.sceneId
+            const matched = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
             );
-            if (!frame) return;
-            await updateFrame(frame.frameId, {
+            if (!matched) return;
+            await updateFrame(matched.frameId, {
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
+              durationMs: Math.round(
+                (scene.metadata?.durationSeconds || 3) * 1000
+              ),
             });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
-                frameId: frame.frameId,
+                frameId: matched.frameId,
                 updateType: 'motion-prompt',
                 metadata: scene,
               }
@@ -745,17 +715,14 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // ============================================================
-    // PHASE 5: Audio Design (using durableLLMCall helper)
-    // ============================================================
-
+    // Audio design generation
     const { scenes: scenesWithAudioDesign } = await durableLLMCall(
       context,
       {
         name: 'audio-design',
-        phase: { number: 7, name: 'Audio Design' },
+        phase: { number: 7, name: 'Designing sound…' },
 
-        promptName: 'velro/phase/audio-design-chat',
+        promptName: 'phase/audio-design-chat',
         promptVariables: {
           scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
         },
@@ -772,8 +739,8 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     const completeScenes: Scene[] = await context.run(
       'merge-audio-design',
-      async () => {
-        return scenesWithMotionPrompts.map((scene) => {
+      () =>
+        scenesWithMotionPrompts.map((scene) => {
           const enrichment = scenesWithAudioDesign.find(
             (s) => s.sceneId === scene.sceneId
           );
@@ -786,24 +753,22 @@ export const analyzeScriptWorkflow = createWorkflow(
             ...scene,
             audioDesign: enrichment.audioDesign,
           };
-        });
-      }
+        })
     );
 
     if (sequenceId) {
-      // Update frames with audio design data (Phase 5)
       await context.run('update-frames-after-audio-design', async () => {
         await Promise.all(
           completeScenes.map(async (scene) => {
-            const frame = frameMapping.find(
-              (frame) => frame.sceneId === scene.sceneId
+            const matched = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
             );
-            if (!frame) return;
-            await updateFrame(frame.frameId, { metadata: scene });
+            if (!matched) return;
+            await updateFrame(matched.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
-                frameId: frame.frameId,
+                frameId: matched.frameId,
                 updateType: 'audio-design',
                 metadata: scene,
               }
@@ -813,68 +778,130 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    if (autoGenerateMotion && videoModel && imageUrls && imageUrls.length > 0) {
-      // Start phase 7
-      await context.run('start-motion-generation', async () => {
+    // Music prompt generation + optional audio generation
+    const scenesWithMusic = completeScenes.filter(
+      (scene) =>
+        scene.audioDesign?.music?.presence &&
+        scene.audioDesign.music.presence !== 'none'
+    );
+
+    if (scenesWithMusic.length > 0) {
+      await context.run('start-music-prompt-generation', async () => {
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 7,
-          phaseName: 'Motion Generation',
+          phase: 8,
+          phaseName: 'Composing music…',
         });
       });
-      // Generate motion for each scene
-      await Promise.all(
-        completeScenes.map(async (scene, index) => {
-          // Check if visual prompt exists
-          const visualPrompt = scene.prompts?.visual?.fullPrompt;
-          if (!visualPrompt) {
-            throw new WorkflowValidationError(
-              `Scene ${scene.sceneId} has no visual prompt`
-            );
-          }
 
-          // Optional: pass the frame ID to the image generation workflow
-          const frame = frameMapping.find(
-            (frame) => frame.sceneId === scene.sceneId
+      let totalDuration = 0;
+      const sceneSummaries = scenesWithMusic.map((scene) => {
+        const durationSeconds = scene.metadata?.durationSeconds || 10;
+        totalDuration += durationSeconds;
+        return {
+          title: scene.metadata?.title || 'Untitled Scene',
+          storyBeat: scene.metadata?.storyBeat || '',
+          durationSeconds,
+          musicStyle: scene.audioDesign?.music?.style || '',
+          musicMood: scene.audioDesign?.music?.mood || '',
+          musicPresence: scene.audioDesign?.music?.presence || 'none',
+          atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
+        };
+      });
+
+      const musicPrompt = await durableLLMCall(
+        context,
+        {
+          name: 'music-prompt-generation',
+          phase: { number: 8, name: 'Composing music…' },
+          promptName: 'phase/music-prompt-generation-chat',
+          promptVariables: {
+            scenes: JSON.stringify(sceneSummaries),
+          },
+          modelId: analysisModelId,
+          responseSchema: musicPromptSchema,
+        },
+        llmCallContext
+      );
+
+      const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
+      if (sequenceId) {
+        await context.run('store-music-prompt', async () => {
+          await updateSequenceMusicPrompt(
+            sequenceId,
+            musicPrompt.prompt,
+            reinforcedTags
           );
-          // ------------------------------------------------------------
-          // Generate motion for the frame using sequence's selected model
-          // ------------------------------------------------------------
-          if (!autoGenerateMotion || !videoModel) {
-            // Auto-generate motion is disabled or no video model selected, skip motion generation
-            return;
-          }
-          // Check if motion prompt exists
-          const motionPrompt = scene.prompts?.motion?.fullPrompt;
-          if (!motionPrompt) {
-            throw new WorkflowValidationError(
-              `Scene ${scene.sceneId} has no motion prompt`
-            );
-          }
+        });
+      }
+      // Now generate motion for each scene
+      if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
+        await context.run('start-motion-generation', async () => {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.phase:start',
+            {
+              phase: 7,
+              phaseName: 'Generating motion…',
+            }
+          );
+        });
 
-          // Trigger motion generation workflow using sequence's selected model
-          const motionInput: MotionWorkflowInput = {
+        await Promise.all(
+          completeScenes.map(async (scene, index) => {
+            const motionPrompt = scene.prompts?.motion?.fullPrompt;
+            if (!motionPrompt) {
+              throw new WorkflowValidationError(
+                `Scene ${scene.sceneId} has no motion prompt`
+              );
+            }
+
+            const matchedFrame = frameMapping.find(
+              (f) => f.sceneId === scene.sceneId
+            );
+
+            await context.invoke('motion', {
+              workflow: generateMotionWorkflow,
+              body: {
+                userId: input.userId,
+                teamId: input.teamId,
+                frameId: matchedFrame?.frameId,
+                sequenceId,
+                imageUrl: imageUrls[index],
+                prompt: motionPrompt,
+                model: videoModel,
+                aspectRatio,
+                duration: scene.metadata?.durationSeconds || 3,
+              } satisfies MotionWorkflowInput,
+              retries: 3,
+              retryDelay: 'pow(2, retried) * 1000',
+              flowControl: getFalFlowControl(),
+            });
+          })
+        );
+      }
+      // Now generate music for whole movie
+      if (autoGenerateMusic && sequenceId) {
+        if (!input.userId || !input.teamId) {
+          throw new Error('userId and teamId required for music generation');
+        }
+
+        await context.invoke('music', {
+          workflow: generateMusicWorkflow,
+          body: {
             userId: input.userId,
             teamId: input.teamId,
-            frameId: frame?.frameId,
             sequenceId,
-            imageUrl: imageUrls[index],
-            prompt: motionPrompt,
-            model: videoModel,
-            aspectRatio,
-            duration: scene.metadata?.durationSeconds || 3,
-          };
-
-          await context.invoke('motion', {
-            workflow: generateMotionWorkflow,
-            body: motionInput,
-            retries: 3,
-            retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
-          });
-        })
-      );
+            prompt: musicPrompt.prompt,
+            tags: reinforcedTags,
+            duration: totalDuration,
+            model: musicModel,
+          } satisfies MusicWorkflowInput,
+          retries: 3,
+          retryDelay: 'pow(2, retried) * 1000',
+          flowControl: getFalFlowControl(),
+        });
+      }
     }
 
-    // Record workflow trace as a durable step (only runs once at completion)
     if (sequenceId) {
       await context.run('record-workflow-trace', async () => {
         await recordWorkflowTrace(
@@ -892,19 +919,12 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
     failureFunction: async ({ context, failResponse }) => {
-      const input = context.requestPayload;
-      const { sequenceId } = input;
+      const { sequenceId } = context.requestPayload;
       if (!sequenceId) return;
 
       console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
-
-      // Set sequence status to completed
-      await updateSequenceStatus(sequenceId, 'failed');
-
-      // Emit sequence failure event
+      await updateSequenceStatus(sequenceId, 'failed', String(failResponse));
       await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: String(failResponse),
       });

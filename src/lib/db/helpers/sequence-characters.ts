@@ -128,20 +128,54 @@ export async function getSequenceCharactersWithSheets(
 export async function createSequenceCharacter(
   data: NewCharacter
 ): Promise<Character> {
-  const [character] = await getDb().insert(characters).values(data).returning();
+  const [character] = await getDb()
+    .insert(characters)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [characters.sequenceId, characters.characterId],
+      set: {
+        name: data.name,
+        age: data.age,
+        gender: data.gender,
+        ethnicity: data.ethnicity,
+        physicalDescription: data.physicalDescription,
+        standardClothing: data.standardClothing,
+        distinguishingFeatures: data.distinguishingFeatures,
+        consistencyTag: data.consistencyTag,
+        sheetImageUrl: data.sheetImageUrl,
+        sheetImagePath: data.sheetImagePath,
+        sheetStatus: data.sheetStatus,
+        sheetGeneratedAt: data.sheetGeneratedAt,
+        talentId: data.talentId,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
   return character;
 }
 
 /**
- * Create multiple sequence characters in a transaction
+ * Create multiple sequence characters in batched inserts.
+ * Batches to stay within D1's 100 bound parameter limit
+ * (~20 params per row, so 4 rows per batch is safe)
  */
 export async function createSequenceCharactersBulk(
   data: NewCharacter[]
 ): Promise<Character[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(characters).values(data).returning();
-  });
+  const BATCH_SIZE = 4;
+  const results: Character[] = [];
+
+  for (let i = 0; i < data.length; i += BATCH_SIZE) {
+    const batch = data.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(characters)
+      .values(batch)
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**

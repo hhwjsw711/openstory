@@ -1,10 +1,12 @@
 import { AppLayout } from '@/components/layout/app-layout';
-import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { RouteErrorFallback } from '@/components/error/route-error-fallback';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { redirect } from '@tanstack/react-router';
 import { sessionQueryOptions } from '@/lib/auth/session-query';
 
 export const Route = createFileRoute('/_protected')({
   component: ProtectedLayout,
+  errorComponent: RouteErrorFallback,
   beforeLoad: async ({ context: { queryClient } }) => {
     const session = await queryClient.ensureQueryData(sessionQueryOptions);
     if (!session) {
@@ -13,27 +15,17 @@ export const Route = createFileRoute('/_protected')({
       });
     }
 
-    if (
-      session.user.status === 'pending' ||
-      session.user.status === 'suspended'
-    ) {
+    if (session.user.status === 'suspended') {
       throw redirect({
-        to: '/invite-code',
+        to: '/login',
       });
     }
   },
 });
 
 function ProtectedLayout() {
-  const location = useLocation();
-  const isSettingsPage = location.pathname.startsWith('/settings');
-
   return (
-    <AppLayout
-      className={
-        isSettingsPage ? 'overflow-y-auto [scrollbar-gutter:stable]' : undefined
-      }
-    >
+    <AppLayout>
       <Outlet />
     </AppLayout>
   );

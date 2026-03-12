@@ -1,10 +1,9 @@
 /**
- * Frame generation workflow
- * Orchestrates script analysis, frame creation, and thumbnail generation
+ * Storyboard generation workflow
+ * Verifies sequence data, clears existing frames, then invokes script analysis
  */
 
 import { getDb } from '#db-client';
-import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -17,13 +16,13 @@ import {
 } from '@/lib/ai/models.config';
 import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { sequences, styles } from '@/lib/db/schema';
+import { sequences, StyleConfigSchema, styles } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
-import { DirectorDnaConfigSchema } from '@/lib/services/director-dna-types';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
-import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { WorkflowContext } from '@upstash/workflow';
+import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
+import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 import { eq } from 'drizzle-orm';
 
@@ -35,14 +34,9 @@ export const generateStoryboardWorkflow = createWorkflow(
       sequenceId: input.sequenceId,
       teamId: input.teamId,
       userId: input.userId,
-      suggestedTalentIds: input.suggestedTalentIds,
-      suggestedLocationIds: input.suggestedLocationIds,
       autoGenerateMotion: input.autoGenerateMotion,
     });
 
-    // Helper to safely emit events (no-op if realtime unavailable)
-
-    // Step 1: Verify sequence and get data
     const {
       sequenceId,
       script,
@@ -52,7 +46,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       imageModel,
       videoModel,
     } = await context.run('verify-clear-and-start-processing', async () => {
-      // Validate authentication
       validateSequenceAuth(input);
 
       const sequence = await getSequenceForUser({
@@ -77,50 +70,36 @@ export const generateStoryboardWorkflow = createWorkflow(
         throw new WorkflowValidationError('No style found');
       }
 
-      // Delete existing frames
       const existingFrames = await getSequenceFrames(input.sequenceId);
+      await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
 
-      if (existingFrames.length > 0) {
-        await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
-      }
-
-      // Set sequence status to processing
       await getDb()
         .update(sequences)
         .set({ status: 'processing', updatedAt: new Date() })
         .where(eq(sequences.id, input.sequenceId));
 
-      const styleConfig = DirectorDnaConfigSchema.parse(style.config);
-
-      // Use the sequence's models (fall back to defaults if not set)
-      // Runtime validation prevents invalid model keys from causing downstream failures
-
-      const analysisModelId =
-        getAnalysisModelById(sequence.analysisModel)?.id ||
-        DEFAULT_ANALYSIS_MODEL;
-      const imageModel = safeTextToImageModel(
-        sequence.imageModel,
-        DEFAULT_IMAGE_MODEL
-      );
-      const videoModel = safeImageToVideoModel(
-        sequence.videoModel,
-        DEFAULT_VIDEO_MODEL
-      );
-
       return {
         sequenceId: sequence.id,
         script: sequence.script,
         aspectRatio: sequence.aspectRatio,
-        styleConfig,
-        analysisModelId,
-        imageModel,
-        videoModel,
+        styleConfig: StyleConfigSchema.parse(style.config),
+        analysisModelId:
+          getAnalysisModelById(sequence.analysisModel)?.id ??
+          DEFAULT_ANALYSIS_MODEL,
+        imageModel: safeTextToImageModel(
+          sequence.imageModel,
+          DEFAULT_IMAGE_MODEL
+        ),
+        videoModel: safeImageToVideoModel(
+          sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        ),
       };
     });
 
     await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,
-      workflowRunId: `analyze-script-${sequenceId}`,
+      workflowRunId: `analyze-script-${sequenceId}-${Date.now()}`,
       body: {
         userId: input.userId,
         teamId: input.teamId,
@@ -132,22 +111,19 @@ export const generateStoryboardWorkflow = createWorkflow(
         imageModel,
         videoModel,
         autoGenerateMotion: input.autoGenerateMotion ?? false,
+        autoGenerateMusic: input.autoGenerateMusic ?? false,
+        musicModel: input.musicModel,
         suggestedTalentIds: input.suggestedTalentIds,
         suggestedLocationIds: input.suggestedLocationIds,
       },
       retries: 3,
-      retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
+      retryDelay: 'pow(2, retried) * 1000',
     });
 
-    // Emit generation complete
     await context.run('emit-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.complete', {
         sequenceId,
       });
     });
-  },
-  {
-    retries: 3,
-    retryDelay: 'pow(2, retried) * 1000', // 1s, 2s, 4s, 8s
   }
 );

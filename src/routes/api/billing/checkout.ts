@@ -6,6 +6,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError, ValidationError } from '@/lib/errors';
@@ -16,6 +17,13 @@ export const Route = createFileRoute('/api/billing/checkout')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return json(
+            { success: false, error: { message: 'Billing is not enabled' } },
+            { status: 404 }
+          );
+        }
+
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);
@@ -36,8 +44,8 @@ export const Route = createFileRoute('/api/billing/checkout')({
             amountUsd,
             userId: user.id,
             userEmail: user.email,
-            successUrl: `${appUrl}/settings/billing?success=true`,
-            cancelUrl: `${appUrl}/settings/billing?canceled=true`,
+            successUrl: `${appUrl}/credits?success=true`,
+            cancelUrl: `${appUrl}/credits?canceled=true`,
           });
 
           return json(

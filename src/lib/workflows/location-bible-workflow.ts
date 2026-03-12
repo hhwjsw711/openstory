@@ -12,29 +12,29 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
+  deductWorkflowCredits,
+  extractImageCost,
+} from '@/lib/billing/workflow-deduction';
+import {
   createSequenceLocationsBulk,
   updateLocationReference,
 } from '@/lib/db/helpers/sequence-locations';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type {
   NewSequenceLocation,
   SequenceLocationMinimal,
 } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
-import { STORAGE_BUCKETS, uploadFile } from '@/lib/db/helpers/storage';
-import {
-  deductWorkflowCredits,
-  extractImageCost,
-} from '@/lib/billing/workflow-deduction';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
+import { getGenerationChannel } from '@/lib/realtime';
 import type {
   LibraryLocationMatch,
   LocationBibleWorkflowInput,
 } from '@/lib/workflow/types';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { getGenerationChannel } from '@/lib/realtime';
 
 export const locationBibleWorkflow = createWorkflow(
   async (
@@ -54,7 +54,7 @@ export const locationBibleWorkflow = createWorkflow(
         'generation.phase:start',
         {
           phase: 4,
-          phaseName: 'Location Bible',
+          phaseName: 'Designing locations…',
         }
       );
     });
@@ -106,11 +106,6 @@ export const locationBibleWorkflow = createWorkflow(
       createdLocations.map((loc) => [loc.locationId, loc.id])
     );
 
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
     // Step 2: Generate reference images for each location in parallel
     const seqLocations: SequenceLocationMinimal[] = await Promise.all(
       input.locationBible.map(async (location, index) => {
@@ -139,14 +134,14 @@ export const locationBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'location-bible-image',
-            falApiKey: apiKeys.falApiKey,
+            teamId: input.teamId,
           });
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
             teamId: input.teamId,
-            costUsd: extractImageCost(imageResult.metadata),
-            usedOwnKey: !!apiKeys.falApiKey,
+            costMicros: extractImageCost(imageResult.metadata),
+            usedOwnKey: imageResult.metadata.usedOwnKey,
             userId: input.userId,
             description: `Location bible sheet (${model})`,
             metadata: { model, locationId: location.locationId },

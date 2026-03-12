@@ -1,55 +1,54 @@
-/**
- * Upscale variant workflow
- * Upscales a cropped variant tile to higher resolution in the background
- */
-
-import { updateFrame } from '@/lib/db/helpers/frames';
-import { uploadImageToStorage } from '@/lib/image/image-storage';
-import { upscaleWithNanoBanana } from '@/lib/image/image-upscale';
+import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { updateFrame } from '@/lib/db/helpers/frames';
+import { generateImageWithProvider } from '@/lib/image/image-generation';
+import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { WorkflowContext } from '@upstash/workflow';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+
+const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
+
+RENDERING RULES
+- Keep the original scene, pose, framing and camera angle IDENTICAL.
+- Preserve the identity of all real people:
+  - Do NOT change their faces, expressions, hairstyles, or clothing.
+  - Do NOT add new people or remove existing people.
+- Faces:
+  - Make faces sharp and detailed.
+  - Clear eyes, natural skin texture, no plastic or over-smoothed look.
+- Text & logos:
+  - Preserve all printed text, signage, and logos exactly as they appear.
+  - Re-render text cleanly at higher resolution.
+  - Do NOT invent new words, change names, or move signs.
+- Style:
+  - Realistic photographic look.
+  - Keep original colours, lighting and depth of field.
+  - No extra filters, bokeh, vignettes, film grain, or stylistic changes unless they already exist.
+
+OUTPUT
+- A SINGLE high-resolution image.
+- Aspect ratio: match the original exactly.
+- Resolution: upscale to animation-ready quality.
+- No text overlays, borders, watermarks, or new graphics added by the model.`;
 
 export const upscaleVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
     const input = context.requestPayload;
-
-    // Validate required fields
-    if (!input.croppedTileUrl) {
-      throw new WorkflowValidationError(
-        'Cropped tile URL is required for upscaling'
-      );
-    }
-    if (!input.frameId) {
-      throw new WorkflowValidationError('Frame ID is required for upscaling');
-    }
 
     console.log(
       '[UpscaleVariantWorkflow]',
       `Starting upscale for frame ${input.frameId}`
     );
 
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
-    // Step 1: Upscale the cropped tile using Nano Banana Pro Edit
     const upscaleResult = await context.run('upscale-image', async () => {
-      // Emit realtime progress
-      await getGenerationChannel(input.sequenceId)?.emit(
+      await getGenerationChannel(input.sequenceId).emit(
         'generation.image:progress',
-        {
-          frameId: input.frameId,
-          status: 'generating',
-        }
+        { frameId: input.frameId, status: 'generating' }
       );
 
       const frame = await updateFrame(
@@ -66,41 +65,40 @@ export const upscaleVariantWorkflow = createWorkflow(
           '[UpscaleVariantWorkflow]',
           `Frame ${input.frameId} was deleted, skipping workflow`
         );
-        return null; // Signal to skip
+        return null;
       }
 
-      const result = await upscaleWithNanoBanana(
-        input.croppedTileUrl,
-        '2K',
-        apiKeys.falApiKey
-      );
-
+      const result = await generateImageWithProvider({
+        model: 'nano_banana_2',
+        prompt: UPSCALE_PROMPT,
+        referenceImageUrls: [input.croppedTileUrl],
+        numImages: 1,
+        outputFormat: 'png',
+        teamId: input.teamId,
+      });
       return {
-        imageUrl: result.imageUrl,
-        requestId: result.requestId,
-        cost: result.cost,
+        imageUrl: result.imageUrls[0],
+        cost: result.metadata.cost ?? 0,
+        usedOwnKey: result.metadata.usedOwnKey,
       };
     });
 
-    // Early exit if frame was deleted
     if (!upscaleResult) {
       return { upscaledUrl: '', upscaledPath: '' };
     }
 
-    // Deduct credits for upscale (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costUsd: upscaleResult.cost,
-        usedOwnKey: !!apiKeys.falApiKey,
+        costMicros: usdToMicros(upscaleResult.cost),
+        usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
-        description: 'Variant upscale (nano_banana_pro)',
+        description: 'Variant upscale (nano_banana_2)',
         metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
         workflowName: 'UpscaleVariantWorkflow',
       });
     });
 
-    // Step 2: Upload upscaled image to storage (replacing the cropped version)
     const storageResult = await context.run('upload-to-storage', async () => {
       const result = await uploadImageToStorage({
         imageUrl: upscaleResult.imageUrl,
@@ -116,7 +114,6 @@ export const upscaleVariantWorkflow = createWorkflow(
       return { url: result.url, path: result.path };
     });
 
-    // Step 3: Update frame with upscaled thumbnail
     await context.run('update-frame', async () => {
       const updatedFrame = await updateFrame(
         input.frameId,
@@ -137,19 +134,14 @@ export const upscaleVariantWorkflow = createWorkflow(
         return;
       }
 
-      // Emit completion event
-      const channel = getGenerationChannel(input.sequenceId);
-      if (channel) {
-        try {
-          await channel.emit('generation.image:progress', {
-            frameId: input.frameId,
-            status: 'completed',
-            thumbnailUrl: storageResult.url,
-          });
-        } catch {
-          // Ignore emit errors
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.image:progress',
+        {
+          frameId: input.frameId,
+          status: 'completed',
+          thumbnailUrl: storageResult.url,
         }
-      }
+      );
 
       console.log(
         '[UpscaleVariantWorkflow]',
@@ -157,15 +149,12 @@ export const upscaleVariantWorkflow = createWorkflow(
       );
     });
 
-    const result: UpscaleVariantWorkflowResult = {
+    return {
       upscaledUrl: storageResult.url,
       upscaledPath: storageResult.path || '',
-    };
-
-    return result;
+    } satisfies UpscaleVariantWorkflowResult;
   },
   {
-    retries: 2,
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
@@ -174,7 +163,6 @@ export const upscaleVariantWorkflow = createWorkflow(
         `Upscale failed for frame ${input.frameId}: ${failResponse}`
       );
 
-      // Set status to completed - the cropped tile is still usable
       await updateFrame(
         input.frameId,
         {
@@ -184,20 +172,10 @@ export const upscaleVariantWorkflow = createWorkflow(
         { throwOnMissing: false }
       );
 
-      // Emit completion event for UI feedback
-      if (input.sequenceId) {
-        try {
-          const channel = getGenerationChannel(input.sequenceId);
-          if (channel) {
-            await channel.emit('generation.image:progress', {
-              frameId: input.frameId,
-              status: 'completed',
-            });
-          }
-        } catch {
-          // Ignore emit errors
-        }
-      }
+      await getGenerationChannel(input.sequenceId).emit(
+        'generation.image:progress',
+        { frameId: input.frameId, status: 'completed' }
+      );
 
       return `Upscale failed for frame ${input.frameId}`;
     },

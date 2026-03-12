@@ -5,22 +5,56 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
+import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
-import { handleApiError, ValidationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/errors';
 import {
   getTeamBalance,
   getBillingSettings,
 } from '@/lib/billing/credit-service';
+import { micros, microsToUsd } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/balance')({
   server: {
     handlers: {
       GET: async () => {
+        if (!isBillingEnabled()) {
+          return json({
+            success: true,
+            data: {
+              billingEnabled: false,
+              balance: 0,
+              autoTopUp: {
+                enabled: false,
+                thresholdUsd: null,
+                amountUsd: null,
+              },
+              hasPaymentMethod: false,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);
-          if (!team) throw new ValidationError('No team found');
+          if (!team) {
+            return json({
+              success: true,
+              data: {
+                billingEnabled: true,
+                balance: 0,
+                autoTopUp: {
+                  enabled: false,
+                  thresholdUsd: null,
+                  amountUsd: null,
+                },
+                hasPaymentMethod: false,
+              },
+              timestamp: new Date().toISOString(),
+            });
+          }
 
           const [balance, settings] = await Promise.all([
             getTeamBalance(team.teamId),
@@ -31,11 +65,15 @@ export const Route = createFileRoute('/api/billing/balance')({
             {
               success: true,
               data: {
-                balance,
+                balance: microsToUsd(balance),
                 autoTopUp: {
                   enabled: settings.autoTopUpEnabled,
-                  thresholdUsd: settings.autoTopUpThresholdUsd,
-                  amountUsd: settings.autoTopUpAmountUsd,
+                  thresholdUsd: settings.autoTopUpThresholdMicros
+                    ? microsToUsd(micros(settings.autoTopUpThresholdMicros))
+                    : null,
+                  amountUsd: settings.autoTopUpAmountMicros
+                    ? microsToUsd(micros(settings.autoTopUpAmountMicros))
+                    : null,
                 },
                 hasPaymentMethod: !!settings.stripeCustomerId,
               },

@@ -2,7 +2,7 @@
  * Custom error classes for better error handling and categorization
  */
 
-export class VelroError extends Error {
+export class OpenStoryError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
   public readonly details?: Record<string, unknown>;
@@ -36,43 +36,43 @@ export class VelroError extends Error {
   }
 }
 
-export class DatabaseError extends VelroError {
+export class DatabaseError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'DATABASE_ERROR', 500, details);
   }
 }
 
-export class ConnectionError extends VelroError {
+export class ConnectionError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'CONNECTION_ERROR', 503, details);
   }
 }
 
-export class ValidationError extends VelroError {
+export class ValidationError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'VALIDATION_ERROR', 400, details);
   }
 }
 
-export class ConfigurationError extends VelroError {
+export class ConfigurationError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'CONFIGURATION_ERROR', 500, details);
   }
 }
 
-export class StorageError extends VelroError {
+export class StorageError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'STORAGE_ERROR', 500, details);
   }
 }
 
-export class AuthenticationError extends VelroError {
+export class AuthenticationError extends OpenStoryError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'AUTHENTICATION_ERROR', 401, details);
   }
 }
 
-export class InsufficientCreditsError extends VelroError {
+export class InsufficientCreditsError extends OpenStoryError {
   constructor(
     message: string = 'Insufficient credits',
     details?: Record<string, unknown>
@@ -84,18 +84,18 @@ export class InsufficientCreditsError extends VelroError {
 /**
  * Utility function to handle and format errors consistently for API routes
  */
-export const handleApiError = (error: unknown): VelroError => {
-  if (error instanceof VelroError) {
+export const handleApiError = (error: unknown): OpenStoryError => {
+  if (error instanceof OpenStoryError) {
     return error;
   }
 
   if (error instanceof Error) {
-    return new VelroError(error.message, 'INTERNAL_ERROR', 500, {
+    return new OpenStoryError(error.message, 'INTERNAL_ERROR', 500, {
       originalError: error.name,
     });
   }
 
-  return new VelroError('An unknown error occurred', 'UNKNOWN_ERROR', 500, {
+  return new OpenStoryError('An unknown error occurred', 'UNKNOWN_ERROR', 500, {
     originalError: typeof error,
   });
 };

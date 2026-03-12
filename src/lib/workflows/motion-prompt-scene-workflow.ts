@@ -9,12 +9,11 @@ import type { MotionPromptSceneWorkflowInput } from '@/lib/workflow/types';
 
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { durableLLMCall } from './llm-call-helper';
 import {
   type MotionPrompt,
   motionPromptSchema,
 } from '../ai/scene-analysis.schema';
+import { durableLLMCall } from './llm-call-helper';
 
 export const motionPromptSceneWorkflow = createWorkflow(
   async (
@@ -34,11 +33,6 @@ export const motionPromptSceneWorkflow = createWorkflow(
       '[MotionPromptSceneWorkflow] Starting motion prompt generation input:',
       input
     );
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
 
     // ============================================================
     // PHASE 3: Motion Prompt Generation (using durableLLMCall helper)
@@ -72,9 +66,9 @@ export const motionPromptSceneWorkflow = createWorkflow(
       context,
       {
         name: 'motion-prompts',
-        phase: { number: 4, name: 'Motion Prompts' },
+        phase: { number: 4, name: 'Writing motion prompts…' },
 
-        promptName: 'velro/phase/motion-prompt-scene-generation-chat',
+        promptName: 'phase/motion-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,
@@ -85,7 +79,6 @@ export const motionPromptSceneWorkflow = createWorkflow(
       {
         // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
         teamId: input.teamId,
-        openRouterApiKey: apiKeys.openRouterApiKey,
       }
     );
 

@@ -47,76 +47,51 @@ fi
 echo -e "${GREEN}✓ Account ID: ${ACCOUNT_ID}${NC}"
 echo ""
 
-# Determine environment
-echo -e "${BLUE}Which environment are you setting up?${NC}"
-echo "1) Development (velro-storage-dev)"
-echo "2) Production (velro-storage)"
-echo "3) Both"
-read -p "Enter choice [1-3]: " ENV_CHOICE
+# Get bucket name from user
+read -p "Enter bucket name for storage (e.g., my-app-storage): " BUCKET_NAME
+if [ -z "$BUCKET_NAME" ]; then
+    echo -e "${RED}Bucket name is required${NC}"
+    exit 1
+fi
 
-BUCKETS=()
-case $ENV_CHOICE in
-    1)
-        BUCKETS=("velro-storage-dev")
-        ;;
-    2)
-        BUCKETS=("velro-storage")
-        ;;
-    3)
-        BUCKETS=("velro-storage-dev" "velro-storage")
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+APP_URL="${APP_URL:-http://localhost:3000}"
 
-# Create buckets
-for BUCKET in "${BUCKETS[@]}"; do
-    echo ""
-    echo -e "${BLUE}Creating bucket: ${BUCKET}${NC}"
+# Create bucket
+echo ""
+echo -e "${BLUE}Creating bucket: ${BUCKET_NAME}${NC}"
 
-    # Check if bucket already exists (match exact bucket name after "name:")
-    if bunx wrangler r2 bucket list 2>&1 | grep -E "^name:\s+${BUCKET}$" > /dev/null; then
-        echo -e "${YELLOW}⚠ Bucket '${BUCKET}' already exists${NC}"
-        read -p "Do you want to configure CORS for this bucket? [y/N]: " CONFIGURE_CORS
+# Check if bucket already exists
+if bunx wrangler r2 bucket list 2>&1 | grep -E "^name:\s+${BUCKET_NAME}$" > /dev/null; then
+    echo -e "${YELLOW}⚠ Bucket '${BUCKET_NAME}' already exists${NC}"
+    read -p "Do you want to configure CORS for this bucket? [y/N]: " CONFIGURE_CORS
+else
+    # Create the bucket
+    if bunx wrangler r2 bucket create "$BUCKET_NAME" 2>&1; then
+        echo -e "${GREEN}✓ Created bucket: ${BUCKET_NAME}${NC}"
+        CONFIGURE_CORS="y"
     else
-        # Create the bucket
-        if bunx wrangler r2 bucket create "$BUCKET" 2>&1; then
-            echo -e "${GREEN}✓ Created bucket: ${BUCKET}${NC}"
-            CONFIGURE_CORS="y"
-        else
-            echo -e "${RED}✗ Failed to create bucket: ${BUCKET}${NC}"
-            continue
-        fi
+        echo -e "${RED}✗ Failed to create bucket: ${BUCKET_NAME}${NC}"
+        exit 1
     fi
+fi
 
-    # CORS configuration instructions (manual setup required)
-    if [[ "$CONFIGURE_CORS" =~ ^[Yy]$ ]]; then
-        echo ""
-        echo -e "${YELLOW}📝 CORS must be configured manually in Cloudflare Dashboard${NC}"
-        echo -e "${BLUE}Go to: https://dash.cloudflare.com → R2 → ${BUCKET} → Settings → CORS Policy${NC}"
-        echo ""
-
-        if [[ "$BUCKET" == *"-dev" ]]; then
-            echo -e "${BLUE}Development bucket CORS settings:${NC}"
-            echo "  Allowed Origins (one per line):"
-            echo "    http://localhost:3000"
-            echo "    https://app.velro.ai"
-        else
-            echo -e "${BLUE}Production bucket CORS settings:${NC}"
-            echo "  Allowed Origins:"
-            echo "    https://app.velro.ai"
-        fi
-
-        echo ""
-        echo "  Allowed Methods: GET, PUT, POST, DELETE, HEAD"
-        echo "  Allowed Headers: content-type, authorization"
-        echo "  Expose Headers: ETag"
-        echo "  Max Age: 3600"
-        echo ""
-    fi
-done
+# CORS configuration instructions (manual setup required)
+if [[ "$CONFIGURE_CORS" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo -e "${YELLOW}📝 CORS must be configured manually in Cloudflare Dashboard${NC}"
+    echo -e "${BLUE}Go to: https://dash.cloudflare.com → R2 → ${BUCKET_NAME} → Settings → CORS Policy${NC}"
+    echo ""
+    echo -e "${BLUE}CORS settings:${NC}"
+    echo "  Allowed Origins (one per line):"
+    echo "    http://localhost:3000"
+    echo "    ${APP_URL}"
+    echo ""
+    echo "  Allowed Methods: GET, PUT, POST, DELETE, HEAD"
+    echo "  Allowed Headers: content-type, authorization"
+    echo "  Expose Headers: ETag"
+    echo "  Max Age: 3600"
+    echo ""
+fi
 
 echo ""
 echo -e "${GREEN}=== Setup Complete ===${NC}"
@@ -130,9 +105,20 @@ echo ""
 echo "   R2_ACCOUNT_ID=${ACCOUNT_ID}"
 echo "   R2_ACCESS_KEY_ID=<your-access-key-id>"
 echo "   R2_SECRET_ACCESS_KEY=<your-secret-access-key>"
-echo "   R2_BUCKET_NAME=velro-storage-dev  # or velro-storage for production"
-echo "   R2_PUBLIC_STORAGE_DOMAIN=storage-dev.velro.ai  # custom domain for public storage"
+echo "   R2_BUCKET_NAME=${BUCKET_NAME}"
+echo "   R2_PUBLIC_STORAGE_DOMAIN=<your-custom-domain>"
 echo ""
 echo -e "${YELLOW}💡 Tip: Keep your API credentials secure and never commit them to git${NC}"
+echo ""
+echo -e "${BLUE}=== Platform Notes ===${NC}"
+echo ""
+echo -e "${GREEN}Cloudflare Workers:${NC}"
+echo "  Most storage operations use native R2 bindings (configured in wrangler.jsonc)."
+echo "  S3 credentials (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) are only needed"
+echo "  for generating presigned/download URLs."
+echo ""
+echo -e "${GREEN}Other platforms (Vercel, Railway):${NC}"
+echo "  All storage operations use the S3 SDK."
+echo "  All R2 credentials above are required."
 echo ""
 echo -e "${GREEN}Done!${NC}"

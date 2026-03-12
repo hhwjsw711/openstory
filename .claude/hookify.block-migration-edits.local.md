@@ -7,6 +7,9 @@ conditions:
   - field: file_path
     operator: regex_match
     pattern: drizzle/migrations/
+  - field: new_text
+    operator: regex_match
+    pattern: .+
 ---
 
 🚫 **Direct migration directory edit blocked!**

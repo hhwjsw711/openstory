@@ -104,20 +104,53 @@ export async function createSequenceLocation(
   const [location] = await getDb()
     .insert(sequenceLocations)
     .values(data)
+    .onConflictDoUpdate({
+      target: [sequenceLocations.sequenceId, sequenceLocations.locationId],
+      set: {
+        name: data.name,
+        libraryLocationId: data.libraryLocationId,
+        type: data.type,
+        timeOfDay: data.timeOfDay,
+        description: data.description,
+        architecturalStyle: data.architecturalStyle,
+        keyFeatures: data.keyFeatures,
+        colorPalette: data.colorPalette,
+        lightingSetup: data.lightingSetup,
+        ambiance: data.ambiance,
+        consistencyTag: data.consistencyTag,
+        referenceImageUrl: data.referenceImageUrl,
+        referenceImagePath: data.referenceImagePath,
+        referenceStatus: data.referenceStatus,
+        referenceGeneratedAt: data.referenceGeneratedAt,
+        updatedAt: new Date(),
+      },
+    })
     .returning();
   return location;
 }
 
 /**
- * Create multiple sequence locations in a transaction
+ * Create multiple sequence locations in batched inserts.
+ * Batches to stay within D1's 100 bound parameter limit
+ * (~24 params per row, so 3 rows per batch is safe)
  */
 export async function createSequenceLocationsBulk(
   data: NewSequenceLocation[]
 ): Promise<SequenceLocation[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(sequenceLocations).values(data).returning();
-  });
+  const BATCH_SIZE = 3;
+  const results: SequenceLocation[] = [];
+
+  for (let i = 0; i < data.length; i += BATCH_SIZE) {
+    const batch = data.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(sequenceLocations)
+      .values(batch)
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**

@@ -1,0 +1,69 @@
+import { RouteErrorFallback } from '@/components/error/route-error-fallback';
+import {
+  ImageModelBadge,
+  ModelBadge,
+  MusicModelBadge,
+  VideoModelBadge,
+} from '@/components/model/model-badge';
+import {
+  SequenceTabs,
+  useSequenceTabItems,
+} from '@/components/sequence/sequence-tabs';
+import { PageHeader } from '@/components/typography/page-header';
+import { PageHeading } from '@/components/typography/page-heading';
+import { useSequence } from '@/hooks/use-sequences';
+import { useSwipeNavigation } from '@/hooks/use-swipe-navigation';
+import { useUser } from '@/hooks/use-user';
+import {
+  createFileRoute,
+  Outlet,
+  useRouterState,
+} from '@tanstack/react-router';
+
+export const Route = createFileRoute('/_protected/sequences/$id')({
+  component: SequenceLayout,
+  errorComponent: (props) => (
+    <RouteErrorFallback {...props} heading="Sequence error" />
+  ),
+});
+
+function SequenceLayout() {
+  const { id: sequenceId } = Route.useParams();
+
+  useUser();
+
+  const { data: sequence } = useSequence(sequenceId);
+
+  const tabs = useSequenceTabItems(sequenceId);
+  const currentPath = useRouterState({
+    select: (s) => s.location.pathname,
+  });
+  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+    routes: tabs.map((t) => t.href),
+    currentRoute: currentPath,
+  });
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mx-auto w-full max-w-[1920px] shrink-0 space-y-1 px-6 pt-4">
+        <PageHeader>
+          <PageHeading>{sequence?.title}</PageHeading>
+          <div className="hidden md:flex flex-row flex-wrap gap-2">
+            <ModelBadge model={sequence?.analysisModel} />
+            <ImageModelBadge model={sequence?.imageModel} />
+            <VideoModelBadge model={sequence?.videoModel} />
+            <MusicModelBadge model={sequence?.musicModel ?? undefined} />
+          </div>
+        </PageHeader>
+        <SequenceTabs sequenceId={sequenceId} />
+      </div>
+      <div
+        className="mx-auto w-full max-w-[1920px] flex-1 min-h-0 overflow-hidden"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <Outlet />
+      </div>
+    </div>
+  );
+}

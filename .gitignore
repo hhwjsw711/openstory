@@ -80,6 +80,7 @@ storybook-static
 
 # conductor
 .conductor/
+conductor.json
 
 # cloudflare
 .dev.vars
@@ -104,3 +105,9 @@ scripts/schemas/
 docs/architecture/scoped-db-context-implementation.md
 
 .tanstack
+
+# previews
+preview*/
+
+# superpowers
+.superpowers/

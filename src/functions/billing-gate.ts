@@ -5,11 +5,13 @@
 
 import { createServerFn } from '@tanstack/react-start';
 import { authWithTeamMiddleware } from './middleware';
-import { apiKeyService } from '@/lib/services/api-key.service';
+import { isBillingEnabled } from '@/lib/billing/constants';
+import { apiKeyService } from '@/lib/byok/api-key.service';
 import {
   getTeamBalance,
   getBillingSettings,
 } from '@/lib/billing/credit-service';
+import { microsToUsd } from '@/lib/billing/money';
 
 /**
  * Check billing gate status: balance, BYOK keys, and auto-top-up
@@ -18,6 +20,16 @@ import {
 export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
+    if (!isBillingEnabled()) {
+      return {
+        hasCredits: true,
+        hasFalKey: true,
+        hasOpenRouterKey: true,
+        balance: Infinity,
+        hasAutoTopUp: false,
+      };
+    }
+
     const { teamId } = context;
 
     const [balance, hasFalKey, hasOpenRouterKey, billingSettings] =
@@ -32,7 +44,7 @@ export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
       hasCredits: balance > 0,
       hasFalKey,
       hasOpenRouterKey,
-      balance,
+      balance: microsToUsd(balance),
       hasAutoTopUp:
         billingSettings.autoTopUpEnabled && !!billingSettings.stripeCustomerId,
     };

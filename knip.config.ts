@@ -50,7 +50,5 @@ export default {
     // CLI tools used in package.json scripts
     'mkcert',
     'pbcopy',
-    'doppler',
-    'jq',
   ],
 } satisfies KnipConfig;

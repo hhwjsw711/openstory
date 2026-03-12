@@ -1,6 +1,6 @@
-import { PlatesLoader } from '@/components/ui/plates-loader';
+import { BlobLoader } from '@/components/ui/blob-loader';
 import { cn } from '@/lib/utils';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed' | null;
 
@@ -8,12 +8,14 @@ type VideoStateOverlayProps = {
   thumbnailUrl?: string | null;
   videoStatus: FrameStatus;
   className?: string;
+  progressMessage?: string;
 };
 
 export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
   thumbnailUrl,
   videoStatus,
   className,
+  progressMessage,
 }) => {
   // Only show loader when there's no thumbnail image yet
   const hasNoThumbnail = !thumbnailUrl;
@@ -33,14 +35,19 @@ export const VideoStateOverlay: React.FC<VideoStateOverlayProps> = ({
       style={{
         background: hasFailed
           ? 'rgba(0, 0, 0, 0.5)'
-          : 'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.15), transparent 70%), #09090b',
+          : 'radial-gradient(circle at 50% 50%, rgba(167, 112, 239, 0.12), transparent 70%), hsl(var(--muted))',
       }}
     >
       <div className="flex flex-col items-center gap-4">
         {hasNoThumbnail && !hasFailed && (
           <>
-            <PlatesLoader size="lg" />
-            <p className="text-sm font-medium">Generating frame…</p>
+            <BlobLoader size="lg" />
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <p className="text-sm font-medium">
+                {progressMessage || 'Generating frame…'}
+              </p>
+            </div>
           </>
         )}
 

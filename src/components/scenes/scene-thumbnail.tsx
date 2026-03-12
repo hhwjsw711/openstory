@@ -1,4 +1,4 @@
-import { PlatesLoaderContainer } from '@/components/ui/plates-loader';
+import { BlobLoaderContainer } from '@/components/ui/blob-loader';
 import {
   type AspectRatio,
   getAspectRatioClassName,
@@ -43,7 +43,7 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
         <Skeleton className="absolute h-full w-full rounded-md" />
       )}
       {showLoader && (
-        <PlatesLoaderContainer size="sm" className="absolute inset-0" />
+        <BlobLoaderContainer size="sm" className="absolute inset-0" />
       )}
 
       {thumbnailUrl && (

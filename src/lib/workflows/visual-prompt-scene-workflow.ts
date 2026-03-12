@@ -8,12 +8,11 @@
 import type { VisualPromptSceneWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { durableLLMCall } from './llm-call-helper';
 import {
   type VisualPromptWithContinuity,
   visualPromptWithContinuitySchema,
 } from '../ai/scene-analysis.schema';
+import { durableLLMCall } from './llm-call-helper';
 
 export const visualPromptSceneWorkflow = createWorkflow(
   async (
@@ -34,11 +33,6 @@ export const visualPromptSceneWorkflow = createWorkflow(
       '[VisualPromptWorkflow] Starting visual prompt generation input:',
       input
     );
-
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
 
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
@@ -73,9 +67,9 @@ export const visualPromptSceneWorkflow = createWorkflow(
       context,
       {
         name: 'visual-prompts',
-        phase: { number: 4, name: 'Visual Prompts' },
+        phase: { number: 4, name: 'Writing image prompts…' },
 
-        promptName: 'velro/phase/visual-prompt-scene-generation-chat',
+        promptName: 'phase/visual-prompt-scene-generation-chat',
         promptVariables,
 
         modelId: analysisModelId,
@@ -86,15 +80,19 @@ export const visualPromptSceneWorkflow = createWorkflow(
       {
         // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
         teamId: input.teamId,
-        openRouterApiKey: apiKeys.openRouterApiKey,
       }
     );
 
     return { sceneId: scenes[sceneIndex].sceneId, ...result };
   },
   {
-    failureFunction: async () => {
-      return `Visual prompt generation failed`;
+    failureFunction: async ({ context, failStatus, failResponse }) => {
+      console.error('[VisualPromptWorkflow] Failed', {
+        workflowRunId: context.workflowRunId,
+        failStatus,
+        failResponse,
+      });
+      return `Visual prompt generation failed: ${failResponse}`;
     },
   }
 );

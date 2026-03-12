@@ -3,32 +3,69 @@
  * Central configuration for the credits/wallet billing system
  */
 
+import { getEnv } from '#env';
+import { type Microdollars, usdToMicros, multiplyMicros } from './money';
+
+/** Whether billing/credits are enabled — derived from STRIPE_SECRET_KEY being set. Server-only. */
+export function isBillingEnabled(): boolean {
+  return !!getEnv().STRIPE_SECRET_KEY;
+}
+
 /** Markup percentage applied on top of provider costs (e.g., 0.05 = 5%) */
 export const BILLING_MARKUP_PERCENT = 0.05;
 
 /** Minimum top-up amount in USD */
 export const MIN_TOPUP_AMOUNT_USD = 10;
 
+/** Minimum top-up amount in microdollars */
+export const MIN_TOPUP_AMOUNT_MICROS: Microdollars =
+  usdToMicros(MIN_TOPUP_AMOUNT_USD);
+
 /** Preset top-up amounts shown on the billing page */
-export const PRESET_TOPUP_AMOUNTS_USD = [10, 25, 50, 100] as const;
+export const PRESET_TOPUP_AMOUNTS_USD = [10, 100, 1000] as const;
 
 /** Low balance warning threshold in USD (used when auto-top-up is disabled) */
 export const LOW_BALANCE_THRESHOLD_USD = 5;
 
+/** Low balance warning threshold in microdollars */
+export const LOW_BALANCE_THRESHOLD_MICROS: Microdollars = usdToMicros(
+  LOW_BALANCE_THRESHOLD_USD
+);
+
 /** Default auto-top-up threshold in USD (user-configurable) */
 export const DEFAULT_AUTO_TOPUP_THRESHOLD_USD = 5;
 
+/** Default auto-top-up threshold in microdollars */
+export const DEFAULT_AUTO_TOPUP_THRESHOLD_MICROS: Microdollars = usdToMicros(
+  DEFAULT_AUTO_TOPUP_THRESHOLD_USD
+);
+
 /** Default auto-top-up recharge amount in USD (user-configurable) */
-export const DEFAULT_AUTO_TOPUP_AMOUNT_USD = 25;
+export const DEFAULT_AUTO_TOPUP_AMOUNT_USD = 100;
+
+/** Default auto-top-up recharge amount in microdollars */
+export const DEFAULT_AUTO_TOPUP_AMOUNT_MICROS: Microdollars = usdToMicros(
+  DEFAULT_AUTO_TOPUP_AMOUNT_USD
+);
 
 /** Minimum time between auto-top-up charges in milliseconds (60 seconds) */
 export const AUTO_TOPUP_COOLDOWN_MS = 60_000;
 
+/** Number of months before credit batches expire */
+export const CREDIT_EXPIRY_MONTHS = 12;
+
+/** Calculate the expiry date for a credit batch */
+export function calculateExpiryDate(from?: Date): Date {
+  const date = new Date(from ?? Date.now());
+  date.setMonth(date.getMonth() + CREDIT_EXPIRY_MONTHS);
+  return date;
+}
+
 /**
- * Apply markup to a raw provider cost
- * @param rawCostUsd - The raw cost from the provider (OpenRouter, Fal.ai)
- * @returns The cost with markup applied
+ * Apply markup to a raw provider cost in microdollars
+ * @param rawCostMicros - The raw cost from the provider in microdollars
+ * @returns The cost with markup applied, in microdollars
  */
-export function applyMarkup(rawCostUsd: number): number {
-  return rawCostUsd * (1 + BILLING_MARKUP_PERCENT);
+export function applyMarkup(rawCostMicros: Microdollars): Microdollars {
+  return multiplyMicros(rawCostMicros, 1 + BILLING_MARKUP_PERCENT);
 }

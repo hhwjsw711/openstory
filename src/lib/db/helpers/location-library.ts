@@ -88,15 +88,26 @@ export async function createLibraryLocation(
 }
 
 /**
- * Create multiple library locations in a transaction
+ * Create multiple library locations in batched inserts.
+ * Batches to stay within D1's 100 bound parameter limit
  */
 export async function createLibraryLocationsBulk(
   data: NewLibraryLocation[]
 ): Promise<LibraryLocation[]> {
   if (data.length === 0) return [];
-  return await getDb().transaction(async (tx) => {
-    return await tx.insert(locationLibrary).values(data).returning();
-  });
+  const BATCH_SIZE = 10;
+  const results: LibraryLocation[] = [];
+
+  for (let i = 0; i < data.length; i += BATCH_SIZE) {
+    const batch = data.slice(i, i + BATCH_SIZE);
+    const batchResults = await getDb()
+      .insert(locationLibrary)
+      .values(batch)
+      .returning();
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 /**

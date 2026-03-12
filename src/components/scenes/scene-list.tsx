@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
@@ -14,6 +15,8 @@ type SceneListProps = {
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
   onBatchGenerateMotion?: (frameIds: string[]) => Promise<void>;
+  musicPromptsReady: boolean;
+  onGenerateMusic?: () => Promise<void>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -30,39 +33,65 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   regeneratingImages,
   regeneratingMotion,
   onBatchGenerateMotion,
+  musicPromptsReady,
+  onGenerateMusic,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [includeMusic, setIncludeMusic] = useState(false);
 
-  // Calculate eligible frames for motion generation
-  // Include pending, failed, and generating frames that have completed thumbnails
-  // 'generating' is included to allow retrying stuck jobs
-  const eligibleFrames = useMemo(() => {
+  // Frames that need to be kicked off (not already generating)
+  const notStartedFrames = useMemo(() => {
     if (!frames) return [];
     return frames.filter(
       (f) =>
-        (f.videoStatus === 'pending' ||
-          f.videoStatus === 'failed' ||
-          f.videoStatus === 'generating') &&
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed') &&
         f.thumbnailStatus === 'completed'
     );
   }, [frames]);
 
+  const hasGeneratingFrames = useMemo(() => {
+    if (!frames) return false;
+    return frames.some(
+      (f) => f.videoStatus === 'generating' && f.thumbnailStatus === 'completed'
+    );
+  }, [frames]);
+
+  // Check if all eligible frames have motion prompts ready
+  const motionPromptsReady = useMemo(() => {
+    if (!notStartedFrames.length) return true;
+    return notStartedFrames.every(
+      (f) => f.motionPrompt || f.metadata?.prompts?.motion?.fullPrompt
+    );
+  }, [notStartedFrames]);
+
   const handleGenerateMotion = async () => {
-    if (!onBatchGenerateMotion || eligibleFrames.length === 0) return;
+    if (!onBatchGenerateMotion || notStartedFrames.length === 0) return;
 
     setIsGenerating(true);
     try {
-      await onBatchGenerateMotion(eligibleFrames.map((f) => f.id));
+      // TB 2026-03-10: Both of these should be a mutation that calls a server function that triggers the workflow.
+      const promises: Promise<void>[] = [
+        onBatchGenerateMotion(notStartedFrames.map((f) => f.id)),
+      ];
+      if (includeMusic && onGenerateMusic) {
+        promises.push(onGenerateMusic());
+      }
+      await Promise.all(promises);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const hasEligibleFrames = eligibleFrames.length > 0;
-  const isMotionInProgress = regeneratingMotion.size > 0;
+  const isMotionInProgress = regeneratingMotion.size > 0 || hasGeneratingFrames;
+  const showButton = notStartedFrames.length > 0 || isMotionInProgress;
+  const isButtonDisabled =
+    isGenerating ||
+    notStartedFrames.length === 0 ||
+    !motionPromptsReady ||
+    (includeMusic && !musicPromptsReady);
 
   return (
-    <div className="flex h-full w-80 flex-col border-r bg-background">
+    <div className="flex h-full w-[280px] lg:w-[480px] flex-col rounded-lg border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -104,27 +133,51 @@ const SceneListComponent: React.FC<SceneListProps> = ({
       </ScrollArea>
 
       {/* Sticky footer with Generate Motion button */}
-      {hasEligibleFrames && (
-        <div className="sticky bottom-0 border-t bg-background p-4">
+      {showButton && (
+        <div className="sticky bottom-0 border-t bg-background p-4 flex flex-col gap-3">
           <Button
             variant="default"
             className="w-full"
             onClick={() => void handleGenerateMotion()}
-            disabled={isGenerating || isMotionInProgress}
+            disabled={isButtonDisabled}
           >
-            {isGenerating || isMotionInProgress ? (
+            {isGenerating ||
+            (notStartedFrames.length === 0 && isMotionInProgress) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                Generating…
+              </>
+            ) : !motionPromptsReady ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Writing motion prompts…
+              </>
+            ) : includeMusic && !musicPromptsReady ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Composing music…
               </>
             ) : (
               <>
                 <Video className="mr-2 h-4 w-4" />
-                Generate Motion ({eligibleFrames.length}{' '}
-                {eligibleFrames.length === 1 ? 'frame' : 'frames'})
+                Generate Motion ({notStartedFrames.length}{' '}
+                {notStartedFrames.length === 1 ? 'frame' : 'frames'})
               </>
             )}
           </Button>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={includeMusic}
+              onCheckedChange={(checked) => setIncludeMusic(checked === true)}
+              disabled={!musicPromptsReady}
+            />
+            <span>
+              Also generate music
+              {!musicPromptsReady && (
+                <span className="text-xs ml-1">(preparing…)</span>
+              )}
+            </span>
+          </label>
         </div>
       )}
     </div>
@@ -140,7 +193,8 @@ const areEqual = (
   // Compare primitive props
   if (
     prevProps.selectedFrameId !== nextProps.selectedFrameId ||
-    prevProps.aspectRatio !== nextProps.aspectRatio
+    prevProps.aspectRatio !== nextProps.aspectRatio ||
+    prevProps.musicPromptsReady !== nextProps.musicPromptsReady
   ) {
     return false;
   }
@@ -154,7 +208,10 @@ const areEqual = (
   }
 
   // Compare callback references
-  if (prevProps.onBatchGenerateMotion !== nextProps.onBatchGenerateMotion) {
+  if (
+    prevProps.onBatchGenerateMotion !== nextProps.onBatchGenerateMotion ||
+    prevProps.onGenerateMusic !== nextProps.onGenerateMusic
+  ) {
     return false;
   }
 

@@ -1,4 +1,3 @@
-import { GalleryIcon } from '@/components/icons/gallery-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -6,6 +5,7 @@ import type { Style } from '@/types/database';
 import { Image } from '@unpic/react';
 import type { FC, KeyboardEvent } from 'react';
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { getStyleGradient } from './style-gradient';
 
 type StyleGridProps = {
   styles: Style[];
@@ -32,6 +32,8 @@ const StyleCard: FC<StyleCardProps> = ({
   tabIndex = -1,
   onKeyDown: onKeyDownProp,
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   const handleClick = useCallback(() => {
     onSelect(style.id);
   }, [style.id, onSelect]);
@@ -83,20 +85,21 @@ const StyleCard: FC<StyleCardProps> = ({
     >
       <CardContent className="p-0">
         <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
-          {style.previewUrl ? (
+          {style.previewUrl && !imgError ? (
             <Image
               src={style.previewUrl}
               alt={`${style.name} style preview`}
               layout="fullWidth"
               className="object-cover"
+              onError={() => setImgError(true)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center">
-              <GalleryIcon
-                className="text-muted-foreground opacity-50"
-                size="lg"
-              />
-            </div>
+            <div
+              className="w-full h-full"
+              style={{
+                background: getStyleGradient(style.config.colorPalette),
+              }}
+            />
           )}
         </div>
         <div className="p-3">

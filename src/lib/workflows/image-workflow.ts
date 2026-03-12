@@ -1,4 +1,7 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
+import { isBillingEnabled } from '@/lib/billing/constants';
+import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { usdToMicros, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
@@ -6,26 +9,29 @@ import {
   type ImageGenerationParams,
 } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
-import type { ImageWorkflowInput } from '@/lib/workflow/types';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { WorkflowContext } from '@upstash/workflow';
+import type { ImageWorkflowInput } from '@/lib/workflow/types';
+import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { buildReferenceImagePrompt } from '../prompts/reference-image-prompt';
-import { resolveWorkflowApiKeys } from '@/lib/workflow/resolve-keys';
-import { getFalFlowControl } from './constants';
+
+type ImageWorkflowResult = {
+  imageUrl: string;
+  frameId?: string;
+  sequenceId?: string;
+};
 
 export const generateImageWorkflow = createWorkflow(
-  async (context: WorkflowContext<ImageWorkflowInput>) => {
+  async (
+    context: WorkflowContext<ImageWorkflowInput>
+  ): Promise<ImageWorkflowResult> => {
     const input = context.requestPayload;
 
-    // Step 1: Set status to generating if frameId is provided
-    const generationParams: ImageGenerationParams | null = await context.run(
+    const generationParams = await context.run(
       'set-generating-status',
-      async () => {
-        // Validate required fields
-        if (!input.prompt || input.prompt.trim().length === 0) {
+      async (): Promise<ImageGenerationParams | null> => {
+        if (!input.prompt?.trim()) {
           throw new WorkflowValidationError(
             'Prompt is required for image generation'
           );
@@ -33,13 +39,12 @@ export const generateImageWorkflow = createWorkflow(
 
         console.log(
           '[ImageWorkflow]',
-          `Starting image generation workflow for user ${input.userId}`
+          `Starting image generation for user ${input.userId}`
         );
 
-        const model = input.model || DEFAULT_IMAGE_MODEL;
+        const model = input.model ?? DEFAULT_IMAGE_MODEL;
 
         if (input.frameId) {
-          // update frame status to generating and store user prompt
           const frame = await updateFrame(
             input.frameId,
             {
@@ -54,23 +59,17 @@ export const generateImageWorkflow = createWorkflow(
           if (!frame) {
             console.log(
               '[ImageWorkflow]',
-              `Frame ${input.frameId} was deleted, skipping workflow`
+              `Frame ${input.frameId} was deleted, skipping`
             );
-            return null; // Signal to skip
+            return null;
           }
 
-          // Emit realtime progress
           await getGenerationChannel(input.sequenceId)?.emit(
             'generation.image:progress',
-            {
-              frameId: input.frameId,
-              status: 'generating',
-            }
+            { frameId: input.frameId, status: 'generating' }
           );
         }
 
-        // Return the generation params so it shows in the workflow context for debugging
-        // Build the prompt with reference images
         return {
           model,
           prompt: buildReferenceImagePrompt(
@@ -81,56 +80,48 @@ export const generateImageWorkflow = createWorkflow(
           numImages: input.numImages ?? 1,
           seed: input.seed,
           referenceImageUrls:
-            input.referenceImages?.map((image) => image.referenceImageUrl) ??
-            [],
+            input.referenceImages?.map((ref) => ref.referenceImageUrl) ?? [],
           traceName: 'frame-image',
+          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
 
-    // Early exit if frame was deleted
     if (!generationParams) {
       return {
         imageUrl: '',
         frameId: input.frameId,
         sequenceId: input.sequenceId,
-      };
+      } satisfies ImageWorkflowResult;
     }
 
-    // Resolve team API keys (user-provided or platform fallback)
-    const apiKeys = await context.run('resolve-api-keys', async () => {
-      return resolveWorkflowApiKeys(input.teamId);
-    });
-
-    // Step 2: Generate image
     const imageResult = await context.run('generate-image', async () => {
       console.log(
         '[ImageWorkflow]',
         `Generating image ${input.frameId} with model ${generationParams.model}`
       );
-
-      return await generateImageWithProvider({
+      return generateImageWithProvider({
         ...generationParams,
-        falApiKey: apiKeys.falApiKey,
       });
     });
 
-    // Deduct credits for image generation (skip if team used own fal key)
-    const imageCost =
-      typeof imageResult.metadata.cost === 'number'
-        ? imageResult.metadata.cost
-        : 0;
-    const { teamId } = input;
-    if (imageCost > 0 && teamId && !apiKeys.falApiKey) {
+    const imageCostRaw = imageResult.metadata.cost ?? 0;
+    const imageCostMicros = usdToMicros(imageCostRaw);
+    const { teamId, frameId, sequenceId } = input;
+    if (
+      isBillingEnabled() &&
+      imageCostMicros > 0 &&
+      teamId &&
+      !imageResult.metadata.usedOwnKey
+    ) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, imageCost);
-        if (!canAfford) {
+        if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
           console.warn(
-            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${imageCost.toFixed(4)}), skipping deduction`
+            `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(imageCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, imageCost, {
+        await deductCredits(teamId, imageCostMicros, {
           userId: input.userId,
           description: `Image generation (${generationParams.model})`,
           metadata: {
@@ -144,37 +135,27 @@ export const generateImageWorkflow = createWorkflow(
 
     let imageUrl: string = imageResult.imageUrls[0];
 
-    if (imageUrl && input.frameId && input.sequenceId && input.teamId) {
-      await context.run('upload-to-storage', async () => {
-        // We need to check these again as this is an async step and the values may have changed
-        if (!input.frameId || !input.sequenceId || !input.teamId || !imageUrl) {
-          throw new Error('Missing required IDs for storage upload', {
-            cause: JSON.stringify(imageResult),
-          });
-        }
-
+    if (imageUrl && frameId && sequenceId && teamId) {
+      const storageUrl = await context.run('upload-to-storage', async () => {
         const result = await uploadImageToStorage({
           imageUrl,
-          teamId: input.teamId,
-          sequenceId: input.sequenceId,
-          frameId: input.frameId,
+          teamId,
+          sequenceId,
+          frameId,
         });
 
         if (!result.url) {
           throw new Error('Failed to upload image to storage');
         }
 
-        imageUrl = result.url;
-
         const updatedFrame = await updateFrame(
-          input.frameId,
+          frameId,
           {
-            thumbnailPath: result.path || null, // Store R2 path (permanent)
-            thumbnailUrl: result.url, // Store public URL (permanent, not signed)
+            thumbnailPath: result.path || null,
+            thumbnailUrl: result.url,
             thumbnailStatus: 'completed',
             thumbnailGeneratedAt: new Date(),
             thumbnailError: null,
-            // Clear motion fields since the thumbnail changed
             videoUrl: null,
             videoPath: null,
             videoStatus: 'pending',
@@ -188,66 +169,46 @@ export const generateImageWorkflow = createWorkflow(
         if (!updatedFrame) {
           console.log(
             '[ImageWorkflow]',
-            `Frame ${input.frameId} was deleted, skipping final update`
+            `Frame ${frameId} was deleted, skipping final update`
           );
-          return { url: result.url, path: result.path };
+          return;
         }
 
-        // Emit completion progress
-        await getGenerationChannel(input.sequenceId)?.emit(
+        await getGenerationChannel(sequenceId)?.emit(
           'generation.image:progress',
-          {
-            frameId: input.frameId,
-            status: 'completed',
-            thumbnailUrl: result.url,
-          }
+          { frameId, status: 'completed', thumbnailUrl: result.url }
         );
 
-        console.log(
-          '[ImageWorkflow]',
-          `Image uploaded to storage: ${result.path}`
-        );
-        return { url: result.url, path: result.path };
+        console.log('[ImageWorkflow]', `Uploaded to storage: ${result.path}`);
+
+        return result.url;
       });
+      if (storageUrl) imageUrl = storageUrl;
     }
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
 
-    // Return workflow result
-    return {
-      imageUrl,
-      frameId: input.frameId,
-      sequenceId: input.sequenceId,
-    };
+    return { imageUrl, frameId, sequenceId };
   },
   {
-    flowControl: getFalFlowControl(),
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
 
-      // Set frame thumbnail status to 'failed' after all retries exhausted
       if (input.frameId) {
         await updateFrame(
           input.frameId,
-          {
-            thumbnailStatus: 'failed',
-            thumbnailError: failResponse,
-          },
+          { thumbnailStatus: 'failed', thumbnailError: failResponse },
           { throwOnMissing: false }
         );
 
-        // Emit failure progress
         if (input.sequenceId) {
           try {
             await getGenerationChannel(input.sequenceId)?.emit(
               'generation.image:progress',
-              {
-                frameId: input.frameId,
-                status: 'failed',
-              }
+              { frameId: input.frameId, status: 'failed' }
             );
           } catch {
-            // Ignore emit errors
+            // Ignore emit errors in failure handler
           }
         }
 

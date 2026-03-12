@@ -1,0 +1,175 @@
+/**
+ * LLM Response Schemas
+ *
+ * Zod schemas for validating structured outputs from each analysis phase.
+ * All derive from the canonical scene-analysis.schema.ts definitions.
+ */
+
+import {
+  continuitySchema,
+  locationBibleEntrySchema,
+  motionPromptSchema,
+  projectMetadataSchema,
+  sceneAnalysisSchema,
+  sceneSchema,
+  visualPromptSchema,
+} from './scene-analysis.schema';
+import { z } from 'zod';
+
+/**
+ * Talent Matching Response
+ */
+export const talentMatchResponseSchema = z.object({
+  matches: z.array(
+    z.object({
+      characterId: z.string(),
+      talentId: z.string(),
+      confidence: z.number(), // 0-1 range enforced by prompt, not schema (Anthropic doesn't support min/max)
+      reason: z.string(),
+    })
+  ),
+});
+
+/**
+ * Location Matching Response
+ */
+export const locationMatchResponseSchema = z.object({
+  matches: z.array(
+    z.object({
+      locationId: z.string(),
+      libraryLocationId: z.string(),
+      confidence: z.number(), // 0-1 range enforced by prompt
+      reason: z.string(),
+    })
+  ),
+});
+
+/**
+ * Phase 1: Scene Splitting
+ */
+export const sceneSplittingResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  projectMetadata: projectMetadataSchema.meta({
+    description: 'Project-level metadata extracted from script',
+  }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+          sceneNumber: true,
+          originalScript: true,
+          metadata: true,
+        })
+        .required()
+    )
+    .meta({ description: 'Array of scenes split from the script' }),
+});
+
+/**
+ * Phase 2: Character Extraction
+ */
+export const characterExtractionResultSchema = sceneAnalysisSchema
+  .pick({
+    status: true,
+    characterBible: true,
+  })
+  .required();
+
+/**
+ * Phase 2b: Location Extraction
+ */
+export const locationExtractionResultSchema = z.object({
+  status: z.enum(['success', 'error', 'rejected']).catch('success'),
+  locationBible: z.array(locationBibleEntrySchema).catch([]),
+});
+
+/**
+ * Phase 3: Visual Prompt Generation
+ */
+export const visualPromptGenerationResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+        })
+        .required()
+        .extend({
+          visual: visualPromptSchema.meta({
+            description: 'Image generation prompt data',
+          }),
+          continuity: continuitySchema.meta({
+            description: 'Continuity tracking for scene consistency',
+          }),
+        })
+    )
+    .meta({ description: 'Array of scenes with visual prompts' }),
+});
+
+/**
+ * Phase 4: Motion Prompt Generation
+ *
+ * Note: The motion field uses a preprocess to handle AI model variations.
+ * Some models return motion as an array instead of an object - we take the first element.
+ */
+export const motionPromptGenerationResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+        })
+        .required()
+        .extend({
+          prompts: z
+            .object({
+              // Handle AI returning motion as array (take first element) or object
+              motion: z
+                .preprocess((val) => {
+                  if (Array.isArray(val) && val.length > 0) {
+                    console.warn(
+                      '[MotionPrompts] AI returned motion as array, using first element'
+                    );
+                    return val[0];
+                  }
+                  return val;
+                }, motionPromptSchema)
+                .meta({ description: 'Motion/video generation prompt data' }),
+            })
+            .meta({ description: 'Motion generation prompts for this scene' }),
+        })
+    )
+    .meta({ description: 'Array of scenes with motion prompts' }),
+});
+
+/**
+ * Phase 5: Audio Design
+ */
+export const audioDesignGenerationResultSchema = z.object({
+  status: z
+    .enum(['success', 'error', 'rejected'])
+    .catch('success')
+    .meta({ description: 'Processing status: success, error, or rejected' }),
+  scenes: z
+    .array(
+      sceneSchema
+        .pick({
+          sceneId: true,
+          audioDesign: true,
+        })
+        .required()
+    )
+    .meta({ description: 'Array of scenes with audio design' }),
+});

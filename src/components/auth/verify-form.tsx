@@ -17,15 +17,10 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { authClient } from '@/lib/auth/client';
-import { Route as inviteCodeRoute } from '@/routes/_auth/invite-code';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-function hasSkippedPasskeyPrompt(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem('velro-passkey-skip') === 'true';
-}
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 type VerifyFormProps = {
   email: string;
@@ -37,102 +32,73 @@ export function VerifyForm({
   redirectTo = '/sequences',
 }: VerifyFormProps) {
   const navigate = useNavigate();
+  const hydrated = useHydrated();
   const [otp, setOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const isVerifyingRef = useRef(false);
 
   const verifyOtp = useCallback(
-    async (otpValue: string) => {
-      if (isVerifyingRef.current || isLoading) return;
-      isVerifyingRef.current = true;
+    (otpValue: string) => {
+      startTransition(async () => {
+        setError(null);
+        setSuccess(null);
 
-      setError(null);
-      setSuccess(null);
-      setIsLoading(true);
-
-      try {
-        const result = await authClient.signIn.emailOtp({
-          email,
-          otp: otpValue,
-        });
-
-        if (result.error) {
-          setError(result.error.message || 'Invalid code');
-          setIsLoading(false);
-          isVerifyingRef.current = false;
-          return;
-        }
-
-        // Check if new user (needs invite code)
-        const user = result.data?.user;
-        if (user && 'status' in user && user.status === 'pending') {
-          setSuccess('Signed in! Please enter your invite code…');
-          await navigate({
-            to: inviteCodeRoute.fullPath,
-            search: { redirectTo },
+        try {
+          const result = await authClient.signIn.emailOtp({
+            email,
+            otp: otpValue,
           });
-        } else {
-          setSuccess('Signed in!');
-          // Redirect to passkey setup if user hasn't skipped it
-          if (!hasSkippedPasskeyPrompt()) {
-            await navigate({
-              to: '/settings/passkeys',
-              search: { setup: true },
-            });
-          } else {
-            await navigate({ to: redirectTo });
+
+          if (result.error) {
+            setError(result.error.message || 'Invalid code');
+            return;
           }
+          await navigate({ to: redirectTo });
+        } catch (err) {
+          console.error('[VerifyForm] Verify OTP error:', err);
+          setError(err instanceof Error ? err.message : 'Verification failed');
         }
-      } catch (err) {
-        console.error('[VerifyForm] Verify OTP error:', err);
-        setError(err instanceof Error ? err.message : 'Verification failed');
-        setIsLoading(false);
-        isVerifyingRef.current = false;
-      }
+      });
     },
-    [email, navigate, redirectTo, isLoading]
+    [email, navigate, redirectTo]
   );
 
   // Auto-verify when OTP is complete (6 digits)
   useEffect(() => {
     if (otp.length === 6) {
-      void verifyOtp(otp);
+      verifyOtp(otp);
     }
   }, [otp, verifyOtp]);
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    void verifyOtp(otp);
+    verifyOtp(otp);
   };
 
-  const handleResendOtp = async () => {
-    setError(null);
-    setSuccess(null);
-    setIsLoading(true);
+  const handleResendOtp = () => {
+    startTransition(async () => {
+      setError(null);
+      setSuccess(null);
 
-    try {
-      const result = await authClient.emailOtp.sendVerificationOtp({
-        email,
-        type: 'sign-in',
-      });
+      try {
+        const result = await authClient.emailOtp.sendVerificationOtp({
+          email,
+          type: 'sign-in',
+        });
 
-      if (result.error) {
-        setError(result.error.message || 'Failed to resend code');
-        setIsLoading(false);
-        return;
+        if (result.error) {
+          setError(result.error.message || 'Failed to resend code');
+          return;
+        }
+
+        setSuccess('New code sent!');
+        setOtp('');
+      } catch (err) {
+        console.error('[VerifyForm] Resend OTP error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to resend code');
       }
-
-      setSuccess('New code sent!');
-      setOtp('');
-      setIsLoading(false);
-      isVerifyingRef.current = false;
-    } catch (err) {
-      console.error('[VerifyForm] Resend OTP error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to resend code');
-      setIsLoading(false);
-    }
+    });
   };
 
   return (
@@ -160,7 +126,7 @@ export function VerifyForm({
               maxLength={6}
               value={otp}
               onChange={setOtp}
-              disabled={isLoading}
+              disabled={!hydrated || isPending}
               autoFocus
             >
               <InputOTPGroup>
@@ -177,9 +143,9 @@ export function VerifyForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading || otp.length !== 6}
+            disabled={!hydrated || isPending || otp.length !== 6}
           >
-            {isLoading ? 'Verifying…' : 'Verify'}
+            {isPending ? 'Verifying…' : 'Verify'}
           </Button>
         </form>
 
@@ -193,9 +159,9 @@ export function VerifyForm({
           </Link>
           <button
             type="button"
-            onClick={() => void handleResendOtp()}
+            onClick={() => handleResendOtp()}
             className="text-primary hover:underline"
-            disabled={isLoading}
+            disabled={isPending}
           >
             Resend code
           </button>

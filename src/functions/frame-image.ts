@@ -1,8 +1,3 @@
-/**
- * Frame Image Server Functions
- * Image generation operations for frames
- */
-
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -44,14 +39,11 @@ import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Helpers
-// ============================================================================
+// ---------------------------------------------------------------------------
 
-/**
- * Get reference image URLs for characters in a frame
- * Matches characters by continuity tags and returns their sheet URLs
- */
+/** Match characters by continuity tags and return their reference sheet images. */
 function getSceneCharacterReferenceImages(
   allCharacters: Character[],
   characterTags: string[]
@@ -75,10 +67,7 @@ function getSceneCharacterReferenceImages(
   return buildCharacterReferenceImages(matchedCharacters);
 }
 
-/**
- * Get reference image URLs for locations in a frame
- * Matches locations by environmentTag or scene location metadata
- */
+/** Match locations by environmentTag or scene location and return reference images. */
 function getSceneLocationReferenceImages(
   allLocations: SequenceLocation[],
   environmentTag: string,
@@ -86,43 +75,36 @@ function getSceneLocationReferenceImages(
 ): ReferenceImageDescription[] {
   if (!environmentTag && !sceneLocation) return [];
 
-  const matchedLocations = allLocations.filter((loc) => {
-    return (
+  const matchedLocations = allLocations.filter(
+    (loc) =>
       (environmentTag && locationMatchesTag(loc, environmentTag)) ||
       (sceneLocation && locationMatchesTag(loc, sceneLocation))
-    );
-  });
+  );
 
   return buildLocationReferenceImages(matchedLocations);
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Generate Frames (Storyboard Workflow)
-// ============================================================================
+// ---------------------------------------------------------------------------
 
-/**
- * Generate all frames for a sequence
- * Triggers the storyboard workflow
- */
 export const generateFramesFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    // Pre-flight billing check (skip if team has both BYOK keys)
-    const { sequence } = context;
-    const resolvedModel = safeTextToImageModel(
-      sequence.imageModel,
-      DEFAULT_IMAGE_MODEL
-    );
-    const resolvedVModel = safeImageToVideoModel(
-      sequence.videoModel,
-      DEFAULT_VIDEO_MODEL
-    );
+    const { sequence, user } = context;
+
     await requireCredits(
       sequence.teamId,
       estimateStoryboardCost({
-        imageModel: resolvedModel,
+        imageModel: safeTextToImageModel(
+          sequence.imageModel,
+          DEFAULT_IMAGE_MODEL
+        ),
         aspectRatio: sequence.aspectRatio,
-        videoModel: resolvedVModel,
+        videoModel: safeImageToVideoModel(
+          sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        ),
       }),
       {
         providers: ['fal', 'openrouter'],
@@ -131,9 +113,9 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
     );
 
     const workflowInput: StoryboardWorkflowInput = {
-      userId: context.user.id,
-      teamId: context.sequence.teamId,
-      sequenceId: context.sequence.id,
+      userId: user.id,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
       options: {
         framesPerScene: 3,
         generateThumbnails: true,
@@ -144,46 +126,38 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/storyboard', workflowInput, {
-      deduplicationId: `storyboard-${context.sequence.id}`,
+      deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
     });
 
-    return {
-      workflowRunId,
-      frames: [],
-    };
+    return { workflowRunId, frames: [] };
   });
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Generate Image for Frame
-// ============================================================================
+// ---------------------------------------------------------------------------
 
 const generateImageInputSchema = regenerateFrameSchema.extend({
   sequenceId: ulidSchema,
   frameId: ulidSchema,
 });
 
-/**
- * Generate/regenerate an image for a single frame
- * Triggers the image workflow with character reference images if available
- */
 export const generateFrameImageFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(generateImageInputSchema))
   .handler(async ({ context, data }) => {
-    const { frame, sequence } = context;
+    const { frame, sequence, user } = context;
 
-    // Determine which prompt to use (priority: provided > stored > AI-generated > description)
-    const promptToUse =
+    // Priority: provided > stored > AI-generated > description
+    const prompt =
       data.prompt ||
       frame.imagePrompt ||
       frame.metadata?.prompts?.visual?.fullPrompt ||
       frame.description;
 
-    if (!promptToUse) {
+    if (!prompt) {
       throw new Error('Frame has no prompt or description to regenerate from');
     }
 
-    // Get character reference URLs for this frame (without modifying the prompt)
     const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const referenceImages = getSceneCharacterReferenceImages(
@@ -191,22 +165,20 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       characterTags
     );
 
-    // Determine which model to use (with runtime validation)
-    const modelToUse =
+    const model =
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
-    // Credit check before triggering workflow (skip if team has own fal key)
     await requireCredits(
       sequence.teamId,
-      estimateImageCost(modelToUse, sequence.aspectRatio, 1),
+      estimateImageCost(model, sequence.aspectRatio, 1),
       { errorMessage: 'Insufficient credits for image generation' }
     );
 
     const workflowInput: ImageWorkflowInput = {
-      userId: context.user.id,
+      userId: user.id,
       teamId: sequence.teamId,
-      prompt: promptToUse,
-      model: modelToUse,
+      prompt,
+      model,
       imageSize: aspectRatioToImageSize(sequence.aspectRatio),
       numImages: 1,
       frameId: frame.id,
@@ -215,39 +187,31 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
     };
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
-      deduplicationId: `image-${frame.id}`,
+      deduplicationId: `image-${frame.id}-${Date.now()}`,
     });
 
-    return {
-      workflowRunId,
-      frameId: frame.id,
-    };
+    return { workflowRunId, frameId: frame.id };
   });
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Generate Variants for Frame
-// ============================================================================
+// ---------------------------------------------------------------------------
 
 const generateVariantsInputSchema = generateVariantSchema.extend({
   sequenceId: ulidSchema,
   frameId: ulidSchema,
 });
 
-/**
- * Generate variant images for a frame
- * Triggers the variant-image workflow
- */
 export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(generateVariantsInputSchema))
   .handler(async ({ context, data }) => {
-    const { frame, sequence } = context;
+    const { frame, sequence, user } = context;
 
     if (!frame.thumbnailUrl) {
       throw new Error('Frame must have a thumbnail image to generate variants');
     }
 
-    // Get character references for this frame
     const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const characterReferences = getSceneCharacterReferenceImages(
@@ -255,17 +219,13 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       characterTags
     );
 
-    // Get location references for this frame
     const allLocations = await getSequenceLocationsWithReferences(sequence.id);
-    const environmentTag = frame.metadata?.continuity?.environmentTag ?? '';
-    const sceneLocation = frame.metadata?.metadata?.location ?? '';
     const locationReferences = getSceneLocationReferenceImages(
       allLocations,
-      environmentTag,
-      sceneLocation
+      frame.metadata?.continuity?.environmentTag ?? '',
+      frame.metadata?.metadata?.location ?? ''
     );
 
-    // Credit check before triggering workflow (skip if team has own fal key)
     const numImages = data.numImages ?? 1;
     await requireCredits(
       sequence.teamId,
@@ -278,7 +238,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
     );
 
     const workflowInput: VariantWorkflowInput = {
-      userId: context.user.id,
+      userId: user.id,
       teamId: sequence.teamId,
       sequenceId: sequence.id,
       frameId: frame.id,
@@ -294,20 +254,15 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/variant-image',
       workflowInput,
-      {
-        deduplicationId: `variant-${frame.id}`,
-      }
+      { deduplicationId: `variant-${frame.id}-${Date.now()}` }
     );
 
-    return {
-      workflowRunId,
-      frameId: frame.id,
-    };
+    return { workflowRunId, frameId: frame.id };
   });
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Select Variant
-// ============================================================================
+// ---------------------------------------------------------------------------
 
 const selectVariantInputSchema = z.object({
   sequenceId: ulidSchema,
@@ -315,13 +270,7 @@ const selectVariantInputSchema = z.object({
   variantIndex: z.number().int().min(0).max(8),
 });
 
-/**
- * Convert variant index (0-8) to row/column (1-3)
- * Grid layout:
- *   0 1 2
- *   3 4 5
- *   6 7 8
- */
+/** Convert 0-8 grid index to 1-based row/col in a 3x3 grid. */
 function indexToRowCol(index: number): { row: number; col: number } {
   return {
     row: Math.floor(index / 3) + 1,
@@ -329,31 +278,24 @@ function indexToRowCol(index: number): { row: number; col: number } {
   };
 }
 
-/**
- * Select a variant panel from the 3x3 grid
- * Crops the tile and triggers upscale workflow
- */
 export const selectFrameVariantFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(selectVariantInputSchema))
   .handler(async ({ context, data }) => {
-    const { frame, sequence } = context;
+    const { frame, sequence, user } = context;
 
     if (!frame.variantImageUrl) {
       throw new Error('Frame has no variant image to select from');
     }
 
-    // Convert index to row/column
     const { row, col } = indexToRowCol(data.variantIndex);
 
-    // Phase 1: Crop the tile immediately using WASM
     const cropResult = await cropTileFromGrid({
       gridImageUrl: frame.variantImageUrl,
       row,
       col,
     });
 
-    // Upload cropped tile to storage
     const uploadResult = await uploadImageBufferToStorage({
       imageBuffer: cropResult.buffer,
       teamId: sequence.teamId,
@@ -366,13 +308,12 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       throw new Error('Failed to upload cropped image to storage');
     }
 
-    // Update frame with cropped thumbnail and clear motion fields
+    // Set cropped thumbnail and clear stale motion fields
     await updateFrame(frame.id, {
       thumbnailUrl: uploadResult.url,
       thumbnailPath: uploadResult.path || null,
       thumbnailStatus: 'generating',
       thumbnailError: null,
-      // Clear motion fields since the thumbnail changed
       videoUrl: null,
       videoPath: null,
       videoStatus: 'pending',
@@ -381,16 +322,14 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       videoError: null,
     });
 
-    // Credit check before triggering upscale (skip if team has own fal key)
     await requireCredits(
       sequence.teamId,
-      estimateImageCost('nano_banana_pro', '16:9', 1),
+      estimateImageCost('nano_banana_2', '16:9', 1),
       { errorMessage: 'Insufficient credits for variant upscale' }
     );
 
-    // Phase 2: Trigger background upscale workflow
     const workflowInput: UpscaleVariantWorkflowInput = {
-      userId: context.user.id,
+      userId: user.id,
       teamId: sequence.teamId,
       sequenceId: sequence.id,
       frameId: frame.id,
@@ -401,9 +340,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/upscale-variant',
       workflowInput,
-      {
-        deduplicationId: `upscale-variant-${frame.id}-${Date.now()}`,
-      }
+      { deduplicationId: `upscale-variant-${frame.id}-${Date.now()}` }
     );
 
     return {

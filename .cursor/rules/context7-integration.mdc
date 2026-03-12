@@ -16,7 +16,7 @@ This means you should automatically use the Context7 MCP tools to resolve librar
 
 ## Pre-configured Library IDs
 
-Use these Context7 library IDs for Velro's tech stack:
+Use these Context7 library IDs for OpenStory's tech stack:
 
 ### Core Framework
 - `/vercel/next.js` - Next.js 15 documentation and patterns
@@ -56,7 +56,7 @@ Automatically invoke Context7 when:
 - Troubleshooting integration issues
 - Learning new library features
 
-## Velro-Specific Context Needs
+## OpenStory-Specific Context Needs
 
 Prioritize Context7 for:
 - **Next.js 15**: Server Actions, async request params, React 19 features

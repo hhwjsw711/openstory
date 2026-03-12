@@ -103,13 +103,13 @@ export type GenerationStreamAction =
   | { type: 'RESET' };
 
 const PHASE_NAMES = [
-  'Scene Splitting',
-  'Character Extraction',
-  'Character Sheets',
-  'Visual Prompts',
-  'Motion Prompts',
-  'Audio Design',
-  'Image & Motion Generation',
+  'Analyzing script…',
+  'Finding characters…',
+  'Drawing characters…',
+  'Designing locations…',
+  'Writing prompts…',
+  'Designing sound…',
+  'Generating images…',
 ];
 
 export const initialGenerationStreamState: GenerationStreamState = {

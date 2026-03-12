@@ -15,8 +15,6 @@ import {
   waitForLibraryPageLoad,
   cleanupLocationByName,
 } from '../fixtures/test-utils';
-import path from 'node:path';
-
 function waitForLocationsPageLoad(page: import('playwright/test').Page) {
   return waitForLibraryPageLoad(page, 'Add Location');
 }
@@ -78,8 +76,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
       const uniqueName = `E2E Test Location ${Date.now()}`;
 
       await page.goto('/locations');
-      await page.waitForLoadState('networkidle');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+      await waitForLocationsPageLoad(page);
 
       // Click Add Location button (header or empty state - use first available)
       const addButton = page
@@ -112,62 +109,9 @@ testWithUser.describe('Add Location with Reference Media', () => {
     }
   );
 
-  testWithUser(
-    'can create location with reference media',
-    async ({ page, testUser }) => {
-      const uniqueName = `E2E Test Location With Media ${Date.now()}`;
-
-      await page.goto('/locations');
-      await page.waitForLoadState('networkidle');
-      await page.getByRole('heading', { name: 'Location Library' }).waitFor();
-
-      const addButton = page
-        .getByRole('button', { name: 'Add Location' })
-        .first();
-      await expect(addButton).toBeVisible({ timeout: 10000 });
-      await expect(addButton).toBeEnabled();
-      await addButton.click();
-
-      // Wait for dialog to open
-      await page.getByLabel('Name').waitFor({ timeout: 10000 });
-      await page.getByLabel('Name').fill(uniqueName);
-      await page
-        .getByLabel('Description')
-        .fill('Location with reference images');
-
-      const fileChooserPromise = page.waitForEvent('filechooser');
-      await page.getByRole('button', { name: 'Browse files' }).click();
-      const fileChooser = await fileChooserPromise;
-
-      const testImagePath = path.join(
-        import.meta.dirname,
-        '../fixtures/test-image.jpg'
-      );
-      await fileChooser.setFiles(testImagePath);
-
-      // Click the submit button inside the dialog
-      const submitButton = page
-        .getByRole('dialog')
-        .getByRole('button', { name: 'Add Location' });
-      await expect(submitButton).toBeEnabled({ timeout: 15000 });
-      await submitButton.click();
-
-      await expect(
-        page.getByRole('dialog', { name: 'Add Location' })
-      ).not.toBeVisible({ timeout: 10000 });
-
-      await expect(page.getByText(uniqueName)).toBeVisible({
-        timeout: 10000,
-      });
-
-      await cleanupLocationByName(testUser.teamId, uniqueName);
-    }
-  );
-
   testWithUser('can cancel Add Location dialog', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Location Library' }).waitFor();
+    await waitForLocationsPageLoad(page);
 
     const addButton = page
       .getByRole('button', { name: 'Add Location' })

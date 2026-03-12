@@ -1,6 +1,7 @@
 import { ImageModelSelector } from '@/components/model/image-model-selector';
 import { ModelSelector } from '@/components/model/model-selector';
 import { MotionModelSelector } from '@/components/model/motion-model-selector';
+import { MusicModelSelector } from '@/components/model/music-model-selector';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
@@ -8,12 +9,46 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import type { ImageToVideoModel, TextToImageModel } from '@/lib/ai/models';
+import type {
+  AudioModel,
+  ImageToVideoModel,
+  TextToImageModel,
+} from '@/lib/ai/models';
 import type { AnalysisModelId } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { useState, type FC } from 'react';
 import { AspectRatioPills } from './aspect-ratio-pills';
 import { GenerationSettingsTrigger } from './generation-settings-trigger';
+
+type AutoToggleProps = {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+};
+
+const AutoToggle: FC<AutoToggleProps> = ({
+  id,
+  label,
+  checked,
+  onChange,
+  disabled,
+}) => (
+  <div className="flex items-center gap-2">
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      disabled={disabled}
+      className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    />
+    <Label htmlFor={id} className="text-sm font-normal cursor-pointer">
+      {label}
+    </Label>
+  </div>
+);
 
 type GenerationSettingsProps = {
   aspectRatio: AspectRatio;
@@ -21,11 +56,15 @@ type GenerationSettingsProps = {
   imageModel: TextToImageModel;
   motionModel: ImageToVideoModel;
   autoGenerateMotion?: boolean;
+  musicModel?: AudioModel;
+  autoGenerateMusic?: boolean;
   onAspectRatioChange: (value: AspectRatio) => void;
   onAnalysisModelsChange: (value: AnalysisModelId[]) => void;
   onImageModelChange: (value: TextToImageModel) => void;
   onMotionModelChange: (value: ImageToVideoModel) => void;
   onAutoGenerateMotionChange?: (value: boolean) => void;
+  onMusicModelChange?: (value: AudioModel) => void;
+  onAutoGenerateMusicChange?: (value: boolean) => void;
   disabled?: boolean;
   singleSelectAnalysis?: boolean;
 };
@@ -36,11 +75,15 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
   imageModel,
   motionModel,
   autoGenerateMotion = false,
+  musicModel,
+  autoGenerateMusic = false,
   onAspectRatioChange,
   onAnalysisModelsChange,
   onImageModelChange,
   onMotionModelChange,
   onAutoGenerateMotionChange,
+  onMusicModelChange,
+  onAutoGenerateMusicChange,
   disabled = false,
   singleSelectAnalysis = false,
 }) => {
@@ -49,7 +92,11 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
-        <GenerationSettingsTrigger aspectRatio={aspectRatio} />
+        <GenerationSettingsTrigger
+          aspectRatio={aspectRatio}
+          autoGenerateMotion={autoGenerateMotion}
+          autoGenerateMusic={autoGenerateMusic}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4" align="start">
         <div className="flex flex-col gap-4">
@@ -99,22 +146,13 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
               Motion Model
             </h3>
             {onAutoGenerateMotionChange && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="auto-generate-motion"
-                  checked={autoGenerateMotion}
-                  onChange={(e) => onAutoGenerateMotionChange(e.target.checked)}
-                  disabled={disabled}
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-                <Label
-                  htmlFor="auto-generate-motion"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Auto-generate motion
-                </Label>
-              </div>
+              <AutoToggle
+                id="auto-generate-motion"
+                label="Auto-generate motion"
+                checked={autoGenerateMotion}
+                onChange={onAutoGenerateMotionChange}
+                disabled={disabled}
+              />
             )}
             <MotionModelSelector
               selectedModel={motionModel}
@@ -123,6 +161,29 @@ export const GenerationSettings: FC<GenerationSettingsProps> = ({
               aspectRatio={aspectRatio}
             />
           </section>
+
+          {onAutoGenerateMusicChange && onMusicModelChange && musicModel && (
+            <>
+              <Separator />
+
+              {/* Music Model Section */}
+              <section className="flex flex-col gap-2">
+                <h3 className="text-sm font-medium text-foreground">Music</h3>
+                <AutoToggle
+                  id="auto-generate-music"
+                  label="Auto-generate music"
+                  checked={autoGenerateMusic}
+                  onChange={onAutoGenerateMusicChange}
+                  disabled={disabled}
+                />
+                <MusicModelSelector
+                  selectedModel={musicModel}
+                  onModelChange={onMusicModelChange}
+                  disabled={disabled || !autoGenerateMusic}
+                />
+              </section>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>

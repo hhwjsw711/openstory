@@ -3,17 +3,21 @@
  * Provides tab navigation between settings sub-pages
  */
 
+import { RouteErrorFallback } from '@/components/error/route-error-fallback';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   createFileRoute,
   Link,
   Outlet,
   useLocation,
 } from '@tanstack/react-router';
-import { CreditCard, Fingerprint, Key } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Fingerprint, Key } from 'lucide-react';
 
 export const Route = createFileRoute('/_protected/settings')({
   component: SettingsLayout,
+  errorComponent: (props) => (
+    <RouteErrorFallback {...props} heading="Settings error" />
+  ),
 });
 
 const tabs = [
@@ -29,12 +33,6 @@ const tabs = [
     href: '/settings/passkeys',
     icon: <Fingerprint className="h-4 w-4" />,
   },
-  {
-    value: 'billing',
-    label: 'Billing',
-    href: '/settings/billing',
-    icon: <CreditCard className="h-4 w-4" />,
-  },
 ];
 
 function SettingsLayout() {
@@ -46,7 +44,7 @@ function SettingsLayout() {
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6">
-      <Tabs value={activeTab} className="mb-6">
+      <Tabs value={activeTab} className="mb-6 shrink-0">
         <TabsList className="w-full justify-start">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} asChild>

@@ -4,7 +4,7 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import type { Scene } from '@/lib/script/types';
+import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import {
   type InferInsertModel,
   type InferSelectModel,
@@ -58,6 +58,7 @@ export const frames = sqliteTable(
     variantImageStatus: text('variant_image_status')
       .$type<FrameGenerationStatus>()
       .default('pending'),
+    variantWorkflowRunId: text('variant_workflow_run_id'),
     videoUrl: text('video_url'),
     videoPath: text('video_path'), // R2 storage path (not signed URL)
     // Thumbnail generation status tracking
@@ -84,6 +85,18 @@ export const frames = sqliteTable(
     videoError: text('video_error'),
     motionPrompt: text('motion_prompt'), // User-updated motion prompt (overrides AI-generated prompt from metadata)
     motionModel: text('motion_model', { length: 100 }), // Model used for motion/video generation (nullable - inherits from sequence if not set)
+    // Audio/music generation status tracking
+    audioUrl: text('audio_url'),
+    audioPath: text('audio_path'), // R2 storage path (not signed URL)
+    audioStatus: text('audio_status')
+      .$type<FrameGenerationStatus>()
+      .default('pending'),
+    audioWorkflowRunId: text('audio_workflow_run_id'),
+    audioGeneratedAt: integer('audio_generated_at', {
+      mode: 'timestamp',
+    }),
+    audioError: text('audio_error'),
+    audioModel: text('audio_model', { length: 100 }), // Model used for music/audio generation (nullable)
     /**
      * Stores Scene data at various stages of progressive analysis.
      * Fields are populated progressively across 5 phases.

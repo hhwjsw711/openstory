@@ -38,7 +38,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    environment: preview
+    environment: staging
 
     steps:
       - uses: actions/checkout@v5
@@ -66,8 +66,9 @@ jobs:
       - name: Run E2E tests
         run: bun test:e2e
         env:
-          # Skip workflow triggers in E2E tests
           E2E_TEST: 'true'
+          DATABASE_URL: file:test.db
+          BETTER_AUTH_URL: http://localhost:3001
           # QStash - local Docker service
           QSTASH_TOKEN: eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0=
           QSTASH_URL: http://localhost:8080

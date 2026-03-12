@@ -21,20 +21,25 @@ export const Route = createFileRoute('/_auth/login')({
 
 function LoginPage() {
   const search = Route.useSearch();
+  const { isPreview } = Route.useRouteContext();
   const redirectTo = getRedirectFromParams(search);
   const email = search.email || '';
 
   return (
-    <PageContainer>
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+    <PageContainer className="min-h-0 flex-1">
+      <div className="flex h-full items-center justify-center">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Welcome to Velro</h1>
+            <h1 className="text-3xl font-bold">Welcome to OpenStory</h1>
             <p className="mt-2 text-muted-foreground">
               Sign in to continue creating cinematic content
             </p>
           </div>
-          <AuthForm emailEntered={email} redirectTo={redirectTo} />
+          <AuthForm
+            emailEntered={email}
+            redirectTo={redirectTo}
+            isPreview={isPreview}
+          />
         </div>
       </div>
     </PageContainer>

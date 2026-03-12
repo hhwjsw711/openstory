@@ -3,6 +3,16 @@ import { LocationSuggestionSelector } from '@/components/location-library/locati
 import { GenerationSettings } from '@/components/settings/generation-settings';
 import { StyleSelector } from '@/components/style/style-selector';
 import { TalentSuggestionSelector } from '@/components/talent/talent-suggestion-selector';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,16 +21,20 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { useCreateSequence, useUpdateSequence } from '@/hooks/use-sequences';
+import { useCreateSequence, useArchiveSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
+import { useSequenceDraft } from '@/hooks/use-sequence-draft';
 import { useBillingGate } from '@/hooks/use-billing-gate';
 import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
+  DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
+  safeAudioModel,
   safeImageToVideoModel,
   safeTextToImageModel,
+  type AudioModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
@@ -30,9 +44,11 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { enhanceScriptStreamFn } from '@/functions/ai';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
-import React, { useEffect, useMemo, useState, type FC } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
 
 export const ScriptView: FC<{
@@ -66,6 +82,14 @@ export const ScriptView: FC<{
     isLoaded: settingsLoaded,
     save: saveSettings,
   } = useGenerationSettings();
+
+  // Load draft from localStorage (script, style, talent, location)
+  const {
+    draft,
+    isLoaded: draftLoaded,
+    saveDraft,
+    clearDraft,
+  } = useSequenceDraft();
 
   // Determine if we're editing an existing sequence
   const isEditing = !!sequence?.id;
@@ -101,6 +125,14 @@ export const ScriptView: FC<{
   const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(
     isEditing ? false : savedSettings.autoGenerateMotion
   );
+  const [musicModel, setMusicModel] = useState<AudioModel>(
+    isEditing && sequence?.musicModel
+      ? safeAudioModel(sequence.musicModel, DEFAULT_MUSIC_MODEL)
+      : savedSettings.musicModel
+  );
+  const [autoGenerateMusic, setAutoGenerateMusic] = useState<boolean>(
+    isEditing ? false : savedSettings.autoGenerateMusic
+  );
   const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
@@ -117,6 +149,25 @@ export const ScriptView: FC<{
       setStyleId(styles[0].id);
     }
   }, [styles, isLoadingStyles, styleId, sequence?.styleId]);
+
+  // Sync draft state when creating new sequences (not editing)
+  const hasSyncedDraftRef = React.useRef(false);
+  useEffect(() => {
+    if (isEditing) {
+      hasSyncedDraftRef.current = false;
+      return;
+    }
+    if (!draftLoaded) return;
+    if (!hasSyncedDraftRef.current && draft.script) {
+      setScript(draft.script);
+      if (draft.styleId) setStyleId(draft.styleId);
+      if (draft.selectedTalentIds.length > 0)
+        setSelectedTalentIds(draft.selectedTalentIds);
+      if (draft.selectedLocationIds.length > 0)
+        setSelectedLocationIds(draft.selectedLocationIds);
+      hasSyncedDraftRef.current = true;
+    }
+  }, [isEditing, draftLoaded, draft]);
 
   // Sync state with savedSettings when creating new sequences (not when editing)
   // Use a ref to track if we've already synced to avoid loops
@@ -138,6 +189,8 @@ export const ScriptView: FC<{
       setImageModel(savedSettings.imageModel);
       setMotionModel(savedSettings.motionModel);
       setAutoGenerateMotion(savedSettings.autoGenerateMotion);
+      setMusicModel(savedSettings.musicModel);
+      setAutoGenerateMusic(savedSettings.autoGenerateMusic);
       hasSyncedRef.current = true;
     }
   }, [isEditing, settingsLoaded, savedSettings]);
@@ -152,6 +205,8 @@ export const ScriptView: FC<{
         imageModel,
         motionModel,
         autoGenerateMotion,
+        musicModel,
+        autoGenerateMusic,
       });
     }
   }, [
@@ -162,17 +217,82 @@ export const ScriptView: FC<{
     imageModel,
     motionModel,
     autoGenerateMotion,
+    musicModel,
+    autoGenerateMusic,
     saveSettings,
   ]);
 
-  const createSequenceMutation = useCreateSequence();
-  const updateSequenceMutation = useUpdateSequence();
-  const { needsBillingSetup, showGate, gateProps } = useBillingGate();
-
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
+  // Persist draft to localStorage when creating new sequences
+  useEffect(() => {
+    if (!isEditing && draftLoaded) {
+      saveDraft({
+        script: script ?? '',
+        styleId,
+        selectedTalentIds,
+        selectedLocationIds,
+      });
     }
+  }, [
+    isEditing,
+    draftLoaded,
+    script,
+    styleId,
+    selectedTalentIds,
+    selectedLocationIds,
+    saveDraft,
+  ]);
+
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
+  const createSequenceMutation = useCreateSequence();
+  const archiveSequenceMutation = useArchiveSequence();
+  const {
+    needsBillingSetup,
+    showGate,
+    gateProps,
+    hasFalKey,
+    hasOpenRouterKey,
+    hasCredits,
+  } = useBillingGate();
+
+  const handleCancel = onCancel;
+
+  const executeRegeneration = () => {
+    const oldSequenceId = sequence?.id;
+
+    createSequenceMutation.mutate(
+      {
+        title: undefined,
+        teamId,
+        script: script ?? sequence?.script ?? '',
+        styleId: styleId || sequence?.styleId || undefined,
+        aspectRatio,
+        analysisModels,
+        imageModel,
+        videoModel: motionModel,
+        autoGenerateMotion,
+        autoGenerateMusic,
+        musicModel,
+        suggestedTalentIds:
+          selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
+        suggestedLocationIds:
+          selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
+      },
+      {
+        onSuccess: (result) => {
+          if (oldSequenceId) {
+            archiveSequenceMutation.mutate(oldSequenceId);
+          } else {
+            clearDraft();
+          }
+          if (onSuccess) {
+            onSuccess(result.data.map((seq) => seq.id));
+          }
+        },
+      }
+    );
   };
 
   const handleSubmit = async (event?: React.FormEvent) => {
@@ -180,53 +300,47 @@ export const ScriptView: FC<{
       event.preventDefault();
     }
 
-    // Gate: require billing setup before creating new sequences
-    if (!sequence?.id && needsBillingSetup) {
+    if (needsBillingSetup) {
       showGate();
       return;
     }
 
-    if (sequence?.id) {
-      updateSequenceMutation.mutate(
-        {
-          id: sequence.id,
-          script: script || sequence?.script || '',
-          styleId: styleId || sequence?.styleId || undefined,
-          analysisModel: analysisModels[0],
-        },
-        {
-          onSuccess: (result) => {
-            if (result.id && onSuccess) {
-              onSuccess([result.id]);
-            }
-          },
-        }
+    if (isEditing) {
+      setShowRegenerateConfirm(true);
+      return;
+    }
+
+    executeRegeneration();
+  };
+
+  const previousScriptRef = useRef<string>('');
+
+  const handleEnhance = async () => {
+    if (needsBillingSetup) {
+      showGate();
+      return;
+    }
+
+    setIsEnhancing(true);
+    setEnhanceError(null);
+    previousScriptRef.current = scriptValue;
+    setScript('');
+
+    try {
+      let accumulated = '';
+      for await (const chunk of await enhanceScriptStreamFn({
+        data: { script: scriptValue },
+      })) {
+        accumulated += chunk.delta;
+        setScript(accumulated);
+      }
+    } catch (error) {
+      setEnhanceError(
+        error instanceof Error ? error.message : 'Failed to enhance script'
       );
-    } else {
-      createSequenceMutation.mutate(
-        {
-          title: undefined, // Will default to 'Untitled Sequence' in hook
-          teamId,
-          script: script || '',
-          styleId: styleId || undefined,
-          aspectRatio,
-          analysisModels,
-          imageModel,
-          videoModel: motionModel,
-          autoGenerateMotion,
-          suggestedTalentIds:
-            selectedTalentIds.length > 0 ? selectedTalentIds : undefined,
-          suggestedLocationIds:
-            selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
-        },
-        {
-          onSuccess: (result) => {
-            if (onSuccess) {
-              onSuccess(result.data.map((sequence) => sequence.id));
-            }
-          },
-        }
-      );
+      setScript(previousScriptRef.current);
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -235,11 +349,11 @@ export const ScriptView: FC<{
     (styleId || sequence?.styleId) &&
     analysisModels.length > 0;
 
-  const isSubmitting =
-    createSequenceMutation.isPending || updateSequenceMutation.isPending;
-  const isDisabled = !isFormValid || isSubmitting;
+  const isSubmitting = createSequenceMutation.isPending;
+  const isProcessing = sequence?.status === 'processing';
+  const isDisabled = !isFormValid || isSubmitting || isProcessing;
 
-  const scriptValue = script || sequence?.script || '';
+  const scriptValue = script ?? sequence?.script ?? '';
 
   return (
     <Card
@@ -251,48 +365,74 @@ export const ScriptView: FC<{
         className="flex flex-col min-h-0 max-h-full"
       >
         {/* Control bar */}
-        <CardHeader className="shrink-0 flex items-start justify-between gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
+        <CardHeader className="shrink-0 flex flex-col md:flex-row items-start justify-between gap-3 px-6 py-4 border-b border-border/50 bg-card/40">
           <GenerationSettings
             aspectRatio={aspectRatio}
             analysisModels={analysisModels}
             imageModel={imageModel}
             motionModel={motionModel}
             autoGenerateMotion={autoGenerateMotion}
+            musicModel={musicModel}
+            autoGenerateMusic={autoGenerateMusic}
             onAspectRatioChange={setAspectRatio}
             onAnalysisModelsChange={setAnalysisModels}
             onImageModelChange={setImageModel}
             onMotionModelChange={setMotionModel}
             onAutoGenerateMotionChange={setAutoGenerateMotion}
+            onMusicModelChange={setMusicModel}
+            onAutoGenerateMusicChange={setAutoGenerateMusic}
             disabled={loading}
-            singleSelectAnalysis={!!sequence?.id}
           />
-          {/* Suggestion selectors - only shown when creating new sequence */}
-          {!isEditing && (
-            <div className="flex items-center gap-3">
-              <TalentSuggestionSelector
-                selectedTalentIds={selectedTalentIds}
-                onSelectionChange={setSelectedTalentIds}
-                disabled={loading}
-              />
-              <LocationSuggestionSelector
-                selectedLocationIds={selectedLocationIds}
-                onSelectionChange={setSelectedLocationIds}
-                disabled={loading}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <TalentSuggestionSelector
+              selectedTalentIds={selectedTalentIds}
+              onSelectionChange={setSelectedTalentIds}
+              disabled={loading}
+            />
+            <LocationSuggestionSelector
+              selectedLocationIds={selectedLocationIds}
+              onSelectionChange={setSelectedLocationIds}
+              disabled={loading}
+            />
+          </div>
         </CardHeader>
 
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
-          <ScriptEditor
-            value={scriptValue}
-            onValueChange={setScript}
-            maxLength={50000}
-            placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
-            disabled={loading}
-            autoFocus={autoFocus}
-            showCharacterCount={false}
-          />
+          <div className="relative min-h-0 flex flex-col">
+            <ScriptEditor
+              value={scriptValue}
+              onValueChange={setScript}
+              maxLength={50000}
+              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+              disabled={loading}
+              autoFocus={autoFocus}
+              showCharacterCount={false}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute bottom-2 right-2 gap-1.5 text-muted-foreground"
+              disabled={
+                !scriptValue ||
+                scriptValue.length < 10 ||
+                isEnhancing ||
+                isSubmitting ||
+                isProcessing
+              }
+              onClick={() => void handleEnhance()}
+            >
+              {isEnhancing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {isEnhancing ? 'Enhancing…' : 'Enhance'}
+            </Button>
+          </div>
+          {enhanceError && (
+            <p className="text-sm text-destructive">{enhanceError}</p>
+          )}
 
           <div className="shrink-0">
             <StyleSelector
@@ -321,13 +461,11 @@ export const ScriptView: FC<{
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {!sequence?.id && (
-                <span className="hidden sm:block text-xs text-muted-foreground">
-                  {analysisModels.length === 1
-                    ? '1 sequence will be created'
-                    : `${analysisModels.length} sequences will be created`}
-                </span>
-              )}
+              <span className="hidden sm:block text-xs text-muted-foreground">
+                {analysisModels.length === 1
+                  ? '1 sequence will be created'
+                  : `${analysisModels.length} sequences will be created`}
+              </span>
               {sequence?.id && (
                 <Button
                   type="button"
@@ -344,7 +482,7 @@ export const ScriptView: FC<{
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   <GenerateSequenceIcon className="size-4" />
-                  Activate Crew
+                  {sequence?.id ? 'Regenerate Sequence' : 'Generate Sequence'}
                 </span>
                 {/* Shine effect */}
                 <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
@@ -353,7 +491,37 @@ export const ScriptView: FC<{
           </div>
         </CardFooter>
       </form>
-      <BillingGateDialog {...gateProps} />
+      <BillingGateDialog
+        {...gateProps}
+        hasFalKey={hasFalKey}
+        hasOpenRouterKey={hasOpenRouterKey}
+        hasCredits={hasCredits}
+      />
+      <AlertDialog
+        open={showRegenerateConfirm}
+        onOpenChange={setShowRegenerateConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate sequence?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A new sequence will be created from this script. The current
+              sequence will be archived.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowRegenerateConfirm(false);
+                executeRegeneration();
+              }}
+            >
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

@@ -1,22 +1,42 @@
+import { Providers } from '@/components/providers';
+import { Button } from '@/components/ui/button';
+import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
 import appCss from '@/styles/global.css?url';
+import type { QueryClient } from '@tanstack/react-query';
 import {
-  Outlet,
   createRootRouteWithContext,
   HeadContent,
-  Scripts,
   Link,
+  Outlet,
+  redirect,
+  Scripts,
   useRouter,
 } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import type { QueryClient } from '@tanstack/react-query';
-import { Providers } from '@/components/providers';
-import { Button } from '@/components/ui/button';
+import { createIsomorphicFn } from '@tanstack/react-start';
+import { getRequestHeaders } from '@tanstack/react-start/server';
 
 type RouterContext = {
   queryClient: QueryClient;
 };
+const getCanonicalOriginFn = createIsomorphicFn().server(() => {
+  const headers = getRequestHeaders();
+  const host = headers.get('x-forwarded-host') ?? headers.get('host');
+  if (!host) return null;
+
+  const canonical = new URL(getProductionDeploymentAppUrl(headers));
+  if (host === canonical.host) return null;
+  return canonical.origin;
+});
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ location }) => {
+    // This is to redirect from git origins to the hash origin on vercel preview branches
+    const canonicalOrigin = getCanonicalOriginFn();
+    if (canonicalOrigin) {
+      throw redirect({ href: canonicalOrigin + location.href });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -29,18 +49,18 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content:
           'Transform scripts into consistent, styled video productions using multiple AI models.',
       },
-      { title: 'Velro - Studio Grade AI Video' },
+      { title: 'OpenStory' },
     ],
     links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icon-192.png' },
       {
-        rel: 'stylesheet',
-        href: appCss,
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
       },
-      {
-        rel: 'icon',
-        type: 'image/svg+xml',
-        href: '/icon.svg',
-      },
+      { rel: 'manifest', href: '/manifest.json' },
     ],
   }),
   component: RootLayout,
@@ -51,7 +71,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>

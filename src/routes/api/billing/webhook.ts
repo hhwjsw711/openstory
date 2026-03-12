@@ -3,31 +3,42 @@
  * POST /api/billing/webhook - Handle Stripe webhook events
  */
 
+import { isBillingEnabled } from '@/lib/billing/constants';
+import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
+import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
+import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import { createFileRoute } from '@tanstack/react-router';
-import { json } from '@tanstack/react-start';
-import { getStripe, getStripeWebhookSecret } from '@/lib/billing/stripe';
-import {
-  addCredits,
-  saveStripeCustomerId,
-  hasTransactionWithStripeSessionId,
-} from '@/lib/billing/credit-service';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!isBillingEnabled()) {
+          return Response.json({ received: true }, { status: 200 });
+        }
+
         try {
-          const stripe = getStripe();
+          const stripe = getStripeOrThrow();
           const webhookSecret = getStripeWebhookSecret();
+
+          if (!webhookSecret) {
+            return Response.json(
+              { error: 'Webhook secret not configured' },
+              { status: 500 }
+            );
+          }
 
           const body = await request.text();
           const signature = request.headers.get('stripe-signature');
 
           if (!signature) {
-            return json({ error: 'Missing signature' }, { status: 400 });
+            return Response.json(
+              { error: 'Missing signature' },
+              { status: 400 }
+            );
           }
 
-          const event = stripe.webhooks.constructEvent(
+          const event = await stripe.webhooks.constructEventAsync(
             body,
             signature,
             webhookSecret
@@ -53,27 +64,17 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 break;
               }
 
-              // Idempotency: skip if this session was already processed
-              const alreadyProcessed = await hasTransactionWithStripeSessionId(
-                session.id
-              );
-              if (alreadyProcessed) {
-                console.log(
-                  `[Webhook] Duplicate event for session ${session.id}, skipping`
-                );
-                break;
-              }
+              // Retrieve receipt URL + set default payment method (best-effort)
+              const customerId = session.customer
+                ? typeof session.customer === 'string'
+                  ? session.customer
+                  : session.customer.id
+                : undefined;
 
               // Save customer ID mapping if not already saved
-              if (session.customer) {
-                const customerId =
-                  typeof session.customer === 'string'
-                    ? session.customer
-                    : session.customer.id;
+              if (customerId) {
                 await saveStripeCustomerId(teamId, customerId);
               }
-
-              // Retrieve receipt URL from the charge (best-effort, don't block credit addition)
               let receiptUrl: string | undefined;
               try {
                 if (session.payment_intent) {
@@ -88,21 +89,40 @@ export const Route = createFileRoute('/api/billing/webhook')({
                   if (charge && typeof charge === 'object') {
                     receiptUrl = charge.receipt_url ?? undefined;
                   }
+
+                  // Set as default payment method so auto-top-up can charge off-session
+                  if (pi.payment_method && customerId) {
+                    const pmId =
+                      typeof pi.payment_method === 'string'
+                        ? pi.payment_method
+                        : pi.payment_method.id;
+                    await stripe.customers.update(customerId, {
+                      invoice_settings: { default_payment_method: pmId },
+                    });
+                  }
                 }
               } catch (err) {
                 console.error('[Webhook] Failed to fetch receipt URL:', err);
               }
 
-              // Add credits
-              await addCredits(teamId, amountUsd, {
+              // Add credits (unique stripeSessionId prevents duplicates)
+              const amountMicros = usdToMicros(amountUsd);
+              const result = await addCredits(teamId, amountMicros, {
                 userId,
-                description: `Top-up: $${amountUsd.toFixed(2)}`,
+                stripeSessionId: session.id,
+                description: `Top-up: ${microsToDisplayUsd(amountMicros)}`,
                 metadata: {
-                  stripeSessionId: session.id,
                   stripePaymentIntentId: session.payment_intent,
                   ...(receiptUrl && { receiptUrl }),
                 },
               });
+
+              if (!result) {
+                console.log(
+                  `[Webhook] Duplicate session ${session.id}, skipping`
+                );
+                break;
+              }
 
               console.log(
                 `[Webhook] Added $${amountUsd} credits to team ${teamId}`
@@ -126,10 +146,13 @@ export const Route = createFileRoute('/api/billing/webhook')({
               break;
           }
 
-          return json({ received: true }, { status: 200 });
+          return Response.json({ received: true }, { status: 200 });
         } catch (error) {
           console.error('[POST /api/billing/webhook] Error:', error);
-          return json({ error: 'Webhook handler failed' }, { status: 400 });
+          return Response.json(
+            { error: 'Webhook handler failed' },
+            { status: 400 }
+          );
         }
       },
     },

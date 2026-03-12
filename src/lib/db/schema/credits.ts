@@ -5,12 +5,12 @@ import {
   sql,
 } from 'drizzle-orm';
 import {
+  check,
+  index,
   integer,
   sqliteTable,
   text,
-  real,
-  index,
-  check,
+  uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import { generateId } from '../id';
 import { user } from './auth';
@@ -32,7 +32,7 @@ export const credits = sqliteTable(
       .primaryKey()
       .notNull()
       .references(() => teams.id, { onDelete: 'cascade' }),
-    balance: real().default(0.0).notNull(),
+    balance: integer().default(0).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -54,9 +54,10 @@ export const transactions = sqliteTable(
       onDelete: 'set null',
     }),
     type: text().$type<TransactionType>().notNull(),
-    amount: real().notNull(),
-    balanceAfter: real('balance_after').notNull(),
+    amount: integer().notNull(),
+    balanceAfter: integer('balance_after').notNull(),
     metadata: text({ mode: 'json' }).$defaultFn(() => ({})),
+    stripeSessionId: text('stripe_session_id'),
     description: text(),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .$defaultFn(() => new Date())
@@ -67,6 +68,7 @@ export const transactions = sqliteTable(
     index('idx_transactions_type').on(table.type),
     index('idx_transactions_team_id').on(table.teamId),
     index('idx_transactions_user_id').on(table.userId),
+    uniqueIndex('idx_transactions_stripe_session_id').on(table.stripeSessionId),
   ]
 );
 
@@ -77,14 +79,60 @@ export const teamBillingSettings = sqliteTable('team_billing_settings', {
     .references(() => teams.id, { onDelete: 'cascade' }),
   stripeCustomerId: text('stripe_customer_id'),
   autoTopUpEnabled: integer('auto_top_up_enabled', { mode: 'boolean' })
-    .default(false)
+    .default(true)
     .notNull(),
-  autoTopUpThresholdUsd: real('auto_top_up_threshold_usd').default(5.0),
-  autoTopUpAmountUsd: real('auto_top_up_amount_usd').default(25.0),
+  autoTopUpThresholdMicros: integer('auto_top_up_threshold_micros').default(
+    5_000_000
+  ),
+  autoTopUpAmountMicros: integer('auto_top_up_amount_micros').default(
+    100_000_000
+  ),
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
 });
+
+// Credit Batches — tracks each top-up for future expiration
+const CREDIT_BATCH_SOURCES = [
+  'stripe_checkout',
+  'auto_topup',
+  'gift_code',
+  'adjustment',
+  'migration',
+] as const;
+export type CreditBatchSource = (typeof CREDIT_BATCH_SOURCES)[number];
+
+export const creditBatches = sqliteTable(
+  'credit_batches',
+  {
+    id: text()
+      .$defaultFn(() => generateId())
+      .primaryKey()
+      .notNull(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    originalAmount: integer('original_amount').notNull(),
+    remainingAmount: integer('remaining_amount').notNull(),
+    source: text().$type<CreditBatchSource>().notNull(),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('idx_credit_batches_team_id').on(table.teamId),
+    index('idx_credit_batches_team_remaining_created').on(
+      table.teamId,
+      table.remainingAmount,
+      table.createdAt
+    ),
+    index('idx_credit_batches_expires_at').on(table.expiresAt),
+  ]
+);
 
 // Relations
 export const creditsRelations = relations(credits, ({ one }) => ({
@@ -115,6 +163,17 @@ export const teamBillingSettingsRelations = relations(
   })
 );
 
+export const creditBatchesRelations = relations(creditBatches, ({ one }) => ({
+  team: one(teams, {
+    fields: [creditBatches.teamId],
+    references: [teams.id],
+  }),
+  transaction: one(transactions, {
+    fields: [creditBatches.transactionId],
+    references: [transactions.id],
+  }),
+}));
+
 // Type exports
 export type Credit = InferSelectModel<typeof credits>;
 export type NewCredit = InferInsertModel<typeof credits>;
@@ -126,3 +185,6 @@ export type TeamBillingSetting = InferSelectModel<typeof teamBillingSettings>;
 export type NewTeamBillingSetting = InferInsertModel<
   typeof teamBillingSettings
 >;
+
+export type CreditBatch = InferSelectModel<typeof creditBatches>;
+export type NewCreditBatch = InferInsertModel<typeof creditBatches>;

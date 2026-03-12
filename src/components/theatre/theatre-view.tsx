@@ -28,7 +28,7 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">Merging video segments...</p>
+        <p className="text-muted-foreground">Merging video segments…</p>
       </div>
     );
   }
@@ -36,14 +36,12 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
   // Completed state - show video
   if (mergedVideoStatus === 'completed' && mergedVideoUrl) {
     return (
-      <div className="flex flex-col gap-4">
-        <VideoPlayer
-          src={mergedVideoUrl}
-          aspectRatio={aspectRatio}
-          enableDownload
-          downloadFilename={`${sequence.title || 'sequence'}_velro.mp4`}
-        />
-      </div>
+      <VideoPlayer
+        src={mergedVideoUrl}
+        aspectRatio={aspectRatio}
+        enableDownload
+        downloadFilename={`${sequence.title || 'sequence'}_openstory.mp4`}
+      />
     );
   }
 
@@ -63,7 +61,7 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
             {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Retrying...
+                Retrying…
               </>
             ) : (
               'Retry Merge'
@@ -92,7 +90,7 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
           {isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
+              Generating…
             </>
           ) : (
             'Generate Now'
