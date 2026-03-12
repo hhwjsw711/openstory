@@ -89,6 +89,63 @@ flowchart TD
 
 > **Timing source:** Measured from local QStash logs for a 9-scene run (`wfr_analyze-script-01KKGWTGRGQRTN55B3SSH2V89H`), no talent/location matching. Total wall time: **~15 min**. Audio design was the dominant step at ~6 min. Motion and music generation were not triggered in this run (autoGenerate off).
 
+### Per-Scene Fan-Out Detail
+
+Image generation, motion prompts, and motion generation each fan out to parallel sub-workflows per scene, then join before the next phase. Each sub-workflow is an independent QStash invocation with its own retries.
+
+```mermaid
+flowchart LR
+    subgraph "Phase 4 — Image Generation · ~1.5min wall time"
+        direction LR
+        ImgFork["Persist visual<br/>prompts to frames"] --> Img1["<b>Scene 1</b><br/>image workflow"]
+        ImgFork --> Img2["<b>Scene 2</b><br/>image workflow"]
+        ImgFork --> Img3["<b>Scene 3</b><br/>image workflow"]
+        ImgFork --> ImgDots["<b>···</b>"]
+        ImgFork --> ImgN["<b>Scene N</b><br/>image workflow"]
+        Img1 --> ImgJoin["All images<br/>complete"]
+        Img2 --> ImgJoin
+        Img3 --> ImgJoin
+        ImgDots --> ImgJoin
+        ImgN --> ImgJoin
+    end
+
+    ImgJoin --> MPFork
+
+    subgraph "Phase 5 — Motion Prompts · ~30s wall time"
+        direction LR
+        MPFork["Start motion<br/>prompt workflow"] --> MP1["<b>Scene 1</b><br/>LLM call"]
+        MPFork --> MP2["<b>Scene 2</b><br/>LLM call"]
+        MPFork --> MP3["<b>Scene 3</b><br/>LLM call"]
+        MPFork --> MPDots["<b>···</b>"]
+        MPFork --> MPN["<b>Scene N</b><br/>LLM call"]
+        MP1 --> MPJoin["Merge + snap<br/>durations"]
+        MP2 --> MPJoin
+        MP3 --> MPJoin
+        MPDots --> MPJoin
+        MPN --> MPJoin
+    end
+
+    MPJoin --> AudioDesign["Phase 6: Audio Design"]
+    AudioDesign --> MusicPrompt["Phase 7: Music Prompt"]
+    MusicPrompt --> MotFork
+
+    subgraph "Phase 7 — Motion Generation · ~1-5min wall time (if enabled)"
+        direction LR
+        MotFork["Start motion<br/>generation"] --> Mot1["<b>Scene 1</b><br/>motion workflow"]
+        MotFork --> Mot2["<b>Scene 2</b><br/>motion workflow"]
+        MotFork --> Mot3["<b>Scene 3</b><br/>motion workflow"]
+        MotFork --> MotDots["<b>···</b>"]
+        MotFork --> MotN["<b>Scene N</b><br/>motion workflow"]
+        Mot1 --> MotJoin["All videos<br/>complete"]
+        Mot2 --> MotJoin
+        Mot3 --> MotJoin
+        MotDots --> MotJoin
+        MotN --> MotJoin
+    end
+
+    MotJoin --> Done["Record trace"]
+```
+
 ## Triggering Flow
 
 The pipeline starts from server handlers in `src/functions/sequences.ts`:
