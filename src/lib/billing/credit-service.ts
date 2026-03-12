@@ -22,6 +22,7 @@ import {
   applyMarkup,
   AUTO_TOPUP_COOLDOWN_MS,
   calculateExpiryDate,
+  isStripeEnabled,
   MIN_TOPUP_AMOUNT_MICROS,
 } from './constants';
 import {
@@ -347,6 +348,8 @@ async function maybeAutoTopUp(
   teamId: string,
   currentBalance: Microdollars
 ): Promise<void> {
+  if (!isStripeEnabled()) return;
+
   const settings = await getBillingSettings(teamId);
 
   if (

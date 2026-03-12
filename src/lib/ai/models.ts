@@ -694,7 +694,7 @@ export type AudioModel = keyof typeof AUDIO_MODELS;
 export type AudioModelConfig = (typeof AUDIO_MODELS)[AudioModel];
 type AudioModelId = AudioModelConfig['id'];
 
-export const DEFAULT_MUSIC_MODEL: AudioModel = 'ace_step';
+export const DEFAULT_MUSIC_MODEL: AudioModel = 'elevenlabs_music';
 
 export const AUDIO_MODEL_KEYS = [
   'ace_step',

@@ -1,5 +1,4 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
@@ -107,12 +106,7 @@ export const generateImageWorkflow = createWorkflow(
 
     const imageCostMicros = imageResult.metadata.cost ?? ZERO_MICROS;
     const { teamId, frameId, sequenceId } = input;
-    if (
-      isBillingEnabled() &&
-      imageCostMicros > 0 &&
-      teamId &&
-      !imageResult.metadata.usedOwnKey
-    ) {
+    if (imageCostMicros > 0 && teamId && !imageResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
           console.warn(

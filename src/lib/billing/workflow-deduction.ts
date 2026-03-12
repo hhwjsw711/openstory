@@ -8,7 +8,6 @@
  * All monetary values are in Microdollars.
  */
 
-import { isBillingEnabled } from '@/lib/billing/constants';
 import {
   checkAutoTopUp,
   deductCredits,
@@ -40,13 +39,7 @@ type WorkflowDeductionOpts = {
 export async function deductWorkflowCredits(
   opts: WorkflowDeductionOpts
 ): Promise<void> {
-  if (
-    !isBillingEnabled() ||
-    !opts.teamId ||
-    opts.costMicros <= 0 ||
-    opts.usedOwnKey
-  )
-    return;
+  if (!opts.teamId || opts.costMicros <= 0 || opts.usedOwnKey) return;
 
   const canAfford = await hasEnoughCredits(opts.teamId, opts.costMicros);
   if (!canAfford) {

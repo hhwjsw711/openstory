@@ -255,6 +255,7 @@ export const ScriptView: FC<{
     hasFalKey,
     hasOpenRouterKey,
     hasCredits,
+    stripeEnabled,
   } = useBillingGate();
 
   const handleCancel = onCancel;
@@ -496,6 +497,7 @@ export const ScriptView: FC<{
         hasFalKey={hasFalKey}
         hasOpenRouterKey={hasOpenRouterKey}
         hasCredits={hasCredits}
+        stripeEnabled={stripeEnabled}
       />
       <AlertDialog
         open={showRegenerateConfirm}

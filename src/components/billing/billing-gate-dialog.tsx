@@ -98,6 +98,7 @@ type BillingGateDialogProps = {
   hasFalKey?: boolean;
   hasOpenRouterKey?: boolean;
   hasCredits?: boolean;
+  stripeEnabled?: boolean;
   returnTo?: string;
   context?: 'generation' | 'onboarding';
 };
@@ -107,6 +108,7 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
   onOpenChange,
   hasFalKey = false,
   hasOpenRouterKey = false,
+  stripeEnabled = true,
   returnTo,
   context = 'generation',
 }) => {
@@ -139,20 +141,22 @@ export const BillingGateDialog: React.FC<BillingGateDialogProps> = ({
         </DialogHeader>
 
         <div className="flex flex-col gap-2 pt-1">
-          <OptionCard
-            to="/credits"
-            icon={<CreditCard className="size-4" />}
-            title="Add Credits"
-            description="Pay as you go. Auto top-up keeps you generating."
-            variant="primary"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                <Sparkles className="size-2.5" />
-                Recommended
-              </span>
-            }
-            onClick={handleNav}
-          />
+          {stripeEnabled && (
+            <OptionCard
+              to="/credits"
+              icon={<CreditCard className="size-4" />}
+              title="Add Credits"
+              description="Pay as you go. Auto top-up keeps you generating."
+              variant="primary"
+              badge={
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <Sparkles className="size-2.5" />
+                  Recommended
+                </span>
+              }
+              onClick={handleNav}
+            />
+          )}
 
           <OptionCard
             to="/credits"

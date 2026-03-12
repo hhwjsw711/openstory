@@ -6,8 +6,8 @@
 import { getEnv } from '#env';
 import { type Microdollars, usdToMicros, multiplyMicros } from './money';
 
-/** Whether billing/credits are enabled — derived from STRIPE_SECRET_KEY being set. Server-only. */
-export function isBillingEnabled(): boolean {
+/** Whether Stripe payment processing is available (checkout, webhooks, auto-top-up). */
+export function isStripeEnabled(): boolean {
   return !!getEnv().STRIPE_SECRET_KEY;
 }
 

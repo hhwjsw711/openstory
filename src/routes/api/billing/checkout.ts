@@ -6,7 +6,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { isBillingEnabled } from '@/lib/billing/constants';
+import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError, ValidationError } from '@/lib/errors';
@@ -17,9 +17,9 @@ export const Route = createFileRoute('/api/billing/checkout')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isBillingEnabled()) {
+        if (!isStripeEnabled()) {
           return json(
-            { success: false, error: { message: 'Billing is not enabled' } },
+            { success: false, error: { message: 'Stripe is not configured' } },
             { status: 404 }
           );
         }
