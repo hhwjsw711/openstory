@@ -4,7 +4,6 @@
  */
 
 import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   audioDesignGenerationResultSchema,
@@ -37,6 +36,7 @@ import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
@@ -639,7 +639,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         workflow: motionPromptWorkflow,
         body: {
           sequenceId,
-          scenes,
+          scenes: scenesWithVisualPrompts,
           aspectRatio,
           characterBible,
           styleConfig,
