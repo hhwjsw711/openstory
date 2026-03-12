@@ -30,20 +30,20 @@ OpenStory takes a script and produces a sequence of AI-generated frames — imag
 
 ## Tech Stack
 
-| Category       | Tools                                                                                                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Runtime**    | [Bun](https://bun.com)                                                                                                                                                                                        |
-| **Framework**  | [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) + [Vite](https://vite.dev)                                                                                      |
-| **Database**   | [Drizzle ORM](https://orm.drizzle.team) + SQLite ([Bun SQLite](https://bun.com/docs/runtime/sqlite), [Cloudflare D1](https://developers.cloudflare.com/d1), or [Turso](https://turso.tech))                   |
-| **AI**         | [TanStack AI](https://tanstack.com/ai) + [Fal.ai](https://fal.ai) + [OpenRouter](https://openrouter.ai) + [Langfuse](https://langfuse.com) (observability)                                                    |
-| **Workflows**  | [QStash Workflow](https://upstash.com/docs/workflow) (durable execution)                                                                                                                                      |
-| **Realtime**   | [QStash Realtime](https://upstash.com/docs/realtime)                                                                                                                                                          |
-| **Storage**    | [Cloudflare R2](https://developers.cloudflare.com/r2) (S3-compatible)                                                                                                                                         |
-| **Auth**       | [Better Auth](https://www.better-auth.com)                                                                                                                                                                    |
-| **Styling**    | [Tailwind v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)                                                                                                                                   |
-| **Quality**    | [oxlint](https://oxc.rs/docs/guide/usage/linter) + [oxfmt](https://oxc.rs) + [tsgo](https://github.com/nicolo-ribaudo/tsgo) + [Lefthook](https://github.com/evilmartians/lefthook) + [Knip](https://knip.dev) |
-| **Testing**    | [bun:test](https://bun.com/docs/cli/test) + [Playwright](https://playwright.dev)                                                                                                                              |
-| **Deployment** | [Cloudflare Workers](https://developers.cloudflare.com/workers)                                                                                                                                               |
+| Category       | Tools                                                                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Runtime**    | [Bun](https://bun.com)                                                                                                                                                                        |
+| **Framework**  | [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) + [Vite](https://vite.dev)                                                                      |
+| **Database**   | [Drizzle ORM](https://orm.drizzle.team) + SQLite ([Bun SQLite](https://bun.com/docs/runtime/sqlite), [Cloudflare D1](https://developers.cloudflare.com/d1), or [Turso](https://turso.tech))   |
+| **AI**         | [TanStack AI](https://tanstack.com/ai) + [Fal.ai](https://fal.ai) + [OpenRouter](https://openrouter.ai) + [Langfuse](https://langfuse.com) (observability)                                    |
+| **Workflows**  | [QStash Workflow](https://upstash.com/docs/workflow) (durable execution)                                                                                                                      |
+| **Realtime**   | [QStash Realtime](https://upstash.com/docs/realtime)                                                                                                                                          |
+| **Storage**    | [Cloudflare R2](https://developers.cloudflare.com/r2) (S3-compatible)                                                                                                                         |
+| **Auth**       | [Better Auth](https://www.better-auth.com)                                                                                                                                                    |
+| **Styling**    | [Tailwind v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)                                                                                                                   |
+| **Quality**    | [oxlint](https://oxc.rs/docs/guide/usage/linter) + [oxfmt](https://oxc.rs) + [tsgo](https://github.com/microsoft/typescript-go) + [Lefthook](https://lefthook.dev) + [Knip](https://knip.dev) |
+| **Testing**    | [bun:test](https://bun.com/docs/test) + [Playwright](https://playwright.dev)                                                                                                                  |
+| **Deployment** | [Cloudflare Workers](https://developers.cloudflare.com/workers)                                                                                                                               |
 
 > See [CLAUDE.md](CLAUDE.md) for full architecture documentation, server handler patterns, workflow patterns, and React conventions.
 
