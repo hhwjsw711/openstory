@@ -8,7 +8,7 @@ import { json } from '@tanstack/react-start';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
-import { handleApiError, ValidationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/errors';
 import {
   getTeamBalance,
   getBillingSettings,
@@ -39,7 +39,22 @@ export const Route = createFileRoute('/api/billing/balance')({
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);
-          if (!team) throw new ValidationError('No team found');
+          if (!team) {
+            return json({
+              success: true,
+              data: {
+                billingEnabled: true,
+                balance: 0,
+                autoTopUp: {
+                  enabled: false,
+                  thresholdUsd: null,
+                  amountUsd: null,
+                },
+                hasPaymentMethod: false,
+              },
+              timestamp: new Date().toISOString(),
+            });
+          }
 
           const [balance, settings] = await Promise.all([
             getTeamBalance(team.teamId),
