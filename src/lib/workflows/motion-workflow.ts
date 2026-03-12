@@ -2,8 +2,9 @@
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
  *
- * Uses durable polling via context.sleep() so each poll is a separate
- * workflow step — avoids Vite/HTTP server timeouts during long generation.
+ * Uses batched polling: each context.run polls in a tight loop for ~30s,
+ * then checkpoints via context.sleep between batches for durability.
+ * This reduces QStash steps by ~10x vs one-step-per-poll.
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
@@ -32,9 +33,11 @@ import type {
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
 
-/** Max polls × sleep seconds = total timeout (15 minutes * 20 polls per minute = 300 polls) */
-const MAX_POLLS = 15 * 20;
-const POLL_INTERVAL_SECONDS = 3;
+/** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
+const POLL_BATCH_DURATION_MS = 30_000;
+const POLL_INTERVAL_MS = 3_000;
+/** 30 batches × 30s = 15 minutes total timeout */
+const MAX_BATCHES = 30;
 
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
@@ -97,38 +100,57 @@ export const generateMotionWorkflow = createWorkflow(
       });
     });
 
-    // Step 2b: Poll for completion with durable sleep between steps
+    // Step 2b: Batched polling — tight loop inside each context.run, checkpoint between batches
     let videoUrl = '';
 
-    for (let i = 0; i < MAX_POLLS; i++) {
-      await context.sleep(`motion-wait-${i}`, POLL_INTERVAL_SECONDS);
+    for (let batch = 0; batch < MAX_BATCHES; batch++) {
+      if (batch > 0) {
+        await context.sleep(`motion-batch-wait-${batch}`, 1);
+      }
 
-      const poll = await context.run(`motion-poll-${i}`, async () => {
-        const pollresult = await pollMotionJob(
-          job.jobId,
-          job.modelKey,
-          input.teamId
-        );
-        // Console log progress only in the context.run
-        if (pollresult.progress !== undefined) {
-          console.log(`[MotionWorkflow] Progress: ${pollresult.progress}%`);
+      const poll = await context.run(`motion-poll-batch-${batch}`, async () => {
+        const deadline = Date.now() + POLL_BATCH_DURATION_MS;
+
+        while (Date.now() < deadline) {
+          const result = await pollMotionJob(
+            job.jobId,
+            job.modelKey,
+            input.teamId
+          );
+
+          if (result.progress !== undefined) {
+            console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
+          }
+
+          if (result.status === 'completed' && result.videoUrl) {
+            console.log(`[MotionWorkflow] Generation completed`);
+            return result;
+          }
+
+          if (result.status === 'failed') {
+            return result;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
         }
-        return pollresult;
+
+        return { status: 'pending' as const };
       });
 
-      if (poll.status === 'completed' && poll.videoUrl) {
-        console.log(`[MotionWorkflow] Generation completed`);
+      if (poll.status === 'completed' && 'videoUrl' in poll && poll.videoUrl) {
         videoUrl = poll.videoUrl;
         break;
       }
 
       if (poll.status === 'failed') {
-        throw new Error(poll.error || 'Motion generation failed');
+        throw new Error(
+          ('error' in poll && poll.error) || 'Motion generation failed'
+        );
       }
     }
 
     if (!videoUrl) {
-      throw new Error('Motion generation timed out after 10 minutes');
+      throw new Error('Motion generation timed out after 15 minutes');
     }
 
     // Calculate cost + metadata
