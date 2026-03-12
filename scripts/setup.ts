@@ -2355,7 +2355,7 @@ async function main() {
         ? 'Configured'
         : 'Skipped (using local prompts)',
     ],
-    ['Billing', vars.has('STRIPE_SECRET_KEY') ? 'Configured' : 'Skipped'],
+    ['Stripe', vars.has('STRIPE_SECRET_KEY') ? 'Configured' : 'Not configured'],
   ];
 
   const summaryLines = features

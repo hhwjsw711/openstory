@@ -8,13 +8,12 @@
  * All monetary values are in Microdollars.
  */
 
-import { isBillingEnabled } from '@/lib/billing/constants';
 import {
   checkAutoTopUp,
   deductCredits,
   hasEnoughCredits,
 } from '@/lib/billing/credit-service';
-import { type Microdollars, micros, microsToUsd, ZERO_MICROS } from './money';
+import { type Microdollars, microsToUsd, ZERO_MICROS } from './money';
 
 type WorkflowDeductionOpts = {
   /** Team to deduct from. Skips deduction if undefined (e.g., anonymous workflows). */
@@ -40,13 +39,7 @@ type WorkflowDeductionOpts = {
 export async function deductWorkflowCredits(
   opts: WorkflowDeductionOpts
 ): Promise<void> {
-  if (
-    !isBillingEnabled() ||
-    !opts.teamId ||
-    opts.costMicros <= 0 ||
-    opts.usedOwnKey
-  )
-    return;
+  if (!opts.teamId || opts.costMicros <= 0 || opts.usedOwnKey) return;
 
   const canAfford = await hasEnoughCredits(opts.teamId, opts.costMicros);
   if (!canAfford) {
@@ -69,11 +62,12 @@ export async function deductWorkflowCredits(
 }
 
 /**
- * Extract the numeric cost from image generation result metadata.
- * The cost is already in Microdollars (set by calculateImageCost in fal-cost.ts).
+ * Extract the cost from a fal.ai generation result's metadata.
+ * Returns ZERO_MICROS if missing. Cost is already in Microdollars
+ * from calculateImageCost/calculateVideoCost/calculateAudioCost.
  */
-export function extractImageCost(metadata: { cost?: unknown }): Microdollars {
-  return typeof metadata.cost === 'number'
-    ? micros(metadata.cost)
-    : ZERO_MICROS;
+export function extractImageCost(metadata: {
+  cost?: Microdollars;
+}): Microdollars {
+  return metadata.cost ?? ZERO_MICROS;
 }

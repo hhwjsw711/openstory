@@ -1,4 +1,4 @@
-import { usdToMicros } from '@/lib/billing/money';
+import { ZERO_MICROS } from '@/lib/billing/money';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
@@ -79,7 +79,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       });
       return {
         imageUrl: result.imageUrls[0],
-        cost: result.metadata.cost ?? 0,
+        cost: result.metadata.cost ?? ZERO_MICROS,
         usedOwnKey: result.metadata.usedOwnKey,
       };
     });
@@ -91,7 +91,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
         teamId: input.teamId,
-        costMicros: usdToMicros(upscaleResult.cost),
+        costMicros: upscaleResult.cost,
         usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
         description: 'Variant upscale (nano_banana_2)',

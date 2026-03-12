@@ -39,7 +39,8 @@ export const Route = createFileRoute('/_protected/sequences/')({
 
 function SequencesPage() {
   const { data: sequences, isLoading } = useSequences();
-  const { needsBillingSetup, hasFalKey, hasOpenRouterKey } = useBillingGate();
+  const { needsBillingSetup, hasFalKey, hasOpenRouterKey, stripeEnabled } =
+    useBillingGate();
   const [billingOpen, setBillingOpen] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ function SequencesPage() {
         }}
         hasFalKey={hasFalKey}
         hasOpenRouterKey={hasOpenRouterKey}
+        stripeEnabled={stripeEnabled}
         context="onboarding"
       />
       <PageContainer>

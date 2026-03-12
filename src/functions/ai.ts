@@ -23,7 +23,6 @@ import {
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
 import { getPrompt } from '@/lib/prompts';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { InsufficientCreditsError } from '@/lib/errors';
@@ -73,7 +72,7 @@ async function prepareBilling(
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
   const teamHasOwnKey = await apiKeyService.hasKey(teamId, 'openrouter');
-  if (!isBillingEnabled() || teamHasOwnKey) return undefined;
+  if (teamHasOwnKey) return undefined;
 
   const cost = estimateLLMCost(1);
   const canAfford = await hasEnoughCredits(teamId, cost);

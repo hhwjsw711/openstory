@@ -8,7 +8,6 @@
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { micros, microsToUsd } from '@/lib/billing/money';
 import {
@@ -169,12 +168,7 @@ export const generateMotionWorkflow = createWorkflow(
     // Deduct credits (skip if team used own fal key)
     const motionCostMicros = micros(motionMeta.cost);
     const { teamId } = input;
-    if (
-      isBillingEnabled() &&
-      motionCostMicros > 0 &&
-      teamId &&
-      !job.usedOwnKey
-    ) {
+    if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
         if (!canAfford) {

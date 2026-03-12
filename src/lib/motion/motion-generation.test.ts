@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
+import { micros } from '../billing/money';
 import { apiKeyService } from '../byok/api-key.service';
 import {
   mockGenerateVideo,
@@ -56,7 +57,7 @@ describe('Motion Service', () => {
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
       expect(result.metadata?.fps).toBe(30);
-      expect(result.metadata?.cost).toBe(840_000); // 140_000 micros/s * 1.2 (audio) * 5s
+      expect(result.metadata?.cost).toBe(micros(840_000)); // 140_000 micros/s * 1.2 (audio) * 5s
 
       expect(mockGenerateVideo).toHaveBeenCalledWith(
         expect.objectContaining({

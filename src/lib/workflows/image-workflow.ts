@@ -1,8 +1,7 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { micros, microsToUsd } from '@/lib/billing/money';
+import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
@@ -106,14 +105,9 @@ export const generateImageWorkflow = createWorkflow(
       });
     });
 
-    const imageCostMicros = micros(imageResult.metadata.cost ?? 0);
+    const imageCostMicros = imageResult.metadata.cost ?? ZERO_MICROS;
     const { teamId, frameId, sequenceId } = input;
-    if (
-      isBillingEnabled() &&
-      imageCostMicros > 0 &&
-      teamId &&
-      !imageResult.metadata.usedOwnKey
-    ) {
+    if (imageCostMicros > 0 && teamId && !imageResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
           console.warn(

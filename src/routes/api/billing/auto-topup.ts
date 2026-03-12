@@ -5,7 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
-import { isBillingEnabled } from '@/lib/billing/constants';
+import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import {
   getUserDefaultTeam,
@@ -22,9 +22,9 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isBillingEnabled()) {
+        if (!isStripeEnabled()) {
           return json(
-            { success: false, error: { message: 'Billing is not enabled' } },
+            { success: false, error: { message: 'Stripe is not configured' } },
             { status: 404 }
           );
         }

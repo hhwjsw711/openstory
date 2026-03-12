@@ -177,6 +177,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     needsBillingSetup: falNeedsBillingSetup,
     showGate: showFalGate,
     gateProps: falGateProps,
+    stripeEnabled,
   } = useFalBillingGate();
 
   const handleCopy = useCallback(
@@ -773,7 +774,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <SceneLocationTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
 
-      <BillingGateDialog {...falGateProps} />
+      <BillingGateDialog {...falGateProps} stripeEnabled={stripeEnabled} />
     </Tabs>
   );
 };
