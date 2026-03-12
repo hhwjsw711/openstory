@@ -53,6 +53,8 @@ export interface ImageWorkflowInput extends SequenceWorkflowContext {
   frameId?: string; // Optional: update frame thumbnail
   /** Reference images for character consistency (auto-switches to edit endpoint) */
   referenceImages?: ReferenceImageDescription[];
+  /** Skip R2 upload and store fal.ai CDN URL directly (for ephemeral preview images) */
+  skipStorage?: boolean;
 }
 
 /**
@@ -559,6 +561,15 @@ export interface MusicWorkflowResult {
  * Merge audio+video workflow input
  * Muxes a music track onto the merged video to produce the final output
  */
+/**
+ * Fast preview workflow input
+ * Generates quick preview images using text-based scene splitting
+ */
+export interface FastPreviewWorkflowInput extends SequenceWorkflowContext {
+  script: string;
+  aspectRatio: AspectRatio;
+}
+
 export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
   /** URL of the merged video (all frames stitched) */
   mergedVideoUrl: string;

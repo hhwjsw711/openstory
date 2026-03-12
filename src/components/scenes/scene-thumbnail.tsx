@@ -11,7 +11,12 @@ import { memo } from 'react';
 
 type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
-  thumbnailStatus?: 'pending' | 'generating' | 'completed' | 'failed';
+  thumbnailStatus?:
+    | 'pending'
+    | 'preview'
+    | 'generating'
+    | 'completed'
+    | 'failed';
   alt: string;
   aspectRatio: AspectRatio;
   className?: string;
@@ -54,6 +59,12 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
           width={320}
           height={180}
         />
+      )}
+
+      {thumbnailStatus === 'preview' && thumbnailUrl && (
+        <span className="absolute top-1 right-1 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur-sm">
+          Preview
+        </span>
       )}
 
       {isFailed && (

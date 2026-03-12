@@ -12,9 +12,9 @@ import {
 } from '@/lib/observability/memory-profiler';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
-import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
+import { fastPreviewWorkflow } from '@/lib/workflows/fast-preview-workflow';
 import { frameImagesWorkflow } from '@/lib/workflows/frame-images-workflow';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryLocationSheetWorkflow } from '@/lib/workflows/library-location-sheet-workflow';
@@ -24,6 +24,7 @@ import { locationMatchingWorkflow } from '@/lib/workflows/location-matching-work
 import { locationSheetWorkflow } from '@/lib/workflows/location-sheet-workflow';
 import { mergeAudioVideoWorkflow } from '@/lib/workflows/merge-audio-video-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
+import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { motionMusicPromptsWorkflow } from '@/lib/workflows/motion-music-prompts-workflow';
 import { motionPromptSceneWorkflow } from '@/lib/workflows/motion-prompt-scene-workflow';
 import { motionPromptWorkflow } from '@/lib/workflows/motion-prompt-workflow';
@@ -57,6 +58,7 @@ function getHandler() {
         'character-sheet-from-bible': characterBibleWorkflow,
         'character-sheet': characterSheetWorkflow,
         'frame-images': frameImagesWorkflow,
+        'fast-preview': fastPreviewWorkflow,
         image: generateImageWorkflow,
         'library-location-sheet': libraryLocationSheetWorkflow,
         'library-talent-sheet': libraryTalentSheetWorkflow,

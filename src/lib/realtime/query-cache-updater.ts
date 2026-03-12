@@ -62,11 +62,26 @@ function debouncedInvalidate(
 /**
  * Validates if a status value is a valid Frame status.
  */
+/**
+ * Validates if a status value is a valid music status (excludes 'preview').
+ */
+function isValidMusicStatus(
+  status: unknown
+): status is Sequence['musicStatus'] {
+  return (
+    status === 'pending' ||
+    status === 'generating' ||
+    status === 'completed' ||
+    status === 'failed'
+  );
+}
+
 function isValidFrameStatus(
   status: unknown
 ): status is Frame['thumbnailStatus'] {
   return (
     status === 'pending' ||
+    status === 'preview' ||
     status === 'generating' ||
     status === 'completed' ||
     status === 'failed'
@@ -167,7 +182,7 @@ export function updateQueryCacheFromEvent(
     case 'generation.audio:progress': {
       const status = data.status;
       const audioUrl = getOptionalString(data, 'audioUrl');
-      if (isValidFrameStatus(status)) {
+      if (isValidMusicStatus(status)) {
         queryClient.setQueryData<Sequence>(
           sequenceKeys.detail(sequenceId),
           (old) =>
@@ -182,6 +197,13 @@ export function updateQueryCacheFromEvent(
       }
       break;
     }
+
+    case 'generation.preview:replaced':
+      // Preview frames replaced by AI-analyzed frames — refetch frame list
+      void queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+      break;
 
     case 'generation.complete':
     case 'generation.failed':

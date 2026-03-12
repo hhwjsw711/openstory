@@ -123,7 +123,7 @@ export const generateImageWorkflow = createScopedWorkflow<
 
     let imageUrl: string = imageResult.imageUrls[0];
 
-    if (imageUrl && frameId && sequenceId && teamId) {
+    if (imageUrl && frameId && sequenceId && teamId && !input.skipStorage) {
       const storageUrl = await context.run('upload-to-storage', async () => {
         const result = await uploadImageToStorage({
           imageUrl,
@@ -172,6 +172,35 @@ export const generateImageWorkflow = createScopedWorkflow<
         return result.url;
       });
       if (storageUrl) imageUrl = storageUrl;
+    } else if (imageUrl && frameId && input.skipStorage) {
+      // Preview mode: store fal.ai CDN URL directly, set status to 'preview'
+      await context.run('store-preview-url', async () => {
+        const updatedFrame = await updateFrame(
+          frameId,
+          {
+            thumbnailUrl: imageUrl,
+            thumbnailStatus: 'preview',
+            thumbnailGeneratedAt: new Date(),
+            thumbnailError: null,
+          },
+          { throwOnMissing: false }
+        );
+
+        if (!updatedFrame) {
+          console.log(
+            '[ImageWorkflow]',
+            `Frame ${frameId} was deleted, skipping preview update`
+          );
+          return;
+        }
+
+        if (sequenceId) {
+          await getGenerationChannel(sequenceId)?.emit(
+            'generation.image:progress',
+            { frameId, status: 'preview', thumbnailUrl: imageUrl }
+          );
+        }
+      });
     }
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');

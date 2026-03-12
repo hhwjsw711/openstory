@@ -72,8 +72,19 @@ export const realtimeSchema = {
     // Image generation progress
     'image:progress': z.object({
       frameId: z.string(),
-      status: z.enum(['pending', 'generating', 'completed', 'failed']),
+      status: z.enum([
+        'pending',
+        'preview',
+        'generating',
+        'completed',
+        'failed',
+      ]),
       thumbnailUrl: z.string().optional(),
+    }),
+
+    // Fast preview frames replaced by AI-analyzed frames
+    'preview:replaced': z.object({
+      newSceneCount: z.number(),
     }),
 
     // Image generation progress

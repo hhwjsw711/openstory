@@ -22,6 +22,7 @@ import { sequences } from './sequences';
 
 export const FRAME_GENERATION_STATUSES = [
   'pending',
+  'preview',
   'generating',
   'completed',
   'failed',

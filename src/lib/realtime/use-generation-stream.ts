@@ -31,11 +31,17 @@ function asOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
-type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
+type FrameStatus =
+  | 'pending'
+  | 'preview'
+  | 'generating'
+  | 'completed'
+  | 'failed';
 
 function asFrameStatus(value: unknown): FrameStatus {
   if (
     value === 'pending' ||
+    value === 'preview' ||
     value === 'generating' ||
     value === 'completed' ||
     value === 'failed'
@@ -189,6 +195,12 @@ function mapEventToAction(
         },
       };
 
+    case 'generation.preview:replaced':
+      return {
+        type: 'PREVIEW_REPLACED',
+        payload: { newSceneCount: asNumber(data.newSceneCount) },
+      };
+
     default:
       return null;
   }
@@ -263,6 +275,7 @@ export function useGenerationStream(
       'generation.talent:matched',
       'generation.talent:unmatched',
       'generation.location:matched',
+      'generation.preview:replaced',
       'generation.complete',
       'generation.failed',
       'generation.updated',

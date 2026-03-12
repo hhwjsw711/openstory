@@ -3,7 +3,12 @@
  * Handles events from the Upstash Realtime channel during storyboard generation.
  */
 
-type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
+type FrameStatus =
+  | 'pending'
+  | 'preview'
+  | 'generating'
+  | 'completed'
+  | 'failed';
 
 type StreamingScene = {
   sceneId: string;
@@ -102,6 +107,7 @@ export type GenerationStreamAction =
       payload: { unusedTalentIds: string[]; unusedTalentNames: string[] };
     }
   | { type: 'LOCATION_MATCHED'; payload: { matches: LocationMatch[] } }
+  | { type: 'PREVIEW_REPLACED'; payload: { newSceneCount: number } }
   | { type: 'RESET' };
 
 const PHASES = [
@@ -332,6 +338,14 @@ export function generationStreamReducer(
       return {
         ...state,
         locationMatches: action.payload.matches,
+      };
+
+    case 'PREVIEW_REPLACED':
+      // Clear frame state when preview frames are replaced by AI-analyzed frames
+      return {
+        ...state,
+        scenes: [],
+        frames: new Map(),
       };
 
     case 'RESET':
