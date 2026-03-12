@@ -1,4 +1,5 @@
 import { calculateVideoCost } from '@/lib/ai/fal-cost';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODEL_KEYS,
@@ -58,7 +59,7 @@ export type MotionResult = {
     fps: number;
     motionBucket?: number;
     totalFrames: number;
-    cost: number;
+    cost: Microdollars;
     generatedAt: string;
     usedOwnKey: boolean;
   };
@@ -222,10 +223,9 @@ export async function generateMotionForFrame(
           videoUrl: result.videoUrl,
           ...(outputVideoMedia && { generatedVideo: outputVideoMedia }),
         },
-        costDetails:
-          typeof result.metadata?.cost === 'number'
-            ? { total: result.metadata.cost }
-            : undefined,
+        costDetails: result.metadata?.cost
+          ? { total: microsToUsd(result.metadata.cost) }
+          : undefined,
       })
       .end();
     return result;

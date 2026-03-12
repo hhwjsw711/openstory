@@ -4,7 +4,7 @@ import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToUsd } from '@/lib/billing/money';
+import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { sequences } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -107,11 +107,7 @@ export const generateMusicWorkflow = createWorkflow(
         : (input.duration ?? 60);
 
     // Deduct credits (skip if team used own fal key)
-    const musicCostRaw =
-      typeof audioResult.metadata?.cost === 'number'
-        ? audioResult.metadata.cost
-        : 0;
-    const musicCostMicros = usdToMicros(musicCostRaw);
+    const musicCostMicros = audioResult.metadata?.cost ?? ZERO_MICROS;
     if (musicCostMicros > 0 && !audioResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, musicCostMicros);
