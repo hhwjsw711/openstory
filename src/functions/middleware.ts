@@ -93,6 +93,29 @@ export const loggerMiddleware = createMiddleware({ type: 'function' }).server(
 // ============================================================================
 
 /**
+ * Request auth middleware — for use with server routes (server.middleware).
+ * Unlike authMiddleware (type: 'function'), this is request-scoped and
+ * receives the request object directly from the middleware params.
+ */
+export const authRequestMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const auth = getAuth();
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (!session?.user) {
+      throw new Response('Unauthorized', { status: 401 });
+    }
+
+    return next({
+      context: {
+        user: session.user,
+        session,
+      },
+    });
+  }
+);
+
+/**
  * Basic auth middleware - requires authenticated user
  * Adds user and session to context
  */

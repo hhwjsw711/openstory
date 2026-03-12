@@ -1,19 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { getRealtime } from '@/lib/realtime';
 import { handle } from '@upstash/realtime';
-import { getAuth } from '@/lib/auth/config';
+import { authRequestMiddleware } from '@/functions/middleware';
 
 export const Route = createFileRoute('/api/realtime')({
   server: {
+    middleware: [authRequestMiddleware],
     handlers: {
       GET: async ({ request }) => {
-        // Validate session before allowing WebSocket connection
-        const auth = getAuth();
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response('Unauthorized', { status: 401 });
-        }
-
         const realtime = getRealtime();
         const response = await handle({ realtime })(request);
         if (!response) {
