@@ -98,30 +98,39 @@ export const generateMotionWorkflow = createWorkflow(
     });
 
     // Step 2b: Poll for completion with durable sleep between steps
-    let videoUrl = await (async (): Promise<string> => {
-      for (let i = 0; i < MAX_POLLS; i++) {
-        await context.sleep(`motion-wait-${i}`, POLL_INTERVAL_SECONDS);
+    let videoUrl = '';
 
-        const poll = await context.run(`motion-poll-${i}`, async () => {
-          return pollMotionJob(job.jobId, job.modelKey, input.teamId);
-        });
+    for (let i = 0; i < MAX_POLLS; i++) {
+      await context.sleep(`motion-wait-${i}`, POLL_INTERVAL_SECONDS);
 
-        if (poll.status === 'completed' && poll.videoUrl) {
-          console.log(`[MotionWorkflow] Generation completed`);
-          return poll.videoUrl;
+      const poll = await context.run(`motion-poll-${i}`, async () => {
+        const pollresult = await pollMotionJob(
+          job.jobId,
+          job.modelKey,
+          input.teamId
+        );
+        // Console log progress only in the context.run
+        if (pollresult.progress !== undefined) {
+          console.log(`[MotionWorkflow] Progress: ${pollresult.progress}%`);
         }
+        return pollresult;
+      });
 
-        if (poll.status === 'failed') {
-          throw new Error(poll.error || 'Motion generation failed');
-        }
-
-        if (poll.progress !== undefined) {
-          console.log(`[MotionWorkflow] Progress: ${poll.progress}%`);
-        }
+      if (poll.status === 'completed' && poll.videoUrl) {
+        console.log(`[MotionWorkflow] Generation completed`);
+        videoUrl = poll.videoUrl;
+        break;
       }
 
+      if (poll.status === 'failed') {
+        throw new Error(poll.error || 'Motion generation failed');
+      }
+    }
+
+    if (!videoUrl) {
       throw new Error('Motion generation timed out after 10 minutes');
-    })();
+    }
+
     // Calculate cost + metadata
     const motionMeta = calculateMotionMetadata({
       imageUrl: input.imageUrl,
