@@ -3,19 +3,34 @@ import { describe, expect, it, mock, beforeEach } from 'bun:test';
 // --- Mocks ---
 
 let mockGiftTokenRows: Record<string, unknown>[] = [];
-let mockRedemptionRows: Record<string, unknown>[] = [];
 let mockRedemptionCountRows: { value: number }[] = [{ value: 0 }];
 let mockInsertedValues: Record<string, unknown>[] = [];
+let mockInsertReturning: Record<string, unknown>[] = [];
 let mockAddCreditsResult = { newBalance: 50, transactionId: 'tx-1' };
 
 type MockFn = (...args: unknown[]) => unknown;
 
+// Track select call order: 1 = token lookup, 2 = count redemptions
+let selectCallCount = 0;
+
 function createSelectChain() {
-  const chain: Record<string, unknown> = {};
-  chain.select = mock(() => chain);
+  const resolveData = () => {
+    if (selectCallCount === 1) return [...mockGiftTokenRows];
+    if (selectCallCount === 2) return [...mockRedemptionCountRows];
+    return [];
+  };
+
+  const chain: Record<string | symbol, unknown> = {};
+  chain.select = mock(() => {
+    selectCallCount++;
+    return chain;
+  });
   chain.from = mock(() => chain);
   chain.where = mock(() => chain);
-  chain.limit = mock(() => [...mockGiftTokenRows]);
+  chain.limit = mock(() => resolveData());
+  // Make chain awaitable for queries without .limit() (e.g. count query)
+  chain.then = (resolve: (v: unknown[]) => void) =>
+    Promise.resolve(resolveData()).then(resolve);
   chain.orderBy = mock(() => [...mockGiftTokenRows]);
   chain.leftJoin = mock(() => chain);
   chain.groupBy = mock(() => chain);
@@ -30,69 +45,17 @@ function createInsertChain() {
     mockInsertedValues.push(vals);
     return chain;
   });
-  chain.returning = mock(() => [{ ...vals(), id: 'gt-1', code: 'HK7NWE' }]);
+  chain.onConflictDoNothing = mock(() => chain);
+  chain.returning = mock(() => [...mockInsertReturning]);
   return chain;
-}
-
-function vals() {
-  return mockInsertedValues[mockInsertedValues.length - 1] ?? {};
 }
 
 let selectChain = createSelectChain();
 let insertChain = createInsertChain();
 
-// Track which table is being queried to return different results
-let selectCallCount = 0;
-
-function createTxSelectChain() {
-  const chain = Object.create(null) as Record<string | symbol, unknown>;
-  chain[Symbol.iterator] = function* () {
-    if (selectCallCount === 2) yield* mockRedemptionCountRows;
-    else if (selectCallCount === 3) yield* mockRedemptionRows;
-  };
-  chain.select = mock(() => {
-    selectCallCount++;
-    return chain;
-  });
-  chain.from = mock(() => chain);
-  chain.where = mock(() => chain);
-  chain.then = mock((resolve: (v: unknown[]) => void) => {
-    if (selectCallCount === 2) resolve([...mockRedemptionCountRows]);
-    else if (selectCallCount === 3) resolve([...mockRedemptionRows]);
-    else resolve([]);
-  });
-  chain.limit = mock(() => {
-    if (selectCallCount === 1) return [...mockGiftTokenRows];
-    if (selectCallCount === 3) return [...mockRedemptionRows];
-    return [...mockRedemptionCountRows];
-  });
-  return chain;
-}
-
-function createTxInsertChain() {
-  const chain: Record<string, unknown> = {};
-  chain.insert = mock(() => chain);
-  chain.values = mock((vals: Record<string, unknown>) => {
-    mockInsertedValues.push(vals);
-    return chain;
-  });
-  chain.returning = mock(() => []);
-  return chain;
-}
-
 const mockDb = {
   select: (...args: unknown[]) => (selectChain.select as MockFn)(...args),
   insert: (...args: unknown[]) => (insertChain.insert as MockFn)(...args),
-  transaction: mock(async (fn: (tx: Record<string, unknown>) => unknown) => {
-    const txSelect = createTxSelectChain();
-    const txInsert = createTxInsertChain();
-    selectCallCount = 0;
-    const tx = {
-      select: (...args: unknown[]) => (txSelect.select as MockFn)(...args),
-      insert: (...args: unknown[]) => (txInsert.insert as MockFn)(...args),
-    };
-    return fn(tx);
-  }),
 };
 
 mock.module('#db-client', () => ({
@@ -187,9 +150,10 @@ describe('getGiftTokenStatus', () => {
 describe('redeemGiftToken', () => {
   beforeEach(() => {
     mockGiftTokenRows = [];
-    mockRedemptionRows = [];
     mockRedemptionCountRows = [{ value: 0 }];
     mockInsertedValues = [];
+    mockInsertReturning = [{ id: 'r-new' }];
+    selectCallCount = 0;
     selectChain = createSelectChain();
     insertChain = createInsertChain();
 
@@ -249,7 +213,7 @@ describe('redeemGiftToken', () => {
       },
     ];
     mockRedemptionCountRows = [{ value: 2 }];
-    mockRedemptionRows = [{ id: 'r-1', giftTokenId: 'gt-1', teamId: 'team-1' }];
+    mockInsertReturning = []; // Conflict → insert is a no-op
     try {
       await redeemGiftToken({
         code: 'HK7NWE',
