@@ -18,7 +18,6 @@ const searchSchema = z.object({
   tab: z.enum(tabValues).optional().default('balance'),
   success: z.boolean().optional(),
   canceled: z.boolean().optional(),
-  code: z.string().optional(),
 });
 
 export const Route = createFileRoute('/_protected/credits')({
@@ -48,7 +47,7 @@ const tabs = [
 ];
 
 function CreditsPage() {
-  const { tab, success, canceled, code } = Route.useSearch();
+  const { tab, success, canceled } = Route.useSearch();
   const navigate = useNavigate();
 
   return (
@@ -82,7 +81,7 @@ function CreditsPage() {
           <TransactionSettings />
         </TabsContent>
         <TabsContent value="gift-codes">
-          <GiftCodeSettings code={code} />
+          <GiftCodeSettings />
         </TabsContent>
       </Tabs>
     </div>
