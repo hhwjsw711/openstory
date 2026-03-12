@@ -341,6 +341,148 @@ async function generateMotionInternal(
   };
 }
 
+// --- Split API for durable workflow polling ---
+
+export type MotionJobSubmission = {
+  jobId: string;
+  modelKey: ImageToVideoModel;
+  usedOwnKey: boolean;
+};
+
+/**
+ * Submit a motion generation job without polling.
+ * Returns the job ID so the workflow can poll with `context.sleep()` between steps.
+ */
+export async function submitMotionJob(
+  options: GenerateMotionOptions
+): Promise<MotionJobSubmission> {
+  const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+
+  if (!modelConfig) {
+    throw new Error(`Invalid model: ${modelKey}`);
+  }
+
+  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
+  if (!inputBuilder) {
+    throw new Error(
+      `No input builder found for provider: ${modelConfig.provider}`
+    );
+  }
+
+  const { prompt: _prompt, ...modelOptions } = inputBuilder(
+    options,
+    modelConfig
+  );
+
+  console.log(`[Motion Service] Submitting job with model: ${modelConfig.id}`, {
+    provider: modelConfig.provider,
+    promptLength: options.prompt?.length,
+    modelOptions,
+  });
+
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
+  const adapter = falVideo(modelConfig.id, {
+    apiKey: falApiKeyInfo.key,
+  });
+
+  const job = await generateVideo({
+    adapter,
+    prompt: options.prompt,
+    modelOptions,
+  });
+
+  console.log(`[Motion Service] Job submitted: ${job.jobId}`);
+
+  return {
+    jobId: job.jobId,
+    modelKey,
+    usedOwnKey: falApiKeyInfo.source === 'team',
+  };
+}
+
+export type MotionPollResult = {
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  videoUrl?: string;
+  progress?: number;
+  error?: string;
+};
+
+/**
+ * Check the status of a submitted motion job.
+ * Designed to be called from individual workflow steps.
+ */
+export async function pollMotionJob(
+  jobId: string,
+  modelKey: ImageToVideoModel,
+  teamId?: string
+): Promise<MotionPollResult> {
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const adapter = falVideo(modelConfig.id, {
+    apiKey: falApiKeyInfo.key,
+  });
+
+  const status = await getVideoJobStatus({
+    adapter,
+    jobId,
+  });
+
+  if (status.status === 'completed' && status.url) {
+    return { status: 'completed', videoUrl: status.url };
+  }
+  if (status.status === 'failed') {
+    return {
+      status: 'failed',
+      error: status.error || 'Motion generation failed',
+    };
+  }
+  return { status: status.status, progress: status.progress };
+}
+
+/**
+ * Calculate motion cost + metadata after job completes.
+ */
+export function calculateMotionMetadata(options: GenerateMotionOptions): {
+  cost: number;
+  duration: number;
+  fps: number;
+  model: string;
+  provider: string;
+  totalFrames: number;
+} {
+  const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
+
+  const validatedDuration = snapDuration(
+    options.duration,
+    modelConfig.capabilities
+  );
+  const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
+
+  const providerInput = inputBuilder(options, modelConfig);
+  const cost = calculateVideoCost({
+    endpointId: modelConfig.id,
+    durationSeconds: validatedDuration,
+    audioEnabled: modelConfig.capabilities.supportsAudio,
+    resolution:
+      typeof providerInput.resolution === 'string'
+        ? providerInput.resolution
+        : undefined,
+    fps: validatedFps,
+  });
+
+  return {
+    cost,
+    duration: validatedDuration,
+    fps: validatedFps,
+    model: modelConfig.id,
+    provider: modelConfig.provider,
+    totalFrames: Math.round(validatedDuration * validatedFps),
+  };
+}
+
 type FalQueueStatus = {
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED';
   queue_position?: number;

@@ -1,10 +1,12 @@
 /**
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
+ *
+ * Uses durable polling via context.sleep() so each poll is a separate
+ * workflow step — avoids Vite/HTTP server timeouts during long generation.
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { micros, microsToUsd } from '@/lib/billing/money';
@@ -13,17 +15,26 @@ import {
   getSequenceFrames,
   updateFrame,
 } from '@/lib/db/helpers/frames';
-import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+import {
+  calculateMotionMetadata,
+  pollMotionJob,
+  submitMotionJob,
+} from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
+
+/** Max polls × sleep seconds = total timeout (15 minutes * 20 polls per minute = 300 polls) */
+const MAX_POLLS = 15 * 20;
+const POLL_INTERVAL_SECONDS = 3;
 
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
@@ -72,9 +83,9 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2: Generate motion/video
-    const videoResult = await context.run('generate-motion', async () => {
-      const result = await generateMotionForFrame({
+    // Step 2a: Submit the motion generation job
+    const job = await context.run('submit-motion', async () => {
+      return submitMotionJob({
         imageUrl: input.imageUrl,
         prompt: input.prompt,
         model,
@@ -82,34 +93,56 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        traceName: 'frame-motion',
         teamId: input.teamId,
       });
-
-      if (!result.success || !result.videoUrl) {
-        throw new Error(result.error || 'Motion generation failed');
-      }
-
-      return result;
     });
 
-    const actualDuration =
-      typeof videoResult.metadata?.duration === 'number'
-        ? videoResult.metadata.duration
-        : (input.duration ?? 2);
+    // Step 2b: Poll for completion with durable sleep between steps
+    let videoUrl = await (async (): Promise<string> => {
+      for (let i = 0; i < MAX_POLLS; i++) {
+        await context.sleep(`motion-wait-${i}`, POLL_INTERVAL_SECONDS);
+
+        const poll = await context.run(`motion-poll-${i}`, async () => {
+          return pollMotionJob(job.jobId, job.modelKey, input.teamId);
+        });
+
+        if (poll.status === 'completed' && poll.videoUrl) {
+          console.log(`[MotionWorkflow] Generation completed`);
+          return poll.videoUrl;
+        }
+
+        if (poll.status === 'failed') {
+          throw new Error(poll.error || 'Motion generation failed');
+        }
+
+        if (poll.progress !== undefined) {
+          console.log(`[MotionWorkflow] Progress: ${poll.progress}%`);
+        }
+      }
+
+      throw new Error('Motion generation timed out after 10 minutes');
+    })();
+    // Calculate cost + metadata
+    const motionMeta = calculateMotionMetadata({
+      imageUrl: input.imageUrl,
+      prompt: input.prompt,
+      model,
+      duration: input.duration,
+      fps: input.fps,
+      motionBucket: input.motionBucket,
+      aspectRatio: input.aspectRatio,
+    });
+
+    const actualDuration = motionMeta.duration;
 
     // Deduct credits (skip if team used own fal key)
-    const motionCostMicros = micros(
-      typeof videoResult.metadata?.cost === 'number'
-        ? videoResult.metadata.cost
-        : 0
-    );
+    const motionCostMicros = micros(motionMeta.cost);
     const { teamId } = input;
     if (
       isBillingEnabled() &&
       motionCostMicros > 0 &&
       teamId &&
-      !videoResult.metadata.usedOwnKey
+      !job.usedOwnKey
     ) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
@@ -126,16 +159,11 @@ export const generateMotionWorkflow = createWorkflow(
             model,
             frameId: input.frameId,
             sequenceId: input.sequenceId,
-            duration: videoResult.metadata?.duration,
+            duration: motionMeta.duration,
           },
         });
       });
     }
-
-    if (!videoResult.videoUrl) {
-      throw new Error('Video URL missing from generation result');
-    }
-    let videoUrl = videoResult.videoUrl;
 
     if (input.frameId) {
       const { frameId } = input;
