@@ -4,7 +4,6 @@
  * before triggering workflows. Skips check if team has own BYOK keys.
  */
 
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { hasEnoughCredits } from '@/lib/billing/credit-service';
 import type { Microdollars } from '@/lib/billing/money';
 import { apiKeyService } from '@/lib/byok/api-key.service';
@@ -31,8 +30,6 @@ export async function requireCredits(
     errorMessage?: string;
   } = {}
 ): Promise<void> {
-  if (!isBillingEnabled()) return;
-
   const providers = opts.providers ?? ['fal'];
 
   // Check if team has all required BYOK keys (any missing = need credits)

@@ -183,19 +183,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     }
   }, [success, balanceLoading, balanceData]);
 
-  // When billing is disabled server-side, show a simple message
-  if (!balanceLoading && balanceData?.billingEnabled === false) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing</CardTitle>
-          <CardDescription>
-            Billing is not enabled for this instance.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  const stripeEnabled = balanceData?.stripeEnabled ?? false;
 
   const {
     data: invoiceData,
@@ -351,179 +339,202 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Top Up Card */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={DollarSign}
-            title="Add Credits"
-            description="Choose an amount or enter a custom value"
-          />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
-              <Button
-                key={amount}
-                variant={selectedAmount === amount ? 'default' : 'outline'}
-                className="h-12 text-lg font-semibold tabular-nums"
-                onClick={() => {
-                  setSelectedAmount(amount);
-                  setCustomAmount('');
-                  setError(null);
-                }}
-                disabled={checkoutMutation.isPending}
-              >
-                ${amount}
-              </Button>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              $
-            </span>
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
-              value={customAmount}
-              onChange={(e) => {
-                setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''));
-                setSelectedAmount(null);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTopUp();
-              }}
-              className="pl-7 tabular-nums"
-              autoComplete="off"
-            />
-          </div>
-
-          <Button
-            onClick={handleTopUp}
-            disabled={!isValidAmount || checkoutMutation.isPending}
-            className="w-full"
-          >
-            {checkoutMutation.isPending
-              ? 'Loading…'
-              : isValidAmount
-                ? `Top up $${effectiveAmount}`
-                : 'Top up'}
-          </Button>
-
-          {!balanceLoading && !balanceData?.hasPaymentMethod && (
-            <p className="text-xs text-muted-foreground">
-              Your payment method will be saved. After your first purchase,
-              you'll be able to enable auto top-up.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Auto Top-Up Card */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={RefreshCw}
-            title="Auto Top-Up"
-            description="Automatically add credits when your balance is low"
-          />
-        </CardHeader>
-        <CardContent>
-          {balanceLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : !balanceData?.hasPaymentMethod ? (
+      {!stripeEnabled && !balanceLoading && (
+        <Card>
+          <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              Make your first top-up to save a payment method and enable auto
-              top-up.
+              Credits can be added via gift codes.
             </p>
-          ) : (
-            <AutoTopUpForm
-              key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
-              enabled={balanceData.autoTopUp.enabled}
-              thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
-              amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
-              isPending={autoTopUpMutation.isPending}
-              onSave={(settings) => autoTopUpMutation.mutate(settings)}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Invoices */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={CreditCard}
-            title="Invoices"
-            description="Recent purchases"
-          />
-        </CardHeader>
-        <CardContent>
-          {invoicesLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+            <div className="pt-2">
+              <Link
+                to="/credits"
+                search={{ tab: 'transactions' }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                View all transactions
+              </Link>
             </div>
-          ) : invoiceData?.transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              No purchases yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {invoiceData?.transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {tx.description ?? 'Credit purchase'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
-                      +${tx.amount.toFixed(2)}
-                    </span>
-                    {tx.metadata?.receiptUrl && (
-                      <a
-                        href={tx.metadata.receiptUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label="View receipt"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
+          </CardContent>
+        </Card>
+      )}
+
+      {stripeEnabled && (
+        <>
+          {/* Top Up Card */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={DollarSign}
+                title="Add Credits"
+                description="Choose an amount or enter a custom value"
+              />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant={selectedAmount === amount ? 'default' : 'outline'}
+                    className="h-12 text-lg font-semibold tabular-nums"
+                    onClick={() => {
+                      setSelectedAmount(amount);
+                      setCustomAmount('');
+                      setError(null);
+                    }}
+                    disabled={checkoutMutation.isPending}
+                  >
+                    ${amount}
+                  </Button>
+                ))}
+              </div>
+
+              <Separator />
+
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''));
+                    setSelectedAmount(null);
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleTopUp();
+                  }}
+                  className="pl-7 tabular-nums"
+                  autoComplete="off"
+                />
+              </div>
+
+              <Button
+                onClick={handleTopUp}
+                disabled={!isValidAmount || checkoutMutation.isPending}
+                className="w-full"
+              >
+                {checkoutMutation.isPending
+                  ? 'Loading…'
+                  : isValidAmount
+                    ? `Top up $${effectiveAmount}`
+                    : 'Top up'}
+              </Button>
+
+              {!balanceLoading && !balanceData?.hasPaymentMethod && (
+                <p className="text-xs text-muted-foreground">
+                  Your payment method will be saved. After your first purchase,
+                  you'll be able to enable auto top-up.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Auto Top-Up Card */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={RefreshCw}
+                title="Auto Top-Up"
+                description="Automatically add credits when your balance is low"
+              />
+            </CardHeader>
+            <CardContent>
+              {balanceLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !balanceData?.hasPaymentMethod ? (
+                <p className="text-sm text-muted-foreground">
+                  Make your first top-up to save a payment method and enable
+                  auto top-up.
+                </p>
+              ) : (
+                <AutoTopUpForm
+                  key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
+                  enabled={balanceData.autoTopUp.enabled}
+                  thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
+                  amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
+                  isPending={autoTopUpMutation.isPending}
+                  onSave={(settings) => autoTopUpMutation.mutate(settings)}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Invoices */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={CreditCard}
+                title="Invoices"
+                description="Recent purchases"
+              />
+            </CardHeader>
+            <CardContent>
+              {invoicesLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : invoiceData?.transactions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  No purchases yet
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {invoiceData?.transactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.description ?? 'Credit purchase'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
+                          +${tx.amount.toFixed(2)}
+                        </span>
+                        {tx.metadata?.receiptUrl && (
+                          <a
+                            href={tx.metadata.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="View receipt"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-2 text-center">
+                    <Link
+                      to="/credits"
+                      search={{ tab: 'transactions' }}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      View all transactions
+                    </Link>
                   </div>
                 </div>
-              ))}
-
-              <div className="pt-2 text-center">
-                <Link
-                  to="/credits"
-                  search={{ tab: 'transactions' }}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  View all transactions
-                </Link>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

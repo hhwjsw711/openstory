@@ -5,7 +5,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
-import { isBillingEnabled } from '@/lib/billing/constants';
+import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
 import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
 import { handleApiError } from '@/lib/errors';
@@ -19,23 +19,6 @@ export const Route = createFileRoute('/api/billing/balance')({
   server: {
     handlers: {
       GET: async () => {
-        if (!isBillingEnabled()) {
-          return json({
-            success: true,
-            data: {
-              billingEnabled: false,
-              balance: 0,
-              autoTopUp: {
-                enabled: false,
-                thresholdUsd: null,
-                amountUsd: null,
-              },
-              hasPaymentMethod: false,
-            },
-            timestamp: new Date().toISOString(),
-          });
-        }
-
         try {
           const user = await requireUser();
           const team = await getUserDefaultTeam(user.id);
@@ -43,8 +26,8 @@ export const Route = createFileRoute('/api/billing/balance')({
             return json({
               success: true,
               data: {
-                billingEnabled: true,
                 balance: 0,
+                stripeEnabled: isStripeEnabled(),
                 autoTopUp: {
                   enabled: false,
                   thresholdUsd: null,
@@ -66,6 +49,7 @@ export const Route = createFileRoute('/api/billing/balance')({
               success: true,
               data: {
                 balance: microsToUsd(balance),
+                stripeEnabled: isStripeEnabled(),
                 autoTopUp: {
                   enabled: settings.autoTopUpEnabled,
                   thresholdUsd: settings.autoTopUpThresholdMicros

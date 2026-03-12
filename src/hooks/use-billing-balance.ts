@@ -10,7 +10,7 @@ import { LOW_BALANCE_THRESHOLD_USD } from '@/lib/billing/constants';
 export const BILLING_BALANCE_KEY = ['billing-balance'] as const;
 
 type BalanceData = {
-  billingEnabled?: boolean;
+  stripeEnabled?: boolean;
   balance: number;
   autoTopUp: {
     enabled: boolean;
@@ -54,6 +54,7 @@ export function useBillingBalance() {
   return {
     ...query,
     balance,
+    stripeEnabled: query.data?.stripeEnabled ?? false,
     isLowBalance:
       balance !== null && balance > 0 && balance <= lowBalanceThreshold,
     isZeroBalance: balance !== null && balance <= 0,

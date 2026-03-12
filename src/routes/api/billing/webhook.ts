@@ -3,7 +3,7 @@
  * POST /api/billing/webhook - Handle Stripe webhook events
  */
 
-import { isBillingEnabled } from '@/lib/billing/constants';
+import { isStripeEnabled } from '@/lib/billing/constants';
 import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
 import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
 import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isBillingEnabled()) {
+        if (!isStripeEnabled()) {
           return Response.json({ received: true }, { status: 200 });
         }
 

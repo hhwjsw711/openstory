@@ -4,7 +4,6 @@
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { usdToMicros, microsToUsd } from '@/lib/billing/money';
 import {
@@ -104,12 +103,7 @@ export const generateMotionWorkflow = createWorkflow(
         : 0;
     const motionCostMicros = usdToMicros(motionCostRaw);
     const { teamId } = input;
-    if (
-      isBillingEnabled() &&
-      motionCostMicros > 0 &&
-      teamId &&
-      !videoResult.metadata.usedOwnKey
-    ) {
+    if (motionCostMicros > 0 && teamId && !videoResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
         const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
         if (!canAfford) {
