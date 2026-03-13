@@ -1,0 +1,30 @@
+# OpenStory
+
+> Multi-scene AI video production. Open source and free to self-host.
+
+OpenStory is an open source AI video production platform. Describe an idea or paste a script, and it builds scenes, casts characters, generates shots, and scores music — all from one interface.
+
+## Key Features
+
+- **Script-to-Screen Pipeline**: Describe what you want in a line or paste a full script. OpenStory breaks it into scenes, generates shots, and scores the music.
+- **Consistent Characters & Locations**: Define your characters and environments once — age, wardrobe, lighting, architecture. Consistency is maintained across every shot.
+- **Latest AI Models**: Access the best image and video models as they ship. Switch per shot, or let OpenStory pick.
+- **Music & Audio**: Generate music tracks and sound effects that match your sequence.
+- **Full Export**: Download individual shots, export full sequences, and get the prompts behind every generation.
+
+## Open Source
+
+- **License**: MIT
+- **Repository**: https://github.com/openstory-so/openstory
+- **Self-Hosting**: Free to self-host with full functionality
+
+## Pricing
+
+No subscriptions. No markup on model costs. You pay exactly what the AI providers charge — nothing more. Bring your own API keys on the managed site or self-host for full control.
+
+## Links
+
+- Website: https://openstory.so
+- App: https://app.openstory.so
+- GitHub: https://github.com/openstory-so/openstory
+- License: https://github.com/openstory-so/openstory/blob/main/LICENSE
