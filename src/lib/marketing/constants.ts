@@ -2,6 +2,8 @@ export const SITE_CONFIG = {
   name: 'OpenStory',
   description:
     'Multi-scene AI video production. Open source and free to self-host.',
+  url: 'https://openstory.so',
+  ogImage: 'https://assets.openstory.so/images/marketing/og.jpg',
   ctaText: 'Get Started',
   ctaHref: '/sequences/new',
   githubHref: 'https://github.com/openstory-so/openstory',

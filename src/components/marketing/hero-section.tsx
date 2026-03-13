@@ -2,11 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Image } from '@unpic/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  HERO_IMAGE,
-  HERO_FILMSTRIP,
-  SITE_CONFIG,
-} from '@/lib/marketing/constants';
+import { HERO_FILMSTRIP, SITE_CONFIG } from '@/lib/marketing/constants';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -28,7 +24,6 @@ export function HeroSection() {
           muted
           loop
           playsInline
-          poster={HERO_IMAGE.src}
           className="size-full object-cover object-center"
         >
           <source

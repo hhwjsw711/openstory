@@ -21,18 +21,11 @@ export function ProductShowcase() {
               </div>
             </div>
 
-            {/* Screenshot placeholder — replace with real product screenshot */}
-            <div className="flex aspect-video items-center justify-center bg-muted/50">
-              <div className="text-center">
-                <p className="text-muted-foreground/60 text-sm">
-                  Product screenshot coming soon
-                </p>
-                <p className="text-muted-foreground/40 mt-1 text-xs">
-                  Place screenshot at
-                  assets.openstory.so/images/marketing/product-ui.webp
-                </p>
-              </div>
-            </div>
+            <img
+              src="https://assets.openstory.so/images/marketing/product-ui.webp"
+              alt="OpenStory sequence editor showing scenes, frames, and AI-generated visuals"
+              className="aspect-video w-full object-cover object-top"
+            />
           </div>
         </div>
       </div>

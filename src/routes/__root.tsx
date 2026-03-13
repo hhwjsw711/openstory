@@ -50,6 +50,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           'Transform scripts into consistent, styled video productions using multiple AI models.',
       },
       { title: 'OpenStory' },
+      { property: 'og:site_name', content: 'OpenStory' },
+      { name: 'twitter:card', content: 'summary_large_image' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
