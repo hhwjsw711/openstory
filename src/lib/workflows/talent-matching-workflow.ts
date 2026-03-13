@@ -1,0 +1,153 @@
+import type { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/tanstack';
+import {
+  characterExtractionResultSchema,
+  talentMatchResponseSchema,
+} from '../ai/response-schemas';
+import { buildMatchingPromptVariables } from '../ai/talent-matching-prompt';
+import { getTalentByIds } from '../db/helpers/talent';
+import { getGenerationChannel } from '../realtime';
+import { sanitizeFailResponse } from '../workflow/sanitize-fail-response';
+import type {
+  TalentCharacterMatch,
+  TalentMatchingWorkflowInput,
+  TalentMatchingWorkflowOutput,
+} from '../workflow/types';
+import { durableLLMCall } from './llm-call-helper';
+
+export const talentMatchingWorkflow = createWorkflow(
+  async (
+    context: WorkflowContext<TalentMatchingWorkflowInput>
+  ): Promise<TalentMatchingWorkflowOutput> => {
+    const input = context.requestPayload;
+    const { scenes, analysisModelId, suggestedTalentIds } = input;
+    const { sequenceId, userId, teamId } = input;
+
+    const llmCallContext = {
+      sequenceId,
+      userId,
+      teamId,
+    };
+
+    // Phase 2: Character and location extraction
+    const { characterBible } = await durableLLMCall(
+      context,
+      {
+        name: 'character-extraction',
+        phase: { number: 2, name: 'Finding characters…' },
+
+        promptName: 'phase/character-extraction-chat',
+        promptVariables: {
+          scenes: JSON.stringify(scenes, null, 2),
+        },
+
+        modelId: analysisModelId,
+        responseSchema: characterExtractionResultSchema,
+      },
+      llmCallContext
+    );
+
+    // Talent matching (conditional)
+    const { talentList, matchingPromptVariables } = await context.run(
+      'get-talent-list',
+      async () => {
+        if (!suggestedTalentIds?.length || !input.teamId) {
+          return { talentList: [], matchingPromptVariables: {} };
+        }
+        const talentList = await getTalentByIds(
+          suggestedTalentIds,
+          input.teamId
+        );
+        return {
+          talentList,
+          matchingPromptVariables: buildMatchingPromptVariables(
+            characterBible,
+            talentList
+          ),
+        };
+      }
+    );
+
+    const { matches: talentMatches } =
+      talentList.length > 0
+        ? await durableLLMCall(
+            context,
+            {
+              name: 'talent-matching',
+              phase: { number: 3, name: 'Casting characters…' },
+
+              promptName: 'phase/talent-matching-chat',
+              promptVariables: matchingPromptVariables,
+              modelId: analysisModelId,
+              responseSchema: talentMatchResponseSchema,
+            },
+            llmCallContext
+          )
+        : { matches: [] };
+
+    const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
+      'build-matches',
+      async () => {
+        const usedTalentIds = new Set<string>();
+        const usedCharacterIds = new Set<string>();
+        const matches: TalentCharacterMatch[] = [];
+
+        for (const match of talentMatches) {
+          // Ensure each talent and character is only cast once
+          if (usedTalentIds.has(match.talentId)) continue;
+          if (usedCharacterIds.has(match.characterId)) continue;
+
+          const talent = talentList.find((t) => t.id === match.talentId);
+          if (!talent?.imageUrl) continue;
+
+          const character = characterBible.find(
+            (c) => c.characterId === match.characterId
+          );
+          if (!character) continue;
+
+          usedTalentIds.add(match.talentId);
+          usedCharacterIds.add(match.characterId);
+          matches.push({
+            characterId: match.characterId,
+            talentId: match.talentId,
+            talentName: talent.name,
+            sheetImageUrl: talent.defaultSheet?.imageUrl ?? '',
+            sheetMetadata: talent.defaultSheet?.metadata ?? undefined,
+          });
+        }
+
+        if (matches.length > 0) {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.talent:matched',
+            {
+              matches: matches.map((m) => {
+                const char = characterBible.find(
+                  (c) => c.characterId === m.characterId
+                );
+                return {
+                  characterId: m.characterId,
+                  characterName: char?.name ?? m.characterId,
+                  talentId: m.talentId,
+                  talentName: m.talentName,
+                };
+              }),
+            }
+          );
+        }
+
+        return matches;
+      }
+    );
+
+    return {
+      characterBible,
+      matches: talentCharacterMatches,
+    };
+  },
+  {
+    failureFunction: async ({ failResponse }) => {
+      const error = sanitizeFailResponse(failResponse);
+      return `Talent matching failed: ${error}`;
+    },
+  }
+);

@@ -16,8 +16,8 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
-import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { StyleConfig } from '@/lib/db/schema';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { Json } from '@/types/database';
 
 /**
@@ -206,6 +206,20 @@ export type TalentMatchResult = {
   /** Talent names that couldn't be matched (for display) */
   unusedTalentNames: string[];
 };
+
+/**
+ * Talent matching workflow input
+ */
+export interface TalentMatchingWorkflowInput extends Partial<SequenceWorkflowContext> {
+  scenes: Scene[];
+  analysisModelId: AnalysisModelId;
+  suggestedTalentIds?: string[];
+}
+
+export interface TalentMatchingWorkflowOutput {
+  characterBible: CharacterBibleEntry[];
+  matches: TalentCharacterMatch[];
+}
 
 /**
  * Character sheet generation workflow input
@@ -412,6 +426,19 @@ export type LibraryLocationMatch = {
   description?: string;
 };
 
+/**
+ * Location matching workflow input
+ */
+export interface LocationMatchingWorkflowInput extends Partial<SequenceWorkflowContext> {
+  scenes: Scene[];
+  analysisModelId: AnalysisModelId;
+  suggestedLocationIds?: string[];
+}
+
+export interface LocationMatchingWorkflowOutput {
+  locationBible: LocationBibleEntry[];
+  matches: LibraryLocationMatch[];
+}
 /**
  * Regenerate frames workflow input for locations
  * Bulk regenerates images for frames at a specific location after recast

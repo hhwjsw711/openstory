@@ -3,27 +3,19 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
-  characterExtractionResultSchema,
-  locationExtractionResultSchema,
-  locationMatchResponseSchema,
   musicDesignResultSchema,
   sceneSplittingResultSchema,
-  talentMatchResponseSchema,
 } from '@/lib/ai/response-schemas';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
-import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
 import {
   updateSequenceAnalysisDurationMs,
   updateSequenceMusicPrompt,
   updateSequenceStatus,
 } from '@/lib/db/helpers/sequences';
-import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   CharacterMinimal,
   SequenceLocationMinimal,
@@ -37,10 +29,8 @@ import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
-  LibraryLocationMatch,
   MotionWorkflowInput,
   MusicWorkflowInput,
-  TalentCharacterMatch,
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -54,8 +44,10 @@ import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
 import { durableLLMCall, durableStreamingSceneSplit } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
+import { locationMatchingWorkflow } from './location-matching-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 import { reinforceInstrumentalTags } from './music-prompt.schema';
+import { talentMatchingWorkflow } from './talent-matching-workflow';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 /**
@@ -166,228 +158,41 @@ export const analyzeScriptWorkflow = createWorkflow(
       },
       llmCallContext
     );
-
-    // Phase 2: Character and location extraction
-    const { characterBible } = await durableLLMCall(
-      context,
-      {
-        name: 'character-extraction',
-        phase: { number: 2, name: 'Finding characters…' },
-
-        promptName: 'phase/character-extraction-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenes, null, 2),
-        },
-
-        modelId: analysisModelId,
-        responseSchema: characterExtractionResultSchema,
-      },
-      llmCallContext
+    const [characterMatchingResult, locationMatchingResult] = await Promise.all(
+      [
+        context.invoke('talent-matching', {
+          workflow: talentMatchingWorkflow,
+          body: {
+            sequenceId,
+            userId: input.userId,
+            teamId: input.teamId,
+            scenes,
+            analysisModelId,
+            suggestedTalentIds,
+          },
+        }),
+        context.invoke('location-matching', {
+          workflow: locationMatchingWorkflow,
+          body: {
+            sequenceId,
+            userId: input.userId,
+            teamId: input.teamId,
+            scenes,
+            analysisModelId,
+            suggestedLocationIds,
+          },
+        }),
+      ]
     );
+    if (characterMatchingResult.isFailed || characterMatchingResult.isCanceled)
+      throw new Error('Character sheet generation failed');
+    if (locationMatchingResult.isFailed || locationMatchingResult.isCanceled)
+      throw new Error('Location sheet generation failed');
 
-    const { locationBible } = await durableLLMCall(
-      context,
-      {
-        name: 'location-extraction',
-        phase: { number: 2, name: 'Finding locations…' },
-
-        promptName: 'phase/location-extraction-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenes, null, 2),
-        },
-
-        modelId: analysisModelId,
-        responseSchema: locationExtractionResultSchema,
-      },
-      llmCallContext
-    );
-
-    // Talent matching (conditional)
-    const { talentList, matchingPromptVariables } = await context.run(
-      'get-talent-list',
-      async () => {
-        if (!suggestedTalentIds?.length || !input.teamId) {
-          return { talentList: [], matchingPromptVariables: {} };
-        }
-        const talentList = await getTalentByIds(
-          suggestedTalentIds,
-          input.teamId
-        );
-        return {
-          talentList,
-          matchingPromptVariables: buildMatchingPromptVariables(
-            characterBible,
-            talentList
-          ),
-        };
-      }
-    );
-
-    const { matches: talentMatches } =
-      talentList.length > 0
-        ? await durableLLMCall(
-            context,
-            {
-              name: 'talent-matching',
-              phase: { number: 3, name: 'Casting characters…' },
-
-              promptName: 'phase/talent-matching-chat',
-              promptVariables: matchingPromptVariables,
-              modelId: analysisModelId,
-              responseSchema: talentMatchResponseSchema,
-            },
-            llmCallContext
-          )
-        : { matches: [] };
-
-    const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
-      'build-matches',
-      async () => {
-        const usedTalentIds = new Set<string>();
-        const usedCharacterIds = new Set<string>();
-        const matches: TalentCharacterMatch[] = [];
-
-        for (const match of talentMatches) {
-          // Ensure each talent and character is only cast once
-          if (usedTalentIds.has(match.talentId)) continue;
-          if (usedCharacterIds.has(match.characterId)) continue;
-
-          const talent = talentList.find((t) => t.id === match.talentId);
-          if (!talent?.imageUrl) continue;
-
-          const character = characterBible.find(
-            (c) => c.characterId === match.characterId
-          );
-          if (!character) continue;
-
-          usedTalentIds.add(match.talentId);
-          usedCharacterIds.add(match.characterId);
-          matches.push({
-            characterId: match.characterId,
-            talentId: match.talentId,
-            talentName: talent.name,
-            sheetImageUrl: talent.defaultSheet?.imageUrl ?? '',
-            sheetMetadata: talent.defaultSheet?.metadata ?? undefined,
-          });
-        }
-
-        if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.talent:matched',
-            {
-              matches: matches.map((m) => {
-                const char = characterBible.find(
-                  (c) => c.characterId === m.characterId
-                );
-                return {
-                  characterId: m.characterId,
-                  characterName: char?.name ?? m.characterId,
-                  talentId: m.talentId,
-                  talentName: m.talentName,
-                };
-              }),
-            }
-          );
-        }
-
-        return matches;
-      }
-    );
-
-    // Location matching (conditional)
-    const { libraryLocationList, locationMatchingPromptVariables } =
-      await context.run('get-library-locations', async () => {
-        if (!suggestedLocationIds?.length || !input.teamId) {
-          return {
-            libraryLocationList: [],
-            locationMatchingPromptVariables: {},
-          };
-        }
-        const libraryLocationList =
-          await getLibraryLocationsByIds(suggestedLocationIds);
-        return {
-          libraryLocationList,
-          locationMatchingPromptVariables: buildLocationMatchingPromptVariables(
-            locationBible,
-            libraryLocationList
-          ),
-        };
-      });
-
-    const { matches: locationMatches } =
-      libraryLocationList.length > 0
-        ? await durableLLMCall(
-            context,
-            {
-              name: 'location-matching',
-              phase: { number: 3, name: 'Matching locations…' },
-
-              promptName: 'phase/location-matching-chat',
-              promptVariables: locationMatchingPromptVariables,
-              modelId: analysisModelId,
-              responseSchema: locationMatchResponseSchema,
-            },
-            llmCallContext
-          )
-        : { matches: [] };
-
-    const libraryLocationMatches: LibraryLocationMatch[] = await context.run(
-      'build-location-matches',
-      async () => {
-        const usedLibraryIds = new Set<string>();
-        const usedLocationIds = new Set<string>();
-        const matches: LibraryLocationMatch[] = [];
-
-        for (const match of locationMatches) {
-          if (usedLibraryIds.has(match.libraryLocationId)) continue;
-          if (usedLocationIds.has(match.locationId)) continue;
-          if (match.confidence < 0.5) continue;
-
-          const libraryLoc = libraryLocationList.find(
-            (lib) => lib.id === match.libraryLocationId
-          );
-          if (!libraryLoc?.referenceImageUrl) continue;
-
-          const location = locationBible.find(
-            (loc) => loc.locationId === match.locationId
-          );
-          if (!location) continue;
-
-          usedLibraryIds.add(match.libraryLocationId);
-          usedLocationIds.add(match.locationId);
-          matches.push({
-            locationId: match.locationId,
-            libraryLocationId: match.libraryLocationId,
-            libraryLocationName: libraryLoc.name,
-            referenceImageUrl: libraryLoc.referenceImageUrl,
-            description: libraryLoc.description ?? undefined,
-          });
-        }
-
-        if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.location:matched',
-            {
-              matches: matches.map((m) => {
-                const loc = locationBible.find(
-                  (l) => l.locationId === m.locationId
-                );
-                return {
-                  locationId: m.locationId,
-                  locationName: loc?.name ?? m.locationId,
-                  libraryLocationId: m.libraryLocationId,
-                  libraryLocationName: m.libraryLocationName,
-                  referenceImageUrl: m.referenceImageUrl,
-                  description: m.description ?? undefined,
-                };
-              }),
-            }
-          );
-        }
-
-        return matches;
-      }
-    );
+    const { characterBible, matches: talentCharacterMatches } =
+      characterMatchingResult.body;
+    const { locationBible, matches: libraryLocationMatches } =
+      locationMatchingResult.body;
 
     // Generate character sheets, location sheets, and visual prompts in parallel
     const [charResult, locationResult, visualResult] = await Promise.all([

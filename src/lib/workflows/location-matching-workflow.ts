@@ -1,0 +1,155 @@
+import type { WorkflowContext } from '@upstash/workflow';
+import { createWorkflow } from '@upstash/workflow/tanstack';
+import { buildLocationMatchingPromptVariables } from '../ai/location-matching-prompt';
+import {
+  locationExtractionResultSchema,
+  locationMatchResponseSchema,
+} from '../ai/response-schemas';
+import { getLibraryLocationsByIds } from '../db/helpers/location-library';
+import { getGenerationChannel } from '../realtime';
+import { sanitizeFailResponse } from '../workflow/sanitize-fail-response';
+import type {
+  LibraryLocationMatch,
+  LocationMatchingWorkflowInput,
+  LocationMatchingWorkflowOutput,
+} from '../workflow/types';
+import { durableLLMCall } from './llm-call-helper';
+
+export const locationMatchingWorkflow = createWorkflow(
+  async (
+    context: WorkflowContext<LocationMatchingWorkflowInput>
+  ): Promise<LocationMatchingWorkflowOutput> => {
+    const input = context.requestPayload;
+    const { scenes, analysisModelId, suggestedLocationIds } = input;
+    const { sequenceId, userId, teamId } = input;
+
+    const llmCallContext = {
+      sequenceId,
+      userId,
+      teamId,
+    };
+
+    const { locationBible } = await durableLLMCall(
+      context,
+      {
+        name: 'location-extraction',
+        phase: { number: 2, name: 'Finding locations…' },
+
+        promptName: 'phase/location-extraction-chat',
+        promptVariables: {
+          scenes: JSON.stringify(scenes, null, 2),
+        },
+
+        modelId: analysisModelId,
+        responseSchema: locationExtractionResultSchema,
+      },
+      llmCallContext
+    );
+
+    // Location matching (conditional)
+    const { libraryLocationList, locationMatchingPromptVariables } =
+      await context.run('get-library-locations', async () => {
+        if (!suggestedLocationIds?.length || !input.teamId) {
+          return {
+            libraryLocationList: [],
+            locationMatchingPromptVariables: {},
+          };
+        }
+        const libraryLocationList =
+          await getLibraryLocationsByIds(suggestedLocationIds);
+        return {
+          libraryLocationList,
+          locationMatchingPromptVariables: buildLocationMatchingPromptVariables(
+            locationBible,
+            libraryLocationList
+          ),
+        };
+      });
+
+    const { matches: locationMatches } =
+      libraryLocationList.length > 0
+        ? await durableLLMCall(
+            context,
+            {
+              name: 'location-matching',
+              phase: { number: 3, name: 'Matching locations…' },
+
+              promptName: 'phase/location-matching-chat',
+              promptVariables: locationMatchingPromptVariables,
+              modelId: analysisModelId,
+              responseSchema: locationMatchResponseSchema,
+            },
+            llmCallContext
+          )
+        : { matches: [] };
+
+    const libraryLocationMatches: LibraryLocationMatch[] = await context.run(
+      'build-location-matches',
+      async () => {
+        const usedLibraryIds = new Set<string>();
+        const usedLocationIds = new Set<string>();
+        const matches: LibraryLocationMatch[] = [];
+
+        for (const match of locationMatches) {
+          if (usedLibraryIds.has(match.libraryLocationId)) continue;
+          if (usedLocationIds.has(match.locationId)) continue;
+          if (match.confidence < 0.5) continue;
+
+          const libraryLoc = libraryLocationList.find(
+            (lib) => lib.id === match.libraryLocationId
+          );
+          if (!libraryLoc?.referenceImageUrl) continue;
+
+          const location = locationBible.find(
+            (loc) => loc.locationId === match.locationId
+          );
+          if (!location) continue;
+
+          usedLibraryIds.add(match.libraryLocationId);
+          usedLocationIds.add(match.locationId);
+          matches.push({
+            locationId: match.locationId,
+            libraryLocationId: match.libraryLocationId,
+            libraryLocationName: libraryLoc.name,
+            referenceImageUrl: libraryLoc.referenceImageUrl,
+            description: libraryLoc.description ?? undefined,
+          });
+        }
+
+        if (matches.length > 0) {
+          await getGenerationChannel(sequenceId).emit(
+            'generation.location:matched',
+            {
+              matches: matches.map((m) => {
+                const loc = locationBible.find(
+                  (l) => l.locationId === m.locationId
+                );
+                return {
+                  locationId: m.locationId,
+                  locationName: loc?.name ?? m.locationId,
+                  libraryLocationId: m.libraryLocationId,
+                  libraryLocationName: m.libraryLocationName,
+                  referenceImageUrl: m.referenceImageUrl,
+                  description: m.description ?? undefined,
+                };
+              }),
+            }
+          );
+        }
+
+        return matches;
+      }
+    );
+
+    return {
+      locationBible,
+      matches: libraryLocationMatches,
+    };
+  },
+  {
+    failureFunction: async ({ failResponse }) => {
+      const error = sanitizeFailResponse(failResponse);
+      return `Location matching failed: ${error}`;
+    },
+  }
+);
