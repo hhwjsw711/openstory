@@ -26,9 +26,9 @@ export type { NewCharacter as NewSequenceCharacter } from '@/lib/db/schema';
 // ============================================================================
 
 /**
- * Get a single sequence character by ID
+ * Get a single character by ID
  */
-async function getSequenceCharacterById(id: string): Promise<Character | null> {
+export async function getCharacterById(id: string): Promise<Character | null> {
   const result = await getDb()
     .select()
     .from(characters)
@@ -332,7 +332,7 @@ export async function getFramesForCharacter(
   characterId: string
 ): Promise<Frame[]> {
   // Get the character to extract matching patterns
-  const character = await getSequenceCharacterById(characterId);
+  const character = await getCharacterById(characterId);
   if (!character || character.sequenceId !== sequenceId) {
     return [];
   }

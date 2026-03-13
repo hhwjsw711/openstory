@@ -3,7 +3,6 @@
  * Verifies sequence data, clears existing frames, then invokes script analysis
  */
 
-import { getDb } from '#db-client';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -16,7 +15,9 @@ import {
 } from '@/lib/ai/models.config';
 import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
 import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { sequences, StyleConfigSchema, styles } from '@/lib/db/schema';
+import { getStyleById } from '@/lib/db/helpers/styles';
+import { StyleConfigSchema } from '@/lib/db/schema';
+import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -24,7 +25,6 @@ import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { eq } from 'drizzle-orm';
 
 export const generateStoryboardWorkflow = createWorkflow(
   async (context: WorkflowContext<StoryboardWorkflowInput>) => {
@@ -36,6 +36,9 @@ export const generateStoryboardWorkflow = createWorkflow(
       userId: input.userId,
       autoGenerateMotion: input.autoGenerateMotion,
     });
+
+    const scopedDb = createScopedDb(input.teamId);
+    const seq = scopedDb.sequence(input.sequenceId);
 
     const {
       sequenceId,
@@ -62,9 +65,7 @@ export const generateStoryboardWorkflow = createWorkflow(
         throw new WorkflowValidationError('Sequence has no style selected');
       }
 
-      const style = await getDb().query.styles.findFirst({
-        where: eq(styles.id, sequence.styleId),
-      });
+      const style = await getStyleById(sequence.styleId);
 
       if (!style) {
         throw new WorkflowValidationError('No style found');
@@ -73,10 +74,7 @@ export const generateStoryboardWorkflow = createWorkflow(
       const existingFrames = await getSequenceFrames(input.sequenceId);
       await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
 
-      await getDb()
-        .update(sequences)
-        .set({ status: 'processing', updatedAt: new Date() })
-        .where(eq(sequences.id, input.sequenceId));
+      await seq.updateStatus('processing');
 
       return {
         sequenceId: sequence.id,

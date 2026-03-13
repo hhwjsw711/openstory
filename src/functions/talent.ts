@@ -16,10 +16,13 @@ import {
   deleteTalentMediaRecord,
   deleteTalentSheet,
   getTalentById,
+  getTalentMediaById,
   getTalentSheetById,
   getTalentWithRelations,
   updateTalentSheet,
 } from '@/lib/db/helpers/talent';
+import { getCharacterById } from '@/lib/db/helpers/sequence-characters';
+import { getSequenceForUser } from '@/lib/db/helpers/sequences';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import {
   STORAGE_BUCKETS,
@@ -336,14 +339,7 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(mediaIdSchema))
   .handler(async ({ context, data }) => {
-    const { getDb } = await import('#db-client');
-    const { talentMedia } = await import('@/lib/db/schema');
-    const { eq } = await import('drizzle-orm');
-
-    const media = await getDb().query.talentMedia.findFirst({
-      where: eq(talentMedia.id, data.mediaId),
-    });
-
+    const media = await getTalentMediaById(data.mediaId);
     if (!media) {
       throw new Error('Media not found');
     }
@@ -412,25 +408,17 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(characterIdSchema))
   .handler(async ({ context, data }) => {
-    const { getDb } = await import('#db-client');
-    const { characters, sequences } = await import('@/lib/db/schema');
-    const { eq } = await import('drizzle-orm');
-
-    const character = await getDb().query.characters.findFirst({
-      where: eq(characters.id, data.characterId),
-    });
-
+    const character = await getCharacterById(data.characterId);
     if (!character) {
       throw new Error('Character not found');
     }
 
-    const sequence = await getDb().query.sequences.findFirst({
-      where: eq(sequences.id, character.sequenceId),
+    // Verify the character's sequence belongs to this team
+    await getSequenceForUser({
+      sequenceId: character.sequenceId,
+      teamId: context.teamId,
+      userId: context.user.id,
     });
-
-    if (!sequence || sequence.teamId !== context.teamId) {
-      throw new Error('Character not found');
-    }
 
     const newTalent = await context.scopedDb.talent.create({
       name: character.name,

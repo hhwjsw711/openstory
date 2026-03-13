@@ -5,18 +5,16 @@
 
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { getDb } from '#db-client';
 import {
+  getCharacterById,
   getFrameIdsForCharacter,
   getSequenceCharactersWithTalent,
   updateCharacterTalent,
   updateSheetStatus,
 } from '@/lib/db/helpers/sequence-characters';
 import { getTalentWithRelations } from '@/lib/db/helpers/talent';
-import { characters as charactersTable } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -52,11 +50,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     )
   )
   .handler(async ({ context, data }) => {
-    const [character] = await getDb()
-      .select()
-      .from(charactersTable)
-      .where(eq(charactersTable.id, data.characterId));
-
+    const character = await getCharacterById(data.characterId);
     if (!character) {
       throw new Error('Character not found');
     }

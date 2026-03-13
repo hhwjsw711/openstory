@@ -21,7 +21,7 @@ const client = createClient({ url: dbUrl });
  */
 const _db: Database = drizzle(client, {
   schema,
-  logger: process.env.NODE_ENV === 'development',
+  logger: false,
   casing: 'snake_case',
 });
 

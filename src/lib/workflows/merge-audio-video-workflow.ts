@@ -3,7 +3,6 @@
  * Muxes a music track onto the merged video to produce the final sequence output
  */
 
-import { getDb } from '#db-client';
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { usdToMicros } from '@/lib/billing/money';
@@ -16,12 +15,11 @@ import {
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
-import { sequences } from '@/lib/db/schema';
+import { createScopedDb } from '@/lib/db/scoped';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type { MergeAudioVideoWorkflowInput } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
-import { eq } from 'drizzle-orm';
 
 export const mergeAudioVideoWorkflow = createWorkflow(
   async (context: WorkflowContext<MergeAudioVideoWorkflowInput>) => {
@@ -37,19 +35,18 @@ export const mergeAudioVideoWorkflow = createWorkflow(
       throw new WorkflowValidationError('Music URL is required');
     }
 
+    const scopedDb = createScopedDb(input.teamId);
+    const seq = scopedDb.sequence(input.sequenceId);
+
     console.log(
       `[MergeAudioVideoWorkflow] Starting mux for sequence ${input.sequenceId}`
     );
 
     await context.run('set-merging-status', async () => {
-      await getDb()
-        .update(sequences)
-        .set({
-          mergedVideoStatus: 'merging',
-          mergedVideoError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, input.sequenceId));
+      await seq.updateMergedVideoFields({
+        mergedVideoStatus: 'merging',
+        mergedVideoError: null,
+      });
     });
 
     const videoDurationMs = await context.run(
@@ -107,17 +104,13 @@ export const mergeAudioVideoWorkflow = createWorkflow(
     });
 
     await context.run('update-sequence', async () => {
-      await getDb()
-        .update(sequences)
-        .set({
-          mergedVideoUrl: storageResult.url,
-          mergedVideoPath: storageResult.path,
-          mergedVideoStatus: 'completed',
-          mergedVideoGeneratedAt: new Date(),
-          mergedVideoError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, input.sequenceId));
+      await seq.updateMergedVideoFields({
+        mergedVideoUrl: storageResult.url,
+        mergedVideoPath: storageResult.path,
+        mergedVideoStatus: 'completed',
+        mergedVideoGeneratedAt: new Date(),
+        mergedVideoError: null,
+      });
     });
 
     console.log(
@@ -133,15 +126,12 @@ export const mergeAudioVideoWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
+      const failSeq = createScopedDb(input.teamId).sequence(input.sequenceId);
 
-      await getDb()
-        .update(sequences)
-        .set({
-          mergedVideoStatus: 'failed',
-          mergedVideoError: error,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, input.sequenceId));
+      await failSeq.updateMergedVideoFields({
+        mergedVideoStatus: 'failed',
+        mergedVideoError: error,
+      });
 
       console.error(
         `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${error}`

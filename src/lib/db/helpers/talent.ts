@@ -394,6 +394,17 @@ export async function deleteTalentSheet(sheetId: string): Promise<boolean> {
 // ============================================================================
 
 /**
+ * Get a talent media record by ID
+ */
+export async function getTalentMediaById(
+  mediaId: string
+): Promise<TalentMediaRecord | undefined> {
+  return getDb().query.talentMedia.findFirst({
+    where: eq(talentMedia.id, mediaId),
+  });
+}
+
+/**
  * Create talent media
  */
 export async function createTalentMediaRecord(

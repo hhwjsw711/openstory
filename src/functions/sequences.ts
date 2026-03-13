@@ -17,7 +17,6 @@ import {
   deleteSequence,
   updateSequence,
   updateSequenceMusicPrompt,
-  updateSequenceStatus,
 } from '@/lib/db/helpers/sequences';
 import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import {
@@ -43,10 +42,8 @@ import type {
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
-import { sequences, type Frame } from '@/lib/db/schema';
+import type { Frame } from '@/lib/db/schema';
 import { getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getDb } from '#db-client';
-import { eq } from 'drizzle-orm';
 
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
@@ -262,10 +259,7 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     );
 
     // Reset status to processing before triggering
-    await getDb()
-      .update(sequences)
-      .set({ status: 'processing', updatedAt: new Date() })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateStatus('processing');
 
     const workflowInput: StoryboardWorkflowInput = {
       userId: user.id,
@@ -312,7 +306,9 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
   .handler(async ({ context }) => {
-    await updateSequenceStatus(context.sequence.id, 'archived');
+    await context.scopedDb
+      .sequence(context.sequence.id)
+      .updateStatus('archived');
     return { success: true };
   });
 
@@ -391,14 +387,10 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
         ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
         : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
 
-    await getDb()
-      .update(sequences)
-      .set({
-        musicStatus: 'generating',
-        musicError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateMusicFields({
+      musicStatus: 'generating',
+      musicError: null,
+    });
 
     await triggerWorkflow('/music', musicInput);
 
@@ -439,14 +431,10 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       errorMessage: 'Insufficient credits for video merge',
     });
 
-    await getDb()
-      .update(sequences)
-      .set({
-        mergedVideoStatus: 'merging',
-        mergedVideoError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateMergedVideoFields({
+      mergedVideoStatus: 'merging',
+      mergedVideoError: null,
+    });
 
     const videoUrls = frames
       .sort((a, b) => a.orderIndex - b.orderIndex)

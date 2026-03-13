@@ -1,9 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import { getDb } from '#db-client';
-import { locationLibrary, locationSheets } from '@/lib/db/schema';
 import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
@@ -72,10 +69,7 @@ export const getLibraryLocationByIdFn = createServerFn({ method: 'GET' })
   .handler(async ({ context, data }) => {
     const location = await requireLocation(data.locationId, context.teamId);
 
-    const sheets = await getDb()
-      .select()
-      .from(locationSheets)
-      .where(eq(locationSheets.locationId, data.locationId));
+    const sheets = await context.scopedDb.locationSheets.list(data.locationId);
 
     return {
       ...location,
@@ -112,18 +106,16 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
     });
 
     if (processedImages.length > 0) {
-      await getDb()
-        .insert(locationSheets)
-        .values(
-          processedImages.map((img, index) => ({
-            locationId: newLocation.id,
-            name: `Reference ${index + 1}`,
-            imageUrl: img.url,
-            imagePath: img.path,
-            isDefault: index === 0,
-            source: 'manual_upload' as const,
-          }))
-        );
+      await context.scopedDb.locationSheets.insert(
+        processedImages.map((img, index) => ({
+          locationId: newLocation.id,
+          name: `Reference ${index + 1}`,
+          imageUrl: img.url,
+          imagePath: img.path,
+          isDefault: index === 0,
+          source: 'manual_upload' as const,
+        }))
+      );
 
       const workflowInput: LibraryLocationSheetWorkflowInput = {
         locationDbId: newLocation.id,
@@ -234,41 +226,37 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
       return { sheets: [] };
     }
 
-    const existingSheets = await getDb()
-      .select()
-      .from(locationSheets)
-      .where(eq(locationSheets.locationId, data.locationId));
+    const existingSheets = await context.scopedDb.locationSheets.list(
+      data.locationId
+    );
 
     const hasExistingSheets = existingSheets.length > 0;
 
     // If no sheets exist but location has a reference image, backfill it as a sheet
     if (!hasExistingSheets && location.referenceImageUrl) {
-      await getDb()
-        .insert(locationSheets)
-        .values({
+      await context.scopedDb.locationSheets.insert([
+        {
           locationId: data.locationId,
           name: 'Reference 1',
           imageUrl: location.referenceImageUrl,
           imagePath: location.referenceImagePath,
           isDefault: true,
           source: 'manual_upload' as const,
-        });
+        },
+      ]);
     }
 
-    const newSheets = await getDb()
-      .insert(locationSheets)
-      .values(
-        processedImages.map((img, index) => ({
-          locationId: data.locationId,
-          name: `Reference ${existingSheets.length + index + 1}`,
-          imageUrl: img.url,
-          imagePath: img.path,
-          isDefault:
-            !hasExistingSheets && !location.referenceImageUrl && index === 0,
-          source: 'manual_upload' as const,
-        }))
-      )
-      .returning();
+    const newSheets = await context.scopedDb.locationSheets.insert(
+      processedImages.map((img, index) => ({
+        locationId: data.locationId,
+        name: `Reference ${existingSheets.length + index + 1}`,
+        imageUrl: img.url,
+        imagePath: img.path,
+        isDefault:
+          !hasExistingSheets && !location.referenceImageUrl && index === 0,
+        source: 'manual_upload' as const,
+      }))
+    );
 
     // Collect all reference URLs for the sheet generation workflow
     let existingUrls: string[];
@@ -306,55 +294,20 @@ export const deleteLocationSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.object({ sheetId: ulidSchema })))
   .handler(async ({ context, data }) => {
-    const result = await getDb()
-      .select({
-        sheet: locationSheets,
-        location: locationLibrary,
-      })
-      .from(locationSheets)
-      .innerJoin(
-        locationLibrary,
-        eq(locationSheets.locationId, locationLibrary.id)
-      )
-      .where(eq(locationSheets.id, data.sheetId));
-
-    const record = result[0];
+    const record = await context.scopedDb.locationSheets.getWithLocation(
+      data.sheetId
+    );
     if (!record || record.location.teamId !== context.teamId) {
       throw new Error('Sheet not found');
     }
 
     const { sheet, location } = record;
 
-    await getDb()
-      .delete(locationSheets)
-      .where(eq(locationSheets.id, data.sheetId));
+    await context.scopedDb.locationSheets.delete(data.sheetId);
 
     // If deleted sheet was default, promote the next available sheet
     if (sheet.isDefault) {
-      const [nextSheet] = await getDb()
-        .select()
-        .from(locationSheets)
-        .where(eq(locationSheets.locationId, location.id))
-        .limit(1);
-
-      if (nextSheet) {
-        await getDb()
-          .update(locationSheets)
-          .set({ isDefault: true })
-          .where(eq(locationSheets.id, nextSheet.id));
-
-        if (nextSheet.imageUrl) {
-          await updateLibraryLocation(location.id, {
-            referenceImageUrl: nextSheet.imageUrl,
-            referenceImagePath: nextSheet.imagePath,
-          });
-        }
-      } else {
-        await updateLibraryLocation(location.id, {
-          referenceImageUrl: null,
-          referenceImagePath: null,
-        });
-      }
+      await context.scopedDb.locationSheets.promoteDefault(location.id);
     }
 
     return { success: true };

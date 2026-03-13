@@ -1,4 +1,3 @@
-import { getDb } from '#db-client';
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
@@ -6,7 +5,7 @@ import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
-import { sequences } from '@/lib/db/schema';
+import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -22,8 +21,6 @@ import {
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
 
-import { eq } from 'drizzle-orm';
-
 export const generateMusicWorkflow = createWorkflow(
   async (context: WorkflowContext<MusicWorkflowInput>) => {
     const input = context.requestPayload;
@@ -36,17 +33,15 @@ export const generateMusicWorkflow = createWorkflow(
 
     const { sequenceId, teamId } = input;
     const model = input.model || DEFAULT_MUSIC_MODEL;
+    const scopedDb = createScopedDb(teamId);
+    const seq = scopedDb.sequence(sequenceId);
 
     await context.run('set-generating-status', async () => {
-      await getDb()
-        .update(sequences)
-        .set({
-          musicStatus: 'generating',
-          musicModel: model,
-          musicError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, sequenceId));
+      await seq.updateMusicFields({
+        musicStatus: 'generating',
+        musicModel: model,
+        musicError: null,
+      });
 
       await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
         status: 'generating',
@@ -152,17 +147,13 @@ export const generateMusicWorkflow = createWorkflow(
     });
 
     await context.run('update-sequence-music', async () => {
-      await getDb()
-        .update(sequences)
-        .set({
-          musicUrl: storageResult.url,
-          musicPath: storageResult.path,
-          musicStatus: 'completed',
-          musicGeneratedAt: new Date(),
-          musicError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, sequenceId));
+      await seq.updateMusicFields({
+        musicUrl: storageResult.url,
+        musicPath: storageResult.path,
+        musicStatus: 'completed',
+        musicGeneratedAt: new Date(),
+        musicError: null,
+      });
 
       await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
         status: 'completed',
@@ -172,15 +163,12 @@ export const generateMusicWorkflow = createWorkflow(
 
     // Check if merged video is also ready -- trigger mux if so
     await context.run('check-mux-trigger', async () => {
-      const [seq] = await getDb()
-        .select({
-          mergedVideoStatus: sequences.mergedVideoStatus,
-          mergedVideoUrl: sequences.mergedVideoUrl,
-        })
-        .from(sequences)
-        .where(eq(sequences.id, sequenceId));
+      const videoStatus = await seq.getMergedVideoStatus();
 
-      if (seq?.mergedVideoStatus === 'completed' && seq.mergedVideoUrl) {
+      if (
+        videoStatus?.mergedVideoStatus === 'completed' &&
+        videoStatus.mergedVideoUrl
+      ) {
         console.log(
           `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
         );
@@ -189,7 +177,7 @@ export const generateMusicWorkflow = createWorkflow(
           userId: input.userId,
           teamId,
           sequenceId,
-          mergedVideoUrl: seq.mergedVideoUrl,
+          mergedVideoUrl: videoStatus.mergedVideoUrl,
           musicUrl: storageResult.url,
         };
 
@@ -204,15 +192,12 @@ export const generateMusicWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
+      const failSeq = createScopedDb(input.teamId).sequence(input.sequenceId);
 
-      await getDb()
-        .update(sequences)
-        .set({
-          musicStatus: 'failed',
-          musicError: error,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, input.sequenceId));
+      await failSeq.updateMusicFields({
+        musicStatus: 'failed',
+        musicError: error,
+      });
 
       try {
         await getGenerationChannel(input.sequenceId).emit(

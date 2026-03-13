@@ -9,6 +9,17 @@ import { styles } from '../schema';
 import type { NewStyle, Style } from '../schema';
 
 /**
+ * Get a style by ID
+ */
+export async function getStyleById(
+  styleId: string
+): Promise<Style | undefined> {
+  return getDb().query.styles.findFirst({
+    where: eq(styles.id, styleId),
+  });
+}
+
+/**
  * Create a new style
  */
 export async function createStyle(data: NewStyle): Promise<Style> {

@@ -7,8 +7,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-
 import { sequenceAccessMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
@@ -36,8 +34,6 @@ import {
 } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
-import { getDb } from '#db-client';
-import { sequences } from '@/lib/db/schema';
 import type {
   ImageWorkflowInput,
   MotionWorkflowInput,
@@ -116,10 +112,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         }
       );
 
-      await getDb()
-        .update(sequences)
-        .set({ status: 'processing', statusError: null, updatedAt: new Date() })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateStatus('processing');
 
       const workflowInput: StoryboardWorkflowInput = {
         userId: user.id,
@@ -276,14 +269,10 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         duration: totalDuration || 30,
       };
 
-      await getDb()
-        .update(sequences)
-        .set({
-          musicStatus: 'generating',
-          musicError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateMusicFields({
+        musicStatus: 'generating',
+        musicError: null,
+      });
 
       await triggerWorkflow('/music', musicInput);
 
@@ -303,14 +292,10 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           .map((f) => f.videoUrl)
           .filter((url): url is string => Boolean(url));
 
-        await getDb()
-          .update(sequences)
-          .set({
-            mergedVideoStatus: 'merging',
-            mergedVideoError: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(sequences.id, sequence.id));
+        await context.scopedDb.sequence(sequence.id).updateMergedVideoFields({
+          mergedVideoStatus: 'merging',
+          mergedVideoError: null,
+        });
 
         const mergeInput: MergeVideoWorkflowInput = {
           userId: user.id,
@@ -327,10 +312,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Reset sequence status from 'failed' back to 'completed'
     if (sequence.status === 'failed') {
-      await getDb()
-        .update(sequences)
-        .set({ status: 'completed', statusError: null, updatedAt: new Date() })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateStatus('completed');
     }
 
     return { retryType: 'smart' as const, retriedItems: retried };
