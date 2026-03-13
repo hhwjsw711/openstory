@@ -19,6 +19,7 @@ import {
 } from '@/lib/auth/action-utils';
 import { requireSystemAdmin } from '@/lib/auth/system-admin';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { createScopedDb, type ScopedDb } from '@/lib/db/scoped';
 import type { Sequence, Frame } from '@/types/database';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
@@ -33,6 +34,7 @@ export type AuthContext = {
 
 export type TeamContext = AuthContext & {
   teamId: string;
+  scopedDb: ScopedDb;
 };
 
 export type SystemAdminContext = TeamContext;
@@ -154,6 +156,7 @@ export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: team.teamId,
+        scopedDb: createScopedDb(team.teamId),
       },
     });
   });
@@ -198,6 +201,7 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
       context: {
         sequence,
         teamId: sequence.teamId,
+        scopedDb: createScopedDb(sequence.teamId),
       },
     });
   });
@@ -235,6 +239,7 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
         frame,
         sequence,
         teamId: sequence.teamId,
+        scopedDb: createScopedDb(sequence.teamId),
       },
     });
   });
@@ -253,6 +258,7 @@ export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb: createScopedDb(data.teamId),
       },
     });
   });
@@ -271,6 +277,7 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb: createScopedDb(data.teamId),
       },
     });
   });
@@ -289,6 +296,7 @@ export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb: createScopedDb(data.teamId),
       },
     });
   });

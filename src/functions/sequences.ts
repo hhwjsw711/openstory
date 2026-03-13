@@ -6,6 +6,7 @@ import {
   authWithTeamMiddleware,
   sequenceAccessMiddleware,
 } from './middleware';
+import { createScopedDb } from '@/lib/db/scoped';
 import {
   createSequenceSchema,
   updateSequenceSchema,
@@ -13,9 +14,7 @@ import {
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { getSequenceById } from '@/lib/db/helpers/queries';
 import {
-  createSequence,
   deleteSequence,
-  getSequencesByTeam,
   updateSequence,
   updateSequenceMusicPrompt,
   updateSequenceStatus,
@@ -52,7 +51,7 @@ import { eq } from 'drizzle-orm';
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getSequencesByTeam(context.teamId);
+    return context.scopedDb.sequences.list();
   });
 
 export const getSequenceFn = createServerFn({ method: 'GET' })
@@ -75,6 +74,9 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     if (data.teamId && data.teamId !== context.teamId) {
       await requireTeamMemberAccess(context.user.id, data.teamId);
     }
+
+    const scopedDb =
+      teamId === context.teamId ? context.scopedDb : createScopedDb(teamId);
 
     const {
       styleId,
@@ -109,8 +111,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
 
     return Promise.all(
       analysisModels.map(async (modelId) => {
-        const sequence = await createSequence({
-          teamId,
+        const sequence = await scopedDb.sequences.create({
           userId: context.user.id,
           title: data.title || 'Untitled Sequence',
           script: data.script,

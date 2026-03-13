@@ -6,22 +6,15 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { getDb } from '#db-client';
 import { authMiddleware, authWithTeamMiddleware } from './middleware';
 import {
   createStyleSchema,
   updateStyleSchema,
 } from '@/lib/schemas/style.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  getStyleById,
-  getPublicStyles,
-  getTeamAndPublicStyles,
-} from '@/lib/db/helpers/queries';
+import { getStyleById, getPublicStyles } from '@/lib/db/helpers/queries';
+import { deleteStyle } from '@/lib/db/helpers/styles';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
-import { styles } from '@/lib/db/schema';
-import type { Style } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
 
 // ============================================================================
 // List Styles
@@ -34,7 +27,7 @@ import { and, eq } from 'drizzle-orm';
 export const getStylesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getTeamAndPublicStyles(context.teamId);
+    return context.scopedDb.styles.list();
   });
 
 /**
@@ -84,22 +77,16 @@ export const createStyleFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createStyleSchema))
   .handler(async ({ data, context }) => {
-    const result = await getDb()
-      .insert(styles)
-      .values({
-        teamId: context.teamId,
-        name: data.name,
-        description: data.description,
-        config: data.config,
-        category: data.category,
-        tags: data.tags || [],
-        isPublic: data.isPublic,
-        previewUrl: data.previewUrl,
-        createdBy: context.user.id,
-      })
-      .returning();
-
-    return result[0] as Style;
+    return context.scopedDb.styles.create({
+      name: data.name,
+      description: data.description,
+      config: data.config,
+      category: data.category,
+      tags: data.tags,
+      isPublic: data.isPublic,
+      previewUrl: data.previewUrl,
+      createdBy: context.user.id,
+    });
   });
 
 // ============================================================================
@@ -120,13 +107,7 @@ export const updateStyleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { styleId, ...updateData } = data;
 
-    const result = await getDb()
-      .update(styles)
-      .set(updateData)
-      .where(and(eq(styles.id, styleId), eq(styles.teamId, context.teamId)))
-      .returning();
-
-    const style = Array.isArray(result) ? result[0] : undefined;
+    const style = await context.scopedDb.styles.update(styleId, updateData);
 
     if (!style) {
       throw new Error(
@@ -134,7 +115,7 @@ export const updateStyleFn = createServerFn({ method: 'POST' })
       );
     }
 
-    return style as Style;
+    return style;
   });
 
 // ============================================================================
@@ -158,12 +139,8 @@ export const deleteStyleFn = createServerFn({ method: 'POST' })
       throw new Error('Style not found');
     }
 
-    // Check if user has admin/owner role for this team
     await requireTeamManagement(context.user.id, style.teamId);
-
-    await getDb()
-      .delete(styles)
-      .where(and(eq(styles.id, data.styleId), eq(styles.teamId, style.teamId)));
+    await deleteStyle(data.styleId, style.teamId);
 
     return { success: true };
   });

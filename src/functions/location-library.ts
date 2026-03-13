@@ -17,11 +17,9 @@ import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
 import {
-  createLibraryLocation,
   updateLibraryLocation,
   deleteLibraryLocation,
   getLibraryLocationById,
-  getTeamLibraryLocations,
 } from '@/lib/db/helpers/location-library';
 
 type ProcessedImage = { url: string; path: string };
@@ -65,7 +63,7 @@ async function requireLocation(locationId: string, teamId: string) {
 export const getTeamLibraryLocationsFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getTeamLibraryLocations(context.teamId);
+    return context.scopedDb.locations.list();
   });
 
 export const getLibraryLocationByIdFn = createServerFn({ method: 'GET' })
@@ -105,8 +103,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
 
     const mainImage = processedImages[0];
 
-    const newLocation = await createLibraryLocation({
-      teamId: context.teamId,
+    const newLocation = await context.scopedDb.locations.create({
       name: data.name,
       description: data.description,
       referenceImageUrl: mainImage?.url,

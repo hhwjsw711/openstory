@@ -10,7 +10,6 @@ import {
 } from '@/lib/schemas/talent.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
-  createTalent,
   createTalentMediaRecord,
   createTalentSheet,
   deleteTalent,
@@ -19,9 +18,6 @@ import {
   getTalentById,
   getTalentSheetById,
   getTalentWithRelations,
-  getTeamTalent,
-  toggleTalentFavorite,
-  updateTalent,
   updateTalentSheet,
 } from '@/lib/db/helpers/talent';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
@@ -73,7 +69,7 @@ export const getTalentFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(listTalentFilterSchema.optional()))
   .handler(async ({ context, data }): Promise<TalentWithSheets[]> => {
-    return getTeamTalent(context.teamId, {
+    return context.scopedDb.talent.list({
       favoritesOnly: data?.favoritesOnly,
     });
   });
@@ -99,8 +95,7 @@ export const createTalentFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createTalentSchema))
   .handler(async ({ context, data }) => {
-    const newTalent = await createTalent({
-      teamId: context.teamId,
+    const newTalent = await context.scopedDb.talent.create({
       name: data.name,
       description: data.description,
       isFavorite: data.isFavorite ?? false,
@@ -167,7 +162,7 @@ export const updateTalentFn = createServerFn({ method: 'POST' })
   .handler(async ({ context, data }) => {
     const { talentId, ...updateData } = data;
 
-    const updated = await updateTalent(talentId, context.teamId, updateData);
+    const updated = await context.scopedDb.talent.update(talentId, updateData);
 
     if (!updated) {
       throw new Error('Talent not found or you do not have permission');
@@ -203,7 +198,7 @@ export const toggleTalentFavoriteFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
-    const updated = await toggleTalentFavorite(data.talentId, context.teamId);
+    const updated = await context.scopedDb.talent.toggleFavorite(data.talentId);
 
     if (!updated) {
       throw new Error('Talent not found or you do not have permission');
@@ -437,8 +432,7 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
       throw new Error('Character not found');
     }
 
-    const newTalent = await createTalent({
-      teamId: context.teamId,
+    const newTalent = await context.scopedDb.talent.create({
       name: character.name,
       description: character.physicalDescription ?? undefined,
       imageUrl: character.sheetImageUrl ?? undefined,
