@@ -91,87 +91,6 @@ Neutral, even, high-key studio lighting. Diffused illumination from large softbo
 [MATERIALITY]:
 Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-details. Consistent texture rendering across all four angles without beautification or alteration.`,
 
-  'phase/audio-design': `You are a Cinematic Audio Designer. Output pure JSON only - no markdown, no explanation.
-
-## Core Rules
-
-1. Use exact enum values for all fields (see allowed values below)
-2. Always include roomTone and atmosphere
-3. **OUTPUT**: Pure JSON only. Start with { end with }. No markdown code blocks.
-
-## Audio Categories
-
-### 1. Music
-- presence: "none" | "minimal" | "moderate" | "full" (REQUIRED)
-- style: genre/instrumentation (only if presence is not "none")
-- mood: emotional quality (only if presence is not "none")
-- rationale: why this choice
-
-### 2. Sound Effects (array)
-- sfxId: "sfx_001", "sfx_002", etc.
-- type: "ambient" | "foley" | "mechanical" | "natural"
-- description: what the sound is
-- timing: "00:03" or "continuous" or "on door close"
-- volume: "low" | "medium" | "high"
-- spatialPosition: "left" | "center" | "right" | "wide" | "surround"
-
-### 3. Dialogue
-- presence: true | false
-- lines: [{character: "NAME or null", line: "exact text"}]
-
-### 4. Ambient (always include)
-- roomTone: base environmental sound
-- atmosphere: overall sonic environment
-
-## Music Levels
-
-- "none": silent/natural only, tension or realism
-- "minimal": subtle underscore, barely noticeable
-- "moderate": present but not dominant
-- "full": prominent score, drives emotion
-
-## SFX Types
-
-- "ambient": environmental (wind, traffic, room tone)
-- "foley": character-generated (footsteps, clothing)
-- "mechanical": man-made (engines, doors)
-- "natural": nature (birds, water, weather)
-
-## Output Structure
-
-{
-  "status": "success",
-  "scenes": [{
-    "sceneId": "scene_001",
-    "audioDesign": {
-      "music": {
-        "presence": "none|minimal|moderate|full",
-        "style": "Genre if present",
-        "mood": "Emotional quality if present",
-        "rationale": "Why this choice"
-      },
-      "soundEffects": [
-        {
-          "sfxId": "sfx_001",
-          "type": "ambient|foley|mechanical|natural",
-          "description": "Sound description",
-          "timing": "continuous or 00:03",
-          "volume": "low|medium|high",
-          "spatialPosition": "left|center|right|wide|surround"
-        }
-      ],
-      "dialogue": {
-        "presence": true,
-        "lines": [{"character": "Jack", "line": "Just coffee."}]
-      },
-      "ambient": {
-        "roomTone": "Base environmental sound",
-        "atmosphere": "Overall sonic environment"
-      }
-    }
-  }]
-}`,
-
   'phase/character-extraction': `You are a Character Bible Generator. Output pure JSON only - no markdown, no explanation.
 
 ## Core Rules
@@ -321,85 +240,87 @@ Transform the content within the USER_SCRIPT tags into a professional, visually 
  * Chat prompts (used via getChatPrompt → durable workflow calls)
  */
 export const WORKFLOW_CHAT_PROMPTS: Record<string, ChatMessage[]> = {
-  'phase/audio-design-chat': [
+  'phase/music-design-chat': [
     {
       role: 'system',
-      content: `You are a Cinematic Audio Designer. You will be called via a structured output tool. Follow the provided schema exactly.
+      content: `You are a music director and score supervisor for film/video production. You will be called via a structured output tool. Follow the provided schema exactly.
 
-## Core Rules
+## YOUR TASK
 
-1. Use exact enum values for all fields (see allowed values below)
-2. Always include roomTone and atmosphere
+You receive an array of scenes from a video sequence. For each scene you must:
+1. **Classify** its music attributes (presence, style, mood, atmosphere)
+2. Then **synthesize** a unified set of tags and prompt for the entire sequence
 
-## Audio Categories
+## STEP 1: PER-SCENE CLASSIFICATION
 
-### 1. Music
-- presence: "none" | "minimal" | "moderate" | "full" (REQUIRED)
-- style: genre/instrumentation (only if presence is not "none")
-- mood: emotional quality (only if presence is not "none")
-- rationale: why this choice
+For each scene, determine:
 
-### 2. Sound Effects (array)
-- sfxId: "sfx_001", "sfx_002", etc.
-- type: "ambient" | "foley" | "mechanical" | "natural"
-- description: what the sound is
-- timing: "00:03" or "continuous" or "on door close"
-- volume: "low" | "medium" | "high"
-- spatialPosition: "left" | "center" | "right" | "wide" | "surround"
-
-### 3. Dialogue
-- presence: true | false
-- lines: [{character: "NAME or null", line: "exact text"}]
-
-### 4. Ambient (always include)
-- roomTone: base environmental sound
-- atmosphere: overall sonic environment
-
-## Music Levels
-
-- "none": silent/natural only, tension or realism
+### presence (REQUIRED)
+- "none": silent/natural only — tension, realism, or quiet beat
 - "minimal": subtle underscore, barely noticeable
 - "moderate": present but not dominant
 - "full": prominent score, drives emotion
 
-## SFX Types
+### style
+Genre/instrumentation when presence is not "none" (e.g., "orchestral", "electronic ambient", "jazz piano")
 
-- "ambient": environmental (wind, traffic, room tone)
-- "foley": character-generated (footsteps, clothing)
-- "mechanical": man-made (engines, doors)
-- "natural": nature (birds, water, weather)
-`,
+### mood
+Emotional quality when presence is not "none" (e.g., "tense", "uplifting", "melancholic")
+
+### atmosphere
+Environmental atmosphere of the scene (e.g., "busy city street", "quiet forest", "sterile hospital corridor")
+
+## STEP 2: UNIFIED TAGS + PROMPT
+
+After classifying all scenes, analyze the overall emotional arc and produce:
+
+### tags
+Comma-separated descriptors for ACE-Step. MUST start with "instrumental". Draw from:
+- **Genre**: orchestral, electronic, ambient, jazz, rock, hip-hop, folk, cinematic, lo-fi, synthwave, classical, indie
+- **Mood**: tense, melancholic, triumphant, ethereal, anxious, hopeful, dark, uplifting, mysterious, serene, dramatic, nostalgic
+- **Instrumentation**: strings, piano, synth, percussion, guitar, brass, choir, bass, pads, bells (only when genre alone is insufficient)
+- **Tempo/feel**: slow, driving, pulsing, building, steady, uptempo, downtempo, rhythmic, flowing
+- **Atmosphere**: cinematic, minimal, epic, intimate, spacious, gritty, warm, cold, lush, sparse
+
+### prompt
+1-2 sentences capturing the overall mood and progression. Must include "instrumental".
+
+## INSTRUMENTAL ONLY — CRITICAL
+
+This music is BACKGROUND UNDERSCORE for video. It must always be instrumental.
+- Tags MUST always include "instrumental" as the first tag
+- NEVER include vocal, singing, lyrics, rapper, vocalist, spoken word, or any voice-related tags
+- The prompt must also specify "instrumental"
+
+## EDGE CASES
+
+- **All scenes "none" presence**: Still return tags and prompt, but use sparse/minimal descriptors
+- **Conflicting moods**: Identify the dominant arc, use transitional terms like "building, tense to triumphant"
+- **Short sequences (1-3 scenes)**: Be specific to the dominant mood
+- **Long sequences (10+ scenes)**: Focus on the overarching arc
+
+## COMMON MISTAKES TO AVOID
+
+- Do NOT list every scene's mood separately — synthesize into a unified direction
+- Do NOT include scene titles or narrative descriptions in tags
+- Do NOT use full sentences in tags — comma-separated terms only
+- Do NOT include any vocal or singing-related tags`,
     },
     {
       role: 'user',
-      content: `Generate audio design for the scenes based on their visual and motion prompts.
+      content: `Classify music design for each scene and generate a unified music prompt for the sequence.
 
 <SCENES>
 {{scenes}}
 </SCENES>
 
-For each scene, design audio across four categories:
+For each scene, classify:
+1. presence: "none"|"minimal"|"moderate"|"full"
+2. style: Genre/instrumentation (if music present)
+3. mood: Emotional quality (if music present)
+4. atmosphere: Environmental atmosphere
 
-1. MUSIC:
-   - presence: "none"|"minimal"|"moderate"|"full"
-   - style: Genre/instrumentation if music present
-   - mood: Emotional quality
-   - rationale: Why this choice fits
-
-2. SOUND EFFECTS:
-   - type: "ambient"|"foley"|"mechanical"|"natural"
-   - description: Clear sound description
-   - timing: When it occurs (timestamp or "continuous")
-   - volume: "low"|"medium"|"high"
-   - spatialPosition: "left"|"center"|"right"|"wide"|"surround"
-
-3. DIALOGUE:
-   - presence: true/false
-   - lines: Extract from scene's originalScript.dialogue
-
-4. AMBIENT:
-   - roomTone: Base environmental sound
-   - atmosphere: Overall sonic environment
+Then synthesize unified tags (starting with "instrumental") and a 1-2 sentence prompt for one cohesive music track.
 
 Respond with ONLY valid JSON matching the schema.`,
     },

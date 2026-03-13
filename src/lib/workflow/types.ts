@@ -461,7 +461,7 @@ export type MusicSceneSummary = {
 
 /**
  * Music generation workflow input
- * Generates background music for an entire sequence using audioDesign specs
+ * Generates background music for an entire sequence using musicDesign specs
  */
 export interface MusicWorkflowInput extends SequenceWorkflowContext {
   /** Compact scene summaries for AI prompt generation (legacy fallback) */

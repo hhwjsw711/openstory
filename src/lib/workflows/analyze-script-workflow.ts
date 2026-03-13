@@ -6,10 +6,10 @@
 import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
-  audioDesignGenerationResultSchema,
   characterExtractionResultSchema,
   locationExtractionResultSchema,
   locationMatchResponseSchema,
+  musicDesignResultSchema,
   sceneSplittingResultSchema,
   talentMatchResponseSchema,
 } from '@/lib/ai/response-schemas';
@@ -58,10 +58,7 @@ import { getFalFlowControl } from './constants';
 import { durableLLMCall } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
-import {
-  musicPromptSchema,
-  reinforceInstrumentalTags,
-} from './music-prompt.schema';
+import { reinforceInstrumentalTags } from './music-prompt.schema';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 /**
@@ -716,49 +713,53 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // Audio design generation
-    const { scenes: scenesWithAudioDesign } = await durableLLMCall(
+    // Music design: classify each scene + generate unified tags/prompt
+    const sceneSummaries = scenesWithMotionPrompts.map((scene) => ({
+      sceneId: scene.sceneId,
+      title: scene.metadata?.title || 'Untitled Scene',
+      storyBeat: scene.metadata?.storyBeat || '',
+      durationSeconds: scene.metadata?.durationSeconds || 10,
+      location: scene.metadata?.location || '',
+      timeOfDay: scene.metadata?.timeOfDay || '',
+      visualSummary: scene.prompts?.visual?.components?.atmosphere || '',
+    }));
+
+    const musicDesignResult = await durableLLMCall(
       context,
       {
-        name: 'audio-design',
-        phase: { number: 7, name: 'Designing sound…' },
-
-        promptName: 'phase/audio-design-chat',
+        name: 'music-design',
+        phase: { number: 7, name: 'Composing music…' },
+        promptName: 'phase/music-design-chat',
         promptVariables: {
-          scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
+          scenes: JSON.stringify(sceneSummaries, null, 2),
         },
-
         modelId: analysisModelId,
-        responseSchema: audioDesignGenerationResultSchema,
-
-        additionalMetadata: {
-          sceneCount: scenesWithMotionPrompts.length,
-        },
+        responseSchema: musicDesignResultSchema,
       },
       llmCallContext
     );
 
     const completeScenes: Scene[] = await context.run(
-      'merge-audio-design',
+      'merge-music-design',
       () =>
         scenesWithMotionPrompts.map((scene) => {
-          const enrichment = scenesWithAudioDesign.find(
+          const enrichment = musicDesignResult.scenes.find(
             (s) => s.sceneId === scene.sceneId
           );
           if (!enrichment) {
             throw new WorkflowValidationError(
-              `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
+              `Scene ID mismatch in music design: expected "${scene.sceneId}"`
             );
           }
           return {
             ...scene,
-            audioDesign: enrichment.audioDesign,
+            musicDesign: enrichment.musicDesign,
           };
         })
     );
 
     if (sequenceId) {
-      await context.run('update-frames-after-audio-design', async () => {
+      await context.run('update-frames-after-music-design', async () => {
         await Promise.all(
           completeScenes.map(async (scene) => {
             const matched = frameMapping.find(
@@ -770,7 +771,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               'generation.frame:updated',
               {
                 frameId: matched.frameId,
-                updateType: 'audio-design',
+                updateType: 'music-design',
                 metadata: scene,
               }
             );
@@ -779,68 +780,37 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // Music prompt generation + optional audio generation
+    // Store music prompt + generate motion/music if scenes have music
     const scenesWithMusic = completeScenes.filter(
       (scene) =>
-        scene.audioDesign?.music?.presence &&
-        scene.audioDesign.music.presence !== 'none'
+        scene.musicDesign?.presence && scene.musicDesign.presence !== 'none'
     );
 
+    const reinforcedTags = reinforceInstrumentalTags(musicDesignResult.tags);
+
+    if (sequenceId) {
+      await context.run('store-music-prompt', async () => {
+        await updateSequenceMusicPrompt(
+          sequenceId,
+          musicDesignResult.prompt,
+          reinforcedTags
+        );
+      });
+    }
+
     if (scenesWithMusic.length > 0) {
-      await context.run('start-music-prompt-generation', async () => {
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 8,
-          phaseName: 'Composing music…',
-        });
-      });
-
       let totalDuration = 0;
-      const sceneSummaries = scenesWithMusic.map((scene) => {
-        const durationSeconds = scene.metadata?.durationSeconds || 10;
-        totalDuration += durationSeconds;
-        return {
-          title: scene.metadata?.title || 'Untitled Scene',
-          storyBeat: scene.metadata?.storyBeat || '',
-          durationSeconds,
-          musicStyle: scene.audioDesign?.music?.style || '',
-          musicMood: scene.audioDesign?.music?.mood || '',
-          musicPresence: scene.audioDesign?.music?.presence || 'none',
-          atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
-        };
-      });
-
-      const musicPrompt = await durableLLMCall(
-        context,
-        {
-          name: 'music-prompt-generation',
-          phase: { number: 8, name: 'Composing music…' },
-          promptName: 'phase/music-prompt-generation-chat',
-          promptVariables: {
-            scenes: JSON.stringify(sceneSummaries),
-          },
-          modelId: analysisModelId,
-          responseSchema: musicPromptSchema,
-        },
-        llmCallContext
-      );
-
-      const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
-      if (sequenceId) {
-        await context.run('store-music-prompt', async () => {
-          await updateSequenceMusicPrompt(
-            sequenceId,
-            musicPrompt.prompt,
-            reinforcedTags
-          );
-        });
+      for (const scene of scenesWithMusic) {
+        totalDuration += scene.metadata?.durationSeconds || 10;
       }
-      // Now generate motion for each scene
+
+      // Generate motion for each scene
       if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
         await context.run('start-motion-generation', async () => {
           await getGenerationChannel(sequenceId).emit(
             'generation.phase:start',
             {
-              phase: 7,
+              phase: 8,
               phaseName: 'Generating motion…',
             }
           );
@@ -879,7 +849,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           })
         );
       }
-      // Now generate music for whole movie
+
+      // Generate music for whole movie
       if (autoGenerateMusic && sequenceId) {
         if (!input.userId || !input.teamId) {
           throw new Error('userId and teamId required for music generation');
@@ -891,7 +862,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             userId: input.userId,
             teamId: input.teamId,
             sequenceId,
-            prompt: musicPrompt.prompt,
+            prompt: musicDesignResult.prompt,
             tags: reinforcedTags,
             duration: totalDuration,
             model: musicModel,
