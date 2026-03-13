@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Menu } from 'lucide-react';
 import { OpenStoryLogo } from '@/components/icons/openstory-logo';
@@ -34,17 +34,45 @@ const navLinks = [
 
 export function SiteHeader() {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { data: session } = useQuery(sessionQueryOptions);
   const isLoggedIn = !!session?.user;
+  const routerState = useRouterState();
+  const isLandingPage = routerState.location.pathname === '/';
+
+  useEffect(() => {
+    if (!isLandingPage) {
+      setScrolled(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isLandingPage]);
 
   const ctaLabel = isLoggedIn ? 'Dashboard' : 'Login';
   const ctaHref = isLoggedIn ? '/sequences' : '/login';
+  const isTransparent = isLandingPage && !scrolled;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+        isTransparent
+          ? 'bg-transparent'
+          : 'border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link to="/" aria-label="OpenStory home">
-          <OpenStoryLogo size="md" />
+          <OpenStoryLogo
+            size="md"
+            className={isTransparent ? 'text-white' : ''}
+          />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -55,7 +83,11 @@ export function SiteHeader() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                className={`inline-flex items-center gap-1.5 text-sm font-medium tracking-wide transition-colors ${
+                  isTransparent
+                    ? 'text-white/70 hover:text-white'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 {'icon' in link && link.icon && (
                   <GitHubIcon className="size-4" />
@@ -66,7 +98,11 @@ export function SiteHeader() {
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                className={`text-sm font-medium tracking-wide transition-colors ${
+                  isTransparent
+                    ? 'text-white/70 hover:text-white'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 {link.label}
               </a>
@@ -75,7 +111,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden md:block">
-          <Button asChild>
+          <Button
+            asChild
+            className={
+              isTransparent
+                ? 'bg-white/15 text-white backdrop-blur-sm hover:bg-white/25'
+                : ''
+            }
+          >
             <Link to={ctaHref}>{ctaLabel}</Link>
           </Button>
         </div>
@@ -83,7 +126,7 @@ export function SiteHeader() {
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className={`md:hidden ${isTransparent ? 'text-white hover:bg-white/10' : ''}`}
           onClick={() => setSheetOpen(true)}
           aria-label="Open menu"
         >

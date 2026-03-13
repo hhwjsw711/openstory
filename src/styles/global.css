@@ -274,6 +274,82 @@ body {
   scroll-margin-top: 5rem;
 }
 
+/* Scroll-triggered entrance animation (progressive enhancement) */
+@supports (animation-timeline: view()) {
+  .animate-on-scroll {
+    animation: fade-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero Ken Burns (slow zoom/pan) — fallback until real video is added */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+}
+
+/* Hero text reveal on page load */
+@keyframes hero-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-reveal {
+  animation: hero-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-reveal-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.hero-reveal-delay-2 {
+  animation-delay: 0.25s;
+}
+
+.hero-reveal-delay-3 {
+  animation-delay: 0.4s;
+}
+
+.hero-reveal-delay-4 {
+  animation-delay: 0.55s;
+}
+
+/* Utility: editorial serif italic */
+.text-editorial {
+  font-family: var(--font-accent);
+  font-style: italic;
+}
+
+/* Utility: mono label (Space Mono 11px uppercase tracked) */
+.text-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
 /* Reduced motion: simple fade pulse */
 @media (prefers-reduced-motion: reduce) {
   @keyframes blob-morph {
@@ -293,5 +369,17 @@ body {
     50% {
       opacity: 1;
     }
+  }
+  @keyframes ken-burns {
+    from {
+      transform: none;
+    }
+    to {
+      transform: none;
+    }
+  }
+  .hero-reveal {
+    animation: none;
+    opacity: 1;
   }
 }

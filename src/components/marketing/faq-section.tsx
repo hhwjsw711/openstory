@@ -8,10 +8,10 @@ import { FAQ_ITEMS } from '@/lib/marketing/constants';
 
 export function FaqSection() {
   return (
-    <section className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
-      <div className="mb-10 text-center sm:mb-16">
+    <section className="mx-auto max-w-3xl px-6 py-20 sm:py-28">
+      <div className="mb-10 sm:mb-16">
         <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-          FAQs
+          Frequently <span className="text-editorial">Asked</span>
         </h2>
       </div>
 

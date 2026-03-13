@@ -1,7 +1,12 @@
 import { Link } from '@tanstack/react-router';
+import { Image } from '@unpic/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { HERO_IMAGES, SITE_CONFIG } from '@/lib/marketing/constants';
+import {
+  HERO_IMAGE,
+  HERO_FILMSTRIP,
+  SITE_CONFIG,
+} from '@/lib/marketing/constants';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -11,62 +16,99 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
+const duplicatedFilmstrip = [...HERO_FILMSTRIP, ...HERO_FILMSTRIP];
+
 export function HeroSection() {
   return (
-    <section className="px-6 pt-32 pb-0 sm:pt-40">
-      <div className="mx-auto max-w-5xl text-center">
-        <Badge
-          variant="outline"
-          className="mb-8 gap-2 rounded-full px-4 py-1.5 font-display text-[11px] tracking-[0.15em] uppercase"
+    <section className="relative flex min-h-svh flex-col justify-end overflow-hidden bg-black">
+      {/* Video background with static image poster fallback */}
+      <div className="absolute inset-0">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={HERO_IMAGE.src}
+          className="size-full object-cover object-center"
         >
-          <span className="inline-block size-1.5 rounded-full bg-[var(--color-violet)]" />
-          Open Source AI Video Production
-        </Badge>
-
-        <h1 className="font-heading text-5xl font-bold tracking-tighter text-foreground leading-[1.05] sm:text-6xl md:text-7xl lg:text-[6.5rem]">
-          Open Video Generation.
-        </h1>
-
-        <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground font-body sm:text-xl md:text-2xl">
-          {SITE_CONFIG.description}
-        </p>
-
-        <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button asChild size="lg" className="rounded-full px-8">
-            <Link to="/sequences/new">Get Started</Link>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="rounded-full px-8"
-          >
-            <a
-              href={SITE_CONFIG.githubHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <GitHubIcon className="size-4" />
-              View on GitHub
-            </a>
-          </Button>
-        </div>
+          <source
+            src="https://assets.openstory.so/videos/hero-loop.mp4"
+            type="video/mp4"
+          />
+        </video>
       </div>
 
-      <div className="mx-auto mt-12 grid max-w-[1400px] grid-cols-[1.4fr_1fr] grid-rows-2 gap-3 px-6 h-[clamp(320px,40vw,520px)] sm:mt-16 max-md:grid-cols-2 max-md:grid-rows-none max-md:h-auto max-sm:grid-cols-1">
-        {HERO_IMAGES.map((img, i) => (
-          <div
-            key={img.src}
-            className={`overflow-hidden rounded-2xl border border-border ${i === 0 ? 'row-span-2 max-md:row-span-1' : ''} ${i === 2 ? 'max-sm:hidden' : ''}`}
+      {/* Gradient overlay: transparent top → dark bottom for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
+
+      {/* Content positioned in lower portion */}
+      <div className="relative z-10 px-6 pb-8 pt-32 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
+          <Badge
+            variant="outline"
+            className="hero-reveal hero-reveal-delay-1 mb-6 gap-2 rounded-full border-white/20 bg-white/10 px-4 py-1.5 text-label text-white/80 backdrop-blur-sm sm:mb-8"
           >
-            <img
-              src={img.src}
-              alt={img.alt}
-              loading="eager"
-              className="size-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.03]"
-            />
+            <span className="inline-block size-1.5 rounded-full bg-[var(--color-violet)]" />
+            Open Source AI Video Production
+          </Badge>
+
+          <h1 className="hero-reveal hero-reveal-delay-2 font-heading text-6xl font-bold tracking-tighter leading-[0.95] text-white sm:text-7xl md:text-8xl lg:text-[8.5rem]">
+            Open Video
+            <br />
+            <span className="text-editorial">Generation.</span>
+          </h1>
+
+          <p className="hero-reveal hero-reveal-delay-3 mt-5 max-w-md text-lg text-white/70 sm:text-xl md:mt-6 md:text-2xl">
+            {SITE_CONFIG.description}
+          </p>
+
+          <div className="hero-reveal hero-reveal-delay-4 mt-8 flex flex-col gap-3 sm:flex-row sm:mt-10">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full bg-white px-8 text-black hover:bg-white/90"
+            >
+              <Link to="/sequences/new">Get Started</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="rounded-full border-white/25 bg-white/5 px-8 text-white backdrop-blur-sm hover:bg-white/15 hover:text-white"
+            >
+              <a
+                href={SITE_CONFIG.githubHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GitHubIcon className="size-4" />
+                View on GitHub
+              </a>
+            </Button>
           </div>
-        ))}
+        </div>
+
+        {/* Mini filmstrip at bottom edge */}
+        <div className="relative mx-auto mt-10 max-w-7xl overflow-hidden sm:mt-14">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-black/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-black/80 to-transparent" />
+          <div
+            className="flex w-max gap-2 will-change-transform"
+            style={{ animation: 'marquee 40s linear infinite' }}
+          >
+            {duplicatedFilmstrip.map((src, i) => (
+              <Image
+                key={i}
+                src={src}
+                alt=""
+                width={142}
+                height={80}
+                loading="lazy"
+                className="h-16 w-auto rounded-md opacity-40 sm:h-20"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

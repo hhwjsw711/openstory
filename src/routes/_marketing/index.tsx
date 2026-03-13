@@ -2,13 +2,11 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { sessionQueryOptions } from '@/lib/auth/session-query';
 import { HeroSection } from '@/components/marketing/hero-section';
 import { ManifestoSection } from '@/components/marketing/manifesto-section';
-import { SectionDivider } from '@/components/marketing/section-divider';
+import { ProductShowcase } from '@/components/marketing/product-showcase';
 import { TopTierFeatures } from '@/components/marketing/feature-cards';
-import { CapabilityGrid } from '@/components/marketing/capability-grid';
 import { HowItWorks } from '@/components/marketing/how-it-works';
 import { OpenFairSection } from '@/components/marketing/open-fair-section';
 import { FaqSection } from '@/components/marketing/faq-section';
-import { SECTION_LABELS } from '@/lib/marketing/constants';
 
 export const Route = createFileRoute('/_marketing/')({
   component: HomePage,
@@ -43,15 +41,10 @@ function HomePage() {
   return (
     <main>
       <HeroSection />
-      <SectionDivider label={SECTION_LABELS.intro} />
       <ManifestoSection />
-      <SectionDivider label={SECTION_LABELS.openFair} />
-      <OpenFairSection />
-      <SectionDivider label={SECTION_LABELS.pipeline} />
+      <ProductShowcase />
       <TopTierFeatures />
-      <SectionDivider label={SECTION_LABELS.toolkit} />
-      <CapabilityGrid />
-      <SectionDivider label={SECTION_LABELS.process} />
+      <OpenFairSection />
       <HowItWorks />
       <FaqSection />
     </main>
