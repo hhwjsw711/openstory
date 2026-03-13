@@ -16,19 +16,16 @@ import {
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
+import { updateFrame } from '@/lib/db/helpers/frames';
 import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
 import {
   updateSequenceAnalysisDurationMs,
   updateSequenceMusicPrompt,
   updateSequenceStatus,
-  updateSequenceTitle,
-  updateSequenceWorkflow,
 } from '@/lib/db/helpers/sequences';
 import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   CharacterMinimal,
-  NewFrame,
   SequenceLocationMinimal,
 } from '@/lib/db/schema';
 import { recordWorkflowTrace } from '@/lib/observability/langfuse';
@@ -55,7 +52,7 @@ import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
-import { durableLLMCall } from './llm-call-helper';
+import { durableLLMCall, durableStreamingSceneSplit } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 import { reinforceInstrumentalTags } from './music-prompt.schema';
@@ -154,87 +151,21 @@ export const analyzeScriptWorkflow = createWorkflow(
       teamId: input.teamId,
     };
 
-    const {
-      scenes,
-      projectMetadata: { title },
-    } = await durableLLMCall(
+    const { scenes, frameMapping } = await durableStreamingSceneSplit(
       context,
       {
-        name: 'scene-splitting',
-        phase: { number: 1, name: 'Analyzing script…' },
-
         promptName: 'phase/scene-splitting-chat',
         promptVariables: {
           aspectRatio,
           script: sanitizeScriptContent(script),
         },
-
         modelId: analysisModelId,
         responseSchema: sceneSplittingResultSchema,
+        sequenceId,
+        autoGenerateMotion,
       },
       llmCallContext
     );
-
-    const frameMapping: { sceneId: string; frameId: string }[] =
-      await context.run('update-title-and-create-frames', async () => {
-        for (const scene of scenes) {
-          await getGenerationChannel(sequenceId).emit('generation.scene:new', {
-            sceneId: scene.sceneId,
-            sceneNumber: scene.sceneNumber,
-            title: scene.metadata?.title || 'Untitled Scene',
-            scriptExtract: scene.originalScript?.extract || '',
-            durationSeconds: scene.metadata?.durationSeconds || 3,
-          });
-        }
-
-        if (!sequenceId) return [];
-
-        await updateSequenceTitle(sequenceId, title);
-        await getGenerationChannel(sequenceId).emit('generation.updated', {
-          title,
-        });
-        await updateSequenceWorkflow(
-          sequenceId,
-          'analyze-script-shorter-prompts-batch-size-1'
-        );
-
-        const frameInserts = scenes.map(
-          (scene, index) =>
-            ({
-              sequenceId,
-              description: scene.originalScript?.extract || '',
-              orderIndex: index,
-              metadata: scene,
-              durationMs: Math.round(
-                (scene.metadata?.durationSeconds || 3) * 1000
-              ),
-              thumbnailStatus: 'generating',
-              videoStatus: autoGenerateMotion ? 'generating' : 'pending',
-            }) satisfies NewFrame
-        );
-
-        const createdFrames = await bulkInsertFrames(frameInserts);
-        const mapping = createdFrames.map((f) => ({
-          sceneId: f.metadata?.sceneId || '',
-          frameId: f.id,
-        }));
-
-        await updateSequenceStatus(sequenceId, 'completed');
-
-        for (const { sceneId, frameId } of mapping) {
-          const scene = scenes.find((s) => s.sceneId === sceneId);
-          await getGenerationChannel(sequenceId).emit(
-            'generation.frame:created',
-            {
-              frameId,
-              sceneId,
-              orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
-            }
-          );
-        }
-
-        return mapping;
-      });
 
     // Phase 2: Character and location extraction
     const { characterBible } = await durableLLMCall(
