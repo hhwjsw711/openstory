@@ -4,9 +4,10 @@
  */
 
 import { AuthForm } from '@/components/auth/auth-form';
+import { OpenStoryLogo } from '@/components/icons/openstory-logo';
 import { PageContainer } from '@/components/layout/page-container';
 import { getRedirectFromParams } from '@/lib/auth/navigation';
-import { createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 const searchSchema = z.object({
@@ -29,10 +30,12 @@ function LoginPage() {
     <PageContainer className="min-h-0 flex-1">
       <div className="flex h-full items-center justify-center">
         <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold">Welcome to OpenStory</h1>
-            <p className="mt-2 text-muted-foreground">
-              Sign in to continue creating cinematic content
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Link to="/">
+              <OpenStoryLogo size="lg" />
+            </Link>
+            <p className="text-muted-foreground">
+              AI video production, from script to screen.
             </p>
           </div>
           <AuthForm
