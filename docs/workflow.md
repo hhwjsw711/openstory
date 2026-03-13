@@ -9,9 +9,7 @@ flowchart TD
     Verify["<b>Verify + Prepare</b> · &lt;1s<br/>IN: sequenceId, userId, teamId<br/>OUT: script, aspectRatio, styleConfig,<br/>analysisModelId, imageModel, videoModel"] --> SceneSplit
 
     subgraph "Phase 1 — Script Analysis · ~3min"
-        SceneSplit["<b>Scene Splitting</b> · LLM · ~3min<br/>IN: script, aspectRatio<br/>OUT: scenes[], title"]
-        CreateFrames["<b>Create Frames</b> · DB · ~1s<br/>IN: scenes[], sequenceId<br/>OUT: frameMapping[sceneId→frameId]"]
-        SceneSplit --> CreateFrames
+        SceneSplit["<b>Scene Splitting</b> · LLM streaming · ~3min<br/>IN: script, aspectRatio<br/>OUT: scenes[], title, frameMapping[]<br/><i>frames created progressively as scenes stream in</i>"]
     end
 
     subgraph "Phase 2 — Extraction (sequential) · ~2.5min"
@@ -20,7 +18,7 @@ flowchart TD
         CharExtract --> LocExtract
     end
 
-    CreateFrames --> CharExtract
+    SceneSplit --> CharExtract
 
     subgraph "Phase 2b — Matching (sequential, conditional) · &lt;1s if skipped"
         TalentMatch["<b>Talent Matching</b> · LLM<br/>IN: characterBible[], talentList[] (from DB)<br/>OUT: talentCharacterMatches[]<br/><i>skipped if no suggestedTalentIds</i>"]
@@ -59,23 +57,21 @@ flowchart TD
     ImageGen --> MotionPrompts
     VisualPrompts -->|"scenes"| MotionPrompts
 
-    subgraph "Phase 6 — Audio Design · ~6min ⚠️"
-        AudioDesign["<b>Audio Design</b> · LLM · ~6min<br/>IN: scenesWithMotionPrompts[]<br/>OUT: audioDesign per scene<br/>(music, soundEffects, dialogue, ambient)"]
-        MergeAudio["<b>Merge + Persist</b> · DB<br/>IN: scenesWithMotionPrompts[], audioDesign[]<br/>OUT: completeScenes[]"]
-        AudioDesign --> MergeAudio
+    subgraph "Phase 6 — Music Design · ~1-2min"
+        MusicDesign["<b>Music Design</b> · LLM · ~1-2min<br/>IN: sceneSummaries (sceneId, title, storyBeat,<br/>durationSeconds, location, timeOfDay, visualSummary)<br/>OUT: musicDesign per scene<br/>(presence, style, mood, atmosphere)<br/>+ unified tags, prompt"]
+        MergeMusicDesign["<b>Merge + Persist</b> · DB<br/>IN: scenesWithMotionPrompts[], musicDesign[]<br/>OUT: completeScenes[]"]
+        MusicDesign --> MergeMusicDesign
     end
 
-    MergeMotion -->|"scenesWithMotionPrompts"| AudioDesign
+    MergeMotion -->|"scenesWithMotionPrompts"| MusicDesign
 
-    subgraph "Phase 7 — Final Generation (parallel) · ~10s without motion/music"
-        MusicPrompt["<b>Music Prompt</b> · LLM · ~10s<br/>IN: scene summaries (title, storyBeat,<br/>durationSeconds, musicStyle, musicMood, musicPresence)<br/>OUT: prompt string, tags string"]
+    subgraph "Phase 7 — Motion + Music Generation"
         MotionGen["<b>Motion Generation</b> · Fal.ai ×N parallel · ~1-5min<br/>IN: imageUrls[], motionPrompts[],<br/>videoModel, aspectRatio, durationSeconds<br/>OUT: videoUrl per frame<br/><i>only if autoGenerateMotion</i>"]
         MusicGen["<b>Music Generation</b> · Fal.ai · ~30-120s<br/>IN: prompt, tags, totalDuration, musicModel<br/>OUT: musicUrl on sequence<br/><i>only if autoGenerateMusic</i>"]
-        MusicPrompt --> MotionGen
-        MusicPrompt --> MusicGen
     end
 
-    MergeAudio -->|"completeScenes"| MusicPrompt
+    MergeMusicDesign -->|"completeScenes"| MotionGen
+    MergeMusicDesign -->|"tags + prompt"| MusicGen
     ImageGen -->|"imageUrls"| MotionGen
     MergeMotion -->|"motionPrompts + durations"| MotionGen
 
@@ -87,7 +83,7 @@ flowchart TD
     style Trace fill:#1a472a,color:#fff
 ```
 
-> **Timing source:** Measured from local QStash logs for a 9-scene run (`wfr_analyze-script-01KKGWTGRGQRTN55B3SSH2V89H`), no talent/location matching. Total wall time: **~15 min**. Audio design was the dominant step at ~6 min. Motion and music generation were not triggered in this run (autoGenerate off).
+> **Timing source:** Measured from local QStash logs for a 9-scene run. Music design (~1-2 min) replaced the old audio design (~6 min) bottleneck. Motion and music generation times depend on model and scene count.
 
 ### Per-Scene Fan-Out Detail
 
@@ -125,9 +121,8 @@ flowchart LR
         MPN --> MPJoin
     end
 
-    MPJoin --> AudioDesign["Phase 6: Audio Design"]
-    AudioDesign --> MusicPrompt["Phase 7: Music Prompt"]
-    MusicPrompt --> MotFork
+    MPJoin --> MusicDesign["Phase 6: Music Design"]
+    MusicDesign --> MotFork
 
     subgraph "Phase 7 — Motion Generation · ~1-5min wall time (if enabled)"
         direction LR
@@ -205,35 +200,27 @@ After the analyze-script workflow completes, emits `generation.complete`.
 
 **File:** `src/lib/workflows/analyze-script-workflow.ts`
 
-This is the core orchestration workflow. It uses `durableLLMCall()` for all LLM interactions and `context.invoke()` for sub-workflows.
+This is the core orchestration workflow. It uses `durableStreamingSceneSplit()` for Phase 1 (streaming scene parsing), `durableLLMCall()` for other LLM interactions, and `context.invoke()` for sub-workflows.
 
-### Phase 1: Scene Splitting (LLM)
+### Phase 1: Scene Splitting (Streaming LLM)
 
-**Step:** `durableLLMCall('scene-splitting')`
+Uses `durableStreamingSceneSplit()` — a streaming variant that creates frames progressively as scenes arrive from the LLM, rather than waiting for the full response.
+
+**Steps:**
+
+1. **`prepare-scene-splitting`** — Fetches the prompt template, emits `generation.phase:start` (phase 1)
+2. **`scene-splitting-stream`** — Streams the LLM response through `createStreamingSceneParser()`:
+   - Parses incremental JSON chunks via `partial-json`
+   - On each complete scene: calls `upsertFrame()` to create/update the frame in DB, emits `generation.scene:new` and `generation.frame:created`
+   - On title detection: updates the sequence title, emits `generation.updated`
+   - Sets sequence status to `completed` once streaming finishes (frames are visible, generation continues)
+3. **`reconcile-frames`** — Bulk upserts all frames via `bulkInsertFrames()` to handle QStash replay safety (idempotent on `sequenceId + orderIndex` conflict)
+4. **`deduct-llm-credits-scene-splitting`** + **`log-scene-splitting`** — Credit deduction and phase completion logging
 
 - **Prompt:** `phase/scene-splitting-chat`
 - **Variables:** `{ aspectRatio, script }` (script is sanitized)
 - **Response schema:** `sceneSplittingResultSchema`
-- **Output:** `{ scenes: Scene[], projectMetadata: { title } }`
-
-Splits the user's script into individual scenes. Each scene gets a `sceneId`, `sceneNumber`, metadata (title, duration, location, time of day, story beat), and the original script extract.
-
-### Phase 1b: Create Frames in DB
-
-**Step:** `update-title-and-create-frames`
-
-1. Emits `generation.scene:new` for each scene (progressive display in UI)
-2. Updates the sequence title from `projectMetadata.title`
-3. Emits `generation.updated` with the new title
-4. Bulk-inserts frames into the database:
-   - Each frame maps 1:1 to a scene
-   - `metadata` field stores the full `Scene` object
-   - `thumbnailStatus` = `'generating'`
-   - `videoStatus` = `'generating'` if `autoGenerateMotion`, else `'pending'`
-5. Sets sequence status to `completed` (frames are visible, generation continues)
-6. Emits `generation.frame:created` for each frame
-
-**Output:** `frameMapping` -- array of `{ sceneId, frameId }` used throughout remaining phases.
+- **Output:** `{ scenes[], title, frameMapping[] }` — `frameMapping` is an array of `{ sceneId, frameId }` used throughout remaining phases
 
 ### Phase 2: Character + Location Extraction (LLM)
 
@@ -349,43 +336,49 @@ flowchart LR
 - Writes motion prompts and snapped durations to frame records
 - Emits `generation.frame:updated` with `updateType: 'motion-prompt'`
 
-### Phase 6: Audio Design (LLM)
+### Phase 6: Music Design (LLM)
 
-**Step:** `durableLLMCall('audio-design')`
+A single LLM call that replaces the old two-call pattern (audio design + music prompt). Classifies per-scene music requirements and generates a unified music prompt with tags.
 
-- **Prompt:** `phase/audio-design-chat`
-- **Variables:** `{ scenes }` (JSON-serialized scenes with motion prompts)
-- **Output:** `{ scenes: [...] }` -- each scene enriched with `audioDesign` (music, sound effects, dialogue, ambient)
+**Step:** `durableLLMCall('music-design')`
 
-**Step:** `merge-audio-design`
+- **Prompt:** `phase/music-design-chat`
+- **Input:** `sceneSummaries` — a subset of scene data per scene: `{ sceneId, title, storyBeat, durationSeconds, location, timeOfDay, visualSummary }`
+- **Response schema:** `musicDesignResultSchema`
+- **Output:** `{ scenes: [{ sceneId, musicDesign }], tags, prompt }`
+  - `musicDesign` per scene: `{ presence, style, mood, atmosphere }`
+  - `presence`: `'none'` | `'minimal'` | `'moderate'` | `'full'`
+  - `tags`: comma-separated, always starts with `"instrumental"`
+  - `prompt`: 1-2 sentence music generation prompt
 
-- Merges `audioDesign` into scene objects
+**Step:** `merge-music-design`
 
-**Step:** `update-frames-after-audio-design`
+- Merges `musicDesign` into scene objects to produce `completeScenes[]`
 
-- Writes complete scene data to frame records
-- Emits `generation.frame:updated` with `updateType: 'audio-design'`
+**Step:** `update-frames-after-music-design`
 
-### Phase 7: Music Prompt + Motion + Music Generation
+- Writes complete scene data (with `musicDesign`) to frame records
+- Emits `generation.frame:updated` with `updateType: 'music-design'`
 
-Only runs for scenes where `audioDesign.music.presence !== 'none'`.
+### Phase 7: Motion + Music Generation
 
-**Music prompt generation:**
+Music prompt and tags come from the music design step (Phase 6) — no separate LLM call needed.
 
-- Emits `generation.phase:start` (phase 8, "Composing music...")
-- `durableLLMCall('music-prompt-generation')` -- generates a music prompt and tags
-- Tags are reinforced with instrumental markers
+**Store music prompt:**
+
+- **Step:** `store-music-prompt`
+- Tags are reinforced with `reinforceInstrumentalTags()` (ensures `"instrumental"` prefix)
 - Music prompt and tags stored on the sequence record
 
-**Motion generation** (conditional -- if `autoGenerateMotion` && `videoModel` && images exist):
+**Motion generation** (conditional — if `autoGenerateMotion` && `videoModel` && images exist):
 
-- Emits `generation.phase:start` (phase 7, "Generating motion...")
+- Emits `generation.phase:start` (phase 8, "Generating motion…")
 - Invokes `generateMotionWorkflow` per scene in parallel
-- Each motion workflow submits a job, polls for completion (batched polling, 30s batches, up to 15 min timeout)
+- Each motion workflow submits a job, polls for completion (batched polling, 30s tight loops with checkpoints between batches, up to 15 min timeout — ~10x fewer QStash steps than per-poll steps)
 - Uploads video to R2, updates frame, emits `generation.video:progress`
 - After all frames complete, auto-triggers `merge-video` workflow
 
-**Music generation** (conditional -- if `autoGenerateMusic`):
+**Music generation** (conditional — if `autoGenerateMusic`):
 
 - Invokes `generateMusicWorkflow` with the generated prompt, tags, and total duration
 - Music workflow generates audio via Fal.ai, uploads to R2, updates sequence record
@@ -408,13 +401,13 @@ flowchart TD
     P3["Phase 3: Visual Prompts"] -->|"+ prompts.visual<br/>(fullPrompt, negativePrompt,<br/>components, parameters)<br/>+ continuity<br/>(characterTags, environmentTag,<br/>colorPalette, lightingSetup)"| P4
     P4["Phase 4: Images"] -->|"Frames get thumbnailUrl<br/>(Scene object unchanged)"| P5
     P5["Phase 5: Motion Prompts"] -->|"+ prompts.motion<br/>(fullPrompt, components,<br/>parameters)<br/>+ snapped duration"| P6
-    P6["Phase 6: Audio Design"] -->|"+ audioDesign<br/>(music, soundEffects,<br/>dialogue, ambient)"| P7
-    P7["Phase 7: Music + Motion"] -->|"Sequence gets musicUrl,<br/>Frames get videoUrl"| Final["Complete Scene"]
+    P6["Phase 6: Music Design"] -->|"+ musicDesign<br/>(presence, style,<br/>mood, atmosphere)"| P7
+    P7["Phase 7: Motion + Music"] -->|"Sequence gets musicUrl,<br/>Frames get videoUrl"| Final["Complete Scene"]
 
     style Final fill:#1a472a,color:#fff
 ```
 
-Each phase enriches the `Scene` object. The frame's `metadata` column is updated after phases 3, 5, and 6 to persist intermediate results.
+Each phase enriches the `Scene` object. The frame's `metadata` column is updated after phases 3, 5, and 6 to persist intermediate results. Phase 1 now creates frames progressively during streaming rather than in a single batch.
 
 ## Real-Time Events
 
@@ -424,9 +417,9 @@ Events emitted via Upstash Realtime on a per-sequence channel (`getGenerationCha
 | ------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
 | `generation.phase:start`              | Before each LLM call or generation phase         | `{ phase, phaseName }`                                                |
 | `generation.phase:complete`           | After each phase completes                       | `{ phase }`                                                           |
-| `generation.scene:new`                | Phase 1b -- for each scene as it's created       | `{ sceneId, sceneNumber, title, scriptExtract, durationSeconds }`     |
-| `generation.updated`                  | Phase 1b -- after title update                   | `{ title }`                                                           |
-| `generation.frame:created`            | Phase 1b -- after frames inserted in DB          | `{ frameId, sceneId, orderIndex }`                                    |
+| `generation.scene:new`                | Phase 1 -- progressively as scenes stream in     | `{ sceneId, sceneNumber, title, scriptExtract, durationSeconds }`     |
+| `generation.updated`                  | Phase 1 -- after title detected in stream        | `{ title }`                                                           |
+| `generation.frame:created`            | Phase 1 -- progressively as frames are upserted  | `{ frameId, sceneId, orderIndex }`                                    |
 | `generation.frame:updated`            | Phases 4, 5, 6 -- after prompts written to DB    | `{ frameId, updateType, metadata }`                                   |
 | `generation.talent:matched`           | Phase 2b -- when talent matched to characters    | `{ matches: [{ characterId, characterName, talentId, talentName }] }` |
 | `generation.location:matched`         | Phase 2b -- when locations matched to library    | `{ matches: [{ locationId, locationName, libraryLocationId, ... }] }` |
@@ -444,7 +437,7 @@ Events emitted via Upstash Realtime on a per-sequence channel (`getGenerationCha
 
 The analyze-script workflow registers a `failureFunction` that:
 
-1. Sanitizes the error via `sanitizeFailResponse()` (strips internal details)
+1. Sanitizes the error via `sanitizeFailResponse()` — extracts inner errors from QStash wrapper patterns, maps known Cloudflare error codes (e.g., `1102` → "Worker exceeded memory limit"), and truncates messages over 500 characters
 2. Updates sequence status to `'failed'` with the error message
 3. Emits `generation.failed` with the sanitized error
 
@@ -468,23 +461,27 @@ Sub-workflows (image, motion, music, character bible, location bible) each have 
 
 ## Key Files Reference
 
-| File                                                | Purpose                                         |
-| --------------------------------------------------- | ----------------------------------------------- |
-| `src/functions/sequences.ts`                        | Server functions that trigger the pipeline      |
-| `src/lib/workflow/client.ts`                        | `triggerWorkflow()` -- QStash integration       |
-| `src/routes/api/workflows/$.ts`                     | Workflow route registration (`serveMany`)       |
-| `src/lib/workflows/storyboard-workflow.ts`          | Wrapper: verify, clear, invoke analyze-script   |
-| `src/lib/workflows/analyze-script-workflow.ts`      | Core 8-phase orchestration                      |
-| `src/lib/workflows/llm-call-helper.ts`              | `durableLLMCall()` -- 3-step LLM pattern        |
-| `src/lib/workflows/visual-prompt-workflow.ts`       | Visual prompt sub-workflow (parallel per scene) |
-| `src/lib/workflows/visual-prompt-scene-workflow.ts` | Per-scene visual prompt LLM call                |
-| `src/lib/workflows/motion-prompt-workflow.ts`       | Motion prompt sub-workflow (parallel per scene) |
-| `src/lib/workflows/motion-prompt-scene-workflow.ts` | Per-scene motion prompt LLM call                |
-| `src/lib/workflows/character-bible-workflow.ts`     | Character sheet generation                      |
-| `src/lib/workflows/location-bible-workflow.ts`      | Location sheet generation                       |
-| `src/lib/workflows/image-workflow.ts`               | Image generation (Fal.ai)                       |
-| `src/lib/workflows/motion-workflow.ts`              | Motion/video generation (Fal.ai)                |
-| `src/lib/workflows/music-workflow.ts`               | Music generation (Fal.ai)                       |
-| `src/lib/realtime/index.ts`                         | Real-time event schema and channel helpers      |
-| `src/lib/ai/scene-analysis.schema.ts`               | `Scene` type definition                         |
-| `src/lib/workflows/music-prompt.schema.ts`          | Music prompt Zod schema                         |
+| File                                                | Purpose                                                   |
+| --------------------------------------------------- | --------------------------------------------------------- |
+| `src/functions/sequences.ts`                        | Server functions that trigger the pipeline                |
+| `src/lib/workflow/client.ts`                        | `triggerWorkflow()` -- QStash integration                 |
+| `src/routes/api/workflows/$.ts`                     | Workflow route registration (`serveMany`)                 |
+| `src/lib/workflows/storyboard-workflow.ts`          | Wrapper: verify, clear, invoke analyze-script             |
+| `src/lib/workflows/analyze-script-workflow.ts`      | Core 8-phase orchestration                                |
+| `src/lib/workflows/llm-call-helper.ts`              | `durableLLMCall()` + `durableStreamingSceneSplit()`       |
+| `src/lib/ai/streaming-scene-parser.ts`              | Incremental JSON parser for streaming scene creation      |
+| `src/lib/workflow/sanitize-fail-response.ts`        | Error message extraction from QStash failures             |
+| `src/lib/db/helpers/frames.ts`                      | `upsertFrame()` / `bulkInsertFrames()` idempotent helpers |
+| `src/lib/workflows/visual-prompt-workflow.ts`       | Visual prompt sub-workflow (parallel per scene)           |
+| `src/lib/workflows/visual-prompt-scene-workflow.ts` | Per-scene visual prompt LLM call                          |
+| `src/lib/workflows/motion-prompt-workflow.ts`       | Motion prompt sub-workflow (parallel per scene)           |
+| `src/lib/workflows/motion-prompt-scene-workflow.ts` | Per-scene motion prompt LLM call                          |
+| `src/lib/workflows/character-bible-workflow.ts`     | Character sheet generation                                |
+| `src/lib/workflows/location-bible-workflow.ts`      | Location sheet generation                                 |
+| `src/lib/workflows/image-workflow.ts`               | Image generation (Fal.ai)                                 |
+| `src/lib/workflows/motion-workflow.ts`              | Motion/video generation (Fal.ai)                          |
+| `src/lib/workflows/music-workflow.ts`               | Music generation (Fal.ai)                                 |
+| `src/lib/realtime/index.ts`                         | Real-time event schema and channel helpers                |
+| `src/lib/ai/scene-analysis.schema.ts`               | `Scene` type definition                                   |
+| `src/lib/workflows/music-prompt.schema.ts`          | Music prompt Zod schema + `reinforceInstrumentalTags()`   |
+| `src/lib/ai/response-schemas.ts`                    | `musicDesignResultSchema` and other LLM response schemas  |

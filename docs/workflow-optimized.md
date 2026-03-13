@@ -1,28 +1,44 @@
 # Optimized Analyze-Script Workflow
 
-Companion to [`workflow.md`](./workflow.md). Documents four optimizations to the analyze-script pipeline that reduce the critical path from ~15 min to ~12 min for a 9-scene run.
+Companion to [`workflow.md`](./workflow.md). Documents implemented and planned optimizations to the analyze-script pipeline.
+
+## Implemented Optimizations
+
+Three optimizations have been shipped on this branch:
+
+1. **Streaming scene parser** — Phase 1 uses `durableStreamingSceneSplit()` to create frames progressively as scenes stream from the LLM, instead of waiting for the full response. No timing improvement on the critical path, but frames appear in the UI immediately. Steps: `prepare-scene-splitting` → `scene-splitting-stream` → `reconcile-frames` → `deduct-llm-credits-scene-splitting` + `log-scene-splitting`.
+
+2. **Music design consolidation** — Old Phase 6 (Audio Design, ~6 min LLM) + Phase 7 (Music Prompt, ~10s LLM) replaced by a single "Music Design" LLM call (`music-design-chat` → `musicDesignResultSchema`). Returns per-scene `musicDesign` (presence/style/mood/atmosphere) + unified `tags` + `prompt`. **Saves ~4 min** by eliminating the audio design bottleneck and one entire LLM call.
+
+3. **Batched motion polling** — Motion workflow uses tight-loop polling inside `context.run()` steps (30s batches, up to 15 min) instead of per-poll QStash steps. **~10x reduction in QStash steps** per motion generation.
+
+### Updated Baseline
+
+With music design consolidation, the current sequential pipeline takes **~9-10 min** (down from ~15 min) for a 9-scene run without motion/music generation. The music design step (~1-2 min) replaces the old audio design bottleneck (~6 min).
+
+## Planned Optimizations
+
+Four parallelization optimizations remain as future work. Timing estimates below use the updated baseline (music design ~1-2 min, not audio design ~6 min).
 
 ## Data Dependency Graph
 
 Every phase's true inputs and outputs, traced from the code (`src/lib/workflows/analyze-script-workflow.ts`):
 
-| Phase | Step                 | Inputs (what it actually reads)                                                        | Outputs                          | Code reference                               |
-| ----- | -------------------- | -------------------------------------------------------------------------------------- | -------------------------------- | -------------------------------------------- |
-| 1     | Scene splitting      | `script`, `aspectRatio`                                                                | `scenes[]`                       | L163-179                                     |
-| 1b    | Create frames        | `scenes[]`, `sequenceId`                                                               | frame DB rows                    | L181-240                                     |
-| 2     | Character extraction | `scenes[]`                                                                             | `characterBible`                 | L243-258                                     |
-| 2     | Location extraction  | `scenes[]`                                                                             | `locationBible`                  | L260-275                                     |
-| 2b    | Talent matching      | `characterBible`, `suggestedTalentIds`                                                 | `talentCharacterMatches`         | L278-367                                     |
-| 2b    | Location matching    | `locationBible`, `suggestedLocationIds`                                                | `libraryLocationMatches`         | L370-462                                     |
-| 3     | Character sheets     | `characterBible`, `talentCharacterMatches`                                             | `charactersWithSheets`           | L466-476                                     |
-| 3     | Location sheets      | `locationBible`, `libraryLocationMatches`                                              | `locationsWithSheets`            | L477-486                                     |
-| 3     | Visual prompts       | `scenes[]`, `characterBible`, `locationBible`, `styleConfig`, `aspectRatio`            | `scenesWithVisualPrompts`        | L488-499                                     |
-| 4     | Image generation     | `scenesWithVisualPrompts`, `charactersWithSheets`, `locationsWithSheets`, `imageModel` | `imageUrls[]` + frame DB updates | L542-627                                     |
-| 4     | Motion prompts       | `scenesWithVisualPrompts`, `characterBible`, `styleConfig`, `aspectRatio`              | `motionPrompts[]`                | L636-648 (Branch A, parallel with image gen) |
-| 5     | Audio design         | `scenesWithVisualPrompts` (visual prompts only, no motion data)                        | `completeScenes`                 | L720-739                                     |
-| 7     | Music prompt         | `completeScenes` (with audio design)                                                   | `musicPrompt`, `tags`            | L812-825                                     |
-| 7     | Motion generation    | `imageUrls[]`, `motionPrompts[]`, `videoModel`                                         | `videoUrl` frame DB updates      | L838-881                                     |
-| 7     | Music generation     | `musicPrompt`, `totalDuration`, `musicModel`                                           | `musicUrl` sequence DB update    | L883-903                                     |
+| Phase | Step                        | Inputs (what it actually reads)                                                                   | Outputs                           | Code reference                               |
+| ----- | --------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------- |
+| 1     | Scene splitting (streaming) | `script`, `aspectRatio`                                                                           | `scenes[]`, `frameMapping[]`      | streaming-scene-split steps                  |
+| 2     | Character extraction        | `scenes[]`                                                                                        | `characterBible`                  | L243-258                                     |
+| 2     | Location extraction         | `scenes[]`                                                                                        | `locationBible`                   | L260-275                                     |
+| 2b    | Talent matching             | `characterBible`, `suggestedTalentIds`                                                            | `talentCharacterMatches`          | L278-367                                     |
+| 2b    | Location matching           | `locationBible`, `suggestedLocationIds`                                                           | `libraryLocationMatches`          | L370-462                                     |
+| 3     | Character sheets            | `characterBible`, `talentCharacterMatches`                                                        | `charactersWithSheets`            | L466-476                                     |
+| 3     | Location sheets             | `locationBible`, `libraryLocationMatches`                                                         | `locationsWithSheets`             | L477-486                                     |
+| 3     | Visual prompts              | `scenes[]`, `characterBible`, `locationBible`, `styleConfig`, `aspectRatio`                       | `scenesWithVisualPrompts`         | L488-499                                     |
+| 4     | Image generation            | `scenesWithVisualPrompts`, `charactersWithSheets`, `locationsWithSheets`, `imageModel`            | `imageUrls[]` + frame DB updates  | L542-627                                     |
+| 4     | Motion prompts              | `scenesWithVisualPrompts`, `characterBible`, `styleConfig`, `aspectRatio`                         | `motionPrompts[]`                 | L636-648 (Branch A, parallel with image gen) |
+| 6     | Music design                | `sceneSummaries` (sceneId, title, storyBeat, durationSeconds, location, timeOfDay, visualSummary) | `musicDesign[]`, `tags`, `prompt` | music-design step                            |
+| 7     | Motion generation           | `imageUrls[]`, `motionPrompts[]`, `videoModel`                                                    | `videoUrl` frame DB updates       | L838-881                                     |
+| 7     | Music generation            | `musicPrompt`, `totalDuration`, `musicModel`                                                      | `musicUrl` sequence DB update     | L883-903                                     |
 
 Key insight: arrows show what each step **actually reads**, not just what runs before it.
 
@@ -36,8 +52,7 @@ flowchart TD
     MotPrompts["motionPrompts"]
     Sheets["character/location sheets"]
     Images["imageUrls[]"]
-    AudioOut["completeScenes"]
-    MusicPromptOut["musicPrompt, tags"]
+    MusicDesignOut["musicDesign[], tags, prompt"]
 
     Script --> Scenes
     Scenes --> CharBible
@@ -53,19 +68,16 @@ flowchart TD
     VisPrompts --> Images
     Sheets --> Images
 
-    VisPrompts --> AudioOut
-    AudioOut --> MusicPromptOut
+    VisPrompts --> MusicDesignOut
 
     Images -->|"Branch A"| MotionGen["Motion generation"]
     MotPrompts -->|"Branch A"| MotionGen
 
-    MusicPromptOut -->|"Branch B"| MusicGen["Music generation"]
+    MusicDesignOut -->|"Branch B"| MusicGen["Music generation"]
 
     style MotionGen fill:#2563eb,color:#fff
     style MusicGen fill:#7c3aed,color:#fff
 ```
-
-## Optimizations
 
 ### 1. Parallel Character + Location Extraction
 
@@ -122,10 +134,10 @@ get-library-locations → location-matching → build-matches ─┘
 
 ### 3. Motion Prompts Parallel with Image Gen in Branch A
 
-**Current:** Motion prompts run after image generation (L636), blocking audio design.
+**Current:** Motion prompts run after image generation, blocking music design.
 
 ```
-Phase 3 (3-way parallel) → Image Gen → Motion Prompts → Audio Design
+Phase 3 (3-way parallel) → Image Gen → Motion Prompts → Music Design
 ```
 
 **Optimized:** Motion prompts run inside Branch A, parallel with image generation via `Promise.all`.
@@ -154,7 +166,7 @@ Phase 3 (3-way parallel) → Fork:
 **Current (fully sequential after Phase 3):**
 
 ```
-Phase 3 → Image Gen → Motion Prompts → Audio Design → Music Prompt → [Motion Gen, Music Gen]
+Phase 3 → Image Gen → Motion Prompts → Music Design → [Motion Gen, Music Gen]
 ```
 
 **Optimized (two independent branches fork directly after Phase 3):**
@@ -162,16 +174,16 @@ Phase 3 → Image Gen → Motion Prompts → Audio Design → Music Prompt → [
 ```
 Phase 3 ──┬→ Branch A (visual):  Promise.all(Image Gen, Motion Prompts) → merge → Motion Gen
            │
-           └→ Branch B (audio):  Audio Design (visual prompts only) → Music Prompt → Music Gen
+           └→ Branch B (audio):  Music Design → Music Gen
 ```
 
 **Why it works:**
 
-- **Image gen** needs: `scenesWithVisualPrompts` + `charactersWithSheets` + `locationsWithSheets` (all from Phase 3). Does NOT need motion prompts or audio design.
+- **Image gen** needs: `scenesWithVisualPrompts` + `charactersWithSheets` + `locationsWithSheets` (all from Phase 3). Does NOT need motion prompts or music design.
 - **Motion prompts** need: `scenesWithVisualPrompts` + `characterBible` + `styleConfig` (all from Phase 3). Does NOT need images.
-- **Audio design** needs: `scenesWithVisualPrompts` (visual prompts and scene metadata). Does NOT need motion prompts, images, or character/location sheets.
-- **Motion gen** needs: `imageUrls[]` + `motionPrompts[]` (L862-874). Both produced by Branch A's `Promise.all`.
-- **Music gen** needs: `musicPrompt` + `tags` + `totalDuration` (L888-902). Does NOT need images or motion videos.
+- **Music design** needs: `sceneSummaries` (derived from scenes with visual prompts). Does NOT need motion prompts, images, or character/location sheets.
+- **Motion gen** needs: `imageUrls[]` + `motionPrompts[]`. Both produced by Branch A's `Promise.all`.
+- **Music gen** needs: `prompt` + `tags` + `totalDuration`. All produced by music design step in Branch B.
 
 The two branches share no data after Phase 3.
 
@@ -179,29 +191,22 @@ The two branches share no data after Phase 3.
 
 1. After Phase 3, fork directly into two `Promise.all` branches:
    - **Branch A:** `Promise.all(imageGen, motionPrompts)` → merge motion prompts into scenes → persist motion prompt metadata → (if autoGenerateMotion) Motion gen
-   - **Branch B:** Audio design (using `scenesWithVisualPrompts`) → Merge audio → Music prompt → (if autoGenerateMusic) Music gen
+   - **Branch B:** Music design (using `sceneSummaries`) → Merge music design → (if autoGenerateMusic) Music gen
 2. `await Promise.all([branchA, branchB])` → Final metadata merge → Record trace.
 
 **Final metadata merge:** Both branches produce data that belongs in the frame `metadata` column. To avoid race conditions on the JSON column:
 
 - Branch A writes only scalar columns (`motionPrompt`, `durationMs` via `update-frames-after-motion-prompts`) and `thumbnailUrl`/`videoUrl`/status columns
-- Branch B holds `completeScenes` (with audio design) in memory
-- After both branches complete, a single `context.run('final-metadata-merge')` step writes the unified metadata (visual prompts + motion prompts + audio design) to each frame once
+- Branch B holds `completeScenes` (with music design) in memory
+- After both branches complete, a single `context.run('final-metadata-merge')` step writes the unified metadata (visual prompts + motion prompts + music design) to each frame once
 
-**Savings:** Up to ~6 min. Audio design (~6 min) runs in parallel with image gen (~1.5 min) + motion gen (~1-5 min). The critical path is whichever branch is longer — typically Branch B (audio design is the bottleneck at ~6 min). Motion prompts (~30s) are hidden inside Branch A's image gen (~1.5 min).
-
-**Quality tradeoff:** Audio design loses access to camera movement data (pan/tilt/tracking/speed) that was previously available via `scenesWithMotionPrompts`. Core audio decisions — music style, ambient atmosphere, dialogue timing, foley selection — are driven by scene metadata and visual prompts, not camera movement. The impact is:
-
-- **Negligible** for music, ambient, and dialogue design (these depend on scene mood, location, and action)
-- **Minor** for spatial positioning of sound effects (e.g., a tracking shot might call for spatial audio panning)
-
-**Prompt change:** The audio design prompt (L375 in `workflow-prompts.ts`) changes from "visual and motion prompts" to "visual prompts and scene metadata".
+**Savings:** With music design (~1-2 min) replacing audio design (~6 min), the savings from this parallelization are more modest. Branch B (~2-3 min with music gen) runs in parallel with Branch A (~2.5-6.5 min). The critical path is `max(Branch A, Branch B)` — Branch A may now be the longer branch when motion generation is enabled.
 
 **Risk:**
 
-- Both branches update frame data. Branch A writes `thumbnailUrl`/`videoUrl`/status columns plus scalar motion prompt fields. Branch B holds audio design in memory. The final metadata merge writes once after both complete — no write conflicts.
-- Event ordering changes: UI will receive image progress events and audio design events interleaved rather than sequentially. The UI already handles events independently per frame, so this should work.
-- `completeScenes` (used for the final trace) needs audio design but NOT images/videos (those are on the frame record, not the scene object). Branch B produces `completeScenes`; Branch A doesn't modify it.
+- Both branches update frame data. Branch A writes `thumbnailUrl`/`videoUrl`/status columns plus scalar motion prompt fields. Branch B holds music design in memory. The final metadata merge writes once after both complete — no write conflicts.
+- Event ordering changes: UI will receive image progress events and music design events interleaved rather than sequentially. The UI already handles events independently per frame, so this should be transparent.
+- `completeScenes` (used for the final trace) needs music design but NOT images/videos (those are on the frame record, not the scene object). Branch B produces `completeScenes`; Branch A doesn't modify it.
 
 ---
 
@@ -212,9 +217,7 @@ flowchart TD
     Verify["<b>Verify + Prepare</b> · <1s"] --> SceneSplit
 
     subgraph "Phase 1 — Script Analysis · ~3min"
-        SceneSplit["<b>Scene Splitting</b> · LLM · ~3min"]
-        CreateFrames["<b>Create Frames</b> · DB · ~1s"]
-        SceneSplit --> CreateFrames
+        SceneSplit["<b>Scene Splitting</b> · LLM streaming · ~3min<br/><i>frames created progressively</i>"]
     end
 
     subgraph "Phase 2 — Extraction (PARALLEL) · ~1.5min"
@@ -222,8 +225,8 @@ flowchart TD
         LocExtract["<b>Location Extraction</b> · LLM · ~1.5min"]
     end
 
-    CreateFrames --> CharExtract
-    CreateFrames --> LocExtract
+    SceneSplit --> CharExtract
+    SceneSplit --> LocExtract
 
     subgraph "Phase 2b — Matching (PARALLEL, conditional)"
         TalentMatch["<b>Talent Matching</b> · LLM"]
@@ -260,17 +263,16 @@ flowchart TD
         MotionPrompts --> MergeMotion --> MotionGen
     end
 
-    subgraph branchB ["Branch B — Audio · ~6.5min"]
-        AudioDesign["<b>Audio Design</b> ★ CHANGED<br/>LLM · ~6min<br/><i>uses scenesWithVisualPrompts</i>"]
-        MergeAudio["<b>Merge Audio</b> · <1s"]
-        MusicPrompt["<b>Music Prompt</b><br/>LLM · ~10s"]
+    subgraph branchB ["Branch B — Audio · ~2-3min"]
+        MusicDesign["<b>Music Design</b> ★ CONSOLIDATED<br/>LLM · ~1-2min<br/><i>replaces audio design + music prompt</i>"]
+        MergeMusicDesign["<b>Merge Music Design</b> · <1s"]
         MusicGen["<b>Music Generation</b><br/>Fal.ai · ~30-120s<br/><i>if autoGenerateMusic</i>"]
-        AudioDesign --> MergeAudio --> MusicPrompt --> MusicGen
+        MusicDesign --> MergeMusicDesign --> MusicGen
     end
 
     phase3 --> PersistVisual
     phase3 --> MotionPrompts
-    phase3 --> AudioDesign
+    phase3 --> MusicDesign
 
     phase3 --> ImageGen
     CharSheets -->|"sheets"| ImageGen
@@ -282,7 +284,7 @@ flowchart TD
     Trace["<b>Record Trace</b> · <1s"]
 
     style MotionPrompts fill:#16a34a,color:#fff
-    style AudioDesign fill:#16a34a,color:#fff
+    style MusicDesign fill:#16a34a,color:#fff
     style FinalMerge fill:#d97706,color:#fff
     style branchA fill:#1e3a5f11,stroke:#2563eb
     style branchB fill:#2d1b4e11,stroke:#7c3aed
@@ -292,23 +294,22 @@ flowchart TD
 
 ## Critical Path Comparison
 
-| Phase                                   | Current                       | Optimized                                   | Saved              |
-| --------------------------------------- | ----------------------------- | ------------------------------------------- | ------------------ |
-| Scene splitting + frame creation        | ~3 min                        | ~3 min                                      | —                  |
-| Character + location extraction         | ~2.5 min (sequential)         | ~1.5 min (parallel)                         | **~1 min**         |
-| Talent + location matching              | <1s (sequential)              | <1s (parallel)                              | minor              |
-| Phase 3: refs + prompts                 | ~1 min (3-way)                | ~1 min (3-way)                              | —                  |
-| Motion prompts                          | ~30s (after image gen)        | ~30s (Branch A, parallel with image gen)    | **~30s saved**     |
-| Image gen                               | ~1.5 min                      | ~1.5 min (Branch A)                         | —                  |
-| Audio design                            | ~6 min (after motion prompts) | ~6 min (Branch B, uses visual prompts only) | —                  |
-| Music prompt                            | ~10s                          | ~10s                                        | —                  |
-| Final metadata merge                    | —                             | <1s (new step)                              | —                  |
-| Motion gen (if enabled)                 | ~1-5 min (after music prompt) | ~1-5 min (after image gen)                  | **up to ~6.5 min** |
-| Music gen (if enabled)                  | ~30-120s                      | ~30-120s                                    | —                  |
-| **Critical path (no motion/music)**     | **~14.5 min**                 | **~12 min**                                 | **~2.5 min**       |
-| **Critical path (with motion + music)** | **~15-19 min**                | **~13.5 min**                               | **~1.5-5.5 min**   |
+| Phase                                   | Current (with music design)     | Optimized                                | Saved            |
+| --------------------------------------- | ------------------------------- | ---------------------------------------- | ---------------- |
+| Scene splitting (streaming)             | ~3 min                          | ~3 min                                   | —                |
+| Character + location extraction         | ~2.5 min (sequential)           | ~1.5 min (parallel)                      | **~1 min**       |
+| Talent + location matching              | <1s (sequential)                | <1s (parallel)                           | minor            |
+| Phase 3: refs + prompts                 | ~1 min (3-way)                  | ~1 min (3-way)                           | —                |
+| Motion prompts                          | ~30s (after image gen)          | ~30s (Branch A, parallel with image gen) | **~30s saved**   |
+| Image gen                               | ~1.5 min                        | ~1.5 min (Branch A)                      | —                |
+| Music design                            | ~1-2 min (after motion prompts) | ~1-2 min (Branch B)                      | —                |
+| Final metadata merge                    | —                               | <1s (new step)                           | —                |
+| Motion gen (if enabled)                 | ~1-5 min (after music design)   | ~1-5 min (after image gen)               | **up to ~2 min** |
+| Music gen (if enabled)                  | ~30-120s                        | ~30-120s                                 | —                |
+| **Critical path (no motion/music)**     | **~9.5 min**                    | **~8 min**                               | **~1.5 min**     |
+| **Critical path (with motion + music)** | **~10-14 min**                  | **~8.5 min**                             | **~1.5-5.5 min** |
 
-The critical path shifts from the sequential chain to `max(Branch A, Branch B)`. Branch B (audio design at ~6 min) is typically the bottleneck, so Branch A (image gen ~1.5 min + motion gen ~1-5 min) runs "for free" in parallel. Motion prompts (~30s) are hidden inside Branch A's image gen (~1.5 min), saving ~30s compared to running them sequentially before the fork.
+The critical path shifts from the sequential chain to `max(Branch A, Branch B)`. With music design (~1-2 min) replacing audio design (~6 min), Branch B is now much shorter. Branch A (image gen ~1.5 min + motion gen ~1-5 min) may now be the bottleneck instead of Branch B. Motion prompts (~30s) are hidden inside Branch A's image gen (~1.5 min).
 
 ## QStash Step Count Impact
 
@@ -331,42 +332,30 @@ Total QStash step count increases by 1 (the final metadata merge step).
 Optimizations #1 and #3 change peak concurrent LLM calls:
 
 - **Current peak:** 3 (during Phase 3: char sheets, loc sheets, visual prompts — though sheets are image gen, not LLM)
-- **Optimized peak:** Brief overlap during Branch A/B fork — motion prompt LLM calls (Branch A) can overlap with the audio design LLM call (Branch B) for ~30s. This is a narrow window since motion prompts complete in ~30s while audio design runs for ~6 min. Character + location extraction are parallel but happen before Phase 3, not during it.
+- **Optimized peak:** Brief overlap during Branch A/B fork — motion prompt LLM calls (Branch A) can overlap with the music design LLM call (Branch B) for ~30s. This is a narrow window since motion prompts complete in ~30s while music design runs for ~1-2 min. Character + location extraction are parallel but happen before Phase 3, not during it.
 
 ### Database Write Conflicts
 
 Both branches produce data for the frame `metadata` JSON column, creating a potential race condition. The solution is a final-merge pattern:
 
 - **Branch A** writes only scalar columns: `thumbnailUrl`, `videoUrl`, `thumbnailStatus`, `videoStatus` to frames, plus `motionPrompt` and `durationMs` fields via `update-frames-after-motion-prompts`. These are separate DB columns, not the `metadata` JSON.
-- **Branch B** holds `completeScenes` (with audio design) in memory — does NOT write `metadata` during the branch.
-- **Final metadata merge** (`context.run('final-metadata-merge')`) runs after both branches complete, writing the unified metadata (visual prompts + motion prompts + audio design) to each frame in a single write. No race condition.
-
-### Audio Design Quality
-
-Audio design no longer has access to motion prompt data (camera movement, pan/tilt/tracking, speed). What's retained vs lost:
-
-- **Retained:** Scene metadata (location, time of day, story beat, mood), visual prompts (composition, lighting, color palette), dialogue, character actions, continuity data
-- **Lost:** Camera movement descriptions (e.g., "slow tracking shot left", "rapid dolly zoom")
-
-Impact by audio category:
-
-- **Music/ambient/dialogue:** Negligible — driven by scene mood, not camera movement
-- **Sound effect spatial positioning:** Minor — a tracking shot might call for spatial audio panning, but this is a subtle enhancement, not a core decision
+- **Branch B** holds `completeScenes` (with music design) in memory — does NOT write `metadata` during the branch.
+- **Final metadata merge** (`context.run('final-metadata-merge')`) runs after both branches complete, writing the unified metadata (visual prompts + motion prompts + music design) to each frame in a single write. No race condition.
 
 ### Event Ordering
 
 The UI receives events from both branches interleaved. This means:
 
-- `generation.image:progress` events arrive while audio design is running
-- `generation.frame:updated` (visual-prompt) and `generation.frame:updated` (audio-design) may arrive close together
+- `generation.image:progress` events arrive while music design is running
+- `generation.frame:updated` (visual-prompt) and `generation.frame:updated` (music-design) may arrive close together
 
 The UI already handles each event type independently, so this should be transparent.
 
 ### Failure Isolation
 
-If Branch A fails (image gen error), Branch B can still complete audio design and music. The workflow's `failureFunction` catches the top-level error and marks the sequence as failed. This behavior is unchanged — the `Promise.all` will reject when either branch throws.
+If Branch A fails (image gen error), Branch B can still complete music design and music generation. The workflow's `failureFunction` catches the top-level error and marks the sequence as failed. This behavior is unchanged — the `Promise.all` will reject when either branch throws.
 
-If one branch fails, partial metadata can still be written in the final merge step (e.g., audio design data without motion prompts, or vice versa). To improve resilience, branches could use `Promise.allSettled` instead, allowing partial success. This is a separate enhancement.
+If one branch fails, partial metadata can still be written in the final merge step (e.g., music design data without motion prompts, or vice versa). To improve resilience, branches could use `Promise.allSettled` instead, allowing partial success. This is a separate enhancement.
 
 ### Rollback
 
