@@ -112,31 +112,11 @@ export const sceneAnalysisExample: SceneAnalysis = {
         },
       },
 
-      audioDesign: {
-        music: {
-          presence: 'none',
-          style: 'Genre if present',
-          mood: 'Emotional quality if present',
-          rationale: 'Why this music choice',
-        },
-        soundEffects: [
-          {
-            sfxId: 'sfx_001',
-            type: 'ambient',
-            description: 'Sound effect description',
-            timing: 'When it occurs (timestamp or continuous)',
-            volume: 'low',
-            spatialPosition: 'surround',
-          },
-        ],
-        dialogue: {
-          presence: false,
-          lines: [],
-        },
-        ambient: {
-          roomTone: 'Environmental base sound',
-          atmosphere: 'Overall sonic environment',
-        },
+      musicDesign: {
+        presence: 'none',
+        style: 'Genre if present',
+        mood: 'Emotional quality if present',
+        atmosphere: 'Overall sonic environment',
       },
 
       continuity: {

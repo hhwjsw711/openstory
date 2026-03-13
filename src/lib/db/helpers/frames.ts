@@ -171,6 +171,27 @@ export async function deleteSequenceFrames(
   return result.rowsAffected ?? 0;
 }
 
+/**
+ * Upsert a single frame using conflict resolution on (sequenceId, orderIndex).
+ * Idempotent: safe to call on retry without creating duplicates.
+ */
+export async function upsertFrame(data: NewFrame): Promise<Frame> {
+  const [frame] = await getDb()
+    .insert(frames)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [frames.sequenceId, frames.orderIndex],
+      set: {
+        description: sql.raw(`excluded."description"`),
+        durationMs: sql.raw(`excluded."duration_ms"`),
+        metadata: sql.raw(`excluded."metadata"`),
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+  return frame;
+}
+
 // ============================================================================
 // Bulk Operations
 // ============================================================================

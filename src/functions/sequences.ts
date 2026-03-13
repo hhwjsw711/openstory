@@ -318,7 +318,8 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
 /** Build compact scene summaries from frames for music prompt generation */
 function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   return frames.map((frame) => {
-    const music = frame.metadata?.audioDesign?.music;
+    const md = frame.metadata?.musicDesign;
+    const legacyMusic = frame.metadata?.audioDesign?.music;
     const meta = frame.metadata?.metadata;
     const durationSeconds = frame.durationMs
       ? frame.durationMs / 1000
@@ -328,10 +329,11 @@ function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
       title: meta?.title || 'Untitled Scene',
       storyBeat: meta?.storyBeat || '',
       durationSeconds,
-      musicStyle: music?.style || '',
-      musicMood: music?.mood || '',
-      musicPresence: music?.presence || 'none',
-      atmosphere: frame.metadata?.audioDesign?.ambient?.atmosphere,
+      musicStyle: md?.style || legacyMusic?.style || '',
+      musicMood: md?.mood || legacyMusic?.mood || '',
+      musicPresence: md?.presence || legacyMusic?.presence || 'none',
+      atmosphere:
+        md?.atmosphere || frame.metadata?.audioDesign?.ambient?.atmosphere,
     };
   });
 }

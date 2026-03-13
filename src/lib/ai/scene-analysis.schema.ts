@@ -383,7 +383,28 @@ export const promptsSchema = z.object({
 });
 
 // ============================================================================
-// Audio Design Schemas
+// Music Design Schema (replaces audioDesign for new frames)
+// ============================================================================
+
+export const musicDesignSchema = z.object({
+  presence: z.enum(['none', 'minimal', 'moderate', 'full']).catch('none').meta({
+    description:
+      'How prominent the music should be: none, minimal, moderate, full',
+  }),
+  style: z.string().catch('').meta({
+    description:
+      'Music genre or style (e.g., "orchestral", "electronic ambient")',
+  }),
+  mood: z.string().catch('').meta({
+    description: 'Emotional quality of the music (e.g., "tense", "uplifting")',
+  }),
+  atmosphere: z.string().catch('').meta({
+    description: 'Environmental atmosphere (e.g., "busy city street")',
+  }),
+});
+
+// ============================================================================
+// Audio Design Schemas (deprecated — kept for backward compat with old frames)
 // ============================================================================
 
 export const musicSchema = z.object({
@@ -573,9 +594,13 @@ export const sceneSchema = z.object({
   prompts: promptsSchema.optional().meta({
     description: 'Visual and motion generation prompts',
   }),
+  musicDesign: musicDesignSchema
+    .optional()
+    .meta({ description: 'Music classification for this scene (new frames)' }),
+  /** @deprecated Kept for backward compat with old frames — use musicDesign */
   audioDesign: audioDesignSchema
     .optional()
-    .meta({ description: 'Audio and sound design specs' }),
+    .meta({ description: 'Audio and sound design specs (deprecated)' }),
   continuity: continuitySchema
     .optional()
     .meta({ description: 'Continuity tracking for scene consistency' }),
@@ -624,5 +649,6 @@ export type VisualPromptWithContinuity = z.infer<
   typeof visualPromptWithContinuitySchema
 >;
 export type MotionPrompt = z.infer<typeof motionPromptSchema>;
+export type MusicDesign = z.infer<typeof musicDesignSchema>;
 export type AudioDesign = z.infer<typeof audioDesignSchema>;
 export type Continuity = z.infer<typeof continuitySchema>;
