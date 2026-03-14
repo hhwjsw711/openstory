@@ -9,15 +9,8 @@ export const Route = createFileRoute('/_marketing/terms')({
     meta: [
       { title },
       { property: 'og:title', content: title },
-      { property: 'og:description', content: SITE_CONFIG.description },
-      { property: 'og:type', content: 'website' },
       { property: 'og:url', content: `${SITE_CONFIG.url}/terms` },
-      { property: 'og:image', content: SITE_CONFIG.ogImage },
-      { property: 'og:site_name', content: SITE_CONFIG.name },
-      { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: title },
-      { name: 'twitter:description', content: SITE_CONFIG.description },
-      { name: 'twitter:image', content: SITE_CONFIG.ogImage },
     ],
   }),
 });

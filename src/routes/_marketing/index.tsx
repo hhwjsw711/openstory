@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { sessionQueryOptions } from '@/lib/auth/session-query';
-import { SITE_CONFIG } from '@/lib/marketing/constants';
 import { HeroSection } from '@/components/marketing/hero-section';
 import { ManifestoSection } from '@/components/marketing/manifesto-section';
 import { ProductShowcase } from '@/components/marketing/product-showcase';
@@ -25,17 +24,11 @@ export const Route = createFileRoute('/_marketing/')({
   head: () => ({
     meta: [
       { title },
+      { name: 'description', content: description },
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
-      { property: 'og:type', content: 'website' },
-      { property: 'og:url', content: SITE_CONFIG.url },
-      { property: 'og:image', content: SITE_CONFIG.ogImage },
-      { property: 'og:site_name', content: SITE_CONFIG.name },
-      { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },
-      { name: 'twitter:image', content: SITE_CONFIG.ogImage },
-      { name: 'twitter:url', content: SITE_CONFIG.url },
     ],
   }),
 });

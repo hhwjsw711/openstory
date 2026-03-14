@@ -1,5 +1,6 @@
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
+import { SITE_CONFIG } from '@/lib/marketing/constants';
 import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
 import appCss from '@/styles/global.css?url';
 import type { QueryClient } from '@tanstack/react-query';
@@ -44,14 +45,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
-      {
-        name: 'description',
-        content:
-          'Transform scripts into consistent, styled video productions using multiple AI models.',
-      },
-      { title: 'OpenStory' },
-      { property: 'og:site_name', content: 'OpenStory' },
+      { title: SITE_CONFIG.name },
+      { name: 'description', content: SITE_CONFIG.description },
+      // Open Graph
+      { property: 'og:title', content: SITE_CONFIG.name },
+      { property: 'og:description', content: SITE_CONFIG.description },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:url', content: SITE_CONFIG.url },
+      { property: 'og:image', content: SITE_CONFIG.ogImage },
+      { property: 'og:site_name', content: SITE_CONFIG.name },
+      // Twitter
       { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: SITE_CONFIG.name },
+      { name: 'twitter:description', content: SITE_CONFIG.description },
+      { name: 'twitter:image', content: SITE_CONFIG.ogImage },
+      { name: 'twitter:url', content: SITE_CONFIG.url },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
