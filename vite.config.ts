@@ -89,6 +89,14 @@ export default defineConfig({
         // Specifies the directory TanStack Router uses for your routes.
         routesDirectory: 'routes', // Defaults to "routes", relative to srcDirectory
       },
+      prerender: {
+        enabled: true,
+        crawlLinks: true,
+      },
+      sitemap: {
+        enabled: true,
+        host: 'https://openstory.so',
+      },
     }),
     viteReact(),
   ],

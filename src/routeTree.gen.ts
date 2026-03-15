@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OgRouteImport } from './routes/og'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MarketingRouteImport } from './routes/_marketing'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
@@ -56,6 +57,11 @@ import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './route
 const OgRoute = OgRouteImport.update({
   id: '/og',
   path: '/og',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketingRoute = MarketingRouteImport.update({
@@ -282,6 +288,7 @@ const ProtectedSequencesIdCastCharacterIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof MarketingIndexRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof MarketingIndexRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
@@ -368,6 +376,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/_marketing': typeof MarketingRouteWithChildren
+  '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/llms.txt'
     | '/og'
     | '/settings'
     | '/login'
@@ -455,6 +465,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/llms.txt'
     | '/og'
     | '/login'
     | '/verify'
@@ -498,6 +509,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_protected'
     | '/_marketing'
+    | '/llms.txt'
     | '/og'
     | '/_protected/settings'
     | '/_auth/login'
@@ -544,6 +556,7 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   MarketingRoute: typeof MarketingRouteWithChildren
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   OgRoute: typeof OgRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
@@ -567,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/og'
       fullPath: '/og'
       preLoaderRoute: typeof OgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_marketing': {
@@ -979,6 +999,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   MarketingRoute: MarketingRouteWithChildren,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   OgRoute: OgRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,

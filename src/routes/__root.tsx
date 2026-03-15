@@ -61,6 +61,33 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: 'twitter:image', content: SITE_CONFIG.ogImage },
       { name: 'twitter:url', content: SITE_CONFIG.url },
     ],
+    scripts: [
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: SITE_CONFIG.name,
+          url: SITE_CONFIG.url,
+          logo: `${SITE_CONFIG.url}/icon.svg`,
+          sameAs: [SITE_CONFIG.githubHref],
+        }),
+      },
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: SITE_CONFIG.name,
+          url: SITE_CONFIG.url,
+          description: SITE_CONFIG.description,
+          publisher: {
+            '@type': 'Organization',
+            name: SITE_CONFIG.name,
+          },
+        }),
+      },
+    ],
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
