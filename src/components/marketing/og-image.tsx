@@ -1,11 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { OpenStoryLogo } from '@/components/icons/openstory-logo';
 import { Button } from '@/components/ui/button';
 import { SITE_CONFIG } from '@/lib/marketing/constants';
-
-export const Route = createFileRoute('/og')({
-  component: OgImage,
-});
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -15,7 +10,7 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
-function OgImage() {
+export const OgImage: React.FC = () => {
   return (
     <div className="relative flex h-[630px] w-[1200px] flex-col items-center justify-center overflow-hidden bg-black">
       <div className="absolute inset-0">
@@ -67,4 +62,4 @@ function OgImage() {
       </div>
     </div>
   );
-}
+};
