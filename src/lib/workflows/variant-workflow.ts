@@ -84,12 +84,16 @@ export const generateVariantWorkflow = createWorkflow(
           );
         }
 
-        // Combine all references: thumbnail + characters + locations
-        const basePrompt = getVariantImagePrompt(imageSize);
+        // Build prompt with scene context
+        const basePrompt = getVariantImagePrompt(imageSize, input.scenePrompt);
+
+        // ALL references go through buildReferenceImagePrompt so each URL is labeled in the prompt
         const allReferences: ReferenceImageDescription[] = [
           {
             referenceImageUrl: input.thumbnailUrl,
-            description: 'Source image to create variants from',
+            description:
+              'Primary source scene — generate 9 variant shots from this image',
+            role: 'primary',
           },
           ...(input.characterReferences ?? []),
           ...(input.locationReferences ?? []),

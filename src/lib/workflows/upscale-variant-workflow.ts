@@ -4,6 +4,7 @@ import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import type {
   UpscaleVariantWorkflowInput,
@@ -69,10 +70,25 @@ export const upscaleVariantWorkflow = createWorkflow(
         return null;
       }
 
+      // Build enhanced prompt with character/location references (ensure roles are set)
+      const allReferences = [
+        ...(input.characterReferences ?? []).map((r) => ({
+          ...r,
+          role: r.role ?? ('character' as const),
+        })),
+        ...(input.locationReferences ?? []).map((r) => ({
+          ...r,
+          role: r.role ?? ('location' as const),
+        })),
+      ];
+      const { prompt: enhancedPrompt, referenceUrls: charLocUrls } =
+        buildReferenceImagePrompt(UPSCALE_PROMPT, allReferences);
+
+      // Cropped tile is primary source (first), char/loc refs appended after
       const result = await generateImageWithProvider({
         model: 'nano_banana_2',
-        prompt: UPSCALE_PROMPT,
-        referenceImageUrls: [input.croppedTileUrl],
+        prompt: enhancedPrompt,
+        referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
         numImages: 1,
         outputFormat: 'png',
         teamId: input.teamId,

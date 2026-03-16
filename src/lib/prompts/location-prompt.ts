@@ -49,6 +49,7 @@ export const buildLocationReferenceImages = (
     .map((l) => ({
       referenceImageUrl: l.referenceImageUrl ?? '',
       description: buildLocationDescription(l),
+      role: 'location' as const,
     }));
 };
 

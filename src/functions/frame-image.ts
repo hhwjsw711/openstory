@@ -243,6 +243,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       sequenceId: sequence.id,
       frameId: frame.id,
       thumbnailUrl: frame.thumbnailUrl,
+      scenePrompt: frame.metadata?.prompts?.visual?.fullPrompt,
       model: data.model,
       imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
       numImages,
@@ -322,6 +323,21 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       videoError: null,
     });
 
+    // Fetch character and location references for upscale consistency
+    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const characterTags = frame.metadata?.continuity?.characterTags ?? [];
+    const characterReferences = getSceneCharacterReferenceImages(
+      allCharacters,
+      characterTags
+    );
+
+    const allLocations = await getSequenceLocationsWithReferences(sequence.id);
+    const locationReferences = getSceneLocationReferenceImages(
+      allLocations,
+      frame.metadata?.continuity?.environmentTag ?? '',
+      frame.metadata?.metadata?.location ?? ''
+    );
+
     await requireCredits(
       sequence.teamId,
       estimateImageCost('nano_banana_2', '16:9', 1),
@@ -335,6 +351,8 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       frameId: frame.id,
       croppedTileUrl: uploadResult.url,
       croppedTilePath: uploadResult.path || '',
+      characterReferences,
+      locationReferences,
     };
 
     const workflowRunId = await triggerWorkflow(
