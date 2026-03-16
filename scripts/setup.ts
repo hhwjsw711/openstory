@@ -1980,7 +1980,7 @@ async function main() {
       const appUrl = vars.get('APP_URL') ?? '';
       let baseDomain = '';
       try {
-        const host = new URL(appUrl).hostname; // e.g. app.openstory.so
+        const host = new URL(appUrl).hostname; // e.g. openstory.so
         const parts = host.split('.');
         baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
       } catch {
