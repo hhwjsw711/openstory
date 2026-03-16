@@ -8,11 +8,7 @@
  * All monetary values are in Microdollars.
  */
 
-import {
-  checkAutoTopUp,
-  deductCredits,
-  hasEnoughCredits,
-} from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { type Microdollars, microsToUsd, ZERO_MICROS } from './money';
 
 type WorkflowDeductionOpts = {
@@ -41,20 +37,21 @@ export async function deductWorkflowCredits(
 ): Promise<void> {
   if (!opts.teamId || opts.costMicros <= 0 || opts.usedOwnKey) return;
 
-  const canAfford = await hasEnoughCredits(opts.teamId, opts.costMicros);
+  const scopedDb = createScopedDb(opts.teamId);
+  const canAfford = await scopedDb.billing.hasEnoughCredits(opts.costMicros);
   if (!canAfford) {
     const prefix = opts.workflowName ? `[${opts.workflowName}]` : '[Workflow]';
     console.warn(
       `${prefix} Insufficient credits for team ${opts.teamId} (cost: $${microsToUsd(opts.costMicros).toFixed(4)}), skipping deduction`
     );
     // Still attempt auto-top-up so balance can recover
-    void checkAutoTopUp(opts.teamId).catch((err) => {
+    void scopedDb.billing.checkAutoTopUp().catch((err) => {
       console.error('[AutoTopUp] Failed:', err);
     });
     return;
   }
 
-  await deductCredits(opts.teamId, opts.costMicros, {
+  await scopedDb.billing.deductCredits(opts.costMicros, {
     userId: opts.userId ?? null,
     description: opts.description,
     metadata: opts.metadata,

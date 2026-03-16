@@ -1,0 +1,269 @@
+/**
+ * Scoped Sequences Sub-module
+ * Team-scoped sequence CRUD and per-sequence update methods.
+ */
+
+import { and, desc, eq, not } from 'drizzle-orm';
+import type { Database } from '@/lib/db/client';
+import {
+  type AspectRatio,
+  DEFAULT_ASPECT_RATIO,
+} from '@/lib/constants/aspect-ratios';
+import { sequences } from '@/lib/db/schema';
+import type { Frame, NewSequence, Sequence, Style } from '@/lib/db/schema';
+import type {
+  MergedVideoStatus,
+  MusicStatus,
+  SequenceStatus,
+} from '@/lib/db/schema/sequences';
+import { ValidationError } from '@/lib/errors';
+
+export type MusicFieldsUpdate = {
+  musicStatus?: MusicStatus;
+  musicModel?: string;
+  musicError?: string | null;
+  musicUrl?: string;
+  musicPath?: string;
+  musicGeneratedAt?: Date;
+};
+
+export type MergedVideoFieldsUpdate = {
+  mergedVideoStatus?: MergedVideoStatus;
+  mergedVideoError?: string | null;
+  mergedVideoUrl?: string | null;
+  mergedVideoPath?: string | null;
+  mergedVideoGeneratedAt?: Date;
+};
+
+type SequenceWithFrames = Sequence & {
+  frames: Frame[];
+  style: Style | null;
+};
+
+export function createSequencesMethods(db: Database, teamId: string) {
+  return {
+    list: async (): Promise<Sequence[]> => {
+      return await db
+        .select()
+        .from(sequences)
+        .where(
+          and(
+            eq(sequences.teamId, teamId),
+            not(eq(sequences.status, 'archived'))
+          )
+        )
+        .orderBy(desc(sequences.updatedAt));
+    },
+
+    create: async (params: {
+      userId: string;
+      title: string;
+      script?: string | null;
+      styleId: string;
+      aspectRatio?: AspectRatio;
+      analysisModel: string;
+      imageModel?: string;
+      videoModel?: string;
+      musicModel?: string;
+    }): Promise<Sequence> => {
+      const sequenceData: NewSequence = {
+        teamId,
+        createdBy: params.userId,
+        updatedBy: params.userId,
+        title: params.title,
+        script: params.script,
+        styleId: params.styleId,
+        aspectRatio: params.aspectRatio ?? DEFAULT_ASPECT_RATIO,
+        analysisModel: params.analysisModel,
+        imageModel: params.imageModel,
+        videoModel: params.videoModel,
+        musicModel: params.musicModel,
+        status: 'draft',
+      };
+
+      const [data] = await db
+        .insert(sequences)
+        .values(sequenceData)
+        .returning();
+
+      if (!data) {
+        throw new Error('No sequence returned from database');
+      }
+
+      return data;
+    },
+
+    getById: async (sequenceId: string): Promise<Sequence | null> => {
+      const result = await db
+        .select()
+        .from(sequences)
+        .where(and(eq(sequences.id, sequenceId), eq(sequences.teamId, teamId)));
+      return result[0] ?? null;
+    },
+
+    getWithFrames: async (
+      sequenceId: string
+    ): Promise<SequenceWithFrames | null> => {
+      const result = await db.query.sequences.findFirst({
+        where: and(eq(sequences.id, sequenceId), eq(sequences.teamId, teamId)),
+        with: {
+          frames: {
+            orderBy: (frames, { asc }) => [asc(frames.orderIndex)],
+          },
+          style: true,
+        },
+      });
+      if (!result) return null;
+      // Drizzle relational query returns the correct shape but with a wider type
+      const { frames: seqFrames, style, ...sequence } = result;
+      return {
+        ...sequence,
+        frames: seqFrames,
+        style: style ?? null,
+      } as SequenceWithFrames;
+    },
+
+    update: async (params: {
+      id: string;
+      userId: string;
+      title?: string;
+      script?: string | null;
+      styleId?: string;
+      status?: SequenceStatus;
+      analysisModel?: string;
+      aspectRatio?: AspectRatio;
+      imageModel?: string;
+      videoModel?: string;
+    }): Promise<Sequence> => {
+      const updateData: Partial<NewSequence> = {
+        title: params.title,
+        script: params.script,
+        styleId: params.styleId,
+        status: params.status,
+        analysisModel: params.analysisModel,
+        imageModel: params.imageModel,
+        videoModel: params.videoModel,
+        updatedBy: params.userId,
+        updatedAt: new Date(),
+      };
+
+      const [data] = await db
+        .update(sequences)
+        .set(updateData)
+        .where(eq(sequences.id, params.id))
+        .returning();
+
+      if (!data) {
+        throw new ValidationError('Sequence not found');
+      }
+
+      return data;
+    },
+
+    delete: async (sequenceId: string): Promise<void> => {
+      await db.delete(sequences).where(eq(sequences.id, sequenceId));
+    },
+
+    getForUser: async (params: {
+      sequenceId: string;
+      teamId: string;
+      userId: string;
+    }): Promise<Sequence> => {
+      const sequence = await db.query.sequences.findFirst({
+        where: and(
+          eq(sequences.id, params.sequenceId),
+          eq(sequences.teamId, params.teamId)
+        ),
+      });
+      if (!sequence) {
+        throw new ValidationError('Sequence not found');
+      }
+      return sequence;
+    },
+
+    updateTitle: async (sequenceId: string, title: string): Promise<void> => {
+      await db
+        .update(sequences)
+        .set({ title, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateAnalysisDurationMs: async (
+      sequenceId: string,
+      durationMs: number
+    ): Promise<void> => {
+      await db
+        .update(sequences)
+        .set({ analysisDurationMs: durationMs, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateMusicPrompt: async (
+      sequenceId: string,
+      musicPrompt: string,
+      musicTags: string
+    ): Promise<void> => {
+      await db
+        .update(sequences)
+        .set({ musicPrompt, musicTags, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateWorkflow: async (
+      sequenceId: string,
+      workflow: string
+    ): Promise<void> => {
+      await db
+        .update(sequences)
+        .set({ workflow, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+  };
+}
+
+export function createSequenceMethods(db: Database, sequenceId: string) {
+  return {
+    updateStatus: async (status: SequenceStatus, error?: string | null) => {
+      await db
+        .update(sequences)
+        .set({ status, statusError: error ?? null, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateMusicFields: async (fields: MusicFieldsUpdate) => {
+      await db
+        .update(sequences)
+        .set({ ...fields, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateMergedVideoFields: async (fields: MergedVideoFieldsUpdate) => {
+      await db
+        .update(sequences)
+        .set({ ...fields, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    getMusicStatus: async () => {
+      const [row] = await db
+        .select({
+          musicStatus: sequences.musicStatus,
+          musicUrl: sequences.musicUrl,
+        })
+        .from(sequences)
+        .where(eq(sequences.id, sequenceId));
+      return row;
+    },
+
+    getMergedVideoStatus: async () => {
+      const [row] = await db
+        .select({
+          mergedVideoStatus: sequences.mergedVideoStatus,
+          mergedVideoUrl: sequences.mergedVideoUrl,
+        })
+        .from(sequences)
+        .where(eq(sequences.id, sequenceId));
+      return row;
+    },
+  };
+}

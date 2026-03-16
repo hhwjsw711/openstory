@@ -24,9 +24,8 @@ import {
 } from '@/lib/ai/script-enhancer';
 import { getPrompt } from '@/lib/prompts';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/byok/api-key.service';
 import { authWithTeamMiddleware } from './middleware';
 
 const promptShorteningRateLimiter = new RateLimiter(10, 60_000);
@@ -71,11 +70,12 @@ async function prepareBilling(
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
-  const teamHasOwnKey = await apiKeyService.hasKey(teamId, 'openrouter');
+  const scopedDb = createScopedDb(teamId);
+  const teamHasOwnKey = await scopedDb.apiKeys.hasKey('openrouter');
   if (teamHasOwnKey) return undefined;
 
   const cost = estimateLLMCost(1);
-  const canAfford = await hasEnoughCredits(teamId, cost);
+  const canAfford = await scopedDb.billing.hasEnoughCredits(cost);
   if (!canAfford) {
     throw new InsufficientCreditsError(
       `Insufficient credits for ${description.toLowerCase()}`
@@ -84,7 +84,11 @@ async function prepareBilling(
 
   return async () => {
     if (cost > 0) {
-      await deductCredits(teamId, cost, { userId, description, metadata });
+      await scopedDb.billing.deductCredits(cost, {
+        userId,
+        description,
+        metadata,
+      });
     }
   };
 }

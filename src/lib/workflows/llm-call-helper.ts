@@ -4,12 +4,13 @@
  * Uses @tanstack/ai-openrouter adapters instead of context.api.openai.call
  */
 
+import { getEnv } from '#env';
 import { createAdapter } from '@/lib/ai/create-adapter';
 import { getContextWindow } from '@/lib/ai/models.config';
 import type { TextModel } from '@/lib/ai/models';
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { apiKeyService } from '@/lib/byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -88,10 +89,16 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
 
   // Step 2: Durable LLM call (QStash retries step delivery on failure)
   const jsonResponse = await context.run(name, async () => {
-    const openRouterApiKeyInfo = await apiKeyService.resolveKey(
-      'openrouter',
-      callContext.teamId
-    );
+    const openRouterApiKeyInfo = callContext.teamId
+      ? await createScopedDb(callContext.teamId).apiKeys.resolveKey(
+          'openrouter'
+        )
+      : (() => {
+          const env = getEnv();
+          if (!env.OPENROUTER_KEY)
+            throw new Error('No API key available for provider: openrouter');
+          return { key: env.OPENROUTER_KEY, source: 'platform' as const };
+        })();
     const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
 
     console.log(`[LLM:${logName}] Starting call`, {

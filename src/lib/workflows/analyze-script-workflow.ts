@@ -17,16 +17,7 @@ import {
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
-import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
-import {
-  updateSequenceAnalysisDurationMs,
-  updateSequenceMusicPrompt,
-  updateSequenceStatus,
-  updateSequenceTitle,
-  updateSequenceWorkflow,
-} from '@/lib/db/helpers/sequences';
-import { getTalentByIds } from '@/lib/db/helpers/talent';
+import { createScopedDb } from '@/lib/db/scoped';
 import type {
   CharacterMinimal,
   NewFrame,
@@ -129,6 +120,10 @@ function matchLocationsToScene(
 export const analyzeScriptWorkflow = createWorkflow(
   async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
     const {
       sequenceId,
       script,
@@ -192,11 +187,11 @@ export const analyzeScriptWorkflow = createWorkflow(
 
         if (!sequenceId) return [];
 
-        await updateSequenceTitle(sequenceId, title);
+        await scopedDb.sequences.updateTitle(sequenceId, title);
         await getGenerationChannel(sequenceId).emit('generation.updated', {
           title,
         });
-        await updateSequenceWorkflow(
+        await scopedDb.sequences.updateWorkflow(
           sequenceId,
           'analyze-script-shorter-prompts-batch-size-1'
         );
@@ -216,13 +211,13 @@ export const analyzeScriptWorkflow = createWorkflow(
             }) satisfies NewFrame
         );
 
-        const createdFrames = await bulkInsertFrames(frameInserts);
+        const createdFrames = await scopedDb.frames.bulkInsert(frameInserts);
         const mapping = createdFrames.map((f) => ({
           sceneId: f.metadata?.sceneId || '',
           frameId: f.id,
         }));
 
-        await updateSequenceStatus(sequenceId, 'completed');
+        await scopedDb.sequence(sequenceId).updateStatus('completed');
 
         for (const { sceneId, frameId } of mapping) {
           const scene = scenes.find((s) => s.sceneId === sceneId);
@@ -281,10 +276,7 @@ export const analyzeScriptWorkflow = createWorkflow(
         if (!suggestedTalentIds?.length || !input.teamId) {
           return { talentList: [], matchingPromptVariables: {} };
         }
-        const talentList = await getTalentByIds(
-          suggestedTalentIds,
-          input.teamId
-        );
+        const talentList = await scopedDb.talent.getByIds(suggestedTalentIds);
         return {
           talentList,
           matchingPromptVariables: buildMatchingPromptVariables(
@@ -376,7 +368,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           };
         }
         const libraryLocationList =
-          await getLibraryLocationsByIds(suggestedLocationIds);
+          await scopedDb.locations.getByIds(suggestedLocationIds);
         return {
           libraryLocationList,
           locationMatchingPromptVariables: buildLocationMatchingPromptVariables(
@@ -520,7 +512,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               imagePrompt: scene.prompts?.visual?.fullPrompt,
             });
@@ -565,7 +557,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       await context.run('frame-images-start', async () => {
         if (sequenceId) {
-          await updateSequenceAnalysisDurationMs(
+          await scopedDb.sequences.updateAnalysisDurationMs(
             sequenceId,
             Date.now() - startTime
           );
@@ -696,7 +688,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
               durationMs: Math.round(
@@ -765,7 +757,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, { metadata: scene });
+            await scopedDb.frames.update(matched.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
@@ -827,7 +819,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
       if (sequenceId) {
         await context.run('store-music-prompt', async () => {
-          await updateSequenceMusicPrompt(
+          await scopedDb.sequences.updateMusicPrompt(
             sequenceId,
             musicPrompt.prompt,
             reinforcedTags
@@ -921,12 +913,14 @@ export const analyzeScriptWorkflow = createWorkflow(
   },
   {
     failureFunction: async ({ context, failResponse }) => {
-      const { sequenceId } = context.requestPayload;
-      if (!sequenceId) return;
+      const { sequenceId, teamId } = context.requestPayload;
+      if (!sequenceId || !teamId) return;
 
       const error = sanitizeFailResponse(failResponse);
       console.error('[AnalyzeScriptWorkflow] Failure:', error);
-      await updateSequenceStatus(sequenceId, 'failed', error);
+      await createScopedDb(teamId)
+        .sequence(sequenceId)
+        .updateStatus('failed', error);
       await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: error,
       });

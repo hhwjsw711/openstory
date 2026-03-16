@@ -9,7 +9,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { completeOpenRouterOAuth } from '@/functions/openrouter-oauth-callback';
 import { requireUser } from '@/lib/auth/action-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { resolveUserTeam } from '@/lib/db/scoped';
 
 function redirectResponse(path: string): Response {
   return new Response(null, {
@@ -33,7 +33,7 @@ export const Route = createFileRoute('/api/openrouter/callback')({
 
         try {
           const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
+          const team = await resolveUserTeam(user.id);
 
           if (!team) {
             return redirectResponse(

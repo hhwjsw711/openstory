@@ -7,7 +7,6 @@ import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadResponse } from '@/lib/storage/upload-response';
 import {
@@ -52,7 +51,7 @@ export const mergeAudioVideoWorkflow = createWorkflow(
     const videoDurationMs = await context.run(
       'compute-video-duration',
       async () => {
-        const frames = await getSequenceFrames(input.sequenceId);
+        const frames = await scopedDb.frames.listBySequence(input.sequenceId);
         return frames.reduce((sum, f) => sum + (f.durationMs ?? 3000), 0);
       }
     );

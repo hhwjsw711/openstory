@@ -1,9 +1,8 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
+import { createScopedDb } from '@/lib/db/scoped';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -27,6 +26,10 @@ export const generateImageWorkflow = createWorkflow(
     context: WorkflowContext<ImageWorkflowInput>
   ): Promise<ImageWorkflowResult> => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     const generationParams = await context.run(
       'set-generating-status',
@@ -45,7 +48,7 @@ export const generateImageWorkflow = createWorkflow(
         const model = input.model ?? DEFAULT_IMAGE_MODEL;
 
         if (input.frameId) {
-          const frame = await updateFrame(
+          const frame = await scopedDb.frames.update(
             input.frameId,
             {
               thumbnailStatus: 'generating',
@@ -109,13 +112,13 @@ export const generateImageWorkflow = createWorkflow(
     const { teamId, frameId, sequenceId } = input;
     if (imageCostMicros > 0 && teamId && !imageResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
+        if (!(await scopedDb.billing.hasEnoughCredits(imageCostMicros))) {
           console.warn(
             `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(imageCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, imageCostMicros, {
+        await scopedDb.billing.deductCredits(imageCostMicros, {
           userId: input.userId,
           description: `Image generation (${generationParams.model})`,
           metadata: {
@@ -142,7 +145,7 @@ export const generateImageWorkflow = createWorkflow(
           throw new Error('Failed to upload image to storage');
         }
 
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             thumbnailPath: result.path || null,
@@ -189,8 +192,9 @@ export const generateImageWorkflow = createWorkflow(
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.frames.update(
           input.frameId,
           { thumbnailStatus: 'failed', thumbnailError: error },
           { throwOnMissing: false }

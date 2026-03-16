@@ -12,9 +12,8 @@ import {
   updateStyleSchema,
 } from '@/lib/schemas/style.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getStyleById, getPublicStyles } from '@/lib/db/helpers/queries';
-import { deleteStyle } from '@/lib/db/helpers/styles';
-import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
+import { createScopedDb } from '@/lib/db/scoped';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 
 // ============================================================================
 // List Styles
@@ -37,7 +36,9 @@ export const getStylesFn = createServerFn({ method: 'GET' })
 export const getPublicStylesFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
-    return getPublicStyles();
+    // Public styles don't require team context, use a temporary scopedDb
+    const scopedDb = createScopedDb('__public__');
+    return scopedDb.styles.getPublic();
   });
 
 // ============================================================================
@@ -56,7 +57,9 @@ export const getStyleFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(getStyleInputSchema))
   .handler(async ({ data }) => {
-    const style = await getStyleById(data.styleId);
+    // Style lookup doesn't require team scoping (styles can be public)
+    const scopedDb = createScopedDb('__lookup__');
+    const style = await scopedDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
@@ -133,14 +136,18 @@ export const deleteStyleFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(deleteStyleInputSchema))
   .handler(async ({ data, context }) => {
-    const style = await getStyleById(data.styleId);
+    // Style lookup without team scoping (need to discover the team first)
+    const lookupDb = createScopedDb('__lookup__');
+    const style = await lookupDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
     }
 
-    await requireTeamManagement(context.user.id, style.teamId);
-    await deleteStyle(data.styleId, style.teamId);
+    await requireTeamAdminAccess(context.user.id, style.teamId);
+
+    const scopedDb = createScopedDb(style.teamId);
+    await scopedDb.styles.delete(data.styleId);
 
     return { success: true };
   });

@@ -16,10 +16,7 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  createSequenceLocationsBulk,
-  updateLocationReference,
-} from '@/lib/db/helpers/sequence-locations';
+import { createScopedDb } from '@/lib/db/scoped';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
@@ -42,6 +39,10 @@ export const locationBibleWorkflow = createWorkflow(
     context: WorkflowContext<LocationBibleWorkflowInput>
   ): Promise<SequenceLocationMinimal[]> => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new Error('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
     const { libraryLocationMatches = [] } = input;
 
     // Create lookup map for library location matches
@@ -98,7 +99,7 @@ export const locationBibleWorkflow = createWorkflow(
           }
         );
 
-        return await createSequenceLocationsBulk(locationInserts);
+        return await scopedDb.sequenceLocations.createBulk(locationInserts);
       }
     );
 
@@ -176,7 +177,7 @@ export const locationBibleWorkflow = createWorkflow(
             );
 
             // Update location record with reference image
-            await updateLocationReference(
+            await scopedDb.sequenceLocations.updateReference(
               dbId,
               storageResult.publicUrl,
               storageResult.path

@@ -28,12 +28,7 @@ import type {
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
-import { updateFrame } from '@/lib/db/helpers/frames';
-import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import {
-  getSequenceLocationsWithReferences,
-  locationMatchesTag,
-} from '@/lib/db/helpers/sequence-locations';
+import { locationMatchesTag } from '@/lib/db/scoped/sequence-locations';
 import type { Character, SequenceLocation } from '@/lib/db/schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
@@ -158,7 +153,9 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no prompt or description to regenerate from');
     }
 
-    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const allCharacters = await context.scopedDb.characters.listWithSheets(
+      sequence.id
+    );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const referenceImages = getSceneCharacterReferenceImages(
       allCharacters,
@@ -212,14 +209,17 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       throw new Error('Frame must have a thumbnail image to generate variants');
     }
 
-    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const allCharacters = await context.scopedDb.characters.listWithSheets(
+      sequence.id
+    );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const characterReferences = getSceneCharacterReferenceImages(
       allCharacters,
       characterTags
     );
 
-    const allLocations = await getSequenceLocationsWithReferences(sequence.id);
+    const allLocations =
+      await context.scopedDb.sequenceLocations.listWithReferences(sequence.id);
     const locationReferences = getSceneLocationReferenceImages(
       allLocations,
       frame.metadata?.continuity?.environmentTag ?? '',
@@ -309,7 +309,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     }
 
     // Set cropped thumbnail and clear stale motion fields
-    await updateFrame(frame.id, {
+    await context.scopedDb.frames.update(frame.id, {
       thumbnailUrl: uploadResult.url,
       thumbnailPath: uploadResult.path || null,
       thumbnailStatus: 'generating',

@@ -6,9 +6,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { requireUser } from '@/lib/auth/action-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { resolveUserTeam } from '@/lib/db/scoped';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { getTransactionHistory } from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { micros, microsToUsd } from '@/lib/billing/money';
 import type { TransactionType } from '@/lib/db/schema/credits';
 
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/api/billing/transactions')({
       GET: async ({ request }) => {
         try {
           const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
+          const team = await resolveUserTeam(user.id);
           if (!team) throw new ValidationError('No team found');
 
           const url = new URL(request.url);
@@ -41,7 +41,8 @@ export const Route = createFileRoute('/api/billing/transactions')({
           const rawType = url.searchParams.get('type');
           const type = rawType && isTransactionType(rawType) ? rawType : null;
 
-          const result = await getTransactionHistory(team.teamId, {
+          const scopedDb = createScopedDb(team.teamId);
+          const result = await scopedDb.billing.getTransactionHistory({
             limit,
             offset,
             ...(type && { type }),

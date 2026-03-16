@@ -13,9 +13,6 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
-import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { getStyleById } from '@/lib/db/helpers/styles';
 import { StyleConfigSchema } from '@/lib/db/schema';
 import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -51,7 +48,7 @@ export const generateStoryboardWorkflow = createWorkflow(
     } = await context.run('verify-clear-and-start-processing', async () => {
       validateSequenceAuth(input);
 
-      const sequence = await getSequenceForUser({
+      const sequence = await scopedDb.sequences.getForUser({
         sequenceId: input.sequenceId,
         teamId: input.teamId,
         userId: input.userId,
@@ -65,14 +62,18 @@ export const generateStoryboardWorkflow = createWorkflow(
         throw new WorkflowValidationError('Sequence has no style selected');
       }
 
-      const style = await getStyleById(sequence.styleId);
+      const style = await scopedDb.styles.getById(sequence.styleId);
 
       if (!style) {
         throw new WorkflowValidationError('No style found');
       }
 
-      const existingFrames = await getSequenceFrames(input.sequenceId);
-      await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
+      const existingFrames = await scopedDb.frames.listBySequence(
+        input.sequenceId
+      );
+      await Promise.all(
+        existingFrames.map((frame) => scopedDb.frames.delete(frame.id))
+      );
 
       await seq.updateStatus('processing');
 

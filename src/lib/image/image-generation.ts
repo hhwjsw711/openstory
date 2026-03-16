@@ -16,7 +16,7 @@ import { startObservation } from '@langfuse/tracing';
 import { getEnv } from '#env';
 import { generateImage } from '@tanstack/ai';
 import { falImage } from '@tanstack/ai-fal';
-import { apiKeyService } from '../byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 export type ImageGenerationParams = {
   teamId?: string; // teamId is used to resolve the API key for the image generation with BYOK
@@ -167,7 +167,9 @@ async function generateImageInternal(
     return generateLetzaiImage(params, prompt);
   }
   // Get the fal API key - byok or global
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', params.teamId);
+  const falApiKeyInfo = await createScopedDb(
+    params.teamId ?? ''
+  ).apiKeys.resolveKey('fal');
 
   const modelOptions = buildFalModelOptions(params);
 

@@ -9,9 +9,6 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/config';
 import type { User, Session } from '@/lib/auth/config';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import {
   requireTeamMemberAccess,
   requireTeamAdminAccess,
@@ -19,7 +16,11 @@ import {
 } from '@/lib/auth/action-utils';
 import { requireSystemAdmin } from '@/lib/auth/system-admin';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { createScopedDb, type ScopedDb } from '@/lib/db/scoped';
+import {
+  createScopedDb,
+  resolveUserTeam,
+  type ScopedDb,
+} from '@/lib/db/scoped';
 import type { Sequence, Frame } from '@/types/database';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 
@@ -147,7 +148,7 @@ export const authMiddleware = createMiddleware({ type: 'function' })
 export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
   .server(async ({ next, context }) => {
-    const team = await getUserDefaultTeam(context.user.id);
+    const team = await resolveUserTeam(context.user.id);
 
     if (!team) {
       throw new Error('No team found for user');
@@ -186,22 +187,18 @@ export const systemAdminMiddleware = createMiddleware({ type: 'function' })
  * Requires sequenceId in input data
  */
 export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ sequenceId: ulidSchema })))
   .server(async ({ next, context, data }) => {
-    const sequence = await getSequenceById(data.sequenceId);
+    const sequence = await context.scopedDb.sequences.getById(data.sequenceId);
 
     if (!sequence) {
       throw new Error('Sequence not found');
     }
 
-    await requireTeamMemberAccess(context.user.id, sequence.teamId);
-
     return next({
       context: {
         sequence,
-        teamId: sequence.teamId,
-        scopedDb: createScopedDb(sequence.teamId),
       },
     });
   });
@@ -212,18 +209,22 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires sequenceId and frameId in input data
  */
 export const frameAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(
     zodValidator(z.looseObject({ sequenceId: ulidSchema, frameId: ulidSchema }))
   )
   .server(async ({ next, context, data }) => {
-    const frameData = await getFrameWithSequence(data.frameId);
+    const frameData = await context.scopedDb.frames.getWithSequence(
+      data.frameId
+    );
 
     if (!frameData || frameData.sequenceId !== data.sequenceId) {
       throw new Error('Frame not found in this sequence');
     }
 
-    await requireTeamMemberAccess(context.user.id, frameData.sequence.teamId);
+    if (frameData.sequence.teamId !== context.teamId) {
+      throw new Error('Frame not found in this sequence');
+    }
 
     // Extract sequence from frame data (using the partial sequence from the query)
     const { sequence: rawSequence, ...frame } = frameData;
@@ -238,8 +239,6 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
       context: {
         frame,
         sequence,
-        teamId: sequence.teamId,
-        scopedDb: createScopedDb(sequence.teamId),
       },
     });
   });
@@ -250,15 +249,20 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
-    await requireTeamMemberAccess(context.user.id, data.teamId);
+    if (data.teamId !== context.teamId) {
+      await requireTeamMemberAccess(context.user.id, data.teamId);
+    }
 
     return next({
       context: {
         teamId: data.teamId,
-        scopedDb: createScopedDb(data.teamId),
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId),
       },
     });
   });
@@ -269,7 +273,7 @@ export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamAdminAccess(context.user.id, data.teamId);
@@ -277,7 +281,10 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
-        scopedDb: createScopedDb(data.teamId),
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId),
       },
     });
   });
@@ -288,7 +295,7 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamOwnerAccess(context.user.id, data.teamId);
@@ -296,7 +303,10 @@ export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
-        scopedDb: createScopedDb(data.teamId),
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId),
       },
     });
   });

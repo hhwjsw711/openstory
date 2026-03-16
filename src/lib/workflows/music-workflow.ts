@@ -3,7 +3,6 @@ import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -106,14 +105,15 @@ export const generateMusicWorkflow = createWorkflow(
     const musicCostMicros = audioResult.metadata?.cost ?? ZERO_MICROS;
     if (musicCostMicros > 0 && !audioResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, musicCostMicros);
+        const canAfford =
+          await scopedDb.billing.hasEnoughCredits(musicCostMicros);
         if (!canAfford) {
           console.warn(
             `[MusicWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(musicCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, musicCostMicros, {
+        await scopedDb.billing.deductCredits(musicCostMicros, {
           userId: input.userId,
           description: `Music generation (${model})`,
           metadata: {

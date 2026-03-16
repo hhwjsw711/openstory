@@ -6,7 +6,7 @@
  * then pass them through to AI client calls.
  */
 
-import { apiKeyService } from '@/lib/byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 export type ResolvedApiKeys = {
   /** Team's own OpenRouter key, or undefined to use platform key */
@@ -36,9 +36,10 @@ export async function resolveWorkflowApiKeys(
     return {};
   }
 
+  const scopedDb = createScopedDb(teamId);
   const [openrouter, fal] = await Promise.all([
-    apiKeyService.resolveKey('openrouter', teamId),
-    apiKeyService.resolveKey('fal', teamId),
+    scopedDb.apiKeys.resolveKey('openrouter'),
+    scopedDb.apiKeys.resolveKey('fal'),
   ]);
 
   return {

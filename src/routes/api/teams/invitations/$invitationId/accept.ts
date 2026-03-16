@@ -7,7 +7,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { requireUser } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import { teamService } from '@/lib/services/team.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 export const Route = createFileRoute(
   '/api/teams/invitations/$invitationId/accept'
@@ -27,7 +27,9 @@ export const Route = createFileRoute(
           const user = await requireUser();
 
           // Accept invitation
-          const teamId = await teamService.acceptInvitation({
+          // Use a placeholder teamId — acceptInvitation looks up by token, not team
+          const scopedDb = createScopedDb('__invitation__');
+          const teamId = await scopedDb.teamManagement.acceptInvitation({
             token: invitationId,
             userId: user.id,
           });

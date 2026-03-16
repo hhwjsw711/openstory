@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { authMiddleware, authWithTeamMiddleware } from './middleware';
+import { authWithTeamMiddleware } from './middleware';
 import {
   createTalentSchema,
   updateTalentSchema,
@@ -9,21 +9,7 @@ import {
   listTalentFilterSchema,
 } from '@/lib/schemas/talent.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  createTalentMediaRecord,
-  createTalentSheet,
-  deleteTalent,
-  deleteTalentMediaRecord,
-  deleteTalentSheet,
-  getTalentById,
-  getTalentMediaById,
-  getTalentSheetById,
-  getTalentWithRelations,
-  updateTalentSheet,
-} from '@/lib/db/helpers/talent';
-import { getCharacterById } from '@/lib/db/helpers/sequence-characters';
-import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import {
   STORAGE_BUCKETS,
   getPathFromUrl,
@@ -46,13 +32,16 @@ const characterIdSchema = z.object({ characterId: ulidSchema });
 
 /**
  * Verify a talent record belongs to the given team, throwing if not found.
+ * Uses scopedDb which is already team-scoped.
  */
 async function requireTalentOwnership(
-  talentId: string,
-  teamId: string
+  scopedDb: {
+    talent: { getById: (id: string) => Promise<Talent | undefined> };
+  },
+  talentId: string
 ): Promise<Talent> {
-  const record = await getTalentById(talentId);
-  if (!record || record.teamId !== teamId) {
+  const record = await scopedDb.talent.getById(talentId);
+  if (!record) {
     throw new Error('Talent not found');
   }
   return record;
@@ -83,9 +72,11 @@ export const getTalentByIdFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
-    const talentRecord = await getTalentWithRelations(data.talentId);
+    const talentRecord = await context.scopedDb.talent.getWithRelations(
+      data.talentId
+    );
 
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
+    if (!talentRecord) {
       throw new Error('Talent not found');
     }
 
@@ -121,7 +112,7 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       const permanentUrl = getPublicUrl(STORAGE_BUCKETS.TALENT, permanentPath);
       permanentUrls.push(permanentUrl);
 
-      await createTalentMediaRecord({
+      await context.scopedDb.talent.media.create({
         talentId: newTalent.id,
         type: 'image',
         url: permanentUrl,
@@ -177,19 +168,14 @@ export const updateTalentFn = createServerFn({ method: 'POST' })
 // Delete Talent (requires admin/owner role)
 
 export const deleteTalentFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(talentIdSchema))
   .handler(async ({ context, data }) => {
-    const talentRecord = await getTalentById(data.talentId);
-    if (!talentRecord) {
-      throw new Error('Talent not found');
-    }
+    await requireTeamAdminAccess(context.user.id, context.teamId);
 
-    await requireTeamManagement(context.user.id, talentRecord.teamId);
-
-    const deleted = await deleteTalent(data.talentId, talentRecord.teamId);
+    const deleted = await context.scopedDb.talent.delete(data.talentId);
     if (!deleted) {
-      throw new Error('Failed to delete talent');
+      throw new Error('Talent not found or failed to delete');
     }
 
     return { success: true };
@@ -216,9 +202,9 @@ export const createTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createTalentSheetSchema))
   .handler(async ({ context, data }) => {
-    await requireTalentOwnership(data.talentId, context.teamId);
+    await requireTalentOwnership(context.scopedDb, data.talentId);
 
-    return createTalentSheet({
+    return context.scopedDb.talent.sheets.create({
       talentId: data.talentId,
       name: data.name,
       imageUrl: data.imageUrl,
@@ -240,14 +226,14 @@ export const deleteTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(sheetIdSchema))
   .handler(async ({ context, data }) => {
-    const sheet = await getTalentSheetById(data.sheetId);
+    const sheet = await context.scopedDb.talent.sheets.getById(data.sheetId);
     if (!sheet) {
       throw new Error('Sheet not found');
     }
 
-    await requireTalentOwnership(sheet.talentId, context.teamId);
+    await requireTalentOwnership(context.scopedDb, sheet.talentId);
 
-    const deleted = await deleteTalentSheet(data.sheetId);
+    const deleted = await context.scopedDb.talent.sheets.delete(data.sheetId);
     if (!deleted) {
       throw new Error('Failed to delete sheet');
     }
@@ -261,14 +247,16 @@ export const setDefaultSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(sheetIdSchema))
   .handler(async ({ context, data }) => {
-    const sheet = await getTalentSheetById(data.sheetId);
+    const sheet = await context.scopedDb.talent.sheets.getById(data.sheetId);
     if (!sheet) {
       throw new Error('Sheet not found');
     }
 
-    await requireTalentOwnership(sheet.talentId, context.teamId);
+    await requireTalentOwnership(context.scopedDb, sheet.talentId);
 
-    const updated = await updateTalentSheet(data.sheetId, { isDefault: true });
+    const updated = await context.scopedDb.talent.sheets.update(data.sheetId, {
+      isDefault: true,
+    });
     if (!updated) {
       throw new Error('Failed to update sheet');
     }
@@ -289,7 +277,7 @@ export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(uploadMediaInputSchema))
   .handler(async ({ context, data }) => {
-    await requireTalentOwnership(data.talentId, context.teamId);
+    await requireTalentOwnership(context.scopedDb, data.talentId);
 
     const blob = decodeBase64ToBlob(data.base64Data);
     const ext = getExtensionFromUrl(data.filename);
@@ -300,7 +288,7 @@ export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
       contentType: getMimeTypeFromExtension(ext),
     });
 
-    return createTalentMediaRecord({
+    return context.scopedDb.talent.media.create({
       id: mediaId,
       talentId: data.talentId,
       type: data.type,
@@ -339,12 +327,12 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(mediaIdSchema))
   .handler(async ({ context, data }) => {
-    const media = await getTalentMediaById(data.mediaId);
+    const media = await context.scopedDb.talent.media.getById(data.mediaId);
     if (!media) {
       throw new Error('Media not found');
     }
 
-    await requireTalentOwnership(media.talentId, context.teamId);
+    await requireTalentOwnership(context.scopedDb, media.talentId);
 
     if (media.path) {
       try {
@@ -357,7 +345,7 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
       }
     }
 
-    const deleted = await deleteTalentMediaRecord(data.mediaId);
+    const deleted = await context.scopedDb.talent.media.delete(data.mediaId);
     if (!deleted) {
       throw new Error('Failed to delete media');
     }
@@ -376,9 +364,11 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(generateSheetInputSchema))
   .handler(async ({ context, data }) => {
-    const talentRecord = await getTalentWithRelations(data.talentId);
+    const talentRecord = await context.scopedDb.talent.getWithRelations(
+      data.talentId
+    );
 
-    if (!talentRecord || talentRecord.teamId !== context.teamId) {
+    if (!talentRecord) {
       throw new Error('Talent not found');
     }
 
@@ -408,13 +398,15 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(characterIdSchema))
   .handler(async ({ context, data }) => {
-    const character = await getCharacterById(data.characterId);
+    const character = await context.scopedDb.characters.getById(
+      data.characterId
+    );
     if (!character) {
       throw new Error('Character not found');
     }
 
     // Verify the character's sequence belongs to this team
-    await getSequenceForUser({
+    await context.scopedDb.sequences.getForUser({
       sequenceId: character.sequenceId,
       teamId: context.teamId,
       userId: context.user.id,
@@ -432,7 +424,7 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
     });
 
     if (character.sheetImageUrl) {
-      await createTalentSheet({
+      await context.scopedDb.talent.sheets.create({
         talentId: newTalent.id,
         name: 'Default',
         imageUrl: character.sheetImageUrl,

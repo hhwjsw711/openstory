@@ -1,7 +1,8 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { updateFrame } from '@/lib/db/helpers/frames';
+import { createScopedDb } from '@/lib/db/scoped';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -40,6 +41,10 @@ OUTPUT
 export const upscaleVariantWorkflow = createWorkflow(
   async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     console.log(
       '[UpscaleVariantWorkflow]',
@@ -52,7 +57,7 @@ export const upscaleVariantWorkflow = createWorkflow(
         { frameId: input.frameId, status: 'generating' }
       );
 
-      const frame = await updateFrame(
+      const frame = await scopedDb.frames.update(
         input.frameId,
         {
           thumbnailStatus: 'generating',
@@ -116,7 +121,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     });
 
     await context.run('update-frame', async () => {
-      const updatedFrame = await updateFrame(
+      const updatedFrame = await scopedDb.frames.update(
         input.frameId,
         {
           thumbnailUrl: storageResult.url,
@@ -165,19 +170,22 @@ export const upscaleVariantWorkflow = createWorkflow(
         `Upscale failed for frame ${input.frameId}: ${error}`
       );
 
-      await updateFrame(
-        input.frameId,
-        {
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-        },
-        { throwOnMissing: false }
-      );
+      if (input.frameId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.frames.update(
+          input.frameId,
+          {
+            thumbnailStatus: 'completed',
+            thumbnailGeneratedAt: new Date(),
+          },
+          { throwOnMissing: false }
+        );
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'completed' }
-      );
+        await getGenerationChannel(input.sequenceId).emit(
+          'generation.image:progress',
+          { frameId: input.frameId, status: 'completed' }
+        );
+      }
 
       return `Upscale failed for frame ${input.frameId}`;
     },

@@ -10,7 +10,7 @@ import {
 import { createFalClient } from '@fal-ai/client';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
-import { apiKeyService } from '../byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 export const generateMusicOptionsSchema = z.object({
   prompt: z.string().min(1),
@@ -206,7 +206,9 @@ async function callFalAudio(
     }
   );
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
+  const falApiKeyInfo = await createScopedDb(options.teamId).apiKeys.resolveKey(
+    'fal'
+  );
   const fal = createFalClient({
     credentials: falApiKeyInfo.key,
   });

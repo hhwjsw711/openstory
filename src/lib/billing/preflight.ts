@@ -4,9 +4,8 @@
  * before triggering workflows. Skips check if team has own BYOK keys.
  */
 
-import { hasEnoughCredits } from '@/lib/billing/credit-service';
 import type { Microdollars } from '@/lib/billing/money';
-import { apiKeyService } from '@/lib/byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
 
 type Provider = 'fal' | 'openrouter';
@@ -31,16 +30,18 @@ export async function requireCredits(
   } = {}
 ): Promise<void> {
   const providers = opts.providers ?? ['fal'];
+  const scopedDb = createScopedDb(teamId);
 
   // Check if team has all required BYOK keys (any missing = need credits)
   const keyChecks = await Promise.all(
-    providers.map((provider) => apiKeyService.hasKey(teamId, provider))
+    providers.map((provider) => scopedDb.apiKeys.hasKey(provider))
   );
   const hasAllKeys = keyChecks.every(Boolean);
 
   if (hasAllKeys) return;
 
-  const canAfford = await hasEnoughCredits(teamId, estimatedCostMicros);
+  const canAfford =
+    await scopedDb.billing.hasEnoughCredits(estimatedCostMicros);
   if (!canAfford) {
     throw new InsufficientCreditsError(
       opts.errorMessage ?? 'Insufficient credits'

@@ -1,29 +1,28 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import { micros } from '../billing/money';
-import { apiKeyService } from '../byok/api-key.service';
 import {
   mockGenerateVideo,
   mockGetVideoJobStatus,
 } from './__mocks__/fal-client.mock';
-import { generateMotionForFrame } from './motion-generation';
+
+// Mock DB + env so api-key resolution falls through to platform key
+mock.module('#db-client', () => ({
+  getDb: () => ({
+    select: () => ({ from: () => ({ where: () => ({ limit: () => [] }) }) }),
+  }),
+}));
+
+mock.module('#env', () => ({
+  getEnv: () => ({ FAL_KEY: 'test-fal-key', OPENROUTER_KEY: 'test-or-key' }),
+}));
+
+const { generateMotionForFrame } = await import('./motion-generation');
 
 describe('Motion Service', () => {
-  let resolveKeySpy: ReturnType<typeof spyOn>;
-
   beforeEach(() => {
     mockGenerateVideo.mockClear();
     mockGetVideoJobStatus.mockClear();
-
-    // Mock resolveKey to avoid DB/env lookups in tests
-    resolveKeySpy = spyOn(apiKeyService, 'resolveKey').mockResolvedValue({
-      key: 'test-fal-key',
-      source: 'platform',
-    });
-  });
-
-  afterEach(() => {
-    resolveKeySpy.mockRestore();
   });
 
   describe('generateMotionForFrame', () => {

@@ -10,8 +10,6 @@ import { z } from 'zod';
 import { sequenceAccessMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
 import { requireCredits } from '@/lib/billing/preflight';
 import {
   addMicros,
@@ -81,7 +79,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
   .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
   .handler(async ({ context }) => {
     const { sequence, user, teamId } = context;
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
     const summary = analyzeFailures(frames, sequence);
 
     if (!summary.hasFailed) {
@@ -194,7 +192,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 1. Retry failed images
     if (failedImageFrames.length > 0) {
-      const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+      const allCharacters = await context.scopedDb.characters.listWithSheets(
+        sequence.id
+      );
 
       for (const frame of failedImageFrames) {
         const prompt =
@@ -252,7 +252,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 3. Retry failed music
     if (hasMusicFailure && sequence.musicPrompt) {
-      const allFrames = await getSequenceFrames(sequence.id);
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
       const totalDuration = allFrames.reduce((sum, frame) => {
         const seconds = frame.durationMs
           ? frame.durationMs / 1000
@@ -281,7 +283,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 4. Retry failed merge
     if (hasMergeFailure) {
-      const allFrames = await getSequenceFrames(sequence.id);
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
       const incompleteCount = allFrames.filter(
         (f) => f.videoStatus !== 'completed' || !f.videoUrl
       ).length;

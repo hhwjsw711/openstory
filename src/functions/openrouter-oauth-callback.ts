@@ -5,7 +5,7 @@
 
 import { exchangeCodeForKey } from '@/lib/byok/openrouter-oauth';
 import type { OAuthState } from '@/lib/byok/openrouter-oauth';
-import { apiKeyService } from '@/lib/byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { getOAuthRedis, OAUTH_STATE_PREFIX } from './openrouter-oauth-utils';
 
 /**
@@ -31,8 +31,8 @@ export async function completeOpenRouterOAuth(
   const { apiKey } = await exchangeCodeForKey(code, state.codeVerifier);
 
   // Save the key (encrypted)
-  await apiKeyService.saveKey({
-    teamId: state.teamId,
+  const scopedDb = createScopedDb(state.teamId);
+  await scopedDb.apiKeys.saveKey({
     provider: 'openrouter',
     apiKey,
     source: 'oauth',

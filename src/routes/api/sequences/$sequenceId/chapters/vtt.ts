@@ -3,12 +3,10 @@
  * GET /api/sequences/:sequenceId/chapters.vtt - Generate WebVTT chapters for sequence
  */
 
-import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import { requireAuth } from '@/lib/auth/api-utils';
-import { getSequenceById } from '@/lib/db/helpers/queries';
+import { createScopedDb, resolveUserTeam } from '@/lib/db/scoped';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { generateChaptersVTT } from '@/lib/vtt/generate-chapters';
 import { createFileRoute } from '@tanstack/react-router';
 
@@ -27,21 +25,26 @@ export const Route = createFileRoute('/api/sequences/$sequenceId/chapters/vtt')(
               throw new ValidationError('Invalid sequence ID format');
             }
 
-            // Authenticate user
+            // Authenticate user and resolve team
             const authResult = await requireAuth(request);
             const user = authResult.user;
 
-            // Verify user has access to the sequence's team
-            const sequence = await getSequenceById(sequenceId);
+            const team = await resolveUserTeam(user.id);
+            if (!team) {
+              return new Response('No team found', { status: 403 });
+            }
+
+            const scopedDb = createScopedDb(team.teamId);
+
+            // Look up sequence (team-scoped)
+            const sequence = await scopedDb.sequences.getById(sequenceId);
 
             if (!sequence) {
               return new Response('Sequence not found', { status: 404 });
             }
 
-            await requireTeamMemberAccess(user.id, sequence.teamId);
-
             // Get frames ordered by orderIndex
-            const frames = await getSequenceFrames(sequenceId);
+            const frames = await scopedDb.frames.listBySequence(sequenceId);
 
             if (frames.length === 0) {
               return new Response('No frames found for sequence', {

@@ -6,7 +6,7 @@
 
 import { createFalClient } from '@fal-ai/client';
 import type { QueueStatus } from '@fal-ai/client';
-import { apiKeyService } from '../byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 const COMPOSE_MODEL_ID = 'fal-ai/ffmpeg-api/compose';
 
@@ -48,7 +48,9 @@ export async function composeAudioVideo({
     durationMs,
   });
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const falApiKeyInfo = await createScopedDb(teamId ?? '').apiKeys.resolveKey(
+    'fal'
+  );
   const fal = createFalClient({
     credentials: falApiKeyInfo.key,
   });

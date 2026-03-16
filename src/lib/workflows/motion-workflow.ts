@@ -8,13 +8,8 @@
  */
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { micros, microsToUsd } from '@/lib/billing/money';
-import {
-  getFrameWithSequence,
-  getSequenceFrames,
-  updateFrame,
-} from '@/lib/db/helpers/frames';
+import { createScopedDb } from '@/lib/db/scoped';
 import {
   calculateMotionMetadata,
   pollMotionJob,
@@ -41,6 +36,10 @@ const MAX_BATCHES = 30;
 export const generateMotionWorkflow = createWorkflow(
   async (context: WorkflowContext<MotionWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
     const model = input.model || DEFAULT_VIDEO_MODEL;
 
     if (!input.imageUrl?.trim()) {
@@ -55,7 +54,7 @@ export const generateMotionWorkflow = createWorkflow(
       async () => {
         if (!input.frameId) return { frameDeleted: false };
 
-        const frame = await updateFrame(
+        const frame = await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'generating',
@@ -170,14 +169,15 @@ export const generateMotionWorkflow = createWorkflow(
     const { teamId } = input;
     if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
+        const canAfford =
+          await scopedDb.billing.hasEnoughCredits(motionCostMicros);
         if (!canAfford) {
           console.warn(
             `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(motionCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, motionCostMicros, {
+        await scopedDb.billing.deductCredits(motionCostMicros, {
           userId: input.userId,
           description: `Motion generation (${model})`,
           metadata: {
@@ -195,7 +195,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       // Step 3: Fetch frame and sequence data for human-readable filename
       const frameData = await context.run('fetch-frame-data', async () => {
-        const frame = await getFrameWithSequence(frameId);
+        const frame = await scopedDb.frames.getWithSequence(frameId);
         if (!frame) throw new Error('Frame not found');
         return {
           sequenceTitle: frame.sequence.title,
@@ -229,7 +229,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             videoPath: storageResult.path,
@@ -262,7 +262,9 @@ export const generateMotionWorkflow = createWorkflow(
       await context.run('check-merge-trigger', async () => {
         if (!input.sequenceId || !input.teamId || !input.userId) return;
 
-        const allFrames = await getSequenceFrames(input.sequenceId);
+        const allFrames = await scopedDb.frames.listBySequence(
+          input.sequenceId
+        );
         if (allFrames.length === 0) return;
         if (!allFrames.every((f) => f.videoStatus === 'completed')) return;
 
@@ -297,8 +299,9 @@ export const generateMotionWorkflow = createWorkflow(
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'failed',

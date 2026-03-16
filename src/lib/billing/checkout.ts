@@ -5,7 +5,7 @@
 
 import { ValidationError } from '@/lib/errors';
 import { MIN_TOPUP_AMOUNT_USD } from './constants';
-import { getBillingSettings, saveStripeCustomerId } from './credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { getStripeOrThrow } from './stripe';
 
 type CreateCheckoutParams = {
@@ -30,7 +30,8 @@ export async function createCheckoutSession(
   }
 
   const stripe = getStripeOrThrow();
-  const settings = await getBillingSettings(teamId);
+  const scopedDb = createScopedDb(teamId);
+  const settings = await scopedDb.billing.getBillingSettings();
 
   // Reuse existing Stripe customer or create new one
   let customerId = settings.stripeCustomerId;
@@ -51,7 +52,7 @@ export async function createCheckoutSession(
       metadata: { teamId, userId },
     });
     customerId = customer.id;
-    await saveStripeCustomerId(teamId, customerId);
+    await scopedDb.billing.saveStripeCustomerId(customerId);
   }
 
   const amountCents = Math.round(amountUsd * 100);

@@ -7,12 +7,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { resolveUserTeam } from '@/lib/db/scoped';
 import { handleApiError } from '@/lib/errors';
-import {
-  getTeamBalance,
-  getBillingSettings,
-} from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { micros, microsToUsd } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/balance')({
@@ -21,7 +18,7 @@ export const Route = createFileRoute('/api/billing/balance')({
       GET: async () => {
         try {
           const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
+          const team = await resolveUserTeam(user.id);
           if (!team) {
             return json({
               success: true,
@@ -39,9 +36,10 @@ export const Route = createFileRoute('/api/billing/balance')({
             });
           }
 
+          const scopedDb = createScopedDb(team.teamId);
           const [balance, settings] = await Promise.all([
-            getTeamBalance(team.teamId),
-            getBillingSettings(team.teamId),
+            scopedDb.billing.getBalance(),
+            scopedDb.billing.getBillingSettings(),
           ]);
 
           return json(

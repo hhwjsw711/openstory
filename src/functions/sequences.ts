@@ -12,13 +12,10 @@ import {
   updateSequenceSchema,
 } from '@/lib/schemas/sequence.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getSequenceById } from '@/lib/db/helpers/queries';
 import {
-  deleteSequence,
-  updateSequence,
-  updateSequenceMusicPrompt,
-} from '@/lib/db/helpers/sequences';
-import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
+  requireTeamAdminAccess,
+  requireTeamMemberAccess,
+} from '@/lib/auth/action-utils';
 import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
@@ -43,7 +40,6 @@ import type {
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
 import type { Frame } from '@/lib/db/schema';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
@@ -172,7 +168,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
       updateData.aspectRatio !== undefined ||
       updateData.analysisModel !== undefined;
 
-    const sequence = await updateSequence({
+    const sequence = await context.scopedDb.sequences.update({
       id: sequenceId,
       userId: context.user.id,
       aspectRatio: updateData.aspectRatio ?? DEFAULT_ASPECT_RATIO,
@@ -289,14 +285,19 @@ export const deleteSequenceFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
   .handler(async ({ data, context }) => {
-    const sequence = await getSequenceById(data.sequenceId);
+    // Admin delete uses authMiddleware (no team context), so look up the
+    // sequence without team scoping, verify admin access, then delete via scopedDb.
+    const { getSequenceByIdUnscoped } = await import('@/lib/db/scoped');
+    const sequence = await getSequenceByIdUnscoped(data.sequenceId);
 
     if (!sequence) {
       throw new Error('Sequence not found');
     }
 
-    await requireTeamMemberAccess(context.user.id, sequence.teamId, 'admin');
-    await deleteSequence(data.sequenceId);
+    await requireTeamAdminAccess(context.user.id, sequence.teamId);
+
+    const scopedDb = createScopedDb(sequence.teamId);
+    await scopedDb.sequences.delete(data.sequenceId);
 
     return { success: true };
   });
@@ -357,14 +358,16 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     const effectiveTags = data.tags ?? sequence.musicTags;
 
     if (data.prompt || data.tags) {
-      await updateSequenceMusicPrompt(
+      await context.scopedDb.sequences.updateMusicPrompt(
         sequence.id,
         data.prompt ?? sequence.musicPrompt ?? '',
         data.tags ?? sequence.musicTags ?? ''
       );
     }
 
-    const allFrames = await getSequenceFrames(data.sequenceId);
+    const allFrames = await context.scopedDb.frames.listBySequence(
+      data.sequenceId
+    );
 
     const totalDuration = allFrames.reduce((sum, frame) => {
       const seconds = frame.durationMs
@@ -411,7 +414,7 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       throw new Error('Music must be generated before merging');
     }
 
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
 
     if (frames.length === 0) {
       throw new Error('No frames found in sequence');

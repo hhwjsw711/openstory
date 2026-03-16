@@ -1,10 +1,3 @@
-import {
-  getFrameIdsForLocation,
-  getSequenceLocationById,
-  getSequenceLocations,
-  getTeamLocationsLibrary,
-  updateReferenceStatus,
-} from '@/lib/db/helpers/sequence-locations';
 import type { SequenceLocation } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -51,13 +44,15 @@ function toLocationMetadata(
 export const getSequenceLocationsFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    return getSequenceLocations(context.sequence.id);
+    return context.scopedDb.sequenceLocations.list(context.sequence.id);
   });
 
 export const getTeamLocationsLibraryFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getTeamLocationsLibrary(context.teamId, { completedOnly: false });
+    return context.scopedDb.sequenceLocations.getTeamLibrary(context.teamId, {
+      completedOnly: false,
+    });
   });
 
 const getFrameIdsForLocationInputSchema = z.object({
@@ -68,10 +63,11 @@ export const getFrameIdsForLocationFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(getFrameIdsForLocationInputSchema))
   .handler(async ({ context, data }) => {
-    const frameIds = await getFrameIdsForLocation(
-      context.sequence.id,
-      data.locationId
-    );
+    const frameIds =
+      await context.scopedDb.sequenceLocations.getFrameIdsForLocation(
+        context.sequence.id,
+        data.locationId
+      );
     return { frameIds, count: frameIds.length };
   });
 
@@ -90,22 +86,28 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(recastLocationInputSchema))
   .handler(async ({ context, data }) => {
-    const location = await getSequenceLocationById(data.locationId);
+    const location = await context.scopedDb.sequenceLocations.getById(
+      data.locationId
+    );
     if (!location) {
       throw new Error('Location not found');
     }
 
-    await updateReferenceStatus(data.locationId, 'generating');
+    await context.scopedDb.sequenceLocations.updateReferenceStatus(
+      data.locationId,
+      'generating'
+    );
 
     await getGenerationChannel(location.sequenceId).emit(
       'generation.location-sheet:progress',
       { locationId: data.locationId, status: 'generating' }
     );
 
-    const affectedFrameIds = await getFrameIdsForLocation(
-      location.sequenceId,
-      data.locationId
-    );
+    const affectedFrameIds =
+      await context.scopedDb.sequenceLocations.getFrameIdsForLocation(
+        location.sequenceId,
+        data.locationId
+      );
 
     const workflowRunId = await triggerWorkflow('/recast-location', {
       locationDbId: data.locationId,

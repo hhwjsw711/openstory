@@ -15,7 +15,6 @@ import {
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
 import { usdToMicros, multiplyMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -122,7 +121,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { sequence, teamId } = context;
 
-    const allFrames = await getSequenceFrames(sequence.id);
+    const allFrames = await context.scopedDb.frames.listBySequence(sequence.id);
     const filtered = data.frameIds?.length
       ? allFrames.filter((f) => data.frameIds?.includes(f.id))
       : allFrames;
@@ -219,7 +218,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     const { sequence, teamId, user } = context;
 
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
 
     if (frames.length === 0) {
       throw new Error('No frames found in sequence');

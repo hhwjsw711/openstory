@@ -3,7 +3,7 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
 import { moveFile, uploadFile } from '#storage';
 import {
@@ -13,11 +13,7 @@ import {
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
-import {
-  updateLibraryLocation,
-  deleteLibraryLocation,
-  getLibraryLocationById,
-} from '@/lib/db/helpers/location-library';
+import type { LibraryLocation } from '@/lib/db/schema';
 
 type ProcessedImage = { url: string; path: string };
 
@@ -48,10 +44,16 @@ async function processReferenceImages(
 
 /**
  * Verify a location exists and belongs to the given team. Throws if not found.
+ * Uses scopedDb which is already team-scoped via getById.
  */
-async function requireLocation(locationId: string, teamId: string) {
-  const location = await getLibraryLocationById(locationId);
-  if (!location || location.teamId !== teamId) {
+async function requireLocation(
+  scopedDb: {
+    locations: { getById: (id: string) => Promise<LibraryLocation | null> };
+  },
+  locationId: string
+) {
+  const location = await scopedDb.locations.getById(locationId);
+  if (!location) {
     throw new Error('Location not found');
   }
   return location;
@@ -67,7 +69,7 @@ export const getLibraryLocationByIdFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.object({ locationId: ulidSchema })))
   .handler(async ({ context, data }) => {
-    const location = await requireLocation(data.locationId, context.teamId);
+    const location = await requireLocation(context.scopedDb, data.locationId);
 
     const sheets = await context.scopedDb.locationSheets.list(data.locationId);
 
@@ -145,18 +147,18 @@ export const updateLibraryLocationFn = createServerFn({ method: 'POST' })
     )
   )
   .handler(async ({ context, data }) => {
-    await requireLocation(data.locationId, context.teamId);
+    await requireLocation(context.scopedDb, data.locationId);
     const { locationId, ...updateData } = data;
-    return updateLibraryLocation(locationId, updateData);
+    return context.scopedDb.locations.update(locationId, updateData);
   });
 
 export const deleteLibraryLocationFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.object({ locationId: ulidSchema })))
   .handler(async ({ context, data }) => {
-    await requireLocation(data.locationId, context.teamId);
-    await requireTeamManagement(context.user.id, context.teamId);
-    await deleteLibraryLocation(data.locationId);
+    await requireLocation(context.scopedDb, data.locationId);
+    await requireTeamAdminAccess(context.user.id, context.teamId);
+    await context.scopedDb.locations.delete(data.locationId);
     return { success: true };
   });
 
@@ -180,7 +182,7 @@ export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
     const uploadId = generateId();
 
     if (data.locationId) {
-      await requireLocation(data.locationId, context.teamId);
+      await requireLocation(context.scopedDb, data.locationId);
     }
 
     const storagePath = data.locationId
@@ -195,7 +197,7 @@ export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
     );
 
     if (data.locationId) {
-      await updateLibraryLocation(data.locationId, {
+      await context.scopedDb.locations.update(data.locationId, {
         referenceImageUrl: result.publicUrl,
         referenceImagePath: result.path,
       });
@@ -215,7 +217,7 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
     )
   )
   .handler(async ({ context, data }) => {
-    const location = await requireLocation(data.locationId, context.teamId);
+    const location = await requireLocation(context.scopedDb, data.locationId);
 
     const processedImages = await processReferenceImages(
       data.imageUrls,

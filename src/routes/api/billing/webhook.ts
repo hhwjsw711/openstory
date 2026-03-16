@@ -4,7 +4,7 @@
  */
 
 import { isStripeEnabled } from '@/lib/billing/constants';
-import { addCredits, saveStripeCustomerId } from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
 import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import { createFileRoute } from '@tanstack/react-router';
@@ -71,9 +71,11 @@ export const Route = createFileRoute('/api/billing/webhook')({
                   : session.customer.id
                 : undefined;
 
+              const scopedDb = createScopedDb(teamId);
+
               // Save customer ID mapping if not already saved
               if (customerId) {
-                await saveStripeCustomerId(teamId, customerId);
+                await scopedDb.billing.saveStripeCustomerId(customerId);
               }
               let receiptUrl: string | undefined;
               try {
@@ -107,7 +109,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
 
               // Add credits (unique stripeSessionId prevents duplicates)
               const amountMicros = usdToMicros(amountUsd);
-              const result = await addCredits(teamId, amountMicros, {
+              const result = await scopedDb.billing.addCredits(amountMicros, {
                 userId,
                 stripeSessionId: session.id,
                 description: `Top-up: ${microsToDisplayUsd(amountMicros)}`,

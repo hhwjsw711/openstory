@@ -1,100 +1,78 @@
 /**
- * Team Service Layer
- *
- * Handles all team-related business logic including member management,
- * invitations, and role updates. This service contains pure business logic
- * with no authentication or authorization checks (caller's responsibility).
- *
- * @module lib/services/team.service
+ * Scoped Team Management Sub-module
+ * Team-scoped member management, invitations, and role updates.
  */
 
-import { getDb } from '#db-client';
+import { and, asc, eq } from 'drizzle-orm';
+import type { Database } from '@/lib/db/client';
 import { INVITATION_CONFIG } from '@/lib/auth/constants';
 import type { TeamRole } from '@/lib/auth/permissions';
 import { getUserRole } from '@/lib/auth/permissions';
 import { teamInvitations, teamMembers, user } from '@/lib/db/schema';
 import { ValidationError } from '@/lib/errors';
-import { and, asc, eq } from 'drizzle-orm';
 import crypto from 'node:crypto';
-// Type definitions
-interface TeamMember {
+
+type TeamMember = {
   userId: string;
   email: string;
   name: string;
   image: string | null;
   role: string;
   joinedAt: Date;
-}
+};
 
-interface TeamInvitation {
+type TeamInvitation = {
   id: string;
   teamId: string;
   email: string;
   role: string;
   invitedBy: string;
-  // SECURITY: Token should NOT be included in API responses
-  // It should only be sent via secure email channel
   status: string;
   expiresAt: Date;
   createdAt: Date;
   acceptedAt: Date | null;
-}
+};
 
-interface CreateInvitationParams {
-  teamId: string;
+type CreateInvitationParams = {
   email: string;
   role: 'member' | 'admin' | 'viewer';
   invitedBy: string;
-}
+};
 
-interface AcceptInvitationParams {
+type AcceptInvitationParams = {
   token: string;
   userId: string;
-}
+};
 
-interface RemoveMemberParams {
-  teamId: string;
+type RemoveMemberParams = {
   userId: string;
   requestingUserId: string;
-}
+};
 
-interface UpdateMemberRoleParams {
-  teamId: string;
+type UpdateMemberRoleParams = {
   userId: string;
   newRole: TeamRole;
   requestingUserId: string;
-}
+};
 
-/**
- * Team Service Class
- *
- * Provides business logic for team operations. All methods assume
- * the caller has already verified authentication and authorization.
- */
-class TeamService {
-  constructor() {}
-
+export function createTeamManagementMethods(db: Database, teamId: string) {
   /**
-   * Create a team invitation
-   *
-   * @param params - Invitation parameters
+   * Create a team invitation.
    * @throws {ValidationError} If email already has pending invitation or is already a member
-   * @throws {Error} If database operation fails
-   * @returns The created invitation
    */
-  async createInvitation(
+  async function createInvitation(
     params: CreateInvitationParams
   ): Promise<TeamInvitation> {
     // Check if email is already a team member
-    const existingAuthUser = await getDb().query.user.findFirst({
+    const existingAuthUser = await db.query.user.findFirst({
       where: eq(user.email, params.email),
       columns: { id: true },
     });
 
     if (existingAuthUser) {
-      const existingMember = await getDb().query.teamMembers.findFirst({
+      const existingMember = await db.query.teamMembers.findFirst({
         where: and(
-          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.teamId, teamId),
           eq(teamMembers.userId, existingAuthUser.id)
         ),
         columns: { userId: true },
@@ -106,9 +84,9 @@ class TeamService {
     }
 
     // Check if there's already a pending invitation
-    const existingInvitation = await getDb().query.teamInvitations.findFirst({
+    const existingInvitation = await db.query.teamInvitations.findFirst({
       where: and(
-        eq(teamInvitations.teamId, params.teamId),
+        eq(teamInvitations.teamId, teamId),
         eq(teamInvitations.email, params.email),
         eq(teamInvitations.status, 'pending')
       ),
@@ -132,10 +110,10 @@ class TeamService {
     );
 
     // Create invitation
-    const [invitation] = await getDb()
+    const [invitation] = await db
       .insert(teamInvitations)
       .values({
-        teamId: params.teamId,
+        teamId,
         email: params.email,
         role: params.role,
         invitedBy: params.invitedBy,
@@ -150,13 +128,11 @@ class TeamService {
 
     // TODO: Send invitation email with token
     // SECURITY: Token should ONLY be sent via email, never in API response
-    // await this.emailService.sendInvitation(params.email, token);
     console.log(
-      `[TeamService] Invitation created for ${params.email}. Token should be sent via email.`
+      `[TeamManagement] Invitation created for ${params.email}. Token should be sent via email.`
     );
 
     // SECURITY: Do NOT return token in response
-    // Token should only be sent via secure email channel
     return {
       id: invitation.id,
       teamId: invitation.teamId,
@@ -171,16 +147,15 @@ class TeamService {
   }
 
   /**
-   * Accept a team invitation
-   *
-   * @param params - Acceptance parameters
+   * Accept a team invitation.
    * @throws {ValidationError} If invitation is invalid, expired, or user is already a member
-   * @throws {Error} If database operation fails
    * @returns The team ID the user joined
    */
-  async acceptInvitation(params: AcceptInvitationParams): Promise<string> {
+  async function acceptInvitation(
+    params: AcceptInvitationParams
+  ): Promise<string> {
     // Get invitation
-    const invitation = await getDb().query.teamInvitations.findFirst({
+    const invitation = await db.query.teamInvitations.findFirst({
       where: eq(teamInvitations.token, params.token),
     });
 
@@ -195,7 +170,7 @@ class TeamService {
 
     if (new Date(invitation.expiresAt) < new Date()) {
       // Mark as expired
-      await getDb()
+      await db
         .update(teamInvitations)
         .set({ status: 'expired' })
         .where(eq(teamInvitations.id, invitation.id));
@@ -204,7 +179,7 @@ class TeamService {
     }
 
     // Check if user is already a member
-    const existingMember = await getDb().query.teamMembers.findFirst({
+    const existingMember = await db.query.teamMembers.findFirst({
       where: and(
         eq(teamMembers.teamId, invitation.teamId),
         eq(teamMembers.userId, params.userId)
@@ -217,7 +192,7 @@ class TeamService {
     }
 
     // Add user to team
-    await getDb().insert(teamMembers).values({
+    await db.insert(teamMembers).values({
       teamId: invitation.teamId,
       userId: params.userId,
       role: invitation.role,
@@ -225,7 +200,7 @@ class TeamService {
 
     // Mark invitation as accepted
     try {
-      await getDb()
+      await db
         .update(teamInvitations)
         .set({
           status: 'accepted',
@@ -233,7 +208,10 @@ class TeamService {
         })
         .where(eq(teamInvitations.id, invitation.id));
     } catch (error) {
-      console.error('[TeamService] Failed to update invitation status:', error);
+      console.error(
+        '[TeamManagement] Failed to update invitation status:',
+        error
+      );
       // Don't throw - user is already added to team
     }
 
@@ -241,20 +219,17 @@ class TeamService {
   }
 
   /**
-   * Remove a member from a team
-   *
-   * @param params - Removal parameters
+   * Remove a member from the team.
    * @throws {ValidationError} If user is not a member, is the owner, or trying to remove self
-   * @throws {Error} If database operation fails
    */
-  async removeMember(params: RemoveMemberParams): Promise<void> {
+  async function removeMember(params: RemoveMemberParams): Promise<void> {
     // Prevent removing yourself
     if (params.requestingUserId === params.userId) {
       throw new ValidationError('You cannot remove yourself from the team');
     }
 
     // Get the target user's role
-    const targetRole = await getUserRole(params.userId, params.teamId);
+    const targetRole = await getUserRole(params.userId, teamId);
     if (!targetRole) {
       throw new ValidationError('User is not a member of this team');
     }
@@ -265,31 +240,30 @@ class TeamService {
     }
 
     // Remove the member
-    await getDb()
+    await db
       .delete(teamMembers)
       .where(
         and(
-          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.teamId, teamId),
           eq(teamMembers.userId, params.userId)
         )
       );
   }
 
   /**
-   * Update a team member's role
-   *
-   * @param params - Role update parameters
+   * Update a team member's role.
    * @throws {ValidationError} If user is not a member, is owner, or trying to change own role
-   * @throws {Error} If database operation fails
    */
-  async updateMemberRole(params: UpdateMemberRoleParams): Promise<void> {
+  async function updateMemberRole(
+    params: UpdateMemberRoleParams
+  ): Promise<void> {
     // Prevent changing your own role
     if (params.requestingUserId === params.userId) {
       throw new ValidationError('You cannot change your own role');
     }
 
     // Get the target user's current role
-    const currentRole = await getUserRole(params.userId, params.teamId);
+    const currentRole = await getUserRole(params.userId, teamId);
     if (!currentRole) {
       throw new ValidationError('User is not a member of this team');
     }
@@ -302,26 +276,20 @@ class TeamService {
     }
 
     // Update the role
-    await getDb()
+    await db
       .update(teamMembers)
       .set({ role: params.newRole })
       .where(
         and(
-          eq(teamMembers.teamId, params.teamId),
+          eq(teamMembers.teamId, teamId),
           eq(teamMembers.userId, params.userId)
         )
       );
   }
 
-  /**
-   * Get all members of a team
-   *
-   * @param teamId - The team ID
-   * @throws {Error} If database operation fails
-   * @returns Array of team members with their details
-   */
-  async getMembers(teamId: string): Promise<TeamMember[]> {
-    const members: TeamMember[] = await getDb()
+  /** Get all members of the team. */
+  async function getMembers(): Promise<TeamMember[]> {
+    const members: TeamMember[] = await db
       .select({
         userId: teamMembers.userId,
         email: user.email,
@@ -345,17 +313,9 @@ class TeamService {
     }));
   }
 
-  /**
-   * Get all invitations for a team
-   *
-   * @param teamId - The team ID
-   * @throws {Error} If database operation fails
-   * @returns Array of team invitations
-   */
-  async getInvitations(
-    teamId: string
-  ): Promise<Omit<TeamInvitation, 'token'>[]> {
-    const invitations: Omit<TeamInvitation, 'token'>[] = await getDb()
+  /** Get all invitations for the team. */
+  async function getInvitations(): Promise<Omit<TeamInvitation, 'token'>[]> {
+    const invitations: Omit<TeamInvitation, 'token'>[] = await db
       .select({
         id: teamInvitations.id,
         teamId: teamInvitations.teamId,
@@ -383,7 +343,13 @@ class TeamService {
       acceptedAt: inv.acceptedAt ?? null,
     }));
   }
-}
 
-// Singleton instance
-export const teamService = new TeamService();
+  return {
+    createInvitation,
+    acceptInvitation,
+    removeMember,
+    updateMemberRole,
+    getMembers,
+    getInvitations,
+  };
+}

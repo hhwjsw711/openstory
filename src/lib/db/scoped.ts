@@ -1,241 +1,223 @@
 /**
  * Scoped Database Context
  * Factory that returns team-scoped query methods, auto-injecting teamId.
- * Sequence-scoped and locationSheet operations use inline Drizzle queries.
+ * Sub-modules in ./scoped/ contain domain-specific methods.
+ * Only this file and auth/config.ts should import getDb.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '#db-client';
-import { getSequencesByTeam, createSequence } from '@/lib/db/helpers/sequences';
-import type { SequenceStatus } from '@/lib/db/schema/sequences';
-import type { MergedVideoStatus, MusicStatus } from '@/lib/db/schema/sequences';
+import type { Sequence, User } from '@/lib/db/schema';
+import { sequences, teamMembers, teams, user } from '@/lib/db/schema';
+import type { TeamMemberRole } from '@/lib/db/schema/teams';
+import { sql } from 'drizzle-orm';
 import {
-  getTeamTalent,
-  getTalentByIds,
-  createTalent,
-  updateTalent,
-  deleteTalent,
-  toggleTalentFavorite,
-} from '@/lib/db/helpers/talent';
+  createSequencesMethods,
+  createSequenceMethods,
+} from '@/lib/db/scoped/sequences';
+import { createFramesMethods } from '@/lib/db/scoped/frames';
+import { createTalentMethods } from '@/lib/db/scoped/talent';
+import { createStylesMethods } from '@/lib/db/scoped/styles';
 import {
-  getTeamAndPublicStyles,
-  getTeamLibrary,
-} from '@/lib/db/helpers/queries';
-import { createStyle, updateStyle, deleteStyle } from '@/lib/db/helpers/styles';
-import {
-  getTeamLibraryLocations,
-  searchLibraryLocations,
-  createLibraryLocation,
-  getLibraryLocationsWithReferences,
-  updateLibraryLocation,
-} from '@/lib/db/helpers/location-library';
-import { getCharacterById } from '@/lib/db/helpers/sequence-characters';
-import { sequences, locationSheets, locationLibrary } from '@/lib/db/schema';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import type {
-  NewLocationSheet,
-  NewStyle,
-  NewTalent,
-  NewLibraryLocation,
-  Style,
-  Talent,
-} from '@/lib/db/schema';
+  createLocationsMethods,
+  createLocationSheetsMethods,
+} from '@/lib/db/scoped/location-library';
+import { createLibraryMethods } from '@/lib/db/scoped/library';
+import { createCharactersMethods } from '@/lib/db/scoped/characters';
+import { createSequenceLocationsMethods } from '@/lib/db/scoped/sequence-locations';
+import { createBillingMethods } from '@/lib/db/scoped/billing';
+import { createApiKeysMethods } from '@/lib/db/scoped/api-keys';
+import { createTeamManagementMethods } from '@/lib/db/scoped/team-management';
+import { createAdminMethods } from '@/lib/db/scoped/admin';
 
-export type MusicFieldsUpdate = {
-  musicStatus?: MusicStatus;
-  musicModel?: string;
-  musicError?: string | null;
-  musicUrl?: string;
-  musicPath?: string;
-  musicGeneratedAt?: Date;
-};
+// Re-export types from sub-modules
+export type {
+  MusicFieldsUpdate,
+  MergedVideoFieldsUpdate,
+} from '@/lib/db/scoped/sequences';
+export type {
+  GiftTokenStatus,
+  GiftTokenWithStatus,
+} from '@/lib/db/scoped/admin';
 
-export type MergedVideoFieldsUpdate = {
-  mergedVideoStatus?: MergedVideoStatus;
-  mergedVideoError?: string | null;
-  mergedVideoUrl?: string | null;
-  mergedVideoPath?: string | null;
-  mergedVideoGeneratedAt?: Date;
-};
+/**
+ * Resolve a user's default team (highest-role team).
+ * Module-level function for bootstrap before scopedDb exists.
+ */
+export async function resolveUserTeam(
+  userId: string
+): Promise<{ teamId: string; role: TeamMemberRole; teamName: string } | null> {
+  const db = getDb();
+  const [result] = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+      teamName: teams.name,
+      joinedAt: teamMembers.joinedAt,
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(eq(teamMembers.userId, userId))
+    .orderBy(
+      sql`CASE
+        WHEN ${teamMembers.role} = 'owner' THEN 1
+        WHEN ${teamMembers.role} = 'admin' THEN 2
+        WHEN ${teamMembers.role} = 'member' THEN 3
+        WHEN ${teamMembers.role} = 'viewer' THEN 4
+        ELSE 5
+      END`
+    )
+    .limit(1);
+
+  return result ?? null;
+}
+
+/**
+ * Check if a user is a member of a specific team and return their role.
+ * Module-level function — does not require a scopedDb instance.
+ */
+export async function getUserTeamMembership(
+  userId: string,
+  teamId: string
+): Promise<{ teamId: string; role: TeamMemberRole; teamName: string } | null> {
+  const db = getDb();
+  const [result] = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+      teamName: teams.name,
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(and(eq(teamMembers.userId, userId), eq(teamMembers.teamId, teamId)))
+    .limit(1);
+
+  return result ?? null;
+}
+
+/**
+ * Get a sequence by ID without team scoping.
+ * Only for admin operations where team context isn't available yet.
+ */
+export async function getSequenceByIdUnscoped(
+  sequenceId: string
+): Promise<Sequence | null> {
+  const db = getDb();
+  const [result] = await db
+    .select()
+    .from(sequences)
+    .where(eq(sequences.id, sequenceId));
+  return result ?? null;
+}
+
+/**
+ * Ensure user exists in database with team membership.
+ * Creates user record, team, and membership if they don't exist.
+ * Bootstrap function — does not require a scopedDb instance.
+ */
+export async function ensureUserAndTeam(authUser: {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+}): Promise<{
+  success: boolean;
+  data?: User & { teamMembers?: Array<{ teamId: string; role: string }> };
+  error?: string;
+}> {
+  try {
+    const db = getDb();
+
+    const foundUser = await db.query.user.findFirst({
+      where: eq(user.id, authUser.id),
+    });
+
+    if (foundUser) {
+      const memberships = await db
+        .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+        .from(teamMembers)
+        .where(eq(teamMembers.userId, authUser.id));
+
+      if (memberships.length > 0) {
+        return {
+          success: true,
+          data: { ...foundUser, teamMembers: memberships },
+        };
+      }
+    }
+
+    await db
+      .insert(user)
+      .values({
+        id: authUser.id,
+        name: authUser.name || 'Anonymous',
+        email: authUser.email || `${authUser.id}@anonymous.local`,
+      })
+      .onConflictDoNothing();
+
+    const teamName = authUser.name
+      ? `${authUser.name}'s Team`
+      : `Anonymous Team ${authUser.id.slice(0, 8)}`;
+    const teamSlug = `team-${authUser.id.slice(0, 8)}`;
+
+    const [team] = await db
+      .insert(teams)
+      .values({ name: teamName, slug: teamSlug })
+      .returning();
+
+    if (!team) throw new Error('Failed to create team');
+
+    await db.insert(teamMembers).values({
+      teamId: team.id,
+      userId: authUser.id,
+      role: 'owner',
+    });
+
+    const createdUser = await db.query.user.findFirst({
+      where: eq(user.id, authUser.id),
+    });
+
+    if (!createdUser) throw new Error('Failed to retrieve created user');
+
+    return {
+      success: true,
+      data: {
+        ...createdUser,
+        teamMembers: [{ teamId: team.id, role: 'owner' }],
+      },
+    };
+  } catch (error) {
+    console.error('[ensureUserAndTeam] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unexpected error',
+    };
+  }
+}
 
 export function createScopedDb(teamId: string) {
+  const db = getDb();
+
   return {
     teamId,
 
-    sequences: {
-      list: () => getSequencesByTeam(teamId),
+    sequences: createSequencesMethods(db, teamId),
+    sequence: (sequenceId: string) => createSequenceMethods(db, sequenceId),
 
-      create: (params: {
-        userId: string;
-        title: string;
-        script?: string | null;
-        styleId: string;
-        aspectRatio?: AspectRatio;
-        analysisModel: string;
-        imageModel?: string;
-        videoModel?: string;
-        musicModel?: string;
-      }) => createSequence({ ...params, teamId }),
-    },
+    talent: createTalentMethods(db, teamId),
+    styles: createStylesMethods(db, teamId),
+    locations: createLocationsMethods(db, teamId),
+    locationSheets: createLocationSheetsMethods(db),
+    library: createLibraryMethods(db, teamId),
 
-    sequence: (sequenceId: string) => ({
-      sequenceId,
+    frames: createFramesMethods(db),
 
-      updateStatus: async (status: SequenceStatus, error?: string | null) => {
-        await getDb()
-          .update(sequences)
-          .set({ status, statusError: error ?? null, updatedAt: new Date() })
-          .where(eq(sequences.id, sequenceId));
-      },
+    characters: createCharactersMethods(db),
+    sequenceLocations: createSequenceLocationsMethods(db),
 
-      updateMusicFields: async (fields: MusicFieldsUpdate) => {
-        await getDb()
-          .update(sequences)
-          .set({ ...fields, updatedAt: new Date() })
-          .where(eq(sequences.id, sequenceId));
-      },
-
-      updateMergedVideoFields: async (fields: MergedVideoFieldsUpdate) => {
-        await getDb()
-          .update(sequences)
-          .set({ ...fields, updatedAt: new Date() })
-          .where(eq(sequences.id, sequenceId));
-      },
-
-      getMusicStatus: async () => {
-        const [row] = await getDb()
-          .select({
-            musicStatus: sequences.musicStatus,
-            musicUrl: sequences.musicUrl,
-          })
-          .from(sequences)
-          .where(eq(sequences.id, sequenceId));
-        return row;
-      },
-
-      getMergedVideoStatus: async () => {
-        const [row] = await getDb()
-          .select({
-            mergedVideoStatus: sequences.mergedVideoStatus,
-            mergedVideoUrl: sequences.mergedVideoUrl,
-          })
-          .from(sequences)
-          .where(eq(sequences.id, sequenceId));
-        return row;
-      },
-    }),
-
-    talent: {
-      list: (options?: { favoritesOnly?: boolean }) =>
-        getTeamTalent(teamId, options),
-
-      getByIds: (ids: string[]) => getTalentByIds(ids, teamId),
-
-      create: (data: Omit<NewTalent, 'teamId'>) =>
-        createTalent({ ...data, teamId }),
-
-      update: (
-        talentId: string,
-        data: Partial<Omit<Talent, 'id' | 'teamId' | 'createdAt' | 'createdBy'>>
-      ) => updateTalent(talentId, teamId, data),
-
-      delete: (talentId: string) => deleteTalent(talentId, teamId),
-
-      toggleFavorite: (talentId: string) =>
-        toggleTalentFavorite(talentId, teamId),
-    },
-
-    styles: {
-      list: () => getTeamAndPublicStyles(teamId),
-
-      create: (data: Omit<NewStyle, 'teamId'>) =>
-        createStyle({ ...data, teamId }),
-
-      update: (
-        styleId: string,
-        data: Partial<Omit<Style, 'id' | 'teamId' | 'createdAt' | 'createdBy'>>
-      ) => updateStyle(styleId, teamId, data),
-
-      delete: (styleId: string) => deleteStyle(styleId, teamId),
-    },
-
-    locations: {
-      list: () => getTeamLibraryLocations(teamId),
-
-      search: (query: string, limit?: number) =>
-        searchLibraryLocations(teamId, query, limit),
-
-      create: (data: Omit<NewLibraryLocation, 'teamId'>) =>
-        createLibraryLocation({ ...data, teamId }),
-
-      withReferences: () => getLibraryLocationsWithReferences(teamId),
-    },
-
-    locationSheets: {
-      list: (locationId: string) =>
-        getDb()
-          .select()
-          .from(locationSheets)
-          .where(eq(locationSheets.locationId, locationId)),
-
-      insert: (sheets: NewLocationSheet[]) =>
-        sheets.length === 0
-          ? Promise.resolve([])
-          : getDb().insert(locationSheets).values(sheets).returning(),
-
-      delete: async (sheetId: string) => {
-        await getDb()
-          .delete(locationSheets)
-          .where(eq(locationSheets.id, sheetId));
-      },
-
-      getWithLocation: async (sheetId: string) => {
-        const result = await getDb()
-          .select({ sheet: locationSheets, location: locationLibrary })
-          .from(locationSheets)
-          .innerJoin(
-            locationLibrary,
-            eq(locationSheets.locationId, locationLibrary.id)
-          )
-          .where(eq(locationSheets.id, sheetId));
-        return result[0] ?? null;
-      },
-
-      promoteDefault: async (locationId: string) => {
-        const [nextSheet] = await getDb()
-          .select()
-          .from(locationSheets)
-          .where(eq(locationSheets.locationId, locationId))
-          .limit(1);
-
-        if (nextSheet) {
-          await getDb()
-            .update(locationSheets)
-            .set({ isDefault: true })
-            .where(eq(locationSheets.id, nextSheet.id));
-
-          if (nextSheet.imageUrl) {
-            await updateLibraryLocation(locationId, {
-              referenceImageUrl: nextSheet.imageUrl,
-              referenceImagePath: nextSheet.imagePath,
-            });
-          }
-        } else {
-          await updateLibraryLocation(locationId, {
-            referenceImageUrl: null,
-            referenceImagePath: null,
-          });
-        }
-      },
-    },
-
-    characters: {
-      getById: (id: string) => getCharacterById(id),
-    },
-
-    library: {
-      getAll: () => getTeamLibrary(teamId),
-    },
+    billing: createBillingMethods(db, teamId),
+    apiKeys: createApiKeysMethods(db, teamId),
+    teamManagement: createTeamManagementMethods(db, teamId),
+    admin: createAdminMethods(db),
   };
 }
 

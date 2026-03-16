@@ -13,7 +13,7 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
+import { createScopedDb } from '@/lib/db/scoped';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
@@ -33,6 +33,10 @@ export const characterBibleWorkflow = createWorkflow(
     context: WorkflowContext<CharacterBibleWorkflowInput>
   ): Promise<CharacterMinimal[]> => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new Error('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
     const { talentMatches = [] } = input;
 
     // Create lookup map for talent matches
@@ -122,7 +126,7 @@ export const characterBibleWorkflow = createWorkflow(
             );
 
             // Create the characters record with flattened fields
-            const created = await createSequenceCharacter({
+            const created = await scopedDb.characters.create({
               id,
               sequenceId: input.sequenceId,
               characterId: character.characterId,

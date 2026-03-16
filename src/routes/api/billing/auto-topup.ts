@@ -7,15 +7,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { json } from '@tanstack/react-start';
 import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
-import {
-  getUserDefaultTeam,
-  requireTeamManagement,
-} from '@/lib/db/helpers/team-permissions';
+import { resolveUserTeam } from '@/lib/db/scoped';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { handleApiError, ValidationError } from '@/lib/errors';
-import {
-  getBillingSettings,
-  updateAutoTopUpSettings,
-} from '@/lib/billing/credit-service';
+import { createScopedDb } from '@/lib/db/scoped';
 import { usdToMicros } from '@/lib/billing/money';
 
 export const Route = createFileRoute('/api/billing/auto-topup')({
@@ -31,13 +26,14 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
 
         try {
           const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
+          const team = await resolveUserTeam(user.id);
           if (!team) throw new ValidationError('No team found');
 
           // Only admins/owners can change billing settings
-          await requireTeamManagement(user.id, team.teamId);
+          await requireTeamAdminAccess(user.id, team.teamId);
 
-          const billingSettings = await getBillingSettings(team.teamId);
+          const scopedDb = createScopedDb(team.teamId);
+          const billingSettings = await scopedDb.billing.getBillingSettings();
 
           // Auto-top-up requires a saved payment method
           if (!billingSettings.stripeCustomerId) {
@@ -56,7 +52,7 @@ export const Route = createFileRoute('/api/billing/auto-topup')({
             throw new ValidationError('enabled field is required');
           }
 
-          await updateAutoTopUpSettings(team.teamId, {
+          await scopedDb.billing.updateAutoTopUpSettings({
             enabled: body.enabled,
             thresholdMicros:
               body.thresholdUsd !== undefined

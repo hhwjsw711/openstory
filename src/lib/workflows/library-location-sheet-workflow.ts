@@ -13,7 +13,7 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { updateLibraryLocationReference } from '@/lib/db/helpers/location-library';
+import { createScopedDb } from '@/lib/db/scoped';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -21,6 +21,7 @@ import {
 } from '@/lib/image/image-generation';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { WorkflowValidationError } from '@/lib/workflow/errors';
 import type {
   LibraryLocationSheetWorkflowInput,
   LibraryLocationSheetWorkflowResult,
@@ -31,6 +32,10 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 export const libraryLocationSheetWorkflow = createWorkflow(
   async (context: WorkflowContext<LibraryLocationSheetWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Build the prompt
     const generationParams: ImageGenerationParams = await context.run(
@@ -137,7 +142,7 @@ export const libraryLocationSheetWorkflow = createWorkflow(
         `Updating database for ${input.locationName}`
       );
 
-      await updateLibraryLocationReference(
+      await scopedDb.locations.updateReference(
         input.locationDbId,
         storageResult.url,
         storageResult.path

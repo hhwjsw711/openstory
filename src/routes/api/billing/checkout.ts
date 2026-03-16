@@ -8,7 +8,7 @@ import { json } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { isStripeEnabled } from '@/lib/billing/constants';
 import { requireUser } from '@/lib/auth/action-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { resolveUserTeam } from '@/lib/db/scoped';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { createCheckoutSession } from '@/lib/billing/checkout';
 import { getServerAppUrl } from '@/lib/utils/environment';
@@ -26,7 +26,7 @@ export const Route = createFileRoute('/api/billing/checkout')({
 
         try {
           const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
+          const team = await resolveUserTeam(user.id);
           if (!team) throw new ValidationError('No team found');
 
           const body: { amountUsd?: number } = await request.json();

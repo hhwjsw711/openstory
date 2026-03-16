@@ -11,10 +11,7 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  updateLocationReference,
-  updateReferenceStatus,
-} from '@/lib/db/helpers/sequence-locations';
+import { createScopedDb } from '@/lib/db/scoped';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
@@ -35,6 +32,10 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 export const locationSheetWorkflow = createWorkflow(
   async (context: WorkflowContext<LocationSheetWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     // Emit realtime event that generation has started
     await context.run('emit-start-event', async () => {
@@ -178,7 +179,7 @@ export const locationSheetWorkflow = createWorkflow(
           `Updating database for ${input.locationName}`
         );
 
-        await updateLocationReference(
+        await scopedDb.sequenceLocations.updateReference(
           input.locationDbId,
           storageResult.url,
           storageResult.path
@@ -222,8 +223,13 @@ export const locationSheetWorkflow = createWorkflow(
       const error = sanitizeFailResponse(failResponse);
 
       // Mark location reference as failed
-      if (input.locationDbId) {
-        await updateReferenceStatus(input.locationDbId, 'failed', error);
+      if (input.locationDbId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.sequenceLocations.updateReferenceStatus(
+          input.locationDbId,
+          'failed',
+          error
+        );
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {

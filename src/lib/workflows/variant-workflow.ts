@@ -5,7 +5,7 @@ import {
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
+import { createScopedDb } from '@/lib/db/scoped';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -35,6 +35,10 @@ export const generateVariantWorkflow = createWorkflow(
         'Invalid workflow payload: requestPayload is undefined'
       );
     }
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Set status to generating if frameId is provided
     const generationParams: ImageGenerationParams | null = await context.run(
@@ -57,7 +61,7 @@ export const generateVariantWorkflow = createWorkflow(
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
-          const frame = await updateFrame(
+          const frame = await scopedDb.frames.update(
             input.frameId,
             {
               variantImageStatus: 'generating',
@@ -174,7 +178,7 @@ export const generateVariantWorkflow = createWorkflow(
 
         imageUrl = result.url;
 
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           input.frameId,
           {
             variantImageUrl: result.url, // Store public URL (permanent, not signed)
@@ -224,8 +228,9 @@ export const generateVariantWorkflow = createWorkflow(
       const error = sanitizeFailResponse(failResponse);
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.frames.update(
           input.frameId,
           {
             thumbnailStatus: 'failed',

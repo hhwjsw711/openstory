@@ -16,7 +16,7 @@ import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 import { z } from 'zod';
-import { apiKeyService } from '../byok/api-key.service';
+import { createScopedDb } from '@/lib/db/scoped';
 
 export const generationMotionOptionsSchema = z.object({
   imageUrl: z.url(),
@@ -251,7 +251,9 @@ async function generateMotionInternal(
     }
   );
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
+  const falApiKeyInfo = await createScopedDb(
+    options.teamId ?? ''
+  ).apiKeys.resolveKey('fal');
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });
@@ -381,7 +383,9 @@ export async function submitMotionJob(
     modelOptions,
   });
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
+  const falApiKeyInfo = await createScopedDb(
+    options.teamId ?? ''
+  ).apiKeys.resolveKey('fal');
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });
@@ -418,7 +422,9 @@ export async function pollMotionJob(
   teamId?: string
 ): Promise<MotionPollResult> {
   const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const falApiKeyInfo = await createScopedDb(teamId ?? '').apiKeys.resolveKey(
+    'fal'
+  );
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });

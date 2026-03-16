@@ -11,10 +11,7 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  updateCharacterSheet,
-  updateSheetStatus,
-} from '@/lib/db/helpers/sequence-characters';
+import { createScopedDb } from '@/lib/db/scoped';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
@@ -35,6 +32,10 @@ import { createWorkflow } from '@upstash/workflow/tanstack';
 export const characterSheetWorkflow = createWorkflow(
   async (context: WorkflowContext<CharacterSheetWorkflowInput>) => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     // Emit realtime event that generation has started
     await context.run('emit-start-event', async () => {
@@ -174,7 +175,7 @@ export const characterSheetWorkflow = createWorkflow(
           `Updating database for ${input.characterName}`
         );
 
-        await updateCharacterSheet(
+        await scopedDb.characters.updateSheet(
           input.characterDbId,
           storageResult.url,
           storageResult.path
@@ -217,8 +218,13 @@ export const characterSheetWorkflow = createWorkflow(
       const error = sanitizeFailResponse(failResponse);
 
       // Mark character sheet as failed
-      if (input.characterDbId) {
-        await updateSheetStatus(input.characterDbId, 'failed', error);
+      if (input.characterDbId && input.teamId) {
+        const failScopedDb = createScopedDb(input.teamId);
+        await failScopedDb.characters.updateSheetStatus(
+          input.characterDbId,
+          'failed',
+          error
+        );
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {

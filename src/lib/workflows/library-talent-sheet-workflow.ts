@@ -13,11 +13,7 @@ import {
 } from '@/lib/billing/workflow-deduction';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadFile } from '#storage';
-import {
-  createTalentSheet,
-  getTalentById,
-  updateTalent,
-} from '@/lib/db/helpers/talent';
+import { createScopedDb } from '@/lib/db/scoped';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -41,6 +37,10 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     context: WorkflowContext<LibraryTalentSheetWorkflowInput>
   ): Promise<LibraryTalentSheetWorkflowResult> => {
     const input = context.requestPayload;
+    if (!input.teamId) {
+      throw new WorkflowValidationError('teamId is required');
+    }
+    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Validate input
     await context.run('validate-input', async () => {
@@ -49,12 +49,9 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       }
 
       // Verify talent exists and belongs to team
-      const talentRecord = await getTalentById(input.talentId);
+      const talentRecord = await scopedDb.talent.getById(input.talentId);
       if (!talentRecord) {
         throw new WorkflowValidationError('Talent not found');
-      }
-      if (talentRecord.teamId !== input.teamId) {
-        throw new WorkflowValidationError('Talent does not belong to team');
       }
 
       const hasReferenceImages =
@@ -161,7 +158,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         `Creating sheet record in database`
       );
 
-      return await createTalentSheet({
+      return await scopedDb.talent.sheets.create({
         id: storageResult.sheetId,
         talentId: input.talentId,
         name: input.sheetName ?? 'Generated Sheet',
@@ -268,7 +265,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         `Updating talent with headshot`
       );
 
-      await updateTalent(input.talentId, input.teamId, {
+      await scopedDb.talent.update(input.talentId, {
         imageUrl: headshotStorageResult.url,
         imagePath: headshotStorageResult.path,
       });
