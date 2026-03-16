@@ -435,7 +435,7 @@ async function prPreviewSetup() {
 
   if (baseDomain) {
     merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-stg.${baseDomain}`);
-    merged.set('VITE_R2_PUBLIC_ASSETS_DOMAIN', `assets-stg.${baseDomain}`);
+    merged.set('VITE_R2_PUBLIC_ASSETS_DOMAIN', `assets.${baseDomain}`);
   } else {
     p.log.warn(
       'Could not derive R2 domains from VITE_APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and VITE_R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
@@ -448,7 +448,7 @@ async function prPreviewSetup() {
   const prodAssetsBucket =
     prodVars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
   merged.set('R2_BUCKET_NAME', `${prodStorageBucket}-stg`);
-  merged.set('R2_PUBLIC_ASSETS_BUCKET', `${prodAssetsBucket}-stg`);
+  merged.set('R2_PUBLIC_ASSETS_BUCKET', prodAssetsBucket);
 
   p.log.info(
     `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
@@ -519,8 +519,7 @@ async function prPreviewSetup() {
         const storageBucket =
           merged.get('R2_BUCKET_NAME') ?? 'openstory-storage-stg';
         const assetsBucket =
-          merged.get('R2_PUBLIC_ASSETS_BUCKET') ??
-          'openstory-public-assets-stg';
+          merged.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
 
         for (const [domain, bucket] of [
           [stgStorageDomain, storageBucket],
@@ -2003,7 +2002,7 @@ async function main() {
       );
 
       const storageSub = isStaging === 'staging' ? 'storage-stg' : 'storage';
-      const assetsSub = isStaging === 'staging' ? 'assets-stg' : 'assets';
+      const assetsSub = 'assets';
 
       if (baseDomain) {
         const storageDomain = `${storageSub}.${baseDomain}`;
