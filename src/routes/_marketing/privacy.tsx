@@ -1032,14 +1032,6 @@ function PrivacyPage() {
           </p>
         </div>
       </section>
-
-      <div className="mt-12 border-t pt-4 text-center text-xs text-muted-foreground">
-        <p>&copy; 2026 {SITE_CONFIG.name}. All rights reserved.</p>
-        <p className="mt-1 italic">
-          This document does not constitute legal advice. You should seek
-          independent legal counsel.
-        </p>
-      </div>
     </main>
   );
 }
