@@ -14,8 +14,8 @@ export function createAdapter(model: TextModel, apiKey?: string) {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Model is dynamic from config but always a valid OpenRouter model ID
   const adapterModel = model as Parameters<typeof openRouterText>[0];
   const config = {
-    httpReferer: env.APP_URL || 'http://localhost:3000',
-    xTitle: env.APP_NAME || 'OpenStory',
+    httpReferer: env.VITE_APP_URL || 'http://localhost:3000',
+    xTitle: env.VITE_APP_NAME || 'OpenStory',
   };
 
   return key

@@ -59,7 +59,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: d6a35f64-abb0-4a34-a092-dc20b29f5812
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          VITE_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.VITE_R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Deploy to production
         run: bun cf:deploy:prd
@@ -143,7 +143,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ steps.d1.outputs.database-id }}
-          R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          VITE_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.VITE_R2_PUBLIC_ASSETS_DOMAIN }}
 
       - name: Patch wrangler config for preview
         env:
@@ -200,8 +200,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           SECRET_ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           SECRET_API_KEY_ENCRYPTION_KEY: ${{ secrets.API_KEY_ENCRYPTION_KEY }}
-          SECRET_APP_NAME: ${{ secrets.APP_NAME }}
-          SECRET_APP_URL: ${{ steps.deploy.outputs.url }}
+          SECRET_VITE_APP_NAME: ${{ vars.APP_NAME }}
+          SECRET_VITE_APP_URL: ${{ steps.deploy.outputs.url }}
           SECRET_BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           SECRET_CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           SECRET_EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
@@ -221,7 +221,7 @@ jobs:
           SECRET_QSTASH_URL: ${{ secrets.QSTASH_URL }}
           SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SECRET_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          SECRET_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.R2_PUBLIC_ASSETS_DOMAIN }}
+          SECRET_VITE_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.VITE_R2_PUBLIC_ASSETS_DOMAIN }}
           SECRET_R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           SECRET_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
         run: |
