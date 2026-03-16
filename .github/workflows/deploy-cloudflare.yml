@@ -162,7 +162,7 @@ jobs:
               database_id: '${D1_DATABASE_ID}'
             }];
             obj.r2_buckets = [
-              { bucket_name: 'openstory-public-assets-stg', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
+              { bucket_name: 'openstory-public-assets', binding: 'R2_PUBLIC_ASSETS_BUCKET', remote: true },
               { binding: 'R2_STORAGE_BUCKET', bucket_name: 'openstory-storage-stg' }
             ];
             fs.writeFileSync('wrangler.jsonc', JSON.stringify(obj, null, 2));
