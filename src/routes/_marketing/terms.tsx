@@ -1,7 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { SITE_CONFIG } from '@/lib/marketing/constants';
+import {
+  CONTACT_EMAIL,
+  PRIVACY_EMAIL,
+  SITE_CONFIG,
+} from '@/lib/marketing/constants';
 
-const title = 'Terms of Service — OpenStory';
+const title = `Terms of Service — ${SITE_CONFIG.name}`;
 
 export const Route = createFileRoute('/_marketing/terms')({
   component: TermsPage,
@@ -26,11 +30,11 @@ function TermsPage() {
       </p>
       <p className="mt-6 leading-relaxed text-muted-foreground">
         These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and
-        use of the OpenStory platform, website, and services (collectively, the
-        &ldquo;Service&rdquo;) operated by OpenStory (&ldquo;we&rdquo;,
-        &ldquo;us&rdquo;, or &ldquo;our&rdquo;). By accessing or using the
-        Service, you agree to be bound by these Terms. If you do not agree, you
-        may not use the Service.
+        use of the {SITE_CONFIG.name} platform, website, and services
+        (collectively, the &ldquo;Service&rdquo;) operated by {SITE_CONFIG.name}{' '}
+        (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;). By accessing
+        or using the Service, you agree to be bound by these Terms. If you do
+        not agree, you may not use the Service.
       </p>
 
       {/* 1. The Service */}
@@ -39,9 +43,9 @@ function TermsPage() {
           1. The Service
         </h2>
         <p className="mt-4 leading-relaxed">
-          OpenStory is an AI-powered video generation platform that enables
-          users to create video content using artificial intelligence. The
-          Service may include script analysis, scene generation, character
+          {SITE_CONFIG.name} is an AI-powered video generation platform that
+          enables users to create video content using artificial intelligence.
+          The Service may include script analysis, scene generation, character
           extraction, image generation, video rendering, and related
           functionality.
         </p>
@@ -215,9 +219,10 @@ function TermsPage() {
         <h3 className="mt-6 text-lg font-semibold">Our Platform</h3>
         <p className="mt-4 leading-relaxed">
           All rights, title, and interest in the Service — including its
-          software, models, design, branding, and documentation — remain with
-          OpenStory. Nothing in these Terms grants you any right to use our
-          trademarks, logos, or brand assets without our prior written consent.
+          software, models, design, branding, and documentation — remain with{' '}
+          {SITE_CONFIG.name}. Nothing in these Terms grants you any right to use
+          our trademarks, logos, or brand assets without our prior written
+          consent.
         </p>
       </section>
 
@@ -324,10 +329,10 @@ function TermsPage() {
             have the right to object to processing and to withdraw consent at
             any time. To exercise these rights, please contact us at{' '}
             <a
-              href="mailto:privacy@openstory.so"
+              href={`mailto:${PRIVACY_EMAIL}`}
               className="underline underline-offset-4 hover:text-foreground"
             >
-              privacy@openstory.so
+              {PRIVACY_EMAIL}
             </a>
             .
           </li>
@@ -380,11 +385,11 @@ function TermsPage() {
           9. Limitation of Liability
         </h2>
         <p className="mt-4 leading-relaxed">
-          To the maximum extent permitted by applicable law, OpenStory and its
-          officers, directors, employees, and agents shall not be liable for any
-          indirect, incidental, special, consequential, or punitive damages,
-          including loss of profits, data, or goodwill, arising out of or in
-          connection with your use of the Service.
+          To the maximum extent permitted by applicable law, {SITE_CONFIG.name}{' '}
+          and its officers, directors, employees, and agents shall not be liable
+          for any indirect, incidental, special, consequential, or punitive
+          damages, including loss of profits, data, or goodwill, arising out of
+          or in connection with your use of the Service.
         </p>
         <p className="mt-4 leading-relaxed">
           Our total aggregate liability for any claims arising under these Terms
@@ -409,13 +414,13 @@ function TermsPage() {
           10. Indemnification
         </h2>
         <p className="mt-4 leading-relaxed">
-          You agree to indemnify, defend, and hold harmless OpenStory and its
-          affiliates from any claims, losses, damages, liabilities, and expenses
-          (including reasonable legal fees) arising out of or related to: (a)
-          your use of the Service in breach of these Terms; (b) your violation
-          of any applicable law; or (c) your infringement of any third-party
-          rights, including through your Input Content or use of Generated
-          Content.
+          You agree to indemnify, defend, and hold harmless {SITE_CONFIG.name}{' '}
+          and its affiliates from any claims, losses, damages, liabilities, and
+          expenses (including reasonable legal fees) arising out of or related
+          to: (a) your use of the Service in breach of these Terms; (b) your
+          violation of any applicable law; or (c) your infringement of any
+          third-party rights, including through your Input Content or use of
+          Generated Content.
         </p>
         <p className="mt-4 leading-relaxed">
           This indemnification obligation does not apply to the extent that a
@@ -431,7 +436,7 @@ function TermsPage() {
         </h2>
 
         <h3 className="mt-6 text-lg font-semibold">
-          Termination by OpenStory for Cause
+          Termination by {SITE_CONFIG.name} for Cause
         </h3>
         <p className="mt-4 leading-relaxed">
           We may suspend or terminate your access to the Service if you
@@ -448,7 +453,7 @@ function TermsPage() {
         </p>
 
         <h3 className="mt-6 text-lg font-semibold">
-          Termination by OpenStory without Cause
+          Termination by {SITE_CONFIG.name} without Cause
         </h3>
         <p className="mt-4 leading-relaxed">
           We may discontinue providing the Service to you for any reason by
@@ -462,10 +467,10 @@ function TermsPage() {
         <p className="mt-4 leading-relaxed">
           You may close your account at any time by contacting us at{' '}
           <a
-            href="mailto:hello@openstory.so"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            hello@openstory.so
+            {CONTACT_EMAIL}
           </a>
           . Credits are non-refundable upon voluntary account closure under our
           commercial policy, but this does not affect any rights you may have
@@ -491,10 +496,10 @@ function TermsPage() {
           If you have a dispute or complaint about the Service, we encourage you
           to contact us first at{' '}
           <a
-            href="mailto:hello@openstory.so"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            hello@openstory.so
+            {CONTACT_EMAIL}
           </a>
           . We will endeavour to resolve your concern within 14 business days.
         </p>
@@ -603,9 +608,9 @@ function TermsPage() {
         </p>
         <p className="mt-4 leading-relaxed">
           <strong>Entire agreement.</strong> These Terms, together with the
-          Privacy Policy, constitute the entire agreement between you and
-          OpenStory regarding the Service and supersede all prior agreements and
-          understandings.
+          Privacy Policy, constitute the entire agreement between you and{' '}
+          {SITE_CONFIG.name} regarding the Service and supersede all prior
+          agreements and understandings.
         </p>
         <p className="mt-4 leading-relaxed">
           <strong>No waiver.</strong> Our failure to enforce any right or
@@ -630,19 +635,19 @@ function TermsPage() {
         <p className="mt-4 leading-relaxed">
           <strong>General enquiries:</strong>{' '}
           <a
-            href="mailto:hello@openstory.so"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            hello@openstory.so
+            {CONTACT_EMAIL}
           </a>
         </p>
         <p className="mt-2 leading-relaxed">
           <strong>Privacy enquiries:</strong>{' '}
           <a
-            href="mailto:privacy@openstory.so"
+            href={`mailto:${PRIVACY_EMAIL}`}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            privacy@openstory.so
+            {PRIVACY_EMAIL}
           </a>
         </p>
       </section>
