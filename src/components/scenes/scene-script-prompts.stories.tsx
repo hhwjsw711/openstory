@@ -62,22 +62,11 @@ const mockFrame = {
       lightingSetup: '',
       styleTag: '',
     },
-    audioDesign: {
-      music: {
-        presence: 'none',
-        style: '',
-        mood: '',
-        rationale: '',
-      },
-      soundEffects: [],
-      dialogue: {
-        presence: false,
-        lines: [],
-      },
-      ambient: {
-        roomTone: '',
-        atmosphere: '',
-      },
+    musicDesign: {
+      presence: 'none',
+      style: '',
+      mood: '',
+      atmosphere: '',
     },
     prompts: {
       visual: {

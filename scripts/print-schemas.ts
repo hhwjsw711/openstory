@@ -21,10 +21,10 @@ import { sceneAnalysisSchema } from '@/lib/ai/scene-analysis.schema';
 
 // Import result schemas
 import {
-  audioDesignGenerationResultSchema,
   characterExtractionResultSchema,
   locationExtractionResultSchema,
   motionPromptGenerationResultSchema,
+  musicDesignResultSchema,
   sceneSplittingResultSchema,
   visualPromptGenerationResultSchema,
 } from '@/lib/ai/response-schemas';
@@ -172,10 +172,7 @@ async function main() {
     'phase-4-motion-prompts',
     motionPromptGenerationResultSchema
   );
-  await generateLangfuseConfig(
-    'phase-5-audio-design',
-    audioDesignGenerationResultSchema
-  );
+  await generateLangfuseConfig('phase-7-music-design', musicDesignResultSchema);
   await generateLangfuseConfig(
     'phase-6-talent-matching',
     talentMatchResponseSchema

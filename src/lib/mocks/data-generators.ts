@@ -99,22 +99,11 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
         ]),
         storyBeat: faker.lorem.sentence(),
       },
-      audioDesign: {
-        music: {
-          presence: 'none',
-          style: '',
-          mood: '',
-          rationale: '',
-        },
-        soundEffects: [],
-        dialogue: {
-          presence: false,
-          lines: [],
-        },
-        ambient: {
-          roomTone: '',
-          atmosphere: '',
-        },
+      musicDesign: {
+        presence: 'none',
+        style: '',
+        mood: '',
+        atmosphere: '',
       },
       continuity: {
         characterTags: [],
