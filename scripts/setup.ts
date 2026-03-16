@@ -257,6 +257,8 @@ function getPrPreviewSecrets(vars: Map<string, string>): string[] {
 }
 
 const PR_PREVIEW_VARIABLES = [
+  'VITE_CONTACT_EMAIL',
+  'VITE_PRIVACY_EMAIL',
   'VITE_R2_PUBLIC_ASSETS_DOMAIN',
   'R2_PUBLIC_STORAGE_DOMAIN',
 ] as const;
@@ -436,6 +438,8 @@ async function prPreviewSetup() {
   if (baseDomain) {
     merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-stg.${baseDomain}`);
     merged.set('VITE_R2_PUBLIC_ASSETS_DOMAIN', `assets.${baseDomain}`);
+    merged.set('VITE_CONTACT_EMAIL', `hello@${baseDomain}`);
+    merged.set('VITE_PRIVACY_EMAIL', `privacy@${baseDomain}`);
   } else {
     p.log.warn(
       'Could not derive R2 domains from VITE_APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and VITE_R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
@@ -1686,6 +1690,19 @@ async function main() {
   }
 
   if (!vars.has('VITE_APP_NAME')) vars.set('VITE_APP_NAME', 'OpenStory');
+
+  if (!vars.has('VITE_CONTACT_EMAIL') || !vars.has('VITE_PRIVACY_EMAIL')) {
+    const appUrl = vars.get('VITE_APP_URL') ?? '';
+    try {
+      const domain = new URL(appUrl).hostname;
+      if (!vars.has('VITE_CONTACT_EMAIL'))
+        vars.set('VITE_CONTACT_EMAIL', `hello@${domain}`);
+      if (!vars.has('VITE_PRIVACY_EMAIL'))
+        vars.set('VITE_PRIVACY_EMAIL', `privacy@${domain}`);
+    } catch {
+      // localhost or invalid — skip, constants.ts handles fallback
+    }
+  }
 
   if (!vars.has('BETTER_AUTH_SECRET')) {
     const secret = generateSecret();
