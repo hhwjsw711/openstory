@@ -70,7 +70,8 @@
       "Bash(git add:*)",
       "WebFetch(domain:fal.ai)",
       "mcp__claude_ai_Fal__SearchFal",
-      "Bash(npx @tanstack/cli *)"
+      "Bash(npx @tanstack/cli *)",
+      "Bash(npx --yes @tanstack/cli doc *)"
     ],
     "deny": ["Bash(bun tsc:*)"],
     "ask": [
