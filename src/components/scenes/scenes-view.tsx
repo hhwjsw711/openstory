@@ -1,4 +1,4 @@
-import { ScenePlayer } from '@/components/motion/scene-player';
+import { RemotionSequencePlayer } from '@/components/motion/remotion-sequence-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
 import {
@@ -329,12 +329,11 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         {/* Main content area */}
         <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0">
           <div className="flex flex-1 min-h-0 justify-center pb-8">
-            <ScenePlayer
+            <RemotionSequencePlayer
               frames={frames}
               selectedFrameId={curSelectedFrameId}
               aspectRatio={aspectRatio}
               onSelectFrame={setSelectedFrameId}
-              selectedTab={selectedTab}
               progressMessage={
                 generationState.phases.find((p) => p.status === 'active')
                   ?.phaseName
