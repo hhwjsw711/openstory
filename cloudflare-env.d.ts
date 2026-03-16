@@ -8,8 +8,8 @@ declare namespace Cloudflare {
     R2_STORAGE_BUCKET: R2Bucket;
     DB: D1Database;
     API_KEY_ENCRYPTION_KEY: string;
-    APP_NAME: string;
-    APP_URL: string;
+    VITE_APP_NAME: string;
+    VITE_APP_URL: string;
     BETTER_AUTH_SECRET: string;
     CEREBRAS_API_KEY: string;
     DOPPLER_CONFIG: string;
@@ -37,7 +37,7 @@ declare namespace Cloudflare {
     R2_ACCOUNT_ID: string;
     R2_BUCKET_NAME: string;
     R2_PUBLIC_ASSETS_BUCKET: string;
-    R2_PUBLIC_ASSETS_DOMAIN: string;
+    VITE_R2_PUBLIC_ASSETS_DOMAIN: string;
     R2_PUBLIC_STORAGE_DOMAIN: string;
     R2_SECRET_ACCESS_KEY: string;
     RESEND_API_KEY: string;
@@ -54,8 +54,8 @@ declare namespace Cloudflare {
     R2_STORAGE_BUCKET: R2Bucket;
     DB: D1Database;
     API_KEY_ENCRYPTION_KEY: string;
-    APP_NAME: string;
-    APP_URL: string;
+    VITE_APP_NAME: string;
+    VITE_APP_URL: string;
     BETTER_AUTH_SECRET: string;
     CEREBRAS_API_KEY: string;
     DOPPLER_CONFIG: string;
@@ -83,7 +83,7 @@ declare namespace Cloudflare {
     R2_ACCOUNT_ID: string;
     R2_BUCKET_NAME: string;
     R2_PUBLIC_ASSETS_BUCKET: string;
-    R2_PUBLIC_ASSETS_DOMAIN: string;
+    VITE_R2_PUBLIC_ASSETS_DOMAIN: string;
     R2_PUBLIC_STORAGE_DOMAIN: string;
     R2_SECRET_ACCESS_KEY: string;
     RESEND_API_KEY: string;
@@ -96,8 +96,8 @@ declare namespace Cloudflare {
   }
   interface Env {
     API_KEY_ENCRYPTION_KEY: string;
-    APP_NAME: string;
-    APP_URL: string;
+    VITE_APP_NAME: string;
+    VITE_APP_URL: string;
     BETTER_AUTH_SECRET: string;
     CEREBRAS_API_KEY: string;
     DOPPLER_CONFIG: string;
@@ -125,7 +125,7 @@ declare namespace Cloudflare {
     R2_ACCOUNT_ID: string;
     R2_BUCKET_NAME: string;
     R2_PUBLIC_ASSETS_BUCKET: string;
-    R2_PUBLIC_ASSETS_DOMAIN: string;
+    VITE_R2_PUBLIC_ASSETS_DOMAIN: string;
     R2_PUBLIC_STORAGE_DOMAIN: string;
     R2_SECRET_ACCESS_KEY: string;
     RESEND_API_KEY: string;
@@ -151,8 +151,8 @@ declare namespace NodeJS {
     Pick<
       Cloudflare.Env,
       | 'API_KEY_ENCRYPTION_KEY'
-      | 'APP_NAME'
-      | 'APP_URL'
+      | 'VITE_APP_NAME'
+      | 'VITE_APP_URL'
       | 'BETTER_AUTH_SECRET'
       | 'CEREBRAS_API_KEY'
       | 'DOPPLER_CONFIG'
@@ -180,7 +180,7 @@ declare namespace NodeJS {
       | 'R2_ACCOUNT_ID'
       | 'R2_BUCKET_NAME'
       | 'R2_PUBLIC_ASSETS_BUCKET'
-      | 'R2_PUBLIC_ASSETS_DOMAIN'
+      | 'VITE_R2_PUBLIC_ASSETS_DOMAIN'
       | 'R2_PUBLIC_STORAGE_DOMAIN'
       | 'R2_SECRET_ACCESS_KEY'
       | 'RESEND_API_KEY'

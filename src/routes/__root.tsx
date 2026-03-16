@@ -23,7 +23,7 @@ type RouterContext = {
 };
 const getIsPreviewFn = createIsomorphicFn()
   .server(() => {
-    const appUrl = getEnv().APP_URL;
+    const appUrl = getEnv().VITE_APP_URL;
     if (!appUrl) return true;
     return appUrl.includes('pr-');
   })

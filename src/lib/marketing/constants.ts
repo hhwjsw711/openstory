@@ -1,26 +1,31 @@
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'OpenStory';
+const APP_URL = import.meta.env.VITE_APP_URL || 'https://openstory.so';
+const VITE_R2_PUBLIC_ASSETS_DOMAIN =
+  import.meta.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so';
+
 export const SITE_CONFIG = {
-  name: 'OpenStory',
+  name: APP_NAME,
   description:
     'Multi-scene AI video production. Open source and free to self-host.',
-  url: 'https://openstory.so',
-  ogImage: 'https://assets.openstory.so/images/marketing/og.jpg',
+  url: APP_URL,
+  ogImage: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/og.jpg`,
   ctaText: 'Get Started',
   ctaHref: '/sequences/new',
   githubHref: 'https://github.com/openstory-so/openstory',
-} as const;
+};
 
 export const HERO_IMAGE = {
-  src: 'https://assets.openstory.so/images/marketing/13-scifi-chase.webp',
+  src: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/13-scifi-chase.webp`,
   alt: 'Cinematic sci-fi chase scene generated with OpenStory',
 } as const;
 
 export const HERO_FILMSTRIP = [
-  'https://assets.openstory.so/images/marketing/08-fashion-editorial.webp',
-  'https://assets.openstory.so/images/marketing/02-product-sneaker.webp',
-  'https://assets.openstory.so/images/marketing/09-music-video.webp',
-  'https://assets.openstory.so/images/marketing/14-fantasy-dragon.webp',
-  'https://assets.openstory.so/images/marketing/12-travel-adventure.webp',
-  'https://assets.openstory.so/images/marketing/01-product-cosmetics.webp',
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/08-fashion-editorial.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/02-product-sneaker.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/09-music-video.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/14-fantasy-dragon.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/12-travel-adventure.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/01-product-cosmetics.webp`,
 ] as const;
 
 export const TOP_TIER_FEATURES = [
@@ -28,44 +33,40 @@ export const TOP_TIER_FEATURES = [
     title: 'From Idea to Finished Video',
     description:
       'Describe what you want in a line or paste a full script. OpenStory breaks it into scenes, generates shots, and scores the music. A complete production pipeline, not a single-shot toy.',
-    image:
-      'https://assets.openstory.so/images/marketing/14-fantasy-dragon.webp',
+    image: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/14-fantasy-dragon.webp`,
   },
   {
     title: 'Cast Your Own Talent & Locations',
     description:
       'Define your characters and environments once \u2014 age, wardrobe, lighting, architecture. OpenStory maintains consistency across every shot in every sequence.',
     images: [
-      'https://assets.openstory.so/images/marketing/08-fashion-editorial.webp',
-      'https://assets.openstory.so/images/marketing/05-corporate-team.webp',
+      `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/08-fashion-editorial.webp`,
+      `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/05-corporate-team.webp`,
     ],
   },
   {
     title: 'Get The Shot You Want',
     description:
       'Generate variations of any shot \u2014 different angles, lighting, compositions \u2014 until it\u2019s exactly right. Creative direction, not creative compromise.',
-    image:
-      'https://assets.openstory.so/images/marketing/02-product-sneaker.webp',
+    image: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/02-product-sneaker.webp`,
   },
   {
     title: 'Take Your Work Anywhere',
     description:
       'Download individual shots, export full sequences, and get the prompts behind every generation. Your work isn\u2019t trapped here \u2014 use it in any editing tool or pipeline.',
-    image:
-      'https://assets.openstory.so/images/marketing/12-travel-adventure.webp',
+    image: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/12-travel-adventure.webp`,
   },
   {
     title: 'Latest Models',
     description:
       'Access the best image and video models as they ship. Switch per shot, or let OpenStory pick the best one for the job.',
-    image:
-      'https://assets.openstory.so/images/marketing/01-product-cosmetics.webp',
+    image: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/01-product-cosmetics.webp`,
   },
   {
     title: 'Music & Audio',
     description:
       'Generate music tracks and sound effects that match your sequence. Full audio composition built in.',
-    image: 'https://assets.openstory.so/images/marketing/09-music-video.webp',
+    image: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/09-music-video.webp`,
   },
 ] as const;
 
@@ -158,20 +159,20 @@ export const OPEN_FAIR_BENEFITS = [
 ] as const;
 
 export const FILMSTRIP_IMAGES = [
-  'https://assets.openstory.so/images/marketing/01-product-cosmetics.webp',
-  'https://assets.openstory.so/images/marketing/02-product-sneaker.webp',
-  'https://assets.openstory.so/images/marketing/03-real-estate-exterior.webp',
-  'https://assets.openstory.so/images/marketing/04-real-estate-interior.webp',
-  'https://assets.openstory.so/images/marketing/05-corporate-team.webp',
-  'https://assets.openstory.so/images/marketing/06-corporate-aerial.webp',
-  'https://assets.openstory.so/images/marketing/07-food-restaurant.webp',
-  'https://assets.openstory.so/images/marketing/08-fashion-editorial.webp',
-  'https://assets.openstory.so/images/marketing/09-music-video.webp',
-  'https://assets.openstory.so/images/marketing/10-youtube-creator.webp',
-  'https://assets.openstory.so/images/marketing/11-startup-pitch.webp',
-  'https://assets.openstory.so/images/marketing/12-travel-adventure.webp',
-  'https://assets.openstory.so/images/marketing/13-scifi-chase.webp',
-  'https://assets.openstory.so/images/marketing/14-fantasy-dragon.webp',
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/01-product-cosmetics.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/02-product-sneaker.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/03-real-estate-exterior.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/04-real-estate-interior.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/05-corporate-team.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/06-corporate-aerial.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/07-food-restaurant.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/08-fashion-editorial.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/09-music-video.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/10-youtube-creator.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/11-startup-pitch.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/12-travel-adventure.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/13-scifi-chase.webp`,
+  `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/14-fantasy-dragon.webp`,
 ] as const;
 
 export const FOOTER_LINKS = {

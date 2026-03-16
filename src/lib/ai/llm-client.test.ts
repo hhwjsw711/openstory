@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 mock.module('#env', () => ({
   getEnv: () => ({
     OPENROUTER_KEY: 'test-key',
-    APP_URL: 'http://localhost:3000',
-    APP_NAME: 'Test',
+    VITE_APP_URL: 'http://localhost:3000',
+    VITE_APP_NAME: 'Test',
   }),
 }));
 
