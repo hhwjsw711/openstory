@@ -1,8 +1,8 @@
+import { getEnv } from '#env';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { SITE_CONFIG } from '@/lib/marketing/constants';
 import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
-import { getEnv } from '#env';
 import appCss from '@/styles/global.css?url';
 import type { QueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +23,7 @@ type RouterContext = {
 };
 const getIsPreviewFn = createIsomorphicFn()
   .server(() => {
-    const appUrl = getEnv().APP_URL;
+    const appUrl = getEnv().VITE_APP_URL;
     if (!appUrl) return true;
     return appUrl.includes('pr-');
   })

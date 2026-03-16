@@ -20,7 +20,7 @@ function getResend(): Resend | undefined {
 }
 
 function getAppName(): string {
-  return getEnv().APP_NAME || 'OpenStory';
+  return getEnv().VITE_APP_NAME || 'OpenStory';
 }
 
 function getEmailConfig(): {

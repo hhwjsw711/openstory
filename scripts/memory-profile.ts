@@ -9,7 +9,7 @@
  *   bun scripts/memory-profile.ts --clear      # Clear samples
  */
 
-const BASE_URL = process.env.APP_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.VITE_APP_URL ?? 'http://localhost:3000';
 const API_URL = `${BASE_URL}/api/dev/memory`;
 const OUTPUT_PATH = '.output/memory-profile.html';
 const CF_MEMORY_LIMIT_MB = 128;

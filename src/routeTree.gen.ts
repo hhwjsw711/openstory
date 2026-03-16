@@ -11,12 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as OgRouteImport } from './routes/og'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MarketingRouteImport } from './routes/_marketing'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as MarketingIndexRouteImport } from './routes/_marketing/index'
+import { Route as MetaOgLinkedinRouteImport } from './routes/meta/og-linkedin'
+import { Route as MetaOgRouteImport } from './routes/meta/og'
 import { Route as GiftCodeRouteImport } from './routes/gift/$code'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
@@ -66,11 +67,6 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OgRoute = OgRouteImport.update({
-  id: '/og',
-  path: '/og',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
@@ -92,6 +88,16 @@ const MarketingIndexRoute = MarketingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MarketingRoute,
+} as any)
+const MetaOgLinkedinRoute = MetaOgLinkedinRouteImport.update({
+  id: '/meta/og-linkedin',
+  path: '/meta/og-linkedin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetaOgRoute = MetaOgRouteImport.update({
+  id: '/meta/og',
+  path: '/meta/og',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GiftCodeRoute = GiftCodeRouteImport.update({
   id: '/gift/$code',
@@ -301,7 +307,6 @@ const ProtectedSequencesIdCastCharacterIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/og': typeof OgRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
@@ -313,6 +318,8 @@ export interface FileRoutesByFullPath {
   '/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -346,7 +353,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/og': typeof OgRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof AuthLoginRoute
@@ -357,6 +363,8 @@ export interface FileRoutesByTo {
   '/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -393,7 +401,6 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/_marketing': typeof MarketingRouteWithChildren
   '/llms.txt': typeof LlmsDottxtRoute
-  '/og': typeof OgRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
@@ -405,6 +412,8 @@ export interface FileRoutesById {
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/_marketing/': typeof MarketingIndexRoute
   '/_protected/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
@@ -441,7 +450,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/llms.txt'
-    | '/og'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/settings'
@@ -453,6 +461,8 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -486,7 +496,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/llms.txt'
-    | '/og'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/login'
@@ -497,6 +506,8 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -532,7 +543,6 @@ export interface FileRouteTypes {
     | '/_protected'
     | '/_marketing'
     | '/llms.txt'
-    | '/og'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/_protected/settings'
@@ -544,6 +554,8 @@ export interface FileRouteTypes {
     | '/_protected/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/_marketing/'
     | '/_protected/sequences/$id'
     | '/_protected/locations/$locationId'
@@ -581,11 +593,12 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   MarketingRoute: typeof MarketingRouteWithChildren
   LlmsDottxtRoute: typeof LlmsDottxtRoute
-  OgRoute: typeof OgRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
+  MetaOgRoute: typeof MetaOgRoute
+  MetaOgLinkedinRoute: typeof MetaOgLinkedinRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
   ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
@@ -613,13 +626,6 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/og': {
-      id: '/og'
-      path: '/og'
-      fullPath: '/og'
-      preLoaderRoute: typeof OgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.txt': {
@@ -656,6 +662,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof MarketingIndexRouteImport
       parentRoute: typeof MarketingRoute
+    }
+    '/meta/og-linkedin': {
+      id: '/meta/og-linkedin'
+      path: '/meta/og-linkedin'
+      fullPath: '/meta/og-linkedin'
+      preLoaderRoute: typeof MetaOgLinkedinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meta/og': {
+      id: '/meta/og'
+      path: '/meta/og'
+      fullPath: '/meta/og'
+      preLoaderRoute: typeof MetaOgRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/gift/$code': {
       id: '/gift/$code'
@@ -1040,11 +1060,12 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   MarketingRoute: MarketingRouteWithChildren,
   LlmsDottxtRoute: LlmsDottxtRoute,
-  OgRoute: OgRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,
+  MetaOgRoute: MetaOgRoute,
+  MetaOgLinkedinRoute: MetaOgLinkedinRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
   ApiBillingBalanceRoute: ApiBillingBalanceRoute,

@@ -53,11 +53,11 @@ export function getServerAppUrl(request: Request): string {
 /**
  * Get production deployment app URL
  * Used for OAuth redirects on preview branches.
- * If APP_URL env var is set, use that as the canonical production URL.
+ * If VITE_APP_URL env var is set, use that as the canonical production URL.
  * Otherwise fall back to the request origin.
  */
 export function getProductionDeploymentAppUrl(request: Request): string {
-  const envAppUrl = getEnv().APP_URL;
+  const envAppUrl = getEnv().VITE_APP_URL;
   if (envAppUrl) {
     return envAppUrl.replace(/\/$/, '');
   }
@@ -74,17 +74,17 @@ export function isProductionDeployment(request: Request): boolean {
 
 /**
  * Check if this is a preview deployment.
- * Preview if: APP_URL is explicitly empty, or APP_URL doesn't match the request origin.
+ * Preview if: VITE_APP_URL is explicitly empty, or VITE_APP_URL doesn't match the request origin.
  */
 export function isPreviewDeployment(request: Request): boolean {
   if (isLocalDevelopment()) return false;
 
-  const envAppUrl = getEnv().APP_URL;
+  const envAppUrl = getEnv().VITE_APP_URL;
 
-  // APP_URL explicitly set to empty string or not set = preview branch
+  // VITE_APP_URL explicitly set to empty string or not set = preview branch
   if (!envAppUrl) return true;
 
-  // Otherwise check APP_URL to see if it's a PR url
+  // Otherwise check VITE_APP_URL to see if it's a PR url
   if (envAppUrl.includes('pr-')) {
     return true;
   }
@@ -95,15 +95,15 @@ export function isPreviewDeployment(request: Request): boolean {
 /**
  * Check if a hostname is a preview deployment
  * Pure function that can be used on server or client.
- * If APP_URL env var is set, a preview host is any host that doesn't match it.
- * If no APP_URL, consider it non-preview.
+ * If VITE_APP_URL env var is set, a preview host is any host that doesn't match it.
+ * If no VITE_APP_URL, consider it non-preview.
  */
 export function isPreviewHost(host: string): boolean {
   if (host.startsWith('localhost')) {
     return false;
   }
 
-  const envAppUrl = getEnv().APP_URL;
+  const envAppUrl = getEnv().VITE_APP_URL;
   if (!envAppUrl) {
     return false;
   }
