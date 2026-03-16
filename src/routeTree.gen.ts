@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as OgRouteImport } from './routes/og'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MarketingRouteImport } from './routes/_marketing'
@@ -54,6 +55,11 @@ import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/
 import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId'
 import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OgRoute = OgRouteImport.update({
   id: '/og',
   path: '/og',
@@ -290,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
   '/privacy': typeof MarketingPrivacyRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/_marketing': typeof MarketingRouteWithChildren
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/verify': typeof AuthVerifyRoute
@@ -424,6 +433,7 @@ export interface FileRouteTypes {
     | '/'
     | '/llms.txt'
     | '/og'
+    | '/sitemap.xml'
     | '/settings'
     | '/login'
     | '/verify'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/'
     | '/llms.txt'
     | '/og'
+    | '/sitemap.xml'
     | '/login'
     | '/verify'
     | '/privacy'
@@ -511,6 +522,7 @@ export interface FileRouteTypes {
     | '/_marketing'
     | '/llms.txt'
     | '/og'
+    | '/sitemap.xml'
     | '/_protected/settings'
     | '/_auth/login'
     | '/_auth/verify'
@@ -558,6 +570,7 @@ export interface RootRouteChildren {
   MarketingRoute: typeof MarketingRouteWithChildren
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OgRoute: typeof OgRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -575,6 +588,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og': {
       id: '/og'
       path: '/og'
@@ -1001,6 +1021,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketingRoute: MarketingRouteWithChildren,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OgRoute: OgRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

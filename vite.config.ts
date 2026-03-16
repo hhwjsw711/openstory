@@ -91,11 +91,8 @@ export default defineConfig({
       },
       prerender: {
         enabled: true,
-        crawlLinks: true,
-      },
-      sitemap: {
-        enabled: true,
-        host: 'https://openstory.so',
+        crawlLinks: false,
+        filter: ({ path }) => ['/', '/terms', '/privacy'].includes(path),
       },
     }),
     viteReact(),
