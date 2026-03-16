@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OgRouteImport } from './routes/og'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MarketingRouteImport } from './routes/_marketing'
@@ -58,6 +59,11 @@ import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './route
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OgRoute = OgRouteImport.update({
@@ -296,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
@@ -340,6 +347,7 @@ export interface FileRoutesByTo {
   '/': typeof MarketingIndexRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof AuthLoginRoute
   '/verify': typeof AuthVerifyRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/_marketing': typeof MarketingRouteWithChildren
   '/llms.txt': typeof LlmsDottxtRoute
   '/og': typeof OgRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/'
     | '/llms.txt'
     | '/og'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/settings'
     | '/login'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/'
     | '/llms.txt'
     | '/og'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/login'
     | '/verify'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/_marketing'
     | '/llms.txt'
     | '/og'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/_protected/settings'
     | '/_auth/login'
@@ -570,6 +582,7 @@ export interface RootRouteChildren {
   MarketingRoute: typeof MarketingRouteWithChildren
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OgRoute: typeof OgRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
@@ -593,6 +606,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/og': {
@@ -1021,6 +1041,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketingRoute: MarketingRouteWithChildren,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OgRoute: OgRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,
