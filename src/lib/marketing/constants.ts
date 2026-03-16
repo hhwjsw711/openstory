@@ -3,11 +3,26 @@ const APP_URL = import.meta.env.VITE_APP_URL || 'https://openstory.so';
 const VITE_R2_PUBLIC_ASSETS_DOMAIN =
   import.meta.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so';
 
+const APP_DOMAIN = (() => {
+  try {
+    return new URL(APP_URL).hostname;
+  } catch {
+    return 'openstory.so';
+  }
+})();
+
+export const CONTACT_EMAIL =
+  import.meta.env.VITE_CONTACT_EMAIL || `hello@${APP_DOMAIN}`;
+export const PRIVACY_EMAIL =
+  import.meta.env.VITE_PRIVACY_EMAIL || `privacy@${APP_DOMAIN}`;
+
 export const SITE_CONFIG = {
   name: APP_NAME,
   description:
     'Multi-scene AI video production. Open source and free to self-host.',
   url: APP_URL,
+  contactEmail: CONTACT_EMAIL,
+  privacyEmail: PRIVACY_EMAIL,
   ogImage: `https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/og.jpg`,
   ctaText: 'Get Started',
   ctaHref: '/sequences/new',
