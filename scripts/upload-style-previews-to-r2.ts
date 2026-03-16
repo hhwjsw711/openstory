@@ -30,12 +30,12 @@ const isDryRun = process.argv.includes('--dry-run');
 const ENV_CONFIG = {
   prd: {
     bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
+    url: `https://${process.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
   },
   stg: {
     bucket:
       process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets-stg',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets-stg.openstory.so'}`,
+    url: `https://${process.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets-stg.openstory.so'}`,
   },
 };
 
