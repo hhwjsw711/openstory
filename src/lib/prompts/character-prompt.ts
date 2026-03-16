@@ -55,6 +55,7 @@ export const buildCharacterReferenceImages = (
     .map((c) => ({
       referenceImageUrl: c.sheetImageUrl ?? '',
       description: buildCharacterDescription(c),
+      role: 'character' as const,
     }));
 };
 

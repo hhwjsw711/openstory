@@ -16,24 +16,35 @@ function getAspectRatioDescription(imageSize: ImageSize): string {
 }
 
 /**
- * Generate variant image prompt with aspect ratio context
+ * Generate variant image prompt with aspect ratio context and optional scene description
  */
-export function getVariantImagePrompt(imageSize: ImageSize): string {
+export function getVariantImagePrompt(
+  imageSize: ImageSize,
+  scenePrompt?: string
+): string {
   const aspectDescription = getAspectRatioDescription(imageSize);
 
-  return `Create a 9-panel cinematic storyboard sheet arranged as exactly 3 panels across (horizontal) and 3 panels down (vertical), derived from the style and subject of the provided image reference. The aesthetic should be that of a high-budget motion picture.
+  const sceneContext = scenePrompt
+    ? `\nScene Description:\n${scenePrompt}\n`
+    : '';
 
-${aspectDescription}
+  return `Create a 9-panel cinematic storyboard sheet arranged as exactly 3 panels across (horizontal) and 3 panels down (vertical), derived from the style and subject of Image 1 (the primary source scene). It should be a sequence of 9 distinct frames showing a progression of action, laid out in a 3-column by 3-row grid. Include 'Wide' (setting the scene), 'Medium' (action), and 'Tight' (emotion) shots. There should be no borders between images.
 
 Visual Parameters:
 
-Lighting: Chiaroscuro lighting with high dynamic range.
+Lighting: Match Image 1's lighting setup exactly.
 
-Texture: 35mm film grain, hyper-realistic textures.
+Texture: Match Image 1's texture and grain characteristics.
 
-Color: Color grade must perfectly match the reference image's LUT.
+Color: Color grade must perfectly match Image 1's LUT.
 
-Composition: A sequence of 9 distinct frames showing a progression of action, laid out in a 3-column by 3-row grid. Include 'Wide' (setting the scene), 'Medium' (action), and 'Tight' (emotion) shots. There should be no borders between images.
+Strict Negative Constraint: No borders between images, Zero text. No dialogue bubbles, no scene numbers, no 'Lorem Ipsum', and no subtitles. The final image should look like a clean, text-free photography contact sheet.
 
-Strict Negative Constraint: No borders between images, Zero text. No dialogue bubbles, no scene numbers, no 'Lorem Ipsum', and no subtitles. The final image should look like a clean, text-free photography contact sheet.`;
+Aspect Ratio: ${aspectDescription}
+
+${sceneContext}
+
+CRITICAL: All 9 panels must depict variant shots of the SAME scene shown in Image 1. Any additional reference images (characters, locations) are provided solely for likeness and environment consistency — do NOT turn them into separate panels or subjects.
+
+`;
 }
