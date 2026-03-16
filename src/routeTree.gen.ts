@@ -16,6 +16,8 @@ import { Route as MarketingRouteImport } from './routes/_marketing'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as MarketingIndexRouteImport } from './routes/_marketing/index'
+import { Route as MetaOgLinkedinRouteImport } from './routes/meta/og-linkedin'
+import { Route as MetaOgRouteImport } from './routes/meta/og'
 import { Route as GiftCodeRouteImport } from './routes/gift/$code'
 import { Route as ApiRealtimeRouteImport } from './routes/api/realtime'
 import { Route as ProtectedEvalRouteImport } from './routes/_protected/eval'
@@ -86,6 +88,16 @@ const MarketingIndexRoute = MarketingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MarketingRoute,
+} as any)
+const MetaOgLinkedinRoute = MetaOgLinkedinRouteImport.update({
+  id: '/meta/og-linkedin',
+  path: '/meta/og-linkedin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetaOgRoute = MetaOgRouteImport.update({
+  id: '/meta/og',
+  path: '/meta/og',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GiftCodeRoute = GiftCodeRouteImport.update({
   id: '/gift/$code',
@@ -306,6 +318,8 @@ export interface FileRoutesByFullPath {
   '/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -349,6 +363,8 @@ export interface FileRoutesByTo {
   '/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
   '/sequences/new': typeof ProtectedSequencesNewRoute
@@ -396,6 +412,8 @@ export interface FileRoutesById {
   '/_protected/eval': typeof ProtectedEvalRoute
   '/api/realtime': typeof ApiRealtimeRoute
   '/gift/$code': typeof GiftCodeRoute
+  '/meta/og': typeof MetaOgRoute
+  '/meta/og-linkedin': typeof MetaOgLinkedinRoute
   '/_marketing/': typeof MarketingIndexRoute
   '/_protected/sequences/$id': typeof ProtectedSequencesIdRouteRouteWithChildren
   '/_protected/locations/$locationId': typeof ProtectedLocationsLocationIdRoute
@@ -443,6 +461,8 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -486,6 +506,8 @@ export interface FileRouteTypes {
     | '/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/sequences/$id'
     | '/locations/$locationId'
     | '/sequences/new'
@@ -532,6 +554,8 @@ export interface FileRouteTypes {
     | '/_protected/eval'
     | '/api/realtime'
     | '/gift/$code'
+    | '/meta/og'
+    | '/meta/og-linkedin'
     | '/_marketing/'
     | '/_protected/sequences/$id'
     | '/_protected/locations/$locationId'
@@ -573,6 +597,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiRealtimeRoute: typeof ApiRealtimeRoute
   GiftCodeRoute: typeof GiftCodeRoute
+  MetaOgRoute: typeof MetaOgRoute
+  MetaOgLinkedinRoute: typeof MetaOgLinkedinRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
   ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
@@ -636,6 +662,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof MarketingIndexRouteImport
       parentRoute: typeof MarketingRoute
+    }
+    '/meta/og-linkedin': {
+      id: '/meta/og-linkedin'
+      path: '/meta/og-linkedin'
+      fullPath: '/meta/og-linkedin'
+      preLoaderRoute: typeof MetaOgLinkedinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meta/og': {
+      id: '/meta/og'
+      path: '/meta/og'
+      fullPath: '/meta/og'
+      preLoaderRoute: typeof MetaOgRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/gift/$code': {
       id: '/gift/$code'
@@ -1024,6 +1064,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiRealtimeRoute: ApiRealtimeRoute,
   GiftCodeRoute: GiftCodeRoute,
+  MetaOgRoute: MetaOgRoute,
+  MetaOgLinkedinRoute: MetaOgLinkedinRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
   ApiBillingBalanceRoute: ApiBillingBalanceRoute,
