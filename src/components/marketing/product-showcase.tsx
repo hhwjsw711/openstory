@@ -16,7 +16,7 @@ export function ProductShowcase() {
               <span className="size-3 rounded-full bg-foreground/10" />
               <div className="ml-3 flex-1 rounded-md bg-muted px-3 py-1">
                 <span className="text-xs text-muted-foreground">
-                  app.openstory.so
+                  openstory.so
                 </span>
               </div>
             </div>
