@@ -21,7 +21,7 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { useCreateSequence, useArchiveSequence } from '@/hooks/use-sequences';
+import { useCreateSequence } from '@/hooks/use-sequences';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
 import { useBillingGate } from '@/hooks/use-billing-gate';
@@ -247,7 +247,6 @@ export const ScriptView: FC<{
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   const createSequenceMutation = useCreateSequence();
-  const archiveSequenceMutation = useArchiveSequence();
   const {
     needsBillingSetup,
     showGate,
@@ -261,8 +260,6 @@ export const ScriptView: FC<{
   const handleCancel = onCancel;
 
   const executeRegeneration = () => {
-    const oldSequenceId = sequence?.id;
-
     createSequenceMutation.mutate(
       {
         title: undefined,
@@ -283,11 +280,7 @@ export const ScriptView: FC<{
       },
       {
         onSuccess: (result) => {
-          if (oldSequenceId) {
-            archiveSequenceMutation.mutate(oldSequenceId);
-          } else {
-            clearDraft();
-          }
+          clearDraft();
           if (onSuccess) {
             onSuccess(result.data.map((seq) => seq.id));
           }
@@ -507,8 +500,7 @@ export const ScriptView: FC<{
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerate sequence?</AlertDialogTitle>
             <AlertDialogDescription>
-              A new sequence will be created from this script. The current
-              sequence will be archived.
+              A new sequence will be created from this script.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
