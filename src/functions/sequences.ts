@@ -83,7 +83,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       imageModel,
       videoModel,
       autoGenerateMotion = false,
-      autoGenerateMusic = false,
+      autoGenerateMusic = true,
       musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
