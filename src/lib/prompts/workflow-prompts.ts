@@ -682,8 +682,8 @@ Extract with character name (null if unknown) and exact text.
 ## Timing
 
 - Dialogue: ~150 words/minute
-- Simple action: 3-5s | Moderate: 5-10s | Complex: 10-15s
-- Quick cuts: 2-4s | Contemplative: 6-12s`,
+- Simple action: 2-3s | Moderate: 3-5s | Complex: 5-8s
+- Quick cuts: 1-2s | Contemplative: 3-6s`,
     },
     {
       role: 'user',
