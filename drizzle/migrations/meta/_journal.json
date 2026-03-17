@@ -57,6 +57,13 @@
       "when": 1773200898329,
       "tag": "0007_freezing_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1773786222211,
+      "tag": "0008_married_greymalkin",
+      "breakpoints": true
     }
   ]
 }
