@@ -4,20 +4,13 @@
  * Not team-scoped (admin operations span all teams).
  */
 
-import { count, desc, eq, sql } from 'drizzle-orm';
+import { micros, microsToUsd, usdToMicros } from '@/lib/billing/money';
 import type { Database } from '@/lib/db/client';
 import { generateId } from '@/lib/db/id';
 import { giftTokenRedemptions, giftTokens } from '@/lib/db/schema/gift-tokens';
 import type { GiftToken } from '@/lib/db/schema/gift-tokens';
 import { ValidationError } from '@/lib/errors';
-import {
-  type Microdollars,
-  micros,
-  microsToDisplayUsd,
-  microsToUsd,
-  usdToMicros,
-} from '@/lib/billing/money';
-import type { TransactionType } from '@/lib/db/schema/credits';
+import { count, desc, eq, sql } from 'drizzle-orm';
 
 // Ambiguity-free alphabet (no 0/O/1/I) -- 32 chars -> 32^6 ~ 1B combinations
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -83,84 +76,6 @@ export function createAdminMethods(db: Database) {
     return token;
   }
 
-  /**
-   * Redeem a gift token for a team. Adds credits via the billing sub-module.
-   * Caller must provide an addCredits function (from billing sub-module) to avoid
-   * circular dependency.
-   */
-  async function redeemGiftToken(opts: {
-    code: string;
-    teamId: string;
-    userId: string;
-    addCredits: (
-      amountMicros: Microdollars,
-      creditOpts: {
-        type?: TransactionType;
-        description?: string;
-        metadata?: Record<string, unknown>;
-      }
-    ) => Promise<{ newBalance: Microdollars; transactionId: string } | null>;
-  }): Promise<{ newBalance: number; amountUsd: number }> {
-    const normalizedCode = opts.code.trim().toUpperCase();
-
-    // Find the token
-    const [token] = await db
-      .select()
-      .from(giftTokens)
-      .where(eq(giftTokens.code, normalizedCode))
-      .limit(1);
-
-    if (!token) {
-      throw new ValidationError('Invalid gift code');
-    }
-
-    if (token.expiresAt && token.expiresAt < new Date()) {
-      throw new ValidationError('This gift code has expired');
-    }
-
-    // Count existing redemptions
-    const [{ value: redemptionCount }] = await db
-      .select({ value: count() })
-      .from(giftTokenRedemptions)
-      .where(eq(giftTokenRedemptions.giftTokenId, token.id));
-
-    if (redemptionCount >= token.maxRedemptions) {
-      throw new ValidationError('This gift code has been fully redeemed');
-    }
-
-    // Record redemption -- unique index on (giftTokenId, teamId) prevents duplicates
-    const [inserted] = await db
-      .insert(giftTokenRedemptions)
-      .values({
-        id: generateId(),
-        giftTokenId: token.id,
-        teamId: opts.teamId,
-        userId: opts.userId,
-      })
-      .onConflictDoNothing()
-      .returning();
-
-    if (!inserted) {
-      throw new ValidationError(
-        'Your team has already redeemed this gift code'
-      );
-    }
-
-    const amountMicros = micros(token.amountMicros);
-
-    // Add credits to team
-    const result = await opts.addCredits(amountMicros, {
-      type: 'credit_adjustment',
-      description: `Gift code redeemed: ${normalizedCode} (${microsToDisplayUsd(amountMicros)})`,
-      metadata: { giftTokenId: token.id, giftCode: normalizedCode },
-    });
-
-    return {
-      newBalance: result ? microsToUsd(result.newBalance) : 0,
-      amountUsd: microsToUsd(amountMicros),
-    };
-  }
-
   async function listGiftTokens(): Promise<GiftTokenWithStatus[]> {
     const redemptionCountSq = db
       .select({
@@ -193,7 +108,6 @@ export function createAdminMethods(db: Database) {
 
   return {
     createGiftToken,
-    redeemGiftToken,
     listGiftTokens,
   };
 }

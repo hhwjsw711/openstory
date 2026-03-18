@@ -1,3 +1,4 @@
+import { isSystemAdmin } from '@/lib/auth/system-admin';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -6,8 +7,6 @@ import {
   authWithTeamMiddleware,
   systemAdminMiddleware,
 } from './middleware';
-import { isSystemAdmin } from '@/lib/auth/system-admin';
-import { createAdminDb } from '@/lib/db/scoped';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -29,7 +28,7 @@ export const createGiftTokenFn = createServerFn({ method: 'POST' })
       : undefined;
 
     // Admin ops use a dummy teamId since they're not team-scoped
-    return createAdminDb().admin.createGiftToken({
+    return context.adminScopedDb.admin.createGiftToken({
       createdByUserId: context.user.id,
       amountUsd: data.amountUsd,
       maxRedemptions: data.maxRedemptions,
@@ -42,7 +41,7 @@ export const redeemGiftTokenFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.object({ code: z.string().min(1) })))
   .handler(async ({ context, data }) => {
-    return context.scopedDb.admin.redeemGiftToken({
+    return context.scopedDb.billing.redeemGiftToken({
       code: data.code,
       teamId: context.teamId,
       userId: context.user.id,
@@ -52,8 +51,8 @@ export const redeemGiftTokenFn = createServerFn({ method: 'POST' })
 
 export const listGiftTokensFn = createServerFn({ method: 'GET' })
   .middleware([systemAdminMiddleware])
-  .handler(async () => {
-    return createAdminDb().admin.listGiftTokens();
+  .handler(async ({ context }) => {
+    return context.adminScopedDb.admin.listGiftTokens();
   });
 
 export const isSystemAdminFn = createServerFn({ method: 'GET' })

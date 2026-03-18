@@ -16,6 +16,7 @@ import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import {
   createScopedDb,
+  createSystemAdminScopedDb,
   resolveUserTeam,
   type ScopedDb,
 } from '@/lib/db/scoped';
@@ -267,7 +268,11 @@ export const systemAdminMiddleware = createMiddleware({ type: 'function' })
   .middleware([authWithTeamMiddleware])
   .server(async ({ next, context }) => {
     requireSystemAdmin(context.user.email);
-    return next();
+    return next({
+      context: {
+        adminScopedDb: createSystemAdminScopedDb(),
+      },
+    });
   });
 
 // ============================================================================

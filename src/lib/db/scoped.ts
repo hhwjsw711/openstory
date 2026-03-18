@@ -5,59 +5,58 @@
  * Only this file and auth/config.ts should import getDb.
  */
 
-import { and, eq } from 'drizzle-orm';
 import { getDb } from '#db-client';
-import type { Sequence, User } from '@/lib/db/schema';
 import { sequences, teamMembers, teams, user } from '@/lib/db/schema';
+import type { Sequence, User } from '@/lib/db/schema';
 import type { TeamMemberRole } from '@/lib/db/schema/teams';
-import { sql } from 'drizzle-orm';
-import {
-  createSequencesMethods,
-  createSequenceMethods,
-  createSequencesReadMethods,
-  createSequenceReadMethods,
-} from '@/lib/db/scoped/sequences';
-import { createFramesMethods } from '@/lib/db/scoped/frames';
-import {
-  createTalentMethods,
-  createTalentReadMethods,
-} from '@/lib/db/scoped/talent';
-import {
-  createStylesMethods,
-  createStylesReadMethods,
-} from '@/lib/db/scoped/styles';
-import {
-  createLocationsMethods,
-  createLocationSheetsMethods,
-  createLocationsReadMethods,
-  createLocationSheetsReadMethods,
-} from '@/lib/db/scoped/location-library';
-import { createLibraryMethods } from '@/lib/db/scoped/library';
-import { createCharactersMethods } from '@/lib/db/scoped/characters';
-import { createSequenceLocationsMethods } from '@/lib/db/scoped/sequence-locations';
-import {
-  createBillingMethods,
-  createBillingReadMethods,
-} from '@/lib/db/scoped/billing';
+import { createAdminMethods } from '@/lib/db/scoped/admin';
 import {
   createApiKeysMethods,
   createApiKeysReadMethods,
 } from '@/lib/db/scoped/api-keys';
 import {
+  createBillingMethods,
+  createBillingReadMethods,
+} from '@/lib/db/scoped/billing';
+import { createCharactersMethods } from '@/lib/db/scoped/characters';
+import { createFramesMethods } from '@/lib/db/scoped/frames';
+import { createLibraryMethods } from '@/lib/db/scoped/library';
+import {
+  createLocationSheetsMethods,
+  createLocationSheetsReadMethods,
+  createLocationsMethods,
+  createLocationsReadMethods,
+} from '@/lib/db/scoped/location-library';
+import { createSequenceLocationsMethods } from '@/lib/db/scoped/sequence-locations';
+import {
+  createSequenceMethods,
+  createSequenceReadMethods,
+  createSequencesMethods,
+  createSequencesReadMethods,
+} from '@/lib/db/scoped/sequences';
+import {
+  createStylesMethods,
+  createStylesReadMethods,
+} from '@/lib/db/scoped/styles';
+import {
+  createTalentMethods,
+  createTalentReadMethods,
+} from '@/lib/db/scoped/talent';
+import {
   createTeamManagementMethods,
   createTeamManagementReadMethods,
 } from '@/lib/db/scoped/team-management';
-import { createAdminMethods } from '@/lib/db/scoped/admin';
+import { and, eq, sql } from 'drizzle-orm';
 
-// Re-export types from sub-modules
-export type {
-  MusicFieldsUpdate,
-  MergedVideoFieldsUpdate,
-} from '@/lib/db/scoped/sequences';
 export type {
   GiftTokenStatus,
   GiftTokenWithStatus,
 } from '@/lib/db/scoped/admin';
+
+export type {
+  MergedVideoFieldsUpdate,
+  MusicFieldsUpdate,
+} from '@/lib/db/scoped/sequences';
 
 /**
  * Resolve a user's default team (highest-role team).
@@ -240,7 +239,6 @@ export function createScopedDb(teamId: string, userId: string) {
     billing: createBillingMethods(db, teamId, userId),
     apiKeys: createApiKeysMethods(db, teamId, userId),
     teamManagement: createTeamManagementMethods(db, teamId, userId),
-    admin: createAdminMethods(db),
   };
 }
 
@@ -273,28 +271,17 @@ export function createReadOnlyScopedDb(teamId: string) {
     billing: createBillingReadMethods(db, teamId),
     apiKeys: createApiKeysReadMethods(db, teamId),
     teamManagement: createTeamManagementReadMethods(db, teamId),
-    admin: createAdminMethods(db),
   };
 }
 
 export type ReadOnlyScopedDb = ReturnType<typeof createReadOnlyScopedDb>;
 
-/** Public queries (styles, etc.) — no team scoping */
-export function createPublicDb() {
-  return createReadOnlyScopedDb('__public__');
+export function createSystemAdminScopedDb() {
+  const db = getDb();
+
+  return {
+    admin: createAdminMethods(db),
+  };
 }
 
-/** Cross-team lookups by ID */
-export function createLookupDb() {
-  return createReadOnlyScopedDb('__lookup__');
-}
-
-/** System admin operations */
-export function createAdminDb() {
-  return createReadOnlyScopedDb('admin');
-}
-
-/** Invitation acceptance — lookup by token, not team */
-export function createInvitationDb() {
-  return createReadOnlyScopedDb('__invitation__');
-}
+export type SystemAdminScopedDb = ReturnType<typeof createSystemAdminScopedDb>;

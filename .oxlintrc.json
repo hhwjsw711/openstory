@@ -29,7 +29,7 @@
           {
             "name": "@/lib/db/scoped",
             "importNames": ["createScopedDb"],
-            "message": "createScopedDb only allowed in middleware.ts, scoped-workflow.ts, and authorized route handlers. Use context.scopedDb, createPublicDb(), createLookupDb(), or createAdminDb()."
+            "message": "createScopedDb only allowed in middleware.ts, scoped-workflow.ts, and authorized route handlers. Use context.scopedDb."
           }
         ]
       }

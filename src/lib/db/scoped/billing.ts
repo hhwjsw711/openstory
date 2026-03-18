@@ -4,7 +4,23 @@
  * All monetary values are in Microdollars (1 USD = 1,000,000).
  */
 
-import { and, desc, eq, sql } from 'drizzle-orm';
+import {
+  applyMarkup,
+  AUTO_TOPUP_COOLDOWN_MS,
+  calculateExpiryDate,
+  isStripeEnabled,
+  MIN_TOPUP_AMOUNT_MICROS,
+} from '@/lib/billing/constants';
+import {
+  type Microdollars,
+  micros,
+  microsToDisplayUsd,
+  microsToUsd,
+  microsToUsdCents,
+  negateMicros,
+  ZERO_MICROS,
+} from '@/lib/billing/money';
+import { getStripeOrThrow } from '@/lib/billing/stripe';
 import type { Database } from '@/lib/db/client';
 import {
   creditBatches,
@@ -18,23 +34,9 @@ import type {
   TransactionType,
 } from '@/lib/db/schema/credits';
 import { ValidationError } from '@/lib/errors';
-import {
-  applyMarkup,
-  AUTO_TOPUP_COOLDOWN_MS,
-  calculateExpiryDate,
-  isStripeEnabled,
-  MIN_TOPUP_AMOUNT_MICROS,
-} from '@/lib/billing/constants';
-import {
-  type Microdollars,
-  micros,
-  microsToDisplayUsd,
-  microsToUsdCents,
-  microsToUsd,
-  negateMicros,
-  ZERO_MICROS,
-} from '@/lib/billing/money';
-import { getStripeOrThrow } from '@/lib/billing/stripe';
+import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { generateId } from '../id';
+import { giftTokenRedemptions, giftTokens } from '../schema';
 
 function mapBatchSource(
   type: TransactionType,
@@ -480,6 +482,83 @@ export function createBillingMethods(
     };
   }
 
+  /**
+   * Redeem a gift token for a team. Adds credits via the billing sub-module.
+   * Caller must provide an addCredits function (from billing sub-module) to avoid
+   * circular dependency.
+   */
+  async function redeemGiftToken(opts: {
+    code: string;
+    teamId: string;
+    userId: string;
+    addCredits: (
+      amountMicros: Microdollars,
+      creditOpts: {
+        type?: TransactionType;
+        description?: string;
+        metadata?: Record<string, unknown>;
+      }
+    ) => Promise<{ newBalance: Microdollars; transactionId: string } | null>;
+  }): Promise<{ newBalance: number; amountUsd: number }> {
+    const normalizedCode = opts.code.trim().toUpperCase();
+
+    // Find the token
+    const [token] = await db
+      .select()
+      .from(giftTokens)
+      .where(eq(giftTokens.code, normalizedCode))
+      .limit(1);
+
+    if (!token) {
+      throw new ValidationError('Invalid gift code');
+    }
+
+    if (token.expiresAt && token.expiresAt < new Date()) {
+      throw new ValidationError('This gift code has expired');
+    }
+
+    // Count existing redemptions
+    const [{ value: redemptionCount }] = await db
+      .select({ value: count() })
+      .from(giftTokenRedemptions)
+      .where(eq(giftTokenRedemptions.giftTokenId, token.id));
+
+    if (redemptionCount >= token.maxRedemptions) {
+      throw new ValidationError('This gift code has been fully redeemed');
+    }
+
+    // Record redemption -- unique index on (giftTokenId, teamId) prevents duplicates
+    const [inserted] = await db
+      .insert(giftTokenRedemptions)
+      .values({
+        id: generateId(),
+        giftTokenId: token.id,
+        teamId: opts.teamId,
+        userId: opts.userId,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    if (!inserted) {
+      throw new ValidationError(
+        'Your team has already redeemed this gift code'
+      );
+    }
+
+    const amountMicros = micros(token.amountMicros);
+
+    // Add credits to team
+    const result = await opts.addCredits(amountMicros, {
+      type: 'credit_adjustment',
+      description: `Gift code redeemed: ${normalizedCode} (${microsToDisplayUsd(amountMicros)})`,
+      metadata: { giftTokenId: token.id, giftCode: normalizedCode },
+    });
+
+    return {
+      newBalance: result ? microsToUsd(result.newBalance) : 0,
+      amountUsd: microsToUsd(amountMicros),
+    };
+  }
   return {
     ...read,
     addCredits,
@@ -488,5 +567,6 @@ export function createBillingMethods(
     updateAutoTopUpSettings,
     checkAutoTopUp,
     reconcileBatchBalance,
+    redeemGiftToken,
   };
 }
