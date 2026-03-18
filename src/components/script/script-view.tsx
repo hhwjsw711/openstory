@@ -321,9 +321,15 @@ export const ScriptView: FC<{
     setScript('');
 
     try {
+      const selectedStyle = styles.find((s) => s.id === styleId);
       let accumulated = '';
       for await (const chunk of await enhanceScriptStreamFn({
-        data: { script: scriptValue },
+        data: {
+          script: scriptValue,
+          styleConfig: selectedStyle?.config ?? undefined,
+          analysisModel: analysisModels[0],
+          aspectRatio,
+        },
       })) {
         accumulated += chunk.delta;
         setScript(accumulated);
