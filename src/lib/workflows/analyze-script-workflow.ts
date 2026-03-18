@@ -454,7 +454,7 @@ export const analyzeScriptWorkflow = createWorkflow(
       sceneId: scene.sceneId,
       title: scene.metadata?.title || 'Untitled Scene',
       storyBeat: scene.metadata?.storyBeat || '',
-      durationSeconds: scene.metadata?.durationSeconds || 10,
+      durationSeconds: scene.metadata?.durationSeconds || 5,
       location: scene.metadata?.location || '',
       timeOfDay: scene.metadata?.timeOfDay || '',
       visualSummary: scene.prompts?.visual?.components?.atmosphere || '',
@@ -537,7 +537,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     if (scenesWithMusic.length > 0) {
       let totalDuration = 0;
       for (const scene of scenesWithMusic) {
-        totalDuration += scene.metadata?.durationSeconds || 10;
+        totalDuration += scene.metadata?.durationSeconds || 5;
       }
 
       // Generate motion for each scene

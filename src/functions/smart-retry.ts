@@ -45,6 +45,7 @@ import type {
   MergeVideoWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
+import { buildSceneSummaries } from './sequences';
 import type { Frame } from '@/lib/db/schema/frames';
 import type { Character } from '@/lib/db/schema';
 
@@ -288,6 +289,43 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       await triggerWorkflow('/music', musicInput);
 
       retried.push('music');
+    }
+
+    // 3b. Retry missing music prompt (use scenes fallback for LLM generation)
+    if (
+      !sequence.musicPrompt &&
+      sequence.musicStatus !== 'completed' &&
+      sequence.status === 'failed'
+    ) {
+      const allFrames = await getSequenceFrames(sequence.id);
+      const scenes = buildSceneSummaries(allFrames);
+      const totalDuration = allFrames.reduce((sum, frame) => {
+        const seconds = frame.durationMs
+          ? frame.durationMs / 1000
+          : (frame.metadata?.metadata?.durationSeconds ?? 10);
+        return sum + seconds;
+      }, 0);
+
+      const musicInput: MusicWorkflowInput = {
+        userId: user.id,
+        teamId,
+        sequenceId: sequence.id,
+        scenes,
+        duration: totalDuration || 30,
+      };
+
+      await getDb()
+        .update(sequences)
+        .set({
+          musicStatus: 'generating',
+          musicError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(sequences.id, sequence.id));
+
+      await triggerWorkflow('/music', musicInput);
+
+      retried.push('music prompt');
     }
 
     // 4. Retry failed merge

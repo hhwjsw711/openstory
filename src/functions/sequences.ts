@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import {
@@ -83,7 +83,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       imageModel,
       videoModel,
       autoGenerateMotion = false,
-      autoGenerateMusic = false,
+      autoGenerateMusic = true,
       musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
@@ -316,7 +316,7 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
   });
 
 /** Build compact scene summaries from frames for music prompt generation */
-function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
+export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   return frames.map((frame) => {
     const md = frame.metadata?.musicDesign;
     const legacyMusic = frame.metadata?.audioDesign?.music;
@@ -338,6 +338,50 @@ function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   });
 }
 
+/** Shared helper to trigger music generation for a sequence */
+export const triggerMusicGeneration = createServerOnlyFn(
+  async (params: {
+    sequence: typeof sequences.$inferSelect;
+    userId: string;
+    frames: Frame[];
+  }): Promise<void> => {
+    const { sequence, userId, frames } = params;
+
+    const effectivePrompt = sequence.musicPrompt;
+    const effectiveTags = sequence.musicTags;
+
+    const totalDuration = frames.reduce((sum, frame) => {
+      const seconds = frame.durationMs
+        ? frame.durationMs / 1000
+        : (frame.metadata?.metadata?.durationSeconds ?? 10);
+      return sum + seconds;
+    }, 0);
+
+    const baseInput = {
+      userId,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
+      duration: totalDuration || 30,
+    };
+
+    const musicInput: MusicWorkflowInput =
+      effectivePrompt && effectiveTags
+        ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
+        : { ...baseInput, scenes: buildSceneSummaries(frames) };
+
+    await getDb()
+      .update(sequences)
+      .set({
+        musicStatus: 'generating',
+        musicError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sequences.id, sequence.id));
+
+    await triggerWorkflow('/music', musicInput);
+  }
+);
+
 /**
  * Trigger sequence-level music generation.
  * Uses pre-generated prompt/tags when available, otherwise builds from frame audio specs.
@@ -358,9 +402,6 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { sequence, user } = context;
 
-    const effectivePrompt = data.prompt ?? sequence.musicPrompt;
-    const effectiveTags = data.tags ?? sequence.musicTags;
-
     if (data.prompt || data.tags) {
       await updateSequenceMusicPrompt(
         sequence.id,
@@ -370,6 +411,10 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     }
 
     const allFrames = await getSequenceFrames(data.sequenceId);
+
+    // For explicit calls with overrides, build input directly
+    const effectivePrompt = data.prompt ?? sequence.musicPrompt;
+    const effectiveTags = data.tags ?? sequence.musicTags;
 
     const totalDuration = allFrames.reduce((sum, frame) => {
       const seconds = frame.durationMs

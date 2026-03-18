@@ -74,6 +74,8 @@ function buildHeadline(
       );
     } else if (group.category === 'music') {
       parts.push('music generation failed');
+    } else if (group.category === 'music-prompt') {
+      parts.push('music prompt generation failed');
     } else if (group.category === 'merge') {
       parts.push('video merge failed');
     }
@@ -170,7 +172,6 @@ export function analyzeFailures(
   if (sequence.status === 'failed' && !sequence.musicPrompt) {
     // Only flag as needing full retry if we have frames (otherwise already caught above)
     if (frames.length > 0 && sequence.musicStatus !== 'completed') {
-      requiresFullRetry = true;
       groups.push({
         category: 'music-prompt',
         label: 'Music prompt was not generated',
