@@ -107,6 +107,7 @@ function writeEnvFile(vars: Map<string, string>) {
         'QSTASH_TOKEN',
         'QSTASH_CURRENT_SIGNING_KEY',
         'QSTASH_NEXT_SIGNING_KEY',
+        'UPSTASH_WORKFLOW_URL',
       ],
     },
     {
@@ -1938,6 +1939,7 @@ async function main() {
           'sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r'
         );
         vars.set('QSTASH_NEXT_SIGNING_KEY', 'sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs');
+        vars.set('UPSTASH_WORKFLOW_URL', 'http://host.docker.internal:3000');
         saveProgress();
         p.log.success('QStash configured for local Docker emulator');
       }
