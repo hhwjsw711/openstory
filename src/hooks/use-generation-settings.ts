@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: GenerationSettings = {
   motionModel: DEFAULT_VIDEO_MODEL,
   autoGenerateMotion: false,
   musicModel: DEFAULT_MUSIC_MODEL,
-  autoGenerateMusic: true,
+  autoGenerateMusic: false,
 };
 
 /**
