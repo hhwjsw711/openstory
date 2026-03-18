@@ -40,7 +40,6 @@ import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protec
 import { Route as ProtectedSequencesIdMusicRouteImport } from './routes/_protected/sequences/$id/music'
 import { Route as ProtectedSequencesIdLocationsIndexRouteImport } from './routes/_protected/sequences/$id/locations/index'
 import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
-import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
 import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId'
 import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
@@ -207,12 +206,6 @@ const ProtectedSequencesIdCastIndexRoute =
     path: '/cast/',
     getParentRoute: () => ProtectedSequencesIdRouteRoute,
   } as any)
-const ApiTeamsInvitationsInvitationIdAcceptRoute =
-  ApiTeamsInvitationsInvitationIdAcceptRouteImport.update({
-    id: '/api/teams/invitations/$invitationId/accept',
-    path: '/api/teams/invitations/$invitationId/accept',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ProtectedSequencesIdLocationsLocationIdRoute =
   ProtectedSequencesIdLocationsLocationIdRouteImport.update({
     id: '/locations/$locationId',
@@ -256,7 +249,6 @@ export interface FileRoutesByFullPath {
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
   '/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -289,7 +281,6 @@ export interface FileRoutesByTo {
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
   '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -326,7 +317,6 @@ export interface FileRoutesById {
   '/_protected/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
   '/_protected/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -362,7 +352,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/theatre'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast/'
     | '/sequences/$id/locations/'
   fileRoutesByTo: FileRoutesByTo
@@ -395,7 +384,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/theatre'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast'
     | '/sequences/$id/locations'
   id:
@@ -431,7 +419,6 @@ export interface FileRouteTypes {
     | '/_protected/sequences/$id/theatre'
     | '/_protected/sequences/$id/cast/$characterId'
     | '/_protected/sequences/$id/locations/$locationId'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/_protected/sequences/$id/cast/'
     | '/_protected/sequences/$id/locations/'
   fileRoutesById: FileRoutesById
@@ -447,7 +434,6 @@ export interface RootRouteChildren {
   ApiDevMemoryRoute: typeof ApiDevMemoryRoute
   ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
-  ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -669,13 +655,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
       parentRoute: typeof ProtectedSequencesIdRouteRoute
     }
-    '/api/teams/invitations/$invitationId/accept': {
-      id: '/api/teams/invitations/$invitationId/accept'
-      path: '/api/teams/invitations/$invitationId/accept'
-      fullPath: '/api/teams/invitations/$invitationId/accept'
-      preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_protected/sequences/$id/locations/$locationId': {
       id: '/_protected/sequences/$id/locations/$locationId'
       path: '/locations/$locationId'
@@ -797,8 +776,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDevMemoryRoute: ApiDevMemoryRoute,
   ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
-  ApiTeamsInvitationsInvitationIdAcceptRoute:
-    ApiTeamsInvitationsInvitationIdAcceptRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
