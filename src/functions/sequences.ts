@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import {
@@ -339,46 +339,48 @@ export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
 }
 
 /** Shared helper to trigger music generation for a sequence */
-export async function triggerMusicGeneration(params: {
-  sequence: typeof sequences.$inferSelect;
-  userId: string;
-  frames: Frame[];
-}): Promise<void> {
-  const { sequence, userId, frames } = params;
+export const triggerMusicGeneration = createServerOnlyFn(
+  async (params: {
+    sequence: typeof sequences.$inferSelect;
+    userId: string;
+    frames: Frame[];
+  }): Promise<void> => {
+    const { sequence, userId, frames } = params;
 
-  const effectivePrompt = sequence.musicPrompt;
-  const effectiveTags = sequence.musicTags;
+    const effectivePrompt = sequence.musicPrompt;
+    const effectiveTags = sequence.musicTags;
 
-  const totalDuration = frames.reduce((sum, frame) => {
-    const seconds = frame.durationMs
-      ? frame.durationMs / 1000
-      : (frame.metadata?.metadata?.durationSeconds ?? 10);
-    return sum + seconds;
-  }, 0);
+    const totalDuration = frames.reduce((sum, frame) => {
+      const seconds = frame.durationMs
+        ? frame.durationMs / 1000
+        : (frame.metadata?.metadata?.durationSeconds ?? 10);
+      return sum + seconds;
+    }, 0);
 
-  const baseInput = {
-    userId,
-    teamId: sequence.teamId,
-    sequenceId: sequence.id,
-    duration: totalDuration || 30,
-  };
+    const baseInput = {
+      userId,
+      teamId: sequence.teamId,
+      sequenceId: sequence.id,
+      duration: totalDuration || 30,
+    };
 
-  const musicInput: MusicWorkflowInput =
-    effectivePrompt && effectiveTags
-      ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
-      : { ...baseInput, scenes: buildSceneSummaries(frames) };
+    const musicInput: MusicWorkflowInput =
+      effectivePrompt && effectiveTags
+        ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
+        : { ...baseInput, scenes: buildSceneSummaries(frames) };
 
-  await getDb()
-    .update(sequences)
-    .set({
-      musicStatus: 'generating',
-      musicError: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(sequences.id, sequence.id));
+    await getDb()
+      .update(sequences)
+      .set({
+        musicStatus: 'generating',
+        musicError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sequences.id, sequence.id));
 
-  await triggerWorkflow('/music', musicInput);
-}
+    await triggerWorkflow('/music', musicInput);
+  }
+);
 
 /**
  * Trigger sequence-level music generation.
