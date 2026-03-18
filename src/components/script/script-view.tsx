@@ -47,7 +47,7 @@ import {
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Square, Undo2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
 
@@ -155,7 +155,7 @@ export const ScriptView: FC<{
   // Sync draft state when creating new sequences (not editing)
   const hasSyncedDraftRef = React.useRef(false);
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing || loading) {
       hasSyncedDraftRef.current = false;
       return;
     }
@@ -169,7 +169,7 @@ export const ScriptView: FC<{
         setSelectedLocationIds(draft.selectedLocationIds);
       hasSyncedDraftRef.current = true;
     }
-  }, [isEditing, draftLoaded, draft]);
+  }, [isEditing, loading, draftLoaded, draft]);
 
   // Sync state with savedSettings when creating new sequences (not when editing)
   // Use a ref to track if we've already synced to avoid loops
@@ -248,6 +248,7 @@ export const ScriptView: FC<{
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showEnhanceNudge, setShowEnhanceNudge] = useState(false);
+  const [canUndoEnhance, setCanUndoEnhance] = useState(false);
 
   const createSequenceMutation = useCreateSequence();
   const {
@@ -317,6 +318,7 @@ export const ScriptView: FC<{
   };
 
   const previousScriptRef = useRef<string>('');
+  const enhanceAbortRef = useRef<AbortController | null>(null);
 
   const handleEnhance = async () => {
     if (needsBillingSetup) {
@@ -329,6 +331,9 @@ export const ScriptView: FC<{
     previousScriptRef.current = scriptValue;
     setScript('');
 
+    const abortController = new AbortController();
+    enhanceAbortRef.current = abortController;
+
     try {
       const selectedStyle = styles.find((s) => s.id === styleId);
       let accumulated = '';
@@ -340,18 +345,44 @@ export const ScriptView: FC<{
           aspectRatio,
         },
       })) {
+        if (abortController.signal.aborted) break;
         accumulated += chunk.delta;
         setScript(accumulated);
       }
+      setCanUndoEnhance(true);
     } catch (error) {
-      setEnhanceError(
-        error instanceof Error ? error.message : 'Failed to enhance script'
-      );
-      setScript(previousScriptRef.current);
+      if (!abortController.signal.aborted) {
+        setEnhanceError(
+          error instanceof Error ? error.message : 'Failed to enhance script'
+        );
+        setScript(previousScriptRef.current);
+      }
     } finally {
+      enhanceAbortRef.current = null;
       setIsEnhancing(false);
     }
   };
+
+  const handleStopEnhance = () => {
+    enhanceAbortRef.current?.abort();
+  };
+
+  const handleUndoEnhance = () => {
+    setScript(previousScriptRef.current);
+    setCanUndoEnhance(false);
+  };
+
+  useEffect(() => {
+    if (!isEnhancing) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || (e.metaKey && e.key === '.')) {
+        e.preventDefault();
+        handleStopEnhance();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isEnhancing]);
 
   const isFormValid =
     (script || sequence?.script) &&
@@ -360,7 +391,8 @@ export const ScriptView: FC<{
 
   const isSubmitting = createSequenceMutation.isPending;
   const isProcessing = sequence?.status === 'processing';
-  const isDisabled = !isFormValid || isSubmitting || isProcessing;
+  const isDisabled =
+    !isFormValid || isSubmitting || isProcessing || isEnhancing;
 
   const scriptValue = script ?? sequence?.script ?? '';
 
@@ -410,34 +442,62 @@ export const ScriptView: FC<{
           <div className="relative min-h-0 flex flex-col">
             <ScriptEditor
               value={scriptValue}
-              onValueChange={setScript}
+              onValueChange={(val) => {
+                setScript(val);
+                if (canUndoEnhance) setCanUndoEnhance(false);
+              }}
               maxLength={50000}
               placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
               disabled={loading}
               autoFocus={autoFocus}
               showCharacterCount={false}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute bottom-2 right-2 gap-1.5 text-muted-foreground"
-              disabled={
-                !scriptValue ||
-                scriptValue.length < 10 ||
-                isEnhancing ||
-                isSubmitting ||
-                isProcessing
-              }
-              onClick={() => void handleEnhance()}
-            >
-              {isEnhancing ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="size-3.5" />
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              {canUndoEnhance && !isEnhancing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={handleUndoEnhance}
+                >
+                  <Undo2 className="size-3.5" />
+                  Undo
+                </Button>
               )}
-              {isEnhancing ? 'Enhancing Script…' : 'Enhance Script'}
-            </Button>
+              {isEnhancing ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={handleStopEnhance}
+                >
+                  <span className="relative size-5">
+                    <Loader2 className="absolute inset-0 size-5 animate-spin" />
+                    <Square className="absolute inset-[5px] size-[10px] fill-current" />
+                  </span>
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  disabled={
+                    !scriptValue ||
+                    scriptValue.length < 10 ||
+                    isSubmitting ||
+                    isProcessing
+                  }
+                  onClick={() => void handleEnhance()}
+                >
+                  <Sparkles className="size-3.5" />
+                  Enhance Script
+                </Button>
+              )}
+            </div>
           </div>
           {enhanceError && (
             <p className="text-sm text-destructive">{enhanceError}</p>
