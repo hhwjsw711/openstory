@@ -10,15 +10,12 @@
  * 3. Updates database with reference image URLs
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type {
   NewSequenceLocation,
@@ -27,22 +24,20 @@ import type {
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryLocationMatch,
   LocationBibleWorkflowInput,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const locationBibleWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<LocationBibleWorkflowInput>
-  ): Promise<SequenceLocationMinimal[]> => {
+export const locationBibleWorkflow = createScopedWorkflow<
+  LocationBibleWorkflowInput,
+  SequenceLocationMinimal[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new Error('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
     const { libraryLocationMatches = [] } = input;
 
     // Create lookup map for library location matches
@@ -136,12 +131,12 @@ export const locationBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'location-bible-image',
-            teamId: input.teamId,
+            scopedDb,
           });
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
-            teamId: input.teamId,
+            scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
             userId: input.userId,

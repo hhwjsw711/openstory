@@ -68,7 +68,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       data.duration ??
       IMAGE_TO_VIDEO_MODELS[model].capabilities.defaultDuration;
 
-    await requireCredits(teamId, estimateVideoCost(model, duration), {
+    await requireCredits(context.scopedDb, estimateVideoCost(model, duration), {
       errorMessage: 'Insufficient credits for motion generation',
     });
 
@@ -142,7 +142,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       multiplyMicros(
         estimateVideoCost(batchModel, batchDuration),
         framesWithThumbnails.length
@@ -234,7 +234,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, usdToMicros(0.01), {
+    await requireCredits(context.scopedDb, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 

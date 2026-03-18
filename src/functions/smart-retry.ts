@@ -98,7 +98,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       );
 
       await requireCredits(
-        teamId,
+        context.scopedDb,
         estimateStoryboardCost({
           imageModel,
           aspectRatio: sequence.aspectRatio,
@@ -184,7 +184,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Single credit check for all retries
     if (totalCost > 0) {
-      await requireCredits(teamId, totalCost, {
+      await requireCredits(context.scopedDb, totalCost, {
         providers: ['fal'],
         errorMessage: 'Insufficient credits to retry failed items',
       });

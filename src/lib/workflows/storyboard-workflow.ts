@@ -14,17 +14,15 @@ import {
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
 import { StyleConfigSchema } from '@/lib/db/schema';
-import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const generateStoryboardWorkflow = createWorkflow(
-  async (context: WorkflowContext<StoryboardWorkflowInput>) => {
+export const generateStoryboardWorkflow =
+  createScopedWorkflow<StoryboardWorkflowInput>(async (context, scopedDb) => {
     const input = context.requestPayload;
 
     console.log('[StoryboardWorkflow] Input received:', {
@@ -33,8 +31,6 @@ export const generateStoryboardWorkflow = createWorkflow(
       userId: input.userId,
       autoGenerateMotion: input.autoGenerateMotion,
     });
-
-    const scopedDb = createScopedDb(input.teamId);
     const seq = scopedDb.sequence(input.sequenceId);
 
     const {
@@ -124,5 +120,4 @@ export const generateStoryboardWorkflow = createWorkflow(
         sequenceId,
       });
     });
-  }
-);
+  });

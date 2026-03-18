@@ -5,17 +5,17 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
-import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
+import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
 import { motionPromptSceneWorkflow } from './motion-prompt-scene-workflow';
 
-export const motionPromptWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<MotionPromptWorkflowInput>
-  ): Promise<Scene[]> => {
+export const motionPromptWorkflow = createScopedWorkflow<
+  MotionPromptWorkflowInput,
+  Scene[]
+>(
+  async (context, _scopedDb) => {
     const input = context.requestPayload;
     const {
       scenes,

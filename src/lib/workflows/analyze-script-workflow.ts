@@ -4,7 +4,6 @@
  */
 
 import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
   audioDesignGenerationResultSchema,
@@ -17,7 +16,6 @@ import {
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { createScopedDb } from '@/lib/db/scoped';
 import type {
   CharacterMinimal,
   NewFrame,
@@ -28,6 +26,8 @@ import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
@@ -36,8 +36,6 @@ import type {
   MusicWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { snapDuration } from '@/lib/motion/motion-generation';
@@ -117,13 +115,12 @@ function matchLocationsToScene(
   });
 }
 
-export const analyzeScriptWorkflow = createWorkflow(
-  async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
+export const analyzeScriptWorkflow = createScopedWorkflow<
+  AnalyzeScriptWorkflowInput,
+  Scene[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
     const {
       sequenceId,
       script,
@@ -149,7 +146,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
-      teamId: input.teamId,
+      scopedDb,
     };
 
     const {
@@ -480,6 +477,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
           scenes,
           aspectRatio,
@@ -630,6 +629,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       {
         workflow: motionPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
           scenes,
           aspectRatio,
@@ -912,15 +913,13 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
-      const { sequenceId, teamId } = context.requestPayload;
-      if (!sequenceId || !teamId) return;
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
+      const { sequenceId } = context.requestPayload;
+      if (!sequenceId) return;
 
       const error = sanitizeFailResponse(failResponse);
       console.error('[AnalyzeScriptWorkflow] Failure:', error);
-      await createScopedDb(teamId)
-        .sequence(sequenceId)
-        .updateStatus('failed', error);
+      await scopedDb.sequence(sequenceId).updateStatus('failed', error);
       await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: error,
       });

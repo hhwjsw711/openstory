@@ -8,12 +8,10 @@
 
 import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -21,21 +19,19 @@ import {
 } from '@/lib/image/image-generation';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryLocationSheetWorkflowInput,
   LibraryLocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const libraryLocationSheetWorkflow = createWorkflow(
-  async (context: WorkflowContext<LibraryLocationSheetWorkflowInput>) => {
+export const libraryLocationSheetWorkflow = createScopedWorkflow<
+  LibraryLocationSheetWorkflowInput,
+  LibraryLocationSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Build the prompt
     const generationParams: ImageGenerationParams = await context.run(
@@ -63,7 +59,7 @@ export const libraryLocationSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'library-location-sheet',
-          teamId: input.teamId,
+          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -77,14 +73,13 @@ export const libraryLocationSheetWorkflow = createWorkflow(
 
       return await generateImageWithProvider({
         ...generationParams,
-        teamId: input.teamId,
       });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         description: `Library location sheet (${generationParams.model})`,

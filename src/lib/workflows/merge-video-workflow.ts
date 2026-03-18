@@ -4,32 +4,31 @@
  */
 
 import { usdToMicros } from '@/lib/billing/money';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import { generateId } from '@/lib/db/id';
+import type { ScopedDb } from '@/lib/db/scoped';
+import { mergeVideos } from '@/lib/motion/merge-videos';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadResponse } from '@/lib/storage/upload-response';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
-import { generateId } from '@/lib/db/id';
-import { createScopedDb } from '@/lib/db/scoped';
-import { mergeVideos } from '@/lib/motion/merge-videos';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MergeAudioVideoWorkflowInput,
   MergeVideoWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 /** If music is already completed, trigger the audio+video mux workflow. */
 async function triggerMuxIfMusicReady(
   input: MergeVideoWorkflowInput,
-  mergedVideoUrl: string
+  mergedVideoUrl: string,
+  scopedDb: ScopedDb
 ): Promise<void> {
-  const scopedDb = createScopedDb(input.teamId);
   const seqCtx = scopedDb.sequence(input.sequenceId);
   const musicStatus = await seqCtx.getMusicStatus();
 
@@ -50,8 +49,8 @@ async function triggerMuxIfMusicReady(
   await triggerWorkflow('/merge-audio-video', muxInput);
 }
 
-export const mergeVideoWorkflow = createWorkflow(
-  async (context: WorkflowContext<MergeVideoWorkflowInput>) => {
+export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     if (!input.sequenceId) {
@@ -61,7 +60,6 @@ export const mergeVideoWorkflow = createWorkflow(
       throw new WorkflowValidationError('At least one video URL is required');
     }
 
-    const scopedDb = createScopedDb(input.teamId);
     const seq = scopedDb.sequence(input.sequenceId);
 
     console.log(
@@ -83,7 +81,7 @@ export const mergeVideoWorkflow = createWorkflow(
       });
 
       await context.run('check-mux-trigger-single', async () => {
-        await triggerMuxIfMusicReady(input, singleUrl);
+        await triggerMuxIfMusicReady(input, singleUrl, scopedDb);
       });
 
       return { mergedVideoUrl: singleUrl, mergedVideoPath: null };
@@ -97,12 +95,15 @@ export const mergeVideoWorkflow = createWorkflow(
     });
 
     const mergeResult = await context.run('merge-videos', async () => {
-      return mergeVideos(input);
+      return mergeVideos({
+        videoUrls: input.videoUrls,
+        scopedDb,
+      });
     });
 
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: usdToMicros(mergeResult.cost),
         usedOwnKey: mergeResult.metadata.usedOwnKey,
         userId: input.userId,
@@ -148,7 +149,7 @@ export const mergeVideoWorkflow = createWorkflow(
     });
 
     await context.run('check-mux-trigger', async () => {
-      await triggerMuxIfMusicReady(input, storageResult.url);
+      await triggerMuxIfMusicReady(input, storageResult.url, scopedDb);
     });
 
     console.log(
@@ -161,10 +162,10 @@ export const mergeVideoWorkflow = createWorkflow(
     };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      const failSeq = createScopedDb(input.teamId).sequence(input.sequenceId);
+      const failSeq = scopedDb.sequence(input.sequenceId);
 
       await failSeq.updateMergedVideoFields({
         mergedVideoStatus: 'failed',

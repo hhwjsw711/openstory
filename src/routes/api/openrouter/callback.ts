@@ -9,7 +9,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { completeOpenRouterOAuth } from '@/functions/openrouter-oauth-callback';
 import { requireUser } from '@/lib/auth/action-utils';
-import { resolveUserTeam } from '@/lib/db/scoped';
+import { createScopedDb, resolveUserTeam } from '@/lib/db/scoped';
 
 function redirectResponse(path: string): Response {
   return new Response(null, {
@@ -41,7 +41,8 @@ export const Route = createFileRoute('/api/openrouter/callback')({
             );
           }
 
-          await completeOpenRouterOAuth(team.teamId, code);
+          const scopedDb = createScopedDb(team.teamId);
+          await completeOpenRouterOAuth(team.teamId, code, scopedDb);
 
           return redirectResponse(
             '/settings/api-keys?success=openrouter_connected'

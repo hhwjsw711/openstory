@@ -40,7 +40,7 @@ describe('Motion Service', () => {
       });
 
       const result = await generateMotionForFrame({
-        teamId: 'test-team-id',
+        // scopedDb not passed — falls through to platform FAL_KEY
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'A person walking',
         model: 'kling_v3_pro',
@@ -85,7 +85,7 @@ describe('Motion Service', () => {
       });
 
       const result = await generateMotionForFrame({
-        teamId: 'test-team-id',
+        // scopedDb not passed — falls through to platform FAL_KEY
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'Dynamic action sequence',
         model: 'seedance_v1_pro',

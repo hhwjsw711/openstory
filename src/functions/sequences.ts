@@ -1,37 +1,26 @@
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import {
-  authMiddleware,
-  authWithTeamMiddleware,
-  sequenceAccessMiddleware,
-} from './middleware';
-import { createScopedDb } from '@/lib/db/scoped';
-import {
-  createSequenceSchema,
-  updateSequenceSchema,
-} from '@/lib/schemas/sequence.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  requireTeamAdminAccess,
-  requireTeamMemberAccess,
-} from '@/lib/auth/action-utils';
-import {
-  DEFAULT_ANALYSIS_MODEL,
-  getAnalysisModelById,
-} from '@/lib/ai/models.config';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
-  safeTextToImageModel,
-  safeImageToVideoModel,
   isValidAudioModel,
+  safeImageToVideoModel,
+  safeTextToImageModel,
 } from '@/lib/ai/models';
-import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import {
+  DEFAULT_ANALYSIS_MODEL,
+  getAnalysisModelById,
+} from '@/lib/ai/models.config';
+import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
+import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import type { Frame } from '@/lib/db/schema';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import {
+  createSequenceSchema,
+  updateSequenceSchema,
+} from '@/lib/schemas/sequence.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   MergeVideoWorkflowInput,
@@ -39,7 +28,10 @@ import type {
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
-import type { Frame } from '@/lib/db/schema';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
 
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
@@ -68,9 +60,6 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       await requireTeamMemberAccess(context.user.id, data.teamId);
     }
 
-    const scopedDb =
-      teamId === context.teamId ? context.scopedDb : createScopedDb(teamId);
-
     const {
       styleId,
       aspectRatio,
@@ -89,7 +78,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     }
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(imageModel, DEFAULT_IMAGE_MODEL),
         aspectRatio,
@@ -104,7 +93,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
 
     return Promise.all(
       analysisModels.map(async (modelId) => {
-        const sequence = await scopedDb.sequences.create({
+        const sequence = await context.scopedDb.sequences.create({
           userId: context.user.id,
           title: data.title || 'Untitled Sequence',
           script: data.script,
@@ -178,7 +167,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
 
     if (needsRegeneration) {
       await requireCredits(
-        context.teamId,
+        context.scopedDb,
         estimateStoryboardCost({
           imageModel: safeTextToImageModel(
             sequence.imageModel,
@@ -236,7 +225,7 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     }
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(
           sequence.imageModel,
@@ -272,32 +261,6 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
 
     // No deduplication ID — explicit user retry should always run
     await triggerWorkflow('/storyboard', workflowInput);
-
-    return { success: true };
-  });
-
-// ============================================================================
-// Delete Sequence
-// ============================================================================
-
-/** Delete a sequence (requires admin role) */
-export const deleteSequenceFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
-  .handler(async ({ data, context }) => {
-    // Admin delete uses authMiddleware (no team context), so look up the
-    // sequence without team scoping, verify admin access, then delete via scopedDb.
-    const { getSequenceByIdUnscoped } = await import('@/lib/db/scoped');
-    const sequence = await getSequenceByIdUnscoped(data.sequenceId);
-
-    if (!sequence) {
-      throw new Error('Sequence not found');
-    }
-
-    await requireTeamAdminAccess(context.user.id, sequence.teamId);
-
-    const scopedDb = createScopedDb(sequence.teamId);
-    await scopedDb.sequences.delete(data.sequenceId);
 
     return { success: true };
   });
@@ -430,7 +393,7 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, usdToMicros(0.01), {
+    await requireCredits(context.scopedDb, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 

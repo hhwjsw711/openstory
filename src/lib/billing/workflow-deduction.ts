@@ -8,12 +8,12 @@
  * All monetary values are in Microdollars.
  */
 
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { type Microdollars, microsToUsd, ZERO_MICROS } from './money';
 
 type WorkflowDeductionOpts = {
-  /** Team to deduct from. Skips deduction if undefined (e.g., anonymous workflows). */
-  teamId: string | undefined;
+  /** Scoped DB context for the team. Skips deduction if undefined (e.g., anonymous workflows). */
+  scopedDb: ScopedDb | undefined;
   costMicros: Microdollars;
   /** Set to true if the team used their own API key for this generation */
   usedOwnKey: boolean;
@@ -27,7 +27,7 @@ type WorkflowDeductionOpts = {
 /**
  * Deduct credits for a completed workflow generation.
  *
- * - Skips if teamId is undefined
+ * - Skips if scopedDb is undefined (no team context)
  * - Skips if costMicros <= 0
  * - Skips if the team used their own API key (usedOwnKey = true)
  * - Warns and skips if the team has insufficient credits (work already done)
@@ -35,14 +35,14 @@ type WorkflowDeductionOpts = {
 export async function deductWorkflowCredits(
   opts: WorkflowDeductionOpts
 ): Promise<void> {
-  if (!opts.teamId || opts.costMicros <= 0 || opts.usedOwnKey) return;
+  if (!opts.scopedDb || opts.costMicros <= 0 || opts.usedOwnKey) return;
 
-  const scopedDb = createScopedDb(opts.teamId);
+  const { scopedDb } = opts;
   const canAfford = await scopedDb.billing.hasEnoughCredits(opts.costMicros);
   if (!canAfford) {
     const prefix = opts.workflowName ? `[${opts.workflowName}]` : '[Workflow]';
     console.warn(
-      `${prefix} Insufficient credits for team ${opts.teamId} (cost: $${microsToUsd(opts.costMicros).toFixed(4)}), skipping deduction`
+      `${prefix} Insufficient credits (cost: $${microsToUsd(opts.costMicros).toFixed(4)}), skipping deduction`
     );
     // Still attempt auto-top-up so balance can recover
     void scopedDb.billing.checkAutoTopUp().catch((err) => {

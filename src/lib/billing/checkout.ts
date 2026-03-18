@@ -5,10 +5,11 @@
 
 import { ValidationError } from '@/lib/errors';
 import { MIN_TOPUP_AMOUNT_USD } from './constants';
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { getStripeOrThrow } from './stripe';
 
 type CreateCheckoutParams = {
+  scopedDb: ScopedDb;
   teamId: string;
   amountUsd: number;
   userId: string;
@@ -20,8 +21,15 @@ type CreateCheckoutParams = {
 export async function createCheckoutSession(
   params: CreateCheckoutParams
 ): Promise<{ url: string }> {
-  const { teamId, amountUsd, userId, userEmail, successUrl, cancelUrl } =
-    params;
+  const {
+    scopedDb,
+    teamId,
+    amountUsd,
+    userId,
+    userEmail,
+    successUrl,
+    cancelUrl,
+  } = params;
 
   if (amountUsd < MIN_TOPUP_AMOUNT_USD) {
     throw new ValidationError(
@@ -30,7 +38,6 @@ export async function createCheckoutSession(
   }
 
   const stripe = getStripeOrThrow();
-  const scopedDb = createScopedDb(teamId);
   const settings = await scopedDb.billing.getBillingSettings();
 
   // Reuse existing Stripe customer or create new one

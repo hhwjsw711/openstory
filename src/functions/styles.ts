@@ -3,17 +3,16 @@
  * End-to-end type-safe functions for style library operations
  */
 
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { authMiddleware, authWithTeamMiddleware } from './middleware';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   createStyleSchema,
   updateStyleSchema,
 } from '@/lib/schemas/style.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { createScopedDb } from '@/lib/db/scoped';
-import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware } from './middleware';
 
 // ============================================================================
 // List Styles
@@ -29,18 +28,6 @@ export const getStylesFn = createServerFn({ method: 'GET' })
     return context.scopedDb.styles.list();
   });
 
-/**
- * Get public styles only (for unauthenticated users or fallback)
- * @returns Array of public styles
- */
-export const getPublicStylesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .handler(async () => {
-    // Public styles don't require team context, use a temporary scopedDb
-    const scopedDb = createScopedDb('__public__');
-    return scopedDb.styles.getPublic();
-  });
-
 // ============================================================================
 // Get Single Style
 // ============================================================================
@@ -54,12 +41,11 @@ const getStyleInputSchema = z.object({
  * @returns The style
  */
 export const getStyleFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(getStyleInputSchema))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     // Style lookup doesn't require team scoping (styles can be public)
-    const scopedDb = createScopedDb('__lookup__');
-    const style = await scopedDb.styles.getById(data.styleId);
+    const style = await context.scopedDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
@@ -133,12 +119,11 @@ const deleteStyleInputSchema = z.object({
  * Delete a style (requires admin/owner role)
  */
 export const deleteStyleFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(deleteStyleInputSchema))
   .handler(async ({ data, context }) => {
     // Style lookup without team scoping (need to discover the team first)
-    const lookupDb = createScopedDb('__lookup__');
-    const style = await lookupDb.styles.getById(data.styleId);
+    const style = await context.scopedDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
@@ -146,8 +131,7 @@ export const deleteStyleFn = createServerFn({ method: 'POST' })
 
     await requireTeamAdminAccess(context.user.id, style.teamId);
 
-    const scopedDb = createScopedDb(style.teamId);
-    await scopedDb.styles.delete(data.styleId);
+    await context.scopedDb.styles.delete(data.styleId);
 
     return { success: true };
   });

@@ -1,11 +1,9 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { createScopedDb } from '@/lib/db/scoped';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -18,15 +16,18 @@ import {
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const generateVariantWorkflow = createWorkflow(
-  async (context: WorkflowContext<VariantWorkflowInput>) => {
+export const generateVariantWorkflow = createScopedWorkflow<
+  VariantWorkflowInput,
+  VariantWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Guard against undefined payload (can happen with stale workflow retries)
@@ -35,10 +36,6 @@ export const generateVariantWorkflow = createWorkflow(
         'Invalid workflow payload: requestPayload is undefined'
       );
     }
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Set status to generating if frameId is provided
     const generationParams: ImageGenerationParams | null = await context.run(
@@ -111,7 +108,7 @@ export const generateVariantWorkflow = createWorkflow(
           seed: input.seed,
           referenceImageUrls: referenceUrls,
           traceName: 'variant-image',
-          teamId: input.teamId,
+          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -136,7 +133,7 @@ export const generateVariantWorkflow = createWorkflow(
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId,
@@ -223,14 +220,13 @@ export const generateVariantWorkflow = createWorkflow(
     return result;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
       if (input.frameId && input.teamId) {
-        const failScopedDb = createScopedDb(input.teamId);
-        await failScopedDb.frames.update(
+        await scopedDb.frames.update(
           input.frameId,
           {
             thumbnailStatus: 'failed',

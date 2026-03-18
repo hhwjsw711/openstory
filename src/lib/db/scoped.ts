@@ -222,3 +222,23 @@ export function createScopedDb(teamId: string) {
 }
 
 export type ScopedDb = ReturnType<typeof createScopedDb>;
+
+/** Public queries (styles, etc.) — no team scoping */
+export function createPublicDb() {
+  return createScopedDb('__public__');
+}
+
+/** Cross-team lookups by ID */
+export function createLookupDb() {
+  return createScopedDb('__lookup__');
+}
+
+/** System admin operations */
+export function createAdminDb() {
+  return createScopedDb('admin');
+}
+
+/** Invitation acceptance — lookup by token, not team */
+export function createInvitationDb() {
+  return createScopedDb('__invitation__');
+}

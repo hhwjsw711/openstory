@@ -1,19 +1,19 @@
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { authWithTeamMiddleware } from './middleware';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
-import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
 import { moveFile, uploadFile } from '#storage';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
+import { generateId } from '@/lib/db/id';
+import type { LibraryLocation } from '@/lib/db/schema';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
-import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
-import type { LibraryLocation } from '@/lib/db/schema';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware } from './middleware';
 
 type ProcessedImage = { url: string; path: string };
 
@@ -124,6 +124,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
         locationName: data.name,
         locationDescription: data.description,
         referenceImageUrls: processedImages.map((img) => img.url),
+        userId: context.user.id,
         teamId: context.teamId,
         sequenceId: 'library',
       };
@@ -280,6 +281,7 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
         ...existingUrls,
         ...processedImages.map((img) => img.url),
       ],
+      userId: context.user.id,
       teamId: context.teamId,
       sequenceId: 'library',
     };

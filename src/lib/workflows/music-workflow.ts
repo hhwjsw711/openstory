@@ -1,27 +1,25 @@
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusicForScene } from '@/lib/audio/music-generation';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
-import { createScopedDb } from '@/lib/db/scoped';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MergeAudioVideoWorkflowInput,
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import { durableLLMCall } from './llm-call-helper';
 import {
   musicPromptSchema,
   reinforceInstrumentalTags,
 } from './music-prompt.schema';
 
-export const generateMusicWorkflow = createWorkflow(
-  async (context: WorkflowContext<MusicWorkflowInput>) => {
+export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     if (!input.prompt && !input.tags && !input.scenes?.length) {
@@ -32,7 +30,6 @@ export const generateMusicWorkflow = createWorkflow(
 
     const { sequenceId, teamId } = input;
     const model = input.model || DEFAULT_MUSIC_MODEL;
-    const scopedDb = createScopedDb(teamId);
     const seq = scopedDb.sequence(sequenceId);
 
     await context.run('set-generating-status', async () => {
@@ -70,7 +67,7 @@ export const generateMusicWorkflow = createWorkflow(
         {
           sequenceId,
           userId: input.userId,
-          teamId,
+          scopedDb,
         }
       );
       effectivePrompt = musicPrompt.prompt;
@@ -86,7 +83,7 @@ export const generateMusicWorkflow = createWorkflow(
         instrumental: true,
         model,
         traceName: 'sequence-music',
-        teamId,
+        scopedDb,
       });
 
       if (!result.success || !result.audioUrl) {
@@ -189,10 +186,10 @@ export const generateMusicWorkflow = createWorkflow(
     return { audioUrl: storageResult.url, duration: actualDuration };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      const failSeq = createScopedDb(input.teamId).sequence(input.sequenceId);
+      const failSeq = scopedDb.sequence(input.sequenceId);
 
       await failSeq.updateMusicFields({
         musicStatus: 'failed',

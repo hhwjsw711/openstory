@@ -5,15 +5,12 @@
  * Uses the reference images to create a consistent talent sheet.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
-import { createScopedDb } from '@/lib/db/scoped';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -24,23 +21,21 @@ import {
   buildTalentHeadshotPrompt,
 } from '@/lib/prompts/character-prompt';
 import { getTalentChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryTalentSheetWorkflowInput,
   LibraryTalentSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const libraryTalentSheetWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<LibraryTalentSheetWorkflowInput>
-  ): Promise<LibraryTalentSheetWorkflowResult> => {
+export const libraryTalentSheetWorkflow = createScopedWorkflow<
+  LibraryTalentSheetWorkflowInput,
+  LibraryTalentSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     // Step 1: Validate input
     await context.run('validate-input', async () => {
@@ -93,7 +88,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         numImages: 1,
         resolution: '2K',
         traceName: 'talent-sheet-image',
-        teamId: input.teamId,
+        scopedDb,
       } satisfies ImageGenerationParams;
 
       // Only include referenceImageUrls if provided
@@ -107,7 +102,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     // Deduct credits for sheet generation (skip if team used own fal key)
     await context.run('deduct-credits-sheet', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId,
@@ -193,7 +188,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'square_hd',
           numImages: 1,
           traceName: 'talent-headshot-image',
-          teamId: input.teamId,
+          scopedDb,
         } satisfies ImageGenerationParams;
 
         // Only include referenceImageUrls if provided
@@ -208,7 +203,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
     // Deduct credits for headshot generation (skip if team used own fal key)
     await context.run('deduct-credits-headshot', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(headshotResult.metadata),
         usedOwnKey: headshotResult.metadata.usedOwnKey,
         userId: input.userId,

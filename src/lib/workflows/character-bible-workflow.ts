@@ -8,35 +8,30 @@
  * to maintain consistency with the cast.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const characterBibleWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<CharacterBibleWorkflowInput>
-  ): Promise<CharacterMinimal[]> => {
+export const characterBibleWorkflow = createScopedWorkflow<
+  CharacterBibleWorkflowInput,
+  CharacterMinimal[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new Error('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
     const { talentMatches = [] } = input;
 
     // Create lookup map for talent matches
@@ -83,12 +78,12 @@ export const characterBibleWorkflow = createWorkflow(
             referenceImageUrls:
               referenceUrls.length > 0 ? referenceUrls : undefined,
             traceName: 'character-bible-image',
-            teamId: input.teamId,
+            scopedDb,
           });
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
-            teamId: input.teamId,
+            scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
             userId: input.userId,

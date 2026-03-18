@@ -89,7 +89,7 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
     const { sequence, user } = context;
 
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(
           sequence.imageModel,
@@ -166,7 +166,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateImageCost(model, sequence.aspectRatio, 1),
       { errorMessage: 'Insufficient credits for image generation' }
     );
@@ -228,7 +228,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
 
     const numImages = data.numImages ?? 1;
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateImageCost(
         data.model ?? DEFAULT_IMAGE_MODEL,
         sequence.aspectRatio,
@@ -323,7 +323,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     });
 
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateImageCost('nano_banana_2', '16:9', 1),
       { errorMessage: 'Insufficient credits for variant upscale' }
     );

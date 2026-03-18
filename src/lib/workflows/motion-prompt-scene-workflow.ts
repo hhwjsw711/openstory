@@ -5,20 +5,19 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { MotionPromptSceneWorkflowInput } from '@/lib/workflow/types';
-
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import {
   type MotionPrompt,
   motionPromptSchema,
 } from '../ai/scene-analysis.schema';
 import { durableLLMCall } from './llm-call-helper';
 
-export const motionPromptSceneWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<MotionPromptSceneWorkflowInput>
-  ): Promise<{ sceneId: string; motionPrompt: MotionPrompt }> => {
+export const motionPromptSceneWorkflow = createScopedWorkflow<
+  MotionPromptSceneWorkflowInput,
+  { sceneId: string; motionPrompt: MotionPrompt }
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
       scenes,
@@ -77,8 +76,8 @@ export const motionPromptSceneWorkflow = createWorkflow(
         additionalMetadata,
       },
       {
-        // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
-        teamId: input.teamId,
+        // Note: don't include sequenceId as it causes the durable call to emit a generation.phase:start event
+        scopedDb,
       }
     );
 

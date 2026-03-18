@@ -9,7 +9,6 @@ import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { teamAdminAccessMiddleware } from './middleware';
-import { createScopedDb } from '@/lib/db/scoped';
 
 const providerSchema = z.enum(['openrouter', 'fal']);
 
@@ -28,8 +27,7 @@ export const listApiKeysFn = createServerFn({ method: 'GET' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(listApiKeysInputSchema))
   .handler(async ({ context }) => {
-    const scopedDb = createScopedDb(context.teamId);
-    return scopedDb.apiKeys.listKeys();
+    return context.scopedDb.apiKeys.listKeys();
   });
 
 // ============================================================================
@@ -50,9 +48,8 @@ export const saveApiKeyFn = createServerFn({ method: 'POST' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(saveApiKeyInputSchema))
   .handler(async ({ data, context }) => {
-    const scopedDb = createScopedDb(context.teamId);
     // Validate the key first
-    const validation = await scopedDb.apiKeys.validateKey(
+    const validation = await context.scopedDb.apiKeys.validateKey(
       data.provider,
       data.apiKey
     );
@@ -62,7 +59,7 @@ export const saveApiKeyFn = createServerFn({ method: 'POST' })
       );
     }
 
-    return scopedDb.apiKeys.saveKey({
+    return context.scopedDb.apiKeys.saveKey({
       provider: data.provider,
       apiKey: data.apiKey,
       source: 'manual',
@@ -87,8 +84,7 @@ export const deleteApiKeyFn = createServerFn({ method: 'POST' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(deleteApiKeyInputSchema))
   .handler(async ({ data, context }) => {
-    const scopedDb = createScopedDb(context.teamId);
-    await scopedDb.apiKeys.deleteKey(data.provider);
+    await context.scopedDb.apiKeys.deleteKey(data.provider);
   });
 
 // ============================================================================
@@ -106,10 +102,9 @@ export const checkApiKeyStatusFn = createServerFn({ method: 'GET' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(checkApiKeyStatusInputSchema))
   .handler(async ({ context }) => {
-    const scopedDb = createScopedDb(context.teamId);
     const [hasOpenRouter, hasFal] = await Promise.all([
-      scopedDb.apiKeys.hasKey('openrouter'),
-      scopedDb.apiKeys.hasKey('fal'),
+      context.scopedDb.apiKeys.hasKey('openrouter'),
+      context.scopedDb.apiKeys.hasKey('fal'),
     ]);
 
     return {

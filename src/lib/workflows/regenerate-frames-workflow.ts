@@ -6,18 +6,16 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { createScopedDb } from '@/lib/db/scoped';
-import { matchLocationsToFrame } from '@/lib/db/scoped/sequence-locations';
 import type { CharacterMinimal } from '@/lib/db/schema';
+import { matchLocationsToFrame } from '@/lib/db/scoped/sequence-locations';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { RegenerateFramesWorkflowInput } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getFalFlowControl } from './constants';
 import { generateImageWorkflow } from './image-workflow';
 
@@ -53,12 +51,20 @@ type FrameResult = {
   error?: string;
 };
 
-export const regenerateFramesWorkflow = createWorkflow(
-  async (context: WorkflowContext<RegenerateFramesWorkflowInput>) => {
+type RegenerateFramesResult = {
+  totalFrames: number;
+  successCount: number;
+  failedFrames: string[];
+};
+
+export const regenerateFramesWorkflow = createScopedWorkflow<
+  RegenerateFramesWorkflowInput,
+  RegenerateFramesResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
-    const scopedDb = createScopedDb(teamId);
 
     const sequence = await context.run('get-sequence', async () => {
       const seq = await scopedDb.sequences.getById(sequenceId);

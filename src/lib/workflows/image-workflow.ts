@@ -1,8 +1,6 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { createScopedDb } from '@/lib/db/scoped';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -11,9 +9,9 @@ import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 type ImageWorkflowResult = {
   imageUrl: string;
@@ -21,15 +19,12 @@ type ImageWorkflowResult = {
   sequenceId?: string;
 };
 
-export const generateImageWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<ImageWorkflowInput>
-  ): Promise<ImageWorkflowResult> => {
+export const generateImageWorkflow = createScopedWorkflow<
+  ImageWorkflowInput,
+  ImageWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     const generationParams = await context.run(
       'set-generating-status',
@@ -85,7 +80,7 @@ export const generateImageWorkflow = createWorkflow(
           referenceImageUrls:
             input.referenceImages?.map((ref) => ref.referenceImageUrl) ?? [],
           traceName: 'frame-image',
-          teamId: input.teamId,
+          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -188,13 +183,12 @@ export const generateImageWorkflow = createWorkflow(
     return { imageUrl, frameId, sequenceId };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
       if (input.frameId && input.teamId) {
-        const failScopedDb = createScopedDb(input.teamId);
-        await failScopedDb.frames.update(
+        await scopedDb.frames.update(
           input.frameId,
           { thumbnailStatus: 'failed', thumbnailError: error },
           { throwOnMissing: false }

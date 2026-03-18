@@ -6,7 +6,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { authWithTeamMiddleware } from './middleware';
 import { isStripeEnabled } from '@/lib/billing/constants';
-import { createScopedDb } from '@/lib/db/scoped';
 import { microsToUsd } from '@/lib/billing/money';
 
 /**
@@ -16,9 +15,8 @@ import { microsToUsd } from '@/lib/billing/money';
 export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    const { teamId } = context;
+    const { scopedDb } = context;
 
-    const scopedDb = createScopedDb(teamId);
     const [balance, hasFalKey, hasOpenRouterKey, billingSettings] =
       await Promise.all([
         scopedDb.billing.getBalance(),

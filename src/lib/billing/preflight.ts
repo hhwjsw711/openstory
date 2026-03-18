@@ -5,7 +5,7 @@
  */
 
 import type { Microdollars } from '@/lib/billing/money';
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
 
 type Provider = 'fal' | 'openrouter';
@@ -14,7 +14,7 @@ type Provider = 'fal' | 'openrouter';
  * Verify a team can afford a generation before triggering it.
  * Skips the check entirely if the team has BYOK keys for all required providers.
  *
- * @param teamId - Team to check
+ * @param scopedDb - Scoped DB context for the team
  * @param estimatedCostMicros - Estimated raw cost in Microdollars
  * @param providers - Which BYOK providers bypass the check (default: ['fal'])
  * @param errorMessage - Custom error message for insufficient credits
@@ -22,7 +22,7 @@ type Provider = 'fal' | 'openrouter';
  * @throws InsufficientCreditsError if team lacks credits and has no BYOK keys
  */
 export async function requireCredits(
-  teamId: string,
+  scopedDb: ScopedDb,
   estimatedCostMicros: Microdollars,
   opts: {
     providers?: Provider[];
@@ -30,7 +30,6 @@ export async function requireCredits(
   } = {}
 ): Promise<void> {
   const providers = opts.providers ?? ['fal'];
-  const scopedDb = createScopedDb(teamId);
 
   // Check if team has all required BYOK keys (any missing = need credits)
   const keyChecks = await Promise.all(

@@ -1,17 +1,14 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { getGenerationChannel } from '@/lib/realtime';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
 
@@ -38,13 +35,12 @@ OUTPUT
 - Resolution: upscale to animation-ready quality.
 - No text overlays, borders, watermarks, or new graphics added by the model.`;
 
-export const upscaleVariantWorkflow = createWorkflow(
-  async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
+export const upscaleVariantWorkflow = createScopedWorkflow<
+  UpscaleVariantWorkflowInput,
+  UpscaleVariantWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     console.log(
       '[UpscaleVariantWorkflow]',
@@ -80,7 +76,7 @@ export const upscaleVariantWorkflow = createWorkflow(
         referenceImageUrls: [input.croppedTileUrl],
         numImages: 1,
         outputFormat: 'png',
-        teamId: input.teamId,
+        scopedDb,
       });
       return {
         imageUrl: result.imageUrls[0],
@@ -95,7 +91,7 @@ export const upscaleVariantWorkflow = createWorkflow(
 
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: upscaleResult.cost,
         usedOwnKey: upscaleResult.usedOwnKey,
         userId: input.userId,
@@ -161,7 +157,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     } satisfies UpscaleVariantWorkflowResult;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
@@ -171,8 +167,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       );
 
       if (input.frameId && input.teamId) {
-        const failScopedDb = createScopedDb(input.teamId);
-        await failScopedDb.frames.update(
+        await scopedDb.frames.update(
           input.frameId,
           {
             thumbnailStatus: 'completed',

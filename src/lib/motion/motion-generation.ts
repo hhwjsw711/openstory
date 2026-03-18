@@ -16,7 +16,7 @@ import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 import { z } from 'zod';
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 
 export const generationMotionOptionsSchema = z.object({
   imageUrl: z.url(),
@@ -32,7 +32,7 @@ export const generationMotionOptionsSchema = z.object({
 });
 
 export type GenerateMotionOptions = {
-  teamId?: string; // required to resolve the API key for the motion generation with BYOK
+  scopedDb?: ScopedDb; // scopedDb is used to resolve the API key for the motion generation with BYOK
   imageUrl: string;
   prompt: string;
   model?: ImageToVideoModel;
@@ -251,9 +251,9 @@ async function generateMotionInternal(
     }
   );
 
-  const falApiKeyInfo = await createScopedDb(
-    options.teamId ?? ''
-  ).apiKeys.resolveKey('fal');
+  const falApiKeyInfo = options.scopedDb
+    ? await options.scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });
@@ -383,9 +383,9 @@ export async function submitMotionJob(
     modelOptions,
   });
 
-  const falApiKeyInfo = await createScopedDb(
-    options.teamId ?? ''
-  ).apiKeys.resolveKey('fal');
+  const falApiKeyInfo = options.scopedDb
+    ? await options.scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });
@@ -419,12 +419,12 @@ export type MotionPollResult = {
 export async function pollMotionJob(
   jobId: string,
   modelKey: ImageToVideoModel,
-  teamId?: string
+  scopedDb?: ScopedDb
 ): Promise<MotionPollResult> {
   const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
-  const falApiKeyInfo = await createScopedDb(teamId ?? '').apiKeys.resolveKey(
-    'fal'
-  );
+  const falApiKeyInfo = scopedDb
+    ? await scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });

@@ -24,7 +24,7 @@ import {
 } from '@/lib/ai/script-enhancer';
 import { getPrompt } from '@/lib/prompts';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
 import { authWithTeamMiddleware } from './middleware';
 
@@ -65,12 +65,11 @@ function enforceRateLimit(limiter: RateLimiter, key: string): void {
  * Returns `undefined` when billing is skipped (disabled or team has own key).
  */
 async function prepareBilling(
-  teamId: string,
+  scopedDb: ScopedDb,
   userId: string,
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
-  const scopedDb = createScopedDb(teamId);
   const teamHasOwnKey = await scopedDb.apiKeys.hasKey('openrouter');
   if (teamHasOwnKey) return undefined;
 
@@ -113,7 +112,7 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
     }
 
     const deduct = await prepareBilling(
-      context.teamId,
+      context.scopedDb,
       context.user.id,
       `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
       { model: RECOMMENDED_MODELS.fast }
@@ -170,7 +169,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
     enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
     const deduct = await prepareBilling(
-      context.teamId,
+      context.scopedDb,
       context.user.id,
       'Script enhancement'
     );

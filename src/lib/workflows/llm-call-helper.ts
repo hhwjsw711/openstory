@@ -10,7 +10,7 @@ import { getContextWindow } from '@/lib/ai/models.config';
 import type { TextModel } from '@/lib/ai/models';
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
+import type { ScopedDb } from '@/lib/db/scoped';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -31,9 +31,10 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 export type DurableLLMCallContext = {
   sequenceId?: string;
   userId?: string;
-  teamId?: string;
   /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
   openRouterApiKey?: string;
+  /** Scoped DB context for resolving team API keys and deducting credits. Falls back to env key when absent. */
+  scopedDb?: ScopedDb;
 };
 
 /**
@@ -89,10 +90,8 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
 
   // Step 2: Durable LLM call (QStash retries step delivery on failure)
   const jsonResponse = await context.run(name, async () => {
-    const openRouterApiKeyInfo = callContext.teamId
-      ? await createScopedDb(callContext.teamId).apiKeys.resolveKey(
-          'openrouter'
-        )
+    const openRouterApiKeyInfo = callContext.scopedDb
+      ? await callContext.scopedDb.apiKeys.resolveKey('openrouter')
       : (() => {
           const env = getEnv();
           if (!env.OPENROUTER_KEY)
@@ -143,10 +142,10 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   });
 
   // Deduct LLM credits (cost tracked via Langfuse; adapter doesn't expose per-call usage)
-  if (callContext.teamId) {
+  if (callContext.scopedDb) {
     await context.run(`deduct-llm-credits-${name}`, async () => {
       await deductWorkflowCredits({
-        teamId: callContext.teamId,
+        scopedDb: callContext.scopedDb,
         costMicros: ZERO_MICROS,
         usedOwnKey: !!callContext.openRouterApiKey,
         userId: callContext.userId,

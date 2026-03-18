@@ -6,7 +6,8 @@
 
 import { createFalClient } from '@fal-ai/client';
 import type { QueueStatus } from '@fal-ai/client';
-import { createScopedDb } from '@/lib/db/scoped';
+import { getEnv } from '#env';
+import type { ScopedDb } from '@/lib/db/scoped';
 
 const COMPOSE_MODEL_ID = 'fal-ai/ffmpeg-api/compose';
 
@@ -35,12 +36,12 @@ export async function composeAudioVideo({
   videoUrl,
   musicUrl,
   durationMs,
-  teamId,
+  scopedDb,
 }: {
   videoUrl: string;
   musicUrl: string;
   durationMs: number;
-  teamId?: string; // required to resolve the API key for the compose audio video with BYOK
+  scopedDb?: ScopedDb; // scopedDb is used to resolve the API key for the compose audio video with BYOK
 }): Promise<ComposeAudioVideoResult> {
   console.log('[ComposeAudioVideo] Composing video with music track', {
     videoUrl: videoUrl.slice(0, 80),
@@ -48,9 +49,9 @@ export async function composeAudioVideo({
     durationMs,
   });
 
-  const falApiKeyInfo = await createScopedDb(teamId ?? '').apiKeys.resolveKey(
-    'fal'
-  );
+  const falApiKeyInfo = scopedDb
+    ? await scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const fal = createFalClient({
     credentials: falApiKeyInfo.key,
   });

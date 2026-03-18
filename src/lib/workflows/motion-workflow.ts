@@ -9,7 +9,6 @@
 
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { micros, microsToUsd } from '@/lib/billing/money';
-import { createScopedDb } from '@/lib/db/scoped';
 import {
   calculateMotionMetadata,
   pollMotionJob,
@@ -20,12 +19,11 @@ import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 /** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
 const POLL_BATCH_DURATION_MS = 30_000;
@@ -33,13 +31,9 @@ const POLL_INTERVAL_MS = 3_000;
 /** 30 batches × 30s = 15 minutes total timeout */
 const MAX_BATCHES = 30;
 
-export const generateMotionWorkflow = createWorkflow(
-  async (context: WorkflowContext<MotionWorkflowInput>) => {
+export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
     const model = input.model || DEFAULT_VIDEO_MODEL;
 
     if (!input.imageUrl?.trim()) {
@@ -94,7 +88,7 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        teamId: input.teamId,
+        scopedDb,
       });
     });
 
@@ -110,11 +104,7 @@ export const generateMotionWorkflow = createWorkflow(
         const deadline = Date.now() + POLL_BATCH_DURATION_MS;
 
         while (Date.now() < deadline) {
-          const result = await pollMotionJob(
-            job.jobId,
-            job.modelKey,
-            input.teamId
-          );
+          const result = await pollMotionJob(job.jobId, job.modelKey, scopedDb);
 
           if (result.progress !== undefined) {
             console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
@@ -296,12 +286,11 @@ export const generateMotionWorkflow = createWorkflow(
     return { videoUrl, duration: actualDuration };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
       if (input.frameId && input.teamId) {
-        const failScopedDb = createScopedDb(input.teamId);
-        await failScopedDb.frames.update(
+        await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'failed',

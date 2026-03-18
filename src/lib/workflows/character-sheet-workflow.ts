@@ -5,15 +5,12 @@
  * These sheets are later used as reference images when generating scene images.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createScopedDb } from '@/lib/db/scoped';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -21,21 +18,21 @@ import {
 } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const characterSheetWorkflow = createWorkflow(
-  async (context: WorkflowContext<CharacterSheetWorkflowInput>) => {
+export const characterSheetWorkflow = createScopedWorkflow<
+  CharacterSheetWorkflowInput,
+  CharacterSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    if (!input.teamId) {
-      throw new WorkflowValidationError('teamId is required');
-    }
-    const scopedDb = createScopedDb(input.teamId);
 
     // Emit realtime event that generation has started
     await context.run('emit-start-event', async () => {
@@ -90,7 +87,7 @@ export const characterSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'character-sheet-image',
-          teamId: input.teamId,
+          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -110,7 +107,7 @@ export const characterSheetWorkflow = createWorkflow(
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         userId: input.userId ?? null,
@@ -213,14 +210,13 @@ export const characterSheetWorkflow = createWorkflow(
     return result;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
       // Mark character sheet as failed
-      if (input.characterDbId && input.teamId) {
-        const failScopedDb = createScopedDb(input.teamId);
-        await failScopedDb.characters.updateSheetStatus(
+      if (input.characterDbId) {
+        await scopedDb.characters.updateSheetStatus(
           input.characterDbId,
           'failed',
           error

@@ -35,7 +35,8 @@ export interface SequenceWorkflowContext extends UserWorkflowContext {
 /**
  * Image generation workflow input
  */
-export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface ImageWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   prompt: string;
   style?: Json;
   model?: keyof typeof IMAGE_MODELS;
@@ -52,7 +53,8 @@ export interface ImageWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Variant image generation workflow input
  */
-export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface VariantWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   thumbnailUrl: string;
   model?: keyof typeof IMAGE_MODELS;
   imageSize?: ImageSize;
@@ -92,7 +94,8 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
 /**
  * Analyze scenes workflow input
  */
-export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface AnalyzeScriptWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   // Required inputs
   script: string;
   aspectRatio: AspectRatio;
@@ -112,7 +115,8 @@ export interface AnalyzeScriptWorkflowInput extends Partial<SequenceWorkflowCont
 /**
  * Motion generation workflow input
  */
-export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface MotionWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   frameId?: string;
   imageUrl: string;
   prompt: string;
@@ -126,7 +130,8 @@ export interface MotionWorkflowInput extends Partial<SequenceWorkflowContext> {
 /**
  * Character sheet generation workflow input
  */
-export interface CharacterSheetWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface CharacterSheetWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   /** sequence_characters.id */
   characterDbId: string;
   /** Character name for logging */
@@ -210,7 +215,8 @@ export type TalentMatchResult = {
 /**
  * Character sheet generation workflow input
  */
-export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface CharacterBibleWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   // Character bible from script analysis
   characterBible: CharacterBibleEntry[];
 
@@ -221,7 +227,8 @@ export interface CharacterBibleWorkflowInput extends Partial<SequenceWorkflowCon
   talentMatches?: TalentCharacterMatch[];
 }
 
-export interface VisualPromptWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface VisualPromptWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
@@ -235,7 +242,8 @@ export interface VisualPromptSceneWorkflowInput extends VisualPromptWorkflowInpu
   sceneIndex: number;
 }
 
-export interface MotionPromptWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface MotionPromptWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
@@ -332,7 +340,8 @@ export interface MergeVideoWorkflowResult {
 /**
  * Location sheet generation workflow input
  */
-export interface LocationSheetWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface LocationSheetWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   /** locations.id */
   locationDbId: string;
   /** Location name for logging */
@@ -357,7 +366,7 @@ export interface LocationSheetWorkflowResult {
  * Library location sheet generation workflow input
  * Generates a 3x3 grid reference sheet from user-uploaded reference images
  */
-export interface LibraryLocationSheetWorkflowInput {
+export interface LibraryLocationSheetWorkflowInput extends UserWorkflowContext {
   /** locations.id */
   locationDbId: string;
   /** Location name for prompt */
@@ -366,8 +375,6 @@ export interface LibraryLocationSheetWorkflowInput {
   locationDescription?: string;
   /** Reference image URLs (user uploads) */
   referenceImageUrls: string[];
-  /** Team ID for storage path */
-  teamId: string;
   /** Sequence ID (library sequence) for storage path */
   sequenceId: string;
   /** Image model to use */
@@ -387,7 +394,8 @@ export interface LibraryLocationSheetWorkflowResult {
  * Location bible generation workflow input
  * Generates reference sheets for all locations in a sequence
  */
-export interface LocationBibleWorkflowInput extends Partial<SequenceWorkflowContext> {
+export interface LocationBibleWorkflowInput extends UserWorkflowContext {
+  sequenceId?: string;
   /** Location bible from script analysis */
   locationBible: LocationBibleEntry[];
   /** Image model to use */
