@@ -25,6 +25,7 @@ import type {
 } from '@/lib/workflow/types';
 
 import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
+import { triggerMusicGeneration } from './sequences';
 
 // -- Shared helper: resolve motion prompt from frame data -----------------
 
@@ -98,7 +99,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
 
 const batchGenerateMotionInputSchema = z.object({
   sequenceId: ulidSchema,
-  frameIds: z.array(ulidSchema).optional(),
+  includeMusic: z.boolean().optional(),
   model: generateMotionSchema.shape.model,
   duration: generateMotionSchema.shape.duration,
   fps: generateMotionSchema.shape.fps,
@@ -123,18 +124,17 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     const { sequence, teamId } = context;
 
     const allFrames = await getSequenceFrames(sequence.id);
-    const filtered = data.frameIds?.length
-      ? allFrames.filter((f) => data.frameIds?.includes(f.id))
-      : allFrames;
 
-    if (filtered.length === 0) {
-      throw new Error('No frames found for sequence');
-    }
+    // Server determines eligible frames: thumbnail done, video pending/failed
+    const eligibleFrames = allFrames.filter(
+      (f) =>
+        f.thumbnailStatus === 'completed' &&
+        f.thumbnailUrl &&
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed')
+    );
 
-    const framesWithThumbnails = filtered.filter((f) => f.thumbnailUrl);
-
-    if (framesWithThumbnails.length === 0) {
-      throw new Error('No frames with thumbnails found');
+    if (eligibleFrames.length === 0) {
+      throw new Error('No eligible frames for motion generation');
     }
 
     const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
@@ -146,17 +146,17 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       teamId,
       multiplyMicros(
         estimateVideoCost(batchModel, batchDuration),
-        framesWithThumbnails.length
+        eligibleFrames.length
       ),
       {
-        errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
+        errorMessage: `Insufficient credits for batch motion generation (${eligibleFrames.length} frames)`,
       }
     );
 
     const workflows: BatchMotionWorkflow[] = [];
     const errors: BatchMotionError[] = [];
 
-    for (const frame of framesWithThumbnails) {
+    for (const frame of eligibleFrames) {
       try {
         if (!frame.thumbnailUrl) continue;
 
@@ -197,12 +197,34 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       }
     }
 
+    // Optionally trigger music generation
+    let musicTriggered = false;
+    if (data.includeMusic && sequence.musicStatus !== 'generating') {
+      try {
+        await triggerMusicGeneration({
+          sequence,
+          userId: context.user.id,
+          frames: allFrames,
+        });
+        musicTriggered = true;
+      } catch (error) {
+        errors.push({
+          frameId: 'music',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to start music generation',
+        });
+      }
+    }
+
     return {
       sequenceId: sequence.id,
-      totalFrames: filtered.length,
-      framesWithThumbnails: framesWithThumbnails.length,
+      totalFrames: allFrames.length,
+      eligibleFrames: eligibleFrames.length,
       workflowsStarted: workflows.length,
       workflows,
+      musicTriggered,
       errors: errors.length > 0 ? errors : undefined,
     };
   });
