@@ -316,7 +316,7 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
   });
 
 /** Build compact scene summaries from frames for music prompt generation */
-function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
+export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   return frames.map((frame) => {
     const md = frame.metadata?.musicDesign;
     const legacyMusic = frame.metadata?.audioDesign?.music;
