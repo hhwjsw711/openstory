@@ -1,3 +1,4 @@
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
 import { LocationSuggestionSelector } from '@/components/location-library/location-suggestion-selector';
 import { GenerationSettings } from '@/components/settings/generation-settings';
@@ -13,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -21,11 +22,11 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { useCreateSequence } from '@/hooks/use-sequences';
+import { enhanceScriptStreamFn } from '@/functions/ai';
+import { useBillingGate } from '@/hooks/use-billing-gate';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
-import { useBillingGate } from '@/hooks/use-billing-gate';
-import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
+import { useCreateSequence } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
@@ -44,12 +45,13 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { enhanceScriptStreamFn } from '@/functions/ai';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
 import { Loader2, Sparkles } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
+
+const SCRIPT_SHORT_THRESHOLD = 1000;
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -245,6 +247,7 @@ export const ScriptView: FC<{
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showEnhanceNudge, setShowEnhanceNudge] = useState(false);
 
   const createSequenceMutation = useCreateSequence();
   const {
@@ -301,6 +304,12 @@ export const ScriptView: FC<{
 
     if (isEditing) {
       setShowRegenerateConfirm(true);
+      return;
+    }
+
+    const scriptText = script ?? sequence?.script ?? '';
+    if (scriptText.length < SCRIPT_SHORT_THRESHOLD) {
+      setShowEnhanceNudge(true);
       return;
     }
 
@@ -427,7 +436,7 @@ export const ScriptView: FC<{
               ) : (
                 <Sparkles className="size-3.5" />
               )}
-              {isEnhancing ? 'Enhancing…' : 'Enhance'}
+              {isEnhancing ? 'Enhancing Script…' : 'Enhance Script'}
             </Button>
           </div>
           {enhanceError && (
@@ -518,6 +527,43 @@ export const ScriptView: FC<{
               }}
             >
               Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={showEnhanceNudge} onOpenChange={setShowEnhanceNudge}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Your script is just a starting point
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Short scripts produce simpler sequences. Enhance your script to
+              create a detailed screenplay with visual descriptions, camera
+              directions, and scene breakdowns — tailored to your selected
+              style.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <div className="flex-1" />
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'secondary' })}
+              onClick={() => {
+                setShowEnhanceNudge(false);
+                executeRegeneration();
+              }}
+            >
+              Generate As-Is
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                setShowEnhanceNudge(false);
+                void handleEnhance();
+              }}
+            >
+              <Sparkles className="size-3.5" />
+              Enhance Script
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
