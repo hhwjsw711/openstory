@@ -13,6 +13,7 @@ import {
   callLLMStream,
   RECOMMENDED_MODELS,
 } from '@/lib/ai/llm-client';
+import { isValidAnalysisModelId } from '@/lib/ai/models.config';
 import {
   checkForInjectionAttempts,
   sanitizeScriptContent,
@@ -22,6 +23,8 @@ import {
   RateLimiter,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
+import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
+import { StyleConfigSchema } from '@/lib/db/schema/libraries';
 import { getPrompt } from '@/lib/prompts';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
@@ -153,10 +156,13 @@ const enhanceScriptInputSchema = z.object({
   script: z
     .string()
     .min(10, 'Script must be at least 10 characters')
-    .max(10000, 'Script too long'),
+    .max(50000, 'Script too long'),
   targetDuration: z.number().min(15).max(60).optional(),
   tone: z.enum(['dramatic', 'comedic', 'documentary', 'action']).optional(),
   style: z.string().optional(),
+  styleConfig: StyleConfigSchema.partial().optional(),
+  analysisModel: z.string().optional(),
+  aspectRatio: aspectRatioSchema.optional(),
 });
 
 export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
@@ -177,12 +183,20 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
 
     const sanitized = sanitizeScriptContent(data.script);
     const { compiled } = await getPrompt('script/enhance');
-    const userPrompt = createUserPrompt(sanitized);
+    const userPrompt = createUserPrompt(sanitized, {
+      styleConfig: data.styleConfig,
+      aspectRatio: data.aspectRatio,
+    });
+
+    const model =
+      data.analysisModel && isValidAnalysisModelId(data.analysisModel)
+        ? data.analysisModel
+        : RECOMMENDED_MODELS.creative;
 
     const systemMessage = `${compiled}\n\nReturn ONLY the enhanced script text. No JSON, no markdown formatting, no explanations.`;
 
     for await (const chunk of callLLMStream({
-      model: RECOMMENDED_MODELS.creative,
+      model,
       messages: [
         { role: 'system' as const, content: systemMessage },
         { role: 'user' as const, content: userPrompt },
