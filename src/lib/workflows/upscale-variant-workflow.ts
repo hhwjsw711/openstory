@@ -94,7 +94,6 @@ export const upscaleVariantWorkflow = createScopedWorkflow<
         scopedDb,
         costMicros: upscaleResult.cost,
         usedOwnKey: upscaleResult.usedOwnKey,
-        userId: input.userId,
         description: 'Variant upscale (nano_banana_2)',
         metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
         workflowName: 'UpscaleVariantWorkflow',

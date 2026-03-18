@@ -95,7 +95,6 @@ export function createAdminMethods(db: Database) {
     addCredits: (
       amountMicros: Microdollars,
       creditOpts: {
-        userId?: string | null;
         type?: TransactionType;
         description?: string;
         metadata?: Record<string, unknown>;
@@ -151,7 +150,6 @@ export function createAdminMethods(db: Database) {
 
     // Add credits to team
     const result = await opts.addCredits(amountMicros, {
-      userId: opts.userId,
       type: 'credit_adjustment',
       description: `Gift code redeemed: ${normalizedCode} (${microsToDisplayUsd(amountMicros)})`,
       metadata: { giftTokenId: token.id, giftCode: normalizedCode },

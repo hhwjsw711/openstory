@@ -110,7 +110,6 @@ export const characterSheetWorkflow = createScopedWorkflow<
         scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId ?? null,
         description: `Character sheet (${generationParams.model})`,
         metadata: {
           model: generationParams.model,

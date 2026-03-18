@@ -36,6 +36,5 @@ export async function completeOpenRouterOAuth(
     provider: 'openrouter',
     apiKey,
     source: 'oauth',
-    addedBy: state.userId,
   });
 }

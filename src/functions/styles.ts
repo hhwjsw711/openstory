@@ -74,7 +74,6 @@ export const createStyleFn = createServerFn({ method: 'POST' })
       tags: data.tags,
       isPublic: data.isPublic,
       previewUrl: data.previewUrl,
-      createdBy: context.user.id,
     });
   });
 

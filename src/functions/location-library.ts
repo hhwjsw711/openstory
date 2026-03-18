@@ -104,7 +104,6 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
       description: data.description,
       referenceImageUrl: mainImage?.url,
       referenceImagePath: mainImage?.path,
-      createdBy: context.user.id,
     });
 
     if (processedImages.length > 0) {

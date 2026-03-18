@@ -114,7 +114,6 @@ export const generateImageWorkflow = createScopedWorkflow<
           return;
         }
         await scopedDb.billing.deductCredits(imageCostMicros, {
-          userId: input.userId,
           description: `Image generation (${generationParams.model})`,
           metadata: {
             model: generationParams.model,

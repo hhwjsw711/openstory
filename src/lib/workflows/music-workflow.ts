@@ -111,7 +111,6 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
           return;
         }
         await scopedDb.billing.deductCredits(musicCostMicros, {
-          userId: input.userId,
           description: `Music generation (${model})`,
           metadata: {
             model,

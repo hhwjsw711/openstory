@@ -148,7 +148,6 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         scopedDb: callContext.scopedDb,
         costMicros: ZERO_MICROS,
         usedOwnKey: !!callContext.openRouterApiKey,
-        userId: callContext.userId,
         description: `LLM analysis (${modelId})`,
         metadata: {
           model: modelId,

@@ -94,7 +94,6 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     return Promise.all(
       analysisModels.map(async (modelId) => {
         const sequence = await context.scopedDb.sequences.create({
-          userId: context.user.id,
           title: data.title || 'Untitled Sequence',
           script: data.script,
           styleId,
@@ -159,7 +158,6 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
 
     const sequence = await context.scopedDb.sequences.update({
       id: sequenceId,
-      userId: context.user.id,
       aspectRatio: updateData.aspectRatio ?? DEFAULT_ASPECT_RATIO,
       ...updateData,
       status: needsRegeneration ? 'processing' : undefined,

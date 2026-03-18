@@ -17,7 +17,6 @@ type WorkflowDeductionOpts = {
   costMicros: Microdollars;
   /** Set to true if the team used their own API key for this generation */
   usedOwnKey: boolean;
-  userId?: string | null;
   description: string;
   metadata?: Record<string, unknown>;
   /** Workflow name for the console.warn prefix (e.g., "VariantWorkflow") */
@@ -52,7 +51,6 @@ export async function deductWorkflowCredits(
   }
 
   await scopedDb.billing.deductCredits(opts.costMicros, {
-    userId: opts.userId ?? null,
     description: opts.description,
     metadata: opts.metadata,
   });

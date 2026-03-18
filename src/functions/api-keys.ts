@@ -63,7 +63,6 @@ export const saveApiKeyFn = createServerFn({ method: 'POST' })
       provider: data.provider,
       apiKey: data.apiKey,
       source: 'manual',
-      addedBy: context.user.id,
     });
   });
 

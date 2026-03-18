@@ -69,7 +69,6 @@ export const mergeAudioVideoWorkflow = createScopedWorkflow<
         scopedDb,
         costMicros: usdToMicros(muxResult.cost),
         usedOwnKey: muxResult.usedOwnKey,
-        userId: input.userId,
         description: 'Audio+video mux',
         metadata: { sequenceId: input.sequenceId },
         workflowName: 'MergeAudioVideoWorkflow',

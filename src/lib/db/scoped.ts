@@ -14,20 +14,39 @@ import { sql } from 'drizzle-orm';
 import {
   createSequencesMethods,
   createSequenceMethods,
+  createSequencesReadMethods,
+  createSequenceReadMethods,
 } from '@/lib/db/scoped/sequences';
 import { createFramesMethods } from '@/lib/db/scoped/frames';
-import { createTalentMethods } from '@/lib/db/scoped/talent';
-import { createStylesMethods } from '@/lib/db/scoped/styles';
+import {
+  createTalentMethods,
+  createTalentReadMethods,
+} from '@/lib/db/scoped/talent';
+import {
+  createStylesMethods,
+  createStylesReadMethods,
+} from '@/lib/db/scoped/styles';
 import {
   createLocationsMethods,
   createLocationSheetsMethods,
+  createLocationsReadMethods,
+  createLocationSheetsReadMethods,
 } from '@/lib/db/scoped/location-library';
 import { createLibraryMethods } from '@/lib/db/scoped/library';
 import { createCharactersMethods } from '@/lib/db/scoped/characters';
 import { createSequenceLocationsMethods } from '@/lib/db/scoped/sequence-locations';
-import { createBillingMethods } from '@/lib/db/scoped/billing';
-import { createApiKeysMethods } from '@/lib/db/scoped/api-keys';
-import { createTeamManagementMethods } from '@/lib/db/scoped/team-management';
+import {
+  createBillingMethods,
+  createBillingReadMethods,
+} from '@/lib/db/scoped/billing';
+import {
+  createApiKeysMethods,
+  createApiKeysReadMethods,
+} from '@/lib/db/scoped/api-keys';
+import {
+  createTeamManagementMethods,
+  createTeamManagementReadMethods,
+} from '@/lib/db/scoped/team-management';
 import { createAdminMethods } from '@/lib/db/scoped/admin';
 
 // Re-export types from sub-modules
@@ -194,18 +213,22 @@ export async function ensureUserAndTeam(authUser: {
   }
 }
 
-export function createScopedDb(teamId: string) {
+/**
+ * Full scoped DB — requires userId for write operations that auto-inject audit fields.
+ */
+export function createScopedDb(teamId: string, userId: string) {
   const db = getDb();
 
   return {
     teamId,
+    userId,
 
-    sequences: createSequencesMethods(db, teamId),
+    sequences: createSequencesMethods(db, teamId, userId),
     sequence: (sequenceId: string) => createSequenceMethods(db, sequenceId),
 
-    talent: createTalentMethods(db, teamId),
-    styles: createStylesMethods(db, teamId),
-    locations: createLocationsMethods(db, teamId),
+    talent: createTalentMethods(db, teamId, userId),
+    styles: createStylesMethods(db, teamId, userId),
+    locations: createLocationsMethods(db, teamId, userId),
     locationSheets: createLocationSheetsMethods(db),
     library: createLibraryMethods(db, teamId),
 
@@ -214,31 +237,64 @@ export function createScopedDb(teamId: string) {
     characters: createCharactersMethods(db),
     sequenceLocations: createSequenceLocationsMethods(db),
 
-    billing: createBillingMethods(db, teamId),
-    apiKeys: createApiKeysMethods(db, teamId),
-    teamManagement: createTeamManagementMethods(db, teamId),
+    billing: createBillingMethods(db, teamId, userId),
+    apiKeys: createApiKeysMethods(db, teamId, userId),
+    teamManagement: createTeamManagementMethods(db, teamId, userId),
     admin: createAdminMethods(db),
   };
 }
 
 export type ScopedDb = ReturnType<typeof createScopedDb>;
 
+/**
+ * Read-only scoped DB — for webhooks, public queries, and system operations.
+ * No userId required; write methods that need audit fields are not available.
+ */
+export function createReadOnlyScopedDb(teamId: string) {
+  const db = getDb();
+
+  return {
+    teamId,
+
+    sequences: createSequencesReadMethods(db, teamId),
+    sequence: (sequenceId: string) => createSequenceReadMethods(db, sequenceId),
+
+    talent: createTalentReadMethods(db, teamId),
+    styles: createStylesReadMethods(db, teamId),
+    locations: createLocationsReadMethods(db, teamId),
+    locationSheets: createLocationSheetsReadMethods(db),
+    library: createLibraryMethods(db, teamId),
+
+    frames: createFramesMethods(db),
+
+    characters: createCharactersMethods(db),
+    sequenceLocations: createSequenceLocationsMethods(db),
+
+    billing: createBillingReadMethods(db, teamId),
+    apiKeys: createApiKeysReadMethods(db, teamId),
+    teamManagement: createTeamManagementReadMethods(db, teamId),
+    admin: createAdminMethods(db),
+  };
+}
+
+export type ReadOnlyScopedDb = ReturnType<typeof createReadOnlyScopedDb>;
+
 /** Public queries (styles, etc.) — no team scoping */
 export function createPublicDb() {
-  return createScopedDb('__public__');
+  return createReadOnlyScopedDb('__public__');
 }
 
 /** Cross-team lookups by ID */
 export function createLookupDb() {
-  return createScopedDb('__lookup__');
+  return createReadOnlyScopedDb('__lookup__');
 }
 
 /** System admin operations */
 export function createAdminDb() {
-  return createScopedDb('admin');
+  return createReadOnlyScopedDb('admin');
 }
 
 /** Invitation acceptance — lookup by token, not team */
 export function createInvitationDb() {
-  return createScopedDb('__invitation__');
+  return createReadOnlyScopedDb('__invitation__');
 }

@@ -114,7 +114,6 @@ export const locationSheetWorkflow = createScopedWorkflow<
         scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId ?? null,
         description: `Location sheet (${generationParams.model})`,
         metadata: {
           model: generationParams.model,

@@ -8,7 +8,7 @@ import type { Database } from '@/lib/db/client';
 import { styles } from '@/lib/db/schema';
 import type { NewStyle, Style } from '@/lib/db/schema';
 
-export function createStylesMethods(db: Database, teamId: string) {
+export function createStylesReadMethods(db: Database, teamId: string) {
   return {
     list: async (): Promise<Style[]> => {
       return await db
@@ -18,10 +18,39 @@ export function createStylesMethods(db: Database, teamId: string) {
         .orderBy(asc(styles.sortOrder), asc(styles.name));
     },
 
-    create: async (data: Omit<NewStyle, 'teamId'>): Promise<Style> => {
+    getById: async (styleId: string): Promise<Style | null> => {
+      const result = await db
+        .select()
+        .from(styles)
+        .where(eq(styles.id, styleId))
+        .limit(1);
+      return result[0] ?? null;
+    },
+
+    getPublic: async (): Promise<Style[]> => {
+      return await db
+        .select()
+        .from(styles)
+        .where(eq(styles.isPublic, true))
+        .orderBy(asc(styles.sortOrder), asc(styles.name));
+    },
+  };
+}
+
+export function createStylesMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  return {
+    ...createStylesReadMethods(db, teamId),
+
+    create: async (
+      data: Omit<NewStyle, 'teamId' | 'createdBy'>
+    ): Promise<Style> => {
       const [style] = await db
         .insert(styles)
-        .values({ ...data, teamId })
+        .values({ ...data, teamId, createdBy: userId })
         .returning();
       return style;
     },
@@ -42,23 +71,6 @@ export function createStylesMethods(db: Database, teamId: string) {
       await db
         .delete(styles)
         .where(and(eq(styles.id, styleId), eq(styles.teamId, teamId)));
-    },
-
-    getById: async (styleId: string): Promise<Style | null> => {
-      const result = await db
-        .select()
-        .from(styles)
-        .where(eq(styles.id, styleId))
-        .limit(1);
-      return result[0] ?? null;
-    },
-
-    getPublic: async (): Promise<Style[]> => {
-      return await db
-        .select()
-        .from(styles)
-        .where(eq(styles.isPublic, true))
-        .orderBy(asc(styles.sortOrder), asc(styles.name));
     },
   };
 }

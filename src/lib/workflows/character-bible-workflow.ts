@@ -86,7 +86,6 @@ export const characterBibleWorkflow = createScopedWorkflow<
             scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
-            userId: input.userId,
             description: `Character bible sheet (${model})`,
             metadata: { model, characterId: character.characterId },
             workflowName: 'CharacterBibleWorkflow',

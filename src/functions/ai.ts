@@ -66,7 +66,6 @@ function enforceRateLimit(limiter: RateLimiter, key: string): void {
  */
 async function prepareBilling(
   scopedDb: ScopedDb,
-  userId: string,
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
@@ -84,7 +83,6 @@ async function prepareBilling(
   return async () => {
     if (cost > 0) {
       await scopedDb.billing.deductCredits(cost, {
-        userId,
         description,
         metadata,
       });
@@ -113,7 +111,6 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
 
     const deduct = await prepareBilling(
       context.scopedDb,
-      context.user.id,
       `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
       { model: RECOMMENDED_MODELS.fast }
     );
@@ -168,11 +165,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
   .handler(async function* ({ data, context }) {
     enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
-    const deduct = await prepareBilling(
-      context.scopedDb,
-      context.user.id,
-      'Script enhancement'
-    );
+    const deduct = await prepareBilling(context.scopedDb, 'Script enhancement');
 
     if (checkForInjectionAttempts(data.script)) {
       console.warn('Script enhancement: Potential injection attempt detected');

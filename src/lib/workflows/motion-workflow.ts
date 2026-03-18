@@ -168,7 +168,6 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
           return;
         }
         await scopedDb.billing.deductCredits(motionCostMicros, {
-          userId: input.userId,
           description: `Motion generation (${model})`,
           metadata: {
             model,

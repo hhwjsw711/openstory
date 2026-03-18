@@ -12,7 +12,7 @@ import type {
   NewLocationSheet,
 } from '@/lib/db/schema';
 
-export function createLocationsMethods(db: Database, teamId: string) {
+export function createLocationsReadMethods(db: Database, teamId: string) {
   return {
     list: async (): Promise<LibraryLocation[]> => {
       return await db
@@ -32,16 +32,6 @@ export function createLocationsMethods(db: Database, teamId: string) {
           )
         )
         .limit(limit);
-    },
-
-    create: async (
-      data: Omit<NewLibraryLocation, 'teamId'>
-    ): Promise<LibraryLocation> => {
-      const [location] = await db
-        .insert(locationLibrary)
-        .values({ ...data, teamId })
-        .returning();
-      return location;
     },
 
     withReferences: async (): Promise<LibraryLocation[]> => {
@@ -69,9 +59,29 @@ export function createLocationsMethods(db: Database, teamId: string) {
         .from(locationLibrary)
         .where(inArray(locationLibrary.id, ids));
     },
+  };
+}
+
+export function createLocationsMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  return {
+    ...createLocationsReadMethods(db, teamId),
+
+    create: async (
+      data: Omit<NewLibraryLocation, 'teamId' | 'createdBy'>
+    ): Promise<LibraryLocation> => {
+      const [location] = await db
+        .insert(locationLibrary)
+        .values({ ...data, teamId, createdBy: userId })
+        .returning();
+      return location;
+    },
 
     createBulk: async (
-      data: NewLibraryLocation[]
+      data: Omit<NewLibraryLocation, 'teamId' | 'createdBy'>[]
     ): Promise<LibraryLocation[]> => {
       if (data.length === 0) return [];
       const BATCH_SIZE = 10;
@@ -81,7 +91,7 @@ export function createLocationsMethods(db: Database, teamId: string) {
         const batch = data.slice(i, i + BATCH_SIZE);
         const batchResults = await db
           .insert(locationLibrary)
-          .values(batch)
+          .values(batch.map((d) => ({ ...d, teamId, createdBy: userId })))
           .returning();
         results.push(...batchResults);
       }
@@ -140,22 +150,13 @@ export function createLocationsMethods(db: Database, teamId: string) {
   };
 }
 
-export function createLocationSheetsMethods(db: Database) {
+export function createLocationSheetsReadMethods(db: Database) {
   return {
     list: async (locationId: string) => {
       return db
         .select()
         .from(locationSheets)
         .where(eq(locationSheets.locationId, locationId));
-    },
-
-    insert: async (sheets: NewLocationSheet[]) => {
-      if (sheets.length === 0) return [];
-      return db.insert(locationSheets).values(sheets).returning();
-    },
-
-    delete: async (sheetId: string) => {
-      await db.delete(locationSheets).where(eq(locationSheets.id, sheetId));
     },
 
     getWithLocation: async (sheetId: string) => {
@@ -168,6 +169,21 @@ export function createLocationSheetsMethods(db: Database) {
         )
         .where(eq(locationSheets.id, sheetId));
       return result[0] ?? null;
+    },
+  };
+}
+
+export function createLocationSheetsMethods(db: Database) {
+  return {
+    ...createLocationSheetsReadMethods(db),
+
+    insert: async (sheets: NewLocationSheet[]) => {
+      if (sheets.length === 0) return [];
+      return db.insert(locationSheets).values(sheets).returning();
+    },
+
+    delete: async (sheetId: string) => {
+      await db.delete(locationSheets).where(eq(locationSheets.id, sheetId));
     },
 
     promoteDefault: async (locationId: string) => {

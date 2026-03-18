@@ -41,7 +41,7 @@ export const Route = createFileRoute('/api/openrouter/callback')({
             );
           }
 
-          const scopedDb = createScopedDb(team.teamId);
+          const scopedDb = createScopedDb(team.teamId, user.id);
           await completeOpenRouterOAuth(team.teamId, code, scopedDb);
 
           return redirectResponse(

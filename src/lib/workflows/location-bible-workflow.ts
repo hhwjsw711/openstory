@@ -139,7 +139,6 @@ export const locationBibleWorkflow = createScopedWorkflow<
             scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
-            userId: input.userId,
             description: `Location bible sheet (${model})`,
             metadata: { model, locationId: location.locationId },
             workflowName: 'LocationBibleWorkflow',

@@ -106,7 +106,6 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
         scopedDb,
         costMicros: usdToMicros(mergeResult.cost),
         usedOwnKey: mergeResult.metadata.usedOwnKey,
-        userId: input.userId,
         description: `Video merge (${input.videoUrls.length} clips)`,
         metadata: { sequenceId: input.sequenceId },
         workflowName: 'MergeVideoWorkflow',

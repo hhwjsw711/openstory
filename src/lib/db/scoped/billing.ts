@@ -46,8 +46,10 @@ function mapBatchSource(
   return 'stripe_checkout';
 }
 
-export function createBillingMethods(db: Database, teamId: string) {
-  /** Creates a credits row if one doesn't exist yet. */
+/**
+ * Read-only billing methods — balance checks, transaction history, settings.
+ */
+export function createBillingReadMethods(db: Database, teamId: string) {
   async function getBalance(): Promise<Microdollars> {
     const [row] = await db
       .select({ balance: credits.balance })
@@ -68,155 +70,6 @@ export function createBillingMethods(db: Database, teamId: string) {
   ): Promise<boolean> {
     const balance = await getBalance();
     return balance >= applyMarkup(estimatedCostMicros);
-  }
-
-  async function addCredits(
-    amountMicros: Microdollars,
-    opts: {
-      userId?: string | null;
-      type?: TransactionType;
-      description?: string;
-      metadata?: Record<string, unknown>;
-      stripeSessionId?: string;
-    } = {}
-  ): Promise<{ newBalance: Microdollars; transactionId: string } | null> {
-    if (amountMicros <= 0) {
-      throw new ValidationError('Credit amount must be positive');
-    }
-
-    // Ensure credits row exists
-    await db
-      .insert(credits)
-      .values({ teamId, balance: 0 })
-      .onConflictDoNothing();
-
-    // Atomic update + record transaction
-    const [updated] = await db
-      .update(credits)
-      .set({
-        balance: sql`${credits.balance} + ${amountMicros}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(credits.teamId, teamId))
-      .returning({ balance: credits.balance });
-
-    const txType = opts.type ?? ('credit_purchase' as TransactionType);
-
-    // Insert transaction with unique stripeSessionId -- DB rejects duplicates
-    const rows = await db
-      .insert(transactions)
-      .values({
-        teamId,
-        userId: opts.userId ?? null,
-        type: txType,
-        amount: amountMicros,
-        balanceAfter: updated.balance,
-        description:
-          opts.description ??
-          `Added ${microsToDisplayUsd(amountMicros)} credits`,
-        metadata: opts.metadata ?? {},
-        stripeSessionId: opts.stripeSessionId ?? null,
-      })
-      .onConflictDoNothing()
-      .returning({ id: transactions.id });
-
-    if (rows.length === 0) {
-      // Duplicate -- roll back the balance update
-      await db
-        .update(credits)
-        .set({
-          balance: sql`${credits.balance} - ${amountMicros}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(credits.teamId, teamId));
-      return null;
-    }
-
-    const transactionId = rows[0].id;
-
-    // Create a credit batch for future expiration tracking
-    await db.insert(creditBatches).values({
-      teamId,
-      originalAmount: amountMicros,
-      remainingAmount: amountMicros,
-      source: mapBatchSource(txType, opts.metadata),
-      transactionId,
-      expiresAt: calculateExpiryDate(),
-    });
-
-    return { newBalance: micros(updated.balance), transactionId };
-  }
-
-  /** Applies markup automatically. Triggers auto-top-up if balance drops below threshold. */
-  async function deductCredits(
-    rawCostMicros: Microdollars,
-    opts: {
-      userId?: string | null;
-      description?: string;
-      metadata?: Record<string, unknown>;
-    } = {}
-  ): Promise<{
-    newBalance: Microdollars;
-    chargedAmount: Microdollars;
-    transactionId: string;
-  }> {
-    if (rawCostMicros <= 0)
-      return {
-        newBalance: await getBalance(),
-        chargedAmount: ZERO_MICROS,
-        transactionId: '',
-      };
-
-    const chargedAmount = applyMarkup(rawCostMicros);
-
-    // Ensure credits row exists
-    await db
-      .insert(credits)
-      .values({ teamId, balance: 0 })
-      .onConflictDoNothing();
-
-    // Atomic deduction
-    const [updated] = await db
-      .update(credits)
-      .set({
-        balance: sql`${credits.balance} - ${chargedAmount}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(credits.teamId, teamId))
-      .returning({ balance: credits.balance });
-
-    const rawUsd = microsToUsd(rawCostMicros);
-    const chargedUsd = microsToUsd(chargedAmount);
-
-    const [tx] = await db
-      .insert(transactions)
-      .values({
-        teamId,
-        userId: opts.userId ?? null,
-        type: 'credit_usage' as TransactionType,
-        amount: negateMicros(chargedAmount),
-        balanceAfter: updated.balance,
-        description:
-          opts.description ??
-          `Usage: $${chargedUsd.toFixed(4)} (raw: $${rawUsd.toFixed(4)})`,
-        metadata: {
-          rawCostMicros,
-          chargedAmountMicros: chargedAmount,
-          ...opts.metadata,
-        },
-      })
-      .returning({ id: transactions.id });
-
-    // Check if auto-top-up should trigger (fire-and-forget)
-    void maybeAutoTopUp(micros(updated.balance)).catch((err) => {
-      console.error('[AutoTopUp] Failed:', err);
-    });
-
-    return {
-      newBalance: micros(updated.balance),
-      chargedAmount,
-      transactionId: tx.id,
-    };
   }
 
   async function getTransactionHistory(
@@ -286,6 +139,176 @@ export function createBillingMethods(db: Database, teamId: string) {
     return row;
   }
 
+  return {
+    getBalance,
+    hasEnoughCredits,
+    getTransactionHistory,
+    getBillingSettings,
+  };
+}
+
+/**
+ * Full billing methods — extends read methods with writes that auto-inject userId.
+ */
+export function createBillingMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  const read = createBillingReadMethods(db, teamId);
+
+  async function addCredits(
+    amountMicros: Microdollars,
+    opts: {
+      type?: TransactionType;
+      description?: string;
+      metadata?: Record<string, unknown>;
+      stripeSessionId?: string;
+    } = {}
+  ): Promise<{ newBalance: Microdollars; transactionId: string } | null> {
+    if (amountMicros <= 0) {
+      throw new ValidationError('Credit amount must be positive');
+    }
+
+    await db
+      .insert(credits)
+      .values({ teamId, balance: 0 })
+      .onConflictDoNothing();
+
+    const [updated] = await db
+      .update(credits)
+      .set({
+        balance: sql`${credits.balance} + ${amountMicros}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(credits.teamId, teamId))
+      .returning({ balance: credits.balance });
+
+    const txType = opts.type ?? ('credit_purchase' as TransactionType);
+
+    const rows = await db
+      .insert(transactions)
+      .values({
+        teamId,
+        userId,
+        type: txType,
+        amount: amountMicros,
+        balanceAfter: updated.balance,
+        description:
+          opts.description ??
+          `Added ${microsToDisplayUsd(amountMicros)} credits`,
+        metadata: opts.metadata ?? {},
+        stripeSessionId: opts.stripeSessionId ?? null,
+      })
+      .onConflictDoNothing()
+      .returning({ id: transactions.id });
+
+    if (rows.length === 0) {
+      await db
+        .update(credits)
+        .set({
+          balance: sql`${credits.balance} - ${amountMicros}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(credits.teamId, teamId));
+      return null;
+    }
+
+    const transactionId = rows[0].id;
+
+    await db.insert(creditBatches).values({
+      teamId,
+      originalAmount: amountMicros,
+      remainingAmount: amountMicros,
+      source: mapBatchSource(txType, opts.metadata),
+      transactionId,
+      expiresAt: calculateExpiryDate(),
+    });
+
+    return { newBalance: micros(updated.balance), transactionId };
+  }
+
+  async function saveStripeCustomerId(stripeCustomerId: string): Promise<void> {
+    await db
+      .insert(teamBillingSettings)
+      .values({ teamId, stripeCustomerId })
+      .onConflictDoUpdate({
+        target: teamBillingSettings.teamId,
+        set: {
+          stripeCustomerId,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  /** Applies markup automatically. Triggers auto-top-up if balance drops below threshold. */
+  async function deductCredits(
+    rawCostMicros: Microdollars,
+    opts: {
+      description?: string;
+      metadata?: Record<string, unknown>;
+    } = {}
+  ): Promise<{
+    newBalance: Microdollars;
+    chargedAmount: Microdollars;
+    transactionId: string;
+  }> {
+    if (rawCostMicros <= 0)
+      return {
+        newBalance: await read.getBalance(),
+        chargedAmount: ZERO_MICROS,
+        transactionId: '',
+      };
+
+    const chargedAmount = applyMarkup(rawCostMicros);
+
+    await db
+      .insert(credits)
+      .values({ teamId, balance: 0 })
+      .onConflictDoNothing();
+
+    const [updated] = await db
+      .update(credits)
+      .set({
+        balance: sql`${credits.balance} - ${chargedAmount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(credits.teamId, teamId))
+      .returning({ balance: credits.balance });
+
+    const rawUsd = microsToUsd(rawCostMicros);
+    const chargedUsd = microsToUsd(chargedAmount);
+
+    const [tx] = await db
+      .insert(transactions)
+      .values({
+        teamId,
+        userId,
+        type: 'credit_usage' as TransactionType,
+        amount: negateMicros(chargedAmount),
+        balanceAfter: updated.balance,
+        description:
+          opts.description ??
+          `Usage: $${chargedUsd.toFixed(4)} (raw: $${rawUsd.toFixed(4)})`,
+        metadata: {
+          rawCostMicros,
+          chargedAmountMicros: chargedAmount,
+          ...opts.metadata,
+        },
+      })
+      .returning({ id: transactions.id });
+
+    void maybeAutoTopUp(micros(updated.balance)).catch((err) => {
+      console.error('[AutoTopUp] Failed:', err);
+    });
+
+    return {
+      newBalance: micros(updated.balance),
+      chargedAmount,
+      transactionId: tx.id,
+    };
+  }
+
   async function updateAutoTopUpSettings(settings: {
     enabled: boolean;
     thresholdMicros?: Microdollars;
@@ -337,7 +360,7 @@ export function createBillingMethods(db: Database, teamId: string) {
   async function maybeAutoTopUp(currentBalance: Microdollars): Promise<void> {
     if (!isStripeEnabled()) return;
 
-    const settings = await getBillingSettings();
+    const settings = await read.getBillingSettings();
 
     if (
       !settings.autoTopUpEnabled ||
@@ -352,7 +375,6 @@ export function createBillingMethods(db: Database, teamId: string) {
       return;
     }
 
-    // Cooldown: skip if last auto-top-up was within the cooldown period
     const [recentAutoTopUp] = await db
       .select({ createdAt: transactions.createdAt })
       .from(transactions)
@@ -376,12 +398,10 @@ export function createBillingMethods(db: Database, teamId: string) {
     }
 
     const stripe = getStripeOrThrow();
-    // Convert micros to cents for Stripe
     const amountCents = microsToUsdCents(
       micros(settings.autoTopUpAmountMicros)
     );
 
-    // Get the customer's default payment method
     const customer = await stripe.customers.retrieve(settings.stripeCustomerId);
     if (customer.deleted) return;
 
@@ -394,7 +414,6 @@ export function createBillingMethods(db: Database, teamId: string) {
         ? defaultPaymentMethod
         : defaultPaymentMethod.id;
 
-    // Create and confirm a PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
@@ -426,23 +445,9 @@ export function createBillingMethods(db: Database, teamId: string) {
     }
   }
 
-  /** Public entry point for triggering auto-top-up from outside this module. */
   async function checkAutoTopUp(): Promise<void> {
-    const balance = await getBalance();
+    const balance = await read.getBalance();
     await maybeAutoTopUp(balance);
-  }
-
-  async function saveStripeCustomerId(stripeCustomerId: string): Promise<void> {
-    await db
-      .insert(teamBillingSettings)
-      .values({ teamId, stripeCustomerId })
-      .onConflictDoUpdate({
-        target: teamBillingSettings.teamId,
-        set: {
-          stripeCustomerId,
-          updatedAt: new Date(),
-        },
-      });
   }
 
   /** Sum active (non-expired) batch remainingAmounts and compare to credits.balance */
@@ -476,15 +481,12 @@ export function createBillingMethods(db: Database, teamId: string) {
   }
 
   return {
-    getBalance,
-    hasEnoughCredits,
+    ...read,
     addCredits,
+    saveStripeCustomerId,
     deductCredits,
-    getTransactionHistory,
-    getBillingSettings,
     updateAutoTopUpSettings,
     checkAutoTopUp,
-    saveStripeCustomerId,
     reconcileBatchBalance,
   };
 }

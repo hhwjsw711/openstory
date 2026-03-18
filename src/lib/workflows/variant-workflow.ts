@@ -136,7 +136,6 @@ export const generateVariantWorkflow = createScopedWorkflow<
         scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId,
         description: `Variant image generation (${generationParams.model})`,
         metadata: {
           model: generationParams.model,

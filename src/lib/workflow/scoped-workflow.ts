@@ -57,7 +57,10 @@ export function createScopedWorkflow<
 
   return createWorkflow<T, TResult>(
     async (context) => {
-      const scopedDb = createScopedDb(context.requestPayload.teamId);
+      const scopedDb = createScopedDb(
+        context.requestPayload.teamId,
+        context.requestPayload.userId
+      );
       return fn(context, scopedDb);
     },
     {
@@ -65,7 +68,8 @@ export function createScopedWorkflow<
       failureFunction: options?.failureFunction
         ? async (failData) => {
             const scopedDb = createScopedDb(
-              failData.context.requestPayload.teamId
+              failData.context.requestPayload.teamId,
+              failData.context.requestPayload.userId
             );
             const failureFn = options.failureFunction;
             if (failureFn) return failureFn({ ...failData, scopedDb });

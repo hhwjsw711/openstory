@@ -94,7 +94,6 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       description: data.description,
       isFavorite: data.isFavorite ?? false,
       isHuman: data.isHuman ?? false,
-      createdBy: context.user.id,
     });
 
     // Move temp files to permanent location and create media records
@@ -420,7 +419,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
       isFavorite: false,
       isHuman: false,
       isInTeamLibrary: true,
-      createdBy: context.user.id,
     });
 
     if (character.sheetImageUrl) {

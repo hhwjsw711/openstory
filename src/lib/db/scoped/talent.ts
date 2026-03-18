@@ -16,7 +16,7 @@ import type {
   TalentWithSheets,
 } from '@/lib/db/schema';
 
-export function createTalentMethods(db: Database, teamId: string) {
+function createTalentReadMethods(db: Database, teamId: string) {
   return {
     list: async (options?: {
       favoritesOnly?: boolean;
@@ -156,10 +156,67 @@ export function createTalentMethods(db: Database, teamId: string) {
       }));
     },
 
-    create: async (data: Omit<NewTalent, 'teamId'>): Promise<Talent> => {
+    getById: async (talentId: string): Promise<Talent | undefined> => {
+      return db.query.talent.findFirst({
+        where: and(eq(talent.id, talentId), eq(talent.teamId, teamId)),
+      });
+    },
+
+    getWithRelations: async (talentId: string) => {
+      return db.query.talent.findFirst({
+        where: and(eq(talent.id, talentId), eq(talent.teamId, teamId)),
+        with: {
+          sheets: {
+            orderBy: [
+              desc(talentSheets.isDefault),
+              desc(talentSheets.createdAt),
+            ],
+          },
+          media: {
+            orderBy: [desc(talentMedia.createdAt)],
+          },
+        },
+      });
+    },
+
+    sheets: {
+      getById: async (sheetId: string): Promise<TalentSheet | undefined> => {
+        return db.query.talentSheets.findFirst({
+          where: eq(talentSheets.id, sheetId),
+        });
+      },
+    },
+
+    media: {
+      getById: async (
+        mediaId: string
+      ): Promise<TalentMediaRecord | undefined> => {
+        return db.query.talentMedia.findFirst({
+          where: eq(talentMedia.id, mediaId),
+        });
+      },
+    },
+  };
+}
+
+export { createTalentReadMethods };
+
+export function createTalentMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  const read = createTalentReadMethods(db, teamId);
+
+  return {
+    ...read,
+
+    create: async (
+      data: Omit<NewTalent, 'teamId' | 'createdBy'>
+    ): Promise<Talent> => {
       const [created] = await db
         .insert(talent)
-        .values({ ...data, teamId })
+        .values({ ...data, teamId, createdBy: userId })
         .returning();
       return created;
     },
@@ -197,49 +254,18 @@ export function createTalentMethods(db: Database, teamId: string) {
       return updated;
     },
 
-    getById: async (talentId: string): Promise<Talent | undefined> => {
-      return db.query.talent.findFirst({
-        where: and(eq(talent.id, talentId), eq(talent.teamId, teamId)),
-      });
-    },
-
-    getWithRelations: async (talentId: string) => {
-      return db.query.talent.findFirst({
-        where: and(eq(talent.id, talentId), eq(talent.teamId, teamId)),
-        with: {
-          sheets: {
-            orderBy: [
-              desc(talentSheets.isDefault),
-              desc(talentSheets.createdAt),
-            ],
-          },
-          media: {
-            orderBy: [desc(talentMedia.createdAt)],
-          },
-        },
-      });
-    },
-
     sheets: {
-      getById: async (sheetId: string): Promise<TalentSheet | undefined> => {
-        return db.query.talentSheets.findFirst({
-          where: eq(talentSheets.id, sheetId),
-        });
-      },
+      ...read.sheets,
 
       create: async (data: NewTalentSheet): Promise<TalentSheet> => {
-        // Count existing sheets for this talent
         const existingSheets = await db
           .select({ count: sql<number>`count(*)` })
           .from(talentSheets)
           .where(eq(talentSheets.talentId, data.talentId));
 
         const sheetCount = existingSheets[0]?.count ?? 0;
-
-        // Auto-default if first sheet, or use explicit isDefault value
         const shouldBeDefault = sheetCount === 0 || data.isDefault === true;
 
-        // If setting as default and other sheets exist, unset them first
         if (shouldBeDefault && sheetCount > 0) {
           await db
             .update(talentSheets)
@@ -258,7 +284,6 @@ export function createTalentMethods(db: Database, teamId: string) {
         sheetId: string,
         data: Partial<Omit<TalentSheet, 'id' | 'talentId' | 'createdAt'>>
       ): Promise<TalentSheet | undefined> => {
-        // If setting as default, unset other defaults first
         if (data.isDefault) {
           const sheet = await db.query.talentSheets.findFirst({
             where: eq(talentSheets.id, sheetId),
@@ -281,20 +306,17 @@ export function createTalentMethods(db: Database, teamId: string) {
       },
 
       delete: async (sheetId: string): Promise<boolean> => {
-        // Get the sheet to be deleted
         const sheet = await db.query.talentSheets.findFirst({
           where: eq(talentSheets.id, sheetId),
         });
         if (!sheet) return false;
 
-        // Delete the sheet
         const result = await db
           .delete(talentSheets)
           .where(eq(talentSheets.id, sheetId));
 
         if ((result.rowsAffected ?? 0) === 0) return false;
 
-        // If deleted sheet was default, promote remaining sheet (if only one left)
         if (sheet.isDefault) {
           const remaining = await db
             .select()
@@ -314,13 +336,7 @@ export function createTalentMethods(db: Database, teamId: string) {
     },
 
     media: {
-      getById: async (
-        mediaId: string
-      ): Promise<TalentMediaRecord | undefined> => {
-        return db.query.talentMedia.findFirst({
-          where: eq(talentMedia.id, mediaId),
-        });
-      },
+      ...read.media,
 
       create: async (data: NewTalentMedia): Promise<TalentMediaRecord> => {
         const [media] = await db.insert(talentMedia).values(data).returning();

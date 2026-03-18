@@ -40,7 +40,7 @@ type SequenceWithFrames = Sequence & {
   style: Style | null;
 };
 
-export function createSequencesMethods(db: Database, teamId: string) {
+export function createSequencesReadMethods(db: Database, teamId: string) {
   return {
     list: async (): Promise<Sequence[]> => {
       return await db
@@ -53,44 +53,6 @@ export function createSequencesMethods(db: Database, teamId: string) {
           )
         )
         .orderBy(desc(sequences.updatedAt));
-    },
-
-    create: async (params: {
-      userId: string;
-      title: string;
-      script?: string | null;
-      styleId: string;
-      aspectRatio?: AspectRatio;
-      analysisModel: string;
-      imageModel?: string;
-      videoModel?: string;
-      musicModel?: string;
-    }): Promise<Sequence> => {
-      const sequenceData: NewSequence = {
-        teamId,
-        createdBy: params.userId,
-        updatedBy: params.userId,
-        title: params.title,
-        script: params.script,
-        styleId: params.styleId,
-        aspectRatio: params.aspectRatio ?? DEFAULT_ASPECT_RATIO,
-        analysisModel: params.analysisModel,
-        imageModel: params.imageModel,
-        videoModel: params.videoModel,
-        musicModel: params.musicModel,
-        status: 'draft',
-      };
-
-      const [data] = await db
-        .insert(sequences)
-        .values(sequenceData)
-        .returning();
-
-      if (!data) {
-        throw new Error('No sequence returned from database');
-      }
-
-      return data;
     },
 
     getById: async (sequenceId: string): Promise<Sequence | null> => {
@@ -123,9 +85,72 @@ export function createSequencesMethods(db: Database, teamId: string) {
       } as SequenceWithFrames;
     },
 
+    getForUser: async (params: {
+      sequenceId: string;
+      teamId: string;
+      userId: string;
+    }): Promise<Sequence> => {
+      const sequence = await db.query.sequences.findFirst({
+        where: and(
+          eq(sequences.id, params.sequenceId),
+          eq(sequences.teamId, params.teamId)
+        ),
+      });
+      if (!sequence) {
+        throw new ValidationError('Sequence not found');
+      }
+      return sequence;
+    },
+  };
+}
+
+export function createSequencesMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  return {
+    ...createSequencesReadMethods(db, teamId),
+
+    create: async (params: {
+      title: string;
+      script?: string | null;
+      styleId: string;
+      aspectRatio?: AspectRatio;
+      analysisModel: string;
+      imageModel?: string;
+      videoModel?: string;
+      musicModel?: string;
+    }): Promise<Sequence> => {
+      const sequenceData: NewSequence = {
+        teamId,
+        createdBy: userId,
+        updatedBy: userId,
+        title: params.title,
+        script: params.script,
+        styleId: params.styleId,
+        aspectRatio: params.aspectRatio ?? DEFAULT_ASPECT_RATIO,
+        analysisModel: params.analysisModel,
+        imageModel: params.imageModel,
+        videoModel: params.videoModel,
+        musicModel: params.musicModel,
+        status: 'draft',
+      };
+
+      const [data] = await db
+        .insert(sequences)
+        .values(sequenceData)
+        .returning();
+
+      if (!data) {
+        throw new Error('No sequence returned from database');
+      }
+
+      return data;
+    },
+
     update: async (params: {
       id: string;
-      userId: string;
       title?: string;
       script?: string | null;
       styleId?: string;
@@ -143,7 +168,7 @@ export function createSequencesMethods(db: Database, teamId: string) {
         analysisModel: params.analysisModel,
         imageModel: params.imageModel,
         videoModel: params.videoModel,
-        updatedBy: params.userId,
+        updatedBy: userId,
         updatedAt: new Date(),
       };
 
@@ -162,23 +187,6 @@ export function createSequencesMethods(db: Database, teamId: string) {
 
     delete: async (sequenceId: string): Promise<void> => {
       await db.delete(sequences).where(eq(sequences.id, sequenceId));
-    },
-
-    getForUser: async (params: {
-      sequenceId: string;
-      teamId: string;
-      userId: string;
-    }): Promise<Sequence> => {
-      const sequence = await db.query.sequences.findFirst({
-        where: and(
-          eq(sequences.id, params.sequenceId),
-          eq(sequences.teamId, params.teamId)
-        ),
-      });
-      if (!sequence) {
-        throw new ValidationError('Sequence not found');
-      }
-      return sequence;
     },
 
     updateTitle: async (sequenceId: string, title: string): Promise<void> => {
@@ -221,29 +229,8 @@ export function createSequencesMethods(db: Database, teamId: string) {
   };
 }
 
-export function createSequenceMethods(db: Database, sequenceId: string) {
+export function createSequenceReadMethods(db: Database, sequenceId: string) {
   return {
-    updateStatus: async (status: SequenceStatus, error?: string | null) => {
-      await db
-        .update(sequences)
-        .set({ status, statusError: error ?? null, updatedAt: new Date() })
-        .where(eq(sequences.id, sequenceId));
-    },
-
-    updateMusicFields: async (fields: MusicFieldsUpdate) => {
-      await db
-        .update(sequences)
-        .set({ ...fields, updatedAt: new Date() })
-        .where(eq(sequences.id, sequenceId));
-    },
-
-    updateMergedVideoFields: async (fields: MergedVideoFieldsUpdate) => {
-      await db
-        .update(sequences)
-        .set({ ...fields, updatedAt: new Date() })
-        .where(eq(sequences.id, sequenceId));
-    },
-
     getMusicStatus: async () => {
       const [row] = await db
         .select({
@@ -264,6 +251,33 @@ export function createSequenceMethods(db: Database, sequenceId: string) {
         .from(sequences)
         .where(eq(sequences.id, sequenceId));
       return row;
+    },
+  };
+}
+
+export function createSequenceMethods(db: Database, sequenceId: string) {
+  return {
+    ...createSequenceReadMethods(db, sequenceId),
+
+    updateStatus: async (status: SequenceStatus, error?: string | null) => {
+      await db
+        .update(sequences)
+        .set({ status, statusError: error ?? null, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateMusicFields: async (fields: MusicFieldsUpdate) => {
+      await db
+        .update(sequences)
+        .set({ ...fields, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
+    },
+
+    updateMergedVideoFields: async (fields: MergedVideoFieldsUpdate) => {
+      await db
+        .update(sequences)
+        .set({ ...fields, updatedAt: new Date() })
+        .where(eq(sequences.id, sequenceId));
     },
   };
 }

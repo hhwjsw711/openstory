@@ -24,60 +24,7 @@ type ApiKeyInfo = {
   createdAt: Date;
 };
 
-export function createApiKeysMethods(db: Database, teamId: string) {
-  /**
-   * Save or update an API key for the team.
-   * Encrypts the key before storage; upserts on (teamId, provider).
-   */
-  async function saveKey(params: {
-    provider: ApiKeyProvider;
-    apiKey: string;
-    source?: 'oauth' | 'manual';
-    addedBy: string;
-  }): Promise<ApiKeyInfo> {
-    const encrypted = await encryptApiKey(params.apiKey);
-    const hint = getKeyHint(params.apiKey);
-    const now = new Date();
-
-    // Delete existing key for this team+provider (unique constraint)
-    await db
-      .delete(teamApiKeys)
-      .where(
-        and(
-          eq(teamApiKeys.teamId, teamId),
-          eq(teamApiKeys.provider, params.provider)
-        )
-      );
-
-    const [row] = await db
-      .insert(teamApiKeys)
-      .values({
-        teamId,
-        provider: params.provider,
-        encryptedKey: encrypted.encryptedKey,
-        keyIv: encrypted.keyIv,
-        keyTag: encrypted.keyTag,
-        keyHint: hint,
-        source: params.source ?? 'manual',
-        isActive: true,
-        addedBy: params.addedBy,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    return {
-      id: row.id,
-      provider: row.provider,
-      keyHint: row.keyHint,
-      source: row.source,
-      isActive: row.isActive,
-      addedBy: row.addedBy,
-      createdAt: row.createdAt,
-    };
-  }
-
-  /** Get the display info for the team's API keys (no decryption). */
+export function createApiKeysReadMethods(db: Database, teamId: string) {
   async function listKeys(): Promise<ApiKeyInfo[]> {
     const rows = await db
       .select({
@@ -95,16 +42,6 @@ export function createApiKeysMethods(db: Database, teamId: string) {
     return rows as ApiKeyInfo[];
   }
 
-  /** Delete the team's API key for a provider. */
-  async function deleteKey(provider: ApiKeyProvider): Promise<void> {
-    await db
-      .delete(teamApiKeys)
-      .where(
-        and(eq(teamApiKeys.teamId, teamId), eq(teamApiKeys.provider, provider))
-      );
-  }
-
-  /** Check whether the team has their own key for a provider. */
   async function hasKey(provider: ApiKeyProvider): Promise<boolean> {
     const [row] = await db
       .select({ id: teamApiKeys.id })
@@ -121,10 +58,6 @@ export function createApiKeysMethods(db: Database, teamId: string) {
     return !!row;
   }
 
-  /**
-   * Resolve the API key for a given provider.
-   * Returns the team's own key if configured, otherwise falls back to the platform key.
-   */
   async function resolveKey(
     provider: ApiKeyProvider
   ): Promise<{ key: string; source: 'team' | 'platform' }> {
@@ -153,7 +86,6 @@ export function createApiKeysMethods(db: Database, teamId: string) {
       return { key: decrypted, source: 'team' };
     }
 
-    // Fall back to platform key
     const env = getEnv();
     const platformKey =
       provider === 'openrouter' ? env.OPENROUTER_KEY : env.FAL_KEY;
@@ -165,9 +97,6 @@ export function createApiKeysMethods(db: Database, teamId: string) {
     return { key: platformKey, source: 'platform' };
   }
 
-  /**
-   * Validate an API key by making a lightweight test call to the provider.
-   */
   async function validateKey(
     provider: ApiKeyProvider,
     apiKey: string
@@ -181,8 +110,6 @@ export function createApiKeysMethods(db: Database, teamId: string) {
     }
 
     if (provider === 'fal') {
-      // Fal.ai doesn't have a dedicated key validation endpoint.
-      // POST with empty body: valid key -> 422 (missing input), invalid key -> 401.
       const response = await fetch(
         'https://queue.fal.run/fal-ai/flux/schnell',
         {
@@ -204,11 +131,76 @@ export function createApiKeysMethods(db: Database, teamId: string) {
   }
 
   return {
-    saveKey,
     listKeys,
-    deleteKey,
     hasKey,
     resolveKey,
     validateKey,
+  };
+}
+
+export function createApiKeysMethods(
+  db: Database,
+  teamId: string,
+  userId: string
+) {
+  return {
+    ...createApiKeysReadMethods(db, teamId),
+
+    saveKey: async (params: {
+      provider: ApiKeyProvider;
+      apiKey: string;
+      source?: 'oauth' | 'manual';
+    }): Promise<ApiKeyInfo> => {
+      const encrypted = await encryptApiKey(params.apiKey);
+      const hint = getKeyHint(params.apiKey);
+      const now = new Date();
+
+      await db
+        .delete(teamApiKeys)
+        .where(
+          and(
+            eq(teamApiKeys.teamId, teamId),
+            eq(teamApiKeys.provider, params.provider)
+          )
+        );
+
+      const [row] = await db
+        .insert(teamApiKeys)
+        .values({
+          teamId,
+          provider: params.provider,
+          encryptedKey: encrypted.encryptedKey,
+          keyIv: encrypted.keyIv,
+          keyTag: encrypted.keyTag,
+          keyHint: hint,
+          source: params.source ?? 'manual',
+          isActive: true,
+          addedBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      return {
+        id: row.id,
+        provider: row.provider,
+        keyHint: row.keyHint,
+        source: row.source,
+        isActive: row.isActive,
+        addedBy: row.addedBy,
+        createdAt: row.createdAt,
+      };
+    },
+
+    deleteKey: async (provider: ApiKeyProvider): Promise<void> => {
+      await db
+        .delete(teamApiKeys)
+        .where(
+          and(
+            eq(teamApiKeys.teamId, teamId),
+            eq(teamApiKeys.provider, provider)
+          )
+        );
+    },
   };
 }

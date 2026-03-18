@@ -3,47 +3,26 @@
  * POST /api/billing/webhook - Handle Stripe webhook events
  */
 
-import { isStripeEnabled } from '@/lib/billing/constants';
+import {
+  stripeWebhookMiddleware,
+  type StripeWebhookContext,
+} from '@/functions/middleware';
 import { createScopedDb } from '@/lib/db/scoped';
 import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
-import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
+import { getStripeOrThrow } from '@/lib/billing/stripe';
 import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/api/billing/webhook')({
   server: {
+    middleware: [stripeWebhookMiddleware],
     handlers: {
-      POST: async ({ request }) => {
-        if (!isStripeEnabled()) {
+      POST: async ({ context }) => {
+        const { stripeEvent: event } = context as StripeWebhookContext;
+        if (!event) {
           return Response.json({ received: true }, { status: 200 });
         }
 
         try {
-          const stripe = getStripeOrThrow();
-          const webhookSecret = getStripeWebhookSecret();
-
-          if (!webhookSecret) {
-            return Response.json(
-              { error: 'Webhook secret not configured' },
-              { status: 500 }
-            );
-          }
-
-          const body = await request.text();
-          const signature = request.headers.get('stripe-signature');
-
-          if (!signature) {
-            return Response.json(
-              { error: 'Missing signature' },
-              { status: 400 }
-            );
-          }
-
-          const event = await stripe.webhooks.constructEventAsync(
-            body,
-            signature,
-            webhookSecret
-          );
-
           switch (event.type) {
             case 'checkout.session.completed': {
               const session = event.data.object;
@@ -59,7 +38,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
               const userId = session.metadata.userId;
               const amountUsd = parseFloat(session.metadata.amountUsd);
 
-              if (!teamId || isNaN(amountUsd)) {
+              if (!teamId || !userId || isNaN(amountUsd)) {
                 console.error('[Webhook] Invalid metadata:', session.metadata);
                 break;
               }
@@ -71,7 +50,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
                   : session.customer.id
                 : undefined;
 
-              const scopedDb = createScopedDb(teamId);
+              const scopedDb = createScopedDb(teamId, userId);
 
               // Save customer ID mapping if not already saved
               if (customerId) {
@@ -80,6 +59,7 @@ export const Route = createFileRoute('/api/billing/webhook')({
               let receiptUrl: string | undefined;
               try {
                 if (session.payment_intent) {
+                  const stripe = getStripeOrThrow();
                   const piId =
                     typeof session.payment_intent === 'string'
                       ? session.payment_intent
@@ -110,7 +90,6 @@ export const Route = createFileRoute('/api/billing/webhook')({
               // Add credits (unique stripeSessionId prevents duplicates)
               const amountMicros = usdToMicros(amountUsd);
               const result = await scopedDb.billing.addCredits(amountMicros, {
-                userId,
                 stripeSessionId: session.id,
                 description: `Top-up: ${microsToDisplayUsd(amountMicros)}`,
                 metadata: {
