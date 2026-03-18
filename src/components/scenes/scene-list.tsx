@@ -37,7 +37,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   onGenerateMusic,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [includeMusic, setIncludeMusic] = useState(false);
+  const [includeMusic, setIncludeMusic] = useState(true);
 
   // Frames that need to be kicked off (not already generating)
   const notStartedFrames = useMemo(() => {
