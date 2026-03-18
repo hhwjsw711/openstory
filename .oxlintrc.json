@@ -51,7 +51,6 @@
         "**/auth/config.ts",
         "**/functions/middleware.ts",
         "**/workflow/scoped-workflow.ts",
-        "**/billing/webhook.ts",
         "**/openrouter/callback.ts"
       ],
       "rules": {

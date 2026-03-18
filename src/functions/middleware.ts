@@ -3,29 +3,29 @@
  * Reusable middleware for authentication, team access, and resource validation
  */
 
-import { createMiddleware } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import type Stripe from 'stripe';
-import { getAuth } from '@/lib/auth/config';
-import type { User, Session } from '@/lib/auth/config';
 import {
-  requireTeamMemberAccess,
   requireTeamAdminAccess,
+  requireTeamMemberAccess,
   requireTeamOwnerAccess,
 } from '@/lib/auth/action-utils';
+import { getAuth } from '@/lib/auth/config';
+import type { Session, User } from '@/lib/auth/config';
 import { requireSystemAdmin } from '@/lib/auth/system-admin';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { isStripeEnabled } from '@/lib/billing/constants';
+import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import {
   createScopedDb,
   resolveUserTeam,
   type ScopedDb,
 } from '@/lib/db/scoped';
-import { isStripeEnabled } from '@/lib/billing/constants';
-import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
-import type { Sequence, Frame } from '@/types/database';
-import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import type { Frame, Sequence } from '@/types/database';
+import { createMiddleware } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
+import { zodValidator } from '@tanstack/zod-adapter';
+import type Stripe from 'stripe';
+import { z } from 'zod';
 
 // ============================================================================
 // Context Types
@@ -45,6 +45,9 @@ export type SystemAdminContext = TeamContext;
 
 export type StripeWebhookContext = {
   stripeEvent: Stripe.Event | null;
+  scopedDb: ScopedDb | null;
+  teamId: string | null;
+  userId: string | null;
 };
 
 export type SequenceContext = TeamContext & {
@@ -134,7 +137,12 @@ export const stripeWebhookMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     if (!isStripeEnabled()) {
       return next({
-        context: { stripeEvent: null as Stripe.Event | null },
+        context: {
+          stripeEvent: null as Stripe.Event | null,
+          scopedDb: null as ScopedDb | null,
+          teamId: null as string | null,
+          userId: null as string | null,
+        },
       });
     }
 
@@ -162,8 +170,42 @@ export const stripeWebhookMiddleware = createMiddleware().server(
         signature,
         webhookSecret
       );
-      return next({ context: { stripeEvent: event } });
-    } catch {
+
+      const obj = event.data.object;
+
+      if (
+        !('metadata' in obj) ||
+        typeof obj.metadata !== 'object' ||
+        obj.metadata === null
+      ) {
+        throw new Error(`Stripe event ${event.id} missing metadata`);
+      }
+      const metadata = obj.metadata;
+      if (!('teamId' in metadata && 'userId' in metadata)) {
+        throw new Error(
+          `Stripe event ${event.id} missing teamId or userId in metadata`
+        );
+      }
+
+      const teamId = metadata.teamId;
+      const userId = metadata.userId;
+      if (typeof teamId !== 'string' || typeof userId !== 'string') {
+        throw new Error(
+          `Stripe event ${event.id} missing teamId or userId in metadata`
+        );
+      }
+      return next({
+        context: {
+          stripeEvent: event,
+          scopedDb: createScopedDb(teamId, userId),
+          teamId,
+          userId,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('missing teamId')) {
+        throw Response.json({ error: error.message }, { status: 400 });
+      }
       throw Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
   }

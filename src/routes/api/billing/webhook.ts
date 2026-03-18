@@ -7,7 +7,6 @@ import {
   stripeWebhookMiddleware,
   type StripeWebhookContext,
 } from '@/functions/middleware';
-import { createScopedDb } from '@/lib/db/scoped';
 import { microsToDisplayUsd, usdToMicros } from '@/lib/billing/money';
 import { getStripeOrThrow } from '@/lib/billing/stripe';
 import { createFileRoute } from '@tanstack/react-router';
@@ -17,8 +16,12 @@ export const Route = createFileRoute('/api/billing/webhook')({
     middleware: [stripeWebhookMiddleware],
     handlers: {
       POST: async ({ context }) => {
-        const { stripeEvent: event } = context as StripeWebhookContext;
-        if (!event) {
+        const {
+          stripeEvent: event,
+          scopedDb,
+          teamId,
+        } = context as StripeWebhookContext;
+        if (!event || !scopedDb) {
           return Response.json({ received: true }, { status: 200 });
         }
 
@@ -34,11 +37,9 @@ export const Route = createFileRoute('/api/billing/webhook')({
                 break;
               }
 
-              const teamId = session.metadata.teamId;
-              const userId = session.metadata.userId;
-              const amountUsd = parseFloat(session.metadata.amountUsd);
+              const amountUsd = parseFloat(session.metadata?.amountUsd ?? '');
 
-              if (!teamId || !userId || isNaN(amountUsd)) {
+              if (isNaN(amountUsd)) {
                 console.error('[Webhook] Invalid metadata:', session.metadata);
                 break;
               }
@@ -49,8 +50,6 @@ export const Route = createFileRoute('/api/billing/webhook')({
                   ? session.customer
                   : session.customer.id
                 : undefined;
-
-              const scopedDb = createScopedDb(teamId, userId);
 
               // Save customer ID mapping if not already saved
               if (customerId) {
