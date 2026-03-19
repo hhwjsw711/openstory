@@ -103,7 +103,7 @@ export async function uploadStream(
   bucket: StorageBucket,
   path: string,
   stream: ReadableStream<Uint8Array>,
-  contentLength: number,
+  _contentLength: number,
   options?: { contentType?: string; cacheControl?: string }
 ): Promise<UploadResult> {
   const client = createR2Client();
@@ -111,11 +111,22 @@ export async function uploadStream(
   const key = buildR2Key(bucket, path);
 
   try {
+    // S3 SDK needs a buffer to compute checksums — can't hash a flowing ReadableStream.
+    // Cloudflare R2 bindings handle streams natively; this path only runs in local dev.
+    const chunks: Uint8Array[] = [];
+    const reader = stream.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const body = Buffer.concat(chunks);
+
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
-      Body: stream,
-      ContentLength: contentLength,
+      Body: body,
+      ContentLength: body.byteLength,
       ContentType: options?.contentType,
       CacheControl: options?.cacheControl ?? 'public, max-age=31536000',
     });
@@ -158,6 +169,34 @@ export async function getSignedUrl(
       `Failed to create signed URL for ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
+}
+
+export async function getSignedUploadUrl(
+  bucket: StorageBucket,
+  path: string,
+  contentType: string,
+  expiresIn = 600
+): Promise<{
+  uploadUrl: string;
+  publicUrl: string;
+  path: string;
+  contentType: string;
+}> {
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000',
+  });
+
+  const uploadUrl = await getS3SignedUrl(client, command, { expiresIn });
+  const publicUrl = getPublicUrl(bucket, path);
+
+  return { uploadUrl, publicUrl, path: key, contentType };
 }
 
 export async function getSignedUrlWithDownload(

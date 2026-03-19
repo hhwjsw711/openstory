@@ -118,6 +118,23 @@ export async function getSignedUrlWithDownload(
   return s3GetSignedUrlWithDownload(bucket, path, filename, expiresIn);
 }
 
+export async function getSignedUploadUrl(
+  bucket: StorageBucket,
+  path: string,
+  contentType: string,
+  expiresIn = 600
+): Promise<{
+  uploadUrl: string;
+  publicUrl: string;
+  path: string;
+  contentType: string;
+}> {
+  // R2 bindings don't support presigned URLs — use S3 SDK
+  const { getSignedUploadUrl: s3GetSignedUploadUrl } =
+    await import('./storage-s3');
+  return s3GetSignedUploadUrl(bucket, path, contentType, expiresIn);
+}
+
 export async function deleteFile(
   bucket: StorageBucket,
   path: string
