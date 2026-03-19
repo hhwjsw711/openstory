@@ -8,10 +8,9 @@ import {
   setDefaultSheetFn,
   toggleTalentFavoriteFn,
   updateTalentFn,
-  uploadTalentMediaFn,
-  uploadTempMediaFn,
   deleteTalentMediaFn,
 } from '@/functions/talent';
+import { executeUpload } from '@/lib/utils/upload';
 import type {
   CreateTalentInput,
   UpdateTalentInput,
@@ -115,7 +114,7 @@ export function useToggleTalentFavorite() {
 }
 
 /**
- * Hook to upload talent media
+ * Hook to upload talent media via streaming API route
  */
 export function useUploadTalentMedia() {
   const queryClient = useQueryClient();
@@ -124,9 +123,20 @@ export function useUploadTalentMedia() {
     mutationFn: (data: {
       talentId: string;
       type: 'image' | 'video' | 'recording';
-      base64Data: string;
-      filename: string;
-    }) => uploadTalentMediaFn({ data }),
+      file: File;
+      onProgress?: (percent: number) => void;
+    }) => {
+      const params = new URLSearchParams({
+        filename: data.file.name,
+        type: data.type,
+        talentId: data.talentId,
+      });
+      return executeUpload<{ url: string; path: string; mediaId: string }>(
+        `/api/upload/talent?${params}`,
+        data.file,
+        data.onProgress
+      );
+    },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
         queryKey: talentKeys.detail(variables.talentId),
@@ -141,10 +151,20 @@ export function useUploadTalentMedia() {
 export function useUploadTempMedia() {
   return useMutation({
     mutationFn: (data: {
-      base64Data: string;
-      filename: string;
+      file: File;
       type: 'image' | 'video';
-    }) => uploadTempMediaFn({ data }),
+      onProgress?: (percent: number) => void;
+    }) => {
+      const params = new URLSearchParams({
+        filename: data.file.name,
+        type: data.type,
+      });
+      return executeUpload<{ url: string; path: string }>(
+        `/api/upload/talent?${params}`,
+        data.file,
+        data.onProgress
+      );
+    },
   });
 }
 

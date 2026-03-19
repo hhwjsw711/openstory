@@ -30,11 +30,8 @@ import {
   getPathFromUrl,
   getPublicUrl,
 } from '@/lib/storage/buckets';
-import { deleteFile, moveFile, uploadFile } from '#storage';
-import {
-  getExtensionFromUrl,
-  getMimeTypeFromExtension,
-} from '@/lib/utils/file';
+import { deleteFile, moveFile } from '#storage';
+import { getExtensionFromUrl } from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -57,14 +54,6 @@ async function requireTalentOwnership(
     throw new Error('Talent not found');
   }
   return record;
-}
-
-/**
- * Decode a base64 data URL or raw base64 string into a Blob.
- */
-function decodeBase64ToBlob(base64Data: string): Blob {
-  const raw = base64Data.split(',')[1] ?? base64Data;
-  return new Blob([Buffer.from(raw, 'base64')]);
 }
 
 // List Talent
@@ -276,63 +265,6 @@ export const setDefaultSheetFn = createServerFn({ method: 'POST' })
     }
 
     return updated;
-  });
-
-// Upload Talent Media
-
-const uploadMediaInputSchema = z.object({
-  talentId: ulidSchema,
-  type: z.enum(['image', 'video', 'recording']),
-  base64Data: z.string(),
-  filename: z.string(),
-});
-
-export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
-  .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(uploadMediaInputSchema))
-  .handler(async ({ context, data }) => {
-    await requireTalentOwnership(data.talentId, context.teamId);
-
-    const blob = decodeBase64ToBlob(data.base64Data);
-    const ext = getExtensionFromUrl(data.filename);
-    const mediaId = generateId();
-    const storagePath = `${context.teamId}/${data.talentId}/${mediaId}.${ext}`;
-
-    const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
-      contentType: getMimeTypeFromExtension(ext),
-    });
-
-    return createTalentMediaRecord({
-      id: mediaId,
-      talentId: data.talentId,
-      type: data.type,
-      url: result.publicUrl,
-      path: result.path,
-    });
-  });
-
-// Upload Temp Media (before talent creation)
-
-const uploadTempMediaInputSchema = z.object({
-  base64Data: z.string(),
-  filename: z.string(),
-  type: z.enum(['image', 'video']),
-});
-
-export const uploadTempMediaFn = createServerFn({ method: 'POST' })
-  .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(uploadTempMediaInputSchema))
-  .handler(async ({ context, data }) => {
-    const blob = decodeBase64ToBlob(data.base64Data);
-    const ext = getExtensionFromUrl(data.filename);
-    const uploadId = generateId();
-    const storagePath = `${context.teamId}/temp/${uploadId}.${ext}`;
-
-    const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
-      contentType: getMimeTypeFromExtension(ext),
-    });
-
-    return { url: result.publicUrl, path: result.path };
   });
 
 // Delete Talent Media

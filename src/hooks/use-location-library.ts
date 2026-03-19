@@ -15,8 +15,8 @@ import {
   deleteLocationSheetFn,
   getLibraryLocationByIdFn,
   updateLibraryLocationFn,
-  uploadLocationMediaFn,
 } from '@/functions/location-library';
+import { executeUpload } from '@/lib/utils/upload';
 import {
   libraryLocationKeys,
   sequenceLocationKeys,
@@ -115,15 +115,23 @@ export function useDeleteLibraryLocation() {
 }
 
 /**
- * Hook to upload location media to temp storage
+ * Hook to upload location media via streaming API route
  */
 export function useUploadLocationMedia() {
   return useMutation({
     mutationFn: (data: {
-      base64Data: string;
-      filename: string;
+      file: File;
       locationId?: string;
-    }) => uploadLocationMediaFn({ data }),
+      onProgress?: (percent: number) => void;
+    }) => {
+      const params = new URLSearchParams({ filename: data.file.name });
+      if (data.locationId) params.set('locationId', data.locationId);
+      return executeUpload<{ url: string; path: string }>(
+        `/api/upload/location?${params}`,
+        data.file,
+        data.onProgress
+      );
+    },
   });
 }
 

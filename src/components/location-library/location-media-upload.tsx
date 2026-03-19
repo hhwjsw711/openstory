@@ -12,6 +12,7 @@ import {
   type FileUploadProps,
 } from '@/components/ui/file-upload';
 import { useUploadLocationMedia } from '@/hooks/use-location-library';
+import { getFileKey } from '@/lib/utils/upload';
 import { Upload, X } from 'lucide-react';
 
 type LocationMediaUploadProps = {
@@ -23,23 +24,6 @@ type LocationMediaUploadProps = {
   disabled?: boolean;
   maxFiles?: number;
 };
-
-const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
   files,
@@ -86,15 +70,10 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
     async (newFiles, { onProgress, onSuccess, onError }) => {
       const uploadPromises = newFiles.map(async (file) => {
         try {
-          onProgress(file, 10);
-
-          const base64 = await fileToBase64(file);
-          onProgress(file, 30);
-
           const result = await uploadMedia.mutateAsync({
-            base64Data: base64,
-            filename: file.name,
+            file,
             locationId,
+            onProgress: (percent) => onProgress(file, percent),
           });
 
           setUploadedUrlsMap((prev) =>
@@ -124,7 +103,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
   return (
     <FileUpload
       accept="image/*"
-      maxSize={50 * 1024 * 1024}
+      maxSize={20 * 1024 * 1024}
       multiple={maxFiles > 1}
       disabled={disabled || isUploading}
       value={files}
@@ -146,7 +125,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
           </Button>
         </FileUploadTrigger>
         <p className="text-xs text-muted-foreground">
-          Images up to 50MB{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
+          Images up to 20MB{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
         </p>
       </FileUploadDropzone>
 

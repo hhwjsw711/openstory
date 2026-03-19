@@ -8,11 +8,8 @@ import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
-import { moveFile, uploadFile } from '#storage';
-import {
-  getExtensionFromUrl,
-  getMimeTypeFromExtension,
-} from '@/lib/utils/file';
+import { moveFile } from '#storage';
+import { getExtensionFromUrl } from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
@@ -169,50 +166,6 @@ export const deleteLibraryLocationFn = createServerFn({ method: 'POST' })
     await requireTeamManagement(context.user.id, context.teamId);
     await deleteLibraryLocation(data.locationId);
     return { success: true };
-  });
-
-export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
-  .middleware([authWithTeamMiddleware])
-  .inputValidator(
-    zodValidator(
-      z.object({
-        base64Data: z.string(),
-        filename: z.string(),
-        locationId: ulidSchema.optional(),
-      })
-    )
-  )
-  .handler(async ({ context, data }) => {
-    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
-    const buffer = Buffer.from(base64Content, 'base64');
-    const blob = new Blob([buffer]);
-
-    const ext = getExtensionFromUrl(data.filename);
-    const uploadId = generateId();
-
-    if (data.locationId) {
-      await requireLocation(data.locationId, context.teamId);
-    }
-
-    const storagePath = data.locationId
-      ? `${context.teamId}/library/${uploadId}.${ext}`
-      : `${context.teamId}/temp/${uploadId}.${ext}`;
-
-    const result = await uploadFile(
-      STORAGE_BUCKETS.LOCATIONS,
-      storagePath,
-      blob,
-      { contentType: getMimeTypeFromExtension(ext) }
-    );
-
-    if (data.locationId) {
-      await updateLibraryLocation(data.locationId, {
-        referenceImageUrl: result.publicUrl,
-        referenceImagePath: result.path,
-      });
-    }
-
-    return { url: result.publicUrl, path: result.path };
   });
 
 export const addLocationSheetsFn = createServerFn({ method: 'POST' })
