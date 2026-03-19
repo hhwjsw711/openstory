@@ -26,10 +26,7 @@ import {
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import {
-  aspectRatioToImageSize,
-  type AspectRatio,
-} from '@/lib/constants/aspect-ratios';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -391,21 +388,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         sequenceId: frame.sequenceId,
         frameId: frame.id,
         model: selectedImageModel,
-        imageSize: aspectRatio
-          ? aspectRatioToImageSize(aspectRatio)
-          : undefined,
       });
     } catch (error) {
       console.error('Failed to generate scene variants:', error);
       // Error handling is done by the mutation hook
     }
-  }, [
-    frame,
-    generateVariants,
-    selectedImageModel,
-    aspectRatio,
-    onRegenerateStart,
-  ]);
+  }, [frame, generateVariants, selectedImageModel, onRegenerateStart]);
 
   const handleVariantSelect = useCallback(
     async (index: number) => {

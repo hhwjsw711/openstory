@@ -1,6 +1,10 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import {
+  aspectRatioToImageSize,
+  DEFAULT_IMAGE_SIZE,
+} from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
@@ -84,10 +88,16 @@ export const upscaleVariantWorkflow = createWorkflow(
       const { prompt: enhancedPrompt, referenceUrls: charLocUrls } =
         buildReferenceImagePrompt(UPSCALE_PROMPT, allReferences);
 
+      // Determine output image size from sequence aspect ratio
+      const imageSize = input.aspectRatio
+        ? aspectRatioToImageSize(input.aspectRatio)
+        : DEFAULT_IMAGE_SIZE;
+
       // Cropped tile is primary source (first), char/loc refs appended after
       const result = await generateImageWithProvider({
         model: 'nano_banana_2',
         prompt: enhancedPrompt,
+        imageSize,
         referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
         numImages: 1,
         outputFormat: 'png',

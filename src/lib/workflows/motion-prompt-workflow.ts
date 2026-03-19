@@ -26,8 +26,7 @@ export const motionPromptWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[MotionPromptWorkflow] Starting motion prompt generation input:',
-      input
+      `[MotionPromptWorkflow] Starting motion prompt generation for ${scenes.length} scenes`
     );
     // ============================================================
     // PHASE 3: Motion Prompt Generation (using durableLLMCall helper)

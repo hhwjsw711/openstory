@@ -27,8 +27,7 @@ export const visualPromptWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
-      input
+      `[VisualPromptWorkflow] Starting visual prompt generation for ${scenes.length} scenes`
     );
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
