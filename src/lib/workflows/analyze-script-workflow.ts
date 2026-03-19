@@ -31,6 +31,7 @@ import type {
   ImageWorkflowInput,
   MotionWorkflowInput,
   MusicWorkflowInput,
+  VariantWorkflowInput,
 } from '@/lib/workflow/types';
 import type { WorkflowContext } from '@upstash/workflow';
 import { createWorkflow } from '@upstash/workflow/tanstack';
@@ -39,6 +40,7 @@ import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
@@ -272,29 +274,30 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     let imageUrls: string[] = [];
 
+    // Build per-scene character and location maps for reference image lookup
+    // (hoisted so variant generation can reuse them)
+    const sceneCharacterMap = Object.fromEntries(
+      scenesWithVisualPrompts.map((scene) => [
+        scene.sceneId,
+        matchCharactersToScene(
+          charactersWithSheets,
+          scene.continuity?.characterTags || []
+        ),
+      ])
+    );
+    const sceneLocationMap = Object.fromEntries(
+      scenesWithVisualPrompts.map((scene) => [
+        scene.sceneId,
+        matchLocationsToScene(
+          locationsWithSheets,
+          scene.continuity?.environmentTag || '',
+          scene.metadata?.location || ''
+        ),
+      ])
+    );
+
     if (imageModel) {
       const imageSize = aspectRatioToImageSize(aspectRatio);
-
-      // Build per-scene character and location maps for reference image lookup
-      const sceneCharacterMap = Object.fromEntries(
-        scenesWithVisualPrompts.map((scene) => [
-          scene.sceneId,
-          matchCharactersToScene(
-            charactersWithSheets,
-            scene.continuity?.characterTags || []
-          ),
-        ])
-      );
-      const sceneLocationMap = Object.fromEntries(
-        scenesWithVisualPrompts.map((scene) => [
-          scene.sceneId,
-          matchLocationsToScene(
-            locationsWithSheets,
-            scene.continuity?.environmentTag || '',
-            scene.metadata?.location || ''
-          ),
-        ])
-      );
 
       await context.run('frame-images-start', async () => {
         if (sequenceId) {
@@ -354,6 +357,28 @@ export const analyzeScriptWorkflow = createWorkflow(
               `Image generation failed for scene ${scene.sceneId}`
             );
           }
+
+          // Fire variant generation immediately — QStash tracks independently
+          await context.invoke('variant-image', {
+            workflow: generateVariantWorkflow,
+            body: {
+              userId: input.userId,
+              teamId: input.teamId,
+              sequenceId,
+              frameId: matchedFrame?.frameId,
+              thumbnailUrl: result.body.imageUrl,
+              scenePrompt: scene.prompts?.visual?.fullPrompt,
+              characterReferences: buildCharacterReferenceImages(
+                sceneCharacterMap[scene.sceneId] || []
+              ),
+              locationReferences: buildLocationReferenceImages(
+                sceneLocationMap[scene.sceneId] || []
+              ),
+            } satisfies VariantWorkflowInput,
+            retries: 3,
+            flowControl: getFalFlowControl(),
+          });
+
           return result.body.imageUrl;
         })
       );
@@ -365,7 +390,6 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     });
 
-    // Motion prompt generation
     const partialScenesWithMotionPrompts = await context.invoke(
       'motion-prompts',
       {
