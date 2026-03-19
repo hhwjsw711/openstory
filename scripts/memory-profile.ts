@@ -9,6 +9,8 @@
  *   bun scripts/memory-profile.ts --clear      # Clear samples
  */
 
+export {};
+
 const BASE_URL = process.env.VITE_APP_URL ?? 'http://localhost:3000';
 const API_URL = `${BASE_URL}/api/dev/memory`;
 const OUTPUT_PATH = '.output/memory-profile.html';
@@ -289,7 +291,7 @@ function generateHTML(samples: MemorySample[]): string {
 </html>`;
 }
 
-async function main() {
+async function mainLoop() {
   const args = process.argv.slice(2);
   const mode = args[0];
 
@@ -349,7 +351,4 @@ async function main() {
   Bun.spawn(['open', OUTPUT_PATH]);
 }
 
-void main().catch((error) => {
-  console.error('Error:', error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+void mainLoop();

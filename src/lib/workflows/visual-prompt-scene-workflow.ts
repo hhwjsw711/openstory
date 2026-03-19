@@ -31,8 +31,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
-      input
+      `[VisualPromptSceneWorkflow] Generating visual prompt for scene ${sceneIndex + 1}/${scenes.length}`
     );
 
     // ============================================================
