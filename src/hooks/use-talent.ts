@@ -5,12 +5,14 @@ import {
   generateTalentSheetFn,
   getTalentByIdFn,
   getTalentFn,
+  presignTalentUploadFn,
+  finalizeTalentUploadFn,
   setDefaultSheetFn,
   toggleTalentFavoriteFn,
   updateTalentFn,
   deleteTalentMediaFn,
 } from '@/functions/talent';
-import { executeUpload } from '@/lib/utils/upload';
+import { putToR2 } from '@/lib/utils/upload';
 import type {
   CreateTalentInput,
   UpdateTalentInput,
@@ -114,28 +116,48 @@ export function useToggleTalentFavorite() {
 }
 
 /**
- * Hook to upload talent media via streaming API route
+ * Hook to upload talent media via presigned URL
  */
 export function useUploadTalentMedia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       talentId: string;
       type: 'image' | 'video' | 'recording';
       file: File;
       onProgress?: (percent: number) => void;
     }) => {
-      const params = new URLSearchParams({
-        filename: data.file.name,
-        type: data.type,
-        talentId: data.talentId,
+      const presign = await presignTalentUploadFn({
+        data: {
+          filename: data.file.name,
+          type: data.type,
+          talentId: data.talentId,
+        },
       });
-      return executeUpload<{ url: string; path: string; mediaId: string }>(
-        `/api/upload/talent?${params}`,
+
+      await putToR2(
+        presign.uploadUrl,
         data.file,
+        presign.contentType,
         data.onProgress
       );
+
+      await finalizeTalentUploadFn({
+        data: {
+          talentId: data.talentId,
+          type: data.type,
+          mediaId: presign.mediaId,
+          publicUrl: presign.publicUrl,
+          path: presign.path,
+        },
+      });
+
+      return {
+        url: presign.publicUrl,
+        path: presign.path,
+        mediaId: presign.mediaId,
+      };
     },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
@@ -146,24 +168,30 @@ export function useUploadTalentMedia() {
 }
 
 /**
- * Hook to upload media to temporary storage (before talent creation)
+ * Hook to upload temporary talent media (before talent record exists)
  */
 export function useUploadTempMedia() {
   return useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       file: File;
       type: 'image' | 'video';
       onProgress?: (percent: number) => void;
     }) => {
-      const params = new URLSearchParams({
-        filename: data.file.name,
-        type: data.type,
+      const presign = await presignTalentUploadFn({
+        data: {
+          filename: data.file.name,
+          type: data.type,
+        },
       });
-      return executeUpload<{ url: string; path: string }>(
-        `/api/upload/talent?${params}`,
+
+      await putToR2(
+        presign.uploadUrl,
         data.file,
+        presign.contentType,
         data.onProgress
       );
+
+      return { url: presign.publicUrl, path: presign.path };
     },
   });
 }

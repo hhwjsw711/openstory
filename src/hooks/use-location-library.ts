@@ -14,9 +14,11 @@ import {
   deleteLibraryLocationFn,
   deleteLocationSheetFn,
   getLibraryLocationByIdFn,
+  presignLocationUploadFn,
+  finalizeLocationUploadFn,
   updateLibraryLocationFn,
 } from '@/functions/location-library';
-import { executeUpload } from '@/lib/utils/upload';
+import { putToR2 } from '@/lib/utils/upload';
 import {
   libraryLocationKeys,
   sequenceLocationKeys,
@@ -115,22 +117,43 @@ export function useDeleteLibraryLocation() {
 }
 
 /**
- * Hook to upload location media via streaming API route
+ * Hook to upload location media via presigned URL
  */
 export function useUploadLocationMedia() {
   return useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       file: File;
       locationId?: string;
       onProgress?: (percent: number) => void;
     }) => {
-      const params = new URLSearchParams({ filename: data.file.name });
-      if (data.locationId) params.set('locationId', data.locationId);
-      return executeUpload<{ url: string; path: string }>(
-        `/api/upload/location?${params}`,
+      // 1. Get presigned URL from server
+      const presign = await presignLocationUploadFn({
+        data: {
+          filename: data.file.name,
+          locationId: data.locationId,
+        },
+      });
+
+      // 2. Upload directly to R2
+      await putToR2(
+        presign.uploadUrl,
         data.file,
+        presign.contentType,
         data.onProgress
       );
+
+      // 3. Finalize: update DB record if uploading to an existing location
+      if (data.locationId) {
+        await finalizeLocationUploadFn({
+          data: {
+            locationId: data.locationId,
+            publicUrl: presign.publicUrl,
+            path: presign.path,
+          },
+        });
+      }
+
+      return { url: presign.publicUrl, path: presign.path };
     },
   });
 }
