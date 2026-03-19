@@ -8,8 +8,10 @@ import { PhotonImage, crop } from '@cf-wasm/photon';
 
 type CropTileOptions = {
   gridImageUrl: string;
-  row: number; // 1-3 (1 = top row)
-  col: number; // 1-3 (1 = left column)
+  row: number; // 1-based (1 = top row)
+  col: number; // 1-based (1 = left column)
+  gridCols?: number; // total columns in grid (default 3)
+  gridRows?: number; // total rows in grid (default 3)
 };
 
 type CropTileResult = {
@@ -19,18 +21,18 @@ type CropTileResult = {
 };
 
 /**
- * Crop a tile from a 3x3 grid image
- * @param options - Grid image URL and tile position (row/col 1-3)
+ * Crop a tile from a grid image with configurable dimensions
+ * @param options - Grid image URL, tile position, and grid dimensions
  * @returns Promise resolving to cropped image buffer and dimensions
  */
 export async function cropTileFromGrid(
   options: CropTileOptions
 ): Promise<CropTileResult> {
-  const { gridImageUrl, row, col } = options;
+  const { gridImageUrl, row, col, gridCols = 3, gridRows = 3 } = options;
 
-  if (row < 1 || row > 3 || col < 1 || col > 3) {
+  if (row < 1 || row > gridRows || col < 1 || col > gridCols) {
     throw new Error(
-      `Invalid tile position: row ${row}, col ${col}. Must be 1-3.`
+      `Invalid tile position: row ${row}, col ${col}. Must be 1-${gridRows} and 1-${gridCols}.`
     );
   }
 
@@ -51,9 +53,9 @@ export async function cropTileFromGrid(
     const width = inputImage.get_width();
     const height = inputImage.get_height();
 
-    // Calculate tile dimensions (each tile is 1/3 of grid)
-    const tileWidth = Math.floor(width / 3);
-    const tileHeight = Math.floor(height / 3);
+    // Calculate tile dimensions
+    const tileWidth = Math.floor(width / gridCols);
+    const tileHeight = Math.floor(height / gridRows);
 
     // Calculate crop coordinates (row/col are 1-indexed)
     // Photon crop takes (x1, y1, x2, y2) - top-left and bottom-right corners

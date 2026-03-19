@@ -11,6 +11,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   getAspectRatioClassName,
+  getVariantGridConfig,
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
@@ -75,12 +76,17 @@ export function VariantSelector({
   }, [pendingVariantIndex]);
 
   const aspectRatioClass = getAspectRatioClassName(aspectRatio);
+  const gridConfig = getVariantGridConfig(aspectRatio);
+  const { cols, rows, count } = gridConfig;
+
+  // Background size: scale by cols horizontally and rows vertically
+  const bgSize = `${cols * 100}% ${rows * 100}%`;
 
   if (!variantImageUrl) {
     return (
       <div className="w-full">
         <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 9 }).map((_, i) => (
+          {Array.from({ length: count }).map((_, i) => (
             <Skeleton key={i} className={cn(aspectRatioClass, 'rounded-lg')} />
           ))}
         </div>
@@ -90,17 +96,20 @@ export function VariantSelector({
 
   return (
     <div className="w-full">
-      {/* Grid of 9 tiles, each preserving the aspect ratio */}
       <div
         ref={gridRef}
         className="grid grid-cols-3 gap-2 px-8"
         role="grid"
         aria-label="Variant selection"
       >
-        {Array.from({ length: 9 }).map((_, index) => {
-          // Calculate the crop position for this tile (0-2 for row and col)
-          const row = Math.floor(index / 3);
-          const col = index % 3;
+        {Array.from({ length: count }).map((_, index) => {
+          const row = Math.floor(index / cols);
+          const col = index % cols;
+
+          // For 3x3: positions are 0%, 50%, 100% per axis
+          // For 3x1: col positions are 0%, 50%, 100%; row is always 0%
+          const bgPosX = cols > 1 ? `${(col / (cols - 1)) * 100}%` : '0%';
+          const bgPosY = rows > 1 ? `${(row / (rows - 1)) * 100}%` : '0%';
 
           return (
             <button
@@ -123,23 +132,19 @@ export function VariantSelector({
               aria-label={`Select variant ${index + 1}`}
               aria-selected={selectedVariantIndex === index}
             >
-              {/* Cropped tile from the 3x3 grid image */}
               <div
                 className="absolute inset-0"
                 style={{
-                  // Scale up the image 3x and position to show only this tile
                   backgroundImage: `url(${variantImageUrl})`,
-                  backgroundSize: '300% 300%',
-                  backgroundPosition: `${col * 50}% ${row * 50}%`,
+                  backgroundSize: bgSize,
+                  backgroundPosition: `${bgPosX} ${bgPosY}`,
                 }}
               />
 
-              {/* Selection Indicator */}
               {selectedVariantIndex === index && (
                 <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
               )}
 
-              {/* Loading Overlay */}
               {loading && selectedVariantIndex === index && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/50">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />

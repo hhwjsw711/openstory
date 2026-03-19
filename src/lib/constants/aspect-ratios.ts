@@ -62,6 +62,25 @@ export const aspectRatioToDimensions = (
  * Maps aspect ratios to Tailwind CSS aspect ratio class names.
  * Used for displaying images and videos in the UI with correct proportions.
  */
+export type VariantGridConfig = {
+  cols: number;
+  rows: number;
+  count: number;
+  imageSize: ImageSize;
+};
+
+const VARIANT_GRID_CONFIG: Record<AspectRatio, VariantGridConfig> = {
+  '16:9': { cols: 3, rows: 3, count: 9, imageSize: 'landscape_16_9' },
+  '9:16': { cols: 3, rows: 1, count: 3, imageSize: 'landscape_16_9' },
+  '1:1': { cols: 3, rows: 3, count: 9, imageSize: 'square_hd' },
+};
+
+export const getVariantGridConfig = (
+  aspectRatio: AspectRatio
+): VariantGridConfig => {
+  return VARIANT_GRID_CONFIG[aspectRatio];
+};
+
 export const getAspectRatioClassName = (aspectRatio: AspectRatio): string => {
   const mapping: Record<AspectRatio, string> = {
     '16:9': 'aspect-video', // aspect-video is 16:9
