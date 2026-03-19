@@ -1,5 +1,6 @@
 // @ts-nocheck — test sentinels are intentionally partial objects
 import { describe, expect, it, mock, beforeEach } from 'bun:test';
+import type { NewLocationSheet } from '@/lib/db/schema';
 
 // ============================================================================
 // Sub-module mocks — we test that scoped.ts composes them correctly
@@ -538,9 +539,9 @@ describe('createScopedDb', () => {
       const sentinel = { id: 'talent_3' };
       mockTalentCreate.mockResolvedValue(sentinel);
 
-      const data = { name: 'Actor', createdBy: 'user_1' };
+      const data = { name: 'Actor' };
       const db = createScopedDb(TEAM_ID, USER_ID);
-      const result = await db.talent.create(data as any);
+      const result = await db.talent.create(data);
 
       expect(mockTalentCreate).toHaveBeenCalledWith(data);
       expect(result).toEqual(sentinel);
@@ -597,9 +598,9 @@ describe('createScopedDb', () => {
       const sentinel = { id: 'style_2' };
       mockStylesCreate.mockResolvedValue(sentinel);
 
-      const data = { name: 'Noir', createdBy: 'user_1' };
+      const data = { name: 'Noir' };
       const db = createScopedDb(TEAM_ID, USER_ID);
-      const result = await db.styles.create(data as any);
+      const result = await db.styles.create(data);
 
       expect(mockStylesCreate).toHaveBeenCalledWith(data);
       expect(result).toEqual(sentinel);
@@ -655,9 +656,9 @@ describe('createScopedDb', () => {
       const sentinel = { id: 'loc_2' };
       mockLocationsCreate.mockResolvedValue(sentinel);
 
-      const data = { name: 'Beach', createdBy: 'user_1' };
+      const data = { name: 'Beach' };
       const db = createScopedDb(TEAM_ID, USER_ID);
-      const result = await db.locations.create(data as any);
+      const result = await db.locations.create(data);
 
       expect(mockLocationsCreate).toHaveBeenCalledWith(data);
       expect(result).toEqual(sentinel);
@@ -691,11 +692,11 @@ describe('createScopedDb', () => {
       const sentinel = [{ id: 'sheet_2' }];
       mockLocationSheetsInsert.mockResolvedValue(sentinel);
 
-      const sheets = [
+      const sheets: NewLocationSheet[] = [
         { locationId: 'loc_01', name: 'Night', source: 'manual_upload' },
       ];
       const db = createScopedDb(TEAM_ID, USER_ID);
-      const result = await db.locationSheets.insert(sheets as any);
+      const result = await db.locationSheets.insert(sheets);
 
       expect(mockLocationSheetsInsert).toHaveBeenCalledWith(sheets);
       expect(result).toEqual(sentinel);

@@ -1,4 +1,3 @@
-import type { TextModel } from '@/lib/ai/models';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock environment
@@ -39,7 +38,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -66,7 +65,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -96,7 +95,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 

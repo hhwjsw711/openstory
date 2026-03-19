@@ -511,7 +511,10 @@ async function falQueueFetch(
 
   const response = await fetch(url, {
     ...init,
-    headers: { Authorization: `Key ${apiKey}`, ...init?.headers },
+    headers: new Headers({
+      Authorization: `Key ${apiKey}`,
+      ...Object.fromEntries(new Headers(init?.headers).entries()),
+    }),
   });
 
   if (!response.ok) {

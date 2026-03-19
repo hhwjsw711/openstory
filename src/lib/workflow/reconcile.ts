@@ -16,7 +16,12 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 type StatusField = 'thumbnailStatus' | 'videoStatus' | 'variantImageStatus';
 
-const STATUS_TO_RUN_ID_FIELD: Record<StatusField, keyof Frame> = {
+type RunIdField =
+  | 'thumbnailWorkflowRunId'
+  | 'videoWorkflowRunId'
+  | 'variantWorkflowRunId';
+
+const STATUS_TO_RUN_ID_FIELD: Record<StatusField, RunIdField> = {
   thumbnailStatus: 'thumbnailWorkflowRunId',
   videoStatus: 'videoWorkflowRunId',
   variantImageStatus: 'variantWorkflowRunId',
@@ -70,7 +75,7 @@ export async function reconcileStaleFrameStatuses(
   // Query QStash for each stale workflow and reconcile
   for (const { frame, field } of staleEntries) {
     const runIdField = STATUS_TO_RUN_ID_FIELD[field];
-    const runId = String(frame[runIdField] ?? '');
+    const runId = frame[runIdField] ?? '';
 
     if (runId === '') {
       // No stored run ID — workflow was never tracked properly
