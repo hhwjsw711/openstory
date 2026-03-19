@@ -34,6 +34,7 @@ import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
 import { visualPromptSceneWorkflow } from '@/lib/workflows/visual-prompt-scene-workflow';
 import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
+import { withApiLogging } from '@/lib/observability/api-logger';
 import { createFileRoute } from '@tanstack/react-router';
 import { serveMany } from '@upstash/workflow/tanstack';
 
@@ -83,7 +84,7 @@ function getHandler() {
 export const Route = createFileRoute('/api/workflows/$')({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: withApiLogging('workflows', async ({ request }) => {
         const workflowName =
           new URL(request.url).pathname.split('/api/workflows/')[1] ??
           'unknown';
@@ -92,7 +93,7 @@ export const Route = createFileRoute('/api/workflows/$')({
         recordMemorySample(workflowName, 'after');
         await flushTracing();
         return response;
-      },
+      }),
     },
   },
 });

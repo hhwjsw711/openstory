@@ -60,6 +60,7 @@
     "memory:profile": "bun scripts/memory-profile.ts",
     "memory:watch": "bun scripts/memory-profile.ts --watch",
     "memory:clear": "bun scripts/memory-profile.ts --clear",
+    "logpush:setup": "bun scripts/setup-logpush.ts",
     "db:migrate:d1": "bun --bun drizzle-kit migrate --config=drizzle.config.d1.ts",
     "db:push:d1": "bun --bun drizzle-kit push --config=drizzle.config.d1.ts",
     "db:studio:d1": "bun drizzle-kit studio --config=drizzle.config.d1.ts",
