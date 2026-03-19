@@ -133,8 +133,8 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     resolutionMultipliers: {
       '0.5K': 0.75,
       '1K': 1,
-      '2K': 1,
-      '4K': micros(2),
+      '2K': 1.5,
+      '4K': 2,
     },
     surcharges: {
       webSearch: micros(15_000),
@@ -148,8 +148,8 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     resolutionMultipliers: {
       '0.5K': 0.75,
       '1K': 1,
-      '2K': 1,
-      '4K': micros(2),
+      '2K': 1.5,
+      '4K': 2,
     },
     surcharges: {
       webSearch: micros(15_000),
@@ -161,7 +161,7 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     basePrice: micros(150_000),
     unit: 'per_image',
     resolutionMultipliers: {
-      '4K': micros(2),
+      '4K': 2,
     },
     surcharges: {
       webSearch: micros(15_000),
@@ -173,7 +173,7 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     basePrice: micros(150_000),
     unit: 'per_image',
     resolutionMultipliers: {
-      '4K': micros(2),
+      '4K': 2,
     },
     surcharges: {
       webSearch: micros(15_000),
@@ -364,4 +364,4 @@ export const AUDIO_PRICING: Record<string, AudioPricing> = {
   },
 };
 
-export const PRICING_LAST_UPDATED = '2026-03-19T05:33:48.851Z';
+export const PRICING_LAST_UPDATED = '2026-03-19T05:54:07.400Z';

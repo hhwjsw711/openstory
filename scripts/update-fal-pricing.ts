@@ -117,11 +117,11 @@ function classifyEndpoint(id: string): 'image' | 'video' | 'audio' | 'unknown' {
 
 const IMAGE_OVERRIDES: Record<string, Partial<BuilderImagePricing>> = {
   'fal-ai/nano-banana-2': {
-    resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1, '4K': 2 },
+    resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1.5, '4K': 2 },
     surcharges: { webSearch: m(0.015) },
   },
   'fal-ai/nano-banana-2/edit': {
-    resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1, '4K': 2 },
+    resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1.5, '4K': 2 },
     surcharges: { webSearch: m(0.015) },
   },
   'fal-ai/nano-banana-pro': {
