@@ -59,6 +59,8 @@ export interface VariantWorkflowInput extends Partial<SequenceWorkflowContext> {
   numImages?: number;
   seed?: number;
   frameId?: string;
+  /** Sequence aspect ratio — drives variant grid layout */
+  aspectRatio?: AspectRatio;
   /** Scene description from frame.metadata.prompts.visual.fullPrompt */
   scenePrompt?: string;
   /** Character reference sheets for visual consistency */
@@ -293,6 +295,8 @@ export interface UpscaleVariantWorkflowInput extends SequenceWorkflowContext {
   croppedTileUrl: string;
   /** R2 path of the cropped tile (for replacement) */
   croppedTilePath: string;
+  /** Sequence aspect ratio — determines output image size for upscale */
+  aspectRatio?: AspectRatio;
   /** Character reference sheets for visual consistency during upscale */
   characterReferences?: ReferenceImageDescription[];
   /** Location reference images for environment consistency during upscale */

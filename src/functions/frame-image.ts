@@ -13,7 +13,10 @@ import {
   safeTextToImageModel,
   safeImageToVideoModel,
 } from '@/lib/ai/models';
-import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import {
+  aspectRatioToImageSize,
+  getVariantGridConfig,
+} from '@/lib/constants/aspect-ratios';
 import {
   estimateImageCost,
   estimateStoryboardCost,
@@ -237,6 +240,8 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       { errorMessage: 'Insufficient credits for variant generation' }
     );
 
+    const gridConfig = getVariantGridConfig(sequence.aspectRatio);
+
     const workflowInput: VariantWorkflowInput = {
       userId: user.id,
       teamId: sequence.teamId,
@@ -245,7 +250,8 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       thumbnailUrl: frame.thumbnailUrl,
       scenePrompt: frame.metadata?.prompts?.visual?.fullPrompt,
       model: data.model,
-      imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
+      aspectRatio: sequence.aspectRatio,
+      imageSize: data.imageSize || gridConfig.imageSize,
       numImages,
       seed: data.seed,
       characterReferences,
@@ -271,11 +277,14 @@ const selectVariantInputSchema = z.object({
   variantIndex: z.number().int().min(0).max(8),
 });
 
-/** Convert 0-8 grid index to 1-based row/col in a 3x3 grid. */
-function indexToRowCol(index: number): { row: number; col: number } {
+/** Convert flat grid index to 1-based row/col given the number of columns. */
+function indexToRowCol(
+  index: number,
+  cols: number
+): { row: number; col: number } {
   return {
-    row: Math.floor(index / 3) + 1,
-    col: (index % 3) + 1,
+    row: Math.floor(index / cols) + 1,
+    col: (index % cols) + 1,
   };
 }
 
@@ -289,12 +298,22 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no variant image to select from');
     }
 
-    const { row, col } = indexToRowCol(data.variantIndex);
+    const gridConfig = getVariantGridConfig(sequence.aspectRatio);
+
+    if (data.variantIndex >= gridConfig.count) {
+      throw new Error(
+        `Variant index ${data.variantIndex} exceeds grid count ${gridConfig.count}`
+      );
+    }
+
+    const { row, col } = indexToRowCol(data.variantIndex, gridConfig.cols);
 
     const cropResult = await cropTileFromGrid({
       gridImageUrl: frame.variantImageUrl,
       row,
       col,
+      gridCols: gridConfig.cols,
+      gridRows: gridConfig.rows,
     });
 
     const uploadResult = await uploadImageBufferToStorage({
@@ -340,7 +359,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
 
     await requireCredits(
       sequence.teamId,
-      estimateImageCost('nano_banana_2', '16:9', 1),
+      estimateImageCost('nano_banana_2', sequence.aspectRatio, 1),
       { errorMessage: 'Insufficient credits for variant upscale' }
     );
 
@@ -351,6 +370,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       frameId: frame.id,
       croppedTileUrl: uploadResult.url,
       croppedTilePath: uploadResult.path || '',
+      aspectRatio: sequence.aspectRatio,
       characterReferences,
       locationReferences,
     };

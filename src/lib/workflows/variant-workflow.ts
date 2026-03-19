@@ -1,10 +1,12 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
+import {
+  DEFAULT_IMAGE_SIZE,
+  getVariantGridConfig,
+} from '@/lib/constants/aspect-ratios';
 import { updateFrame } from '@/lib/db/helpers/frames';
 import {
   generateImageWithProvider,
@@ -18,6 +20,7 @@ import {
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
@@ -53,7 +56,11 @@ export const generateVariantWorkflow = createWorkflow(
         );
 
         const model = input.model || DEFAULT_IMAGE_MODEL;
-        const imageSize = input.imageSize ?? DEFAULT_IMAGE_SIZE;
+        const gridConfig = input.aspectRatio
+          ? getVariantGridConfig(input.aspectRatio)
+          : null;
+        const imageSize =
+          gridConfig?.imageSize ?? input.imageSize ?? DEFAULT_IMAGE_SIZE;
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
@@ -84,15 +91,20 @@ export const generateVariantWorkflow = createWorkflow(
           );
         }
 
-        // Build prompt with scene context
-        const basePrompt = getVariantImagePrompt(imageSize, input.scenePrompt);
+        // Build prompt with scene context and grid layout
+        const basePrompt = getVariantImagePrompt(
+          imageSize,
+          input.scenePrompt,
+          gridConfig
+            ? { cols: gridConfig.cols, rows: gridConfig.rows }
+            : undefined
+        );
 
         // ALL references go through buildReferenceImagePrompt so each URL is labeled in the prompt
         const allReferences: ReferenceImageDescription[] = [
           {
             referenceImageUrl: input.thumbnailUrl,
-            description:
-              'Primary source scene — generate 9 variant shots from this image',
+            description: `Primary source scene — generate ${gridConfig?.count ?? 9} variant shots from this image`,
             role: 'primary',
           },
           ...(input.characterReferences ?? []),
