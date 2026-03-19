@@ -3,6 +3,7 @@
  */
 import {
   AUDIO_MODELS,
+  EDIT_ENDPOINTS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
 } from '@/lib/ai/models';
@@ -13,7 +14,9 @@ export function getFalEndpointIds(): string[] {
     .map((m) => m.id)
     .filter((id) => id !== 'letzai/image'); // LetzAI is not a fal model
   const audio = Object.values(AUDIO_MODELS).map((m) => m.id);
-  const edit = ['fal-ai/nano-banana-pro/edit'];
+  const edit = Object.values(EDIT_ENDPOINTS).filter(
+    (v): v is string => v !== undefined
+  );
 
   return [...new Set([...video, ...image, ...edit, ...audio])];
 }

@@ -7,6 +7,7 @@
 import { getEnv } from '#env';
 import {
   AUDIO_MODELS,
+  EDIT_ENDPOINTS,
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
 } from '@/lib/ai/models';
@@ -90,8 +91,10 @@ const imageEndpointIds = new Set<string>(
     .map((m) => m.id)
     .filter((id) => id !== 'letzai/image')
 );
-// Include edit endpoints
-imageEndpointIds.add('fal-ai/nano-banana-pro/edit');
+// Include edit endpoints from the single source of truth
+for (const editId of Object.values(EDIT_ENDPOINTS)) {
+  if (editId) imageEndpointIds.add(editId);
+}
 
 const videoEndpointIds = new Set<string>(
   Object.values(IMAGE_TO_VIDEO_MODELS).map((m) => m.id)
@@ -114,6 +117,10 @@ function classifyEndpoint(id: string): 'image' | 'video' | 'audio' | 'unknown' {
 
 const IMAGE_OVERRIDES: Record<string, Partial<BuilderImagePricing>> = {
   'fal-ai/nano-banana-2': {
+    resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1, '4K': 2 },
+    surcharges: { webSearch: m(0.015) },
+  },
+  'fal-ai/nano-banana-2/edit': {
     resolutionMultipliers: { '0.5K': 0.75, '1K': 1, '2K': 1, '4K': 2 },
     surcharges: { webSearch: m(0.015) },
   },
@@ -494,7 +501,7 @@ function serializeValue(value: unknown, indent: number): string {
 
   if (value === undefined || value === null) return 'undefined';
   if (value instanceof MicrosValue)
-    return `${formatMicros(value.value)} as Microdollars`;
+    return `micros(${formatMicros(value.value)})`;
   if (typeof value === 'string') return `'${escapeString(value)}'`;
   if (typeof value === 'number' || typeof value === 'boolean')
     return String(value);
@@ -539,7 +546,7 @@ const now = new Date().toISOString();
 const output = `// AUTO-GENERATED — do not edit manually. Run: bun scripts/update-fal-pricing.ts
 // Manual overrides (multipliers, matrices) are maintained in scripts/update-fal-pricing.ts
 
-import type { Microdollars } from '@/lib/billing/money';
+import { type Microdollars, micros } from '@/lib/billing/money';
 
 // ============================================================================
 // Image Pricing (all prices in microdollars: 1 USD = 1,000,000)
