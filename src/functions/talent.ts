@@ -30,8 +30,11 @@ import {
   getPathFromUrl,
   getPublicUrl,
 } from '@/lib/storage/buckets';
-import { deleteFile, moveFile } from '#storage';
-import { getExtensionFromUrl } from '@/lib/utils/file';
+import { deleteFile, moveFile, getSignedUploadUrl } from '#storage';
+import {
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -302,6 +305,74 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
     if (!deleted) {
       throw new Error('Failed to delete media');
     }
+
+    return { success: true };
+  });
+
+// Presigned Upload
+
+const mediaTypeSchema = z.enum(['image', 'video', 'recording']);
+
+export const presignTalentUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        filename: z.string().min(1),
+        type: mediaTypeSchema.optional(),
+        talentId: ulidSchema.optional(),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (data.talentId) {
+      await requireTalentOwnership(data.talentId, context.teamId);
+    }
+
+    const ext = getExtensionFromUrl(data.filename);
+    const mediaId = generateId();
+    const contentType = getMimeTypeFromExtension(ext);
+
+    const storagePath = data.talentId
+      ? `${context.teamId}/${data.talentId}/${mediaId}.${ext}`
+      : `${context.teamId}/temp/${mediaId}.${ext}`;
+
+    const result = await getSignedUploadUrl(
+      STORAGE_BUCKETS.TALENT,
+      storagePath,
+      contentType
+    );
+
+    return { ...result, mediaId };
+  });
+
+export const finalizeTalentUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        talentId: ulidSchema,
+        type: mediaTypeSchema,
+        mediaId: ulidSchema,
+        publicUrl: z.string().url(),
+        path: z.string().min(1),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (!data.path.startsWith(`talent/${context.teamId}/`)) {
+      throw new Error('Invalid storage path');
+    }
+
+    await requireTalentOwnership(data.talentId, context.teamId);
+
+    await createTalentMediaRecord({
+      id: data.mediaId,
+      talentId: data.talentId,
+      type: data.type,
+      url: data.publicUrl,
+      path: data.path,
+    });
 
     return { success: true };
   });

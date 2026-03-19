@@ -8,8 +8,11 @@ import { authWithTeamMiddleware } from './middleware';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
 import { STORAGE_BUCKETS, getPublicUrl } from '@/lib/storage/buckets';
-import { moveFile } from '#storage';
-import { getExtensionFromUrl } from '@/lib/utils/file';
+import { moveFile, getSignedUploadUrl } from '#storage';
+import {
+  getExtensionFromUrl,
+  getMimeTypeFromExtension,
+} from '@/lib/utils/file';
 import { generateId } from '@/lib/db/id';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
@@ -165,6 +168,62 @@ export const deleteLibraryLocationFn = createServerFn({ method: 'POST' })
     await requireLocation(data.locationId, context.teamId);
     await requireTeamManagement(context.user.id, context.teamId);
     await deleteLibraryLocation(data.locationId);
+    return { success: true };
+  });
+
+export const presignLocationUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        filename: z.string().min(1),
+        locationId: ulidSchema.optional(),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (data.locationId) {
+      await requireLocation(data.locationId, context.teamId);
+    }
+
+    const ext = getExtensionFromUrl(data.filename);
+    const uploadId = generateId();
+    const contentType = getMimeTypeFromExtension(ext);
+
+    const storagePath = data.locationId
+      ? `${context.teamId}/library/${uploadId}.${ext}`
+      : `${context.teamId}/temp/${uploadId}.${ext}`;
+
+    return getSignedUploadUrl(
+      STORAGE_BUCKETS.LOCATIONS,
+      storagePath,
+      contentType
+    );
+  });
+
+export const finalizeLocationUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        locationId: ulidSchema,
+        publicUrl: z.string().url(),
+        path: z.string().min(1),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (!data.path.startsWith(`locations/${context.teamId}/`)) {
+      throw new Error('Invalid storage path');
+    }
+
+    await requireLocation(data.locationId, context.teamId);
+
+    await updateLibraryLocation(data.locationId, {
+      referenceImageUrl: data.publicUrl,
+      referenceImagePath: data.path,
+    });
+
     return { success: true };
   });
 
