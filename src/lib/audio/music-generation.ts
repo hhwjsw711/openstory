@@ -8,9 +8,10 @@ import {
   type AudioModelConfig,
 } from '@/lib/ai/models';
 import { createFalClient } from '@fal-ai/client';
+import { getEnv } from '#env';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
-import { apiKeyService } from '../byok/api-key.service';
+import type { ScopedDb } from '@/lib/db/scoped';
 
 export const generateMusicOptionsSchema = z.object({
   prompt: z.string().min(1),
@@ -23,7 +24,7 @@ export const generateMusicOptionsSchema = z.object({
 });
 
 export type GenerateMusicOptions = {
-  teamId: string;
+  scopedDb?: ScopedDb;
   /** Style/mood prompt for the music (e.g., "tense orchestral, dark atmosphere") */
   prompt: string;
   /** Comma-separated genre tags (e.g., "orchestral, ambient, cinematic") */
@@ -206,7 +207,9 @@ async function callFalAudio(
     }
   );
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', options.teamId);
+  const falApiKeyInfo = options.scopedDb
+    ? await options.scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const fal = createFalClient({
     credentials: falApiKeyInfo.key,
   });

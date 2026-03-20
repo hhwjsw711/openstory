@@ -8,30 +8,29 @@
  * to maintain consistency with the cast.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { createSequenceCharacter } from '@/lib/db/helpers/sequence-characters';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   CharacterBibleWorkflowInput,
   TalentCharacterMatch,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const characterBibleWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<CharacterBibleWorkflowInput>
-  ): Promise<CharacterMinimal[]> => {
+export const characterBibleWorkflow = createScopedWorkflow<
+  CharacterBibleWorkflowInput,
+  CharacterMinimal[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { talentMatches = [] } = input;
 
@@ -70,24 +69,25 @@ export const characterBibleWorkflow = createWorkflow(
           // Generate character sheet image
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
-          const imageResult = await generateImageWithProvider({
-            model,
-            prompt,
-            imageSize: 'landscape_16_9' as const,
-            numImages: 1,
-            resolution: '2K' as const,
-            referenceImageUrls:
-              referenceUrls.length > 0 ? referenceUrls : undefined,
-            traceName: 'character-bible-image',
-            teamId: input.teamId,
-          });
+          const imageResult = await generateImageWithProvider(
+            {
+              model,
+              prompt,
+              imageSize: 'landscape_16_9' as const,
+              numImages: 1,
+              resolution: '2K' as const,
+              referenceImageUrls:
+                referenceUrls.length > 0 ? referenceUrls : undefined,
+              traceName: 'character-bible-image',
+            },
+            { scopedDb }
+          );
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
-            teamId: input.teamId,
+            scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
-            userId: input.userId,
             description: `Character bible sheet (${model})`,
             metadata: { model, characterId: character.characterId },
             workflowName: 'CharacterBibleWorkflow',
@@ -122,7 +122,7 @@ export const characterBibleWorkflow = createWorkflow(
             );
 
             // Create the characters record with flattened fields
-            const created = await createSequenceCharacter({
+            const created = await scopedDb.characters.create({
               id,
               sequenceId: input.sequenceId,
               characterId: character.characterId,

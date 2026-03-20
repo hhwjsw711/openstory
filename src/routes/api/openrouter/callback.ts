@@ -6,10 +6,9 @@
  * We exchange the code for an API key and redirect the user back to settings.
  */
 
-import { createFileRoute } from '@tanstack/react-router';
+import { authWithTeamRequestMiddleware } from '@/functions/middleware';
 import { completeOpenRouterOAuth } from '@/functions/openrouter-oauth-callback';
-import { requireUser } from '@/lib/auth/action-utils';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { createFileRoute } from '@tanstack/react-router';
 
 function redirectResponse(path: string): Response {
   return new Response(null, {
@@ -20,8 +19,9 @@ function redirectResponse(path: string): Response {
 
 export const Route = createFileRoute('/api/openrouter/callback')({
   server: {
+    middleware: [authWithTeamRequestMiddleware],
     handlers: {
-      GET: async ({ request }) => {
+      GET: async ({ request, context }) => {
         const url = new URL(request.url);
         const code = url.searchParams.get('code');
 
@@ -32,16 +32,7 @@ export const Route = createFileRoute('/api/openrouter/callback')({
         }
 
         try {
-          const user = await requireUser();
-          const team = await getUserDefaultTeam(user.id);
-
-          if (!team) {
-            return redirectResponse(
-              '/settings/api-keys?error=openrouter_oauth_no_team'
-            );
-          }
-
-          await completeOpenRouterOAuth(team.teamId, code);
+          await completeOpenRouterOAuth(context.teamId, code, context.scopedDb);
 
           return redirectResponse(
             '/settings/api-keys?success=openrouter_connected'

@@ -1,42 +1,26 @@
-import { createServerFn, createServerOnlyFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import {
-  authMiddleware,
-  authWithTeamMiddleware,
-  sequenceAccessMiddleware,
-} from './middleware';
-import {
-  createSequenceSchema,
-  updateSequenceSchema,
-} from '@/lib/schemas/sequence.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-import {
-  createSequence,
-  deleteSequence,
-  getSequencesByTeam,
-  updateSequence,
-  updateSequenceMusicPrompt,
-  updateSequenceStatus,
-} from '@/lib/db/helpers/sequences';
-import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
-import {
-  DEFAULT_ANALYSIS_MODEL,
-  getAnalysisModelById,
-} from '@/lib/ai/models.config';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_MUSIC_MODEL,
   DEFAULT_VIDEO_MODEL,
-  safeTextToImageModel,
-  safeImageToVideoModel,
   isValidAudioModel,
+  safeImageToVideoModel,
+  safeTextToImageModel,
 } from '@/lib/ai/models';
-import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import {
+  DEFAULT_ANALYSIS_MODEL,
+  getAnalysisModelById,
+} from '@/lib/ai/models.config';
+import { requireTeamMemberAccess } from '@/lib/auth/action-utils';
 import { estimateStoryboardCost } from '@/lib/billing/cost-estimation';
 import { usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
+import { DEFAULT_ASPECT_RATIO } from '@/lib/constants/aspect-ratios';
+import type { Frame } from '@/lib/db/schema';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import {
+  createSequenceSchema,
+  updateSequenceSchema,
+} from '@/lib/schemas/sequence.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   MergeVideoWorkflowInput,
@@ -44,15 +28,15 @@ import type {
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
-import { sequences, type Frame } from '@/lib/db/schema';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getDb } from '#db-client';
-import { eq } from 'drizzle-orm';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
 
 export const getSequencesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getSequencesByTeam(context.teamId);
+    return context.scopedDb.sequences.list();
   });
 
 export const getSequenceFn = createServerFn({ method: 'GET' })
@@ -94,7 +78,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
     }
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(imageModel, DEFAULT_IMAGE_MODEL),
         aspectRatio,
@@ -109,9 +93,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
 
     return Promise.all(
       analysisModels.map(async (modelId) => {
-        const sequence = await createSequence({
-          teamId,
-          userId: context.user.id,
+        const sequence = await context.scopedDb.sequences.create({
           title: data.title || 'Untitled Sequence',
           script: data.script,
           styleId,
@@ -174,9 +156,8 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
       updateData.aspectRatio !== undefined ||
       updateData.analysisModel !== undefined;
 
-    const sequence = await updateSequence({
+    const sequence = await context.scopedDb.sequences.update({
       id: sequenceId,
-      userId: context.user.id,
       aspectRatio: updateData.aspectRatio ?? DEFAULT_ASPECT_RATIO,
       ...updateData,
       status: needsRegeneration ? 'processing' : undefined,
@@ -184,7 +165,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
 
     if (needsRegeneration) {
       await requireCredits(
-        context.teamId,
+        context.scopedDb,
         estimateStoryboardCost({
           imageModel: safeTextToImageModel(
             sequence.imageModel,
@@ -242,7 +223,7 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     }
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(
           sequence.imageModel,
@@ -261,10 +242,7 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     );
 
     // Reset status to processing before triggering
-    await getDb()
-      .update(sequences)
-      .set({ status: 'processing', updatedAt: new Date() })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateStatus('processing');
 
     const workflowInput: StoryboardWorkflowInput = {
       userId: user.id,
@@ -285,33 +263,14 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-// ============================================================================
-// Delete Sequence
-// ============================================================================
-
-/** Delete a sequence (requires admin role) */
-export const deleteSequenceFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
-  .handler(async ({ data, context }) => {
-    const sequence = await getSequenceById(data.sequenceId);
-
-    if (!sequence) {
-      throw new Error('Sequence not found');
-    }
-
-    await requireTeamMemberAccess(context.user.id, sequence.teamId, 'admin');
-    await deleteSequence(data.sequenceId);
-
-    return { success: true };
-  });
-
 /** Archive a sequence (hides from list, lets in-flight workflows finish) */
 export const archiveSequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
   .handler(async ({ context }) => {
-    await updateSequenceStatus(context.sequence.id, 'archived');
+    await context.scopedDb
+      .sequence(context.sequence.id)
+      .updateStatus('archived');
     return { success: true };
   });
 
@@ -338,50 +297,6 @@ export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   });
 }
 
-/** Shared helper to trigger music generation for a sequence */
-export const triggerMusicGeneration = createServerOnlyFn(
-  async (params: {
-    sequence: typeof sequences.$inferSelect;
-    userId: string;
-    frames: Frame[];
-  }): Promise<void> => {
-    const { sequence, userId, frames } = params;
-
-    const effectivePrompt = sequence.musicPrompt;
-    const effectiveTags = sequence.musicTags;
-
-    const totalDuration = frames.reduce((sum, frame) => {
-      const seconds = frame.durationMs
-        ? frame.durationMs / 1000
-        : (frame.metadata?.metadata?.durationSeconds ?? 10);
-      return sum + seconds;
-    }, 0);
-
-    const baseInput = {
-      userId,
-      teamId: sequence.teamId,
-      sequenceId: sequence.id,
-      duration: totalDuration || 30,
-    };
-
-    const musicInput: MusicWorkflowInput =
-      effectivePrompt && effectiveTags
-        ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
-        : { ...baseInput, scenes: buildSceneSummaries(frames) };
-
-    await getDb()
-      .update(sequences)
-      .set({
-        musicStatus: 'generating',
-        musicError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequence.id));
-
-    await triggerWorkflow('/music', musicInput);
-  }
-);
-
 /**
  * Trigger sequence-level music generation.
  * Uses pre-generated prompt/tags when available, otherwise builds from frame audio specs.
@@ -403,14 +318,16 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     const { sequence, user } = context;
 
     if (data.prompt || data.tags) {
-      await updateSequenceMusicPrompt(
+      await context.scopedDb.sequences.updateMusicPrompt(
         sequence.id,
         data.prompt ?? sequence.musicPrompt ?? '',
         data.tags ?? sequence.musicTags ?? ''
       );
     }
 
-    const allFrames = await getSequenceFrames(data.sequenceId);
+    const allFrames = await context.scopedDb.frames.listBySequence(
+      data.sequenceId
+    );
 
     // For explicit calls with overrides, build input directly
     const effectivePrompt = data.prompt ?? sequence.musicPrompt;
@@ -437,14 +354,10 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
         ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
         : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
 
-    await getDb()
-      .update(sequences)
-      .set({
-        musicStatus: 'generating',
-        musicError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateMusicFields({
+      musicStatus: 'generating',
+      musicError: null,
+    });
 
     await triggerWorkflow('/music', musicInput);
 
@@ -465,7 +378,7 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       throw new Error('Music must be generated before merging');
     }
 
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
 
     if (frames.length === 0) {
       throw new Error('No frames found in sequence');
@@ -481,18 +394,14 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, usdToMicros(0.01), {
+    await requireCredits(context.scopedDb, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 
-    await getDb()
-      .update(sequences)
-      .set({
-        mergedVideoStatus: 'merging',
-        mergedVideoError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sequences.id, sequence.id));
+    await context.scopedDb.sequence(sequence.id).updateMergedVideoFields({
+      mergedVideoStatus: 'merging',
+      mergedVideoError: null,
+    });
 
     const videoUrls = frames
       .sort((a, b) => a.orderIndex - b.orderIndex)

@@ -3,7 +3,6 @@
  * Verifies sequence data, clears existing frames, then invokes script analysis
  */
 
-import { getDb } from '#db-client';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -14,21 +13,19 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
-import { deleteFrame, getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getSequenceForUser } from '@/lib/db/helpers/sequences';
-import { sequences, StyleConfigSchema, styles } from '@/lib/db/schema';
+import { StyleConfigSchema } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
-import { eq } from 'drizzle-orm';
 
-export const generateStoryboardWorkflow = createWorkflow(
-  async (context: WorkflowContext<StoryboardWorkflowInput>) => {
+export const generateStoryboardWorkflow =
+  createScopedWorkflow<StoryboardWorkflowInput>(async (context, scopedDb) => {
     const input = context.requestPayload;
+
+    const { sequenceId, teamId, userId } = input;
 
     console.log('[StoryboardWorkflow] Input received:', {
       sequenceId: input.sequenceId,
@@ -36,9 +33,14 @@ export const generateStoryboardWorkflow = createWorkflow(
       userId: input.userId,
       autoGenerateMotion: input.autoGenerateMotion,
     });
+    if (!sequenceId || !teamId || !userId) {
+      throw new WorkflowValidationError(
+        'Sequence ID, team ID, and user ID are required'
+      );
+    }
+    const seq = scopedDb.sequence(sequenceId);
 
     const {
-      sequenceId,
       script,
       aspectRatio,
       styleConfig,
@@ -48,10 +50,8 @@ export const generateStoryboardWorkflow = createWorkflow(
     } = await context.run('verify-clear-and-start-processing', async () => {
       validateSequenceAuth(input);
 
-      const sequence = await getSequenceForUser({
-        sequenceId: input.sequenceId,
-        teamId: input.teamId,
-        userId: input.userId,
+      const sequence = await scopedDb.sequences.getForUser({
+        sequenceId,
       });
 
       if (!sequence.script || sequence.script.trim().length === 0) {
@@ -62,21 +62,18 @@ export const generateStoryboardWorkflow = createWorkflow(
         throw new WorkflowValidationError('Sequence has no style selected');
       }
 
-      const style = await getDb().query.styles.findFirst({
-        where: eq(styles.id, sequence.styleId),
-      });
+      const style = await scopedDb.styles.getById(sequence.styleId);
 
       if (!style) {
         throw new WorkflowValidationError('No style found');
       }
 
-      const existingFrames = await getSequenceFrames(input.sequenceId);
-      await Promise.all(existingFrames.map((frame) => deleteFrame(frame.id)));
+      const existingFrames = await scopedDb.frames.listBySequence(sequenceId);
+      await Promise.all(
+        existingFrames.map((frame) => scopedDb.frames.delete(frame.id))
+      );
 
-      await getDb()
-        .update(sequences)
-        .set({ status: 'processing', updatedAt: new Date() })
-        .where(eq(sequences.id, input.sequenceId));
+      await seq.updateStatus('processing');
 
       return {
         sequenceId: sequence.id,
@@ -125,5 +122,4 @@ export const generateStoryboardWorkflow = createWorkflow(
         sequenceId,
       });
     });
-  }
-);
+  });

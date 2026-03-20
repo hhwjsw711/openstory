@@ -5,6 +5,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getTransactionsFn } from '@/functions/billing';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { CreditCard, ExternalLink } from 'lucide-react';
 import React from 'react';
@@ -16,32 +17,10 @@ type TransactionData = {
   balanceAfter: number;
   description: string | null;
   metadata?: { receiptUrl?: string } | null;
-  createdAt: string;
-};
-
-type TransactionApiResponse = {
-  success: boolean;
-  data?: { transactions: TransactionData[]; total: number };
-  error?: { message?: string };
+  createdAt: string | Date;
 };
 
 const PAGE_SIZE = 50;
-
-async function fetchTransactions({
-  limit,
-  offset,
-}: {
-  limit: number;
-  offset: number;
-}): Promise<{ transactions: TransactionData[]; total: number }> {
-  const res = await fetch(
-    `/api/billing/transactions?limit=${limit}&offset=${offset}`
-  );
-  const json: TransactionApiResponse = await res.json();
-  if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch transactions');
-  return json.data;
-}
 
 function TransactionRow({ tx }: { tx: TransactionData }) {
   return (
@@ -96,7 +75,9 @@ export function TransactionSettings() {
   } = useInfiniteQuery({
     queryKey: ['billing-transactions'],
     queryFn: ({ pageParam }) =>
-      fetchTransactions({ limit: PAGE_SIZE, offset: pageParam }),
+      getTransactionsFn({
+        data: { limit: PAGE_SIZE, offset: pageParam },
+      }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.flatMap((p) => p.transactions).length;
