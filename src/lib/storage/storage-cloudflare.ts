@@ -87,17 +87,19 @@ export async function getSignedUploadUrl(
   bucket: StorageBucket,
   path: string,
   contentType: string,
-  expiresIn = 600
+  _expiresIn = 600
 ): Promise<{
   uploadUrl: string;
   publicUrl: string;
   path: string;
   contentType: string;
 }> {
-  // R2 bindings don't support presigned URLs — use S3 SDK
-  const { getSignedUploadUrl: s3GetSignedUploadUrl } =
-    await import('./storage-s3');
-  return s3GetSignedUploadUrl(bucket, path, contentType, expiresIn);
+  // R2 bindings don't support presigned URLs — proxy through the worker instead
+  const key = buildR2Key(bucket, path);
+  const params = new URLSearchParams({ bucket, path: key, contentType });
+  const uploadUrl = `/api/storage/upload?${params}`;
+  const publicUrl = getPublicUrl(bucket, path);
+  return { uploadUrl, publicUrl, path: key, contentType };
 }
 
 export async function deleteFile(
