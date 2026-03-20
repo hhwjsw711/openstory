@@ -20,12 +20,12 @@ import {
   resolveUserTeam,
   type ScopedDb,
 } from '@/lib/db/scoped';
+import { NotFoundError, OpenStoryError } from '@/lib/errors';
+import { emitLog } from '@/lib/observability/structured-log';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { Frame, Sequence } from '@/types/database';
 import { createMiddleware } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { emitLog } from '@/lib/observability/structured-log';
-import { OpenStoryError } from '@/lib/errors';
 import { zodValidator } from '@tanstack/zod-adapter';
 import type Stripe from 'stripe';
 import { z } from 'zod';
@@ -373,7 +373,7 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
     const sequence = await context.scopedDb.sequences.getById(data.sequenceId);
 
     if (!sequence) {
-      throw new Error('Sequence not found');
+      throw new NotFoundError('Sequence not found');
     }
 
     return next({
@@ -399,11 +399,11 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
     );
 
     if (!frameData || frameData.sequenceId !== data.sequenceId) {
-      throw new Error('Frame not found in this sequence');
+      throw new NotFoundError('Frame not found in this sequence');
     }
 
     if (frameData.sequence.teamId !== context.teamId) {
-      throw new Error('Frame not found in this sequence');
+      throw new NotFoundError('Frame not found in this sequence');
     }
 
     // Extract sequence from frame data (using the partial sequence from the query)

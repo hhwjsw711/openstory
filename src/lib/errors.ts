@@ -72,6 +72,15 @@ export class AuthenticationError extends OpenStoryError {
   }
 }
 
+export class NotFoundError extends OpenStoryError {
+  constructor(
+    message: string = 'Not found',
+    details?: Record<string, unknown>
+  ) {
+    super(message, 'NOT_FOUND', 404, details);
+  }
+}
+
 export class InsufficientCreditsError extends OpenStoryError {
   constructor(
     message: string = 'Insufficient credits',

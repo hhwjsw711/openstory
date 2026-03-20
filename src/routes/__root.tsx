@@ -1,4 +1,5 @@
 import { getEnv } from '#env';
+import { DefaultNotFound } from '@/components/error/default-not-found';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { SITE_CONFIG } from '@/lib/marketing/constants';
@@ -135,7 +136,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     };
   },
   component: RootLayout,
-  notFoundComponent: NotFound,
+  notFoundComponent: DefaultNotFound,
   errorComponent: ErrorBoundary,
 });
 
@@ -153,18 +154,6 @@ function RootLayout() {
         <Scripts />
       </body>
     </html>
-  );
-}
-
-function NotFound() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-4xl font-bold">404</h1>
-      <p className="text-muted-foreground">Page not found</p>
-      <Button asChild>
-        <Link to="/">Go home</Link>
-      </Button>
-    </div>
   );
 }
 

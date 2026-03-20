@@ -1,5 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { DefaultNotFound } from './default-not-found';
 import { useRouter } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
@@ -8,14 +9,31 @@ type RouteErrorFallbackProps = ErrorComponentProps & {
   heading?: string;
 };
 
+function isNotFoundError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('not found') ||
+      message.includes('not_found') ||
+      message.includes('invalid ulid')
+    );
+  }
+  return false;
+}
+
 export const RouteErrorFallback: React.FC<RouteErrorFallbackProps> = ({
   error,
   reset,
   heading = 'Something went wrong',
 }) => {
   const router = useRouter();
+  const is404 = isNotFoundError(error);
 
   console.error(`[RouteError:${heading}]`, error);
+
+  if (is404) {
+    return <DefaultNotFound />;
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
