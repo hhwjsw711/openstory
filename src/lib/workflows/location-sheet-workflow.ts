@@ -88,7 +88,6 @@ export const locationSheetWorkflow = createScopedWorkflow<
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'location-sheet-image',
-          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -102,9 +101,7 @@ export const locationSheetWorkflow = createScopedWorkflow<
           `Generating reference for ${input.locationName} with model ${generationParams.model}`
         );
 
-        return await generateImageWithProvider({
-          ...generationParams,
-        });
+        return await generateImageWithProvider(generationParams, { scopedDb });
       }
     );
 

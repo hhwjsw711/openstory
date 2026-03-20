@@ -101,15 +101,17 @@ export const upscaleVariantWorkflow = createScopedWorkflow<
         : DEFAULT_IMAGE_SIZE;
 
       // Cropped tile is primary source (first), char/loc refs appended after
-      const result = await generateImageWithProvider({
-        model: 'nano_banana_2',
-        prompt: enhancedPrompt,
-        imageSize,
-        referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
-        numImages: 1,
-        outputFormat: 'png',
-        scopedDb,
-      });
+      const result = await generateImageWithProvider(
+        {
+          model: 'nano_banana_2',
+          prompt: enhancedPrompt,
+          imageSize,
+          referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
+          numImages: 1,
+          outputFormat: 'png',
+        },
+        { scopedDb }
+      );
       return {
         imageUrl: result.imageUrls[0],
         cost: result.metadata.cost ?? ZERO_MICROS,

@@ -123,16 +123,18 @@ export const locationBibleWorkflow = createScopedWorkflow<
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
           // Generate location reference image
-          const imageResult = await generateImageWithProvider({
-            model,
-            prompt,
-            imageSize: 'landscape_16_9' as const,
-            numImages: 1,
-            referenceImageUrls:
-              referenceUrls.length > 0 ? referenceUrls : undefined,
-            traceName: 'location-bible-image',
-            scopedDb,
-          });
+          const imageResult = await generateImageWithProvider(
+            {
+              model,
+              prompt,
+              imageSize: 'landscape_16_9' as const,
+              numImages: 1,
+              referenceImageUrls:
+                referenceUrls.length > 0 ? referenceUrls : undefined,
+              traceName: 'location-bible-image',
+            },
+            { scopedDb }
+          );
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({

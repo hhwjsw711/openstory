@@ -87,7 +87,6 @@ export const characterSheetWorkflow = createScopedWorkflow<
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'character-sheet-image',
-          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -99,9 +98,7 @@ export const characterSheetWorkflow = createScopedWorkflow<
         `Generating sheet for ${input.characterName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)

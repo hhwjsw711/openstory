@@ -19,7 +19,6 @@ import { falImage } from '@tanstack/ai-fal';
 import type { ScopedDb } from '@/lib/db/scoped';
 
 export type ImageGenerationParams = {
-  scopedDb?: ScopedDb; // scopedDb is used to resolve the API key for the image generation with BYOK
   model: TextToImageModel;
   prompt: string;
   imageSize?: ImageSize;
@@ -39,12 +38,6 @@ export type ImageGenerationParams = {
   systemVersion?: number;
   mode?: 'default' | 'sigma';
 
-  onQueueUpdate?: (update: {
-    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-    logs?: string[];
-    progress?: number;
-  }) => void;
-
   // Model-specific
   style?: string;
   colors?: Array<{ r: number; g: number; b: number }>;
@@ -55,6 +48,16 @@ export type ImageGenerationParams = {
   enablePromptExpansion?: boolean;
   referenceImageUrls?: string[];
   traceName?: string;
+};
+
+/** Non-serializable options passed separately from ImageGenerationParams */
+export type ImageGenerationOptions = {
+  scopedDb?: ScopedDb;
+  onQueueUpdate?: (update: {
+    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+    logs?: string[];
+    progress?: number;
+  }) => void;
 };
 
 export type ImageGenerationResult = {
@@ -112,7 +115,8 @@ function truncatePromptForModel(
 }
 
 export async function generateImageWithProvider(
-  params: ImageGenerationParams
+  params: ImageGenerationParams,
+  options?: ImageGenerationOptions
 ): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
 
@@ -132,7 +136,7 @@ export async function generateImageWithProvider(
   );
 
   try {
-    const result = await generateImageInternal(params, modelId);
+    const result = await generateImageInternal(params, modelId, options);
 
     span
       .update({
@@ -158,7 +162,8 @@ export async function generateImageWithProvider(
 // @TODO: TB Mar 2026 - this needs to be updated to be typesafe. Especially after the work put in on Tanstack AI to keep it safe
 async function generateImageInternal(
   params: ImageGenerationParams,
-  modelId: string
+  modelId: string,
+  options?: ImageGenerationOptions
 ): Promise<ImageGenerationResult> {
   const prompt = truncatePromptForModel(params.prompt, params.model);
   const startTime = Date.now();
@@ -167,8 +172,8 @@ async function generateImageInternal(
     return generateLetzaiImage(params, prompt);
   }
   // Get the fal API key - byok or global
-  const falApiKeyInfo = params.scopedDb
-    ? await params.scopedDb.apiKeys.resolveKey('fal')
+  const falApiKeyInfo = options?.scopedDb
+    ? await options.scopedDb.apiKeys.resolveKey('fal')
     : { key: getEnv().FAL_KEY, source: 'platform' as const };
 
   const modelOptions = buildFalModelOptions(params);

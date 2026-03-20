@@ -124,7 +124,6 @@ export const generateVariantWorkflow = createScopedWorkflow<
           seed: input.seed,
           referenceImageUrls: referenceUrls,
           traceName: 'variant-image',
-          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -141,9 +140,7 @@ export const generateVariantWorkflow = createScopedWorkflow<
         `Generating variant image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)

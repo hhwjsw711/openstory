@@ -69,17 +69,19 @@ export const characterBibleWorkflow = createScopedWorkflow<
           // Generate character sheet image
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
-          const imageResult = await generateImageWithProvider({
-            model,
-            prompt,
-            imageSize: 'landscape_16_9' as const,
-            numImages: 1,
-            resolution: '2K' as const,
-            referenceImageUrls:
-              referenceUrls.length > 0 ? referenceUrls : undefined,
-            traceName: 'character-bible-image',
-            scopedDb,
-          });
+          const imageResult = await generateImageWithProvider(
+            {
+              model,
+              prompt,
+              imageSize: 'landscape_16_9' as const,
+              numImages: 1,
+              resolution: '2K' as const,
+              referenceImageUrls:
+                referenceUrls.length > 0 ? referenceUrls : undefined,
+              traceName: 'character-bible-image',
+            },
+            { scopedDb }
+          );
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({

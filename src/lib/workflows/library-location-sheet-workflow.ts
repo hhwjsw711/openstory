@@ -59,7 +59,6 @@ export const libraryLocationSheetWorkflow = createScopedWorkflow<
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'library-location-sheet',
-          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -71,9 +70,7 @@ export const libraryLocationSheetWorkflow = createScopedWorkflow<
         `Generating 3x3 grid sheet for ${input.locationName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)

@@ -80,7 +80,6 @@ export const generateImageWorkflow = createScopedWorkflow<
           referenceImageUrls:
             input.referenceImages?.map((ref) => ref.referenceImageUrl) ?? [],
           traceName: 'frame-image',
-          scopedDb,
         } satisfies ImageGenerationParams;
       }
     );
@@ -98,9 +97,7 @@ export const generateImageWorkflow = createScopedWorkflow<
         '[ImageWorkflow]',
         `Generating image ${input.frameId} with model ${generationParams.model}`
       );
-      return generateImageWithProvider({
-        ...generationParams,
-      });
+      return generateImageWithProvider(generationParams, { scopedDb });
     });
 
     const imageCostMicros = imageResult.metadata.cost ?? ZERO_MICROS;

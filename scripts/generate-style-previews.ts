@@ -279,46 +279,53 @@ async function processTask(
   }
 
   try {
-    const result = await generateImageWithProvider({
-      model: DEFAULT_IMAGE_MODEL,
-      prompt: prompt,
-      imageSize: 'square_hd',
-      numImages: 1,
-      resolution: '2K',
-      onQueueUpdate: (update) => {
-        try {
-          // Always update task status when we receive an update
-          if (update.status === 'IN_PROGRESS' || update.status === 'IN_QUEUE') {
-            // Update with progress if available, otherwise just update status
-            // Pass undefined if no progress - the tracker will still update the status
-            progressTracker.updateTask(
-              displayKey,
-              'in_progress',
-              update.progress // This can be undefined, which is fine
-            );
-          } else if (update.status === 'COMPLETED') {
-            progressTracker.updateTask(displayKey, 'completed');
-          } else if (update.status === 'FAILED') {
-            progressTracker.updateTask(displayKey, 'failed');
-          }
-
-          // Debug: log what we're receiving (only when DEBUG env var is set)
-          // Use stderr to avoid interfering with progress display
-          if (process.env.DEBUG && update.status === 'IN_PROGRESS') {
-            process.stderr.write(
-              `[DEBUG] ${displayKey}: status=${update.status}, progress=${update.progress ?? 'none'}, logs=${update.logs?.length ?? 0}\n`
-            );
-          }
-        } catch (error) {
-          // Silently ignore progress update errors to prevent crashes
-          // Progress updates are non-critical
-          console.error(
-            'Failed to update task:',
-            error instanceof Error ? error.message : String(error)
-          );
-        }
+    const result = await generateImageWithProvider(
+      {
+        model: DEFAULT_IMAGE_MODEL,
+        prompt: prompt,
+        imageSize: 'square_hd',
+        numImages: 1,
+        resolution: '2K',
       },
-    });
+      {
+        onQueueUpdate: (update) => {
+          try {
+            // Always update task status when we receive an update
+            if (
+              update.status === 'IN_PROGRESS' ||
+              update.status === 'IN_QUEUE'
+            ) {
+              // Update with progress if available, otherwise just update status
+              // Pass undefined if no progress - the tracker will still update the status
+              progressTracker.updateTask(
+                displayKey,
+                'in_progress',
+                update.progress // This can be undefined, which is fine
+              );
+            } else if (update.status === 'COMPLETED') {
+              progressTracker.updateTask(displayKey, 'completed');
+            } else if (update.status === 'FAILED') {
+              progressTracker.updateTask(displayKey, 'failed');
+            }
+
+            // Debug: log what we're receiving (only when DEBUG env var is set)
+            // Use stderr to avoid interfering with progress display
+            if (process.env.DEBUG && update.status === 'IN_PROGRESS') {
+              process.stderr.write(
+                `[DEBUG] ${displayKey}: status=${update.status}, progress=${update.progress ?? 'none'}, logs=${update.logs?.length ?? 0}\n`
+              );
+            }
+          } catch (error) {
+            // Silently ignore progress update errors to prevent crashes
+            // Progress updates are non-critical
+            console.error(
+              'Failed to update task:',
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        },
+      }
+    );
 
     const imageUrl = result.imageUrls[0];
     if (imageUrl) {

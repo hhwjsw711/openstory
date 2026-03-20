@@ -88,7 +88,6 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
         numImages: 1,
         resolution: '2K',
         traceName: 'talent-sheet-image',
-        scopedDb,
       } satisfies ImageGenerationParams;
 
       // Only include referenceImageUrls if provided
@@ -96,7 +95,7 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
         generationParams.referenceImageUrls = input.referenceImageUrls;
       }
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for sheet generation (skip if team used own fal key)
@@ -187,7 +186,6 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
           imageSize: 'square_hd',
           numImages: 1,
           traceName: 'talent-headshot-image',
-          scopedDb,
         } satisfies ImageGenerationParams;
 
         // Only include referenceImageUrls if provided
@@ -195,7 +193,7 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
           generationParams.referenceImageUrls = input.referenceImageUrls;
         }
 
-        return await generateImageWithProvider(generationParams);
+        return await generateImageWithProvider(generationParams, { scopedDb });
       }
     );
 
