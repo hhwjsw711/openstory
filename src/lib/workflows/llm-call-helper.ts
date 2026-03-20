@@ -329,7 +329,6 @@ export async function durableStreamingSceneSplit<TInput>(
                 (event.scene.metadata?.durationSeconds || 3) * 1000
               ),
               thumbnailStatus: 'generating',
-              variantImageStatus: 'generating',
               videoStatus: config.autoGenerateMotion ? 'generating' : 'pending',
             } satisfies NewFrame);
 
@@ -398,7 +397,6 @@ export async function durableStreamingSceneSplit<TInput>(
               (scene.metadata?.durationSeconds || 3) * 1000
             ),
             thumbnailStatus: 'generating',
-            variantImageStatus: 'generating',
             videoStatus: config.autoGenerateMotion ? 'generating' : 'pending',
           }) satisfies NewFrame
       );

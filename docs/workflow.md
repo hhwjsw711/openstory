@@ -43,12 +43,10 @@ flowchart TD
     LocationSub --> LocSheets
     LocationSub --> VisualPrompts
 
-    subgraph "Phase 5 — Image + Variant Generation · ~1.5min"
+    subgraph "Phase 5 — Image Generation · ~1.5min"
         PersistVisual["<b>Persist Visual Prompts</b> · DB<br/>IN: scenesWithVisualPrompts[], frameMapping<br/>OUT: frames updated with prompts + continuity"]
         ImageGen["<b>Image Generation</b> · Fal.ai ×N scenes parallel<br/>IN: fullPrompt, imageModel, imageSize,<br/>characterRefs[], locationRefs[] per scene<br/>OUT: imageUrls[] (thumbnailUrl per frame)"]
-        VariantGen["<b>Variant Generation</b> · Fal.ai ×N scenes<br/>IN: thumbnailUrl, scenePrompt,<br/>characterRefs[], locationRefs[]<br/><i>awaited after each image — blocks pipeline</i>"]
         PersistVisual --> ImageGen
-        ImageGen --> VariantGen
     end
 
     CharSheets -->|"charactersWithSheets"| ImageGen
@@ -61,7 +59,6 @@ flowchart TD
         MotionPrompts --> MergeMotion
     end
 
-    VariantGen --> MotionPrompts
     VisualPrompts -->|"scenes"| MotionPrompts
 
     subgraph "Phase 7 — Music Design · ~1-2min"
@@ -98,11 +95,11 @@ flowchart TD
 
 ### Per-Scene Fan-Out Detail
 
-Image generation, variant generation, motion prompts, and motion generation each fan out to parallel sub-workflows per scene, then join before the next phase. Each sub-workflow is an independent QStash invocation with its own retries.
+Image generation, motion prompts, and motion generation each fan out to parallel sub-workflows per scene, then join before the next phase. Each sub-workflow is an independent QStash invocation with its own retries.
 
 ```mermaid
 flowchart LR
-    subgraph "Phase 5 — Image + Variant Generation · ~1.5min wall time"
+    subgraph "Phase 5 — Image Generation · ~1.5min wall time"
         direction LR
         ImgFork["Persist visual<br/>prompts to frames"] --> Img1["<b>Scene 1</b><br/>image workflow"]
         ImgFork --> Img2["<b>Scene 2</b><br/>image workflow"]
@@ -111,7 +108,7 @@ flowchart LR
         Img1 --> Var1["<b>Scene 1</b><br/>variant workflow"]
         Img2 --> Var2["<b>Scene 2</b><br/>variant workflow"]
         ImgDots --> VarDots["<b>···</b>"]
-        ImgN --> VarN["<b>Scene N</b><br/>variant workflow"]
+        ImgN --> VarN["<b>Scene N</b><br/> workflow"]
         Var1 --> ImgJoin["All images +<br/>variants complete"]
         Var2 --> ImgJoin
         VarDots --> ImgJoin
@@ -310,7 +307,7 @@ flowchart LR
 
 > **Phase number collision:** Character sheets emit phase 3, while location sheets and visual prompts both emit phase 4. This is intentional — they run in parallel, and the client uses the phase name (not number) for display.
 
-### Phase 5: Persist Visual Prompts + Image Generation + Variant Generation
+### Phase 5: Persist Visual Prompts + Image Generation
 
 **Step:** `update-frames-after-visual-prompts`
 
@@ -336,22 +333,6 @@ flowchart LR
 4. Uploads image to R2 storage
 5. Updates frame with `thumbnailUrl`, sets `thumbnailStatus` to `'completed'`
 6. Emits `generation.image:progress` with `status: 'completed'`
-
-**Variant generation** (sequential after each image, within the same per-scene callback):
-
-- After each successful image generation, `generateVariantWorkflow` is `await`ed per scene
-- The variant invoke is inside the same `Promise.all` map callback as the image invoke, so motion prompts (Phase 6) do not start until all images **and** their variants have completed
-- Uses the same visual prompt, character references, and location references as the original image
-- Generates an alternative image for A/B comparison
-- Failure-isolated: the result is never checked for `isFailed`, so a variant failure won't crash the pipeline — but the `await` still waits for it to finish
-- Emits `generation.variant-image:progress` events
-
-**Variant Workflow** (`src/lib/workflows/variant-workflow.ts`):
-
-1. Generates a variant image using a modified prompt
-2. Uploads to R2 storage
-3. Updates the frame with the variant image URL
-4. Emits `generation.variant-image:progress` with `status: 'completed'`
 
 ### Phase 6: Motion Prompt Generation
 
@@ -433,7 +414,7 @@ flowchart TD
     P1["Phase 1: Scene Splitting"] -->|"sceneId, sceneNumber,<br/>originalScript (extract, dialogue),<br/>metadata (title, durationSeconds,<br/>location, timeOfDay, storyBeat)"| P2
     P2["Phases 2+3: Extraction +<br/>Matching"] -->|"characterBible,<br/>locationBible<br/>(separate arrays)"| P3
     P3["Phases 3+4: Visual Prompts"] -->|"+ prompts.visual<br/>(fullPrompt, negativePrompt,<br/>components)<br/>+ continuity<br/>(characterTags, environmentTag,<br/>colorPalette, lightingSetup, styleTag)"| P5
-    P5["Phase 5: Images + Variants"] -->|"Frames get thumbnailUrl<br/>+ variant image<br/>(Scene object unchanged)"| P6
+    P5["Phase 5: Images"] -->|"Frames get thumbnailUrl<br/>(Scene object unchanged)"| P6
     P6["Phase 6: Motion Prompts"] -->|"+ prompts.motion<br/>(fullPrompt, components,<br/>parameters)<br/>+ snapped duration"| P7
     P7["Phase 7: Music Design"] -->|"+ musicDesign<br/>(presence, style,<br/>mood, atmosphere)"| P8
     P8["Phase 8: Motion + Music"] -->|"Sequence gets musicUrl,<br/>Frames get videoUrl"| Final["Complete Scene"]
@@ -499,7 +480,7 @@ The analyze-script workflow registers a `failureFunction` that:
 2. Updates sequence status to `'failed'` with the error message
 3. Emits `generation.failed` with the sanitized error
 
-Sub-workflows (image, variant, motion, music, character bible, location bible, talent matching, location matching) each have their own failure functions that update the relevant record's status to `'failed'`.
+Sub-workflows (image, motion, music, character bible, location bible, talent matching, location matching) each have their own failure functions that update the relevant record's status to `'failed'`.
 
 ### Retry Strategy
 
@@ -507,7 +488,6 @@ Sub-workflows (image, variant, motion, music, character bible, location bible, t
 | ---------------------------------- | ----------------- | ---------------------------------- |
 | Storyboard invoking analyze-script | 3                 | Exponential (`2^retried * 1000ms`) |
 | Image generation per scene         | 3                 | Exponential                        |
-| Variant generation per scene       | 3                 | Exponential                        |
 | Motion generation per scene        | 3                 | Exponential                        |
 | Music generation                   | 3                 | Exponential                        |
 | Individual `context.run()` steps   | Managed by QStash | Automatic                          |
@@ -546,10 +526,6 @@ Sub-workflows (image, variant, motion, music, character bible, location bible, t
 | `src/lib/workflows/motion-prompt-workflow.ts`          | Motion prompt sub-workflow (parallel per scene)           |
 | `src/lib/workflows/motion-prompt-scene-workflow.ts`    | Per-scene motion prompt LLM call                          |
 | `src/lib/workflows/music-prompt.schema.ts`             | Music prompt Zod schema + `reinforceInstrumentalTags()`   |
-| **Image + Variant Generation**                         |                                                           |
-| `src/lib/workflows/image-workflow.ts`                  | Image generation (Fal.ai)                                 |
-| `src/lib/workflows/variant-workflow.ts`                | Variant image generation (Fal.ai)                         |
-| `src/lib/workflows/upscale-variant-workflow.ts`        | Variant image upscaling                                   |
 | **Motion + Music Generation**                          |                                                           |
 | `src/lib/workflows/motion-workflow.ts`                 | Motion/video generation (Fal.ai)                          |
 | `src/lib/workflows/music-workflow.ts`                  | Music generation (Fal.ai)                                 |
