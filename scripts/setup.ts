@@ -10,7 +10,7 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import { execFileSync } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 const MIN_BUN_VERSION = '1.3.9';
@@ -2108,6 +2108,84 @@ async function main() {
 
       for (const { key, message, hint } of r2Keys) {
         await promptForKey(key, message, hint);
+      }
+    }
+  }
+
+  // Configure CORS on R2 bucket for presigned uploads (local dev & non-CF deploys)
+  // Cloudflare Workers use R2 bindings server-side, so CORS is not needed there.
+  if (
+    vars.has('R2_BUCKET_NAME') &&
+    vars.has('R2_ACCESS_KEY_ID') &&
+    vars.get('DEPLOY_PLATFORM') !== 'cloudflare'
+  ) {
+    const setupCors = checkCancel(
+      await p.confirm({
+        message:
+          'Configure CORS on R2 bucket? (required for direct uploads from browser)',
+        initialValue: true,
+      })
+    );
+
+    if (setupCors) {
+      const bucketName = vars.get('R2_BUCKET_NAME');
+      if (!bucketName) {
+        p.log.error('R2_BUCKET_NAME is not set');
+        return;
+      }
+      const appUrl = vars.get('VITE_APP_URL') ?? 'http://localhost:3000';
+      const origins = new Set(['http://localhost:3000']);
+      if (appUrl !== 'http://localhost:3000') origins.add(appUrl);
+
+      const corsConfig = {
+        rules: [
+          {
+            allowed: {
+              origins: [...origins],
+              methods: ['GET', 'PUT', 'HEAD'],
+              headers: ['content-type'],
+            },
+            expose: ['ETag'],
+            maxAge: 3600,
+          },
+        ],
+      };
+
+      const corsSpinner = p.spinner();
+      corsSpinner.start(`Configuring CORS on ${bucketName}`);
+
+      const tmpFile = resolve(process.cwd(), '.cors-tmp.json');
+      try {
+        writeFileSync(tmpFile, JSON.stringify(corsConfig, null, 2));
+        execFileSync(
+          'bunx',
+          [
+            'wrangler',
+            'r2',
+            'bucket',
+            'cors',
+            'set',
+            bucketName,
+            '--file',
+            tmpFile,
+            '--force',
+          ],
+          { stdio: 'pipe' }
+        );
+        corsSpinner.stop(`CORS configured on ${bucketName}`);
+      } catch {
+        corsSpinner.stop('CORS configuration failed');
+        p.log.warn(
+          'Configure manually in Cloudflare Dashboard:\n' +
+            `  R2 → ${bucketName} → Settings → CORS Policy\n\n` +
+            JSON.stringify(corsConfig, null, 2)
+        );
+      } finally {
+        try {
+          unlinkSync(tmpFile);
+        } catch {
+          // ignore
+        }
       }
     }
   }
