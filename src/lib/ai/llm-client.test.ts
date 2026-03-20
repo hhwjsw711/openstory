@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
+// Import real exports before mock.module so they can be re-exported
+import * as tanstackAi from '@tanstack/ai';
+
 // Mock environment
 mock.module('#env', () => ({
   getEnv: () => ({
@@ -10,8 +13,10 @@ mock.module('#env', () => ({
 }));
 
 // Mock @tanstack/ai — chat() is the only function callLLMStream uses
+// Re-export all real exports so other test files aren't affected by incomplete mock
 const mockChat = mock();
 mock.module('@tanstack/ai', () => ({
+  ...tanstackAi,
   chat: mockChat,
 }));
 
