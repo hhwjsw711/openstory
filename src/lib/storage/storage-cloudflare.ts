@@ -95,11 +95,11 @@ export async function getSignedUploadUrl(
   contentType: string;
 }> {
   // R2 bindings don't support presigned URLs — proxy through the worker instead
-  const key = buildR2Key(bucket, path);
-  const params = new URLSearchParams({ bucket, path: key, contentType });
+  // Pass raw path — uploadFile will call buildR2Key itself
+  const params = new URLSearchParams({ bucket, path, contentType });
   const uploadUrl = `/api/storage/upload?${params}`;
   const publicUrl = getPublicUrl(bucket, path);
-  return { uploadUrl, publicUrl, path: key, contentType };
+  return { uploadUrl, publicUrl, path: buildR2Key(bucket, path), contentType };
 }
 
 export async function deleteFile(
