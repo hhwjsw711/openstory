@@ -134,6 +134,18 @@ export async function getSignedUploadUrl(
   path: string;
   contentType: string;
 }> {
+  if (getEnv().E2E_TEST === 'true') {
+    const params = new URLSearchParams({ bucket, path, contentType });
+    const uploadUrl = `/api/storage/upload?${params}`;
+    const publicUrl = getPublicUrl(bucket, path);
+    return {
+      uploadUrl,
+      publicUrl,
+      path: buildR2Key(bucket, path),
+      contentType,
+    };
+  }
+
   const client = createR2Client();
   const bucketName = getR2BucketName();
   const key = buildR2Key(bucket, path);

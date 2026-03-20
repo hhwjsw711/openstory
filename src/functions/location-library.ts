@@ -1,4 +1,5 @@
 import { moveFile, getSignedUploadUrl } from '#storage';
+import { getEnv } from '#env';
 import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { generateId } from '@/lib/db/id';
 import type { LibraryLocation } from '@/lib/db/schema';
@@ -26,6 +27,14 @@ async function processReferenceImages(
   teamId: string
 ): Promise<ProcessedImage[]> {
   const results: ProcessedImage[] = [];
+
+  if (getEnv().E2E_TEST === 'true') {
+    for (const tempUrl of tempUrls) {
+      const mediaId = generateId();
+      results.push({ url: tempUrl, path: `e2e-mock/${mediaId}` });
+    }
+    return results;
+  }
 
   for (const tempUrl of tempUrls) {
     const tempPathMatch = tempUrl.match(/\/locations\/(.+)$/);
